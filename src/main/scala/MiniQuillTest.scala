@@ -6,10 +6,10 @@ object MiniQuillTest {
     val pi /*: Quoted[Double] */ = quote(3.14159)
 
     // run(pi)
-    case class Circle(radius: Float)
+    case class Person(id: Int, name: String, age: Int)
 
     val areas = quote {
-      query[Circle].map[Double]((c: Circle) => pi * c.radius): EntityQuery[Double]
+      query[Person].map((p: Person) => p.name) //: EntityQuery[Double]
     }
     /*
       querySchema("Circle"): Playground.this.ctx.Quoted[Playground.this.ctx.EntityQuery[Playground.this.Circle]]{
