@@ -9,7 +9,7 @@ object MiniQuillTest {
     val pi /*: Quoted[Double] */ = quote(3.14159)
 
     // run(pi)
-    case class Address(street:String)
+    case class Address(street:String, zip:Int)
     case class Person(id: Int, name: String, age: Int, address: Address)
 
     // Inline def seems to work but not inline val!o
@@ -20,7 +20,7 @@ object MiniQuillTest {
     //println(printThenRun(""" ************************************* Areas2 ************************************* """, stuff(areas)))
 
     inline def areas2 = quote {
-      areas.unquote.map(a => a.street)
+      areas.unquote.map(a => a.zip * 3.14159)
       //unquote(areas).map(a => a.street)oo
     }
 

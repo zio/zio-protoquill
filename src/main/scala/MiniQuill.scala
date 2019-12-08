@@ -149,7 +149,10 @@ object Miniquill {
       case Inlined(_, _, v) =>
         println("================ Matching Inlined =================") 
         astParser(v.seal.cast[T])
+
+        // TODO Need to figure how how to do with other datatypes
       case Literal(Constant(v: Double)) => Const(v)
+      
       
       case 
         Typed(
@@ -207,12 +210,12 @@ object Miniquill {
 
       case Select(Typed(tree, _), "unquote") => // TODO Further specialize by checking that the type is Quoted[T]?
         println("=============== NEW Unquoted RHS ================\n" + AstPrinter().apply(tree))
-        //println(tree.show)
         tree.seal match {
           case '{ Quoted[$t]($ast) } => unlift(ast) // doesn't work with 'new'
         }
 
       case Apply(Select(Seal(left), "*"), Seal(right) :: Nil) =>
+        println("------------------------ Showing Left ---------------------\n" + left.show)
         BinaryOperation(astParser(left), NumericOperator.*, astParser(right))
 
       // case Apply(TypeApply(Ident("unquote"), _), List(quoted)) =>
@@ -229,6 +232,7 @@ object Miniquill {
 
       case Ident(x) => 
         Idnt(x)
+
 
       case t =>
         println("=============== Parsing Error ================\n" + AstPrinter().apply(t))
