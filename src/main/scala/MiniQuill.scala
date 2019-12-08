@@ -214,6 +214,13 @@ object Miniquill {
           case '{ Quoted[$t]($ast) } => unlift(ast) // doesn't work with 'new'
         }
 
+      // When doing the 'unquote' method it adds an extra Typed node since that function has a Type
+      case Typed(Select(Typed(tree, _), "unquote"), _) => // TODO Further specialize by checking that the type is Quoted[T]?
+        println("=============== NEW Unquoted RHS Typed ================\n" + AstPrinter().apply(tree))
+        tree.seal match {
+          case '{ Quoted[$t]($ast) } => unlift(ast) // doesn't work with 'new'
+        }
+
       case Apply(Select(Seal(left), "*"), Seal(right) :: Nil) =>
         println("------------------------ Showing Left ---------------------\n" + left.show)
         BinaryOperation(astParser(left), NumericOperator.*, astParser(right))
@@ -251,7 +258,16 @@ object Miniquill {
   }
 
   import scala.language.implicitConversions
-  //inline def unquote[T](quoted: Quoted[T]): T = quoted
+
+  // inline def quote[T](body: =>T): Quoted[T] = ${ quoteImpl[T]('body) }
+  // def quoteImpl[T: Type](body: Expr[T])(given qctx: QuoteContext): Expr[Quoted[T]] = {
+  inline implicit def unquote[T](quoted: =>Quoted[T]): T = ${ unquoteImpl[T]('quoted) }
+  def unquoteImpl[T: Type](quoted: Expr[Quoted[T]])(given qctx: QuoteContext): Expr[T] = {
+    '{
+      ${quoted}.unquote
+    }
+  }
+
   // case class unquote[T](quoted: Quoted[T]) {
   //   def apply: T = ???
   // }

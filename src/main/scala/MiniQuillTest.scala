@@ -20,7 +20,8 @@ object MiniQuillTest {
     //println(printThenRun(""" ************************************* Areas2 ************************************* """, stuff(areas)))
 
     inline def areas2 = quote {
-      areas.unquote.map(a => a.zip * 3.14159)
+      //unquote(areas).map(a => a.zip * 3.14159)
+      areas.map(a => a.zip * 3.14159)
       //unquote(areas).map(a => a.street)oo
     }
 
