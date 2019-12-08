@@ -16,22 +16,14 @@ object Miniquill {
 
 
   // DSL
-  sealed trait Query[+T] {
-    def map[R](f: T => R): Query[R]
+  class Query[+T] {
+    def map[R](f: T => R): Query[R] = new Query[R]
   }
 
-  sealed trait EntityQuery[T] extends Query[T] {
-    override def map[R](f: T => R): EntityQuery[R]
-  }
+  class EntityQuery[T] extends Query[T] // TODO can have a list of column renames?
 
-  inline def query[T]: EntityQuery[T] = ${ queryImpl }
+  inline def query[T]: EntityQuery[T] = new EntityQuery
 
-  def queryImpl[T: Type](given qctx: QuoteContext): Expr[EntityQuery[T]] = {
-    import qctx.tasty.{_, given}
-    '{
-      querySchema[T](${Expr(typeOf[T].classSymbol.get.name)})
-    }
-  }
   // AST
   sealed trait Ast
   sealed trait QueryTree extends Ast
@@ -107,6 +99,8 @@ object Miniquill {
 
   case class Quoted[+T](val ast: Ast) {
     override def toString = ast.toString
+    // maybe try parsing this in the AST which will hopefully be plugged in?
+    def unquote: T = ???
   }
   inline def quote[T](body: =>T): Quoted[T] = ${ quoteImpl[T]('body) }
 
@@ -128,6 +122,7 @@ object Miniquill {
 
   def astParser[T: Type](in: Expr[T])(given qctx: QuoteContext): Ast = {
     import qctx.tasty.{Type => _, _, given}
+    qctx
 
     //println("--> " + in.unseal)
     println
@@ -139,36 +134,85 @@ object Miniquill {
       }
     }
 
+    object PossibleTypeApply {
+      def unapply[T](tree: Tree): Option[Tree] =
+        tree match {
+          case TypeApply(inner, _) => Some(inner)
+          case other => Some(other)
+        }
+    }
+
+    println("================ UnderlyingArgument =================") 
+    println(AstPrinter().apply( in.unseal.underlyingArgument ))
+    
+
     in.unseal.underlyingArgument match {
       case Inlined(_, _, v) =>
         println("================ Matching Inlined =================") 
         astParser(v.seal.cast[T])
       case Literal(Constant(v: Double)) => Const(v)
-      case Typed(t, _) => astParser(t.seal.cast[T])
+      
+      case 
+        Typed(
+          Apply(
+            TypeApply(
+              // Need to use showExtractors to get TypeIdent
+              Select(New(TypeIdent("EntityQuery")), /* <Init> */ _), List(targ)
+            ), _
+          ), _
+        )
+        =>
+        val name: String = targ.tpe.classSymbol.get.name
+        Entity(name)
+
+
       case ta @ 
         Apply(
           TypeApply(
-            Select(
-              Typed(
-                Apply(
-                  TypeApply(t, List(targ)), _
-                ), 
-              _), 
-            _), 
-          _), 
-          Lambda(valdef :: Nil, Seal(body)) :: Nil
+            Select(Seal(body), "map"), _
+          ), 
+          Lambda(valdef :: Nil, Seal(methodBody)) :: Nil
         ) =>
         //println(ta.showExtractors)
         //println(new ContextAstPrinter().apply(ta))
-        println(AstPrinter().apply(ta))
-        val name: String = targ.tpe.classSymbol.get.name
-        Map(Entity(name), Idnt(valdef.symbol.name), astParser(body))
+
+        println("============ Map Method ============\n" + AstPrinter().apply(ta))
+
+        //println("================ Underlying Value Currently ================\n" + ta.show)
+
+        val output = Map(astParser(body), Idnt(valdef.symbol.name), astParser(methodBody))
+        
+        println("============ Output ============\n" + output)
+        output
+
+      // case ta @ 
+      //   Apply(
+      //     TypeApply(
+      //       Select(
+      //         Typed(
+      //           Apply(
+      //             TypeApply(t, List(targ)), _
+      //           ), _
+      //         ), _
+      //       ), _
+      //     ), 
+      //     Lambda(valdef :: Nil, Seal(body)) :: Nil
+      //   ) =>
+
+      //   println("============ Map Method ============\n" + AstPrinter().apply(ta))
+      //   val name: String = targ.tpe.classSymbol.get.name
+      //   Map(Entity(name), Idnt(valdef.symbol.name), astParser(body))
+        
+      // What does this do???
+      //case Typed(t, _) => astParser(t.seal.cast[T])
 
       case Apply(Select(Seal(left), "*"), Seal(right) :: Nil) =>
         BinaryOperation(astParser(left), NumericOperator.*, astParser(right))
 
       case Apply(TypeApply(Ident("unquote"), _), List(quoted)) =>
         val rhs = quoted.symbol.tree.asInstanceOf[ValDef].rhs.get.seal
+
+        println("=============== Unquoted RHS ================\n" + AstPrinter().apply(quoted))
 
         rhs match {
           case '{ new Quoted[$t]($ast) } => unlift(ast)
@@ -180,9 +224,12 @@ object Miniquill {
       case Ident(x) => Idnt(x)
 
       case t =>
-        println(t)
-        summon[QuoteContext].error("Parsing error: " + in.show, in)
+        println("=============== Parsing Error ================\n" + AstPrinter().apply(t))
+        println("=============== Extracted ================\n" + t.showExtractors)
         ???
+        //println(t)
+        //summon[QuoteContext].error("Parsing error: " + in.show, in)
+        //???
     }
   }
 
@@ -193,7 +240,10 @@ object Miniquill {
   }
 
   import scala.language.implicitConversions
-  implicit def unquote[T](quoted: Quoted[T]): T = ???
+  //inline def unquote[T](quoted: Quoted[T]): T = quoted
+  // case class unquote[T](quoted: Quoted[T]) {
+  //   def apply: T = ???
+  // }
 
   def querySchema[T](entity: String): EntityQuery[T] = ???
 }

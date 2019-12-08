@@ -55,7 +55,7 @@ object SimpleMacroMain {
 
     printThenRun(""" query[Person].map((p: Person) => p.address) """ , stuff( query[Person].map((p: Person) => p.address) ) )
 
-    // printThenRun("""ooo
+    // printThenRun("""oooo
     // class MyBean {
     //   def printStr: String = "theprint"
     // }
