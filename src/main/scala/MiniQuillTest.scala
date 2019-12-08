@@ -1,4 +1,5 @@
 import Miniquill._
+import SimpleMacro._
 
 import scala.language.implicitConversions
 
@@ -11,12 +12,19 @@ object MiniQuillTest {
     case class Address(street:String)
     case class Person(id: Int, name: String, age: Int, address: Address)
 
-    inline val areas = quote {
-      query[Person].map((p: Person) => p.address) //: EntityQuery[Double] hello
+    // Inline def seems to work but not inline val!o
+    inline def areas = quote {
+      query[Person].map((p: Person) => p.address) //: EntityQuery[Double] helloo
     }
-    inline val areas2 = quote {
-      unquote(areas).map(a => a.street)
+
+    //println(printThenRun(""" ************************************* Areas2 ************************************* """, stuff(areas)))
+
+    inline def areas2 = quote {
+      areas.unquote.map(a => a.street)
+      //unquote(areas).map(a => a.street)oo
     }
+
+    
 
     
     /*

@@ -122,7 +122,6 @@ object Miniquill {
 
   def astParser[T: Type](in: Expr[T])(given qctx: QuoteContext): Ast = {
     import qctx.tasty.{Type => _, _, given}
-    qctx
 
     //println("--> " + in.unseal)
     println
@@ -206,22 +205,30 @@ object Miniquill {
       // What does this do???
       //case Typed(t, _) => astParser(t.seal.cast[T])
 
+      case Select(Typed(tree, _), "unquote") => // TODO Further specialize by checking that the type is Quoted[T]?
+        println("=============== NEW Unquoted RHS ================\n" + AstPrinter().apply(tree))
+        //println(tree.show)
+        tree.seal match {
+          case '{ Quoted[$t]($ast) } => unlift(ast) // doesn't work with 'new'
+        }
+
       case Apply(Select(Seal(left), "*"), Seal(right) :: Nil) =>
         BinaryOperation(astParser(left), NumericOperator.*, astParser(right))
 
-      case Apply(TypeApply(Ident("unquote"), _), List(quoted)) =>
-        val rhs = quoted.symbol.tree.asInstanceOf[ValDef].rhs.get.seal
+      // case Apply(TypeApply(Ident("unquote"), _), List(quoted)) =>
+      //   val rhs = quoted.symbol.tree.asInstanceOf[ValDef].rhs.get.seal
 
-        println("=============== Unquoted RHS ================\n" + AstPrinter().apply(quoted))
+      //   println("=============== Unquoted RHS ================\n" + AstPrinter().apply(quoted))
 
-        rhs match {
-          case '{ new Quoted[$t]($ast) } => unlift(ast)
-        }
+      //   rhs match {
+      //     case '{ new Quoted[$t]($ast) } => unlift(ast)
+      //   }
 
       case Select(Seal(prefix), member) =>
         Property(astParser(prefix), member)
 
-      case Ident(x) => Idnt(x)
+      case Ident(x) => 
+        Idnt(x)
 
       case t =>
         println("=============== Parsing Error ================\n" + AstPrinter().apply(t))
