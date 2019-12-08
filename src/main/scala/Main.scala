@@ -1,18 +1,7 @@
 object Main {
 
   def main(args: Array[String]): Unit = {
-    println("Hello world!")
-    println(msg)
-
-    type MyType = String | List[String]
-    val l: MyType = List("foo", "bar")
-
-    val out =
-    l match {
-        case _:String => "string"
-        case _:List[String] => "string list"
-    }
-    println(out)
+    
   }
 
   import Logger.log

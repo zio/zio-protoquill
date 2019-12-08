@@ -3,6 +3,17 @@ import scala.annotation.StaticAnnotation
 
 object Miniquill {
 
+  /*
+
+  (q:Query[T], c: T => R) => q.map(c)
+  (q:Query[T], c: T => R) =>
+    val (alias, body) = parseClosure(c)
+    Map(parse(q), Ident(alias.toString), parse(body))
+
+    (one: String, two: String) => one.startsWith(two)
+  */
+
+
 
   // DSL
   sealed trait Query[+T] {
@@ -94,10 +105,10 @@ object Miniquill {
     case '{ NumericOperator.* } =>  NumericOperator.*
   }
 
-  class Quoted[+T](val ast: Ast) {
+  case class Quoted[+T](val ast: Ast) {
     override def toString = ast.toString
   }
-  inline def quote[T](body: =>T) <: Quoted[T] = ${ quoteImpl[T]('body) }
+  inline def quote[T](body: =>T): Quoted[T] = ${ quoteImpl[T]('body) }
 
   class QuotedAst(ast: Ast) extends StaticAnnotation
 
@@ -111,14 +122,14 @@ object Miniquill {
     val reifiedAst = lift(ast)
 
     '{
-       new Quoted[T](${reifiedAst})
+       Quoted[T](${reifiedAst})
     }
   }
 
   def astParser[T: Type](in: Expr[T])(given qctx: QuoteContext): Ast = {
     import qctx.tasty.{Type => _, _, given}
 
-    println("--> " + in.unseal)
+    //println("--> " + in.unseal)
     println
     object Seal {
       def unapply[T](e: Term)(given qctx: QuoteContext) = {
@@ -129,17 +140,27 @@ object Miniquill {
     }
 
     in.unseal.underlyingArgument match {
-      case Inlined(_, _, v) => astParser(v.seal.cast[T])
+      case Inlined(_, _, v) =>
+        println("================ Matching Inlined =================") 
+        astParser(v.seal.cast[T])
       case Literal(Constant(v: Double)) => Const(v)
       case Typed(t, _) => astParser(t.seal.cast[T])
-      case Apply(
+      case ta @ 
+        Apply(
           TypeApply(
             Select(
               Typed(
                 Apply(
                   TypeApply(t, List(targ)), _
-                ), _), _), _), Lambda(valdef :: Nil, Seal(body)) :: Nil) =>
-
+                ), 
+              _), 
+            _), 
+          _), 
+          Lambda(valdef :: Nil, Seal(body)) :: Nil
+        ) =>
+        //println(ta.showExtractors)
+        //println(new ContextAstPrinter().apply(ta))
+        println(AstPrinter().apply(ta))
         val name: String = targ.tpe.classSymbol.get.name
         Map(Entity(name), Idnt(valdef.symbol.name), astParser(body))
 

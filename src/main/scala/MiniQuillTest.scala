@@ -9,8 +9,10 @@ object MiniQuillTest {
     case class Person(id: Int, name: String, age: Int)
 
     val areas = quote {
-      query[Person].map((p: Person) => p.name) //: EntityQuery[Double]
+      query[Person].map((p: Person) => p.name) //: EntityQuery[Double] hello
     }
+
+    
     /*
       querySchema("Circle"): Playground.this.ctx.Quoted[Playground.this.ctx.EntityQuery[Playground.this.Circle]]{
         def quoted: io.getquill.ast.Entity;
@@ -19,7 +21,7 @@ object MiniQuillTest {
         val liftings: Object
     */
 
-    println(run(areas))
+    println(run(areas)) //helloooo
     // SELECT (3.14159 * c.radius) * c.radius FROM circle c
   }
 }
