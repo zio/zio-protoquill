@@ -1,5 +1,7 @@
-import Miniquill._
-import SimpleMacro._
+package miniquill
+
+import miniquill.MiniQuill._
+import simple.SimpleMacro._
 
 import scala.language.implicitConversions
 

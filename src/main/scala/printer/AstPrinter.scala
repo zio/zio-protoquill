@@ -1,13 +1,14 @@
+package printer
+
 import pprint.{PPrinter, Tree, Util}
 
 import fansi.Str
 import pprint.{ Renderer, Tree, Truncated }
 import scala.quoted._
 
-
 class AstPrinter extends pprint.Walker {
 
-  val defaultWidth: Int = 30
+  val defaultWidth: Int = 60
   val defaultHeight: Int = Integer.MAX_VALUE
   val defaultIndent: Int = 2
   val colorLiteral: fansi.Attrs = fansi.Color.Green

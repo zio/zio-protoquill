@@ -1,3 +1,5 @@
+package simple
+
 import SimpleMacro._
 import scala.quoted._
 
@@ -53,9 +55,32 @@ object SimpleMacroMain {
     }
     def query[T] = new Quoted[T]
 
-    printThenRun(""" query[Person].map((p: Person) => p.address) """ , stuff( query[Person].map((p: Person) => p.address) ) )
+    val abc = 44
+    inline def intPlusInt = abc+1
 
-    // printThenRun("""oooo
+    printThenRun(
+      """ (i:Int) => i+1 """ , 
+      stuff( intPlusInt ) 
+    )
+
+    // printThenRun(o
+    //   """ query[Person].map((p: Person) => p.address) """ , 
+    //   stuff( query[Person].map((p: Person) => p.address) ) 
+    // )
+
+    printThenRun(
+      """ (i:Int) => i.toString """ , 
+      stuff( {def clo[T] = (i:Int) => i.toString} )
+    )
+
+    printThenRun(
+      """ (i:T) => i.toString """ , 
+      stuff( {def clo[T] = (i:T) => i.toString} )
+    )
+
+    //betaReduceMethod((i:Int) => i + 1)
+
+    // printThenRun("""oooooooo
     // class MyBean {
     //   def printStr: String = "theprint"
     // }
@@ -66,5 +91,12 @@ object SimpleMacroMain {
     //   }
     // })
 
+    // printThenRun(
+    //   """ (p: Person) => p.address """ , 
+    //   stuff( (i: Int) => {
+    //     val v = (i: Int) => i + 2
+    //     v(44) + 1
+    //   } )
+    // )
   }
 }

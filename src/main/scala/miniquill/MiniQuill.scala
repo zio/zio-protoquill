@@ -1,7 +1,10 @@
+package miniquill
+
 import scala.quoted._
 import scala.annotation.StaticAnnotation
+import printer.AstPrinter
 
-object Miniquill {
+object MiniQuill {
 
   /*
 
@@ -122,7 +125,9 @@ object Miniquill {
 
   def astParser[T: Type](in: Expr[T])(given qctx: QuoteContext): Ast = {
     import qctx.tasty.{Type => _, _, given}
+    import printer.ContextAstPrinter._
 
+    //println(in.show)
     //println("--> " + in.unseal)
     println
     object Seal {
@@ -140,25 +145,27 @@ object Miniquill {
           case other => Some(other)
         }
     }
-
-    println("================ UnderlyingArgument =================") 
-    println(AstPrinter().apply( in.unseal.underlyingArgument ))
     
+    in.unseal.underlyingArgument.seal match { //heloooo
+      case vv @ '{ (${k}:Query[_]).map[Any](($t: Any) => $v) } =>
+        println(s"************ MATCHES ${AstPrinter.astprint(vv.unseal.underlyingArgument)} **********")
+      case _ => 
+        println(s"************ Does not match k **********")
+    }
+
 
     in.unseal.underlyingArgument match {
       case Inlined(_, _, v) =>
-        println("================ Matching Inlined =================") 
         astParser(v.seal.cast[T])
 
         // TODO Need to figure how how to do with other datatypes
       case Literal(Constant(v: Double)) => Const(v)
       
-      
       case 
         Typed(
           Apply(
             TypeApply(
-              // Need to use showExtractors to get TypeIdent
+              // Need to use showExtractors to get TypeIdentt
               Select(New(TypeIdent("EntityQuery")), /* <Init> */ _), List(targ)
             ), _
           ), _
@@ -175,16 +182,11 @@ object Miniquill {
           ), 
           Lambda(valdef :: Nil, Seal(methodBody)) :: Nil
         ) =>
-        //println(ta.showExtractors)
-        //println(new ContextAstPrinter().apply(ta))
 
         println("============ Map Method ============\n" + AstPrinter().apply(ta))
-
-        //println("================ Underlying Value Currently ================\n" + ta.show)
-
         val output = Map(astParser(body), Idnt(valdef.symbol.name), astParser(methodBody))
         
-        println("============ Output ============\n" + output)
+        //println("============ Output ============\n" + output)
         output
 
       // case ta @ 
@@ -208,21 +210,22 @@ object Miniquill {
       // What does this do???
       //case Typed(t, _) => astParser(t.seal.cast[T])
 
+      // When just doing .unquote in the AST
       case Select(Typed(tree, _), "unquote") => // TODO Further specialize by checking that the type is Quoted[T]?
-        println("=============== NEW Unquoted RHS ================\n" + AstPrinter().apply(tree))
+        //println("=============== NEW Unquoted RHS ================\n" + AstPrinter().apply(tree))
         tree.seal match {
           case '{ Quoted[$t]($ast) } => unlift(ast) // doesn't work with 'new'
         }
 
       // When doing the 'unquote' method it adds an extra Typed node since that function has a Type
       case Typed(Select(Typed(tree, _), "unquote"), _) => // TODO Further specialize by checking that the type is Quoted[T]?
-        println("=============== NEW Unquoted RHS Typed ================\n" + AstPrinter().apply(tree))
+        //println("=============== NEW Unquoted RHS Typed ================\n" + AstPrinter().apply(tree))
         tree.seal match {
           case '{ Quoted[$t]($ast) } => unlift(ast) // doesn't work with 'new'
         }
 
       case Apply(Select(Seal(left), "*"), Seal(right) :: Nil) =>
-        println("------------------------ Showing Left ---------------------\n" + left.show)
+        //println("------------------------ Showing Left ---------------------\n" + left.show)
         BinaryOperation(astParser(left), NumericOperator.*, astParser(right))
 
       // case Apply(TypeApply(Ident("unquote"), _), List(quoted)) =>

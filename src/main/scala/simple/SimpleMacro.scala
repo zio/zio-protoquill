@@ -1,6 +1,9 @@
+package simple
+
 import scala.quoted._
 import scala.annotation.StaticAnnotation
-import AstPrinter._
+import printer.AstPrinter._
+import printer.ContextAstPrinter._
 
 object SimpleMacro {
   inline def printThenRun[T](print: String, thenRun: => T): T = ${ printThenRunImpl('print, 'thenRun) }
@@ -22,6 +25,20 @@ object SimpleMacro {
 
   import dotty.tools.dotc.core.tasty.TastyPrinter
 
+  inline def betaReduceMethod(f: Int => Int ):Unit = ${betaReduceMethodImpl('f)}
+  def betaReduceMethodImpl(f: Expr[Int => Int])(given qctx: QuoteContext): Expr[Int] = {
+    import qctx.tasty.{_, given}
+
+    val reduced = Expr.betaReduce(f)('{123}) //hello
+    println(astprint(reduced.unseal.underlyingArgument))
+    println(reduced.show)
+    reduced
+  }
+    
+
+  //   '{()}
+  // }
+
   inline def stuff[T](str: T):T = ${ stuffImpl('str) }
   def stuffImpl[T](str: Expr[T])(given qctx: QuoteContext): Expr[T] = {
     import qctx.tasty.{_, given} //Type => _, 
@@ -36,7 +53,7 @@ object SimpleMacro {
       println(result)
     }
 
-    splitPrint(astprint.apply(und).render)  //.showExtractors
+    splitPrint(contextAstPrinter.apply(und).render)  //.showExtractors
     //TastyPrinter()
     
     str
