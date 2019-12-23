@@ -1,6 +1,6 @@
 package simple
 
-import SimpleMacro._
+import simple.SimpleMacro._
 import scala.quoted._
 
 object SimpleMacroMain {
