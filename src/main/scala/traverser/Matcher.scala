@@ -1,7 +1,6 @@
 package traverser
 
 import scala.quoted._
-import miniquill.MiniQuill._
 
 // trait Match2[T1, T2](find: Any, replace: Ast)
 // val m2 = 

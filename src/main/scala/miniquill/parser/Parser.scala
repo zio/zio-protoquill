@@ -1,54 +1,15 @@
-package miniquill
 
+package miniquill.parser
+
+import miniquill.ast._
+import miniquill.quoter._
 import scala.quoted._
 import scala.annotation.StaticAnnotation
 import printer.AstPrinter
-import derivation._
 import scala.deriving._
 
-object MiniQuill {
-
-  /*
-
-  (q:Query[T], c: T => R) => q.map(c)
-  (q:Query[T], c: T => R) =>
-    val (alias, body) = parseClosure(c)
-    Map(parse(q), Ident(alias.toString), parse(body))
-
-    (one: String, two: String) => one.startsWith(two)
-  */
-
-
-
-  // DSL
-  class Query[+T] {
-    def map[R](f: T => R): Query[R] = new Query[R]
-  }
-
-  class EntityQuery[T] extends Query[T] // TODO can have a list of column renames?
-
-  inline def query[T]: EntityQuery[T] = new EntityQuery
-
-  // AST
-  sealed trait Ast
-  sealed trait QueryTree extends Ast
-  case class Idnt(name: String) extends Ast
-  case class Map(query: Ast, alias: Idnt, body: Ast) extends QueryTree
-  case class Entity(name: String) extends QueryTree
-  case class Property(ast: Ast, name: String) extends Ast
-
-  sealed trait Operation extends Ast
-  case class BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) extends Operation
-
-  sealed trait Value extends Ast
-  case class Const(v: Double) extends Value
-
-  /* Operators */
-  sealed trait Operator
-  sealed trait BinaryOperator extends Operator
-  object NumericOperator {
-    case object `*` extends BinaryOperator
-  }
+object Parser {
+  import QueryDsl._
 
   def lift(ast: Ast)(given qctx: QuoteContext): Expr[Ast] = ast match {
     case Const(v) => '{ Const(${Expr(v)}) }
@@ -103,52 +64,9 @@ object MiniQuill {
   }
 
 
-  // Liftings are a map of UUID->Value pairs, going to also need to store
-  // type tags since need to know types of things with generic params e.g. postgres arrays
-  case class Quoted[+T](val ast: Ast, liftings: scala.collection.Map[String, Any]) {
-    override def toString = ast.toString
-    // The unquote method is there to signal the parser not splice in the tree
-    // however, we should also plug in the body of the tree into this value
-    // so that you can use .unquote outside of macro code to get back othe original tree
-    def unquote: T = ???
-  }
-  inline def quote[T](body: =>T): Quoted[T] = ${ quoteImpl[T]('body) }
 
-  class QuotedAst(ast: Ast) extends StaticAnnotation
 
-  def gatherLiftings(body: Expr[_]): Expr[scala.collection.Map[String, Any]] = {
-      // use a tree-walker to
-      // gather liftings from Unquote blocks (i.e. the ones the parser parses, both as result of 'unquote' and '.unquote' method invocation)
-      // -- these will be map objects
-      // gather liftings from Lift blocks
-      // -- these will be individual key values pairs
-      // combine the found maps with the key/value pairs returning an expression
-      // that yields a map
 
-      null // back here
-  }
-
-  def quoteImpl[T: Type](body: Expr[T])(given qctx: QuoteContext): Expr[Quoted[T]] = {
-    import qctx.tasty.{_, given}
-
-    // TODO use a tree walkler to gather maps from quoted blocks
-    // we could do this in the parser but then the parser would have to be
-    // a stateful transformer. I don't want to require it to be that since
-    // I want the parser to be stateless (or at least to not have to force)
-    // the user into implementing a stateful transformer as the parser
-    // val liftings: List[Map[String, Any]] = gatherLiftings(body)
-    
-
-    val ast = astParser(body)
-
-    println(ast)
-
-    val reifiedAst = lift(ast)
-
-    '{       
-       Quoted[T](${reifiedAst}, scala.collection.Map[String, Any]())
-    }
-  }
 
   def astParser[T: Type](in: Expr[T])(given qctx: QuoteContext): Ast = {
     import qctx.tasty.{Type => _, _, given}
@@ -172,22 +90,34 @@ object MiniQuill {
           case other => Some(other)
         }
     }
+
+    println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% WHOLE TREE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+    println(AstPrinter.astprint(in.unseal.underlyingArgument).render.split("\n").map("%% " + _).mkString("\n"))
     
     // in.unseal.underlyingArgument.seal
-    in match {
-      case vv @ '{ (${k}:Query[_]).map[Any](($t: Any) => $v) } => 
+    in.unseal.underlyingArgument.seal match {
+      
+      // Can't do existential types e.g. Query[_] as of 0.21.0-RC1. Need to make variable for the types e.g. $qt
+      case vv @ '{ ($k:Query[$qt]).map[$mt]($l) } => 
         println(s"************ MATCHES ${AstPrinter.astprint(vv.unseal.underlyingArgument)} **********")
+
+      //case vv @ '{ (${k}:Query[_]) } => // Does not match with Any
+      //   println(s"************ MATCHES Entity ${AstPrinter.astprint(vv.unseal.underlyingArgument)} **********")
+        
+
       case _ => 
         println(s"************ Does not match k **********")
     }
 
-
     in.unseal.underlyingArgument match {
       case Inlined(_, _, v) =>
+        println("Case Inlined")
         astParser(v.seal.cast[T])
 
         // TODO Need to figure how how to do with other datatypes
-      case Literal(Constant(v: Double)) => Const(v)
+      case Literal(Constant(v: Double)) => 
+        println("Case Literal Constant")
+        Const(v)
       
       case 
         Typed(
@@ -199,6 +129,7 @@ object MiniQuill {
           ), _
         )
         =>
+        println("Typed Apply of EntityQuery")
         val name: String = targ.tpe.classSymbol.get.name
         Entity(name)
 
@@ -211,32 +142,36 @@ object MiniQuill {
           Lambda(valdef :: Nil, Seal(methodBody)) :: Nil
         ) =>
 
-        println("============ Map Method ============\n" + AstPrinter().apply(ta))
+        println("============ Case Map Method ============\n" + AstPrinter().apply(ta))
         val output = Map(astParser(body), Idnt(valdef.symbol.name), astParser(methodBody))
         output
 
       // When just doing .unquote in the AST
       case Select(Typed(tree, _), "unquote") => // TODO Further specialize by checking that the type is Quoted[T]?
         //println("=============== NEW Unquoted RHS ================\n" + AstPrinter().apply(tree))
+        println("Case Unquote Selector")
         tree.seal match {
-          case '{ Quoted[$t]($ast, $map) } => unlift(ast) // doesn't work with 'new'
+          case '{ Quoted[$t]($ast) } => unlift(ast) // doesn't work with 'new'
         }
 
       // When doing the 'unquote' method it adds an extra Typed node since that function has a Type
       case Typed(Select(Typed(tree, _), "unquote"), _) => // TODO Further specialize by checking that the type is Quoted[T]?
         //println("=============== NEW Unquoted RHS Typed ================\n" + AstPrinter().apply(tree))
+        println("Case Unquote Typed Selector")
         tree.seal match {
-          case '{ Quoted[$t]($ast, $map) } => unlift(ast) // doesn't work with 'new'
+          case '{ Quoted[$t]($ast) } => unlift(ast) // doesn't work with 'new'
         }
 
       case Apply(Select(Seal(left), "*"), Seal(right) :: Nil) =>
-        //println("------------------------ Showing Left ---------------------\n" + left.show)
+        println("Apply Select")
         BinaryOperation(astParser(left), NumericOperator.*, astParser(right))
 
       case Select(Seal(prefix), member) =>
+        println("Select")
         Property(astParser(prefix), member)
 
       case Ident(x) => 
+        println("Ident")
         Idnt(x)
 
 
@@ -250,26 +185,4 @@ object MiniQuill {
     }
   }
 
-  def runQuery[T](query: Quoted[Query[T]]): String = ???
-
-  def run[T](query: Quoted[T]): String = {
-    query.ast.toString
-  }
-
-  import scala.language.implicitConversions
-
-  // inline def quote[T](body: =>T): Quoted[T] = ${ quoteImpl[T]('body) }
-  // def quoteImpl[T: Type](body: Expr[T])(given qctx: QuoteContext): Expr[Quoted[T]] = {
-  inline implicit def unquote[T](quoted: =>Quoted[T]): T = ${ unquoteImpl[T]('quoted) }
-  def unquoteImpl[T: Type](quoted: Expr[Quoted[T]])(given qctx: QuoteContext): Expr[T] = {
-    '{
-      ${quoted}.unquote
-    }
-  }
-
-  // case class unquote[T](quoted: Quoted[T]) {
-  //   def apply: T = ???
-  // }
-
-  def querySchema[T](entity: String): EntityQuery[T] = ???
 }

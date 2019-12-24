@@ -50,33 +50,33 @@ object SimpleMacroMain {
 
     case class Address(street:String, age:Int)
     case class Person(name:String, age:Int, address: Address)
-    class Quoted[T] {
-      def map[R](f: T=>R): Quoted[R] = new Quoted[R]()
+    class Query[T] {
+      def map[R](f: T=>R): Query[R] = new Query[R]()
     }
-    def query[T] = new Quoted[T]
+    inline def query[T] = new Query[T]
 
     val abc = 44
     inline def intPlusInt = abc+1
 
     printThenRun(
       """ (i:Int) => i+1 """ , 
-      stuff( intPlusInt ) 
+      stuff( query[Person].map(p => p.name) ) 
     )
 
-    // printThenRun(o
+    // printThenRun(oo
     //   """ query[Person].map((p: Person) => p.address) """ , 
     //   stuff( query[Person].map((p: Person) => p.address) ) 
     // )
 
-    printThenRun(
-      """ (i:Int) => i.toString """ , 
-      stuff( {def clo[T] = (i:Int) => i.toString} )
-    )
+    // printThenRun(
+    //   """ (i:Int) => i.toString """ , 
+    //   stuff( {def clo[T] = (i:Int) => i.toString} )
+    // )
 
-    printThenRun(
-      """ (i:T) => i.toString """ , 
-      stuff( {def clo[T] = (i:T) => i.toString} )
-    )
+    // printThenRun(
+    //   """ (i:T) => i.toString """ , 
+    //   stuff( {def clo[T] = (i:T) => i.toString} )
+    // )
 
     //betaReduceMethod((i:Int) => i + 1)
 

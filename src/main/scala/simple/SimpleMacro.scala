@@ -54,6 +54,7 @@ object SimpleMacro {
     }
 
     splitPrint(contextAstPrinter.apply(und).render)  //.showExtractors
+    println(str.unseal.underlyingArgument.show)
     //TastyPrinter()
     
     str
