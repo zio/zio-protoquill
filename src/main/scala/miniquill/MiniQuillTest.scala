@@ -19,16 +19,16 @@ object MiniQuillTest {
 
     // Inline def seems to work but not inline val!o
     inline def areas = quote {
-      query[Person].map((p: Person) => p.address) //: EntityQuery[Double] helloooooooooooooooooooooo
+      query[Person].map((p: Person) => p.address) //: EntityQuery[Double] helloooooooooooooooooooooooooooooooooooooooooooooooooooo
     }
 
     //println(printThenRun(""" ************************************* Areas2 ************************************* """, stuff(areas)))
 
-    // inline def areas2 = quote {
-    //   //unquote(areas).map(a => a.zip * 3.14159)
-    //   areas.map(a => a.zip) // * 3.14159
-    //   //unquote(areas).map(a => a.street)oo
-    // }
+    inline def areas2 = quote {
+      //unquote(areas).map(a => a.zip * 3.14159)
+      areas.map(a => a.zip) // * 3.14159
+      //unquote(areas).map(a => a.street)oo
+    }
 
     
     // inline def fooUse = quote {
@@ -43,7 +43,7 @@ object MiniQuillTest {
         val liftings: Object
     */
 
-    println(run(areas)) //helloooooooooooooooooooooooooooooo
+    println(run(areas2)) //helloooooooooooooooooooooooooooooooo
     // SELECT (3.14159 * c.radius) * c.radius FROM circle c
   }
 }
