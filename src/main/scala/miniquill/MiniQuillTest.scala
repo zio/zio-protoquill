@@ -43,7 +43,7 @@ object MiniQuillTest {
         val liftings: Object
     */
 
-    println(run(areas2)) //helloooooooooooooooooooooooooooooooo
+    println(run(areas2)) //hellooooooooooooooooooooooooooooooooooo
     // SELECT (3.14159 * c.radius) * c.radius FROM circle c
   }
 }

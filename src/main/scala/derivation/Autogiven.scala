@@ -13,6 +13,8 @@ object Autogiven {
   //   }
   // }
 
+  // TODO Can we get rid of the "given ev: deriving.Mirror.Of[T]" and use SummonFrom instead?
+
   inline def autogiveEq[T](a: T, b: T)(given ev: deriving.Mirror.Of[T]): Boolean = {
     given Eq[T] = Eq.derived
     val eqf = summon[Eq[T]]
