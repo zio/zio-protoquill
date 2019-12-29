@@ -8,27 +8,35 @@ case class Address(street:String, zip:Int)
 case class Person(id: Int, name: String, age: Int, address: Address)
 
 object MiniQuillTest {
-  import quoter.QueryDsl._
 
   def main(args: Array[String]) = {
 
     val pi /*: Quoted[Double] */ = quote(3.14159)
 
     // run(pi)
+    import miniquill.quoter._
     
 
     // Inline def seems to work but not inline val!o
-    inline def areas = quote {
-      query[Person].map((p: Person) => p.address) //: EntityQuery[Double] helloooooooooooooooooooooooooooooooooooooooooooooooooooo
+    inline def areas: Quoted[Query[Address]] = quote { // i.e. can leaf out the quote here and it'll still work
+      query[Person].map((p: Person) => p.address)
     }
 
-    //println(printThenRun(""" ************************************* Areas2 ************************************* """, stuff(areas)))
+    // inline def getProperty[T, R](row: T)(f: T => R): R = {
+    //   f(row)
+    // }
+    // List(Address("123", 123)).map(element => getProperty(element)(_.zip))
+    // inline def areas2 = {
+    //   areas.map(a => getProperty(a)(_.zip)) // * 3.14159
+    // }
 
-    inline def areas2 = quote {
-      //unquote(areas).map(a => a.zip * 3.14159)
-      areas.map(a => a.zip) // * 3.14159
-      //unquote(areas).map(a => a.street)oo
+    inline def areas2: Quoted[Query[Int]] = quote {
+      // areas // can't do this
+      areas.map(a => a.zip)
     }
+
+    //unquote(areas).map(a => a.zip * 3.14159)
+    //unquote(areas).map(a => a.street)oo
 
     
     // inline def fooUse = quote {
@@ -43,7 +51,7 @@ object MiniQuillTest {
         val liftings: Object
     */
 
-    println(run(areas2)) //hellooooooooooooooooooooooooooooooooooo
+    println(run(areas2)) //hellooooooooooooooooooooooooooooooooooooo
     // SELECT (3.14159 * c.radius) * c.radius FROM circle c
   }
 }

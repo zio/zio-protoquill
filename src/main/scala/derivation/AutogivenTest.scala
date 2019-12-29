@@ -4,21 +4,24 @@ import scala.deriving._
 import Autogiven._
 import Eq._
 
-case class Blah(i: Int)
+
 
 object AutogivenTest {
-  def main(args: Array[String]):Unit = {
-    //val intMirror = summon[Mirror.Of[Blah]]
-    //println( Eq.derived(intMirror).eql(Blah(1), Blah(2)) )
+  val stuff = ThePerson("Joe", 123, List(TheAddress("123 Street")))
 
+  def main(args: Array[String]):Unit = {
+    
     //println( Eq.derived(intMirror).eql(Person("Joe", 1), Person("Jack", 2)) )
     // println( autogiveEq(1, 2) )
 
-    // This works... yay!
-    autogiveEq(Blah(1), Blah(2))
+    // This works... yay! ... but without Address also being there!
+    //println( autogiveJsonEncoder[ThePerson](stuff) )
 
     // Why can't I get the mirror of an int?
-    //val intMirror = summon[Mirror.Of[Int]]
+    //val intMirror = summon[Mirror.Of[Int]
+
+    // given JsonEncoder[ThePerson] = JsonEncoder.derived
+    // given JsonEncoder[TheAddress] = JsonEncoder.derived
+    // println( summon[JsonEncoder[ThePerson]].encode(stuff) )
   }
 }
-

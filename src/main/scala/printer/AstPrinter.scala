@@ -63,3 +63,6 @@ class AstPrinter extends pprint.Walker {
 object AstPrinter {
   val astprint = new AstPrinter()
 }
+
+val str = new AstPrinter()
+def ln(str: Any) = println(new AstPrinter()(str))

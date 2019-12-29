@@ -8,27 +8,32 @@ import scala.annotation.StaticAnnotation
 import printer.AstPrinter
 import scala.deriving._
 
-object Parser {
-  import QueryDsl._
 
-  def lift(ast: Ast)(given qctx: QuoteContext): Expr[Ast] = ast match {
+class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {  
+
+  def apply(ast: Ast): Expr[Ast] = liftAst(ast)
+  def isDefinedAt(ast: Ast): Boolean = liftAst.isDefinedAt(ast)
+
+  def liftAst: PartialFunction[Ast, Expr[Ast]] = {
     case Const(v) => '{ Const(${Expr(v)}) }
     case Entity(name: String) => '{ Entity(${Expr(name)})  }
     case Idnt(name: String) => '{ Idnt(${Expr(name)})  }
-    case Map(query: Ast, alias: Idnt, body: Ast) => '{ Map(${lift(query)}, ${lift(alias).asInstanceOf[Expr[Idnt]]}, ${lift(body)})  }
-    case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${lift(a)}, ${lift(operator).asInstanceOf[Expr[BinaryOperator]]}, ${lift(b)})  }
-    case Property(ast: Ast, name: String) => '{Property(${lift(ast)}, ${Expr(name)}) }
-    case t =>
-      println(t)
-      qctx.error("Lifting error: " + t)
-      ???
+    case Map(query: Ast, alias: Idnt, body: Ast) => '{ Map(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }
+    case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${liftAst(a)}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${liftAst(b)})  }
+    case Property(ast: Ast, name: String) => '{Property(${liftAst(ast)}, ${Expr(name)}) }
   }
 
-  def lift(op: Operator)(given qctx: QuoteContext): Expr[Operator] = op match {
+  def liftOperator: PartialFunction[Operator, Expr[Operator]] = {
     case NumericOperator.* => '{ NumericOperator.* }
   }
+}
 
-  def unlift(ast: Expr[Ast])(given qctx: QuoteContext): Ast = ast match {
+class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] {
+
+def apply(astExpr: Expr[Ast]): Ast = unliftAst(astExpr)
+def isDefinedAt(astExpr: Expr[Ast]): Boolean = unliftAst.isDefinedAt(astExpr)
+
+def unliftAst: PartialFunction[Expr[Ast], Ast] = {
     case '{ Const(${b}) } =>
       import scala.quoted.matching.{Const => Constant}
       b match {
@@ -44,52 +49,45 @@ object Parser {
       b match {
         case Constant(v: String) => Idnt(v)
       }
-    case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(unlift(query), unlift(alias).asInstanceOf[Idnt], unlift(body))
-    case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(unlift(a), unlift1(operator).asInstanceOf[BinaryOperator], unlift(b))
+    case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(unliftAst(query), unliftAst(alias).asInstanceOf[Idnt], unliftAst(body))
+    case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(unliftAst(a), unliftOperator(operator).asInstanceOf[BinaryOperator], unliftAst(b))
     case '{ Property(${ast}, ${name}) } =>
       import scala.quoted.matching.{Const => Constant}
       val unname = name match {
         case Constant(v: String) => v
       }
 
-      Property(unlift(ast), unname)
-    case t =>
-      println(t)
-      qctx.error("Lifting error: " + t)
-      ???
+      Property(unliftAst(ast), unname)
   }
 
-  def unlift1(op: Expr[Operator])(given qctx: QuoteContext): Operator = op match {
+  def unliftOperator: PartialFunction[Expr[Operator], Operator] = {
     case '{ NumericOperator.* } =>  NumericOperator.*
   }
+}
 
+class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
+  import qctx.tasty.{Type => _, _, given}
+  import printer.ContextAstPrinter._
 
+  val unlift = new Unlifter()
 
-
-
-
-  def astParser[T: Type](in: Expr[T])(given qctx: QuoteContext): Ast = {
-    import qctx.tasty.{Type => _, _, given}
-    import printer.ContextAstPrinter._
-
-    //println(in.show)
-    //println("--> " + in.unseal)
-    println
-    object Seal {
-      def unapply[T](e: Term)(given qctx: QuoteContext) = {
+  
+    
+    private object Seal {
+      def unapply[T](e: Term) = {
         implicit val ttpe: Type[T] = e.tpe.seal.asInstanceOf[Type[T]]
 
         Some(e.seal.cast[T])
       }
     }
 
-    object Unseal {
-      def unapply(t: Expr[Any])(given qctx: QuoteContext) = {
+    private object Unseal {
+      def unapply(t: Expr[Any]) = {
         Some(t.unseal)
       }
     }
 
-    object PossibleTypeApply {
+    private object PossibleTypeApply {
       def unapply[T](tree: Tree): Option[Tree] =
         tree match {
           case TypeApply(inner, _) => Some(inner)
@@ -97,29 +95,57 @@ object Parser {
         }
     }
 
-    println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% WHOLE TREE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-    println(AstPrinter.astprint(in.unseal.underlyingArgument).render.split("\n").map("%% " + _).mkString("\n"))
-    
-    in.unseal.underlyingArgument.seal match {
-      //case vv @ '{ (($tree:Quoted[$t]).unquote): $at } =>
-
-      case vv @ Unseal(Typed( Seal('{ ($tree:Quoted[$t]).unquote } ), tpe)) =>
-        println("***** NEW Case Unquote Selector: " + AstPrinter().apply(vv.unseal))
-        
-      case _ => println("********* no k match **********")
-    }
-
     // TODO LambdaN ?
-    object Lambda1 {
+    private object Lambda1 {
       def unapply(term: Term) = term match {
         case Lambda(ValDef(ident, _, _) :: Nil, Seal(methodBody)) => Some((ident, methodBody))
       }
     }
 
-    in.unseal.underlyingArgument.seal match {
+    private object TypedMatroshka {
+      // need to define a case where it won't go into matcher otherwise recursion is infinite
+      //@tailcall // should be tail recursive
+      def recurse(innerTerm: Term): Term = innerTerm match {
+        case Typed(innerTree, _) => recurse(innerTree)
+        case other => other
+      }
+
+      def unapply(term: Term): Option[Term] = term match {
+        case Typed(tree, _) => Some(recurse(tree))
+        case _ => None
+      }
+    }
+
+
+    def apply(in: Expr[_]): Ast = {
+      println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% WHOLE TREE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+      println(AstPrinter.astprint(in.unseal.underlyingArgument).render.split("\n").map("%% " + _).mkString("\n"))
+      
+      // in.unseal.underlyingArgument.seal match {
+      //   //case vv @ '{ (($tree:Quoted[$t]).unquote): $at } =>
+  
+      //   case vv @ Unseal(Typed( Seal('{ ($tree:Quoted[$t]).unquote } ), tpe)) =>
+      //     println("***** NEW Case Unquote Selector: " + AstPrinter().apply(vv.unseal))
+          
+      //   case _ => println("********* no k match **********")
+      // }
+
+      astParser(in.unseal.underlyingArgument.seal)
+    }
+
+    def isDefinedAt(in: Expr[_]): Boolean =
+      astParser.isDefinedAt(in.unseal.underlyingArgument.seal)
+
+    def astParser: PartialFunction[Expr[_], Ast] = {
+      // Skip through type ascriptions
+      case Unseal(TypedMatroshka(tree)) =>
+        println("Going into: " + printer.ln(tree))
+        astParser(tree.seal)
+
       case Unseal(Inlined(_, _, v)) =>
         println("Case Inlined")
-        astParser(v.seal.cast[T])
+        //astParser(v.seal.cast[T]) // With method-apply can't rely on it always being T?
+        astParser(v.seal)
 
         // TODO Need to figure how how to do with other datatypes
       case Unseal(Literal(Constant(v: Double))) => 
@@ -127,14 +153,14 @@ object Parser {
         Const(v)
       
       case 
-        Unseal(Typed(
+        Unseal(
           Apply(
             TypeApply(
               // Need to use showExtractors to get TypeIdentt
               Select(New(TypeIdent("EntityQuery")), /* <Init> */ _), List(targ)
             ), _
-          ), _
-        ))
+          )
+        )
         =>
         println("Typed Apply of EntityQuery")
         val name: String = targ.tpe.classSymbol.get.name
@@ -145,18 +171,20 @@ object Parser {
         Map(astParser(q), Idnt(ident), astParser(body))
 
       // When just doing .unquote in the AST
-      case Unseal(vv @ Select(Typed(tree, _), "unquote")) => // TODO Further specialize by checking that the type is Quoted[T]?
+      case Unseal(vv @ Select(TypedMatroshka(tree), "unquote")) => // TODO Further specialize by checking that the type is Quoted[T]?
         //println("=============== NEW Unquoted RHS ================\n" + AstPrinter().apply(tree))
         println("Case Unquote Selector: " + AstPrinter().apply(vv))
         tree.seal match {
+          // TODO Need an unlift error if there's no match
           case '{ Quoted[$t]($ast) } => unlift(ast) // doesn't work with 'new'
         }
 
       // When doing the 'unquote' method it adds an extra Typed node since that function has a Type
-      case Unseal(vv @ Typed(Select(Typed(tree, _), "unquote"), _)) => // TODO Further specialize by checking that the type is Quoted[T]?
+      case Unseal(vv @ TypedMatroshka(Select(TypedMatroshka(tree), "unquote"), _)) => // TODO Further specialize by checking that the type is Quoted[T]?
         //println("=============== NEW Unquoted RHS Typed ================\n" + AstPrinter().apply(tree))
-        println("Case Unquote Typed Selector" + AstPrinter().apply(vv))
+        println("Case Unquote Typed Selector" + AstPrinter().apply(tree))
         tree.seal match {
+          // TODO Need an unlift error if there's no match
           case '{ Quoted[$t]($ast) } => unlift(ast) // doesn't work with 'new'
         }
 
@@ -172,15 +200,12 @@ object Parser {
         println("Ident")
         Idnt(x)
 
-
-      case Unseal(t) =>
-        println("=============== Parsing Error ================\n" + AstPrinter().apply(t))
-        println("=============== Extracted ================\n" + t.showExtractors)
-        ???
-        //println(t)
-        //summon[QuoteContext].error("Parsing error: " + in.show, in)
-        //???
+      // case Unseal(t) =>
+      //   println("=============== Parsing Error ================\n" + AstPrinter().apply(t))
+      //   println("=============== Extracted ================\n" + t.showExtractors)
+      //   ???
+      //   //println(t)
+      //   //summon[QuoteContext].error("Parsing error: " + in.show, in)
+      //   //???
     }
-  }
-
 }
