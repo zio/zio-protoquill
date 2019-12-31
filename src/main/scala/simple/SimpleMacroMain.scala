@@ -6,8 +6,17 @@ import scala.quoted._
 case class SuperEmb(one:String, two:String)
 case class SuperPerson(name:String, age:String, emb: SuperEmb)
 
-@main def runFooify() =
-  println(fooifyType[SuperPerson])
+
+@main def runDerivedSummoned() = 
+  println( summonIntrospector[SuperEmb] )
+
+@main def runDerived() =
+  given Introspector[SuperEmb] = Introspector.derived
+  given Introspector[SuperPerson] = Introspector.derived
+  println( summon[Introspector[SuperPerson]].introspect )
+
+// @main def runFooify() =
+//   println(fooifyType[SuperPerson])
 
 // object SimpleMacroMain {
 

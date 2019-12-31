@@ -3,6 +3,25 @@ package derivation
 import scala.deriving._
 import scala.compiletime.erasedValue
 
+
+
+// trait JsonDecoder[T] {
+//   def decode(str: String):T
+// }
+
+// object JsonDecoder {
+//   import scala.compiletime.{erasedValue, summonFrom}
+//   import compiletime._
+//   import scala.deriving._
+
+//   inline def derived[T](implicit ev: Mirror.Of[T]): JsonDecoder[T] = new JsonDecoder[T] {
+//     def decode(str: String):T =
+//       inline ev match {
+//         case m:Mirror.ProductOf[T] => 
+//       }
+//   }
+// }
+
 trait JsonEncoder[T] {
   def encode(elem: T): String
 }
@@ -16,12 +35,25 @@ object JsonEncoder {
     case encoder: JsonEncoder[T] => encoder.encode(elem)
   }
 
+  inline def getValues[Elems <: Tuple]: Any =
+    inline erasedValue[Elems] match {
+      case t: (elem *: elems1) => t
+    }
+
   inline def encodeElems[Elems <: Tuple](idx: Int)(value: Any): List[String] =
     inline erasedValue[Elems] match {
       case _: (elem *: elems1) => 
         encodeElem[elem](productElement[elem](value, idx)) :: encodeElems[elems1](idx + 1)(value)
       case _ => Nil
     }
+  
+  inline def encodeValues[Values <: Tuple]: List[String] = {
+    inline erasedValue[Values] match {
+      case _: (elem *: elems1) =>
+        constValue[elem].toString :: encodeValues[elems1]
+      case _ => Nil
+    }
+  }
 
   inline def derived[T](implicit ev: Mirror.Of[T]): JsonEncoder[T] = new JsonEncoder[T] {
     def encode(value: T): String = 
@@ -30,7 +62,7 @@ object JsonEncoder {
           "not supporting this case yet"
         case m: Mirror.ProductOf[T] =>
           val elems = encodeElems[m.MirroredElemTypes](0)(value)
-          val labels = value.asInstanceOf[Product].productElementNames
+          val labels = encodeValues[m.MirroredElemLabels]
           val keyValues = labels.zip(elems).map((k, v) => s"$k: $v")
           "{" + (keyValues).mkString(", ") + "}"
         case other =>

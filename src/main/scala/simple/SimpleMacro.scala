@@ -12,6 +12,51 @@ case class Person(name: String, age:Int)
 
 object SimpleMacro {
 
+  trait Introspector[T] {
+    def introspect: String
+  }
+
+  given Introspector[String] = new Introspector {
+    def introspect: String = "IString"
+  }
+  given Introspector[Int] = new Introspector {
+    def introspect: String = "IInt"
+  }
+
+  object Introspector {
+    inline def deriveLeaf[T]: String = summonFrom {
+      case i: Introspector[T] => s"${i.introspect}"
+    }
+
+    inline def deriveChildrenTypes[Elems <: Tuple]: List[String] =
+      inline erasedValue[Elems] match {
+        case _: (head *: tail) =>
+          deriveLeaf[head] :: deriveChildrenTypes[tail]
+        case _ =>
+          Nil
+      }
+
+    inline def derived[T](implicit ev: Mirror.Of[T]): Introspector[T] = new Introspector[T] {
+      def introspect: String =
+        inline ev match {
+          case m: Mirror.ProductOf[T] =>
+            s"(${deriveChildrenTypes[m.MirroredElemTypes]})"
+        }
+    }
+  }
+
+  inline def summonIntrospector[T]: String = {
+    val mirror =
+      summonFrom {
+        case m: Mirror.ProductOf[T] => m
+      }
+
+    given sumDer:Introspector[T] = Introspector.derived(mirror)
+    sumDer.introspect
+  }
+
+
+
   trait Fooify[T] with
     def fooify:String
   
