@@ -33,16 +33,16 @@ object SummonJsonEncoder {
 
   // https://github.com/lampepfl/dotty/issues/7853
   // inline def encodeAndMessAroundType[T](value: =>T): String = ${ encodeAndMessAroundTypeImpl('value) }
-  // def encodeAndMessAroundTypeImpl[T: Type](value: Expr[T])(given qctx: QuoteContext): Expr[String] = {
+  // def encodeAndMessAroundTypeImpl[T](value: Expr[T])(given qctx: QuoteContext, t: Type[T]): Expr[String] = {
   //   import qctx.tasty._
   //   val mirrorExpr = summonExpr[Mirror.Of[T]] match {
   //     case Some(mirror) => mirror
   //   }
 
   //   '{
-  //     given JsonEncoder[T] = JsonEncoder.derived($mirrorExpr)
-  //     //given JsonEncoder[TheAddress] = JsonEncoder.derived
-  //     val encoder = summon[JsonEncoder[T]]
+  //     given JsonEncoder[$t] = JsonEncoder.derived($mirrorExpr)
+
+  //     val encoder = summon[JsonEncoder[$t]]
   //     encoder.encode($value)
   //   }
   // }

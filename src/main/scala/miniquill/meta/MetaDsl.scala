@@ -69,20 +69,30 @@ object MetaDsl {
 //   // implicit val uuidDecoder: Decoder[UUID] = decoder[UUID]
 // }
 
+case class BlahPerson(name: String, age:String)
 
 
-object DecoderDsl extends EncodingDsl {
 
-  case class MirrorDecoder[T](decoder: Decoder[T]) extends Decoder[T] {
-    override def apply(index: Int, row: ResultRow) =
-      decoder(index, row)
-  }
-  implicit val stringDecoder: Decoder[String] = decoder[String]
-  implicit val intDecoder: Decoder[Int] = decoder[Int]
+// object GenMaker {
+//   import DecoderDerivationDsl._
 
-  def decoder[T: ClassTag]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow) => row[T](index))
+//   inline def makeGenericAndDo[T]: String = ${ makeGenericAndDoImpl[T] }
+//   def makeGenericAndDoImpl[T](given qctx: QuoteContext, t: Type[T]): Expr[String] = {
+//     import qctx.tasty.{_, given}
+//     val m = summonExpr {
+//       case m: Mirror.ProductOf[T] => m
+//     }
+//     '{
+//       given Decoder[$t] = Decoder.derived
+//     }
+//   }
+// }
+
+object DecoderDerivationDsl extends EncodingDsl {
+
+  override type PrepareRow = Row
+  override type ResultRow = Row
   
-
   object Decoder {
   inline def summonAndDecode[T](index: Int, resultRow: ResultRow): T =
     summonFrom {
@@ -128,7 +138,7 @@ trait CoreDsl extends EncodingDsl
 
 trait EncodingDsl {
   type PrepareRow
-  type ResultRow = Row
+  type ResultRow
   //type Index = Int
   type BaseEncoder[T] = (Int, T, PrepareRow) => PrepareRow
   type Encoder[T] <: BaseEncoder[T]

@@ -20,3 +20,13 @@ object NumericOperator {
   case object `*` extends BinaryOperator
 }
 
+sealed trait Lift extends Ast {
+  val name: String
+  val value: Any
+}
+
+sealed trait ScalarLift extends Lift {
+  //val encoder: Any
+}
+
+case class ScalarValueLift(name: String, value: Any) extends ScalarLift

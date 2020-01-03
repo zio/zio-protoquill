@@ -9,7 +9,8 @@ import printer.AstPrinter
 import scala.deriving._
 
 
-class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {  
+class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
+  import qctx.tasty._
 
   def apply(ast: Ast): Expr[Ast] = liftAst(ast)
   def isDefinedAt(ast: Ast): Boolean = liftAst.isDefinedAt(ast)
@@ -21,6 +22,8 @@ class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case Map(query: Ast, alias: Idnt, body: Ast) => '{ Map(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }
     case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${liftAst(a)}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${liftAst(b)})  }
     case Property(ast: Ast, name: String) => '{Property(${liftAst(ast)}, ${Expr(name)}) }
+    //case ScalarValueLift(name: String, value: Tree) => 
+    //  '{ScalarValueLift(${Expr(name)}, value)}
   }
 
   def liftOperator: PartialFunction[Operator, Expr[Operator]] = {
@@ -56,8 +59,14 @@ def unliftAst: PartialFunction[Expr[Ast], Ast] = {
       val unname = name match {
         case Constant(v: String) => v
       }
-
       Property(unliftAst(ast), unname)
+
+    case '{ScalarValueLift(${name}, ${value})} => 
+      import scala.quoted.matching.{Const => Constant}
+      val unname = name match {
+        case Constant(v: String) => v
+      }
+      ScalarValueLift(unname, null)
   }
 
   def unliftOperator: PartialFunction[Expr[Operator], Operator] = {

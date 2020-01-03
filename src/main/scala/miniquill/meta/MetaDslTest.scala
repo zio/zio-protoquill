@@ -1,10 +1,19 @@
 package miniquill.meta
 
-import DecoderDsl._
-
-
+import scala.reflect.ClassTag
 
 @main def tryDecode() = {
+  import DecoderDerivationDsl._
+
+  // TODO so it seems like you can indeed put the leaf-node decoders into a different context
+  case class MirrorDecoder[T](decoder: Decoder[T]) extends Decoder[T] {
+    override def apply(index: Int, row: ResultRow) =
+      decoder(index, row)
+  }
+  def decoder[T: ClassTag]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow) => row[T](index))
+  implicit val stringDecoder: Decoder[String] = decoder[String]
+  implicit val intDecoder: Decoder[Int] = decoder[Int]
+
   case class OneLevel(name: String, age: Int)
   val r = Row("foo", 1)
   given Decoder[OneLevel] = Decoder.derived

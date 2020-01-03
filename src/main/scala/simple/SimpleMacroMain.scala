@@ -18,6 +18,8 @@ case class SuperPerson(name:String, age:String, emb: SuperEmb)
 // @main def runFooify() =
 //   println(fooifyType[SuperPerson])
 
+//@main def printTupleDef()
+
 // object SimpleMacroMain {
 
 

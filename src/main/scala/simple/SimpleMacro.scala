@@ -174,7 +174,7 @@ object SimpleMacro {
   //inline def printThenRun[T](print: String, thenRun: => T): T = {
   //  println(print)
   //  thenRun
-  //}oo
+  //}
 
   // import dotty.tools.dotc.core.tasty.TastyPrinter
 
