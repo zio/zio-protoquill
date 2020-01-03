@@ -36,34 +36,33 @@ object PulloutExperiment {
     }
 
     // TODO Make this tail recursive
-    val accum = new TreeAccumulator[ArrayBuffer[Term]] {
-      def foldTree(terms: ArrayBuffer[Term], tree: Tree)(given ctx: qctx.tasty.Context) = {
-        if (tree.isInstanceOf[Term]) println(s"+++++++++++ It's a term: ${tree.asInstanceOf[Term]}")
-        else println(s"+++++++++++ Tree is not a term: ${tree}")
-        foldOverTree(terms, tree)
+    val accum = new TreeAccumulator[ArrayBuffer[Expr[Any]]] {
+      def foldTree(terms: ArrayBuffer[Expr[Any]], tree: Tree)(given ctx: qctx.tasty.Context) = {
+        if (tree.isInstanceOf[Apply]) {
+          val term = tree.asInstanceOf[Apply]
+          term.seal match {
+            case '{ () } => 
+              printer.ln("=========== Matched :: Nil")
+              terms
+            case '{ ($head *: ()) } => 
+              printer.ln(s"=========== Matched: ${head.show} :: Nil")
+              terms += head
+            case '{ ($head *: (${tail}: Tuple)) } => 
+              printer.ln(s"=========== Matched: ${head.show} :: ${tail.show}")
+              foldOverTree(terms += head, tail.unseal)    
+            case other =>
+              foldOverTree(terms, term) //other.unseal
+          }
+          } else
+          foldOverTree(terms, tree)
       }
     }
     accum.foldTree(new ArrayBuffer(), input.underlyingArgument.unseal)
 
 
-    def recurseTuple(tup: Expr[Tuple]): List[Expr[Any]] =
-      input.underlyingArgument match {
-        case '{ () } => 
-          printer.ln("=========== Matched :: Nil")
-          Nil
-        case '{ ($head *: ()) } => 
-          printer.ln(s"=========== Matched: ${head.show} :: Nil")
-          head :: Nil
-        case '{ ($head *: (${tail}: Tuple)) } => 
-          printer.ln(s"=========== Matched: ${head.show} :: ${tail.show}")
-          head :: recurseTuple(tail)
-        case '{ $other } =>
-          printer.ln(s"=========== Other Tuple: ${other.show}")
-          List()
-      }
 
     println("Input:\n" + input.show)
-    val instances = recurseTuple(input)
+    val instances = accum.foldTree(new ArrayBuffer(), input.unseal)
 
     //printer.ln(instances.map(_.underlyingArgument.show))
 
