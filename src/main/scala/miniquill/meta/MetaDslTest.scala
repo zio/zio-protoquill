@@ -5,14 +5,18 @@ import scala.reflect.ClassTag
 @main def tryDecode() = {
   import DecoderDerivationDsl._
 
-  // TODO so it seems like you can indeed put the leaf-node decoders into a different context
-  case class MirrorDecoder[T](decoder: GenericDecoder[Row, T]) extends GenericDecoder[Row, T] {
-    override def apply(index: Int, row: Row) =
-      decoder(index, row)
-  }
-  def decoder[T: ClassTag]: GenericDecoder[Row, T] = MirrorDecoder((index: Int, row: Row) => row[T](index))
-  implicit val stringDecoder: GenericDecoder[Row, String] = decoder[String]
-  implicit val intDecoder: GenericDecoder[Row, Int] = decoder[Int]
+  class MDec extends MirrorDecoders
+  val mdec = new MDec()
+  import mdec._
+
+  // TODO Can I override the decoders like this?
+  // case class MirrorDecoder[T](decoder: GenericDecoder[Row, T]) extends GenericDecoder[Row, T] {
+  //   override def apply(index: Int, row: Row) =
+  //     decoder(index, row)
+  // }
+  // def decoder[T: ClassTag]: GenericDecoder[Row, T] = MirrorDecoder((index: Int, row: Row) => row[T](index))
+  // implicit val stringDecoder: GenericDecoder[Row, String] = decoder[String]
+  // implicit val intDecoder: GenericDecoder[Row, Int] = decoder[Int]
 
   case class OneLevel(name: String, age: Int)
   val r = Row("foo", 1)
