@@ -88,48 +88,53 @@ case class BlahPerson(name: String, age:String)
 //   }
 // }
 
-object DecoderDerivationDsl extends EncodingDsl {
-
-  override type PrepareRow = Row
-  override type ResultRow = Row
+object DecoderDerivationDsl {
   
-  object Decoder {
-  inline def summonAndDecode[T](index: Int, resultRow: ResultRow): T =
-    summonFrom {
-        case dec: Decoder[T] => dec(index, resultRow)
-    }
-
-  inline def arity[Elems <: Tuple]: Int =
-    inline erasedValue[Elems] match {
-      case _: (head *: tail) => 1 + arity[tail]
-      case _ => 0
-    }
-
-  inline def tuplizeChildren[Elems <: Tuple](index: Int, resultRow: ResultRow): Tuple =
-    inline erasedValue[Elems] match {
-      case _: (Product *: tail) =>
-        val (air, output) =
-          inline erasedValue[Elems] match { 
-            case _: (head *: tail) =>
-              val ret = summonAndDecode[head](index, resultRow)
-              val air = ret.asInstanceOf[Product].productArity
-              (air, ret)
-          }
-        (output *: tuplizeChildren[tail](index + air, resultRow)) 
-      case b: (head *: tail) =>
-        (summonAndDecode[head](index, resultRow) *: tuplizeChildren[tail](index + 1, resultRow))
-      case _ => ()
-    }
-
-  inline def derived[T](given ev: Mirror.Of[T]): Decoder[T] = new Decoder[T]() {
-    def apply(index: Int, resultRow: ResultRow): T =
-      inline ev match {
-        case m: Mirror.ProductOf[T] =>
-          val tup = tuplizeChildren[m.MirroredElemTypes](index, resultRow)
-          m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
+  object GenericDecoder {
+    inline def summonAndDecode[T, ResultRow](index: Int, resultRow: ResultRow): T =
+      summonFrom {
+          case dec: GenericDecoder[ResultRow, T] => dec(index, resultRow)
       }
+
+    // inline def arity[Elems <: Tuple]: Int =
+    //   inline erasedValue[Elems] match {
+    //     case _: (head *: tail) => 1 + arity[tail]
+    //     case _ => 0
+    //   }
+
+    inline def tuplizeChildren[Elems <: Tuple, ResultRow](index: Int, resultRow: ResultRow): Tuple =
+      inline erasedValue[Elems] match {
+        case _: (Product *: tail) =>
+          val (air, output) =
+            inline erasedValue[Elems] match { 
+              case _: (head *: tail) =>
+                val ret = summonAndDecode[head, ResultRow](index, resultRow)
+                val air = ret.asInstanceOf[Product].productArity
+                (air, ret)
+            }
+          (output *: tuplizeChildren[tail, ResultRow](index + air, resultRow)) 
+        case b: (head *: tail) =>
+          (summonAndDecode[head, ResultRow](index, resultRow) *: tuplizeChildren[tail, ResultRow](index + 1, resultRow))
+        case _ => ()
+      }
+
+    inline def derived[T, ResultRow](given ev: Mirror.Of[T]): GenericDecoder[ResultRow, T] = new GenericDecoder[ResultRow, T]() {
+      def apply(index: Int, resultRow: ResultRow): T =
+        inline ev match {
+          case m: Mirror.ProductOf[T] =>
+            val tup = tuplizeChildren[m.MirroredElemTypes, ResultRow](index, resultRow)
+            m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
+        }
+    }
   }
-  }
+}
+
+trait GenericDecoder[ResultRow, T] {
+  def apply(i: Int, rr: ResultRow):T
+}
+
+trait GenericEncoder[T, PrepareRow] {
+  def apply(i: Int, t: T, row: PrepareRow):PrepareRow
 }
 
 
@@ -140,14 +145,10 @@ trait EncodingDsl {
   type PrepareRow
   type ResultRow
   //type Index = Int
-  type BaseEncoder[T] = (Int, T, PrepareRow) => PrepareRow
-  type Encoder[T] <: BaseEncoder[T]
 
-  //type BaseDecoder[T] = (Int, ResultRow) => T
-  //type Decoder[T]  = (Int, ResultRow) => T
-  trait Decoder[T] {
-    def apply(i: Int, rr: ResultRow):T
-  }
+  type Encoder[T] <: GenericEncoder[T, PrepareRow]
+  type Decoder[T]  <: GenericDecoder[ResultRow, T]
+  
 }
 
 trait MetaDsl { this: CoreDsl =>
