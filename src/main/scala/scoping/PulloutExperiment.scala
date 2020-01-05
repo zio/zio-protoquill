@@ -5,7 +5,7 @@ import scala.quoted.matching._
 import scala.deriving.ArrayProduct
 //import dotty.tools.dotc.ast.untpd._
 
-case class LookInside(value: Any, id: String)
+case class LookInside[T](value: T, id: String)
 
 object PulloutExperiment {
 
@@ -20,25 +20,97 @@ object PulloutExperiment {
   }
   
   
-  inline def lookInside(value: Any): LookInside = ${lookInsideImpl('value)}
-  def lookInsideImpl(value: Expr[Any])(given qctx: QuoteContext): Expr[LookInside] = {
+  inline def lookInside[T](value: T): LookInside[T] = ${lookInsideImpl('value)}
+  def lookInsideImpl[T: Type](value: Expr[T])(given qctx: QuoteContext): Expr[LookInside[T]] = {
     val uuid = java.util.UUID.randomUUID().toString
-    '{ LookInside($value, ${Expr(uuid)}) }
+    '{ LookInside[T]($value, ${Expr(uuid)}) }
   }
 
   // TODO nest step would be to extract all uuids and get a particular one?
 
   // Then next step afterward would be to have a function that adds a value to a tuple
 
-  inline def parseTuple(input: Tuple): List[LookInside] = ${parseTupleImpl('input)}
-  def parseTupleImpl(input: Expr[Tuple])(given qctx: QuoteContext): Expr[List[LookInside]] = {
+  inline def parseTuple(input: Tuple): List[LookInside[_]] = ${parseTupleImpl('input)}
+  def parseTupleImpl(input: Expr[Tuple])(given qctx: QuoteContext): Expr[List[LookInside[_]]] = {
     import qctx.tasty.{given, _}
     import scala.collection.mutable.ArrayBuffer
 
     // Can also expore using TreeAccumulator to find LookInside instances
     // this might be easier however
   
-    '{ $input.asInstanceOf[Product].productIterator.map(_.asInstanceOf[LookInside]).toList }
+    '{ 
+      $input.asInstanceOf[Product]
+      .productIterator.map(_.asInstanceOf[LookInside[_]])
+      .toList 
+    }
+  }
+
+  trait Expresser[T] with
+    def express(t: T): String
+
+  given Expresser[String] = new Expresser with
+    def express(t: String) = s"String--(${t})"
+
+  given Expresser[Int] = new Expresser with
+    def express(t: Int) = s"Int--(${t})"
+
+
+
+  inline def summonExpressers(input: Tuple): List[(String, String)] = ${summonExpressersImpl('input)}
+  def summonExpressersImpl(input: Expr[Tuple])(given qctx: QuoteContext): Expr[List[(String, String)]] = {
+    import qctx.tasty.{given, _}
+    import scala.collection.mutable.ArrayBuffer
+
+    println("===================== Summon Expressers Value =====================")
+    println(input.underlyingArgument.show)
+  
+    val accum = new TreeAccumulator[ArrayBuffer[Term]] {
+      def foldTree(terms: ArrayBuffer[Term], tree: Tree)(implicit ctx: Context) = tree match {
+        case arg @ Apply(TypeApply(Select(Ident("LookInside"), "apply"), _), List(transportValue, Literal(Constant(uid)))) => 
+          printer.ln("Found: " + arg)
+          terms += arg
+        case _ => 
+          printer.ln("***** NOT FOUND ****")
+          foldOverTree(terms, tree)
+      }
+    }
+
+    
+
+    val lifts = accum.foldTree(ArrayBuffer.empty, input.underlyingArgument.unseal).map(_.seal)
+    
+    val identifiedLifts =
+      lifts.map {
+        case term @ '{ LookInside[$tpe]($qvalue, $quotedUid) } => // find unique uids?
+          val uid = quotedUid match {
+            case Const(v: String) => v
+          }
+          (uid, term)
+      }.toMap
+
+    val encodedLifts =
+      identifiedLifts.toList.map { case (k, v) => // typing is wrong when you exclude 'case'
+        val encoded = 
+          v match {
+            case '{ LookInside[$tpe]($value, $uid) } => // find unique uids?
+              val expressType =  '[Expresser[$tpe]]
+              summonExpr(given expressType) match {
+                case Some(expresserExpr) => '{ $expresserExpr.express($value) }
+                case None => throw new RuntimeException(s"Could not find expresser for ${expressType.unseal.show}")
+              }
+            case other => throw new RuntimeException(s"The term ${other.underlyingArgument.show} is not a LookInside")
+          }
+        '{ (${Expr(k)}, $encoded) }
+      }
+
+    encodedLifts.foldRight('{ (Nil: List[(String, String)]) })((elem, term) => '{ $elem :: $term })
+  }
+
+
+  inline def addElementToTuple[T](tup: Tuple, elem: T): Tuple = ${addElementToTupleImpl('tup, 'elem)}
+  def addElementToTupleImpl[T: Type](tup: Expr[Tuple], elem: Expr[T])(given qctx: QuoteContext): Expr[Tuple] = {
+    import qctx.tasty.{given, _}
+    '{ (${elem} *: ${tup}) }
   }
 
   inline def pullout(input: Any): Tuple = ${pulloutImpl('input)}
@@ -48,12 +120,12 @@ object PulloutExperiment {
     //import qctx.tasty.given_IsInstanceOf_Term
     import scala.collection.mutable.ArrayBuffer
 
-    printer.ln(input.underlyingArgument.unseal)
+    println(input.underlyingArgument.show)
 
     
     val accum = new TreeAccumulator[ArrayBuffer[Term]] {
       def foldTree(terms: ArrayBuffer[Term], tree: Tree)(implicit ctx: Context) = tree match {
-        case arg @ Apply(Select(Ident("LookInside"), "apply"), List(transportValue, Literal(Constant(uid)))) => 
+        case arg @ Apply(TypeApply(Select(Ident("LookInside"), "apply"), _), List(transportValue, Literal(Constant(uid)))) => 
           printer.ln("Found: " + arg)
           terms += arg
         case _ => 
