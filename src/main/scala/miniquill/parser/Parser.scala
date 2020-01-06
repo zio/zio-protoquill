@@ -214,10 +214,10 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     case Unseal(Apply(TypeApply(Select(Ident("ScalarValueVase"), "apply"), List(Inferred())), List(scalaTree, Literal(Constant(uid: String))))) =>
       ScalarValueLift(uid)
 
-  // case Unseal(t) =>
-  //   println("=============== Parsing Error ================\n" + AstPrinter().apply(t))
-  //   println("=============== Extracted ================\n" + t.showExtractors)
-  //   ???
+  case Unseal(t) =>
+    println("=============== Parsing Error ================\n" + AstPrinter().apply(t))
+    println("=============== Extracted ================\n" + t.showExtractors)
+    ???
     //println(t)
     //summon[QuoteContext].error("Parsing error: " + in.show, in)
     //???

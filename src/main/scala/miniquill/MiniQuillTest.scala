@@ -35,6 +35,10 @@ object MiniQuillTest {
       areas.map(a => a.zip * lift(4))
     }
 
+    inline def areas3 = quote {
+      areas2.map(a => a * lift(5))
+    }
+
     //unquote(areas).map(a => a.zip * 3.14159)
     //unquote(areas).map(a => a.street)oo
 
@@ -51,7 +55,9 @@ object MiniQuillTest {
         val liftings: Object
     */
 
-    println(run(areas2)) //hellooooooooooooooooooooooooooooooooooooo
+    println(areas3.lifts)
+
+    println(run(areas3)) //hellooooooooooooooooooooooooooooooooooooo
     // SELECT (3.14159 * c.radius) * c.radius FROM circle c
   }
 }

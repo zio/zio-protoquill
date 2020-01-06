@@ -7,6 +7,7 @@ import scala.annotation.StaticAnnotation
 import printer.AstPrinter
 import derivation._
 import scala.deriving._
+import scala.quoted.matching.Const
 
 class Query[+T] {
   def map[R](f: T => R): Query[R] = new Query[R]
@@ -15,12 +16,12 @@ class Query[+T] {
 
 class EntityQuery[T] extends Query[T] // TODO can have a list of column renames?
 
-case class Quoted[+T](val ast: Ast, lifts: Tuple) {  //, liftings: scala.collection.Map[String, Any]
-  override def toString = ast.toString
+case class Quoted[+T](val ast: Ast, lifts: Tuple) {
+  //override def toString = ast.toString
   def unquote: T = ???
 }
 
-// TODO Rename to QuotedScalarValue
+// TODO Rename to ScalarValueVase
 // Scalar value Vase holds a scala asclar value's tree until it's parsed
 case class ScalarValueVase[T](value: T, uid: String)
 
@@ -32,22 +33,22 @@ object QuoteDsl {
 
   // TODO Move to a LiftDsl trait
   //inline def extractLifts(input: Any): Tuple = ${ extractLiftsImpl('input) }
+
+
+  
   def extractLifts(input: Expr[Any])(given qctx: QuoteContext): Expr[Tuple] = {
     import qctx.tasty.{_, given}
     import scala.collection.mutable.ArrayBuffer
 
     val accum = new TreeAccumulator[ArrayBuffer[Term]] {
       def foldTree(terms: ArrayBuffer[Term], tree: Tree)(implicit ctx: Context) = tree match {
-        case tree: Term // (todo ask about product matching on elem derivation)
-        
-        case vase @ Apply(TypeApply(Select(Ident("ScalarValueVase"), "apply"), _), List(scalaTree, Literal(Constant(uid)))) =>
-          // printer.ln("Found: " + vase)
-          terms += vase
-        // case '{ ScalarValueVase($args, Const($arg)) } // use term.etaExpand.seal to pattern-match this way
-        // Const extractor is for expression (import scala.quoted.matching._)
-        case _ =>
-          printer.ln("***** NOT FOUND ****")
-          foldOverTree(terms, tree)
+        case term: Term => {
+          term.etaExpand.seal match {
+            case '{ ScalarValueVase($tree, ${Const(uid)}) } => terms += term
+            case other => foldOverTree(terms, tree)
+          }
+        }
+        case other => foldOverTree(terms, tree)
       }
     }
     val vases = accum.foldTree(ArrayBuffer.empty, input.underlyingArgument.unseal)
