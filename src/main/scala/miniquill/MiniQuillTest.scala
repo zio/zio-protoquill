@@ -32,7 +32,7 @@ object MiniQuillTest {
 
     inline def areas2: Quoted[Query[Int]] = quote {
       // areas // can't do this
-      areas.map(a => a.zip)
+      areas.map(a => a.zip * lift(4))
     }
 
     //unquote(areas).map(a => a.zip * 3.14159)

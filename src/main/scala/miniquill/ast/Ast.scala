@@ -21,12 +21,9 @@ object NumericOperator {
 }
 
 sealed trait Lift extends Ast {
-  val name: String
-  val value: Any
+  val uid: String
 }
 
-sealed trait ScalarLift extends Lift {
-  //val encoder: Any
-}
+sealed trait ScalarLift extends Lift
 
-case class ScalarValueLift(name: String, value: Any) extends ScalarLift
+case class ScalarValueLift(uid: String) extends ScalarLift
