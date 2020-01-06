@@ -1,9 +1,9 @@
-package miniquill.meta
+package miniquill.dsl
 
 import scala.reflect.ClassTag
+import miniquill.context.mirror._
 
 @main def tryDecode() = {
-  import DecoderDerivationDsl._
 
   class MDec extends MirrorDecoders
   val mdec = new MDec()
