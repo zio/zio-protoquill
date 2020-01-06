@@ -38,9 +38,13 @@ object QuoteDsl {
 
     val accum = new TreeAccumulator[ArrayBuffer[Term]] {
       def foldTree(terms: ArrayBuffer[Term], tree: Tree)(implicit ctx: Context) = tree match {
+        case tree: Term // (todo ask about product matching on elem derivation)
+        
         case vase @ Apply(TypeApply(Select(Ident("ScalarValueVase"), "apply"), _), List(scalaTree, Literal(Constant(uid)))) =>
           // printer.ln("Found: " + vase)
           terms += vase
+        // case '{ ScalarValueVase($args, Const($arg)) } // use term.etaExpand.seal to pattern-match this way
+        // Const extractor is for expression (import scala.quoted.matching._)
         case _ =>
           printer.ln("***** NOT FOUND ****")
           foldOverTree(terms, tree)
