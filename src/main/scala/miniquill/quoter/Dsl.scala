@@ -18,6 +18,11 @@ class EntityQuery[T] extends Query[T] // TODO can have a list of column renames?
 
 case class Quoted[+T](val ast: Ast, lifts: Tuple) {
   //override def toString = ast.toString
+  // make a function that uses a stateless transformer to walk through the tuple,
+  // gather the lifted quoted blocks, splice their qutations into the ast, and then
+  // add their lifted values into the parent tuple.... basically a runtime
+  // flattening of the tree. This is the mechanism that will be used by the 'run' function
+  // for dynamic queries
 }
 
 // TODO Rename to ScalarValueVase
