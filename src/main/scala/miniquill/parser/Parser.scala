@@ -9,6 +9,105 @@ import printer.AstPrinter
 import scala.deriving._
 
 
+class QuotationParser(given qctx: QuoteContext) {
+  import qctx.tasty.{_, given}
+  
+  // TODO Refactor out into a trait?
+  private object Unseal {
+    def unapply(t: Expr[Any]) = {
+      Some(t.unseal)
+    }
+  }
+
+  import qctx.tasty._
+  import scala.quoted.matching.{Const => Constant} //hello
+
+  private object TypedMatroshka {
+    // need to define a case where it won't go into matcher otherwise recursion is infinite
+    //@tailcall // should be tail recursive
+    def recurse(innerTerm: Term): Term = innerTerm match {
+      case Typed(innerTree, _) => recurse(innerTree)
+      case other => other
+    }
+
+    def unapply(term: Term): Option[Term] = term match {
+      case Typed(tree, _) => Some(recurse(tree))
+      case _ => None
+    }
+  }
+
+  protected object MatchQuotedInnerTree {
+    def unapply(expr: Expr[Any]): Option[Expr[Ast]] = expr match {
+      case '{ Quoted.apply[$qt]($ast, $v) } => 
+        println("********************** MATCHED VASE INNER TREE **********************")
+        printer.ln(expr.unseal)
+        Some(ast)
+      case Unseal(TypedMatroshka(tree)) => unapply(tree.seal)
+      case _ => 
+        println("********************** NOT MATCHED VASE INNER TREE **********************")
+        printer.ln(expr.unseal)
+        None
+    }
+  }
+
+  protected object MatchVaseApply {
+    def unapply(expr: Expr[Any]) = expr match {
+      case '{ QuotationVase.apply[$qt]($quotation, ${scala.quoted.matching.Const(uid: String)}) } => 
+        println("********************** MATCHED VASE APPLY **********************")
+        Some((quotation, uid))
+      case _ => None
+    }
+  }
+
+  // Match the QuotationVase(...).unquote values which are tacked on to every
+  // child-quote (inside of a parent quote) when the 'unquote' function (i.e macro)
+  // is applied.
+  protected object MatchQuotationVase {
+    def unapply(expr: Expr[Any]) = expr match {
+      case '{ (${quotationVase}: QuotationVase[$tt]).unquote } => Some(quotationVase)
+      case _ => None
+    }
+  }
+
+  // protected object UnsealedIdent {
+  //   def unapply(expr: Expr[Any]) = expr match {
+  //     case v @ Unseal(Ident(innerQuote)) => Some(v)
+  //     case _ => None
+  //   }
+  // }
+
+  // Match an ident representing a quotation. It it matches, return the vase so we can use it later.
+  protected object MatchQuotationRef {
+    def unapply(expr: Expr[Any]): Option[(Expr[Any], String)] = expr match {
+
+      // <TODO ASK EPFL> For some reason it's not possible to do '{ QuotationVase.apply[$t](t @ ${UnsealedIdent(quoteTerm)}, ${Constant(uid: String)}) }
+      // it gives an error regarding the $t. Therefore I extracted this term into it's own matcher
+      case vase @ '{ QuotationVase.apply[$t](${Unseal(Ident(innerQuote))}, ${Constant(uid: String)}) } =>
+        Some((vase, uid))
+      case _ => None
+    }
+  }
+
+  object MatchRuntimeQuotation {
+    def unapply(expr: Expr[Any]): Option[(Expr[Any], String)] =
+      expr match {
+        case MatchQuotationVase(MatchQuotationRef(tree, uuid)) =>
+          Some((tree, uuid))
+        case _ => None
+      }
+    }
+
+  object MatchInlineQuotation {
+    def unapply(expr: Expr[Any]): Option[(Expr[Ast], String)] =
+      expr match {
+        case MatchQuotationVase(MatchVaseApply(MatchQuotedInnerTree(astTree), uuid)) =>
+          Some((astTree, uuid))
+        case _ => None
+      }
+  }
+}
+
+
 class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
   import qctx.tasty._
 
@@ -23,6 +122,7 @@ class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${liftAst(a)}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${liftAst(b)})  }
     case Property(ast: Ast, name: String) => '{Property(${liftAst(ast)}, ${Expr(name)}) }
     case ScalarValueLift(uid: String) => '{ScalarValueLift(${Expr(uid)})}
+    case QuotationTag(uid: String) => '{QuotationTag(${Expr(uid)})}
   }
 
   def liftOperator: PartialFunction[Operator, Expr[Operator]] = {
@@ -66,6 +166,13 @@ def unliftAst: PartialFunction[Expr[Ast], Ast] = {
         case Constant(v: String) => v
       }
       ScalarValueLift(unuid)
+
+    case '{ QuotationTag($uid) } =>
+      import scala.quoted.matching.{Const => Constant}
+      val unuid = uid match {
+        case Constant(v: String) => v
+      }
+      QuotationTag(unuid)
   }
 
   def unliftOperator: PartialFunction[Expr[Operator], Operator] = {
@@ -78,8 +185,8 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
   import printer.ContextAstPrinter._
 
   val unlift = new Unlifter()
-
-
+  val quotationParser = new QuotationParser
+  import quotationParser._
   
   private object Seal {
     def unapply[T](e: Term) = {
@@ -145,10 +252,24 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     astParser.isDefinedAt(in.unseal.underlyingArgument.seal)
 
   def astParser: PartialFunction[Expr[_], Ast] = {
-    // Skip through type ascriptions
+    // Needs to be first: Skip through type ascriptions
     case Unseal(TypedMatroshka(tree)) =>
       println("Going into: " + printer.ln(tree))
       astParser(tree.seal)
+
+    // Needs to be somewhere in the beginning so 'value' will not be parsed as a functiona-apply
+    // i.e. since we don't want Property(..., value) to be the tree in this case.
+    case '{ (ScalarValueVase.apply[$t]($value, ${scala.quoted.matching.Const(uid: String)})).value } =>
+      ScalarValueLift(uid)
+
+    //case Unseal(Apply(TypeApply(Select(Ident("ScalarValueVase"), "apply"), List(Inferred())), List(scalaTree, Literal(Constant(uid: String))))) =>
+    //  ScalarValueLift(uid)
+
+    case MatchRuntimeQuotation(tree, uid) =>
+      QuotationTag(uid)
+
+    case MatchInlineQuotation(astTree, uid) =>
+      unlift(astTree)
 
     case Unseal(Inlined(_, _, v)) =>
       println("Case Inlined")
@@ -178,26 +299,60 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     case vv @ '{ ($q:Query[$qt]).map[$mt](${Unseal(Lambda1(ident, body))}) } => 
       Map(astParser(q), Idnt(ident), astParser(body))
 
-    // When just doing .unquote in the AST
-    case Unseal(vv @ Select(TypedMatroshka(tree), "unquote")) => // TODO Further specialize by checking that the type is Quoted[T]?
-      //println("=============== NEW Unquoted RHS ================\n" + AstPrinter().apply(tree))
-      println("Case Unquote Selector: " + AstPrinter().apply(vv))
-      tree.seal match {
-        // TODO Need an unlift error if there's no match
-        // Note, don't care about lifts here, they are extracted in Quotation
-        case '{ Quoted[$t]($ast, $v) } => unlift(ast) // doesn't work with 'new' // Note, replacing $v with _ causes compiler to compile forever
-      }
 
-    // When doing the 'unquote' method it adds an extra Typed node since that function has a Type
-    // (I'm not sure that both this method as well as the one before it are needed)
-    case Unseal(vv @ TypedMatroshka(Select(TypedMatroshka(tree), "unquote"), _)) => // TODO Further specialize by checking that the type is Quoted[T]?
-      //println("=============== NEW Unquoted RHS Typed ================\n" + AstPrinter().apply(tree))
-      println("Case Unquote Typed Selector" + AstPrinter().apply(tree))
-      tree.seal match {
-        // TODO Need an unlift error if there's no match
-        // Note, don't care about lifts here, they are extracted in Quotation
-        case '{ Quoted[$t]($ast, $v) } => unlift(ast) // doesn't work with 'new' // Note, replacing $v with _ causes compiler to compile forever
-      }
+
+    // case vv @ '{ (${quotationVase}: QuotationVase[$tt]).unquote } =>
+    //   import scala.quoted.matching.{Const => Constant}
+
+    //   // TODO Need to return to top-level if nothing matched. Look at original quill
+    //   // parsing for how to do that
+    //   quotationVase match {
+    //     // In this case, the quotation is a runtime value
+    //     case '{ QuotationVase.apply[$t](${Unseal(Ident(innerQuote))}, ${Constant(uid: String)}) } =>
+    //       QuotationTag(uid)
+ 
+    //     // <TODO ASK EPFL> why this doesn't work and how to do it?
+    //     //case '{ QuotationVase.apply[$qt](Quoted[$qt]($ast, $v), $uidConst) } =>
+    //     case '{ QuotationVase.apply[$qt]($quotation, $uidConst) } => 
+
+
+
+    //       quotation match {
+    //         case '{ Quoted[$qt].apply($ast, $v) } => unlift(ast)
+    //         case other => 
+    //           println("))))))))))))))))))) Match not found (((((((((((((((")
+    //           printer.ln(other.unseal)
+    //           throw new RuntimeException("Cannot match expression")
+    //       }
+    //   }
+      
+      
+
+    // // If the inner quoted is a runtime value
+    // case Unseal(vv @ Select(Ident(tree), "unquote")) =>
+
+    // // When just doing .unquote in the AST
+    // case Unseal(vv @ Select(TypedMatroshka(tree), "unquote")) => // TODO Further specialize by checking that the type is Quoted[T]?
+    //   //println("=============== NEW Unquoted RHS ================\n" + AstPrinter().apply(tree))
+    //   println("===================== Case Unquote Selector: " + AstPrinter().apply(vv) + " =====================")
+    //   tree.seal match {
+    //     // TODO Need an unlift error if there's no match
+    //     // Note, don't care about lifts here, they are extracted in Quotation
+
+    //     // Try to file the case where _ is a bug here
+    //     case '{ Quoted[$t]($ast, $v) } => unlift(ast) // doesn't work with 'new' // Note, replacing $v with _ causes compiler to compile forever
+    //   }
+
+    // // When doing the 'unquote' method it adds an extra Typed node since that function has a Type
+    // // (I'm not sure that both this method as well as the one before it are needed)
+    // case Unseal(vv @ TypedMatroshka(Select(TypedMatroshka(tree), "unquote"), _)) => // TODO Further specialize by checking that the type is Quoted[T]?
+    //   //println("=============== NEW Unquoted RHS Typed ================\n" + AstPrinter().apply(tree))
+    //   println("===================== Case Unquote Typed Selector" + AstPrinter().apply(tree) + "=====================")
+    //   tree.seal match {
+    //     // TODO Need an unlift error if there's no match
+    //     // Note, don't care about lifts here, they are extracted in Quotation
+    //     case '{ Quoted[$t]($ast, $v) } => unlift(ast) // doesn't work with 'new' // Note, replacing $v with _ causes compiler to compile forever
+    //   }
 
     case Unseal(Apply(Select(Seal(left), "*"), Seal(right) :: Nil)) =>
       println("Apply Select")
@@ -211,8 +366,7 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
       println("Ident")
       Idnt(x)
 
-    case Unseal(Apply(TypeApply(Select(Ident("ScalarValueVase"), "apply"), List(Inferred())), List(scalaTree, Literal(Constant(uid: String))))) =>
-      ScalarValueLift(uid)
+
 
   case Unseal(t) =>
     println("=============== Parsing Error ================\n" + AstPrinter().apply(t))

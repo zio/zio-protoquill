@@ -18,13 +18,15 @@ class EntityQuery[T] extends Query[T] // TODO can have a list of column renames?
 
 case class Quoted[+T](val ast: Ast, lifts: Tuple) {
   //override def toString = ast.toString
-  def unquote: T = ???
 }
 
 // TODO Rename to ScalarValueVase
 // Scalar value Vase holds a scala asclar value's tree until it's parsed
 case class ScalarValueVase[T](value: T, uid: String)
-
+case class QuotationVase[+T](quoted: Quoted[T], uid: String) {
+  def unquote: T =
+    throw new RuntimeException("Unquotation can only be done from a quoted block.")
+}
 
 
 object QuoteDsl {
@@ -39,21 +41,71 @@ object QuoteDsl {
   def extractLifts(input: Expr[Any])(given qctx: QuoteContext): Expr[Tuple] = {
     import qctx.tasty.{_, given}
     import scala.collection.mutable.ArrayBuffer
+    import scala.quoted.util.ExprMap
 
-    val accum = new TreeAccumulator[ArrayBuffer[Term]] {
-      def foldTree(terms: ArrayBuffer[Term], tree: Tree)(implicit ctx: Context) = tree match {
-        case term: Term => {
-          term.etaExpand.seal match {
-            case '{ ScalarValueVase($tree, ${Const(uid)}) } => terms += term
-            case other => foldOverTree(terms, tree)
-          }
+    // println("++++++++++++++++ Input Tree ++++++++++++++++")
+    // printer.ln(input.unseal)
+    // printer.ln(input.unseal.showExtractors)
+    val quotationParser = new miniquill.parser.QuotationParser
+    import quotationParser._
+
+    val buff: ArrayBuffer[(String, Expr[Any])] = ArrayBuffer.empty
+    val accum = new ExprMap {
+      def transform[T](expr: Expr[T])(given qctx: QuoteContext, tp: scala.quoted.Type[T]): Expr[T] = {
+        expr match {
+          // TODO block foldOver in this case?
+          // NOTE that using this kind of pattern match, lifts are matched for both compile and run times
+          // In compile times the entire tree of passed-in-quotations is matched including the 'lifts' 
+          // (i.e. Quotation.lifts) tuples that are returned so we just get ScalarValueVase.apply
+          // matched from those (as well as from the body of the passed-in-quotation but that's fine
+          // since we dedupe by the UUID *). During runtime however, the actual case class instance
+          // of ScalarValueLift is matched by the below term.
+
+          // * That is to say if we have a passed-in-quotation Quoted(body: ... ScalarValueVase.apply, lifts: ..., (ScalarValueVase.apply ....))
+          // both the ScalarValueVase in the body as well as the ones in the tuple would be matched. This is fine
+          // since we dedupe the scalar value lifts by their UUID.
+
+          case '{ ScalarValueVase($tree, ${Const(uid)}) } => buff += ((uid, expr))
+
+          // If the quotation is runtime, it needs to be matched so that we can add it to the tuple
+          // of lifts (i.e. runtime values) and the later evaluate it during the 'run' function.
+          // Match the vase and add it to the list.
+          case MatchRuntimeQuotation(tree, uid) => buff += ((uid, tree))
+
+          case other =>
         }
-        case other => foldOverTree(terms, tree)
+        transformChildren[T](expr)
       }
     }
-    val vases = accum.foldTree(ArrayBuffer.empty, input.underlyingArgument.unseal)
 
-    val vasesTuple = vases.foldRight('{ (): Tuple })((elem, term) => '{ (${elem.seal} *: ${term}) })
+
+    // val accum = new TreeAccumulator[ArrayBuffer[Term]] {
+    //   def foldTree(terms: ArrayBuffer[Term], tree: Tree)(implicit ctx: Context) = tree match {
+    //     case term: Term => {
+    //       println("++++++++++++++++ Matched ++++++++++++++++")
+    //       printer.ln(term)
+    //       printer.ln(term.showExtractors)
+    //       term.etaExpand.seal match {
+    //         case '{ ScalarValueVase($tree, ${Const(uid)}) } => terms += term
+    //         case other => foldOverTree(terms, tree)
+    //       }
+    //     }
+    //     case other => 
+    //       println("++++++++++++++++ Not Matched ++++++++++++++++")
+    //       printer.ln(other)
+    //       printer.ln(other.showExtractors)
+    //       foldOverTree(terms, tree)
+    //   }
+    // }
+    //val vases = accum.foldTree(ArrayBuffer.empty, input.underlyingArgument.unseal)
+
+    accum.transform(input.underlyingArgument) // check if really need underlyingArgument
+
+    val vasesTuple = 
+      buff
+        .distinctBy((value, uid) => uid) // dedupe by since everything with the same uuid is the same thing
+        .map(_._2)
+        .foldRight('{ (): Tuple })((elem, term) => '{ (${elem} *: ${term}) })
 
     //printer.ln("=========== Found Vases =========\n" + vasesTuple.underlyingArgument.unseal.show)
 
@@ -121,7 +173,7 @@ object QuoteDsl {
   inline implicit def unquote[T](quoted: =>Quoted[T]): T = ${ unquoteImpl[T]('quoted) }
   def unquoteImpl[T: Type](quoted: Expr[Quoted[T]])(given qctx: QuoteContext): Expr[T] = {
     '{
-      ${quoted}.unquote
+      QuotationVase[T](${quoted}, ${Expr(java.util.UUID.randomUUID().toString)}).unquote
     }
   }
 

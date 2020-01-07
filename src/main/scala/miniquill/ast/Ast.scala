@@ -24,6 +24,10 @@ sealed trait Lift extends Ast {
   val uid: String
 }
 
+// Don't think we need this intermediate case class
 sealed trait ScalarLift extends Lift
 
+// TODO Change to ScalarValueTag
 case class ScalarValueLift(uid: String) extends ScalarLift
+
+case class QuotationTag(uid: String) extends Lift

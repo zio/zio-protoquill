@@ -20,6 +20,7 @@ object GenericDecoder {
 
   inline def tuplizeChildren[Elems <: Tuple, ResultRow](index: Int, resultRow: ResultRow): Tuple =
     inline erasedValue[Elems] match {
+      // <TODO ASK EPFL> how Product can be put into a parameter here
       case _: (Product *: tail) =>
         val (air, output) =
           inline erasedValue[Elems] match { 
