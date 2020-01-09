@@ -1,7 +1,7 @@
 
 package miniquill.parser
 
-import miniquill.ast._
+import io.getquill.ast.{Ident => Idnt, Constant => Const, Query => Qry, _}
 import miniquill.quoter._
 import scala.quoted._
 import scala.annotation.StaticAnnotation
@@ -115,13 +115,14 @@ class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
   def isDefinedAt(ast: Ast): Boolean = liftAst.isDefinedAt(ast)
 
   def liftAst: PartialFunction[Ast, Expr[Ast]] = {
-    case Const(v) => '{ Const(${Expr(v)}) }
-    case Entity(name: String) => '{ Entity(${Expr(name)})  }
+    // TODO Need some type info to be able to lift a const
+    //case Const(v) => '{ Const(${Expr(v)}) }
+    case Entity(name: String, list) => '{ Entity(${Expr(name)}, List())  }
     case Idnt(name: String) => '{ Idnt(${Expr(name)})  }
     case Map(query: Ast, alias: Idnt, body: Ast) => '{ Map(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }
     case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${liftAst(a)}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${liftAst(b)})  }
     case Property(ast: Ast, name: String) => '{Property(${liftAst(ast)}, ${Expr(name)}) }
-    case ScalarValueLift(uid: String) => '{ScalarValueLift(${Expr(uid)})}
+    case ScalarValueTag(uid: String) => '{ScalarValueTag(${Expr(uid)})}
     case QuotationTag(uid: String) => '{QuotationTag(${Expr(uid)})}
   }
 
@@ -141,10 +142,10 @@ def unliftAst: PartialFunction[Expr[Ast], Ast] = {
       b match {
         case Constant(v: Double) => Const(v)
       }
-    case '{ Entity(${b})  } =>
+    case '{ Entity(${b}, ${l})  } =>
       import scala.quoted.matching.{Const => Constant}
       b match {
-        case Constant(v: String) => Entity(v)
+        case Constant(v: String) => Entity(v, List()) // TODO Need to implement unlift of list
       }
     case '{ Idnt(${b}) } =>
       import scala.quoted.matching.{Const => Constant}
@@ -160,12 +161,12 @@ def unliftAst: PartialFunction[Expr[Ast], Ast] = {
       }
       Property(unliftAst(ast), unname)
 
-    case '{ScalarValueLift(${uid})} => 
+    case '{ScalarValueTag(${uid})} => 
       import scala.quoted.matching.{Const => Constant}
       val unuid = uid match {
         case Constant(v: String) => v
       }
-      ScalarValueLift(unuid)
+      ScalarValueTag(unuid)
 
     case '{ QuotationTag($uid) } =>
       import scala.quoted.matching.{Const => Constant}
@@ -260,10 +261,10 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     // Needs to be somewhere in the beginning so 'value' will not be parsed as a functiona-apply
     // i.e. since we don't want Property(..., value) to be the tree in this case.
     case '{ (ScalarValueVase.apply[$t]($value, ${scala.quoted.matching.Const(uid: String)})).value } =>
-      ScalarValueLift(uid)
+      ScalarValueTag(uid)
 
     //case Unseal(Apply(TypeApply(Select(Ident("ScalarValueVase"), "apply"), List(Inferred())), List(scalaTree, Literal(Constant(uid: String))))) =>
-    //  ScalarValueLift(uid)
+    //  ScalarValueTag(uid)
 
     case MatchRuntimeQuotation(tree, uid) =>
       QuotationTag(uid)
@@ -293,7 +294,7 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
       =>
       println("Typed Apply of EntityQuery")
       val name: String = targ.tpe.classSymbol.get.name
-      Entity(name)
+      Entity(name, List())
 
 
     case vv @ '{ ($q:Query[$qt]).map[$mt](${Unseal(Lambda1(ident, body))}) } => 

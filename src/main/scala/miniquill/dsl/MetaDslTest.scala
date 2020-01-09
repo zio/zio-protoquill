@@ -18,11 +18,15 @@ import miniquill.context.mirror._
   // implicit val stringDecoder: GenericDecoder[Row, String] = decoder[String]
   // implicit val intDecoder: GenericDecoder[Row, Int] = decoder[Int]
 
-  case class OneLevel(name: String, age: Int)
-  val r = Row("foo", 1)
-  given GenericDecoder[Row, OneLevel] = GenericDecoder.derived
-  val dec = summon[GenericDecoder[Row, OneLevel]]
-  println( dec(0, r) )
+  {
+    case class OneLevel(name: String, age: Int)
+    val r = Row("foo", 1)
+    given GenericDecoder[Row, OneLevel] = GenericDecoder.derived
+    val dec = summon[GenericDecoder[Row, OneLevel]]
+    println( dec(0, r) )
+  }
+
+  
 
   case class TwoLevelInner(foo: String, bar: String)
   case class TwoLevelOuter(name: String, age: Int, emb: TwoLevelInner, stuff: String)

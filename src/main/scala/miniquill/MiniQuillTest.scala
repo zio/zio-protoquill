@@ -19,9 +19,11 @@ object MiniQuillTest {
     import miniquill.quoter._
     
 
+    // TODO Need to implement tuples in the parser to be able to do advanced quotatation tests
+
     // inline def
     // Inline def seems to work but not inline val!o
-    inline def areas: Quoted[Query[Address]] = quote { // i.e. can leaf out the quote here and it'll still work
+    val areas: Quoted[Query[Address]] = quote { // i.e. can leaf out the quote here and it'll still work
       query[Person].map((p: Person) => p.address)
     } //hello
 
@@ -32,11 +34,13 @@ object MiniQuillTest {
     // inline def areas2 = {
     //   areas.map(a => getProperty(a)(_.zip)) // * 3.14159
     // }
+    val rv = 3
+    val q = quote(rv)
 
     // inline def (using val is not correct)
     inline def areas2: Quoted[Query[Int]] = quote {
       // areas // can't do this
-      areas.map(a => a.zip * lift(4))
+      areas.map(a => a.zip * lift(4) * q)
     }
 
     //hellooo

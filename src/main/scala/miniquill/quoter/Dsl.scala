@@ -1,6 +1,6 @@
 package miniquill.quoter
 
-import miniquill.ast._
+import io.getquill.ast.Ast
 import miniquill.parser._
 import scala.quoted._
 import scala.annotation.StaticAnnotation
@@ -64,7 +64,7 @@ object QuoteDsl {
           // (i.e. Quotation.lifts) tuples that are returned so we just get ScalarValueVase.apply
           // matched from those (as well as from the body of the passed-in-quotation but that's fine
           // since we dedupe by the UUID *). During runtime however, the actual case class instance
-          // of ScalarValueLift is matched by the below term.
+          // of ScalarValueTag is matched by the below term.
 
           // * That is to say if we have a passed-in-quotation Quoted(body: ... ScalarValueVase.apply, lifts: ..., (ScalarValueVase.apply ....))
           // both the ScalarValueVase in the body as well as the ones in the tuple would be matched. This is fine

@@ -7,23 +7,19 @@ import scala.deriving._
 import scala.compiletime.{erasedValue, summonFrom}
 
 
-object MetaDsl {
+// trait Expander[T] {
+//   def expand: Ast
+// }
+
+// object Expander {
   
 
-  class ValueComputation(given qctx: QuoteContext) {
-    import qctx.tasty._
+  
 
-    //private def caseClassConstructor(t: Type) =
-      
-  }
-
-  inline def playAround[T](stuff: T): Any = ${ playAroundImpl('stuff) }
-  def playAroundImpl[T: Type](stuff: Expr[T])(given qctx: QuoteContext): Expr[Any] = {
-    null
-  }
+//   inline def derived[T](given m: Mirror.Of[T]): MetaDsl
 
 
-}
+// }
 
 
 

@@ -374,6 +374,8 @@ sealed trait Lift extends Ast {
   val value: Any
 }
 
+// ************* To be deprecated *************
+
 sealed trait ScalarLift extends Lift {
   val encoder: Any
 }
@@ -383,3 +385,18 @@ case class ScalarQueryLift(name: String, value: Any, encoder: Any) extends Scala
 sealed trait CaseClassLift extends Lift
 case class CaseClassValueLift(name: String, value: Any) extends CaseClassLift
 case class CaseClassQueryLift(name: String, value: Any) extends CaseClassLift
+
+
+/***********************************************************************/
+/*                      New Stuff                                      */
+/***********************************************************************/
+
+
+
+sealed trait LiftTag extends Ast {
+  val uid: String
+}
+
+case class ScalarValueTag(uid: String) extends LiftTag
+case class QuotationTag(uid: String) extends LiftTag
+
