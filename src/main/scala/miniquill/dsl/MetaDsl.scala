@@ -18,6 +18,13 @@ trait Expander[T] {
 
 object Expander {
 
+  // TODO Define this way for any scalar
+  //given Expander[String] = new Expander[String] { def expand(inject: Ast) = List(inject) }
+
+  // can't expand 'Map' from the base this way since Map needs to know field of the base object
+  // Define an expander for Option. Specifically, Option has special treatment in the AST generation.
+  //given mapExpander[T](given Expander[T]): Expander[Option[T]] = Expander.derived
+
   // given optionExpander: Expand[Option[T]](given exp: Expander[T]) = new Expander[Option[T]] {
   //   def expand(inject: Ast) =
   //     AMap(inject, )
@@ -31,30 +38,46 @@ object Expander {
     }
 
   inline def flatten[Fields <: Tuple, Types <: Tuple](inject: Ast): List[Ast] = {
-    inline (erasedValue[Fields], erasedValue[Types]) match {
-      // if it contains sub-fields, expand the sub fields from this property onward
-      // for example where Inject is x,  Outer(a, b: Inner), where Inner(i, j) 
-      //   => (x.a), (x.b).i, (x.b).j   - The expressions in commas are the next thing that will be injected
-      case _: ((field *: fields), (ProductType[tpe] *: types)) => {
+    inline erasedValue[(Fields, Types)] match {
+       // TODO The non-product type variation of this works like a recular scalar?
+
+       // If fields of the record are inside Option, expand them based on Option.map(v => ...)
+       // The 'v' member will now become the base of the inner-expansion of the tuple.
+      case (_: (field *: fields), _:(Option[ProductType[tpe]] *: types)) =>
+        val fieldName = constValue[field].toString
+        val idV = Ident("v")
+        val nestedFields = nestedExpand[tpe](idV)
+        nestedFields.map(nestedField => AMap(Property(inject, fieldName), idV, nestedField))
+
+      // Our record contains products in any fields, expand the sub fields from this property onward
+      // For example where:
+      //   Inject := x,  Outer(a, b: Inner), Inner(i, j) and a,i,j are Scalars
+      // Say we are traversing through the fields `a` and `b` of Outer
+      // The following expressions will be seen. The 'i' and 'j' elements are future expasions of this function.
+      //   => (x.a), (x.b).i, (x.b).j
+      case (_: (field *: fields), _:(ProductType[tpe] *: types)) =>
         val fieldName = constValue[field].toString
         val nextInject = Property(inject, fieldName)
         val nestedFields = nestedExpand[tpe](nextInject)
         nestedFields ++ flatten[fields, types](inject)
-      }
+      
       // If it's a scalar, just expand the current value
-      case _: ((field *: fields), (tpe *: types)) => {
+      case (_: (field *: fields), _: (tpe *: types)) =>
         val fieldName = constValue[field].toString
         Property(inject, fieldName) :: flatten[fields, types](inject)
-      }
+      
 
       case _ => Nil
     }
   }
 
+
+  // TODO What if the outermost element is an option? Need to test that with the original Quill MetaDslSpec.
   inline def derived[T](given m: Mirror.Of[T]): Expander[T] = new Expander[T] {
     def expand(inject: Ast) =
       inline m match {
-        case pm: Mirror.ProductOf[T] => null
+        // Special treatment for option
+        case pm: Mirror.ProductOf[T] => flatten[pm.MirroredElemLabels, pm.MirroredElemTypes](inject)
       }
   }
 

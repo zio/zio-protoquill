@@ -4,10 +4,36 @@ import scala.reflect.ClassTag
 import miniquill.context.mirror._
 
 @main def expanderNested() = {
-  case class Nested(i: Int, l: Long) derives Expander
-  case class Entity(a: String, b: Nested) derives Expander
-  val exp = summon[Expander[Entity]]
-  println( exp.expand )
+  import io.getquill.ast._
+
+  {
+    case class Nested(i: Int, l: Long) derives Expander
+    case class Entity(a: String, b: Nested) derives Expander
+    val exp = summon[Expander[Entity]]
+    println( exp.expand(Ident("x")) )
+  }
+
+  {
+    case class Nested(i: Int, l: Long) derives Expander
+    case class Entity(a: String, b: Option[Nested]) derives Expander
+    val exp = summon[Expander[Entity]]
+    println( exp.expand(Ident("x")) )
+  }
+
+  {
+    case class Entity(a: String, b: Int) derives Expander
+    // Can't do that because can't just summon inner expanders e.g. because Option needs to know the field
+    // name that it was created from.
+    // given tup2Expander[A, B](given Expander[A], Expander[B]): Expander[(A, B)] = Expander.derived
+    // in fact, this is true of any scalar
+
+    // TODO This REALLY has to be done inside of a macro. Need to check against latest
+    // version of dotty if that is possible.
+    given tup2Expander: Expander[(String, Option[Entity])] = Expander.derived
+    val exp = summon[Expander[(String, Option[Entity])]] //heloooo
+    println( exp.expand(Ident("x")) )
+  }
+
 }
 
 @main def tryDecode() = {

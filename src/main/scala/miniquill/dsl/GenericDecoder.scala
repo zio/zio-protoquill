@@ -22,6 +22,8 @@ object GenericDecoder {
 
   
 
+  // TODO Handling of optionals. I.e. don't continue to decode child rows if any columns 
+  // in the parent object are undefined (unless they are optional)
   inline def tuplizeChildren[Elems <: Tuple, ResultRow](index: Int, resultRow: ResultRow): Tuple =
     inline erasedValue[Elems] match {
       // <TODO ASK EPFL> how Product can be put into a parameter here
