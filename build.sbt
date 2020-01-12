@@ -11,6 +11,6 @@ lazy val root = project
     libraryDependencies ++= Seq(
       "com.novocode" % "junit-interface" % "0.11" % "test",
       ("com.lihaoyi" %% "pprint" % "0.5.6").withDottyCompat(scalaVersion.value),
-      "ch.epfl.lamp" % "dotty_0.21" % (scalaVersion.value)
+      "ch.epfl.lamp" % "dotty_0.22" % (scalaVersion.value)
     )
   )
