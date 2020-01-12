@@ -3,6 +3,13 @@ package miniquill.dsl
 import scala.reflect.ClassTag
 import miniquill.context.mirror._
 
+@main def expanderNested() = {
+  case class Nested(i: Int, l: Long) derives Expander
+  case class Entity(a: String, b: Nested) derives Expander
+  val exp = summon[Expander[Entity]]
+  println( exp.expand )
+}
+
 @main def tryDecode() = {
 
   class MDec extends MirrorDecoders

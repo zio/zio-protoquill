@@ -137,6 +137,7 @@ def apply(astExpr: Expr[Ast]): Ast = unliftAst(astExpr)
 def isDefinedAt(astExpr: Expr[Ast]): Boolean = unliftAst.isDefinedAt(astExpr)
 
 def unliftAst: PartialFunction[Expr[Ast], Ast] = {
+    // TODO have a typeclass like Splicer to translate constant to strings
     case '{ Const(${b}) } =>
       import scala.quoted.matching.{Const => Constant}
       b match {

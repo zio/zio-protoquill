@@ -1,6 +1,6 @@
 package io.getquill.ast
 
-//import io.getquill.NamingStrategy
+import io.getquill.NamingStrategy
 
 //************************************************************
 
@@ -19,6 +19,15 @@ sealed trait Ast {
     override def apply(a: Ast) =
       super.apply(a.neutral)
   }.apply(this)
+
+  override def toString = {
+    import io.getquill.MirrorIdiom._
+    import io.getquill.idiom.StatementInterpolator._
+    implicit def externalTokenizer: Tokenizer[External] =
+      Tokenizer[External](_ => stmt"?")
+    implicit val namingStrategy: NamingStrategy = io.getquill.Literal
+    this.token.toString
+  }
 }
 
 //************************************************************
@@ -369,7 +378,9 @@ case class Dynamic(tree: Any) extends Ast
 
 case class QuotedReference(tree: Any, ast: Ast) extends Ast
 
-sealed trait Lift extends Ast {
+sealed trait External extends Ast
+
+sealed trait Lift extends External {
   val name: String
   val value: Any
 }
@@ -393,10 +404,10 @@ case class CaseClassQueryLift(name: String, value: Any) extends CaseClassLift
 
 
 
-sealed trait LiftTag extends Ast {
+sealed trait Tag extends External {
   val uid: String
 }
 
-case class ScalarValueTag(uid: String) extends LiftTag
-case class QuotationTag(uid: String) extends LiftTag
+case class ScalarValueTag(uid: String) extends Tag // maybe ScalarLiftTag
+case class QuotationTag(uid: String) extends Tag   // maybe QuotationLiftTag
 

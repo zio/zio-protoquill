@@ -6,6 +6,8 @@ import scala.quoted._
 import scala.deriving._
 import scala.compiletime.{erasedValue, summonFrom}
 
+
+
 object GenericDecoder {
   inline def summonAndDecode[T, ResultRow](index: Int, resultRow: ResultRow): T =
     summonFrom {
@@ -17,6 +19,8 @@ object GenericDecoder {
   //     case _: (head *: tail) => 1 + arity[tail]
   //     case _ => 0
   //   }
+
+  
 
   inline def tuplizeChildren[Elems <: Tuple, ResultRow](index: Int, resultRow: ResultRow): Tuple =
     inline erasedValue[Elems] match {

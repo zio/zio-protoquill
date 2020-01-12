@@ -32,10 +32,15 @@ object StatementInterpolator {
       case string => StringToken(string)
     }
 
-  implicit def liftTokenizer: Tokenizer[Lift] =
-    Tokenizer[Lift] {
+
+
+  implicit def externalTokenizer: Tokenizer[External] =
+    Tokenizer[External] {
+      case ScalarValueTag(uid) => StringToken(s"ScalarValueTag($uid)")
+      case QuotationTag(uid) => StringToken(s"QuotationTag($uid)")
       case lift: ScalarLift => ScalarLiftToken(lift)
-      case lift => fail(
+      case lift: Tag => fail("Cannot tokenizer a non-scalar tagging")
+      case lift: Lift => fail(
         s"Can't tokenize a non-scalar lifting. ${lift.name}\n" +
           s"\n" +
           s"This might happen because:\n" +
