@@ -1,11 +1,9 @@
 package derivation
 
-
-
-
+import SummonJsonEncoderTest._
 
 object SummonTest {
-  val stuff = ThePerson("Joe", 123, List(TheAddress("123 Street")))
+  val stuff = ThePerson("Joe", 123, List(TheAddress("123 Street"))) 
 
   def main(args: Array[String]):Unit = {
     //println( SummonJsonEncoderTest.encodeFromSummonedMirror[ThePerson](stuff) )
@@ -13,7 +11,7 @@ object SummonTest {
     // This works but without address being there
     //println( SummonJsonEncoderManualTest.summonMirrorAndManuallyEncode[ThePerson](stuff) )
 
-    // println( SummonJsonEncoder.encodeAndMessAroundType(Simple.stuff) )
+    println( SummonJsonEncoderTest.encodeAndMessAroundType(SummonTest.stuff) )
 
     //println( SummonJsonEncoder.encodeAndMessAroundTerm(Simple.stuff) ) //hello
   }

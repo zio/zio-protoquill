@@ -18,6 +18,21 @@ trait Expander[T] {
 
 object Expander {
 
+  // inline def autoSummon[T]: Expander[T] = ${ autoSummonImpl }
+  // def autoSummonImpl[T: Type](given qctx: QuoteContext): Expr[Expander[T]] = {
+  //   import qctx.tasty.{given, _}
+  //   import scala.quoted.matching._ // summonExpr comes  
+  //   val m = summonExpr[Mirror.Of[T]] match {
+  //     case Some(expr) => expr
+  //     case _ => throw new RuntimeException("Cannot summon mirrir")
+  //   }
+  //   '{
+  //     given exp: Expander[T] = Expander.derived(m)
+  //     exp
+  //   }
+  // }
+
+
   // TODO Define this way for any scalar
   //given Expander[String] = new Expander[String] { def expand(inject: Ast) = List(inject) }
 

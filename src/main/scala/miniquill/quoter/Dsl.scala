@@ -70,6 +70,7 @@ object QuoteDsl {
           // both the ScalarValueVase in the body as well as the ones in the tuple would be matched. This is fine
           // since we dedupe the scalar value lifts by their UUID.
 
+          // TODO Why can't this be parsed with *: operator?
           case '{ ScalarValueVase($tree, ${Const(uid)}) } => buff += ((uid, expr))
 
           // If the quotation is runtime, it needs to be matched so that we can add it to the tuple
@@ -173,7 +174,6 @@ object QuoteDsl {
   //     ${quoted}.value
   //   }
   // }
-
 
   inline implicit def unquote[T](quoted: =>Quoted[T]): T = ${ unquoteImpl[T]('quoted) }
   def unquoteImpl[T: Type](quoted: Expr[Quoted[T]])(given qctx: QuoteContext): Expr[T] = {
