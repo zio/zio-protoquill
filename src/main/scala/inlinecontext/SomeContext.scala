@@ -19,7 +19,12 @@ class MyContext[T] extends MyContextTrait[T] {
 }
 
 object MyContext {
-  def summonAndReturnImpl[T: Type](mc: Expr[MyContextTrait[T]])(given qctx: QuoteContext): Expr[String] = {
+  //type Contextable[T] = (given qctx: QuoteContext, t: Type[T]) => Expr[String]
+  //def summonAndReturnImpl[T](mc: Expr[MyContextTrait[T]]): Contextable[T] = {
+
+  def summonAndReturnImpl[T](mc: Expr[MyContextTrait[T]])(given qctx: QuoteContext, t: Type[T]): Expr[String] = {
+    val qctx = summon[QuoteContext]
+    val t = summon[Type[T]]
     import qctx.tasty.{given, _}
     val stuff = summonExpr[Stuff[T]] match {
       case Some(value) => value

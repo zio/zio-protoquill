@@ -18,9 +18,8 @@ object Context {
   // TODO There's a lot of ceremony here. Can we put some of this stuff in (i.e. the implicit stuff)
   // via implicit function types? Since all of this stuff needs to be repeated for every flavor
   // of the 'run' function.
-  def run[T, Dialect <: Idiom, Naming <: NamingStrategy](
-    query: Quoted[T], context: Context[Dialect, Naming]
-    )(qctx: QuoteContext, t: Type[T], dialect: Type[Dialect], naming: Type[Naming]): String = {
+  def run[T: Type, Dialect <: Idiom: Type, Naming <: NamingStrategy: Type](
+    query: Quoted[T], context: Context[Dialect, Naming])(qctx: QuoteContext): String = {
 
 
     // Extract the quotation, check if it is compile-time or run-time

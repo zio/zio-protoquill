@@ -11,7 +11,7 @@ object SummonTest {
     // This works but without address being there
     //println( SummonJsonEncoderManualTest.summonMirrorAndManuallyEncode[ThePerson](stuff) )
 
-    println( SummonJsonEncoderTest.encodeAndMessAroundType(SummonTest.stuff) )
+    println( SummonJsonEncoderTest.usingSummonFrom[ThePerson](SummonTest.stuff) )
 
     //println( SummonJsonEncoder.encodeAndMessAroundTerm(Simple.stuff) ) //hello
   }
