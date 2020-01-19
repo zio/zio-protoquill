@@ -37,10 +37,14 @@ object Expander {
         // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
         // where T is Term and P is Property (in Ast) and [] is a list
         case Term(name, list, false) =>
-          val properParent = parent.getOrElse(Ident(name))
+          val properParent = 
+            parent match {
+              case Some(parent) => Property(parent, name)
+              case None => Ident(name)
+            }
           list
           .flatMap(elem => toAst(
-              elem, Some(Property(properParent, name))
+              elem, Some(properParent)
             )
           )
 
@@ -49,12 +53,16 @@ object Expander {
         // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
         // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
         case Term(name, list, true) =>
-          val properParent = parent.getOrElse(Ident(name))
+          val properParent = 
+            parent match {
+              case Some(parent) => Property(parent, name)
+              case None => Ident(name)
+            }
           val idV = Ident("v")
           for {
             elem <- list
             newAst <- toAst(elem, Some(idV))
-          } yield Map(Property(properParent, name), idV, newAst)
+          } yield Map(properParent, idV, newAst)
       }
     }
   }

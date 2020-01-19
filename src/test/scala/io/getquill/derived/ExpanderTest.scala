@@ -25,6 +25,16 @@ class ExpanderTest {
     assertEquals( "List(x.a, x.b.map(v => v.i), x.b.map(v => v.l))", expansion.toAst.toString )
   }
 
+  @Test def nestedOptionalMulti(): Unit = {
+    case class ReallyNested(foo: Int, bar: Int) derives Expander
+    case class Nested(i: Int, l: Option[ReallyNested]) derives Expander
+    case class Entity(a: String, b: Option[Nested]) derives Expander
+    val exp = summon[Expander[Entity]]
+    val expansion = exp.expand(Term("x"))
+    println( expansion.toAst.toString )
+    assertEquals( "List(x.a, x.b.map(v => v.i), x.b.map(v => v.l.map(v => v.foo)), x.b.map(v => v.l.map(v => v.bar)))", expansion.toAst.toString )
+  }
+
   @Test def tuple(): Unit = {
     case class Entity(a: String, b: Int) derives Expander
     // Can't do that because can't just summon inner expanders e.g. because Option needs to know the field
