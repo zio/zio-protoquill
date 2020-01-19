@@ -12,9 +12,10 @@ import io.getquill.{ NamingStrategy, ReturnAction }
 import miniquill.dsl.EncodingDsl
 import miniquill.quoter.Quoted
 import miniquill.context.Context
+import io.getquill.idiom.Idiom
 
 // TODO Non Portable
-trait Context[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy] 
+trait Context[Dialect <: Idiom, Naming <: NamingStrategy] 
 extends EncodingDsl
 //  extends Closeable
 //  with CoreDsl 
@@ -42,9 +43,15 @@ extends EncodingDsl
   // TODO Need to have some implicits to auto-convert stuff inside
   // of the run function itself into a quotation.
 
+  def run[T](foobar: T): Result[RunQueryResult[T]] = ???
+  def doStuffWithResult[T](sql: String): Result[RunQueryResult[T]] = ???
+
   //def run[T](quoted: Quoted[T]): Result[RunQuerySingleResult[T]] = macro QueryMacro.runQuerySingle[T]
   
   // def run[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = macro QueryMacro.runQuery[T]
+
+
+
   // def prepare[T](quoted: Quoted[Query[T]]): Session => Result[PrepareRow] = macro QueryMacro.prepareQuery[T]
 
   // def run(quoted: Quoted[Action[_]]): Result[RunActionResult] = macro ActionMacro.runAction
@@ -63,3 +70,7 @@ extends EncodingDsl
   //     case other        => fail(s"Expected a single result but got $other")
   //   }
 }
+
+
+
+
