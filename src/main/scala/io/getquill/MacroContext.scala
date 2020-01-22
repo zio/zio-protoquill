@@ -2,6 +2,8 @@ package io.getquill
 
 import io.getquill.context.Context
 import io.getquill.idiom.Idiom
+import miniquill.quoter._
+import io.getquill.derived._
 
 object MacroContext {
   import scala.quoted._
@@ -17,10 +19,21 @@ object MacroContext {
   // }
 
 
-  inline def runQuery[T, D <: Idiom, N <: NamingStrategy](ctx: Context[D, N]): Context[D, N]#RunQueryResult[T] = 
-    ${ runQueryImpl[T, D, N]('ctx) }
+  // inline def runQuery[T, D <: Idiom, N <: NamingStrategy](quoted: Quoted[Query[T]], ctx: Context[D, N]): ctx.RunQueryResult[T] = 
+  //   ${ runQueryImpl('quoted, 'ctx) }
 
-  def runQueryImpl[T, D <: Idiom, N <: NamingStrategy](ctx: Expr[Context[D, N]]): Expr[Context[D, N]#RunQueryResult[T]] = {
-    null
-  }
+  // def runQueryImpl[T, D <: Idiom, N <: NamingStrategy, Result](
+  //   quoted: Expr[Quoted[Query[T]]],
+  //   ctx: Expr[Context[D, N]]
+  // )(given qctx: QuoteContext): Expr[Result] = {
+  //   import qctx.tasty.{given, _}
+
+  //   val (ast, lifts) =
+  //     quoted match {
+  //       case '{ Quoted($ast, $lifts) } =>
+  //         (ast, lifts)
+  //     }
+
+  //   null
+  // }
 }

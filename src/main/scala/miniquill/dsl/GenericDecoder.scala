@@ -20,32 +20,29 @@ object GenericDecoder {
   //     case _ => 0
   //   }
 
-  
+  type IsProduct[T <: Product] = T
 
   // TODO Handling of optionals. I.e. don't continue to decode child rows if any columns 
   // in the parent object are undefined (unless they are optional)
-  inline def tuplizeChildren[Elems <: Tuple, ResultRow](index: Int, resultRow: ResultRow): Tuple =
+  inline def decodeChildern[Elems <: Tuple, ResultRow](index: Int, resultRow: ResultRow): Tuple =
     inline erasedValue[Elems] match {
-      // <TODO ASK EPFL> how Product can be put into a parameter here
-      case _: (Product *: tail) =>
-        val (air, output) =
-          inline erasedValue[Elems] match { 
-            case _: (head *: tail) =>
-              val ret = summonAndDecode[head, ResultRow](index, resultRow)
-              val air = ret.asInstanceOf[Product].productArity
-              (air, ret)
-          }
-        (output *: tuplizeChildren[tail, ResultRow](index + air, resultRow)) 
+      case _: (IsProduct[head] *: tail) =>
+        val decodedHead = summonAndDecode[head, ResultRow](index, resultRow)
+        val air = decodedHead.asInstanceOf[Product].productArity
+
+        (decodedHead *: decodeChildern[tail, ResultRow](index + air, resultRow)) 
       case b: (head *: tail) =>
-        (summonAndDecode[head, ResultRow](index, resultRow) *: tuplizeChildren[tail, ResultRow](index + 1, resultRow))
+        (summonAndDecode[head, ResultRow](index, resultRow) *: decodeChildern[tail, ResultRow](index + 1, resultRow))
       case _ => ()
     }
 
   inline def derived[T, ResultRow](given ev: Mirror.Of[T]): GenericDecoder[ResultRow, T] = new GenericDecoder[ResultRow, T]() {
+    
+
     def apply(index: Int, resultRow: ResultRow): T =
       inline ev match {
         case m: Mirror.ProductOf[T] =>
-          val tup = tuplizeChildren[m.MirroredElemTypes, ResultRow](index, resultRow)
+          val tup = decodeChildern[m.MirroredElemTypes, ResultRow](index, resultRow)
           m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
       }
   }

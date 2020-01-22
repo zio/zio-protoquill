@@ -7,12 +7,13 @@ import scala.deriving._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 import io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}
 import scala.compiletime.erasedValue
-
+import io.getquill.ast.Visibility.{ Hidden, Visible }
 
 trait Expander[T] {
   import Expander._
 
   def expand(node: Term): Term
+  def expandAst(ast: Ast): Ast // TODO For leaf nodes this should be a no-op
 }
 
 object Expander {
@@ -28,7 +29,7 @@ object Expander {
         // If leaf node, return the term, don't care about if it is optional or not
         case Term(name, Nil, _) =>
           parent match {
-            case Some(parent) => List(Property(parent, name))
+            case Some(parent) => List(Property.Opinionated(parent, name, Renameable.neutral, Hidden))
             case None => List(Ident(name))
           }          
 
@@ -39,7 +40,7 @@ object Expander {
         case Term(name, list, false) =>
           val properParent = 
             parent match {
-              case Some(parent) => Property(parent, name)
+              case Some(parent) => Property.Opinionated(parent, name, Renameable.neutral, Hidden)
               case None => Ident(name)
             }
           list
@@ -55,7 +56,10 @@ object Expander {
         case Term(name, list, true) =>
           val properParent = 
             parent match {
-              case Some(parent) => Property(parent, name)
+              // Assuming that when terms are on multiple levels these are embedded
+              // properties. Probably need to build that undo the Expander derivation
+              // to check the elements. Or make an assumption based on a policy
+              case Some(parent) => Property.Opinionated(parent, name, Renameable.neutral, Hidden)
               case None => Ident(name)
             }
           val idV = Ident("v")
@@ -113,6 +117,11 @@ object Expander {
           val children = flatten[pm.MirroredElemLabels, pm.MirroredElemTypes](node)
           node.withChildren(children)
       }
+
+    def expandAst(ast: Ast): Ast = {
+      import io.getquill.ast.{Map => AMap, _}
+      AMap(ast, Ident("x"), Tuple(expand(Term("x")).toAst))
+    }
   }
 
   

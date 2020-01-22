@@ -4,12 +4,51 @@ import simple.SimpleMacro._
 import scala.language.implicitConversions
 import miniquill.quoter.QuoteDsl._
 
-case class Address(street:String, zip:Int)
-case class Person(id: Int, name: String, age: Int, address: Address)
 
+
+
+@main def verticalTest() = {
+  import io.getquill.derived.Expander
+  import io.getquill.derived.Expander._
+  import miniquill.context.mirror._
+  import miniquill.dsl.GenericDecoder
+  import miniquill.dsl.GenericDecoder._
+
+  import io.getquill.Embedded
+  // Don't want to do 'derives' here because at this point, the specific type of GenericDecoder is not even known yet
+  // I.e. since ResultRow can be ResultSet, Row, or something else depending on the database
+  case class Address(street:String, zip:Int) extends Embedded //derives Expander
+  case class Person(id: Int, name: String, age: Int, address: Address) //derives Expander, GenericDecoder[ResultRow, ?]
+
+  import io.getquill.MirrorIdiom
+  import io.getquill.MirrorSqlDialect
+  import io.getquill.Literal
+  import io.getquill.MirrorContext
+  
+
+  inline def people = quote {
+    query[Person]
+  }
+
+  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+  //val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+  import ctx._
+
+  given Expander[Address] = Expander.derived
+  given Decoder[Address] = GenericDecoder.derived
+  given Expander[Person] = Expander.derived
+  given Decoder[Person] = GenericDecoder.derived
+
+  val output = run(people)
+  println(people.ast)
+  println(output.string)
+}
 
 
 object MiniQuillTest {
+
+  case class Address(street:String, zip:Int)
+  case class Person(id: Int, name: String, age: Int, address: Address)
 
   def main(args: Array[String]) = {
 
