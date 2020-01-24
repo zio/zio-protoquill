@@ -80,6 +80,15 @@ object QuoteDsl {
 
           case other =>
         }
+        // if (expr.isInstanceOf[Nothing])
+        //   transformChildren[T](expr)
+        // else
+        //   expr
+
+        // Get a very odd error if I don't do the check above:
+        // [error]    |Exception occurred while executing macro expansion.
+        // [error]    |scala.tasty.reflect.ExprCastError: Expr: [ : Nothing]
+        // [error]    |did not conform to type: Nothing*
         transformChildren[T](expr)
       }
     }
