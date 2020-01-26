@@ -8,23 +8,13 @@ import miniquill.quoter.QuoteDsl._
 
 
 @main def verticalTest() = {
-  import io.getquill.derived.Expander
-  import io.getquill.derived.Expander._
-  import miniquill.context.mirror._
-  import miniquill.dsl.GenericDecoder
-  import miniquill.dsl.GenericDecoder._
 
-  import io.getquill.Embedded
+  import io.getquill._
+  
   // Don't want to do 'derives' here because at this point, the specific type of GenericDecoder is not even known yet
   // I.e. since ResultRow can be ResultSet, Row, or something else depending on the database
   case class Address(street:String, zip:Int) extends Embedded //derives Expander
   case class Person(id: Int, name: String, age: Int, address: Address) //derives Expander, GenericDecoder[ResultRow, ?]
-
-  import io.getquill.MirrorIdiom
-  import io.getquill.MirrorSqlDialect
-  import io.getquill.Literal
-  import io.getquill.MirrorContext
-  import io.getquill.autoExpander
   
 
   inline def people = quote {
