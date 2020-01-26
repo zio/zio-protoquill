@@ -36,16 +36,18 @@ object GenericDecoder {
       case _ => ()
     }
 
-  inline def derived[T, ResultRow](given ev: Mirror.Of[T]): GenericDecoder[ResultRow, T] = new GenericDecoder[ResultRow, T]() {
-    
-
-    def apply(index: Int, resultRow: ResultRow): T =
-      inline ev match {
-        case m: Mirror.ProductOf[T] =>
-          val tup = decodeChildern[m.MirroredElemTypes, ResultRow](index, resultRow)
-          m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
-      }
-  }
+  inline def derived[T, ResultRow]: GenericDecoder[ResultRow, T] = 
+    summonFrom {
+        case ev: Mirror.Of[T] =>
+          new GenericDecoder[ResultRow, T] {
+            def apply(index: Int, resultRow: ResultRow): T =
+                inline ev match {
+                  case m: Mirror.ProductOf[T] =>
+                    val tup = decodeChildern[m.MirroredElemTypes, ResultRow](index, resultRow)
+                    m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
+                }
+          }     
+    }
 }
 
 trait GenericDecoder[ResultRow, T] {

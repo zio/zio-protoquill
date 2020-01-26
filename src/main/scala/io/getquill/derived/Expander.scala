@@ -107,15 +107,17 @@ object Expander {
 
 
   // TODO What if the outermost element is an option? Need to test that with the original Quill MetaDslSpec.
-  inline def derived[T](given m: Mirror.Of[T]): Expander[T] = new Expander[T] {
+  inline def derived[T]: Expander[T] = new Expander[T] {
     def expand(node: Term): Term =
-      inline m match {
-        // TODO What if root-term is optional
-
-        // Special treatment for option
-        case pm: Mirror.ProductOf[T] => 
-          val children = flatten[pm.MirroredElemLabels, pm.MirroredElemTypes](node)
-          node.withChildren(children)
+      summonFrom {
+        case ev: Mirror.Of[T] =>
+          inline ev match {
+            // TODO What if root-term is optional
+            // TODO Special treatment for option
+            case pm: Mirror.ProductOf[T] => 
+              val children = flatten[pm.MirroredElemLabels, pm.MirroredElemTypes](node)
+              node.withChildren(children)
+          }
       }
 
     def expandAst(ast: Ast): Ast = {

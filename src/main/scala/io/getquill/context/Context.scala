@@ -18,6 +18,7 @@ import io.getquill.idiom.Idiom
 import io.getquill.derived._
 import miniquill.context.mirror.MirrorDecoders
 import miniquill.context.mirror.Row
+import miniquill.dsl.GenericDecoder
 
 // TODO Non Portable
 trait Context[Dialect <: Idiom, Naming <: NamingStrategy] 
@@ -25,6 +26,8 @@ extends EncodingDsl
 //  extends Closeable
 //  with CoreDsl 
 {
+  implicit inline def autoDecoder[T]:Decoder[T] = GenericDecoder.derived
+
   type Result[T]
   type RunQuerySingleResult[T]
   type RunQueryResult[T]

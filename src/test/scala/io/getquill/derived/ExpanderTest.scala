@@ -6,6 +6,16 @@ import io.getquill.ast._
 
 class ExpanderTest {
   import io.getquill.derived.Expander._
+
+  @Test def personWithEmbeddedAddress(): Unit = {
+    case class Address(street: String) derives Expander
+    case class Person(name: String, address: Address) derives Expander
+    val exp = summon[Expander[Person]]
+  }
+
+  @Test def personWithEmbeddedAddressToAddress(): Unit = {
+    
+  }
   
   @Test def simple(): Unit = {
     case class Nested(i: Int, l: Long) derives Expander

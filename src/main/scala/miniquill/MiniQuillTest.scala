@@ -24,6 +24,7 @@ import miniquill.quoter.QuoteDsl._
   import io.getquill.MirrorSqlDialect
   import io.getquill.Literal
   import io.getquill.MirrorContext
+  import io.getquill.autoExpander
   
 
   inline def people = quote {
@@ -37,10 +38,10 @@ import miniquill.quoter.QuoteDsl._
   //val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
-  given Expander[Address] = Expander.derived
-  given Decoder[Address] = GenericDecoder.derived
-  given Expander[Person] = Expander.derived
-  given Decoder[Person] = GenericDecoder.derived
+  // given Expander[Address] = Expander.derived
+  // given Decoder[Address] = GenericDecoder.derived
+  // given Expander[Person] = Expander.derived
+  // given Decoder[Person] = GenericDecoder.derived
 
   val output = run(addresses)
   println(people.ast)
