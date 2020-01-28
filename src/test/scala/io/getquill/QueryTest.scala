@@ -70,6 +70,11 @@ class QueryTest {
   @Test
   def personToAddressMapRuntime(): Unit = {
     {
+      println("***************** peopleRuntime ***************")
+      printer.lnf(peopleRuntime)
+      println("***************** addressesRuntime ***************")
+      printer.lnf(addressesRuntime)
+
       import ctx._
       println("***************** Expanded ***************")
       printer.lnf(expandAst(addressesRuntime))

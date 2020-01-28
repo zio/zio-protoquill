@@ -44,7 +44,7 @@ object QuoteDsl {
 
   
   def extractLifts(input: Expr[Any])(given qctx: QuoteContext): Expr[Tuple] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{Type => TType, _, given}
     import scala.collection.mutable.ArrayBuffer
     import scala.quoted.util.ExprMap
 
@@ -56,7 +56,9 @@ object QuoteDsl {
 
     val buff: ArrayBuffer[(String, Expr[Any])] = ArrayBuffer.empty
     val accum = new ExprMap {
-      def transform[T](expr: Expr[T])(given qctx: QuoteContext, tp: scala.quoted.Type[T]): Expr[T] = {
+      def transform[T](expr: Expr[T])(given qctx: QuoteContext, tpe: quoted.Type[T]): Expr[T] = {
+        println("=================================== Inside Transform ===========================")
+        printer.lnf(expr.unseal)
         expr match {
           // TODO block foldOver in this case?
           // NOTE that using this kind of pattern match, lifts are matched for both compile and run times
@@ -71,20 +73,33 @@ object QuoteDsl {
           // since we dedupe the scalar value lifts by their UUID.
 
           // TODO Why can't this be parsed with *: operator?
-          case '{ ScalarValueVase($tree, ${Const(uid)}) } => buff += ((uid, expr))
+          case '{ ScalarValueVase($tree, ${Const(uid)}) } => 
+            //println("=================================== Match Scalar Vase ===========================")
+            buff += ((uid, expr))
+            expr // can't go inside here or errors happen
 
           // If the quotation is runtime, it needs to be matched so that we can add it to the tuple
           // of lifts (i.e. runtime values) and the later evaluate it during the 'run' function.
           // Match the vase and add it to the list.
-          case MatchRuntimeQuotation(tree, uid) => buff += ((uid, tree))
+          //println("=================================== Match Runtime Quotation ===========================")
+          case MatchRuntimeQuotation(tree, uid) => // can't go inside here or errors happen
+            buff += ((uid, tree))
+            expr // can't go inside here or errors happen
 
+          //println("=================================== Match Other ===========================")
           case other =>
+            transformChildren(expr)
         }
         // Need this or "did not conform to type: Nothing*" error can occur
-        if (expr.isInstanceOf[Nothing])
-          transformChildren[T](expr)
-        else
-          expr
+        //transformChildren[T](expr)
+
+        // if (!expr.isInstanceOf[Expr[Expr[Any]]]) { // something tries to go to 2-levels of expression which causes crashes?
+        //   println("=================================== Getting Childern ===========================")
+        //   transformChildren(expr)
+        // } else {
+        //   println("=================================== Skipping Childern ===========================")
+        //   expr
+        // }
       }
     }
 
