@@ -13,12 +13,12 @@ import miniquill.quoter.Query
 import miniquill.dsl.EncodingDsl
 import miniquill.quoter.Quoted
 import miniquill.quoter.Query
-import miniquill.context.Context
 import io.getquill.idiom.Idiom
 import io.getquill.derived._
 import miniquill.context.mirror.MirrorDecoders
 import miniquill.context.mirror.Row
 import miniquill.dsl.GenericDecoder
+import io.getquill.ast.Ast
 
 // TODO Non Portable
 trait Context[Dialect <: Idiom, Naming <: NamingStrategy] 
@@ -51,7 +51,7 @@ extends EncodingDsl
   // TODO Need to have some implicits to auto-convert stuff inside
   // of the run function itself into a quotation.
 
-  inline def run[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
+  inline def expandAst[T](quoted: Quoted[Query[T]]):(Ast, Tuple) = {
     val (ast, lifts) = (quoted.ast, quoted.lifts)
     
     val expander =
@@ -63,6 +63,12 @@ extends EncodingDsl
     println("Before Expansion: " + ast)
     val expandedAst = expander.expandAst(ast)
     println("After Expansion: " + expandedAst)
+
+    (expandedAst, lifts)
+  }
+
+  inline def run[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
+    val (expandedAst, lifts) = expandAst(quoted)
 
     val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
     val queryString = stmt.toString

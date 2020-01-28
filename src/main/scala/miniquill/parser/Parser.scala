@@ -38,22 +38,23 @@ class QuotationParser(given qctx: QuoteContext) {
   protected object MatchQuotedInnerTree {
     def unapply(expr: Expr[Any]): Option[Expr[Ast]] = expr match {
       case '{ Quoted.apply[$qt]($ast, $v) } => 
-        println("********************** MATCHED VASE INNER TREE **********************")
-        printer.ln(expr.unseal)
+        //println("********************** MATCHED VASE INNER TREE **********************")
+        //printer.lnf(expr.unseal)
         Some(ast)
       case Unseal(TypedMatroshka(tree)) => unapply(tree.seal)
       case _ => 
-        println("********************** NOT MATCHED VASE INNER TREE **********************")
-        printer.ln(expr.unseal)
+        //println("********************** NOT MATCHED VASE INNER TREE **********************")
+        //printer.lnf(expr.unseal)
         None
     }
   }
 
   protected object MatchVaseApply {
     def unapply(expr: Expr[Any]) = expr match {
-      case '{ QuotationVase.apply[$qt]($quotation, ${scala.quoted.matching.Const(uid: String)}) } => 
-        println("********************** MATCHED VASE APPLY **********************")
-        Some((quotation, uid))
+      case vase @ '{ QuotationVase.apply[$qt]($quotation, ${scala.quoted.matching.Const(uid: String)}) } => 
+        //println("********************** MATCHED VASE APPLY **********************")
+        //printer.lnf(expr.unseal)
+        Some((quotation, uid, vase))
       case _ => None
     }
   }
@@ -61,28 +62,10 @@ class QuotationParser(given qctx: QuoteContext) {
   // Match the QuotationVase(...).unquote values which are tacked on to every
   // child-quote (inside of a parent quote) when the 'unquote' function (i.e macro)
   // is applied.
-  protected object MatchQuotationVase {
+  protected object MatchQuotationUnquote {
     def unapply(expr: Expr[Any]) = expr match {
+      // When a QuotationVase is embedded into an ast
       case '{ (${quotationVase}: QuotationVase[$tt]).unquote } => Some(quotationVase)
-      case _ => None
-    }
-  }
-
-  // protected object UnsealedIdent {
-  //   def unapply(expr: Expr[Any]) = expr match {
-  //     case v @ Unseal(Ident(innerQuote)) => Some(v)
-  //     case _ => None
-  //   }
-  // }
-
-  // Match an ident representing a quotation. It it matches, return the vase so we can use it later.
-  protected object MatchQuotationRef {
-    def unapply(expr: Expr[Any]): Option[(Expr[Any], String)] = expr match {
-
-      // <TODO ASK EPFL> For some reason it's not possible to do '{ QuotationVase.apply[$t](t @ ${UnsealedIdent(quoteTerm)}, ${Constant(uid: String)}) }
-      // it gives an error regarding the $t. Therefore I extracted this term into it's own matcher
-      case vase @ '{ QuotationVase.apply[$t](${Unseal(Ident(innerQuote))}, ${Constant(uid: String)}) } =>
-        Some((vase, uid))
       case _ => None
     }
   }
@@ -90,8 +73,20 @@ class QuotationParser(given qctx: QuoteContext) {
   object MatchRuntimeQuotation {
     def unapply(expr: Expr[Any]): Option[(Expr[Any], String)] =
       expr match {
-        case MatchQuotationVase(MatchQuotationRef(tree, uuid)) =>
-          Some((tree, uuid))
+        // case MatchQuotationRef(tree, uuid) => 
+        //   println("******************** Runtime: Match Quotation Ref ********************")
+        //   printer.lnf((tree.unseal, uuid))
+        //   Some((tree, uuid))
+        case MatchQuotationUnquote(innards) =>
+          println("******************** Runtime: Match Unquote ********************")
+          printer.lnf(innards.unseal)
+          unapply(innards)
+        // sometimes there are multiple levels of vases when references are spliced,
+        // we should only care about the innermost one
+        case MatchVaseApply(_, uuid, vase) =>
+          println("******************** Runtime: Vase Apply ********************")
+          printer.lnf(uuid, vase)
+          Some((vase, uuid))
         case _ => None
       }
     }
@@ -99,7 +94,7 @@ class QuotationParser(given qctx: QuoteContext) {
   object MatchInlineQuotation {
     def unapply(expr: Expr[Any]): Option[(Expr[Ast], String)] =
       expr match {
-        case MatchQuotationVase(MatchVaseApply(MatchQuotedInnerTree(astTree), uuid)) =>
+        case MatchQuotationUnquote(MatchVaseApply(MatchQuotedInnerTree(astTree), uuid, _)) =>
           Some((astTree, uuid))
         case _ => None
       }
@@ -224,24 +219,6 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
 
     case vv @ '{ ($q:Query[$qt]).map[$mt](${Unseal(Lambda1(ident, body))}) } => 
       Map(astParser(q), Idnt(ident), astParser(body))
-
-
-
-    // case vv @ '{ (${quotationVase}: QuotationVase[$tt]).unquote } =>
-    //   import scala.quoted.matching.{Const => Constant}
-
-    //   // TODO Need to return to top-level if nothing matched. Look at original quill
-    //   // parsing for how to do that
-    //   quotationVase match {
-    //     // In this case, the quotation is a runtime value
-    //     case '{ QuotationVase.apply[$t](${Unseal(Ident(innerQuote))}, ${Constant(uid: String)}) } =>
-    //       QuotationTag(uid)
- 
-    //     // <TODO ASK EPFL> why this doesn't work and how to do it?
-    //     //case '{ QuotationVase.apply[$qt](Quoted[$qt]($ast, $v), $uidConst) } =>
-    //     case '{ QuotationVase.apply[$qt]($quotation, $uidConst) } => 
-
-
 
     //       quotation match {
     //         case '{ Quoted[$qt].apply($ast, $v) } => unlift(ast)

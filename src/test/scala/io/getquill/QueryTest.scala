@@ -8,6 +8,7 @@ import org.junit.Assert._
 
 class QueryTest {
 
+  // TODO Need to test 3-level injection etc...
   case class Address(street:String, zip:Int) extends Embedded
   case class Person(name: String, age: Int, address: Address)
   val sqlCtx = new MirrorContext(MirrorSqlDialect, Literal)
@@ -19,6 +20,17 @@ class QueryTest {
   inline def addresses = quote {
     people.map(p => p.address)
   }
+  def peopleRuntime = quote {
+    query[Person]
+  }
+  // should also test this
+  //def addressesRuntimePeopleCompiletime = quote {
+  //  people.map(p => p.address)
+  //}
+  def addressesRuntime = quote {
+    peopleRuntime.map(p => p.address)
+  }
+
 
   // one level object query
   @Test
@@ -53,6 +65,22 @@ class QueryTest {
       println(sqlCtx.run(addresses).string)
       assertEquals("SELECT p.street, p.zip FROM Person p", sqlCtx.run(addresses).string)
     }
+  }
+
+  @Test
+  def personToAddressMapRuntime(): Unit = {
+    {
+      import ctx._
+      println("***************** Expanded ***************")
+      printer.lnf(expandAst(addressesRuntime))
+
+      assertEquals("""querySchema("Person").map(p => (p.address.street, p.address.zip))""", run(addressesRuntime).string)
+    }
+    // {
+    //   import sqlCtx._
+    //   println(sqlCtx.run(addresses).string)
+    //   assertEquals("SELECT p.street, p.zip FROM Person p", sqlCtx.run(addresses).string)
+    // }
   }
 
 }
