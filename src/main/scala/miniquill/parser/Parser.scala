@@ -8,7 +8,6 @@ import scala.annotation.StaticAnnotation
 import printer.AstPrinter
 import scala.deriving._
 
-
 class QuotationParser(given qctx: QuoteContext) {
   import qctx.tasty.{_, given}
   
@@ -107,83 +106,8 @@ class QuotationParser(given qctx: QuoteContext) {
   }
 }
 
-
-class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
-  import qctx.tasty._
-
-  def apply(ast: Ast): Expr[Ast] = liftAst(ast)
-  def isDefinedAt(ast: Ast): Boolean = liftAst.isDefinedAt(ast)
-
-  def liftAst: PartialFunction[Ast, Expr[Ast]] = {
-    // TODO Need some type info to be able to lift a const
-    //case Const(v) => '{ Const(${Expr(v)}) }
-    case Entity(name: String, list) => '{ Entity(${Expr(name)}, List())  }
-    case Idnt(name: String) => '{ Idnt(${Expr(name)})  }
-    case Map(query: Ast, alias: Idnt, body: Ast) => '{ Map(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }
-    case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${liftAst(a)}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${liftAst(b)})  }
-    case Property(ast: Ast, name: String) => '{Property(${liftAst(ast)}, ${Expr(name)}) }
-    case ScalarValueTag(uid: String) => '{ScalarValueTag(${Expr(uid)})}
-    case QuotationTag(uid: String) => '{QuotationTag(${Expr(uid)})}
-  }
-
-  def liftOperator: PartialFunction[Operator, Expr[Operator]] = {
-    case NumericOperator.* => '{ NumericOperator.* }
-  }
-}
-
-class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] {
-
-def apply(astExpr: Expr[Ast]): Ast = unliftAst(astExpr)
-def isDefinedAt(astExpr: Expr[Ast]): Boolean = unliftAst.isDefinedAt(astExpr)
-
-def unliftAst: PartialFunction[Expr[Ast], Ast] = {
-    // TODO have a typeclass like Splicer to translate constant to strings
-    case '{ Const(${b}) } =>
-      import scala.quoted.matching.{Const => Constant}
-      b match {
-        case Constant(v: Double) => Const(v)
-      }
-    case '{ Entity(${b}, ${l})  } =>
-      import scala.quoted.matching.{Const => Constant}
-      b match {
-        case Constant(v: String) => Entity(v, List()) // TODO Need to implement unlift of list
-      }
-    case '{ Idnt(${b}) } =>
-      import scala.quoted.matching.{Const => Constant}
-      b match {
-        case Constant(v: String) => Idnt(v)
-      }
-    case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(unliftAst(query), unliftAst(alias).asInstanceOf[Idnt], unliftAst(body))
-    case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(unliftAst(a), unliftOperator(operator).asInstanceOf[BinaryOperator], unliftAst(b))
-    case '{ Property(${ast}, ${name}) } =>
-      import scala.quoted.matching.{Const => Constant}
-      val unname = name match {
-        case Constant(v: String) => v
-      }
-      Property(unliftAst(ast), unname)
-
-    case '{ScalarValueTag(${uid})} => 
-      import scala.quoted.matching.{Const => Constant}
-      val unuid = uid match {
-        case Constant(v: String) => v
-      }
-      ScalarValueTag(unuid)
-
-    case '{ QuotationTag($uid) } =>
-      import scala.quoted.matching.{Const => Constant}
-      val unuid = uid match {
-        case Constant(v: String) => v
-      }
-      QuotationTag(unuid)
-  }
-
-  def unliftOperator: PartialFunction[Expr[Operator], Operator] = {
-    case '{ NumericOperator.* } =>  NumericOperator.*
-  }
-}
-
 class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
-  import qctx.tasty.{Type => _, _, given}
+  import qctx.tasty.{Type => TType, _, given}
   import printer.ContextAstPrinter._
 
   val unlift = new Unlifter()
@@ -235,8 +159,8 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
 
 
   def apply(in: Expr[_]): Ast = {
-    println("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% WHOLE TREE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-    println(AstPrinter.astprint(in.unseal.underlyingArgument).render.split("\n").map("%% " + _).mkString("\n"))
+    printer.ln("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% WHOLE TREE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+    printer.ln(in.unseal.underlyingArgument)
     
     // in.unseal.underlyingArgument.seal match {
     //   //case vv @ '{ (($tree:Quoted[$t]).unquote): $at } =>
@@ -360,9 +284,15 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
       println("Apply Select")
       BinaryOperation(astParser(left), NumericOperator.*, astParser(right))
 
-    case Unseal(Select(Seal(prefix), member)) =>
-      println("Select")
-      Property(astParser(prefix), member)
+    case Unseal(value @ Select(Seal(prefix), member)) =>
+      println(s"Select ${value.show}")
+      if (value.tpe <:< '[io.getquill.Embedded].unseal.tpe) {
+        println("Visibility: Hidden")
+        Property.Opinionated(astParser(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
+      } else {
+        println("Visibility: Visible")
+        Property(astParser(prefix), member)
+      }
 
     case Unseal(Ident(x)) => 
       println("Ident")
@@ -370,6 +300,7 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
 
 
 
+  // TODO define this a last-resort printing function inside the parser
   case Unseal(t) =>
     println("=============== Parsing Error ================\n" + AstPrinter().apply(t))
     println("=============== Extracted ================\n" + t.showExtractors)

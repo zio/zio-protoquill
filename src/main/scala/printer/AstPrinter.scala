@@ -64,5 +64,12 @@ object AstPrinter {
   val astprint = new AstPrinter()
 }
 
-val str = new AstPrinter()
-def ln(str: Any) = println(new AstPrinter()(str))
+def ln(str: Any, delimiter: Option[String] = None):Unit = 
+  if (System.getProperty("printAst", "false").toBoolean)
+    delimiter match {
+      case None => 
+        println(new AstPrinter()(str))
+      case Some(value) => 
+        println(new AstPrinter()(str).render.split("\n").map(value + _).mkString("\n"))
+    }
+    

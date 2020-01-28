@@ -4,9 +4,6 @@ import simple.SimpleMacro._
 import scala.language.implicitConversions
 import miniquill.quoter.QuoteDsl._
 
-
-
-
 @main def verticalTest() = {
 
   import io.getquill._
@@ -16,7 +13,6 @@ import miniquill.quoter.QuoteDsl._
   case class Address(street:String, zip:Int) extends Embedded //derives Expander
   case class Person(id: Int, name: String, age: Int, address: Address) //derives Expander, GenericDecoder[ResultRow, ?]
   
-
   inline def people = quote {
     query[Person]
   }
@@ -25,7 +21,6 @@ import miniquill.quoter.QuoteDsl._
   }
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-  //val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
   val output = run(addresses)

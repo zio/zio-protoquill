@@ -12,10 +12,6 @@ class ExpanderTest {
     case class Person(name: String, address: Address) derives Expander
     val exp = summon[Expander[Person]]
   }
-
-  @Test def personWithEmbeddedAddressToAddress(): Unit = {
-    
-  }
   
   @Test def simple(): Unit = {
     case class Nested(i: Int, l: Long) derives Expander

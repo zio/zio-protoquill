@@ -19,54 +19,54 @@ trait Expander[T] {
 object Expander {
   case class Term(name: String, children: List[Term] = List(), optional: Boolean = false) {
     def withChildren(children: List[Term]) = this.copy(children = children)
-    def toAst = Term.toAst(this, None)
+    def toAst = Term.toAst(this)
   }
   object Term {
     import io.getquill.ast._
 
-    def toAst(node: Term, parent: Option[Ast] = None): List[Ast] = {
+    def toAst(node: Term, parent: Ast): List[Ast] =
+      node match {
+        // If there are no children, property should not be hidden i.e. since it's not 'intermediate'
+        // I.e. for the sake of SQL we set properties representing embedded objects to 'hidden'
+        // so they don't show up in the SQL.
+        case Term(name, Nil, _) =>
+          List(Property.Opinionated(parent, name, Renameable.neutral, Visible))
+
+        case Term(name, list, false) =>
+          list.flatMap(elem => 
+            toAst(elem, Property.Opinionated(parent, name, Renameable.neutral, Hidden)))
+          
+        case Term(name, list, true) =>
+          val idV = Ident("v")
+          for {
+            elem <- list
+            newAst <- toAst(elem, idV)
+          } yield Map(Ident(name), idV, newAst)
+      }
+
+    def toAst(node: Term): List[Ast] = {
       node match {
         // If leaf node, return the term, don't care about if it is optional or not
         case Term(name, Nil, _) =>
-          parent match {
-            case Some(parent) => List(Property.Opinionated(parent, name, Renameable.neutral, Hidden))
-            case None => List(Ident(name))
-          }          
+          List(Ident(name))
 
         // T( a, [T(b), T(c)] ) => [ a.b, a.c ] 
         // (done?)         => [ P(a, b), P(a, c) ] 
         // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
         // where T is Term and P is Property (in Ast) and [] is a list
         case Term(name, list, false) =>
-          val properParent = 
-            parent match {
-              case Some(parent) => Property.Opinionated(parent, name, Renameable.neutral, Hidden)
-              case None => Ident(name)
-            }
-          list
-          .flatMap(elem => toAst(
-              elem, Some(properParent)
-            )
-          )
+          list.flatMap(elem => toAst(elem, Ident(name)))
 
         // T-Opt( a, T(b), T(c) ) => 
         // [ a.map(v => v.b), a.map(v => v.c) ] 
         // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
         // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
         case Term(name, list, true) =>
-          val properParent = 
-            parent match {
-              // Assuming that when terms are on multiple levels these are embedded
-              // properties. Probably need to build that undo the Expander derivation
-              // to check the elements. Or make an assumption based on a policy
-              case Some(parent) => Property.Opinionated(parent, name, Renameable.neutral, Hidden)
-              case None => Ident(name)
-            }
           val idV = Ident("v")
           for {
             elem <- list
-            newAst <- toAst(elem, Some(idV))
-          } yield Map(properParent, idV, newAst)
+            newAst <- toAst(elem, idV)
+          } yield Map(Ident(name), idV, newAst)
       }
     }
   }
@@ -122,7 +122,12 @@ object Expander {
 
     def expandAst(ast: Ast): Ast = {
       import io.getquill.ast.{Map => AMap, _}
-      AMap(ast, Ident("x"), Tuple(expand(Term("x")).toAst))
+      import io.getquill.norm.BetaReduction
+
+      val expanded = expand(Term("x"))
+      
+
+      AMap(ast, Ident("x"), Tuple(expanded.toAst))
     }
   }
 

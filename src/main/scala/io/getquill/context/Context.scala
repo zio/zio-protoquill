@@ -59,7 +59,10 @@ extends EncodingDsl
         // TODO Implicit summoning error
         case expander: Expander[T] => expander
       }
+
+    println("Before Expansion: " + ast)
     val expandedAst = expander.expandAst(ast)
+    println("After Expansion: " + expandedAst)
 
     val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
     val queryString = stmt.toString
