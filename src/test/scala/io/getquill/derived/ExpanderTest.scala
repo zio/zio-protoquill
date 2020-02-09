@@ -20,7 +20,7 @@ class ExpanderTest {
     assertEquals( "List(x.a, x.b.i, x.b.l)", exp.expand(Term("x")).toAst.toString )
   }
 
-  @Test def singleNestedOptional(): Unit = {//hello
+  @Test def singleNestedOptional(): Unit = {
     case class Nested(i: Int) derives Expander
     case class Entity(a: Option[Nested]) derives Expander
     val exp = summon[Expander[Entity]]
