@@ -27,18 +27,15 @@ object Eq {
       def eqv(x: T, y: T): Boolean = body(x, y)
     }
 
-  def summonAll[T](t: Type[T])(given qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
-    //case '[String *: $tpes] => '{ summon[Eq[String]] }  :: summonAll(tpes)
-    //case '[Int *: $tpes]    => '{ summon[Eq[Int]] }     :: summonAll(tpes)
-
-    case '[$tpe *: $tpes] if (summonExpr(given '[Eq[$tpe]]).isDefined) => 
-      val theEq = summonExpr(given '[Eq[$tpe]]).get
-      theEq :: summonAll(tpes)
-      //'{ summon[Eq[$tpe]] } :: summonAll(tpes)
-
-    //case '[$tpe *: $tpes]   => derived(given tpe, qctx) :: summonAll(tpes)
-    case '[Unit] => Nil
-  }
+  def summonAll[T](t: Type[T])(given qctx: QuoteContext): List[Expr[Eq[_]]] = 
+    // TODO Make a PR proposing this change
+    t match {
+      case '[$tpe *: $tpes] => 
+        summonExpr(given '[Eq[$tpe]]) match {
+          case Some(value) => value :: summonAll(tpes)
+        }
+      case '[Unit] => Nil
+    }
 
   given derived[T: Type](given qctx: QuoteContext): Expr[Eq[T]] = {
     import qctx.tasty.{_, given}
