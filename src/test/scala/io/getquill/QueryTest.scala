@@ -2,11 +2,13 @@ package io.getquill
 
 import scala.language.implicitConversions
 import miniquill.quoter.QuoteDsl._
+import miniquill.quoter.Quoted
 import io.getquill._
+import io.getquill.ast._
 import org.junit.Test
 import org.junit.Assert._
 
-class QueryTest {
+class QueryTest { //hello
 
   // TODO Need to test 3-level injection etc...
   case class Address(street:String, zip:Int) extends Embedded
@@ -70,16 +72,27 @@ class QueryTest {
   @Test
   def personToAddressMapRuntime(): Unit = {
     {
-      println("***************** peopleRuntime ***************")
-      printer.lnf(peopleRuntime)
-      println("***************** addressesRuntime ***************")
-      printer.lnf(addressesRuntime)
+      assertTrue(
+        peopleRuntime match { 
+          case Quoted(Entity("Person", List()), ()) => true 
+          case _ => false
+        } 
+      )
+      
+      assertTrue(
+        addressesRuntime match { 
+          case Quoted(Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "address")), ()) => true
+          case _ => false
+        }
+      )
+
 
       import ctx._
-      println("***************** Expanded ***************")
-      printer.lnf(expandAst(addressesRuntime))
-
-      assertEquals("""querySchema("Person").map(p => (p.address.street, p.address.zip))""", run(addressesRuntime).string)
+      assertTrue(
+        run(addressesRuntime).string.matches(
+          """QuotationTag\([a-zA-Z0-9-]+?\).map\(p => \(p.address.street, p.address.zip\)\)"""
+        )
+      )
     }
     // {
     //   import sqlCtx._

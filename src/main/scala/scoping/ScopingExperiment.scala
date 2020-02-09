@@ -15,8 +15,8 @@ class OuterScoped extends InnerScoped {
 
 object OuterScoped {
   def outerCallerInfoImpl(i: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
-    import qctx.tasty.{_, given}
-    printer.ln(i.underlyingArgument.unseal)
+    import qctx.tasty.{_, given _}
+    printer.ln(i.unseal.underlyingArgument)
     i
   }
 }

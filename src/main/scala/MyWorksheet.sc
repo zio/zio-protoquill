@@ -32,7 +32,7 @@ import scala.quoted.{given, _}
 
 inline def typeInfo(stuff: Any): Any = ${ typeInfoImpl('stuff) }
 def typeInfoImpl(stuff: Expr[Any])(given qctx: QuoteContext) = {
-  import qctx.tasty.{_, given}
+  import qctx.tasty.{_, given _}
   
   val v = stuff.unseal match {
     case Literal(value) => println(value)

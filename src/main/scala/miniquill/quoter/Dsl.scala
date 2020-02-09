@@ -44,7 +44,7 @@ object QuoteDsl {
 
   
   def extractLifts(input: Expr[Any])(given qctx: QuoteContext): Expr[Tuple] = {
-    import qctx.tasty.{Type => TType, _, given}
+    import qctx.tasty.{Type => TType, _, given _}
     import scala.collection.mutable.ArrayBuffer
     import scala.quoted.util.ExprMap
 
@@ -57,8 +57,7 @@ object QuoteDsl {
     val buff: ArrayBuffer[(String, Expr[Any])] = ArrayBuffer.empty
     val accum = new ExprMap {
       def transform[T](expr: Expr[T])(given qctx: QuoteContext, tpe: quoted.Type[T]): Expr[T] = {
-        println("=================================== Inside Transform ===========================")
-        printer.lnf(expr.unseal)
+
         expr match {
           // TODO block foldOver in this case?
           // NOTE that using this kind of pattern match, lifts are matched for both compile and run times
@@ -88,18 +87,17 @@ object QuoteDsl {
 
           //println("=================================== Match Other ===========================")
           case other =>
-            transformChildren(expr)
+            expr
+            //transformChildren(expr)
         }
         // Need this or "did not conform to type: Nothing*" error can occur
         //transformChildren[T](expr)
 
-        // if (!expr.isInstanceOf[Expr[Expr[Any]]]) { // something tries to go to 2-levels of expression which causes crashes?
-        //   println("=================================== Getting Childern ===========================")
-        //   transformChildren(expr)
-        // } else {
-        //   println("=================================== Skipping Childern ===========================")
-        //   expr
-        // }
+        if (!expr.isInstanceOf[Expr[Expr[Any]]]) { // something tries to go to 2-levels of expression which causes crashes?
+          transformChildren(expr)
+        } else {
+          expr
+        }
       }
     }
 
@@ -122,9 +120,9 @@ object QuoteDsl {
     //       foldOverTree(terms, tree)
     //   }
     // }
-    //val vases = accum.foldTree(ArrayBuffer.empty, input.underlyingArgument.unseal)
+    //val vases = accum.foldTree(ArrayBuffer.empty, input.unseal.underlyingArgument)
 
-    accum.transform(input.underlyingArgument) // check if really need underlyingArgument
+    accum.transform(input) // check if really need underlyingArgument
 
     val vasesTuple = 
       buff
@@ -132,7 +130,7 @@ object QuoteDsl {
         .map(_._2)
         .foldRight('{ (): Tuple })((elem, term) => '{ (${elem} *: ${term}) })
 
-    //printer.ln("=========== Found Vases =========\n" + vasesTuple.underlyingArgument.unseal.show)
+    //printer.ln("=========== Found Vases =========\n" + vasesTuple.unseal.underlyingArgument.show)
 
     vasesTuple
   }
@@ -156,15 +154,16 @@ object QuoteDsl {
 
   inline def query[T]: EntityQuery[T] = new EntityQuery
 
-  inline def quote[T](body: =>T): Quoted[T] = ${ quoteImpl[T]('body) }
+  inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ quoteImpl[T]('bodyExpr) }
 
-  def quoteImpl[T: Type](body: Expr[T])(given qctx: QuoteContext): Expr[Quoted[T]] = {
-    import qctx.tasty.{_, given}
+  def quoteImpl[T: Type](bodyExpr: Expr[T])(given qctx: QuoteContext): Expr[Quoted[T]] = {
+    import qctx.tasty.{_, given _}
+    val body = bodyExpr.unseal.underlyingArgument.seal
 
     // TODo add an error if body cannot be parsed
     val ast = parserFactory(qctx).apply(body)
 
-    println(ast)
+    println("Ast Is: " + ast)
 
     // TODO Add an error if the lifting cannot be found
     val reifiedAst = lifterFactory(qctx)(ast)
@@ -195,7 +194,7 @@ object QuoteDsl {
   // }
 
   // TODO Should also probably name a method for this so don't need to enable explicit conversion
-  inline implicit def unquote[T](quoted: =>Quoted[T]): T = ${ unquoteImpl[T]('quoted) }
+  inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ unquoteImpl[T]('quoted) }
   def unquoteImpl[T: Type](quoted: Expr[Quoted[T]])(given qctx: QuoteContext): Expr[T] = {
     '{
       QuotationVase[T](${quoted}, ${Expr(java.util.UUID.randomUUID().toString)}).unquote

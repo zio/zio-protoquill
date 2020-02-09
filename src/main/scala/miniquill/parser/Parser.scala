@@ -5,11 +5,10 @@ import io.getquill.ast.{Ident => Idnt, Constant => Const, Query => Qry, _}
 import miniquill.quoter._
 import scala.quoted._
 import scala.annotation.StaticAnnotation
-import printer.AstPrinter
 import scala.deriving._
 
 class QuotationParser(given qctx: QuoteContext) {
-  import qctx.tasty.{_, given}
+  import qctx.tasty.{_, given _}
   
   // TODO Refactor out into a trait?
   private object Unseal {
@@ -18,7 +17,7 @@ class QuotationParser(given qctx: QuoteContext) {
     }
   }
 
-  import qctx.tasty._
+  import qctx.tasty.{_, given _}
   import scala.quoted.matching.{Const => Constant} //hello
 
   private object TypedMatroshka {
@@ -35,7 +34,7 @@ class QuotationParser(given qctx: QuoteContext) {
     }
   }
 
-  protected object MatchQuotedInnerTree {
+  protected object `Quoted.apply` {
     def unapply(expr: Expr[Any]): Option[Expr[Ast]] = expr match {
       case '{ Quoted.apply[$qt]($ast, $v) } => 
         //println("********************** MATCHED VASE INNER TREE **********************")
@@ -49,7 +48,7 @@ class QuotationParser(given qctx: QuoteContext) {
     }
   }
 
-  protected object MatchVaseApply {
+  protected object `QuotationVase.apply` {
     def unapply(expr: Expr[Any]) = expr match {
       case vase @ '{ QuotationVase.apply[$qt]($quotation, ${scala.quoted.matching.Const(uid: String)}) } => 
         //println("********************** MATCHED VASE APPLY **********************")
@@ -62,7 +61,7 @@ class QuotationParser(given qctx: QuoteContext) {
   // Match the QuotationVase(...).unquote values which are tacked on to every
   // child-quote (inside of a parent quote) when the 'unquote' function (i.e macro)
   // is applied.
-  protected object MatchQuotationUnquote {
+  protected object `QuotationVase.unquote` {
     def unapply(expr: Expr[Any]) = expr match {
       // When a QuotationVase is embedded into an ast
       case '{ (${quotationVase}: QuotationVase[$tt]).unquote } => Some(quotationVase)
@@ -77,15 +76,15 @@ class QuotationParser(given qctx: QuoteContext) {
         //   println("******************** Runtime: Match Quotation Ref ********************")
         //   printer.lnf((tree.unseal, uuid))
         //   Some((tree, uuid))
-        case MatchQuotationUnquote(innards) =>
-          println("******************** Runtime: Match Unquote ********************")
-          printer.lnf(innards.unseal)
+        case `QuotationVase.unquote`(innards) =>
+          //println("******************** Runtime: Match Unquote ********************")
+          //printer.lnf(innards.unseal)
           unapply(innards)
         // sometimes there are multiple levels of vases when references are spliced,
         // we should only care about the innermost one
-        case MatchVaseApply(_, uuid, vase) =>
-          println("******************** Runtime: Vase Apply ********************")
-          printer.lnf(uuid, vase)
+        case `QuotationVase.apply`(_, uuid, vase) =>
+          //println("******************** Runtime: Vase Apply ********************")
+          //printer.lnf(uuid, vase)
           Some((vase, uuid))
         case _ => None
       }
@@ -94,7 +93,7 @@ class QuotationParser(given qctx: QuoteContext) {
   object MatchInlineQuotation {
     def unapply(expr: Expr[Any]): Option[(Expr[Ast], String)] =
       expr match {
-        case MatchQuotationUnquote(MatchVaseApply(MatchQuotedInnerTree(astTree), uuid, _)) =>
+        case `QuotationVase.unquote`(`QuotationVase.apply`(`Quoted.apply`(astTree), uuid, _)) =>
           Some((astTree, uuid))
         case _ => None
       }
@@ -103,7 +102,6 @@ class QuotationParser(given qctx: QuoteContext) {
 
 class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
   import qctx.tasty.{Type => TType, _, given}
-  import printer.ContextAstPrinter._
 
   val unlift = new Unlifter()
   val quotationParser = new QuotationParser
@@ -154,18 +152,6 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
 
 
   def apply(in: Expr[_]): Ast = {
-    printer.ln("%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% WHOLE TREE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-    printer.ln(in.unseal.underlyingArgument)
-    
-    // in.unseal.underlyingArgument.seal match {
-    //   //case vv @ '{ (($tree:Quoted[$t]).unquote): $at } =>
-
-    //   case vv @ Unseal(Typed( Seal('{ ($tree:Quoted[$t]).unquote } ), tpe)) =>
-    //     println("***** NEW Case Unquote Selector: " + AstPrinter().apply(vv.unseal))
-        
-    //   case _ => println("********* no k match **********")
-    // }
-
     astParser(in.unseal.underlyingArgument.seal)
   }
 
@@ -175,7 +161,6 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
   def astParser: PartialFunction[Expr[_], Ast] = {
     // Needs to be first: Skip through type ascriptions
     case Unseal(TypedMatroshka(tree)) =>
-      println("Going into: " + printer.ln(tree))
       astParser(tree.seal)
 
     // Needs to be somewhere in the beginning so 'value' will not be parsed as a functiona-apply
@@ -186,20 +171,22 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     //case Unseal(Apply(TypeApply(Select(Ident("ScalarValueVase"), "apply"), List(Inferred())), List(scalaTree, Literal(Constant(uid: String))))) =>
     //  ScalarValueTag(uid)
 
-    case MatchRuntimeQuotation(tree, uid) =>
-      QuotationTag(uid)
-
     case MatchInlineQuotation(astTree, uid) =>
       unlift(astTree)
 
+    // MUST come after the MatchInlineQuotation because it matches
+    // the same kind of statement
+    case MatchRuntimeQuotation(tree, uid) =>
+      QuotationTag(uid)
+
     case Unseal(Inlined(_, _, v)) =>
-      println("Case Inlined")
+      //println("Case Inlined")
       //astParser(v.seal.cast[T]) // With method-apply can't rely on it always being T?
       astParser(v.seal)
 
       // TODO Need to figure how how to do with other datatypes
     case Unseal(Literal(Constant(v: Double))) => 
-      println("Case Literal Constant")
+      //println("Case Literal Constant")
       Const(v)
     
     case 
@@ -212,24 +199,14 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
         )
       )
       =>
-      println("Typed Apply of EntityQuery")
       val name: String = targ.tpe.classSymbol.get.name
       Entity(name, List())
 
 
     case vv @ '{ ($q:Query[$qt]).map[$mt](${Unseal(Lambda1(ident, body))}) } => 
       Map(astParser(q), Idnt(ident), astParser(body))
-
-    //       quotation match {
-    //         case '{ Quoted[$qt].apply($ast, $v) } => unlift(ast)
-    //         case other => 
-    //           println("))))))))))))))))))) Match not found (((((((((((((((")
-    //           printer.ln(other.unseal)
-    //           throw new RuntimeException("Cannot match expression")
-    //       }
-    //   }
       
-      
+  
 
     // // If the inner quoted is a runtime value
     // case Unseal(vv @ Select(Ident(tree), "unquote")) =>
@@ -258,28 +235,26 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     //   }
 
     case Unseal(Apply(Select(Seal(left), "*"), Seal(right) :: Nil)) =>
-      println("Apply Select")
+      //println("Apply Select")
       BinaryOperation(astParser(left), NumericOperator.*, astParser(right))
 
     case Unseal(value @ Select(Seal(prefix), member)) =>
-      println(s"Select ${value.show}")
+      //println(s"Select ${value.show}")
       if (value.tpe <:< '[io.getquill.Embedded].unseal.tpe) {
-        println("Visibility: Hidden")
         Property.Opinionated(astParser(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
       } else {
-        println("Visibility: Visible")
         Property(astParser(prefix), member)
       }
 
     case Unseal(Ident(x)) => 
-      println("Ident")
+      //println("Ident")
       Idnt(x)
 
 
 
   // TODO define this a last-resort printing function inside the parser
   case Unseal(t) =>
-    println("=============== Parsing Error ================\n" + AstPrinter().apply(t))
+    println("=============== Parsing Error ================\n" + printer.ln(t))
     println("=============== Extracted ================\n" + t.showExtractors)
     ???
     //println(t)

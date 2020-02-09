@@ -26,7 +26,7 @@ object MacroContext {
   //   quoted: Expr[Quoted[Query[T]]],
   //   ctx: Expr[Context[D, N]]
   // )(given qctx: QuoteContext): Expr[Result] = {
-  //   import qctx.tasty.{given, _}
+  //   import qctx.tasty.{given _, _}
 
   //   val (ast, lifts) =
   //     quoted match {

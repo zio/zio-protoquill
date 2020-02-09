@@ -11,11 +11,11 @@ object PulloutExperiment {
 
   inline def printTree[T](value: T):T = ${ printTreeImpl('value) }
   def printTreeImpl[T: Type](value: Expr[T])(given qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty.{given, _}
-    //printer.ln(value.underlyingArgument.unseal)
+    import qctx.tasty.{given _, _}
+    //printer.ln(value.unseal.underlyingArgument)
     printer.ln("===================== printTree ================\n")
-    printer.ln(value.underlyingArgument.unseal)
-    println(value.underlyingArgument.unseal.showExtractors)
+    printer.ln(value.unseal.underlyingArgument)
+    println(value.unseal.underlyingArgument.showExtractors)
     value
   }
   
@@ -32,7 +32,7 @@ object PulloutExperiment {
 
   inline def parseTuple(input: Tuple): List[LookInside[_]] = ${parseTupleImpl('input)}
   def parseTupleImpl(input: Expr[Tuple])(given qctx: QuoteContext): Expr[List[LookInside[_]]] = {
-    import qctx.tasty.{given, _}
+    import qctx.tasty.{given _, _}
     import scala.collection.mutable.ArrayBuffer
 
     // Can also expore using TreeAccumulator to find LookInside instances
@@ -58,11 +58,11 @@ object PulloutExperiment {
 
   inline def summonExpressers(input: Tuple): List[(String, String)] = ${summonExpressersImpl('input)}
   def summonExpressersImpl(input: Expr[Tuple])(given qctx: QuoteContext): Expr[List[(String, String)]] = {
-    import qctx.tasty.{given, _}
+    import qctx.tasty.{given _, _}
     import scala.collection.mutable.ArrayBuffer
 
     println("===================== Summon Expressers Value =====================")
-    println(input.underlyingArgument.show)
+    println(input.unseal.underlyingArgument.show)
   
     val accum = new TreeAccumulator[ArrayBuffer[Term]] {
       def foldTree(terms: ArrayBuffer[Term], tree: Tree)(implicit ctx: Context) = tree match {
@@ -77,7 +77,7 @@ object PulloutExperiment {
 
     
 
-    val lifts = accum.foldTree(ArrayBuffer.empty, input.underlyingArgument.unseal).map(_.seal)
+    val lifts = accum.foldTree(ArrayBuffer.empty, input.unseal.underlyingArgument).map(_.seal)
     
     val identifiedLifts =
       lifts.map {
@@ -98,7 +98,7 @@ object PulloutExperiment {
                 case Some(expresserExpr) => '{ $expresserExpr.express($value) }
                 case None => throw new RuntimeException(s"Could not find expresser for ${expressType.unseal.show}")
               }
-            case other => throw new RuntimeException(s"The term ${other.underlyingArgument.show} is not a LookInside")
+            case other => throw new RuntimeException(s"The term ${other.unseal.underlyingArgument.show} is not a LookInside")
           }
         '{ (${Expr(k)}, $encoded) }
       }
@@ -109,18 +109,18 @@ object PulloutExperiment {
 
   inline def addElementToTuple[T](tup: Tuple, elem: T): Tuple = ${addElementToTupleImpl('tup, 'elem)}
   def addElementToTupleImpl[T: Type](tup: Expr[Tuple], elem: Expr[T])(given qctx: QuoteContext): Expr[Tuple] = {
-    import qctx.tasty.{given, _}
+    import qctx.tasty.{given _, _}
     '{ (${elem} *: ${tup}) }
   }
 
   inline def pullout(input: Any): Tuple = ${pulloutImpl('input)}
   def pulloutImpl(input: Expr[Any])(given qctx: QuoteContext): Expr[Tuple] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given _}
     import qctx.tasty.given
     //import qctx.tasty.given_IsInstanceOf_Term
     import scala.collection.mutable.ArrayBuffer
 
-    println(input.underlyingArgument.show)
+    println(input.unseal.underlyingArgument.show)
 
     
     val accum = new TreeAccumulator[ArrayBuffer[Term]] {
@@ -134,17 +134,17 @@ object PulloutExperiment {
       }
     }
 
-    //printer.ln(input.underlyingArgument.unseal)
-    //printer.ln(input.underlyingArgument.unseal.showExtractors)
+    //printer.ln(input.unseal.underlyingArgument)
+    //printer.ln(input.unseal.underlyingArgument.showExtractors)
 
-    val instances = accum.foldTree(ArrayBuffer.empty, input.underlyingArgument.unseal)
+    val instances = accum.foldTree(ArrayBuffer.empty, input.unseal.underlyingArgument)
 
     instances.zipWithIndex.map { case (v, i) => printer.ln(s"Element: ($i) $v") }
 
     val ret =
      instances.foldRight('{ (): Tuple })((elem, term) => '{ ( ${elem.seal} *: ${term} ) })
 
-    printer.ln("=========== Pullout Value =========\n" + ret.underlyingArgument.unseal.show)
+    printer.ln("=========== Pullout Value =========\n" + ret.unseal.underlyingArgument.show)
 
     ret
   }

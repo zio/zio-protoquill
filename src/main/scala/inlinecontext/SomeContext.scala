@@ -25,7 +25,7 @@ object MyContext {
   def summonAndReturnImpl[T](mc: Expr[MyContextTrait[T]])(given qctx: QuoteContext, t: Type[T]): Expr[String] = {
     val qctx = summon[QuoteContext]
     val t = summon[Type[T]]
-    import qctx.tasty.{given, _}
+    import qctx.tasty.{given _, _}
     val stuff = summonExpr[Stuff[T]] match {
       case Some(value) => value
     }

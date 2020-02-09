@@ -10,8 +10,8 @@ object MacroExperiment {
 
   inline def printTree(tree: Any): Any = ${ printTreeImpl('tree) }
   def printTreeImpl(tree: Expr[Any])(given qctx: QuoteContext): Expr[Any] = {
-    import qctx.tasty.{given, _}
-    printer.ln(tree.underlyingArgument.unseal)
+    import qctx.tasty.{given _, _}
+    printer.ln(tree.unseal.underlyingArgument)
     tree
   }
 

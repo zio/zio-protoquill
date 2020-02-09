@@ -17,6 +17,15 @@ trait Expander[T] {
 }
 
 object Expander {
+  import miniquill.dsl.GenericDecoder
+
+  // If there is a decoder for it, it's a leaf node
+  given decodeableExpander[T](using GenericDecoder[_, T]) as Expander[T] =
+    new Expander[T] {
+      def expand(node: Term): Term = node
+      def expandAst(ast: Ast): Ast  = ast
+    }
+
   case class Term(name: String, children: List[Term] = List(), optional: Boolean = false) {
     def withChildren(children: List[Term]) = this.copy(children = children)
     def toAst = Term.toAst(this)

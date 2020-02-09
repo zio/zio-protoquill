@@ -8,7 +8,7 @@ object Lifter {
 }
 
 class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
-  import qctx.tasty._
+  import qctx.tasty.{_, given _}
   import Lifter._
 
   def apply(ast: Ast): Expr[Ast] = liftAst(ast)

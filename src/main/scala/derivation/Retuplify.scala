@@ -9,9 +9,9 @@ import scala.compiletime.{erasedValue, summonFrom}
 object Retuplify {
   inline def retuplify[T](tuple: Tuple, newValue: T): Tuple = ${ retuplifyImpl('tuple, 'newValue) }
   def retuplifyImpl[T:Type](tuple: Expr[Tuple], newValue: Expr[T])(given qctx: QuoteContext): Expr[Tuple] = {
-    import qctx.tasty._
+    import qctx.tasty.{_, given _}
   
-    printer.ln(tuple.underlyingArgument.unseal)
+    printer.ln(tuple.unseal.underlyingArgument)
 
     // tuple match {
     //   case '{ ($elem *: ($elems1: $tpe)) } => println(s"ELEM: $elem ELEMS: $elems1")
@@ -24,7 +24,7 @@ object Retuplify {
 object ChangeFoosToBars {
   inline def changeFoos(block: =>String): String = ${ changeFoosImpl('block) }
   def changeFoosImpl(block: Expr[String])(given qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty.{_, given}
+    import qctx.tasty.{_, given _}
     //printer.ln(block.unseal)
 
     object Unseal {
