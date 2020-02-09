@@ -28,9 +28,15 @@ object Eq {
     }
 
   def summonAll[T](t: Type[T])(given qctx: QuoteContext): List[Expr[Eq[_]]] = t match {
-    case '[String *: $tpes] => '{ summon[Eq[String]] }  :: summonAll(tpes)
-    case '[Int *: $tpes]    => '{ summon[Eq[Int]] }     :: summonAll(tpes)
-    case '[$tpe *: $tpes]   => derived(given tpe, qctx) :: summonAll(tpes)
+    //case '[String *: $tpes] => '{ summon[Eq[String]] }  :: summonAll(tpes)
+    //case '[Int *: $tpes]    => '{ summon[Eq[Int]] }     :: summonAll(tpes)
+
+    case '[$tpe *: $tpes] if (summonExpr(given '[Eq[$tpe]]).isDefined) => 
+      val theEq = summonExpr(given '[Eq[$tpe]]).get
+      theEq :: summonAll(tpes)
+      //'{ summon[Eq[$tpe]] } :: summonAll(tpes)
+
+    //case '[$tpe *: $tpes]   => derived(given tpe, qctx) :: summonAll(tpes)
     case '[Unit] => Nil
   }
 
