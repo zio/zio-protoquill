@@ -17,9 +17,15 @@ class ExpanderTest {
     case class Nested(i: Int, l: Long) derives Expander
     case class Entity(a: String, b: Nested) derives Expander
     val exp = summon[Expander[Entity]]
-    println( exp.expand(Term("x")) )
+    assertEquals( "List(x.a, x.b.i, x.b.l)", exp.expand(Term("x")).toAst.toString )
+  }
 
-    //assertEquals(exp.expand(Ident("x")).toString, "List(x.a, x.b.i, x.b.l)")
+  @Test def singleNestedOptional(): Unit = {//hello
+    case class Nested(i: Int) derives Expander
+    case class Entity(a: Option[Nested]) derives Expander
+    val exp = summon[Expander[Entity]]
+    val expansion = exp.expand(Term("x"))
+    assertEquals( "List(x.a.map(v => v.i))", expansion.toAst.toString )
   }
 
   @Test def nestedOptional(): Unit = {

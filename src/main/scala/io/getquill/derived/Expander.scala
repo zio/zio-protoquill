@@ -50,7 +50,9 @@ object Expander {
           for {
             elem <- list
             newAst <- toAst(elem, idV)
-          } yield Map(Ident(name), idV, newAst)
+          } yield Map(
+            Property.Opinionated(parent, name, Renameable.neutral, Hidden), idV, newAst
+          )
       }
 
     def toAst(node: Term): List[Ast] = {
