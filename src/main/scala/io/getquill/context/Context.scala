@@ -19,6 +19,7 @@ import miniquill.context.mirror.MirrorDecoders
 import miniquill.context.mirror.Row
 import miniquill.dsl.GenericDecoder
 import io.getquill.ast.Ast
+import scala.quoted.{Type => TType, _}
 
 // TODO Non Portable
 trait Context[Dialect <: Idiom, Naming <: NamingStrategy] 
@@ -110,6 +111,56 @@ extends EncodingDsl
   //     case value :: Nil => value
   //     case other        => fail(s"Expected a single result but got $other")
   //   }
+
+  // Note, we shouldn't need to run the parser inside here since implicits
+  // should for something.quoted for every 'something' that would be passed inside
+  // that way there's a quotation in the context that has already done the parsing.
+
+  // inline def grabAst[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] =
+  //   ${ Context.grabAstImpl('quoted, 'this) }
+
+  inline def grabAst[T](inline quoted: Quoted[Query[T]]): Quoted[Query[T]] =
+    ${ Context.grabAstImpl('quoted, 'this) }
+}
+
+object Context {
+  import miniquill.parser._
+
+  // def grabAstImpl[T, ResultType](quoted: Expr[Quoted[Query[T]]], context: Context[_, _]): Expr[ResultType] = {
+
+
+  def parserFactory: (QuoteContext) => PartialFunction[Expr[_], Ast] = 
+    (qctx: QuoteContext) => new Parser(given qctx)
+
+  def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
+    (qctx: QuoteContext) => new Lifter(given qctx)  
+
+
+  // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
+  def grabAstImpl[
+    T, 
+    ResultType, 
+    D<:Idiom, 
+    N<:NamingStrategy
+  ](quoted: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]])(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Quoted[Query[T]]] = {
+    import qctx.tasty.{_, given _}
+
+    // TODO This should be a backup mechanism. Primary way to do this should be from ValueOfExpr
+    val namingStrategy = io.getquill.idiom.LoadNaming.static(namingType)
+    val dialect = io.getquill.util.LoadObject(dialectTpe)
+
+    val ast = parserFactory(qctx).apply(quoted)
+
+    println("Compile Time Ast Is: " + ast)
+
+    // TODO Add an error if the lifting cannot be found
+    val reifiedAst = lifterFactory(qctx)(ast)
+
+    //val lifts = extractLifts(quoted)
+
+
+    quoted
+  }
 }
 
 

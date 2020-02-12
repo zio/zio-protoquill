@@ -34,7 +34,7 @@ class QuotationParser(given qctx: QuoteContext) {
     }
   }
 
-  protected object `Quoted.apply` {
+  object `Quoted.apply` {
     def unapply(expr: Expr[Any]): Option[Expr[Ast]] = expr match {
       case '{ Quoted.apply[$qt]($ast, $v) } => 
         //println("********************** MATCHED VASE INNER TREE **********************")
@@ -100,6 +100,7 @@ class QuotationParser(given qctx: QuoteContext) {
   }
 }
 
+// TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
 class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
   import qctx.tasty.{Type => TType, _, given}
 
@@ -178,6 +179,9 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     // the same kind of statement
     case MatchRuntimeQuotation(tree, uid) =>
       QuotationTag(uid)
+
+    case `Quoted.apply`(ast) =>
+      unlift(ast)
 
     case Unseal(Inlined(_, _, v)) =>
       //println("Case Inlined")
