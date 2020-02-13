@@ -19,7 +19,7 @@ object LoadObject {
     import qctx.tasty.{Try => _, given, _}
     Try {
       val className = '[$tpe].unseal.tpe.classSymbol.get.fullName
-      val cls = Class.forName(className + "$")
+      val cls = Class.forName(`endWith$`(className))
       val field = cls.getField("MODULE$")
       field.get(cls).asInstanceOf[T]
     }

@@ -1,11 +1,9 @@
 package io.getquill
 
 import miniquill.context.mirror._
-import io.getquill.idiom.Idiom
-import io.getquill.NamingStrategy
 import io.getquill.context._
 
-class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Idiom, val naming: Naming)
+class MirrorContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy](val idiom: Dialect, val naming: Naming)
 extends Context[Dialect, Naming] 
 with MirrorDecoders {
   override type Result[T] = T

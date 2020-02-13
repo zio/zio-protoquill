@@ -7,13 +7,12 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ NamingStrategy, ReturnAction }
+import io.getquill.{ ReturnAction }
 import miniquill.quoter.Query
 
 import miniquill.dsl.EncodingDsl
 import miniquill.quoter.Quoted
 import miniquill.quoter.Query
-import io.getquill.idiom.Idiom
 import io.getquill.derived._
 import miniquill.context.mirror.MirrorDecoders
 import miniquill.context.mirror.Row
@@ -21,8 +20,10 @@ import miniquill.dsl.GenericDecoder
 import io.getquill.ast.Ast
 import scala.quoted.{Type => TType, _}
 
+import io.getquill._
+
 // TODO Non Portable
-trait Context[Dialect <: Idiom, Naming <: NamingStrategy] 
+trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] 
 extends EncodingDsl
 //  extends Closeable
 //  with CoreDsl 
@@ -46,7 +47,7 @@ extends EncodingDsl
 
   //def probe(statement: String): Try[_]
 
-  def idiom: Idiom
+  def idiom: Dialect
   def naming: Naming
 
   // TODO Need to have some implicits to auto-convert stuff inside
@@ -70,7 +71,6 @@ extends EncodingDsl
 
   inline def run[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val (expandedAst, lifts) = expandAst(quoted)
-
     val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
     val queryString = stmt.toString
     // summon a decoder and a expander (as well as an encoder) all three should be provided by the context
@@ -80,8 +80,44 @@ extends EncodingDsl
         case decoder: Decoder[T] => decoder
       }
     val extractor = (r: ResultRow) => decoder.apply(1, r)
-    
     this.executeQuery(queryString, extractor)
+  }
+
+  inline def runAdv[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
+
+    val staticQuery = translateStatic[T](quoted)
+    val decoder =
+      summonFrom {
+        case decoder: Decoder[T] => decoder
+      }
+    val extractor = (r: ResultRow) => decoder.apply(1, r)
+    this.executeQuery(staticQuery, extractor)
+
+    // val staticQuery = translateStatic[T](quoted)
+    // inline if (true == true) { // TODO Find a way to generate the static query or not and then check (somehow use an optional there?)
+
+    //   val decoder =
+    //     summonFrom {
+    //       case decoder: Decoder[T] => decoder
+    //     }
+    //   val extractor = (r: ResultRow) => decoder.apply(1, r)
+    //   this.executeQuery(staticQuery, extractor)
+
+    // } else {
+
+    //   run(quoted)
+    //   // val (expandedAst, lifts) = expandAst(quoted)
+    //   // val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
+    //   // val queryString = stmt.toString
+    //   // // summon a decoder and a expander (as well as an encoder) all three should be provided by the context
+    //   // val decoder =
+    //   //   summonFrom {
+    //   //     // TODO Implicit summoning error
+    //   //     case decoder: Decoder[T] => decoder
+    //   //   }
+    //   // val extractor = (r: ResultRow) => decoder.apply(1, r)
+    //   // this.executeQuery(queryString, extractor)
+    // }
   }
 
   //inline def run[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = ???
@@ -119,12 +155,16 @@ extends EncodingDsl
   // inline def grabAst[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] =
   //   ${ Context.grabAstImpl('quoted, 'this) }
 
-  inline def grabAst[T](inline quoted: Quoted[Query[T]]): Quoted[Query[T]] =
-    ${ Context.grabAstImpl('quoted, 'this) }
+  
+
+  inline def translateStatic[T](inline quoted: Quoted[Query[T]]): String =
+    ${ Context.translateStaticImpl[T, Dialect, Naming]('quoted, 'this) }
 }
 
 object Context {
   import miniquill.parser._
+  import scala.quoted._ // summonExpr is actually from here
+  import scala.quoted.matching._ // ... or from here
 
   // def grabAstImpl[T, ResultType](quoted: Expr[Quoted[Query[T]]], context: Context[_, _]): Expr[ResultType] = {
 
@@ -137,29 +177,35 @@ object Context {
 
 
   // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
-  def grabAstImpl[
+  def translateStaticImpl[
     T, 
-    ResultType, 
-    D<:Idiom, 
-    N<:NamingStrategy
-  ](quoted: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]])(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Quoted[Query[T]]] = {
+    D<:io.getquill.idiom.Idiom, 
+    N<:io.getquill.NamingStrategy
+  ](quoted: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]])(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[String] = {
     import qctx.tasty.{_, given _}
 
     // TODO This should be a backup mechanism. Primary way to do this should be from ValueOfExpr
-    val namingStrategy = io.getquill.idiom.LoadNaming.static(namingType)
-    val dialect = io.getquill.util.LoadObject(dialectTpe)
+    val namingStrategy = io.getquill.idiom.LoadNaming.static(namingType).get
+    val idiom = io.getquill.util.LoadObject(dialectTpe).get
 
     val ast = parserFactory(qctx).apply(quoted)
 
     println("Compile Time Ast Is: " + ast)
 
+    // TODO Check to see if there is any QuotationVase in the AST
+
     // TODO Add an error if the lifting cannot be found
     val reifiedAst = lifterFactory(qctx)(ast)
 
-    //val lifts = extractLifts(quoted)
+    // TODO Need expander macro implementation for expanded ast
+    // val ast = macroExpander.expand(ast)
 
+    val (outputAst, stmt) = idiom.translate(ast)(given namingStrategy)
+    val sql = stmt.toString
 
-    quoted
+    println("Compile Time Query Is: " + sql)
+
+    Expr(sql)
   }
 }
 
