@@ -20,7 +20,7 @@ import miniquill.quoter.QuoteDsl._
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
   val output = runAdv(names) //hello
-  
+  println(output)
 }
 
 // @main def verticalTest() = {

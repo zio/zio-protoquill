@@ -85,39 +85,27 @@ extends EncodingDsl
 
   inline def runAdv[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
 
-    val staticQuery = translateStatic[T](quoted)
-    val decoder =
-      summonFrom {
-        case decoder: Decoder[T] => decoder
-      }
-    val extractor = (r: ResultRow) => decoder.apply(1, r)
-    this.executeQuery(staticQuery, extractor)
-
     // val staticQuery = translateStatic[T](quoted)
-    // inline if (true == true) { // TODO Find a way to generate the static query or not and then check (somehow use an optional there?)
+    // val decoder =
+    //   summonFrom {
+    //     case decoder: Decoder[T] => decoder
+    //   }
+    // val extractor = (r: ResultRow) => decoder.apply(1, r)
+    // this.executeQuery(staticQuery, extractor)
 
-    //   val decoder =
-    //     summonFrom {
-    //       case decoder: Decoder[T] => decoder
-    //     }
-    //   val extractor = (r: ResultRow) => decoder.apply(1, r)
-    //   this.executeQuery(staticQuery, extractor)
+    val staticQuery = translateStatic[T](quoted)
+    if (staticQuery.isDefined) { // TODO Find a way to generate the static query or not and then check (somehow use an optional there?)
 
-    // } else {
+      val decoder =
+        summonFrom {
+          case decoder: Decoder[T] => decoder
+        }
+      val extractor = (r: ResultRow) => decoder.apply(1, r)
+      this.executeQuery(staticQuery.get, extractor)
 
-    //   run(quoted)
-    //   // val (expandedAst, lifts) = expandAst(quoted)
-    //   // val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
-    //   // val queryString = stmt.toString
-    //   // // summon a decoder and a expander (as well as an encoder) all three should be provided by the context
-    //   // val decoder =
-    //   //   summonFrom {
-    //   //     // TODO Implicit summoning error
-    //   //     case decoder: Decoder[T] => decoder
-    //   //   }
-    //   // val extractor = (r: ResultRow) => decoder.apply(1, r)
-    //   // this.executeQuery(queryString, extractor)
-    // }
+    } else {
+      run(quoted)
+    }
   }
 
   //inline def run[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = ???
@@ -157,7 +145,7 @@ extends EncodingDsl
 
   
 
-  inline def translateStatic[T](inline quoted: Quoted[Query[T]]): String =
+  inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[String] =
     ${ Context.translateStaticImpl[T, Dialect, Naming]('quoted, 'this) }
 }
 
@@ -181,7 +169,7 @@ object Context {
     T, 
     D<:io.getquill.idiom.Idiom, 
     N<:io.getquill.NamingStrategy
-  ](quoted: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]])(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[String] = {
+  ](quoted: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]])(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Option[String]] = {
     import qctx.tasty.{_, given _}
 
     // TODO This should be a backup mechanism. Primary way to do this should be from ValueOfExpr
@@ -205,7 +193,12 @@ object Context {
 
     println("Compile Time Query Is: " + sql)
 
-    Expr(sql)
+    // TODO Return '{ None } if sql cannot be build (e.g. namingStrategy and idiom not loaded
+    // or if a quotationvase was found in the ast. Other things like idiom translation
+    // throwing an error should be during runtime) - also what about a missing decoder?
+    // need to make sure that that kind of error happens during compile time
+    // (also need to propagate the line number, talk to Li Houyi about that)
+    '{ Some(${Expr(sql)}) }
   }
 }
 
