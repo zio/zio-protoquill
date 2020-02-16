@@ -56,14 +56,14 @@ extends EncodingDsl
   inline def expandAst[T](quoted: Quoted[Query[T]]):(Ast, Tuple) = {
     val (ast, lifts) = (quoted.ast, quoted.lifts)
     
-    val expander =
-      summonFrom {
-        // TODO Implicit summoning error
-        case expander: Expander[T] => expander
-      }
+    // val expander =
+    //   summonFrom {
+    //     // TODO Implicit summoning error
+    //     case expander: Expander[T] => expander
+    //   }
 
     println("Before Expansion: " + ast)
-    val expandedAst = expander.expandAst(ast)
+    val expandedAst = Expander.runtime[T](ast)
     println("After Expansion: " + expandedAst)
 
     (expandedAst, lifts)
@@ -166,7 +166,7 @@ object Context {
 
   // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
   def translateStaticImpl[
-    T, 
+    T: Type, 
     D<:io.getquill.idiom.Idiom, 
     N<:io.getquill.NamingStrategy
   ](quoted: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]])(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Option[String]] = {
@@ -185,10 +185,9 @@ object Context {
     // TODO Add an error if the lifting cannot be found
     val reifiedAst = lifterFactory(qctx)(ast)
 
-    // TODO Need expander macro implementation for expanded ast
-    // val ast = macroExpander.expand(ast)
+    val exapndedAst = Expander.static[T](ast)
 
-    val (outputAst, stmt) = idiom.translate(ast)(given namingStrategy)
+    val (outputAst, stmt) = idiom.translate(exapndedAst)(given namingStrategy)
     val sql = stmt.toString
 
     println("Compile Time Query Is: " + sql)

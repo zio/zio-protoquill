@@ -10,22 +10,8 @@ import scala.deriving._
 import scala.quoted._
 import scala.quoted.matching._
 
-trait Expander[T] {
-  import Expander._
-
-  def expand(node: Term): Term
-  def expandAst(ast: Ast): Ast // TODO For leaf nodes this should be a no-op
-}
-
 object Expander {
   import miniquill.dsl.GenericDecoder
-
-  // If there is a decoder for it, it's a leaf node
-  given decodeableExpander[T](using GenericDecoder[_, T]) as Expander[T] =
-    new Expander[T] {
-      def expand(node: Term): Term = node
-      def expandAst(ast: Ast): Ast  = ast
-    }
 
   case class Term(name: String, children: List[Term] = List(), optional: Boolean = false) {
     def withChildren(children: List[Term]) = this.copy(children = children)
@@ -83,15 +69,6 @@ object Expander {
     }
   }
 
-
-
-  type ProductType[T <: Product] = T
-
-  inline def nestedExpand[T](node: Term): Term =
-    summonFrom {
-      case exp: Expander[T] => exp.expand(node)
-    }
-
   class TypeExtensions(given qctx: QuoteContext) { self =>
     import qctx.tasty.{Type => QType, given, _}
     
@@ -109,7 +86,7 @@ object Expander {
       tpe.unseal.tpe <:< '[Product].unseal.tpe
   }
 
-  def flattenMac[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(given qctx: QuoteContext): List[Term] = {
+  def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(given qctx: QuoteContext): List[Term] = {
     import qctx.tasty.{Type => QType, Term => QTerm, given, _}
     val ext = new TypeExtensions
     import ext._
@@ -123,91 +100,62 @@ object Expander {
     (fieldsTup, typesTup) match {
       case ('[$field *: $fields], '[Option[$tpe] *: $types]) if (tpe.isProduct) =>
         val childTerm = Term(field.constValue, optional = true)
-        base(childTerm)(given tpe) :: flattenMac(node, fields, types)
+        base(childTerm)(given tpe) :: flatten(node, fields, types)
 
       case ('[$field *: $fields], '[$tpe *: $types]) if (tpe.isProduct) =>
         val childTerm = Term(field.constValue)
-        base(childTerm)(given tpe) :: flattenMac(node, fields, types)
+        base(childTerm)(given tpe) :: flatten(node, fields, types)
 
       case ('[$field *: $fields], '[Option[$tpe] *: $types]) =>
         val childTerm = Term(field.constValue, optional = true)
-        childTerm :: flattenMac(node, fields, types)
+        childTerm :: flatten(node, fields, types)
 
       case ('[$field *: $fields], '[$tpe *: $types]) =>
         val childTerm = Term(field.constValue)
-        childTerm :: flattenMac(node, fields, types)
+        childTerm :: flatten(node, fields, types)
 
       case (_, '[Unit]) => Nil
     } 
   }
 
-  // TODO Do we need tail recursion? If so, add an accumulator list and only return the final product in the Nil case
-  inline def flatten[Fields <: Tuple, Types <: Tuple](node: Term): List[Term] = {
-    inline erasedValue[(Fields, Types)] match {
-
-      case (_: (field *: fields), _:(Option[ProductType[tpe]] *: types)) =>
-        val childTerm = Term(constValue[field].toString, optional = true)
-        nestedExpand[tpe](childTerm) :: flatten[fields, types](node)
-
-      case (_: (field *: fields), _:(ProductType[tpe] *: types)) =>
-        val childTerm = Term(constValue[field].toString)
-        nestedExpand[tpe](childTerm) :: flatten[fields, types](node)
-      
-      // Typically we don't care that leaf elements are optional but write the info anyway
-      case (_: (field *: fields), _: (Option[tpe] *: types)) =>
-        val childTerm = Term(constValue[field].toString, optional = true)
-        childTerm :: flatten[fields, types](node)
-
-      case (_: (field *: fields), _: (tpe *: types)) =>
-        val childTerm = Term(constValue[field].toString)
-        childTerm :: flatten[fields, types](node)
-
-      case _ => Nil
-    }
-  }
-
-
   def base[T](term: Term)(given tpe: Type[T])(given qctx: QuoteContext): Term = {
     import qctx.tasty.{Type => QType, Term => QTerm, _, given}
-    val ev: Expr[Mirror.Of[T]] = summonExpr(given '[Mirror.Of[$tpe]]).get
 
-    ev match {
-      case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = $elementLabels; type MirroredElemTypes = $elementTypes }} =>
-        val children = flattenMac(term, elementLabels, elementTypes)
-        term.withChildren(children)
-      
-    }
-  }
-
-  def derivedMacro[T](term: Term)(given qctx: QuoteContext, tpe: Type[T]): Term = {
-    base(term)(given tpe)
-  }
-
-  // TODO What if the outermost element is an option? Need to test that with the original Quill MetaDslSpec.
-  inline def derived[T]: Expander[T] = new Expander[T] {
-    def expand(node: Term): Term =
-      summonFrom {
-        case ev: Mirror.Of[T] =>
-          inline ev match {
-            // TODO What if root-term is optional
-            // TODO Special treatment for option
-            case pm: Mirror.ProductOf[T] => 
-              val children = flatten[pm.MirroredElemLabels, pm.MirroredElemTypes](node)
-              node.withChildren(children)
-          }
+    // if there is a decoder for the term, just return the term
+    summonExpr(given '[GenericDecoder[_, T]]) match {
+      case Some(decoder) => term
+      case None => {
+        // Otherwise, recursively summon fields
+        val ev: Expr[Mirror.Of[T]] = summonExpr(given '[Mirror.Of[$tpe]]).get
+        ev match {
+          case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = $elementLabels; type MirroredElemTypes = $elementTypes }} =>
+            val children = flatten(term, elementLabels, elementTypes)
+            term.withChildren(children) 
+        }
       }
-
-    def expandAst(ast: Ast): Ast = {
-      import io.getquill.ast.{Map => AMap, _}
-      import io.getquill.norm.BetaReduction
-
-      val expanded = expand(Term("x"))
-      
-
-      AMap(ast, Ident("x"), Tuple(expanded.toAst))
     }
   }
 
-  
+  import io.getquill.ast.{Map => AMap, _}
+  def static[T](ast: Ast)(given qctx: QuoteContext, tpe: Type[T]): AMap = {
+    val expanded = base[T](Term("x"))(given tpe)
+    AMap(ast, Ident("x"), Tuple(expanded.toAst))    
+  }
 
+  import miniquill.parser.Lifter
+  // TODO Load from implicit context?
+  def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
+    (qctx: QuoteContext) => new Lifter(given qctx)  
+
+  inline def runtime[T](ast: Ast): AMap = ${ runtimeImpl[T]('ast) }
+  def runtimeImpl[T](ast: Expr[Ast])(given qctx: QuoteContext, tpe: Type[T]): Expr[AMap] = {
+    val expanded = base[T](Term("x"))(given tpe)
+    val lifted = expanded.toAst.map(ast => lifterFactory(qctx).apply(ast))
+    // implicit def astLiftable: Liftable[Ast] = new Liftable {
+    //   def toExpr(ast: Ast) = lifterFactory(qctx).apply(ast)
+    // }
+    //val liftedTerms = expanded.toAst.map(term => lifterFactory(qctx).apply(term))
+    //val exprLiftedTerms = ExprSeq(liftedTerms)
+    '{ AMap($ast, Ident("x"), Tuple(${Expr.ofList(lifted)})) }
+  }
 }

@@ -57,7 +57,7 @@ object Labeled {
     }
   }
 
-  def derived[T](given qctx: QuoteContext, tpe: Type[T]): List[String] = {
+  def apply[T](given qctx: QuoteContext, tpe: Type[T]): List[String] = {
     base(given tpe)
   }
 }
@@ -65,6 +65,6 @@ object Labeled {
 object LabeledMacro {
   inline def label[T]: List[String] = ${ labelImpl[T] }
   def labelImpl[T: Type](given qctx: QuoteContext): Expr[List[String]] = {
-    Expr(Labeled.derived[T])
+    Expr(Labeled[T])
   }
 }
