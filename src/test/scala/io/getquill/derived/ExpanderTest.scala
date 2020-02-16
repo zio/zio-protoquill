@@ -5,7 +5,7 @@ import org.junit.Assert._
 import io.getquill.ast._
 
 class ExpanderTest {
-  import io.getquill.derived.Expander._
+  import io.getquill.derived.Expander._ //hello
 
   @Test def personWithEmbeddedAddress(): Unit = {
     case class Address(street: String) derives Expander

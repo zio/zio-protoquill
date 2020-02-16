@@ -46,6 +46,9 @@ object AstPrinter {
   val astprint = new AstPrinter()
 }
 
+def str(str: Any) =
+  new AstPrinter()(str).render
+
 def lnf(str: Any): Unit = 
   println(new AstPrinter()(str))
 

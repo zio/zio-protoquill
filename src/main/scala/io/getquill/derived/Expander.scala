@@ -91,6 +91,55 @@ object Expander {
       case exp: Expander[T] => exp.expand(node)
     }
 
+  class TypeExtensions(given qctx: QuoteContext) { self =>
+    import qctx.tasty.{Type => QType, given, _}
+    
+    implicit class TypeExt(tpe: Type[_]) {
+      def constValue = self.constValue(tpe)
+      def isProduct = self.isProduct(tpe)
+    }
+
+    def constValue(tpe: Type[_]): String =
+      tpe.unseal.tpe match {
+        case ConstantType(Constant(value)) => value.toString
+        // Macro error
+      }
+    def isProduct(tpe: Type[_]): Boolean =
+      tpe.unseal.tpe <:< '[Product].unseal.tpe
+  }
+
+  def flattenMac[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(given qctx: QuoteContext): List[Term] = {
+    import qctx.tasty.{Type => QType, Term => QTerm, given, _}
+    val ext = new TypeExtensions
+    import ext._
+
+    def constValue[T](tpe: Type[T]): String =
+      tpe.unseal.tpe match {
+        case ConstantType(Constant(value)) => value.toString
+        // Macro error
+      }
+
+    (fieldsTup, typesTup) match {
+      case ('[$field *: $fields], '[Option[$tpe] *: $types]) if (tpe.isProduct) =>
+        val childTerm = Term(field.constValue, optional = true)
+        base(childTerm)(given tpe) :: flattenMac(node, fields, types)
+
+      case ('[$field *: $fields], '[$tpe *: $types]) if (tpe.isProduct) =>
+        val childTerm = Term(field.constValue)
+        base(childTerm)(given tpe) :: flattenMac(node, fields, types)
+
+      case ('[$field *: $fields], '[Option[$tpe] *: $types]) =>
+        val childTerm = Term(field.constValue, optional = true)
+        childTerm :: flattenMac(node, fields, types)
+
+      case ('[$field *: $fields], '[$tpe *: $types]) =>
+        val childTerm = Term(field.constValue)
+        childTerm :: flattenMac(node, fields, types)
+
+      case (_, '[Unit]) => Nil
+    } 
+  }
+
   // TODO Do we need tail recursion? If so, add an accumulator list and only return the final product in the Nil case
   inline def flatten[Fields <: Tuple, Types <: Tuple](node: Term): List[Term] = {
     inline erasedValue[(Fields, Types)] match {
@@ -116,6 +165,27 @@ object Expander {
     }
   }
 
+  import scala.deriving._
+  import scala.quoted._
+  import scala.quoted.matching._
+
+
+
+  def base[T](term: Term)(given tpe: Type[T])(given qctx: QuoteContext): Term = {
+    import qctx.tasty.{Type => QType, Term => QTerm, _, given}
+    val ev: Expr[Mirror.Of[T]] = summonExpr(given '[Mirror.Of[$tpe]]).get
+
+    ev match {
+      case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = $elementLabels; type MirroredElemTypes = $elementTypes }} =>
+        val children = flattenMac(term, elementLabels, elementTypes)
+        term.withChildren(children)
+      
+    }
+  }
+
+  def derivedMacro[T](term: Term)(given qctx: QuoteContext, tpe: Type[T]): Term = {
+    base(term)(given tpe)
+  }
 
   // TODO What if the outermost element is an option? Need to test that with the original Quill MetaDslSpec.
   inline def derived[T]: Expander[T] = new Expander[T] {
