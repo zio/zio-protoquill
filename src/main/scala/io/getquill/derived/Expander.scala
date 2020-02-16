@@ -2,12 +2,13 @@ package io.getquill.derived
 
 import miniquill.quoter._
 import scala.reflect.ClassTag
-import scala.quoted._
-import scala.deriving._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 import io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}
 import scala.compiletime.erasedValue
 import io.getquill.ast.Visibility.{ Hidden, Visible }
+import scala.deriving._
+import scala.quoted._
+import scala.quoted.matching._
 
 trait Expander[T] {
   import Expander._
@@ -164,11 +165,6 @@ object Expander {
       case _ => Nil
     }
   }
-
-  import scala.deriving._
-  import scala.quoted._
-  import scala.quoted.matching._
-
 
 
   def base[T](term: Term)(given tpe: Type[T])(given qctx: QuoteContext): Term = {
