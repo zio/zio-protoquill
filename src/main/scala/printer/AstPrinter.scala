@@ -53,7 +53,7 @@ def lnf(str: Any): Unit =
   println(new AstPrinter()(str))
 
 def ln(str: Any, delimiter: Option[String] = None):Unit = 
-  if (System.getProperty("printAst", "true").toBoolean)
+  if (System.getProperty("printAst", "false").toBoolean)
     delimiter match {
       case None => 
         println(new AstPrinter()(str))

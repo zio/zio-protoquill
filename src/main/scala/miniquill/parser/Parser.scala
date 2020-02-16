@@ -4,8 +4,10 @@ package miniquill.parser
 import io.getquill.ast.{Ident => Idnt, Constant => Const, Query => Qry, _}
 import miniquill.quoter._
 import scala.quoted._
+import scala.quoted.matching._
 import scala.annotation.StaticAnnotation
 import scala.deriving._
+import io.getquill.Embedable
 
 class QuotationParser(given qctx: QuoteContext) {
   import qctx.tasty.{_, given _}
@@ -137,22 +139,8 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     }
   }
 
-  private object TypedMatroshka {
-    // need to define a case where it won't go into matcher otherwise recursion is infinite
-    //@tailcall // should be tail recursive
-    def recurse(innerTerm: Term): Term = innerTerm match {
-      case Typed(innerTree, _) => recurse(innerTree)
-      case other => other
-    }
-
-    def unapply(term: Term): Option[Term] = term match {
-      case Typed(tree, _) => Some(recurse(tree))
-      case _ => None
-    }
-  }
-
-
   def apply(in: Expr[_]): Ast = {
+    printer.ln(in.unseal.underlyingArgument)
     astParser(in.unseal.underlyingArgument.seal)
   }
 
@@ -161,8 +149,8 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
 
   def astParser: PartialFunction[Expr[_], Ast] = {
     // Needs to be first: Skip through type ascriptions
-    case Unseal(TypedMatroshka(tree)) =>
-      astParser(tree.seal)
+    // case Unseal(TypedMatroshka(tree)) =>
+    //   astParser(tree.seal)
 
     // Needs to be somewhere in the beginning so 'value' will not be parsed as a functiona-apply
     // i.e. since we don't want Property(..., value) to be the tree in this case.
@@ -244,7 +232,10 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
 
     case Unseal(value @ Select(Seal(prefix), member)) =>
       //println(s"Select ${value.show}")
-      if (value.tpe <:< '[io.getquill.Embedded].unseal.tpe) {
+      //val sealedTpe = value.tpe.seal
+      if ((value.tpe <:< '[io.getquill.Embedded].unseal.tpe)) { 
+        // TODO Figure how how to check the summon here
+        // || (summonExpr(given '[Embedable[$tpee]]).isDefined)
         Property.Opinionated(astParser(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
       } else {
         Property(astParser(prefix), member)
@@ -254,7 +245,9 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
       //println("Ident")
       Idnt(x)
 
-
+    // If at the end there's an inner tree that's typed, move inside and try to parse again
+    case Unseal(Typed(innerTree, _)) =>
+      astParser(innerTree.seal)
 
   // TODO define this a last-resort printing function inside the parser
   case Unseal(t) =>

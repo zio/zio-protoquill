@@ -8,18 +8,20 @@ import miniquill.quoter.QuoteDsl._
 
   //hello
   import io.getquill._
-  case class Person(id: Int, name: String, age: Int)
+  case class Address(street: String, zip: Int) extends Embedded //helloooo
+  given Embedable[Address] //hello
+  case class Person(id: Int, name: String, age: Int, addr: Address)
 
   inline def people = quote {
     query[Person]
   }
   inline def names = quote {
-    people.map(p => p.name)
+    people.map(p => p.addr)
   }
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
-  val output = runAdv(names) //hello
+  val output = runAdv(names) //helloooooo
   println(output)
 }
 

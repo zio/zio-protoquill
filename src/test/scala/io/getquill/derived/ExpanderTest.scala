@@ -25,7 +25,7 @@ class ExpanderTest {
     case class Nested(i: Int)
     case class Entity(a: Option[Nested])
     val ast = Expander.runtime[Entity](body)
-    assertEquals( "body.map(x => (x.a.map(v => v.i)))", ast.toString )
+    assertEquals( "body.map(x => x.a.map(v => v.i))", ast.toString )
   }
 
   @Test def nestedOptional(): Unit = {

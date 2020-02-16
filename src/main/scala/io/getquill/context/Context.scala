@@ -186,6 +186,7 @@ object Context {
     val reifiedAst = lifterFactory(qctx)(ast)
 
     val exapndedAst = Expander.static[T](ast)
+    println("Expanded Compile Time Ast Is: " + exapndedAst)
 
     val (outputAst, stmt) = idiom.translate(exapndedAst)(given namingStrategy)
     val sql = stmt.toString
