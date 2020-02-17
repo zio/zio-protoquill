@@ -8,6 +8,7 @@ import io.getquill.ast._
 import org.junit.Test
 import org.junit.Assert._
 import miniquill.quoter.QuotationVase
+import io.getquill.context.ExecutionType
 
 class QueryTest { //hello
 
@@ -46,13 +47,15 @@ class QueryTest { //hello
   def doubleLayerTest():Unit = {
     {
       import ctx._
-      assertEquals(
-        """querySchema("Person").map(x => (x.name, x.age, x.address.street, x.address.zip))""", 
-        run(people).string)
+      val result = run(people)
+      assertEquals("""querySchema("Person").map(x => (x.name, x.age, x.address.street, x.address.zip))""", result.string)
+      assertEquals(ExecutionType.Static, result.executionType)
     }
     {
       import sqlCtx._
-      assertEquals("SELECT x.name, x.age, x.street, x.zip FROM Person x", sqlCtx.run(people).string)
+      val result = sqlCtx.run(people)
+      assertEquals("SELECT x.name, x.age, x.street, x.zip FROM Person x", result.string)
+      assertEquals(ExecutionType.Static, result.executionType)
     }
   }
 
@@ -61,12 +64,15 @@ class QueryTest { //hello
   def personToAddressMap(): Unit = {
     {
       import ctx._
-      assertEquals("""querySchema("Person").map(p => (p.address.street, p.address.zip))""", run(addresses).string)
+      val result = run(addresses)
+      assertEquals("""querySchema("Person").map(p => (p.address.street, p.address.zip))""", result.string)
+      assertEquals(ExecutionType.Static, result.executionType)
     }
     {
       import sqlCtx._
-      println(sqlCtx.run(addresses).string)
-      assertEquals("SELECT p.street, p.zip FROM Person p", sqlCtx.run(addresses).string)
+      val result = sqlCtx.run(addresses)
+      assertEquals("SELECT p.street, p.zip FROM Person p", result.string)
+      assertEquals(ExecutionType.Static, result.executionType)
     }
   }
 
@@ -91,15 +97,15 @@ class QueryTest { //hello
       )
 
       import ctx._
-      assertEquals(
-        """querySchema("Person").map(p => (p.address.street, p.address.zip))""",
-        run(addressesRuntime).string //hellooooooooooooo
-      )
+      val result = run(addressesRuntime)
+      assertEquals("""querySchema("Person").map(p => (p.address.street, p.address.zip))""", result.string)
+      assertEquals(ExecutionType.Dynamic, result.executionType)
     }
     {
       import sqlCtx._
-      println(sqlCtx.run(addresses).string)
-      assertEquals("SELECT p.street, p.zip FROM Person p", sqlCtx.run(addresses).string)
+      val result = sqlCtx.run(addressesRuntime)
+      assertEquals("SELECT p.street, p.zip FROM Person p", result.string)
+      assertEquals(ExecutionType.Dynamic, result.executionType)
     }
   }
 

@@ -26,6 +26,12 @@ import miniquill.quoter.QuotationVase
 
 import io.getquill._
 
+sealed trait ExecutionType
+object ExecutionType {
+  case object Dynamic extends ExecutionType
+  case object Static extends ExecutionType
+}
+
 // TODO Non Portable
 trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] 
 extends EncodingDsl
@@ -94,7 +100,7 @@ extends EncodingDsl
         case decoder: Decoder[T] => decoder
       }
     val extractor = (r: ResultRow) => decoder.apply(1, r)
-    this.executeQuery(queryString, extractor)
+    this.executeQuery(queryString, extractor, ExecutionType.Dynamic)
   }
 
   inline def run[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
@@ -106,7 +112,7 @@ extends EncodingDsl
           case decoder: Decoder[T] => decoder
         }
       val extractor = (r: ResultRow) => decoder.apply(1, r)
-      this.executeQuery(staticQuery.get, extractor)
+      this.executeQuery(staticQuery.get, extractor, ExecutionType.Static)
 
     } else {
       runDynamic(quoted)
@@ -114,7 +120,7 @@ extends EncodingDsl
   }
 
   // todo add 'prepare' i.e. encoders here
-  def executeQuery[T](sql: String, extractor: Extractor[T]): Result[RunQueryResult[T]]
+  def executeQuery[T](sql: String, extractor: Extractor[T], executionType: ExecutionType): Result[RunQueryResult[T]]
 
   protected val identityPrepare: Prepare = (Nil, _)
   protected val identityExtractor = identity[ResultRow] _
@@ -165,7 +171,6 @@ object Context {
         // We only need an unlifter here, not a parser (**)
         // TODO Need to pull out lifted sections from the AST to process lifts
         ast = {
-
           quoted.unseal.underlyingArgument.seal match {
             case `Quoted.apply`(ast) =>
               new Unlifter(given qctx).apply(ast)
