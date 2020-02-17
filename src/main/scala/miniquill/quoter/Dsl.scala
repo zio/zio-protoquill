@@ -54,78 +54,9 @@ object QuoteDsl {
     val quotationParser = new miniquill.parser.QuotationParser
     import quotationParser._
 
-    val buff: ArrayBuffer[(String, Expr[Any])] = ArrayBuffer.empty
-    val accum = new ExprMap {
-      def transform[T](expr: Expr[T])(given qctx: QuoteContext, tpe: quoted.Type[T]): Expr[T] = {
-
-        expr match {
-          // TODO block foldOver in this case?
-          // NOTE that using this kind of pattern match, lifts are matched for both compile and run times
-          // In compile times the entire tree of passed-in-quotations is matched including the 'lifts' 
-          // (i.e. Quotation.lifts) tuples that are returned so we just get ScalarValueVase.apply
-          // matched from those (as well as from the body of the passed-in-quotation but that's fine
-          // since we dedupe by the UUID *). During runtime however, the actual case class instance
-          // of ScalarValueTag is matched by the below term.
-
-          // * That is to say if we have a passed-in-quotation Quoted(body: ... ScalarValueVase.apply, lifts: ..., (ScalarValueVase.apply ....))
-          // both the ScalarValueVase in the body as well as the ones in the tuple would be matched. This is fine
-          // since we dedupe the scalar value lifts by their UUID.
-
-          // TODO Why can't this be parsed with *: operator?
-          case '{ ScalarValueVase($tree, ${Const(uid)}) } => 
-            //println("=================================== Match Scalar Vase ===========================")
-            buff += ((uid, expr))
-            expr // can't go inside here or errors happen
-
-          // If the quotation is runtime, it needs to be matched so that we can add it to the tuple
-          // of lifts (i.e. runtime values) and the later evaluate it during the 'run' function.
-          // Match the vase and add it to the list.
-          //println("=================================== Match Runtime Quotation ===========================")
-          case MatchRuntimeQuotation(tree, uid) => // can't go inside here or errors happen
-            buff += ((uid, tree))
-            expr // can't go inside here or errors happen
-
-          //println("=================================== Match Other ===========================")
-          case other =>
-            expr
-            //transformChildren(expr)
-        }
-        // Need this or "did not conform to type: Nothing*" error can occur
-        //transformChildren[T](expr)
-
-        if (!expr.isInstanceOf[Expr[Expr[Any]]]) { // something tries to go to 2-levels of expression which causes crashes?
-          transformChildren(expr)
-        } else {
-          expr
-        }
-      }
-    }
-
-
-    // val accum = new TreeAccumulator[ArrayBuffer[Term]] {
-    //   def foldTree(terms: ArrayBuffer[Term], tree: Tree)(implicit ctx: Context) = tree match {
-    //     case term: Term => {
-    //       println("++++++++++++++++ Matched ++++++++++++++++")
-    //       printer.ln(term)
-    //       printer.ln(term.showExtractors)
-    //       term.etaExpand.seal match {
-    //         case '{ ScalarValueVase($tree, ${Const(uid)}) } => terms += term
-    //         case other => foldOverTree(terms, tree)
-    //       }
-    //     }
-    //     case other => 
-    //       println("++++++++++++++++ Not Matched ++++++++++++++++")
-    //       printer.ln(other)
-    //       printer.ln(other.showExtractors)
-    //       foldOverTree(terms, tree)
-    //   }
-    // }
-    //val vases = accum.foldTree(ArrayBuffer.empty, input.unseal.underlyingArgument)
-
-    accum.transform(input) // check if really need underlyingArgument
-
+    val lifts = FindLifts[Any](input)
     val vasesTuple = 
-      buff
+      lifts
         .distinctBy((value, uid) => uid) // dedupe by since everything with the same uuid is the same thing
         .map(_._2)
         .foldRight('{ (): Tuple })((elem, term) => '{ (${elem} *: ${term}) })
