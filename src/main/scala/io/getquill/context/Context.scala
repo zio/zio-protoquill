@@ -111,12 +111,15 @@ object Context {
   import scala.quoted._ // summonExpr is actually from here
   import scala.quoted.matching._ // ... or from here
 
-  // TODO Pick these up implicitly in the macro?
-  def parserFactory: (QuoteContext) => PartialFunction[Expr[_], Ast] = 
-    (qctx: QuoteContext) => new Parser(given qctx)
+  // (**) It seems like only unlift is needed here. If a parser needs to be passed into here,
+  // extending it is hard (e.g. need the same approach as Literal/Dialect Class.forName stuff)
+  // however if all we need is a unlifter which is not designed to be extended, can just
+  // reuse it here
+  // def parserFactory: (QuoteContext) => PartialFunction[Expr[_], Ast] = 
+  //   (qctx: QuoteContext) => new Parser(given qctx)
 
-  def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
-    (qctx: QuoteContext) => new Lifter(given qctx)  
+  // def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
+  //   (qctx: QuoteContext) => new Lifter(given qctx)
 
   import io.getquill.idiom.LoadNaming
   import io.getquill.util.LoadObject
@@ -133,6 +136,8 @@ object Context {
     import qctx.tasty.{Try => TTry, _, given _}
     import io.getquill.ast.{CollectAst, QuotationTag}
 
+    val quotationParser = new QuotationParser
+    import quotationParser._
 
     def noRuntimeQuotations(ast: Ast) =
       CollectAst.byType[QuotationTag](ast).isEmpty
@@ -140,8 +145,13 @@ object Context {
     val tryStatic =
       for {
         (idiom, naming) <- idiomAndNamingStatic
-        ast        = parserFactory(qctx).apply(quoted)
-        reifiedAst = lifterFactory(qctx)(ast)
+        // We only need an unlifter here, not a parser (**)
+        // TODO Need to pull out lifted sections from the AST to process lifts
+        ast =
+          quoted match {
+            case `Quoted.apply`(ast) =>
+              new Unlifter(given qctx).apply(ast)
+          }
         expandedAst <- Try(Expander.static[T](ast)) if noRuntimeQuotations(ast)
       } yield {
         
