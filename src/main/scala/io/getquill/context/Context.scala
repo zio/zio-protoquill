@@ -64,7 +64,7 @@ extends EncodingDsl
   // of the run function itself into a quotation?
 
 
-  inline def runDynamic[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
+  inline def runDynamic[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val ast = Expander.runtime[T](quoted.ast)
     val lifts = 
       if (quoted.lifts.isInstanceOf[Product])
@@ -103,7 +103,7 @@ extends EncodingDsl
     this.executeQuery(queryString, extractor, ExecutionType.Dynamic)
   }
 
-  inline def run[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
+  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val staticQuery = translateStatic[T](quoted)
     if (staticQuery.isDefined) { // TODO Find a way to generate the static query or not and then check (somehow use an optional there?)
 
@@ -138,11 +138,11 @@ object Context {
   // extending it is hard (e.g. need the same approach as Literal/Dialect Class.forName stuff)
   // however if all we need is a unlifter which is not designed to be extended, can just
   // reuse it here
-  def parserFactory: (QuoteContext) => PartialFunction[Expr[_], Ast] = 
-    (qctx: QuoteContext) => new Parser(given qctx)
+  // def parserFactory: (QuoteContext) => PartialFunction[Expr[_], Ast] = 
+  //   (qctx: QuoteContext) => new Parser(given qctx)
 
-  def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
-    (qctx: QuoteContext) => new Lifter(given qctx)
+  // def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
+  //   (qctx: QuoteContext) => new Lifter(given qctx)
 
   import io.getquill.idiom.LoadNaming
   import io.getquill.util.LoadObject
@@ -154,10 +154,11 @@ object Context {
     } yield (idiom, namingStrategy)
 
   // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
-  def translateStaticImpl[T: Type, D <: Idiom, N <: NamingStrategy](quoted: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]])(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Option[String]] = {
-    val qctx = implicitly[QuoteContext]
+  def translateStaticImpl[T: Type, D <: Idiom, N <: NamingStrategy](quotedRaw: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]])(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Option[String]] = {
     import qctx.tasty.{Try => TTry, _, given _}
     import io.getquill.ast.{CollectAst, QuotationTag}
+    // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
+    val quoted = quotedRaw.unseal.underlyingArgument.seal
 
     val quotationParser = new QuotationParser
     import quotationParser._
@@ -171,13 +172,24 @@ object Context {
         // We only need an unlifter here, not a parser (**)
         // TODO Need to pull out lifted sections from the AST to process lifts
         ast = {
-          quoted.unseal.underlyingArgument.seal match {
-            case `Quoted.apply`(ast) =>
-              new Unlifter(given qctx).apply(ast)
-            // TODO If not found, fail the macro. Make sure user knows about it!
-            // TODO Test this out, an easy way is to make the match invalid
-            // for example by changing 'quoted.unseal.underlyingArgument.seal' to just 'quoted'
+          object Unseal {
+            def unapply(t: Expr[Any]) = {
+              Some(t.unseal)
+            }
           }
+          def unInline(expr: Expr[Any]): Ast = 
+            expr match {
+              // Need to traverse through this case if we want to be able to use inline parameter value
+              // without having to do quoted.unseal.underlyingArgument.seal
+              case Unseal(Inlined(_, _, v)) => unInline(v.seal)
+              case `Quoted.apply`(ast) =>
+                new Unlifter(given qctx).apply(ast)
+            }
+
+          unInline(quoted)
+          // TODO If not found, fail the macro. Make sure user knows about it!
+          // TODO Test this out, an easy way is to make the match invalid
+          // for example by changing 'quoted.unseal.underlyingArgument.seal' to just 'quoted'
         }
         expandedAst <- Try { 
           Expander.static[T](ast) 

@@ -57,17 +57,15 @@ object QuoteDsl {
     val lifts = FindLifts[Any](input)
     val vasesTuple = 
       lifts
-        .distinctBy((value, uid) => uid) // dedupe by since everything with the same uuid is the same thing
+        .distinctBy((uid, value) => uid) // dedupe by since everything with the same uuid is the same thing
         .map(_._2)
         .foldRight('{ (): Tuple })((elem, term) => '{ (${elem} *: ${term}) })
-
-    //printer.ln("=========== Found Vases =========\n" + vasesTuple.unseal.underlyingArgument.show)
 
     vasesTuple
   }
 
   // or maybe implemet this with whitebox macros and a scalar value lift instead of with implicit conversions
-  inline def lift[T](value: T): T = ${ liftImpl('value) }
+  inline def lift[T](inline value: T): T = ${ liftImpl('value) }
   def liftImpl[T: Type](value: Expr[T])(given qctx: QuoteContext): Expr[T] = {
     val uuid = java.util.UUID.randomUUID().toString
     // Return the value of a created ScalarValueVase. The ScalarValueVase will be in the Scala AST
@@ -87,9 +85,10 @@ object QuoteDsl {
 
   inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ quoteImpl[T]('bodyExpr) }
 
-  def quoteImpl[T: Type](bodyExpr: Expr[T])(given qctx: QuoteContext): Expr[Quoted[T]] = {
+  def quoteImpl[T: Type](bodyRaw: Expr[T])(given qctx: QuoteContext): Expr[Quoted[T]] = {
     import qctx.tasty.{_, given _}
-    val body = bodyExpr.unseal.underlyingArgument.seal
+    // NOTE Can disable if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
+    val body = bodyRaw.unseal.underlyingArgument.seal
 
     // TODo add an error if body cannot be parsed
     val ast = parserFactory(qctx).apply(body)

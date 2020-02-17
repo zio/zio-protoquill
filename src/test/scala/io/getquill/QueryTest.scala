@@ -61,7 +61,7 @@ class QueryTest { //hello
 
   // person with address mapping to address
   @Test
-  def personToAddressMap(): Unit = {
+  def personToAddressMap(): Unit = { //hello
     {
       import ctx._
       val result = run(addresses)

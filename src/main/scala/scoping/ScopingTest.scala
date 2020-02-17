@@ -1,6 +1,10 @@
-// package scoping
+package scoping
 
-// @main def scopingTest() =
-//   val scoping = new OuterScoped()
-//   //println(scoping.outerCaller)
-//   println( scoping.outerCallerInfo(scoping.outerCaller) )
+object Blah {
+  @main def scopingTest() =
+    val scoping = new OuterScoped()
+    inline def foobar = "blah"
+    def foobarBaz = "blah"
+    //println(scoping.outerCaller)
+    println( scoping.outerCallerInfo(foobar) ) // hello
+}

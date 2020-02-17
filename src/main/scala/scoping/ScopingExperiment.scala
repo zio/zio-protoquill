@@ -4,23 +4,23 @@ import scala.quoted._
 
 class InnerScoped {
   private val something = 3
-  inline def getValue(i: Int): Int = ${InnerScoped.getValueImpl('i)}
-  inline def innerCaller: Int = getValue(something)
+  inline def getValue(i: Any): Any = ${InnerScoped.getValueImpl('i)}
+  inline def innerCaller: Any = getValue(something)
 }
 
 class OuterScoped extends InnerScoped {
-  inline def outerCaller: Int = innerCaller
-  inline def outerCallerInfo(i: Int): Int = ${OuterScoped.outerCallerInfoImpl('i)}
+  inline def outerCaller: Any = innerCaller
+  inline def outerCallerInfo(inline i: Any): Any = ${OuterScoped.outerCallerInfoImpl('i)}
 }
 
 object OuterScoped {
-  def outerCallerInfoImpl(i: Expr[Int])(given qctx: QuoteContext): Expr[Int] = {
+  def outerCallerInfoImpl(i: Expr[Any])(given qctx: QuoteContext): Expr[Any] = {
     import qctx.tasty.{_, given _}
-    printer.ln(i.unseal.underlyingArgument)
+    printer.lnf(i.show)
     i
   }
 }
 
 object InnerScoped {
-  def getValueImpl(i: Expr[Int])(given qctx: QuoteContext): Expr[Int] = '{$i + 1}
+  def getValueImpl(i: Expr[Any])(given qctx: QuoteContext): Expr[Any] = '{$i}
 }

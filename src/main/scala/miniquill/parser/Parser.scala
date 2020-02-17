@@ -46,9 +46,10 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     }
   }
 
-  def apply(in: Expr[_]): Ast = {
-    printer.lnf(in.unseal.underlyingArgument)
-    astParser(in.unseal.underlyingArgument.seal)
+  def apply(inRaw: Expr[_]): Ast = {
+    // NOTE Can disable if needed and make in = inRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
+    val in = inRaw.unseal.underlyingArgument.seal
+    astParser(in)
   }
 
   def isDefinedAt(in: Expr[_]): Boolean =
