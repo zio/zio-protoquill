@@ -111,6 +111,7 @@ object Context {
   import scala.quoted._ // summonExpr is actually from here
   import scala.quoted.matching._ // ... or from here
 
+  // TODO Pick these up implicitly in the macro?
   def parserFactory: (QuoteContext) => PartialFunction[Expr[_], Ast] = 
     (qctx: QuoteContext) => new Parser(given qctx)
 
@@ -127,10 +128,8 @@ object Context {
     } yield (idiom, namingStrategy)
 
   // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
-  def translateStaticImpl[
-    T: Type, 
-    D<:io.getquill.idiom.Idiom, N<:io.getquill.NamingStrategy
-  ](quoted: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]])(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Option[String]] = {
+  def translateStaticImpl[T: Type, D <: Idiom, N <: NamingStrategy](quoted: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]])(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Option[String]] = {
+    val qctx = implicitly[QuoteContext]
     import qctx.tasty.{Try => TTry, _, given _}
     import io.getquill.ast.{CollectAst, QuotationTag}
 

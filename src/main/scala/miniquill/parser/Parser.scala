@@ -55,9 +55,6 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     astParser.isDefinedAt(in.unseal.underlyingArgument.seal)
 
   def astParser: PartialFunction[Expr[_], Ast] = {
-    // Needs to be first: Skip through type ascriptions
-    // case Unseal(TypedMatroshka(tree)) =>
-    //   astParser(tree.seal)
 
     // Needs to be somewhere in the beginning so 'value' will not be parsed as a functiona-apply
     // i.e. since we don't want Property(..., value) to be the tree in this case.
