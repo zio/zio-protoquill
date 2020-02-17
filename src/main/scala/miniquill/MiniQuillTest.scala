@@ -21,7 +21,7 @@ import miniquill.quoter.QuoteDsl._
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
-  val output = run(names) //helloooooo
+  val output = run(people) //hellooooooooooooooooooooo
   println(output)
 }
 

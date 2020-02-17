@@ -7,6 +7,7 @@ import io.getquill._
 import io.getquill.ast._
 import org.junit.Test
 import org.junit.Assert._
+import miniquill.quoter.QuotationVase
 
 class QueryTest { //hello
 
@@ -81,24 +82,25 @@ class QueryTest { //hello
       
       assertTrue(
         addressesRuntime match { 
-          case Quoted(Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "address")), ()) => true
+          case Quoted(
+            Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "address")), 
+            (QuotationVase(Quoted(Entity("Person", List()), ()), _) *: ())
+          ) => true
           case _ => false
         }
       )
 
-
       import ctx._
-      assertTrue(
-        run(addressesRuntime).string.matches(
-          """QuotationTag\([a-zA-Z0-9-]+?\).map\(p => \(p.address.street, p.address.zip\)\)"""
-        )
+      assertEquals(
+        """querySchema("Person").map(p => (p.address.street, p.address.zip))""",
+        run(addressesRuntime).string //hellooooooooooooo
       )
     }
-    // {
-    //   import sqlCtx._
-    //   println(sqlCtx.run(addresses).string)
-    //   assertEquals("SELECT p.street, p.zip FROM Person p", sqlCtx.run(addresses).string)
-    // }
+    {
+      import sqlCtx._
+      println(sqlCtx.run(addresses).string)
+      assertEquals("SELECT p.street, p.zip FROM Person p", sqlCtx.run(addresses).string)
+    }
   }
 
 }

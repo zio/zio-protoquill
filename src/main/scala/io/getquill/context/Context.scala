@@ -21,6 +21,8 @@ import io.getquill.ast.Ast
 import scala.quoted.{Type => TType, _}
 import miniquill.quoter.FindLifts
 import io.getquill.idiom.Idiom
+import io.getquill.ast.{Transform, QuotationTag}
+import miniquill.quoter.QuotationVase
 
 import io.getquill._
 
@@ -55,18 +57,34 @@ extends EncodingDsl
   // TODO Need to have some implicits to auto-convert stuff inside
   // of the run function itself into a quotation?
 
-  inline def expandAst[T](quoted: Quoted[Query[T]]):(Ast, Tuple) = {
-    val (ast, lifts) = (quoted.ast, quoted.lifts)
-
-    println("Before Expansion: " + ast)
-    val expandedAst = Expander.runtime[T](ast)
-    println("After Expansion: " + expandedAst)
-
-    (expandedAst, lifts)
-  }
 
   inline def runDynamic[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
-    val (expandedAst, lifts) = expandAst(quoted)
+    val ast = Expander.runtime[T](quoted.ast)
+    val lifts = 
+      if (quoted.lifts.isInstanceOf[Product])
+        quoted.lifts.asInstanceOf[Product].productIterator.toList
+      else
+        List()
+
+    val quotationVases = 
+      lifts.collect {
+        case v: QuotationVase[Any] => v // Not sure why but QuotationVase[_] causes errors
+      }
+
+    def spliceQuotations(ast: Ast): Ast =
+      Transform(ast) {
+        case v @ QuotationTag(uid) => 
+          // When a quotation to splice has been found, retrieve it and continue
+          // splicing inside since there could be nested sections that need to be spliced
+          quotationVases.find(_.uid == uid) match {
+            case Some(vase) => 
+              spliceQuotations(vase.quoted.ast)
+            // TODO Macro error if a uid can't be looked up (also show all uid secionds that currently exist)
+          }
+      }
+
+    val expandedAst = spliceQuotations(ast)
+      
     val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
     val queryString = stmt.toString
     // summon a decoder and a expander (as well as an encoder) all three should be provided by the context
@@ -80,7 +98,6 @@ extends EncodingDsl
   }
 
   inline def run[T](quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
-
     val staticQuery = translateStatic[T](quoted)
     if (staticQuery.isDefined) { // TODO Find a way to generate the static query or not and then check (somehow use an optional there?)
 
@@ -115,11 +132,11 @@ object Context {
   // extending it is hard (e.g. need the same approach as Literal/Dialect Class.forName stuff)
   // however if all we need is a unlifter which is not designed to be extended, can just
   // reuse it here
-  // def parserFactory: (QuoteContext) => PartialFunction[Expr[_], Ast] = 
-  //   (qctx: QuoteContext) => new Parser(given qctx)
+  def parserFactory: (QuoteContext) => PartialFunction[Expr[_], Ast] = 
+    (qctx: QuoteContext) => new Parser(given qctx)
 
-  // def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
-  //   (qctx: QuoteContext) => new Lifter(given qctx)
+  def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
+    (qctx: QuoteContext) => new Lifter(given qctx)
 
   import io.getquill.idiom.LoadNaming
   import io.getquill.util.LoadObject
@@ -147,14 +164,21 @@ object Context {
         (idiom, naming) <- idiomAndNamingStatic
         // We only need an unlifter here, not a parser (**)
         // TODO Need to pull out lifted sections from the AST to process lifts
-        ast =
-          quoted match {
+        ast = {
+
+          quoted.unseal.underlyingArgument.seal match {
             case `Quoted.apply`(ast) =>
               new Unlifter(given qctx).apply(ast)
+            // TODO If not found, fail the macro. Make sure user knows about it!
+            // TODO Test this out, an easy way is to make the match invalid
+            // for example by changing 'quoted.unseal.underlyingArgument.seal' to just 'quoted'
           }
-        expandedAst <- Try(Expander.static[T](ast)) if noRuntimeQuotations(ast)
+        }
+        expandedAst <- Try { 
+          Expander.static[T](ast) 
+        } if noRuntimeQuotations(ast)
       } yield {
-        
+
         val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
         val sql = stmt.toString
 
@@ -166,7 +190,13 @@ object Context {
         '{ Some(${Expr(sql)}) }
       }
 
-    tryStatic.getOrElse('{ None })
+    if (tryStatic.isFailure) {
+      println("WARNING: Dynamic Query Detected")
+    }
+
+    tryStatic.getOrElse {
+      '{ None }
+    }
   }
 }
 

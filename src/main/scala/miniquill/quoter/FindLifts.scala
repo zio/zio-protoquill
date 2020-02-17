@@ -13,7 +13,7 @@ object FindLifts {
     val quotationParser = new miniquill.parser.QuotationParser
     import quotationParser._
 
-    val buff: ArrayBuffer[(String, Expr[Any])] = ArrayBuffer.empty
+    val buff: ArrayBuffer[(String, Expr[Any])] = new ArrayBuffer[(String, Expr[Any])]()
     val accum = new ExprMap {
       def transform[T](expr: Expr[T])(given qctx: QuoteContext, tpe: quoted.Type[T]): Expr[T] = {
 
@@ -32,35 +32,37 @@ object FindLifts {
 
           // TODO Why can't this be parsed with *: operator?
           case '{ ScalarValueVase($tree, ${Const(uid)}) } => 
-            //println("=================================== Match Scalar Vase ===========================")
             buff += ((uid, expr))
             expr // can't go inside here or errors happen
 
           // If the quotation is runtime, it needs to be matched so that we can add it to the tuple
           // of lifts (i.e. runtime values) and the later evaluate it during the 'run' function.
           // Match the vase and add it to the list.
-          //println("=================================== Match Runtime Quotation ===========================")
+          
+          // This doesn't seem to work
           case MatchRuntimeQuotation(tree, uid) => // can't go inside here or errors happen
             buff += ((uid, tree))
             expr // can't go inside here or errors happen
 
-          //println("=================================== Match Other ===========================")
+          // case '{ QuotationVase.apply[$t]($tree, ${Const(uid)}) } =>
+          //   buff += ((uid, tree))
+          //   expr // can't go inside here or errors happen
+
           case other =>
             expr
             //transformChildren(expr)
         }
-        // Need this or "did not conform to type: Nothing*" error can occur
-        //transformChildren[T](expr)
 
-        if (!expr.isInstanceOf[Expr[Expr[Any]]]) { // something tries to go to 2-levels of expression which causes crashes?
-          transformChildren(expr)
-        } else {
-          expr
+        expr.unseal match {
+          // Not including this causes execption "scala.tasty.reflect.ExprCastError: Expr: [ : Nothing]" in certain situations
+          case Repeated(Nil, Inferred()) => expr 
+          case _ => transformChildren[T](expr)
         }
       }
     }
 
     accum.transform(input) // check if really need underlyingArgument
+
     buff.toList
   }
 }

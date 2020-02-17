@@ -127,6 +127,7 @@ object QuoteDsl {
   // TODO Should also probably name a method for this so don't need to enable explicit conversion
   inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ unquoteImpl[T]('quoted) }
   def unquoteImpl[T: Type](quoted: Expr[Quoted[T]])(given qctx: QuoteContext): Expr[T] = {
+    import qctx.tasty.{given, _}
     '{
       QuotationVase[T](${quoted}, ${Expr(java.util.UUID.randomUUID().toString)}).unquote
     }

@@ -1,6 +1,7 @@
 package io.getquill
 
 import scala.language.implicitConversions
+import miniquill.quoter.QuotationVase
 import miniquill.quoter.QuoteDsl._
 import io.getquill._
 import io.getquill.ast._
@@ -57,7 +58,10 @@ class QuotationTest {
     printer.lnf(qq)
     val matches = 
       qq match {
-        case Quoted(Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "name")), ()) => true
+        case Quoted(
+          Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "name")), 
+          (QuotationVase(Quoted(Entity("Person", List()), ()), _) *: ())
+        ) => true
         case _ => false
       }
     assertTrue(matches)

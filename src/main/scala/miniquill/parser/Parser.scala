@@ -47,7 +47,7 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
   }
 
   def apply(in: Expr[_]): Ast = {
-    printer.ln(in.unseal.underlyingArgument)
+    printer.lnf(in.unseal.underlyingArgument)
     astParser(in.unseal.underlyingArgument.seal)
   }
 
