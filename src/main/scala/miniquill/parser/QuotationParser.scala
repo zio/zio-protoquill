@@ -59,6 +59,14 @@ class QuotationParser(given qctx: QuoteContext) {
     }
   }
 
+  object `ScalarValueVase.apply` {
+    def unapply(expr: Expr[Any]) = expr match {
+      case vase @ '{ ScalarValueVase.apply[$qt]($liftValue, ${scala.quoted.matching.Const(uid: String)}) } =>
+        Some((liftValue, uid, vase, qt))
+      case _ => None
+    }
+  }
+
   // Match the QuotationVase(...).unquote values which are tacked on to every
   // child-quote (inside of a parent quote) when the 'unquote' function (i.e macro)
   // is applied.
@@ -68,6 +76,24 @@ class QuotationParser(given qctx: QuoteContext) {
       case '{ (${quotationVase}: QuotationVase[$tt]).unquote } => Some(quotationVase)
       case _ => None
     }
+  }
+
+  protected object `(ScalarValueVase).unquote` {
+    def unapply(expr: Expr[Any]) = expr match {
+      case '{ (${vase}: ScalarValueVase[$tt]).unquote } => Some(vase)
+      case _ => None
+    }
+  }
+
+  object MatchLift {
+    def unapply(expr: Expr[Any]): Option[(Expr[Any], String)] =
+      expr match {
+        case `(ScalarValueVase).unquote`(vase) =>
+          unapply(vase)
+        case `ScalarValueVase.apply`(_, uuid, vase,  _) =>
+          Some((vase, uuid))
+        case _ => None
+      }
   }
 
   object MatchRuntimeQuotation {

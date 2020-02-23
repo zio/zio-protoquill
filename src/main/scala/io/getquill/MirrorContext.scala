@@ -9,7 +9,7 @@ with MirrorDecoders {
   override type Result[T] = T
   override type RunQueryResult[T] = QueryMirror[T]
 
-  case class QueryMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], executionType: ExecutionType) {
+  case class QueryMirror[T](string: String, prepareRow: Prepare, extractor: Extractor[T], executionType: ExecutionType) {
     def string(pretty: Boolean): String =
       if (pretty)
         idiom.format(string)
@@ -18,7 +18,7 @@ with MirrorDecoders {
   }
 
   //prepare: Prepare = identityPrepare, 
-  def executeQuery[T](string: String, extractor: Extractor[T] = identityExtractor, executionType: ExecutionType) =
-    QueryMirror(string, null, extractor, executionType)
+  def executeQuery[T](string: String, prepare: Prepare, extractor: Extractor[T] = identityExtractor, executionType: ExecutionType) =
+    QueryMirror(string, prepare, extractor, executionType)
     //QueryMirror(string, prepare(Row())._2, extractor)
 }

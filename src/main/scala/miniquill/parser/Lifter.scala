@@ -47,7 +47,7 @@ class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case Idnt(name: String) => '{ Idnt(${Expr(name)})  }
     case Map(query: Ast, alias: Idnt, body: Ast) => '{ Map(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }
     case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${liftAst(a)}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${liftAst(b)})  }
-    case ScalarValueTag(uid: String) => '{ScalarValueTag(${Expr(uid)})}
+    case ScalarTag(uid: String) => '{ScalarTag(${Expr(uid)})}
     case QuotationTag(uid: String) => '{QuotationTag(${Expr(uid)})}
   }
 

@@ -46,8 +46,8 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
     case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(unliftAst(a), unliftOperator(operator).asInstanceOf[BinaryOperator], unliftAst(b))
     case '{ Property(${ast}, ${name}) } =>
       Property(unliftAst(ast), fixedString(name))
-    case '{ScalarValueTag(${uid})} => 
-      ScalarValueTag(fixedString(uid))
+    case '{ScalarTag(${uid})} => 
+      ScalarTag(fixedString(uid))
     case '{ QuotationTag($uid) } =>
       QuotationTag(fixedString(uid))
   }

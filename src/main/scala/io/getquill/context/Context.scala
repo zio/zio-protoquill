@@ -13,11 +13,13 @@ import miniquill.quoter.Query
 import miniquill.dsl.EncodingDsl
 import miniquill.quoter.Quoted
 import miniquill.quoter.Query
+import miniquill.quoter.ScalarValueVase
 import io.getquill.derived._
 import miniquill.context.mirror.MirrorDecoders
 import miniquill.context.mirror.Row
 import miniquill.dsl.GenericDecoder
 import io.getquill.ast.Ast
+import io.getquill.ast.ScalarTag
 import scala.quoted.{Type => TType, _}
 import miniquill.quoter.FindLifts
 import io.getquill.idiom.Idiom
@@ -63,6 +65,11 @@ extends EncodingDsl
   // TODO Need to have some implicits to auto-convert stuff inside
   // of the run function itself into a quotation?
 
+  // inline def expandLifts[T](inline quoted: Quoted[T]): List[ScalarValueVase[_]] = {
+  //   val lifts = quoted.lifts match {
+  //     case sl: ScalarValueVase[_] => sl
+  //   }
+  // }
 
   inline def runDynamic[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val ast = Expander.runtime[T](quoted.ast)
@@ -100,7 +107,7 @@ extends EncodingDsl
         case decoder: Decoder[T] => decoder
       }
     val extractor = (r: ResultRow) => decoder.apply(1, r)
-    this.executeQuery(queryString, extractor, ExecutionType.Dynamic)
+    this.executeQuery(queryString, null, extractor, ExecutionType.Dynamic)
   }
 
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
@@ -112,7 +119,7 @@ extends EncodingDsl
           case decoder: Decoder[T] => decoder
         }
       val extractor = (r: ResultRow) => decoder.apply(1, r)
-      this.executeQuery(staticQuery.get, extractor, ExecutionType.Static)
+      this.executeQuery(staticQuery.get, null, extractor, ExecutionType.Static)
 
     } else {
       runDynamic(quoted)
@@ -120,7 +127,7 @@ extends EncodingDsl
   }
 
   // todo add 'prepare' i.e. encoders here
-  def executeQuery[T](sql: String, extractor: Extractor[T], executionType: ExecutionType): Result[RunQueryResult[T]]
+  def executeQuery[T](sql: String, prepare: Prepare, extractor: Extractor[T], executionType: ExecutionType): Result[RunQueryResult[T]]
 
   protected val identityPrepare: Prepare = (Nil, _)
   protected val identityExtractor = identity[ResultRow] _

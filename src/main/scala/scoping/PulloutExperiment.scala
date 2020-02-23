@@ -113,6 +113,19 @@ object PulloutExperiment {
     '{ (${elem} *: ${tup}) }
   }
 
+  inline def matchList(list: List[Any]): List[Any] = ${ matchListImpl('list) }
+  def matchListImpl(list: Expr[List[Any]])(given qctx: QuoteContext): Expr[List[Any]] = {
+    import qctx.tasty.{given, _}
+    println(list.unseal.underlyingArgument.seal.show)
+    val elems = 
+      list match {
+        case '{ List[$t](${ExprSeq(elems)}: _*) } => elems.toList
+        case _ => List()
+      }
+    println(s"Found Elems: ${elems.map(_.unseal.show)}")
+    '{ ${Expr.ofList(elems)} }
+  }
+
   inline def pullout(input: Any): Tuple = ${pulloutImpl('input)}
   def pulloutImpl(input: Expr[Any])(given qctx: QuoteContext): Expr[Tuple] = {
     import qctx.tasty.{_, given _}

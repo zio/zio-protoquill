@@ -10,7 +10,7 @@ import org.junit.Assert._
 import miniquill.quoter.QuotationVase
 import io.getquill.context.ExecutionType
 
-class QueryTest { //hello
+class QueryTest { //hellooooooo
 
   // TODO Need to test 3-level injection etc...
   case class Address(street:String, zip:Int) extends Embedded

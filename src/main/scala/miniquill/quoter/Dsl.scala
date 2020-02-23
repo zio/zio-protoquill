@@ -27,7 +27,10 @@ case class Quoted[+T](val ast: Ast, lifts: Tuple) {
 
 // TODO Rename to ScalarValueVase
 // Scalar value Vase holds a scala asclar value's tree until it's parsed
-case class ScalarValueVase[T](value: T, uid: String)
+case class ScalarValueVase[T](value: T, uid: String) {
+  def unquote: T =
+    throw new RuntimeException("Unquotation can only be done from a quoted block.")
+}
 case class QuotationVase[+T](quoted: Quoted[T], uid: String) {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
@@ -71,7 +74,7 @@ object QuoteDsl {
     // Return the value of a created ScalarValueVase. The ScalarValueVase will be in the Scala AST
     // (i.e. and it will be parsed correctly)
     // with the generated UUID but the typing is correct since 'value' is returned.
-    '{ ScalarValueVase[T]($value, ${Expr(uuid)}).value }
+    '{ ScalarValueVase[T]($value, ${Expr(uuid)}).unquote }
   }
 
 

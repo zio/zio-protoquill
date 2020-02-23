@@ -12,8 +12,8 @@ lazy val root = project
     libraryDependencies ++= Seq(
       "com.novocode" % "junit-interface" % "0.11" % "test",
       ("com.lihaoyi" %% "pprint" % "0.5.6").withDottyCompat(scalaVersion.value),
-      ("io.getquill" %% "quill-core-portable" % "3.4.11-SNAPSHOT").withDottyCompat(scalaVersion.value),
-      ("io.getquill" %% "quill-sql-portable" % "3.4.11-SNAPSHOT").withDottyCompat(scalaVersion.value),
+      ("io.getquill" %% "quill-core-portable" % "3.4.11-SNAPSHOT" changing()).withDottyCompat(scalaVersion.value),
+      ("io.getquill" %% "quill-sql-portable" % "3.4.11-SNAPSHOT" changing()).withDottyCompat(scalaVersion.value),
       "ch.epfl.lamp" % "dotty_0.22" % (scalaVersion.value)
     )
   )
