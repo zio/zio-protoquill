@@ -21,7 +21,7 @@ object FindEncodeables {
       // Causes: this case is unreachable since class Tuple2 is not a subclass of class Expr
       // Not sure why. Probably language bug.
       //case `ScalarValueVase.apply`(liftValue, uid, _, tpe) =>
-      case vase @ '{ ScalarValueVase.apply[$tpe]($liftValue, ${scala.quoted.matching.Const(uid: String)}) } =>
+      case (_, vase @ '{ ScalarValueVase.apply[$tpe]($liftValue, ${scala.quoted.matching.Const(uid: String)}) })  =>
         summonExpr(given '[GenericEncoder[$tpe, PrepareRow]]) match {
           case Some(encoder) => 
             // Need to case to Encoder[Any] since we can't preserve types
@@ -31,6 +31,33 @@ object FindEncodeables {
           // TODO Error case and good message when can't find encoder
         }
     }
+  }
+}
+
+object ExprAccumulate {
+  def apply[T](input: Expr[Any])(matcher: PartialFunction[Expr[Any], T])(given qctx: QuoteContext): List[T] = {
+    import qctx.tasty.{Type => QType, given, _}
+
+    val buff: ArrayBuffer[T] = new ArrayBuffer[T]()
+    val accum = new ExprMap {
+      def transform[TF](expr: Expr[TF])(given qctx: QuoteContext, tpe: Type[TF]): Expr[TF] = {
+        matcher.lift(expr) match {
+          case Some(result) => 
+            buff += result
+            expr
+          case None =>
+            expr
+        }
+
+        expr.unseal match {
+          // Not including this causes execption "scala.tasty.reflect.ExprCastError: Expr: [ : Nothing]" in certain situations
+          case Repeated(Nil, Inferred()) => expr 
+          case _ => transformChildren[TF](expr)
+        }
+      }
+    }
+
+    buff.toList
   }
 }
 
@@ -59,10 +86,6 @@ object FindLifts {
           // both the ScalarValueVase in the body as well as the ones in the tuple would be matched. This is fine
           // since we dedupe the scalar value lifts by their UUID.
 
-          // TODO Why can't this be parsed with *: operator?
-          // case '{ ScalarValueVase($tree, ${Const(uid)}) } => 
-          //   buff += ((uid, expr))
-          //   expr // can't go inside here or errors happen
 
           case MatchLift(tree, uid) =>
             buff += ((uid, tree))
@@ -72,21 +95,12 @@ object FindLifts {
           // of lifts (i.e. runtime values) and the later evaluate it during the 'run' function.
           // Match the vase and add it to the list.
           
-          // This doesn't seem to work
-          case MatchRuntimeQuotation(tree, uid) => // can't go inside here or errors happen
+          case MatchRuntimeQuotation(tree, uid) => // can't traverse inside here or errors happen
             buff += ((uid, tree))
-            expr // can't go inside here or errors happen
-
-          // case tree @ '{ QuotationVase.apply[$t]($inside, ${Const(uid)}) } =>
-          //   println("========================== Runtime Quotation Matched ==========================")
-          //   println(tree.unseal.underlyingArgument.seal.show)
-          //   println("========================== End Runtime Quotation Matched ==========================")
-          //   buff += ((uid, tree))
-          //   expr // can't go inside here or errors happen
+            expr // can't traverse inside here or errors happen
 
           case other =>
             expr
-            //transformChildren(expr)
         }
 
         expr.unseal match {

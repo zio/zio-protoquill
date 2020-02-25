@@ -12,14 +12,12 @@ object FindEncodeablesUserMacro {
     val foundEncodeables: List[Encodeable[PrepareRow]] = 
       FindEncodeables.apply[PrepareRow](encodeables)
 
-    foundEncodeables.zipWithIndex.map((enc, idx) => {
-      '{ ${enc.encoder}.apply(
-          ${Expr(idx)}, ${enc.value}, ${prep}
-        )
-      }
-    })
+    val encoded =
+      foundEncodeables.zipWithIndex.map((enc, idx) => {
+        '{ (${enc.value}, ${enc.encoder}.apply(${Expr(idx)}, ${enc.value}, ${prep})) }
+      })
 
-    null
+    Expr.ofList(encoded)
   }
 
 }

@@ -5,7 +5,7 @@ import io.getquill.context._
 
 class MirrorContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy](val idiom: Dialect, val naming: Naming)
 extends Context[Dialect, Naming] 
-with MirrorDecoders {
+with MirrorDecoders with MirrorEncoders {
   override type Result[T] = T
   override type RunQueryResult[T] = QueryMirror[T]
 

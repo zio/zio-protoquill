@@ -13,7 +13,7 @@ trait MirrorDecoders extends EncodingDsl {
       decoder(index, row)
   }
 
-  def decoder[T: ClassTag]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow) => row[T](index))
+  def decoder[T: ClassTag]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow) => row.apply[T](index))
 
   def decoderUnsafe[T]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow) => row.data(index).asInstanceOf[T])
 
