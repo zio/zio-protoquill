@@ -9,7 +9,7 @@ import org.junit.Test
 import org.junit.Assert._
 import miniquill.quoter.Quoted
 import miniquill.quoter.ScalarValueVase
-
+import miniquill.quoter.ScalarEncodeableVase
 
 class QuotationTest {
   case class Address(street:String, zip:Int) extends Embedded
@@ -112,6 +112,8 @@ class QuotationTest {
 
 
 @main def simpleLift = {
+  import miniquill.context.mirror.Row
+
   case class Person(name: String)
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
@@ -120,6 +122,8 @@ class QuotationTest {
     liftEager("hello")
   }
   println(q)
+  val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[ScalarEncodeableVase[String, ctx.PrepareRow /* or just Row */]]
+  println(vase.encoder.apply(0, vase.value, new Row()))
 }
 
 // test a runtime quotation

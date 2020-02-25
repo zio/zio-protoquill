@@ -91,6 +91,10 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     case Unseal(Literal(Constant(v: Double))) => 
       //println("Case Literal Constant")
       Const(v)
+
+    case Unseal(Literal(Constant(v: String))) => 
+      //println("Case Literal Constant")
+      Const(v)
     
     case 
       Unseal(

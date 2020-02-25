@@ -42,7 +42,9 @@ class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
 
   def liftBase: Lift[Ast] = {
     // TODO Need some type info to be able to lift a const
-    //case Const(v) => '{ Const(${Expr(v)}) }
+    // TODO cover primitive cases? Have something that splices certain things to a string?
+    case Const(v: String) => '{ Const(${Expr(v)}) }
+    case Const(v: Double) => '{ Const(${Expr(v)}) }
     case Entity(name: String, list) => '{ Entity(${Expr(name)}, List())  }
     case Idnt(name: String) => '{ Idnt(${Expr(name)})  }
     case Map(query: Ast, alias: Idnt, body: Ast) => '{ Map(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }

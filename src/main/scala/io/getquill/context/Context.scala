@@ -43,6 +43,9 @@ extends EncodingDsl
 {
   implicit inline def autoDecoder[T]:Decoder[T] = GenericDecoder.derived
 
+  type PrepareRow
+  type ResultRow
+
   type Result[T]
   type RunQuerySingleResult[T]
   type RunQueryResult[T]
@@ -136,8 +139,8 @@ extends EncodingDsl
   inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[String] =
     ${ Context.translateStaticImpl[T, Dialect, Naming]('quoted, 'this) }
 
-  inline def liftEager[T](inline value: T): T = 
-    ${ Context.liftEagerImpl[T, PrepareRow]('value) }
+  inline def liftEager[T](inline vv: T): T = 
+    ${ Context.liftEagerImpl[T, PrepareRow]('vv) }
 }
 
 object Context {
@@ -160,14 +163,15 @@ object Context {
   import io.getquill.util.LoadObject
   import miniquill.dsl.GenericEncoder
 
-  def liftEagerImpl[T: Type, PrepareRow: Type](value: Expr[T])(given qctx: QuoteContext): Expr[T] = {
+  def liftEagerImpl[T, PrepareRow](vvv: Expr[T])(given qctx: QuoteContext, tType: TType[T], prepareRowType: TType[PrepareRow]): Expr[T] = {
+    import qctx.tasty.{given, _}
     val uuid = java.util.UUID.randomUUID().toString
     val encoder = 
-      summonExpr(given '[GenericEncoder[T, PrepareRow]]) match {
-        case Some(encoder) => encoder
+      summonExpr(given '[GenericEncoder[$tType, $prepareRowType]]) match {
+        case Some(enc) => enc
         // TODO return summoning error if not correct
       }
-    '{ ScalarEncodeableVase[T, PrepareRow]($value, $encoder, ${Expr(uuid)}).unquote }
+    '{ ScalarEncodeableVase($vvv, $encoder, ${Expr(uuid)}).unquote } //[$tType, $prepareRowType] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 
   def idiomAndNamingStatic[D<:io.getquill.idiom.Idiom, N<:io.getquill.NamingStrategy](given qctx: QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Try[(Idiom, NamingStrategy)] =
