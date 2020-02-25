@@ -134,8 +134,11 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     //     case '{ Quoted[$t]($ast, $v) } => unlift(ast) // doesn't work with 'new' // Note, replacing $v with _ causes compiler to compile forever
     //   }
 
+    // TODO Need to check if entity is a string
+    case Unseal(Apply(Select(Seal(left), "+"), Seal(right) :: Nil)) =>
+      BinaryOperation(astParser(left), StringOperator.+, astParser(right))
+
     case Unseal(Apply(Select(Seal(left), "*"), Seal(right) :: Nil)) =>
-      //println("Apply Select")
       BinaryOperation(astParser(left), NumericOperator.*, astParser(right))
 
     case Unseal(value @ Select(Seal(prefix), member)) =>

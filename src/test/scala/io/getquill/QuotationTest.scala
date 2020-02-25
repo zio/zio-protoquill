@@ -8,6 +8,8 @@ import io.getquill.ast._
 import org.junit.Test
 import org.junit.Assert._
 import miniquill.quoter.Quoted
+import miniquill.quoter.ScalarValueVase
+
 
 class QuotationTest {
   case class Address(street:String, zip:Int) extends Embedded
@@ -67,10 +69,43 @@ class QuotationTest {
     assertTrue(matches)
   }
 
+
+  @Test
+  def compiletime_simpleLift() = {
+    inline def q = quote {
+      lift("hello")
+    }
+    assertTrue(q match {
+      case Quoted(ScalarTag(tagUid), (ScalarValueVase("hello", vaseUid) *: ())) if (tagUid == vaseUid) => true
+      case _ => false
+    })
+  }
+
+  @Test
+  def compiletime_liftPlusOperator() = {
+    inline def q = quote {
+      query[Person].map(p => p.name + lift("hello"))
+    }
+    assertTrue(q match {
+      case Quoted(
+          Map(Entity("Person", List()), Ident("p"), BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid))),
+          (ScalarValueVase("hello", vaseUid) *: ())
+        ) => true
+      case _ => false
+    })
+  }
 }
 
 
 
+@main def simpleLift = {
+  case class Person(name: String)
+
+  inline def q = quote {
+    query[Person].map(p => p.name + lift("hello"))
+  }
+  printer.lnf(q)
+}
 
 // test a runtime quotation
 // test two runtime quotations

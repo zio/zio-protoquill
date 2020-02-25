@@ -53,5 +53,6 @@ class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
 
   def liftOperator: PartialFunction[Operator, Expr[Operator]] = {
     case NumericOperator.* => '{ NumericOperator.* }
+    case StringOperator.+ => '{ StringOperator.+ }
   }
 }

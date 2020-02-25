@@ -54,6 +54,7 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
 
   def unliftOperator: Unlift[Operator] = {
     case '{ NumericOperator.* } =>  NumericOperator.*
+    case '{ StringOperator.+ } =>  StringOperator.+
   }
 
   def unliftAst: Unlift[Ast] = {
