@@ -14,6 +14,13 @@ object FindEncodeables {
     import qctx.tasty.{given, _}
 
     ExprAccumulate(input) {
+
+      // If it's an 'encodeable' vase, use the encoder directly
+
+      // TODO Check that $prep is an instance of GenericEncoder[Any, PrepareRow], otherwise the cast shouldn't work and user should be warned
+      case vase @ '{ ScalarEncodeableVase.apply[$tpe, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) }  =>
+        Encodeable(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, PrepareRow]]])
+
       // Causes: this case is unreachable since class Tuple2 is not a subclass of class Expr
       // Not sure why. Probably language bug.
       //case `ScalarValueVase.apply`(liftValue, uid, _, tpe) =>
@@ -54,6 +61,8 @@ object FindLifts {
 
 
       case MatchLift(tree, uid) => (uid, tree)
+
+      case MatchEncodeableLift(tree, uid) => (uid, tree)
 
       // If the quotation is runtime, it needs to be matched so that we can add it to the tuple
       // of lifts (i.e. runtime values) and the later evaluate it during the 'run' function.

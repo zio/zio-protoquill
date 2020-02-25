@@ -82,6 +82,19 @@ class QuotationTest {
   }
 
   @Test
+  def compiletime_simpleLift_eager() = {
+    // val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    // import ctx._
+    // inline def q = quote {
+    //   liftEager("hello")
+    // }
+    // assertTrue(q match {
+    //   case Quoted(ScalarTag(tagUid), (ScalarValueVase("hello", vaseUid) *: ())) if (tagUid == vaseUid) => true
+    //   case _ => false
+    // })
+  }
+
+  @Test
   def compiletime_liftPlusOperator() = {
     inline def q = quote {
       query[Person].map(p => p.name + lift("hello"))
@@ -101,10 +114,12 @@ class QuotationTest {
 @main def simpleLift = {
   case class Person(name: String)
 
+  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+  import ctx._
   inline def q = quote {
-    query[Person].map(p => p.name + lift("hello"))
+    liftEager("hello")
   }
-  printer.lnf(q)
+  println(q)
 }
 
 // test a runtime quotation

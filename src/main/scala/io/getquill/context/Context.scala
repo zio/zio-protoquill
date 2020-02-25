@@ -18,6 +18,7 @@ import io.getquill.derived._
 import miniquill.context.mirror.MirrorDecoders
 import miniquill.context.mirror.Row
 import miniquill.dsl.GenericDecoder
+import miniquill.quoter.ScalarEncodeableVase
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import scala.quoted.{Type => TType, _}
@@ -134,12 +135,16 @@ extends EncodingDsl
 
   inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[String] =
     ${ Context.translateStaticImpl[T, Dialect, Naming]('quoted, 'this) }
+
+  inline def liftEager[T](inline value: T): T = 
+    ${ Context.liftEagerImpl[T, PrepareRow]('value) }
 }
 
 object Context {
   import miniquill.parser._
   import scala.quoted._ // summonExpr is actually from here
   import scala.quoted.matching._ // ... or from here
+  import miniquill.quoter.ScalarEncodeableVase
 
   // (**) It seems like only unlift is needed here. If a parser needs to be passed into here,
   // extending it is hard (e.g. need the same approach as Literal/Dialect Class.forName stuff)
@@ -153,6 +158,17 @@ object Context {
 
   import io.getquill.idiom.LoadNaming
   import io.getquill.util.LoadObject
+  import miniquill.dsl.GenericEncoder
+
+  def liftEagerImpl[T: Type, PrepareRow: Type](value: Expr[T])(given qctx: QuoteContext): Expr[T] = {
+    val uuid = java.util.UUID.randomUUID().toString
+    val encoder = 
+      summonExpr(given '[GenericEncoder[T, PrepareRow]]) match {
+        case Some(encoder) => encoder
+        // TODO return summoning error if not correct
+      }
+    '{ ScalarEncodeableVase[T, PrepareRow]($value, $encoder, ${Expr(uuid)}).unquote }
+  }
 
   def idiomAndNamingStatic[D<:io.getquill.idiom.Idiom, N<:io.getquill.NamingStrategy](given qctx: QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Try[(Idiom, NamingStrategy)] =
     for {

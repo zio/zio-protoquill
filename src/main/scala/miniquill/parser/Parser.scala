@@ -71,6 +71,9 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     case MatchLift(tree, uid) =>
       ScalarTag(uid)
 
+    case MatchEncodeableLift(tree, uid) =>
+      ScalarTag(uid) // TODO Want special scalar tag for an encodeable scalar
+
     // MUST come after the MatchInlineQuotation because it matches
     // the same kind of statement
     case MatchRuntimeQuotation(tree, uid) =>

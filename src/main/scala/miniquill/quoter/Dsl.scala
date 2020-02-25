@@ -8,6 +8,7 @@ import printer.AstPrinter
 import derivation._
 import scala.deriving._
 import scala.quoted.matching.Const
+import miniquill.dsl.GenericEncoder
 
 class Query[+T] {
   def map[R](f: T => R): Query[R] = new Query[R]
@@ -23,6 +24,11 @@ case class Quoted[+T](val ast: Ast, lifts: Tuple) {
   // add their lifted values into the parent tuple.... basically a runtime
   // flattening of the tree. This is the mechanism that will be used by the 'run' function
   // for dynamic queries
+}
+
+case class ScalarEncodeableVase[T, PrepareRow](value: T, encoder: GenericEncoder[T, PrepareRow], uid: String) {
+  def unquote: T =
+    throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
 
 // TODO Rename to ScalarValueVase
