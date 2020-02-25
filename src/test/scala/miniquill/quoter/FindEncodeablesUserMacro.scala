@@ -6,8 +6,8 @@ import scala.quoted._
 
 // Need to create a example user macro of FindEncodeables to be able to test it
 object FindEncodeablesUserMacro {
-  inline def apply[PrepareRow](inline encodeables: List[ScalarValueVase[_]], inline prep: PrepareRow): List[Any] = ${ applyImpl[PrepareRow]('encodeables, 'prep) }
-  def applyImpl[PrepareRow: Type](encodeables: Expr[List[ScalarValueVase[_]]], prep: Expr[PrepareRow])(given qctx: QuoteContext): Expr[List[Any]] = {
+  inline def apply[PrepareRow](inline encodeables: List[ScalarValueVase[_]], inline prep: PrepareRow): List[(Any, PrepareRow)] = ${ applyImpl[PrepareRow]('encodeables, 'prep) }
+  def applyImpl[PrepareRow: Type](encodeables: Expr[List[ScalarValueVase[_]]], prep: Expr[PrepareRow])(given qctx: QuoteContext): Expr[List[(Any, PrepareRow)]] = {
     import qctx.tasty.{given, _}
     val foundEncodeables: List[Encodeable[PrepareRow]] = 
       FindEncodeables.apply[PrepareRow](encodeables)

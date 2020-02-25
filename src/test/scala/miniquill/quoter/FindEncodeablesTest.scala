@@ -6,15 +6,22 @@ import miniquill.context.mirror.Row
 
 import io.getquill._
 
-@main def testEncodeable = {
+class FindEncodeablesTest {
+  
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
-  val row = new Row()
-  val output = 
-    FindEncodeablesUserMacro.apply[Row](List(
-      ScalarValueVase("foo", "123")
-    ), row)
+  @Test
+  def simpleStringEncodeable(): Unit = {
+    val row = new Row()
+    val output = 
+      FindEncodeablesUserMacro.apply[Row](List(
+        ScalarValueVase("foo", "123"), ScalarValueVase("bar", "456")
+      ), row)
 
-  println(output)
+    assertTrue(output match {
+      case List(("foo", Row("foo")), ("bar", Row("bar"))) => true
+      case _ => false
+    })
+  }
 }
