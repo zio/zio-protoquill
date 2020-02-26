@@ -156,8 +156,8 @@ extends EncodingDsl
   inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[Encodeable[PrepareRow]])] =
     ${ Context.translateStaticImpl[T, Dialect, Naming, PrepareRow]('quoted, 'this) }
 
-  inline def liftEager[T](inline vv: T): T = 
-    ${ Context.liftEagerImpl[T, PrepareRow]('vv) }
+  inline def lift[T](inline vv: T): T = 
+    ${ Context.eagerLiftImpl[T, PrepareRow]('vv) }
 }
 
 object Context {
@@ -180,7 +180,7 @@ object Context {
   import io.getquill.util.LoadObject
   import miniquill.dsl.GenericEncoder
 
-  def liftEagerImpl[T, PrepareRow](vvv: Expr[T])(given qctx: QuoteContext, tType: TType[T], prepareRowType: TType[PrepareRow]): Expr[T] = {
+  def eagerLiftImpl[T, PrepareRow](vvv: Expr[T])(given qctx: QuoteContext, tType: TType[T], prepareRowType: TType[PrepareRow]): Expr[T] = {
     import qctx.tasty.{given, _}
     val uuid = java.util.UUID.randomUUID().toString
     val encoder = 

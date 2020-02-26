@@ -83,16 +83,48 @@ class QuotationTest {
 
   @Test
   def compiletime_simpleLift_eager() = {
-    // val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-    // import ctx._
-    // inline def q = quote {
-    //   liftEager("hello")
-    // }
-    // assertTrue(q match {
-    //   case Quoted(ScalarTag(tagUid), (ScalarValueVase("hello", vaseUid) *: ())) if (tagUid == vaseUid) => true
-    //   case _ => false
-    // })
+    import miniquill.context.mirror.Row
+    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    import ctx._
+    inline def q = quote {
+      lift("hello")
+    }
+    assertTrue(q match {
+      case Quoted(ScalarTag(tagUid), (ScalarEncodeableVase("hello", encoder, vaseUid) *: ())) if (tagUid == vaseUid) => true
+      case _ => false
+    })
+    val vase = 
+      q.lifts.asInstanceOf[Product].productIterator.toList match {
+        case head :: Nil => head.asInstanceOf[ScalarEncodeableVase[String, ctx.PrepareRow /* or just Row */]]
+      }
+      
+    assertEquals(Row("hello"), vase.encoder.apply(0, vase.value, new Row()))
   }
+
+  // TODO Yields: Quoted(Ident("q"), ()) which is very, very wrong. Need to fix.
+  // @Test
+  // def compiletime_simpleLift_runtime() = {
+  //   import miniquill.context.mirror.Row
+  //   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+  //   import ctx._
+  //   def q = quote {
+  //     lift("hello")
+  //   }
+  //   def qq = quote {
+  //     q
+  //   }
+  //   printer.lnf(qq)
+  //   assertTrue(qq match {
+  //     case Quoted(ScalarTag(tagUid), (ScalarEncodeableVase("hello", encoder, vaseUid) *: ())) if (tagUid == vaseUid) => true
+  //     case _ => false
+  //   })
+  //   val vase = 
+  //     q.lifts.asInstanceOf[Product].productIterator.toList match {
+  //       case head :: Nil => head.asInstanceOf[ScalarEncodeableVase[String, ctx.PrepareRow /* or just Row */]]
+  //     }
+      
+  //   assertEquals(Row("hello"), vase.encoder.apply(0, vase.value, new Row()))
+  // }
 
   @Test
   def compiletime_liftPlusOperator() = {
@@ -143,23 +175,23 @@ class QuotationTest {
 // }
 
 
-@main def liftAndRun = {
-  import miniquill.context.mirror.Row
+// @main def liftAndRun = {
+//   import miniquill.context.mirror.Row
 
-  case class Person(name: String)
+//   case class Person(name: String)
 
-  inline def q = quote {
-    query[Person].map(p => p.name + lift("foo"))
-  }
+//   inline def q = quote {
+//     query[Person].map(p => p.name + lift("foo"))
+//   }
 
-  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-  import ctx._
+//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+//   import ctx._
 
-  println(q)
+//   println(q)
 
-  println(run(q).string)
-  println(run(q).prepareRow(new Row()))
-}
+//   println(run(q).string)
+//   println(run(q).prepareRow(new Row()))
+// }
 
 
 // test a runtime quotation
