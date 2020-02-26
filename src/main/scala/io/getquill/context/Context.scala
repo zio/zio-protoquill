@@ -26,6 +26,11 @@ import miniquill.quoter.FindLifts
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
 import miniquill.quoter.QuotationVase
+import miniquill.quoter.SummonInlineEncodeables
+import miniquill.quoter.InlineEncodeable
+import miniquill.quoter.Encodeable
+import miniquill.quoter.SummonInlineEncodeables
+import io.getquill.idiom.ReifyStatement
 
 import io.getquill._
 
@@ -116,17 +121,29 @@ extends EncodingDsl
 
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val staticQuery = translateStatic[T](quoted)
-    if (staticQuery.isDefined) { // TODO Find a way to generate the static query or not and then check (somehow use an optional there?)
+    staticQuery match {
+      case Some((query, lifts)) =>
+        val decoder =
+          summonFrom {
+            case decoder: Decoder[T] => decoder
+          }
+        val extractor = (r: ResultRow) => decoder.apply(1, r)
 
-      val decoder =
-        summonFrom {
-          case decoder: Decoder[T] => decoder
-        }
-      val extractor = (r: ResultRow) => decoder.apply(1, r)
-      this.executeQuery(staticQuery.get, null, extractor, ExecutionType.Static)
+        val prepare = 
+          (row: PrepareRow) => {
+            val (_, values, prepare) =
+              lifts.foldLeft((0, List.empty[Any], row)) {
+                case ((idx, values, row), lift) =>
+                  val newRow = lift.encoder(idx, lift.value, row)
+                  (idx + 1, lift.value :: values, newRow)
+              }
+            (values, prepare)
+          }
 
-    } else {
-      runDynamic(quoted)
+        this.executeQuery(query, prepare, extractor, ExecutionType.Static)
+
+      case None =>
+        runDynamic(quoted)
     }
   }
 
@@ -136,8 +153,8 @@ extends EncodingDsl
   protected val identityPrepare: Prepare = (Nil, _)
   protected val identityExtractor = identity[ResultRow] _
 
-  inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[String] =
-    ${ Context.translateStaticImpl[T, Dialect, Naming]('quoted, 'this) }
+  inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[Encodeable[PrepareRow]])] =
+    ${ Context.translateStaticImpl[T, Dialect, Naming, PrepareRow]('quoted, 'this) }
 
   inline def liftEager[T](inline vv: T): T = 
     ${ Context.liftEagerImpl[T, PrepareRow]('vv) }
@@ -174,14 +191,21 @@ object Context {
     '{ ScalarEncodeableVase($vvv, $encoder, ${Expr(uuid)}).unquote } //[$tType, $prepareRowType] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 
-  def idiomAndNamingStatic[D<:io.getquill.idiom.Idiom, N<:io.getquill.NamingStrategy](given qctx: QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Try[(Idiom, NamingStrategy)] =
+  class ExpandTags[D <: Idiom, N <: NamingStrategy](ast: Expr[Any])(given qctx: QuoteContext, dialectTpe:TType[D], namingType:TType[N]) {
+
+  }
+
+  def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](given qctx: QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Try[(Idiom, NamingStrategy)] =
     for {
       idiom <- LoadObject(dialectTpe)
       namingStrategy <- LoadNaming.static(namingType)
     } yield (idiom, namingStrategy)
 
   // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
-  def translateStaticImpl[T: Type, D <: Idiom, N <: NamingStrategy](quotedRaw: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]])(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Option[String]] = {
+  def translateStaticImpl[T: Type, D <: Idiom, N <: NamingStrategy, PrepareRow](
+    quotedRaw: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]]
+  )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N], prepareRow:TType[PrepareRow]): Expr[Option[(String, List[Encodeable[PrepareRow]])]] = {
+
     import qctx.tasty.{Try => TTry, _, given _}
     import io.getquill.ast.{CollectAst, QuotationTag}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
@@ -196,42 +220,54 @@ object Context {
     val tryStatic =
       for {
         (idiom, naming) <- idiomAndNamingStatic
-        // We only need an unlifter here, not a parser (**)
-        // TODO Need to pull out lifted sections from the AST to process lifts
-        ast = {
-          object Unseal {
-            def unapply(t: Expr[Any]) = {
-              Some(t.unseal)
-            }
+        (astExpr, liftsExpr) <- Try {
+          unInline(quoted) match {
+            case `Quoted.apply`(ast, lifts) => (ast, lifts)
           }
-          def unInline(expr: Expr[Any]): Ast = 
-            expr match {
-              // Need to traverse through this case if we want to be able to use inline parameter value
-              // without having to do quoted.unseal.underlyingArgument.seal
-              case Unseal(Inlined(_, _, v)) => unInline(v.seal)
-              case `Quoted.apply`(ast) =>
-                new Unlifter(given qctx).apply(ast)
-            }
-
-          unInline(quoted)
-          // TODO If not found, fail the macro. Make sure user knows about it!
-          // TODO Test this out, an easy way is to make the match invalid
-          // for example by changing 'quoted.unseal.underlyingArgument.seal' to just 'quoted'
         }
-        expandedAst <- Try { 
-          Expander.static[T](ast) 
-        } if noRuntimeQuotations(ast)
+
+        ast = new Unlifter(given qctx).apply(astExpr)
+
+        expandedAst <- Try { Expander.static[T](ast) } if noRuntimeQuotations(ast)
       } yield {
 
-        val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
-        val sql = stmt.toString
+        // Get all existing encoders
+        val encodeables = SummonInlineEncodeables[PrepareRow](liftsExpr).map(e => (e.uid, e)).toMap
 
-        println("Compile Time Query Is: " + sql)
+        val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
+
+        val (string, externals) =
+          ReifyStatement(
+            idiom.liftingPlaceholder,
+            idiom.emptySetContainsToken,
+            stmt,
+            forProbing = false
+          )
+        
+        val encodedLifts = externals.collect {
+          case tag: ScalarTag =>
+            encodeables.get(tag.uid) match {
+              case Some(encodeable) => encodeable
+              case None => ??? 
+                // TODO Throw an error here or attempt to resolve encoders during runtime?
+                // maybe the user has hand-modified a quoted block and only the
+                // lifts are modified with some runtime values?
+                // If throwing an error (or maybe even not?) need to tell the user which lifted ids cannot be found
+                // should probably add some info to the reifier to "highlight" the question marks that
+                // cannot be plugged in. It would also be really nice to show the user which lift-statements
+                // are wrong but that requires a bit more thought (maybe match them somehow into the original AST
+                // from quotedRow via the UUID???)
+            }
+        }.map(_.prepare)
+
+        //val sql = stmt.toString
+
+        println("Compile Time Query Is: " + string)
 
         // What about a missing decoder?
         // need to make sure that that kind of error happens during compile time
         // (also need to propagate the line number, talk to Li Houyi about that)
-        '{ Some(${Expr(sql)}) }
+        '{ Some((${Expr(string)}, ${Expr.ofList(encodedLifts)})) }
       }
 
     if (tryStatic.isFailure) {

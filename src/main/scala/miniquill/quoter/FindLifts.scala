@@ -6,20 +6,33 @@ import scala.collection.mutable.ArrayBuffer
 import scala.quoted.util.ExprMap
 import miniquill.dsl.GenericEncoder
 
-case class Encodeable[PrepareRow](uid: String, value: Expr[Any], encoder: Expr[GenericEncoder[Any, PrepareRow]])
+case class Encodeable[PrepareRow](uid: String, value: Any, encoder: GenericEncoder[Any, PrepareRow])
+case class InlineEncodeable[PrepareRow](uid: String, value: Expr[Any], encoder: Expr[GenericEncoder[Any, PrepareRow]]) {
+  def prepare(given qctx: QuoteContext, prepRow: Type[PrepareRow]): Expr[Encodeable[PrepareRow]] = {
+    '{ Encodeable(${Expr(uid)}, $value, $encoder) }
+  }
+}
 
-object FindEncodeables {
+// Only for compile-time encodeables, runtime encodeables should be checked
+// from QuotationVase instances during runtime in the 'run' function
+object SummonInlineEncodeables {
 
-  def apply[PrepareRow: Type](input: Expr[Any])(given qctx: QuoteContext): List[Encodeable[PrepareRow]] = {
+  // TODO PrepareRow should be injected into the matches? (or they should be checked to be this type
+  // otherwise it's invalid and an exception should be thrown?)
+  def apply[PrepareRow: Type](input: Expr[Any])(given qctx: QuoteContext): List[InlineEncodeable[PrepareRow]] = {
     import qctx.tasty.{given, _}
 
     ExprAccumulate(input) {
 
-      // If it's an 'encodeable' vase, use the encoder directly
-
       // TODO Check that $prep is an instance of GenericEncoder[Any, PrepareRow], otherwise the cast shouldn't work and user should be warned
       case vase @ '{ ScalarEncodeableVase.apply[$tpe, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) }  =>
-        Encodeable(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, PrepareRow]]])
+        InlineEncodeable(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, PrepareRow]]])
+
+      // If it's a reference but not inline
+      case '{ ($sv: ScalarEncodeableVase[$tpe, $prep]) } =>
+        // Technically this case CAN work with runtime queries. Should we propogate this info
+        // and allow a runtime fallback?
+        qctx.error("Runtime Encodeables not allowed with inline queries."); ???
 
       // Causes: this case is unreachable since class Tuple2 is not a subclass of class Expr
       // Not sure why. Probably language bug.
@@ -30,9 +43,13 @@ object FindEncodeables {
             // Need to case to Encoder[Any] since we can't preserve types
             // in the list that is comming out (and we don't need to keep track
             // of types once we have the decoders)
-            Encodeable(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, PrepareRow]]])
+            InlineEncodeable(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, PrepareRow]]])
           // TODO Error case and good message when can't find encoder
         }
+
+      // If it's a reference but not inline
+      case '{ ($sv: ScalarValueVase[$tpe]) } =>
+        qctx.error("Runtime Encodeables not allowed with inline queries."); ???
     }
   }
 }

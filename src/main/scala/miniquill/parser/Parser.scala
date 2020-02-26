@@ -79,7 +79,7 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     case MatchRuntimeQuotation(tree, uid) =>
       QuotationTag(uid)
 
-    case `Quoted.apply`(ast) =>
+    case `Quoted.apply`(ast, _) =>
       unlift(ast)
 
     case Unseal(Inlined(_, _, v)) =>

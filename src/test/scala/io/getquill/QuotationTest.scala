@@ -111,20 +111,56 @@ class QuotationTest {
 
 
 
-@main def simpleLift = {
+// @main def simpleLift = {
+//   import miniquill.context.mirror.Row
+
+//   case class Person(name: String)
+
+//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+//   import ctx._
+//   inline def q = quote {
+//     liftEager("hello")
+//   }
+//   println(q)
+//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[ScalarEncodeableVase[String, ctx.PrepareRow /* or just Row */]]
+//   println(vase.encoder.apply(0, vase.value, new Row()))
+// }
+
+// @main def runtimeEagerLift = {
+//   import miniquill.context.mirror.Row
+
+//   case class Person(name: String)
+
+//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+//   import ctx._
+//   def q = quote {
+//     liftEager("hello")
+//   }
+//   val qq = quote { q }
+//   println(qq)
+//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[ScalarEncodeableVase[String, ctx.PrepareRow /* or just Row */]]
+//   println(vase.encoder.apply(0, vase.value, new Row()))
+// }
+
+
+@main def liftAndRun = {
   import miniquill.context.mirror.Row
 
   case class Person(name: String)
 
+  inline def q = quote {
+    query[Person].map(p => p.name + lift("foo"))
+  }
+
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
-  inline def q = quote {
-    liftEager("hello")
-  }
+
   println(q)
-  val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[ScalarEncodeableVase[String, ctx.PrepareRow /* or just Row */]]
-  println(vase.encoder.apply(0, vase.value, new Row()))
+
+  println(run(q).string)
+  println(run(q).prepareRow(new Row()))
 }
+
 
 // test a runtime quotation
 // test two runtime quotations

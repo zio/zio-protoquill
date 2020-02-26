@@ -8,11 +8,18 @@ import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
 
-class QuotationParser(given qctx: QuoteContext) {
+class QuotationParser(given val qctx: QuoteContext) {
   import qctx.tasty.{_, given _}
   
-  // TODO Refactor out into a trait?
-  private object Unseal {
+  def unInline(expr: Expr[Any]): Expr[Any] = 
+    expr match {
+      // Need to traverse through this case if we want to be able to use inline parameter value
+      // without having to do quoted.unseal.underlyingArgument.seal
+      case Unseal(Inlined(_, _, v)) => unInline(v.seal)
+      case other => other
+    }
+
+  object Unseal {
     def unapply(t: Expr[Any]) = {
       Some(t.unseal)
     }
@@ -21,7 +28,7 @@ class QuotationParser(given qctx: QuoteContext) {
   import qctx.tasty.{_, given _}
   import scala.quoted.matching.{Const => Constant} //hello
 
-  private object TypedMatroshka {
+  object TypedMatroshka {
     // need to define a case where it won't go into matcher otherwise recursion is infinite
     //@tailcall // should be tail recursive
     def recurse(innerTerm: Term): Term = innerTerm match {
@@ -36,11 +43,11 @@ class QuotationParser(given qctx: QuoteContext) {
   }
 
   object `Quoted.apply` {
-    def unapply(expr: Expr[Any]): Option[Expr[Ast]] = expr match {
+    def unapply(expr: Expr[Any]): Option[(Expr[Ast], Expr[scala.Tuple])] = expr match {
       case '{ Quoted.apply[$qt]($ast, $v) } => 
         //println("********************** MATCHED VASE INNER TREE **********************")
         //printer.lnf(expr.unseal)
-        Some(ast)
+        Some((ast, v))
       case Unseal(TypedMatroshka(tree)) => unapply(tree.seal)
       case _ => 
         //println("********************** NOT MATCHED VASE INNER TREE **********************")
@@ -146,7 +153,7 @@ class QuotationParser(given qctx: QuoteContext) {
   object MatchInlineQuotation {
     def unapply(expr: Expr[Any]): Option[(Expr[Ast], String)] =
       expr match {
-        case `QuotationVase.unquote`(`QuotationVase.apply`(`Quoted.apply`(astTree), uuid, _)) =>
+        case `QuotationVase.unquote`(`QuotationVase.apply`(`Quoted.apply`((astTree, _)), uuid, _)) =>
           Some((astTree, uuid))
         case _ => None
       }
