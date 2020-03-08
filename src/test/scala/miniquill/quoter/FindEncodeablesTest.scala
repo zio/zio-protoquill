@@ -16,7 +16,7 @@ class FindEncodeablesTest {
     val row = new Row()
     val output = 
       FindEncodeablesUserMacro.apply[Row](List(
-        ScalarValueVase("foo", "123"), ScalarValueVase("bar", "456")
+        ScalarPlanter("foo", null, "123"), ScalarPlanter("bar", null, "456") // find the planers, don't care about the encoders here
       ), row)
 
     assertTrue(output match {

@@ -56,27 +56,16 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     astParser.isDefinedAt(in.unseal.underlyingArgument.seal)
 
   def astParser: PartialFunction[Expr[_], Ast] = {
-
-    // Needs to be somewhere in the beginning so 'value' will not be parsed as a functiona-apply
-    // i.e. since we don't want Property(..., value) to be the tree in this case.
-    //case '{ (ScalarValueVase.apply[$t]($value, ${scala.quoted.matching.Const(uid: String)})).value } =>
-    //  ScalarTag(uid)
-
-    //case Unseal(Apply(TypeApply(Select(Ident("ScalarValueVase"), "apply"), List(Inferred())), List(scalaTree, Literal(Constant(uid: String))))) =>
-    //  ScalarTag(uid)
-
-    case MatchInlineQuotation(astTree, uid) =>
+    
+    case MatchInlineUnquote(astTree, uid) =>
       unlift(astTree)
-
-    case MatchLift(tree, uid) =>
-      ScalarTag(uid)
 
     case MatchEncodeableLift(tree, uid) =>
       ScalarTag(uid) // TODO Want special scalar tag for an encodeable scalar
 
     // MUST come after the MatchInlineQuotation because it matches
     // the same kind of statement
-    case MatchRuntimeQuotation(tree, uid) =>
+    case MatchRuntimeUnquote(tree, uid) =>
       QuotationTag(uid)
 
     case `Quoted.apply`(ast, _) =>

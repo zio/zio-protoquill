@@ -13,19 +13,18 @@ import miniquill.quoter.Query
 import miniquill.dsl.EncodingDsl
 import miniquill.quoter.Quoted
 import miniquill.quoter.Query
-import miniquill.quoter.ScalarValueVase
 import io.getquill.derived._
 import miniquill.context.mirror.MirrorDecoders
 import miniquill.context.mirror.Row
 import miniquill.dsl.GenericDecoder
-import miniquill.quoter.ScalarEncodeableVase
+import miniquill.quoter.ScalarPlanter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import scala.quoted.{Type => TType, _}
 import miniquill.quoter.FindLifts
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
-import miniquill.quoter.QuotationVase
+import miniquill.quoter.QuotationBin
 import miniquill.quoter.SummonInlineEncodeables
 import miniquill.quoter.InlineEncodeable
 import miniquill.quoter.Encodeable
@@ -71,15 +70,6 @@ extends EncodingDsl
   def idiom: Dialect
   def naming: Naming
 
-  // TODO Need to have some implicits to auto-convert stuff inside
-  // of the run function itself into a quotation?
-
-  // inline def expandLifts[T](inline quoted: Quoted[T]): List[ScalarValueVase[_]] = {
-  //   val lifts = quoted.lifts match {
-  //     case sl: ScalarValueVase[_] => sl
-  //   }
-  // }
-
   inline def runDynamic[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val ast = Expander.runtime[T](quoted.ast)
     val lifts = 
@@ -88,9 +78,9 @@ extends EncodingDsl
       else
         List()
 
-    val quotationVases = 
+    val quotationBins = 
       lifts.collect {
-        case v: QuotationVase[Any] => v // Not sure why but QuotationVase[_] causes errors
+        case v: QuotationBin[Any] => v // Not sure why but QuotationBin[_] causes errors
       }
 
     def spliceQuotations(ast: Ast): Ast =
@@ -98,7 +88,7 @@ extends EncodingDsl
         case v @ QuotationTag(uid) => 
           // When a quotation to splice has been found, retrieve it and continue
           // splicing inside since there could be nested sections that need to be spliced
-          quotationVases.find(_.uid == uid) match {
+          quotationBins.find(_.uid == uid) match {
             case Some(vase) => 
               spliceQuotations(vase.quoted.ast)
             // TODO Macro error if a uid can't be looked up (also show all uid secionds that currently exist)
@@ -110,19 +100,21 @@ extends EncodingDsl
     val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
     val queryString = stmt.toString
     // summon a decoder and a expander (as well as an encoder) all three should be provided by the context
-    val decoder =
-      summonFrom {
-        // TODO Implicit summoning error
-        case decoder: Decoder[T] => decoder
-      }
+    val decoder = summonDecoder[T]
+      // summonFrom {
+      //   // TODO Implicit summoning error
+      //   case decoder: Decoder[T] => decoder
+      // }
     val extractor = (r: ResultRow) => decoder.apply(1, r)
     this.executeQuery(queryString, null, extractor, ExecutionType.Dynamic)
   }
 
+  inline def summonDecoder[T]: Decoder[T] = ${ Context.summonDecoderImpl[T, ResultRow] }
+
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val staticQuery = translateStatic[T](quoted)
     staticQuery match {
-      case Some((query, lifts)) =>
+      case Some((query, lifts)) => // use FindLifts as part of this match?
         val decoder =
           summonFrom {
             case decoder: Decoder[T] => decoder
@@ -164,7 +156,7 @@ object Context {
   import miniquill.parser._
   import scala.quoted._ // summonExpr is actually from here
   import scala.quoted.matching._ // ... or from here
-  import miniquill.quoter.ScalarEncodeableVase
+  import miniquill.quoter.ScalarPlanter
 
   // (**) It seems like only unlift is needed here. If a parser needs to be passed into here,
   // extending it is hard (e.g. need the same approach as Literal/Dialect Class.forName stuff)
@@ -180,15 +172,25 @@ object Context {
   import io.getquill.util.LoadObject
   import miniquill.dsl.GenericEncoder
 
+  //inline def summonDecoder[T]: Decoder[T] = ${ summonDecoderImpl[T] }
+  def summonDecoderImpl[T: Type, ResultRow: Type](given qctx: QuoteContext): Expr[GenericDecoder[ResultRow, T]] = {
+    import qctx.tasty.{Type => TType, given, _}
+    summonExpr(given '[GenericDecoder[ResultRow, T]]) match {
+      case Some(decoder) => decoder
+      case None => qctx.error(s"Cannot Find decoder for ${summon[Type[T]]}"); '{???}
+    }
+  }
+
   def eagerLiftImpl[T, PrepareRow](vvv: Expr[T])(given qctx: QuoteContext, tType: TType[T], prepareRowType: TType[PrepareRow]): Expr[T] = {
     import qctx.tasty.{given, _}
     val uuid = java.util.UUID.randomUUID().toString
     val encoder = 
       summonExpr(given '[GenericEncoder[$tType, $prepareRowType]]) match {
         case Some(enc) => enc
+        case None => qctx.error(s"Cannot Find encode for ${tType.unseal}", vvv); '{???}
         // TODO return summoning error if not correct
       }
-    '{ ScalarEncodeableVase($vvv, $encoder, ${Expr(uuid)}).unquote } //[$tType, $prepareRowType] // adding these causes assertion failed: unresolved symbols: value Context_this
+    '{ ScalarPlanter($vvv, $encoder, ${Expr(uuid)}).unquote } //[$tType, $prepareRowType] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 
   class ExpandTags[D <: Idiom, N <: NamingStrategy](ast: Expr[Any])(given qctx: QuoteContext, dialectTpe:TType[D], namingType:TType[N]) {

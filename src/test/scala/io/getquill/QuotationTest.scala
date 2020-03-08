@@ -1,15 +1,14 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import miniquill.quoter.QuotationVase
+import miniquill.quoter.QuotationBin
 import miniquill.quoter.QuoteDsl._
 import io.getquill._
 import io.getquill.ast._
 import org.junit.Test
 import org.junit.Assert._
 import miniquill.quoter.Quoted
-import miniquill.quoter.ScalarValueVase
-import miniquill.quoter.ScalarEncodeableVase
+import miniquill.quoter.ScalarPlanter
 
 class QuotationTest {
   case class Address(street:String, zip:Int) extends Embedded
@@ -62,7 +61,7 @@ class QuotationTest {
       qq match {
         case Quoted(
           Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "name")), 
-          (QuotationVase(Quoted(Entity("Person", List()), ()), _) *: ())
+          (QuotationBin(Quoted(Entity("Person", List()), ()), _) *: ())
         ) => true
         case _ => false
       }
@@ -76,7 +75,7 @@ class QuotationTest {
       lift("hello")
     }
     assertTrue(q match {
-      case Quoted(ScalarTag(tagUid), (ScalarValueVase("hello", vaseUid) *: ())) if (tagUid == vaseUid) => true
+      case Quoted(ScalarTag(tagUid), (ScalarPlanter("hello", vaseUid) *: ())) if (tagUid == vaseUid) => true
       case _ => false
     })
   }
@@ -90,18 +89,17 @@ class QuotationTest {
       lift("hello")
     }
     assertTrue(q match {
-      case Quoted(ScalarTag(tagUid), (ScalarEncodeableVase("hello", encoder, vaseUid) *: ())) if (tagUid == vaseUid) => true
+      case Quoted(ScalarTag(tagUid), (ScalarPlanter("hello", encoder, vaseUid) *: ())) if (tagUid == vaseUid) => true
       case _ => false
     })
     val vase = 
       q.lifts.asInstanceOf[Product].productIterator.toList match {
-        case head :: Nil => head.asInstanceOf[ScalarEncodeableVase[String, ctx.PrepareRow /* or just Row */]]
+        case head :: Nil => head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
       }
       
     assertEquals(Row("hello"), vase.encoder.apply(0, vase.value, new Row()))
   }
 
-  // TODO Yields: Quoted(Ident("q"), ()) which is very, very wrong. Need to fix.
   // @Test
   // def compiletime_simpleLift_runtime() = {
   //   import miniquill.context.mirror.Row
@@ -115,12 +113,12 @@ class QuotationTest {
   //   }
   //   printer.lnf(qq)
   //   assertTrue(qq match {
-  //     case Quoted(ScalarTag(tagUid), (ScalarEncodeableVase("hello", encoder, vaseUid) *: ())) if (tagUid == vaseUid) => true
+  //     case Quoted(QuotationTag(tagUid), (QuotationBin("hello", encoder, vaseUid) *: ())) if (tagUid == vaseUid) => true
   //     case _ => false
   //   })
   //   val vase = 
   //     q.lifts.asInstanceOf[Product].productIterator.toList match {
-  //       case head :: Nil => head.asInstanceOf[ScalarEncodeableVase[String, ctx.PrepareRow /* or just Row */]]
+  //       case head :: Nil => head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
   //     }
       
   //   assertEquals(Row("hello"), vase.encoder.apply(0, vase.value, new Row()))
@@ -134,7 +132,7 @@ class QuotationTest {
     assertTrue(q match {
       case Quoted(
           Map(Entity("Person", List()), Ident("p"), BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid))),
-          (ScalarValueVase("hello", vaseUid) *: ())
+          (ScalarPlanter("hello", vaseUid) *: ())
         ) => true
       case _ => false
     })
@@ -154,7 +152,7 @@ class QuotationTest {
 //     liftEager("hello")
 //   }
 //   println(q)
-//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[ScalarEncodeableVase[String, ctx.PrepareRow /* or just Row */]]
+//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
 //   println(vase.encoder.apply(0, vase.value, new Row()))
 // }
 
@@ -170,7 +168,7 @@ class QuotationTest {
 //   }
 //   val qq = quote { q }
 //   println(qq)
-//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[ScalarEncodeableVase[String, ctx.PrepareRow /* or just Row */]]
+//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
 //   println(vase.encoder.apply(0, vase.value, new Row()))
 // }
 
@@ -193,6 +191,56 @@ class QuotationTest {
 //   println(run(q).prepareRow(new Row()))
 // }
 
+// @main def identTest = {
+//   //import scala.language.implicitConversions
+
+//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+//   import ctx._
+//   val q = quote {
+//     lift("hello")
+//   }
+//   val qq = quote { //hello
+//     q
+//   }
+//   printer.lnf(qq)
+//   //val output = run(qq)
+// }
+
+// TODO Need to have an error for this scenario!!
+// @main def noEncoderTestRuntime = { 
+//   //import scala.language.implicitConversions
+//   case class Person(name: String, age: Int)
+
+//   class Foo
+//   val q = quote {
+//     query[Person].map(p => p.name + lift(new Foo))
+//   }
+//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+//   import ctx._
+//   val qq = quote { //hello
+//     q
+//   }
+//   printer.lnf(qq)
+//   val output = run(qq)
+// }
+
+@main def noEncoderTestCompile = { 
+  //import scala.language.implicitConversions
+  case class Person(name: String, age: Int)
+
+  class Foo
+  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+  import ctx._
+  inline def q = quote {
+    query[Person].map(p => p.name + lift(new Foo))
+  }
+  
+  inline def qq = quote { //hello
+    q
+  }
+  printer.lnf(qq)
+  val output = run(qq)
+}
 
 // test a runtime quotation
 // test two runtime quotations

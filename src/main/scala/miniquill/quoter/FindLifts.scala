@@ -6,86 +6,62 @@ import scala.collection.mutable.ArrayBuffer
 import scala.quoted.util.ExprMap
 import miniquill.dsl.GenericEncoder
 
-case class Encodeable[PrepareRow](uid: String, value: Any, encoder: GenericEncoder[Any, PrepareRow])
-case class InlineEncodeable[PrepareRow](uid: String, value: Expr[Any], encoder: Expr[GenericEncoder[Any, PrepareRow]]) {
-  def prepare(given qctx: QuoteContext, prepRow: Type[PrepareRow]): Expr[Encodeable[PrepareRow]] = {
+case class Encodeable(uid: String, value: Any, encoder: GenericEncoder[Any, Any])
+
+// InlineEncodeable should be a ScalarPlanterExpr
+case class InlineEncodeable(uid: String, value: Expr[Any], encoder: Expr[GenericEncoder[Any, Any]], vase: Expr[ScalarPlanter[_, _]]) {
+  def prepare(given qctx: QuoteContext): Expr[Encodeable] = {
     '{ Encodeable(${Expr(uid)}, $value, $encoder) }
   }
 }
 
-// Only for compile-time encodeables, runtime encodeables should be checked
-// from QuotationVase instances during runtime in the 'run' function
-object SummonInlineEncodeables {
+
+// If all encodeables are compile-time return the list of their value, otherwise return false
+object InlineEncodeables {
 
   // TODO PrepareRow should be injected into the matches? (or they should be checked to be this type
   // otherwise it's invalid and an exception should be thrown?)
-  def apply[PrepareRow: Type](input: Expr[Any])(given qctx: QuoteContext): List[InlineEncodeable[PrepareRow]] = {
+
+  // Remove the unapply pattern here. InlineEncodeables should be 
+  def unapply(input: Expr[Any])(given qctx: QuoteContext): Option[List[InlineEncodeable]] = {
     import qctx.tasty.{given, _}
 
-    ExprAccumulate(input) {
+    val matchedEncodeables =
+      ExprAccumulate(input) {
 
-      // TODO Check that $prep is an instance of GenericEncoder[Any, PrepareRow], otherwise the cast shouldn't work and user should be warned
-      case vase @ '{ ScalarEncodeableVase.apply[$tpe, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) }  =>
-        InlineEncodeable(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, PrepareRow]]])
+        // TODO Check that $prep is an instance of GenericEncoder[Any, PrepareRow], otherwise the cast shouldn't work and user should be warned
+        case vase @ '{ ScalarPlanter.apply[$tpe, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) }  =>
+          Some(InlineEncodeable(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, Any]]], vase))
 
-      // If it's a reference but not inline
-      case '{ ($sv: ScalarEncodeableVase[$tpe, $prep]) } =>
-        // Technically this case CAN work with runtime queries. Should we propogate this info
-        // and allow a runtime fallback?
-        qctx.error("Runtime Encodeables not allowed with inline queries."); ???
+        // If it's a reference but not inline
+        case '{ ($sv: ScalarPlanter[$tpe, $prep]) } =>
+          qctx.throwError("Invalid Lift found. A lift must be directly inlined and cannot be a previously computed runtime value.", input)
+      }
 
-      // Causes: this case is unreachable since class Tuple2 is not a subclass of class Expr
-      // Not sure why. Probably language bug.
-      //case `ScalarValueVase.apply`(liftValue, uid, _, tpe) =>
-      case vase @ '{ ScalarValueVase.apply[$tpe]($liftValue, ${scala.quoted.matching.Const(uid: String)}) }  =>
-        summonExpr(given '[GenericEncoder[$tpe, PrepareRow]]) match {
-          case Some(encoder) => 
-            // Need to case to Encoder[Any] since we can't preserve types
-            // in the list that is comming out (and we don't need to keep track
-            // of types once we have the decoders)
-            InlineEncodeable(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, PrepareRow]]])
-          // TODO Error case and good message when can't find encoder
-        }
-
-      // If it's a reference but not inline
-      case '{ ($sv: ScalarValueVase[$tpe]) } =>
-        qctx.error("Runtime Encodeables not allowed with inline queries."); ???
+    matchedEncodeables.forall(_.isDefined) match {
+      case true => Some(matchedEncodeables.collect { case Some(value) => value })
+      case false => None
     }
   }
 }
 
 
 
-object FindLifts {
 
-  def apply[T](input: Expr[Any])(given qctx: QuoteContext, tpe: quoted.Type[T]): List[(String, Expr[Any])] = {
+object FindRuntimeQuotationBins {
+
+  def apply[T](input: Expr[Any])(given qctx: QuoteContext, tpe: quoted.Type[T]): List[(String, Expr[QuotationBin[Any]])] = {
     import qctx.tasty.{given, _}
     val quotationParser = new miniquill.parser.QuotationParser
     import quotationParser._
 
     ExprAccumulate(input) {
-      // TODO block foldOver in this case?
-      // NOTE that using this kind of pattern match, lifts are matched for both compile and run times
-      // In compile times the entire tree of passed-in-quotations is matched including the 'lifts' 
-      // (i.e. Quotation.lifts) tuples that are returned so we just get ScalarValueVase.apply
-      // matched from those (as well as from the body of the passed-in-quotation but that's fine
-      // since we dedupe by the UUID *). During runtime however, the actual case class instance
-      // of ScalarTag is matched by the below term.
-
-      // * That is to say if we have a passed-in-quotation Quoted(body: ... ScalarValueVase.apply, lifts: ..., (ScalarValueVase.apply ....))
-      // both the ScalarValueVase in the body as well as the ones in the tuple would be matched. This is fine
-      // since we dedupe the scalar value lifts by their UUID.
-
-
-      case MatchLift(tree, uid) => (uid, tree)
-
-      case MatchEncodeableLift(tree, uid) => (uid, tree)
 
       // If the quotation is runtime, it needs to be matched so that we can add it to the tuple
       // of lifts (i.e. runtime values) and the later evaluate it during the 'run' function.
       // Match the vase and add it to the list.
       
-      case MatchRuntimeQuotation(tree, uid) => (uid, tree) // can't traverse inside here or errors happen
+      case MatchRuntimeQuotationBins(tree, uid) => (uid, tree) // can't traverse inside here or errors happen
     }
   }
 }

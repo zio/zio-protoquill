@@ -1,12 +1,30 @@
 package miniquill.parser
 
-import io.getquill.ast.{Ident => Idnt, Constant => Const, Query => Qry, _}
+import io.getquill.ast.{ Ident => Idnt, Constant => Const, Query => Qry, _}
 import miniquill.quoter._
 import scala.quoted._
 import scala.quoted.matching._
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
+
+class MatroshkaHelper(given val qctx: QuoteContext) {
+  import qctx.tasty.{Term => QTerm, given, _}
+
+  object TypedMatroshka {
+    // need to define a case where it won't go into matcher otherwise recursion is infinite
+    //@tailcall // should be tail recursive
+    def recurse(innerTerm: QTerm): QTerm = innerTerm match {
+      case Typed(innerTree, _) => recurse(innerTree)
+      case other => other
+    }
+
+    def unapply(term: QTerm): Option[QTerm] = term match {
+      case Typed(tree, _) => Some(recurse(tree))
+      case _ => None
+    }
+  }
+}
 
 class QuotationParser(given val qctx: QuoteContext) {
   import qctx.tasty.{_, given _}
@@ -43,11 +61,11 @@ class QuotationParser(given val qctx: QuoteContext) {
   }
 
   object `Quoted.apply` {
-    def unapply(expr: Expr[Any]): Option[(Expr[Ast], Expr[scala.Tuple])] = expr match {
-      case '{ Quoted.apply[$qt]($ast, $v) } => 
+    def unapply(expr: Expr[Any]): Option[(Expr[Ast], Expr[List[Vase]], Expr[List[QuotationPouch]])] = expr match {
+      case '{ Quoted.apply[$qt]($ast, $v, $rq) } => 
         //println("********************** MATCHED VASE INNER TREE **********************")
         //printer.lnf(expr.unseal)
-        Some((ast, v))
+        Some((ast, v, rq))
       case Unseal(TypedMatroshka(tree)) => unapply(tree.seal)
       case _ => 
         //println("********************** NOT MATCHED VASE INNER TREE **********************")
@@ -56,9 +74,9 @@ class QuotationParser(given val qctx: QuoteContext) {
     }
   }
 
-  protected object `QuotationVase.apply` {
+  protected object `QuotationBin.apply` {
     def unapply(expr: Expr[Any]) = expr match {
-      case vase @ '{ QuotationVase.apply[$qt]($quotation, ${scala.quoted.matching.Const(uid: String)}) } => 
+      case vase @ '{ QuotationBin.apply[$qt]($quotation, ${scala.quoted.matching.Const(uid: String)}) } => 
         //println("********************** MATCHED VASE APPLY **********************")
         //printer.lnf(expr.unseal)
         Some((quotation, uid, vase))
@@ -66,83 +84,46 @@ class QuotationParser(given val qctx: QuoteContext) {
     }
   }
 
-  object `ScalarValueVase.apply` {
+  object `ScalarVase.apply` {
     def unapply(expr: Expr[Any]) = expr match {
-      case vase @ '{ ScalarValueVase.apply[$qt]($liftValue, ${scala.quoted.matching.Const(uid: String)}) } =>
+      case vase @ '{ ScalarVase.apply[$qt, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) } =>
         Some((liftValue, uid, vase, qt))
       case _ => None
     }
   }
 
-  object `ScalarEncodeableVase.apply` {
-    def unapply(expr: Expr[Any]) = expr match {
-      case vase @ '{ ScalarEncodeableVase.apply[$qt, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) } =>
-        Some((liftValue, uid, vase, qt))
-      case _ => None
-    }
-  }
-
-  // Match the QuotationVase(...).unquote values which are tacked on to every
+  // Match the QuotationBin(...).unquote values which are tacked on to every
   // child-quote (inside of a parent quote) when the 'unquote' function (i.e macro)
   // is applied.
-  protected object `QuotationVase.unquote` {
+  protected object `QuotationBin.unquote` {
     def unapply(expr: Expr[Any]) = expr match {
-      // When a QuotationVase is embedded into an ast
-      case '{ (${quotationVase}: QuotationVase[$tt]).unquote } => Some(quotationVase)
+      // When a QuotationBin is embedded into an ast
+      case '{ (${quotationBin}: QuotationBin[$tt]).unquote } => Some(quotationBin)
       case _ => None
     }
   }
 
-  protected object `(ScalarValueVase).unquote` {
+  protected object `(ScalarVase).unquote` {
     def unapply(expr: Expr[Any]) = expr match {
-      case '{ (${vase}: ScalarValueVase[$tt]).unquote } => Some(vase)
+      case '{ (${vase}: ScalarVase[$tt, $pt]).unquote } => Some(vase)
       case _ => None
     }
   }
 
-  protected object `(ScalarEncodeableVase).unquote` {
-    def unapply(expr: Expr[Any]) = expr match {
-      case '{ (${vase}: ScalarEncodeableVase[$tt, $pt]).unquote } => Some(vase)
-      case _ => None
-    }
-  }
-
-  object MatchLift {
-    def unapply(expr: Expr[Any]): Option[(Expr[Any], String)] =
-      expr match {
-        case `(ScalarValueVase).unquote`(vase) =>
-          unapply(vase)
-        case `ScalarValueVase.apply`(_, uuid, vase,  _) =>
-          Some((vase, uuid))
-        case _ => None
-      }
-  }
-
-  object MatchEncodeableLift {
-    def unapply(expr: Expr[Any]): Option[(Expr[Any], String)] =
-      expr match {
-        case `(ScalarEncodeableVase).unquote`(vase) =>
-          unapply(vase)
-        case `ScalarEncodeableVase.apply`(_, uuid, vase,  _) =>
-          Some((vase, uuid))
-        case _ => None
-      }
-  }
-
-  object MatchRuntimeQuotation {
-    def unapply(expr: Expr[Any]): Option[(Expr[Any], String)] =
+  object MatchRuntimeQuotationBins {
+    def unapply(expr: Expr[Any]): Option[(Expr[QuotationBin[Any]], String)] =
       expr match {
         // case MatchQuotationRef(tree, uuid) => 
         //   println("******************** Runtime: Match Quotation Ref ********************")
         //   printer.lnf((tree.unseal, uuid))
         //   Some((tree, uuid))
-        case `QuotationVase.unquote`(innards) =>
+        case `QuotationBin.unquote`(innards) =>
           //println("******************** Runtime: Match Unquote ********************")
           //printer.lnf(innards.unseal)
           unapply(innards)
         // sometimes there are multiple levels of vases when references are spliced,
         // we should only care about the innermost one
-        case `QuotationVase.apply`(_, uuid, vase) =>
+        case `QuotationBin.apply`(_, uuid, vase) =>
           //println("******************** Runtime: Vase Apply ********************")
           //printer.lnf(uuid, vase)
           Some((vase, uuid))
@@ -150,10 +131,10 @@ class QuotationParser(given val qctx: QuoteContext) {
       }
     }
 
-  object MatchInlineQuotation {
+  object MatchInlineUnquote {
     def unapply(expr: Expr[Any]): Option[(Expr[Ast], String)] =
       expr match {
-        case `QuotationVase.unquote`(`QuotationVase.apply`(`Quoted.apply`((astTree, _)), uuid, _)) =>
+        case `QuotationBin.unquote`(`QuotationBin.apply`(`Quoted.apply`((astTree, _)), uuid, _)) =>
           Some((astTree, uuid))
         case _ => None
       }
