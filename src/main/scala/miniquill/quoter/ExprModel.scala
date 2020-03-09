@@ -88,10 +88,8 @@ object QuotedExpr {
     
       expr match {
         /* No runtime lifts allowed for inline quotes so quotationPouches.length must be 0 */
-
-        // TODO TODO listArgsApply needs to be an empty list
-        case '{ Quoted.apply[$qt]($ast, $v, $listArgsApply) } => 
-          Some(QuotedExpr(ast, v, listArgsApply))
+        case '{ Quoted.apply[$qt]($ast, $v, List.apply[QuotationVase](${ExprSeq(args)}: _*)) } if (args.length == 0) => 
+          Some(QuotedExpr(ast, v, '{ List[QuotationVase]() }))
         case 
           TypedMatroshka(tree) => Inline.unapply(tree)
         case _ => 
