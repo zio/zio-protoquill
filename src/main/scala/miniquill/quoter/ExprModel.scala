@@ -59,18 +59,23 @@ object ScalarPlanterExpr {
   // TODO Find a way to propogate PrepareRow into here
   // pull vases out of Quotation.lifts
   object InlineList {
-    def unapply(expr: Expr[List[Any]])(given qctx: QuoteContext): Option[List[ScalarPlanterExpr]] = expr match {
-      case '{ scala.List[$t](${ExprSeq(elems)}: _*) } => 
-        val scalarValues = 
-          elems.collect {
-            case ScalarPlanterExpr.Inline(vaseExpr) => vaseExpr
-          }
+    def unapply(expr: Expr[List[Any]])(given qctx: QuoteContext): Option[List[ScalarPlanterExpr]] = {
+      expr match {
+        case '{ Nil } =>
+          Some(List())
 
-        // if all the elements match SingleValueVase then return them, otherwise don't
-        if (scalarValues.length == elems.length) Some(scalarValues.toList)
-        else None
+        case '{ scala.List[$t](${ExprSeq(elems)}: _*) } => 
+          val scalarValues = 
+            elems.collect {
+              case ScalarPlanterExpr.Inline(vaseExpr) => vaseExpr
+            }
 
-      case _ => None
+          // if all the elements match SingleValueVase then return them, otherwise don't
+          if (scalarValues.length == elems.length) Some(scalarValues.toList)
+          else None
+
+        case _ => None
+      }
     }
   }
 }
@@ -85,10 +90,10 @@ object QuotedExpr {
       import qctx.tasty.{Term => QTerm, given, _}
       val matroshkaHelper = new MatroshkaHelper
       import matroshkaHelper._
-    
+
       expr match {
         /* No runtime lifts allowed for inline quotes so quotationPouches.length must be 0 */
-        case '{ Quoted.apply[$qt]($ast, $v, List.apply[QuotationVase](${ExprSeq(args)}: _*)) } if (args.length == 0) => 
+        case exprr @  '{ Quoted.apply[$qt]($ast, $v, Nil) } =>  //List.apply[$ttt](${ExprSeq(args)}: _*) if (args.length == 0)
           Some(QuotedExpr(ast, v, '{ List[QuotationVase]() }))
         case 
           TypedMatroshka(tree) => Inline.unapply(tree)
@@ -122,7 +127,8 @@ object QuotationBinExpr {
   object findUnquotes {
     def apply(expr: Expr[Any])(given qctx: QuoteContext) =
       ExprAccumulate(expr) {
-        case InlineOrPluckedUnquoted(vaseExpr) => vaseExpr
+        case InlineOrPluckedUnquoted(vaseExpr) => 
+          vaseExpr
       }
   }
 
@@ -147,6 +153,9 @@ object QuotationBinExpr {
   // to search the AST since it has been parsed already
   object InlineOrPlucked {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationBinExpr] = {
+      import qctx.tasty.{given, _}
+
+      
       expr match {
         case vase @ `QuotationBin.apply`(QuotedExpr.Inline(ast, ScalarPlanterExpr.InlineList(lifts), _), uid) => // TODO Also match .unapply?
           Some(InlineableQuotationBinExpr(uid, ast, vase.asInstanceOf[Expr[QuotationBin[Any]]], lifts))
