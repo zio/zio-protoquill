@@ -13,9 +13,10 @@ case class LazyPlanter[T](uid: String, value: T)
 
 
 // Need to create a example user macro of FindEncodeables to be able to test it
-object FindScalarPlantersUserMacro {
-  inline def apply[PrepareRow](inline encodeables: List[LazyPlanter[Any]], inline prep: PrepareRow): List[(Any, PrepareRow)] = ${ applyImpl[PrepareRow]('encodeables, 'prep) }
-  def applyImpl[PrepareRow](encodeables: Expr[List[LazyPlanter[Any]]], prep: Expr[PrepareRow])(given qctx: QuoteContext, pType: Type[PrepareRow]): Expr[List[(Any, PrepareRow)]] = {
+object FindEncodeablesUserMacro {
+  // Note, existential typing here is better. Otherwise everything is forced to cast to Any and the encoder lookup does not work
+  inline def apply[PrepareRow](inline encodeables: List[LazyPlanter[_]], inline prep: PrepareRow): List[(Any, PrepareRow)] = ${ applyImpl[PrepareRow]('encodeables, 'prep) }
+  def applyImpl[PrepareRow](encodeables: Expr[List[LazyPlanter[_]]], prep: Expr[PrepareRow])(given qctx: QuoteContext, pType: Type[PrepareRow]): Expr[List[(Any, PrepareRow)]] = {
     import qctx.tasty.{given, _}
 
     object Inline {
