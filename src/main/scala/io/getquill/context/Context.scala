@@ -21,13 +21,9 @@ import miniquill.quoter.ScalarPlanter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import scala.quoted.{Type => TType, _}
-import miniquill.quoter.FindLifts
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
 import miniquill.quoter.QuotationBin
-import miniquill.quoter.InlineEncodeable
-import miniquill.quoter.Encodeable
-import miniquill.quoter.QuotaionBinExpr
 import miniquill.quoter.QuotedExpr
 import miniquill.quoter.ScalarPlanterExpr
 import io.getquill.idiom.ReifyStatement
@@ -206,9 +202,6 @@ object Context {
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.unseal.underlyingArgument.seal
 
-    val quotationParser = new QuotationParser
-    import quotationParser._
-
     def noRuntimeQuotations(ast: Ast) =
       CollectAst.byType[QuotationTag](ast).isEmpty
     
@@ -216,7 +209,7 @@ object Context {
       for {
         (idiom, naming) <- idiomAndNamingStatic
         (astExpr, liftsExpr) <- Try {
-          unInline(quoted) match {
+          quoted match { // use to have 'unInline' here
             case QuotedExpr.Inline(ast, lifts, _) => (ast, lifts)
             // Warn user that a not-inline QuotedExpr was detected. Do println or is there a qctx.warn??
           }

@@ -9,7 +9,6 @@ import derivation._
 import scala.deriving._
 import scala.quoted.matching.Const
 import miniquill.dsl.GenericEncoder
-import miniquill.quoter.ExprModel
 
 object QuoteDsl {
 
@@ -54,7 +53,7 @@ object QuoteDsl {
   }
 
   def extractLifts(body: Expr[Any])(given qctx: QuoteContext) = {
-    ScalarPlanterExpr.findUnquotes(body).map(_.toExpr)
+    ScalarPlanterExpr.findUnquotes(body).map(_.plant)
   }
 
   def extractRuntimeUnquotes(body: Expr[Any])(given qctx: QuoteContext) = {

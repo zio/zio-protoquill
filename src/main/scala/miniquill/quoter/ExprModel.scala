@@ -10,6 +10,7 @@ import miniquill.quoter.Quoted
 
 
 case class ScalarPlanterExpr(uid: String, expr: Expr[Any], encoder: Expr[GenericEncoder[Any, Any]]) {
+  // TODO Change to 'replant' ?
   // Plant the ScalarPlanter back into the Scala AST
   def plant(given qctx: QuoteContext) = {
     '{ ScalarPlanter($expr, $encoder, ${Expr(uid)}) }
@@ -58,7 +59,7 @@ object ScalarPlanterExpr {
   // TODO Find a way to propogate PrepareRow into here
   // pull vases out of Quotation.lifts
   object InlineList {
-    def unapply(expr: Expr[List[Vase]])(given qctx: QuoteContext): Option[List[ScalarPlanterExpr]] = expr match {
+    def unapply(expr: Expr[List[Any]])(given qctx: QuoteContext): Option[List[ScalarPlanterExpr]] = expr match {
       case '{ scala.List[$t](${ExprSeq(elems)}: _*) } => 
         val scalarValues = 
           elems.collect {
@@ -84,8 +85,6 @@ object QuotedExpr {
       import qctx.tasty.{Term => QTerm, given, _}
       val matroshkaHelper = new MatroshkaHelper
       import matroshkaHelper._
-      val sealUnseal = new SealUnseal
-      import sealUnseal._
     
       expr match {
         /* No runtime lifts allowed for inline quotes so quotationPouches.length must be 0 */
@@ -94,7 +93,7 @@ object QuotedExpr {
         case '{ Quoted.apply[$qt]($ast, $v, $listArgsApply) } => 
           Some(QuotedExpr(ast, v, listArgsApply))
         case 
-          Unseal(TypedMatroshka(tree)) => Inline.unapply(tree.seal)
+          TypedMatroshka(tree) => Inline.unapply(tree)
         case _ => 
           None
       }

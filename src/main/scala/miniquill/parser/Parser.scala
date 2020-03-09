@@ -14,8 +14,6 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
   import qctx.tasty.{Type => TType, _, given}
 
   val unlift = new Unlifter()
-  val quotationParser = new QuotationParser
-  import quotationParser._
   
   private object Seal {
     def unapply[T](e: Term) = {

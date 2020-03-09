@@ -9,7 +9,6 @@ import derivation._
 import scala.deriving._
 import scala.quoted.matching.Const
 import miniquill.dsl.GenericEncoder
-import miniquill.quoter.ExprModel
 
 class Query[+T] {
   def map[R](f: T => R): Query[R] = new Query[R]
