@@ -57,19 +57,21 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
 
   def astParser: PartialFunction[Expr[_], Ast] = {
     
-    case MatchInlineUnquote(astTree, uid) =>
-      unlift(astTree)
+    case QuotationBinExpr.InlineOrPluckedUnquoted(quotationBin) =>
+      quotationBin match {
+        case InlineableQuotationBinExpr(uid, astTree, _, _) => unlift(astTree)
+        case PluckedQuotationBinExpr(uid, astTree) => QuotationTag(uid)
+      }
 
-    case MatchEncodeableLift(tree, uid) =>
-      ScalarTag(uid) // TODO Want special scalar tag for an encodeable scalar
+    case ScalarPlanterExpr.InlineUnquote(expr) =>
+      ScalarTag(expr.uid) // TODO Want special scalar tag for an encodeable scalar
 
-    // MUST come after the MatchInlineQuotation because it matches
-    // the same kind of statement
-    case MatchRuntimeUnquote(tree, uid) =>
-      QuotationTag(uid)
-
-    case `Quoted.apply`(ast, _) =>
-      unlift(ast)
+    // A inline quotation can be parsed if it is directly inline. If it is not inline, a error
+    // must happen (specifically have a check for it or just fail to parse?) 
+    // since we would not know the UID since it is not inside of a bin. This situation
+    // should only be encountered to a top-level quote passed to the 'run' function and similar situations.
+    case QuotedExpr.Inline(quotedExpr) => // back here
+      unlift(quotedExpr.ast)
 
     case Unseal(Inlined(_, _, v)) =>
       //println("Case Inlined")

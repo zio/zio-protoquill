@@ -25,10 +25,11 @@ import miniquill.quoter.FindLifts
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
 import miniquill.quoter.QuotationBin
-import miniquill.quoter.SummonInlineEncodeables
 import miniquill.quoter.InlineEncodeable
 import miniquill.quoter.Encodeable
-import miniquill.quoter.SummonInlineEncodeables
+import miniquill.quoter.QuotaionBinExpr
+import miniquill.quoter.QuotedExpr
+import miniquill.quoter.ScalarPlanterExpr
 import io.getquill.idiom.ReifyStatement
 
 import io.getquill._
@@ -72,23 +73,15 @@ extends EncodingDsl
 
   inline def runDynamic[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val ast = Expander.runtime[T](quoted.ast)
-    val lifts = 
-      if (quoted.lifts.isInstanceOf[Product])
-        quoted.lifts.asInstanceOf[Product].productIterator.toList
-      else
-        List()
-
-    val quotationBins = 
-      lifts.collect {
-        case v: QuotationBin[Any] => v // Not sure why but QuotationBin[_] causes errors
-      }
+    val lifts = quoted.lifts
+    val quotationVases = quoted.runtimeQuotes
 
     def spliceQuotations(ast: Ast): Ast =
       Transform(ast) {
         case v @ QuotationTag(uid) => 
           // When a quotation to splice has been found, retrieve it and continue
           // splicing inside since there could be nested sections that need to be spliced
-          quotationBins.find(_.uid == uid) match {
+          quotationVases.find(_.uid == uid) match {
             case Some(vase) => 
               spliceQuotations(vase.quoted.ast)
             // TODO Macro error if a uid can't be looked up (also show all uid secionds that currently exist)
@@ -126,7 +119,7 @@ extends EncodingDsl
             val (_, values, prepare) =
               lifts.foldLeft((0, List.empty[Any], row)) {
                 case ((idx, values, row), lift) =>
-                  val newRow = lift.encoder(idx, lift.value, row)
+                  val newRow = lift.encoder(idx, lift.value, row).asInstanceOf[PrepareRow] // TODO since summoned encoders are casted
                   (idx + 1, lift.value :: values, newRow)
               }
             (values, prepare)
@@ -145,7 +138,7 @@ extends EncodingDsl
   protected val identityPrepare: Prepare = (Nil, _)
   protected val identityExtractor = identity[ResultRow] _
 
-  inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[Encodeable[PrepareRow]])] =
+  inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[ScalarPlanter[Any, Any]])] =
     ${ Context.translateStaticImpl[T, Dialect, Naming, PrepareRow]('quoted, 'this) }
 
   inline def lift[T](inline vv: T): T = 
@@ -206,7 +199,7 @@ object Context {
   // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
   def translateStaticImpl[T: Type, D <: Idiom, N <: NamingStrategy, PrepareRow](
     quotedRaw: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]]
-  )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N], prepareRow:TType[PrepareRow]): Expr[Option[(String, List[Encodeable[PrepareRow]])]] = {
+  )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N], prepareRow:TType[PrepareRow]): Expr[Option[(String, List[ScalarPlanter[Any, Any]])]] = {
 
     import qctx.tasty.{Try => TTry, _, given _}
     import io.getquill.ast.{CollectAst, QuotationTag}
@@ -224,7 +217,15 @@ object Context {
         (idiom, naming) <- idiomAndNamingStatic
         (astExpr, liftsExpr) <- Try {
           unInline(quoted) match {
-            case `Quoted.apply`(ast, lifts) => (ast, lifts)
+            case QuotedExpr.Inline(ast, lifts, _) => (ast, lifts)
+            // Warn user that a not-inline QuotedExpr was detected. Do println or is there a qctx.warn??
+          }
+        }
+
+        lifts <- Try {
+          liftsExpr match {
+            case ScalarPlanterExpr.InlineList(liftsExpr) => liftsExpr
+            // If lifts are not an inlineable list, throw an exception and resort to trying during runtime
           }
         }
 
@@ -234,7 +235,7 @@ object Context {
       } yield {
 
         // Get all existing encoders
-        val encodeables = SummonInlineEncodeables[PrepareRow](liftsExpr).map(e => (e.uid, e)).toMap
+        val encodeables = lifts.map(e => (e.uid, e)).toMap //[PrepareRow]
 
         val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
 
@@ -260,7 +261,7 @@ object Context {
                 // are wrong but that requires a bit more thought (maybe match them somehow into the original AST
                 // from quotedRow via the UUID???)
             }
-        }.map(_.prepare)
+        }.map(_.plant)
 
         //val sql = stmt.toString
 
