@@ -9,6 +9,8 @@ import org.junit.Test
 import org.junit.Assert._
 import miniquill.quoter.Quoted
 import miniquill.quoter.ScalarPlanter
+import miniquill.quoter.QuotationVase
+import miniquill.quoter.QuotationBin
 
 class QuotationTest {
   case class Address(street:String, zip:Int) extends Embedded
@@ -60,28 +62,17 @@ class QuotationTest {
     val matches = 
       qq match {
         case Quoted(
-          Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "name")), 
-          (QuotationBin(Quoted(Entity("Person", List()), ()), _) *: ())
+          Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "name")),
+          List(),
+          List(QuotationVase(Quoted(Entity("Person", List()), List(), List()), _))
         ) => true
         case _ => false
       }
     assertTrue(matches)
   }
 
-
   @Test
   def compiletime_simpleLift() = {
-    inline def q = quote {
-      lift("hello")
-    }
-    assertTrue(q match {
-      case Quoted(ScalarTag(tagUid), (ScalarPlanter("hello", vaseUid) *: ())) if (tagUid == vaseUid) => true
-      case _ => false
-    })
-  }
-
-  @Test
-  def compiletime_simpleLift_eager() = {
     import miniquill.context.mirror.Row
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
@@ -89,7 +80,7 @@ class QuotationTest {
       lift("hello")
     }
     assertTrue(q match {
-      case Quoted(ScalarTag(tagUid), (ScalarPlanter("hello", encoder, vaseUid) *: ())) if (tagUid == vaseUid) => true
+      case Quoted(ScalarTag(tagUid), List(ScalarPlanter("hello", encoder, vaseUid)), List()) if (tagUid == vaseUid) => true
       case _ => false
     })
     val vase = 
@@ -126,13 +117,17 @@ class QuotationTest {
 
   @Test
   def compiletime_liftPlusOperator() = {
+    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    import ctx._
+
     inline def q = quote {
       query[Person].map(p => p.name + lift("hello"))
     }
     assertTrue(q match {
       case Quoted(
           Map(Entity("Person", List()), Ident("p"), BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid))),
-          (ScalarPlanter("hello", vaseUid) *: ())
+          List(ScalarPlanter("hello", _, vaseUid)), // TODO Test what kind of encoder it is? Or try to run it and make sure it works?
+          List()
         ) => true
       case _ => false
     })
@@ -224,23 +219,23 @@ class QuotationTest {
 //   val output = run(qq)
 // }
 
-@main def noEncoderTestCompile = { 
-  //import scala.language.implicitConversions
-  case class Person(name: String, age: Int)
+// TODO This is a negative test (i.e. encoder finding should not work. Should look into how to write these for dotty)
+// @main def noEncoderTestCompile = { 
+//   case class Person(name: String, age: Int)
 
-  class Foo
-  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-  import ctx._
-  inline def q = quote {
-    query[Person].map(p => p.name + lift(new Foo))
-  }
+//   class Foo
+//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+//   import ctx._
+//   inline def q = quote {
+//     query[Person].map(p => p.name + lift(new Foo))
+//   }
   
-  inline def qq = quote { //hello
-    q
-  }
-  printer.lnf(qq)
-  val output = run(qq)
-}
+//   inline def qq = quote { //hello
+//     q
+//   }
+//   printer.lnf(qq)
+//   val output = run(qq)
+// }
 
 // test a runtime quotation
 // test two runtime quotations

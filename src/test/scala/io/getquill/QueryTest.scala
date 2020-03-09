@@ -8,6 +8,7 @@ import io.getquill.ast._
 import org.junit.Test
 import org.junit.Assert._
 import miniquill.quoter.QuotationBin
+import miniquill.quoter.QuotationVase
 import io.getquill.context.ExecutionType
 
 class QueryTest { //hellooooooo
@@ -81,7 +82,7 @@ class QueryTest { //hellooooooo
     {
       assertTrue(
         peopleRuntime match { 
-          case Quoted(Entity("Person", List()), ()) => true 
+          case Quoted(Entity("Person", List()), List(), _) => true 
           case _ => false
         } 
       )
@@ -90,7 +91,8 @@ class QueryTest { //hellooooooo
         addressesRuntime match { 
           case Quoted(
             Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "address")), 
-            (QuotationBin(Quoted(Entity("Person", List()), ()), _) *: ())
+            List(),
+            List(QuotationVase(Quoted(Entity("Person", List()), List(), _), _))
           ) => true
           case _ => false
         }
