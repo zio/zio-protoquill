@@ -35,34 +35,37 @@ class ExprModel {
 
 
 // Holds and parses variations of the ScalarPlanter
-case class ScalarPlanterExpr(uid: String, expr: Expr[Any], encoder: Expr[GenericEncoder[Any, Any]]) {
+case class ScalarPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T], encoder: Expr[GenericEncoder[T, PrepareRow]]) {
   // TODO Change to 'replant' ?
   // Plant the ScalarPlanter back into the Scala AST
   def plant(given qctx: QuoteContext) = {
-    '{ ScalarPlanter($expr, $encoder, ${Expr(uid)}) }
+    '{ ScalarPlanter[T, PrepareRow]($expr, $encoder, ${Expr(uid)}) }
   }
 }
 object ScalarPlanterExpr {
   object Inline {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[ScalarPlanterExpr] = expr match {
-      case '{ ScalarPlanter.apply[$qt, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) } =>
-        Some(ScalarPlanterExpr(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, Any]]]))
-      case _ => 
-        None
-    }
+    
+
+    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[ScalarPlanterExpr[_, _]] = 
+      expr match {
+        case '{ ScalarPlanter.apply[$qt, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) } =>
+          Some(ScalarPlanterExpr(uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */))
+        case _ => 
+          None
+      }
   }
 
   protected object `(ScalarPlanter).unquote` {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[Expr[ScalarPlanter[Any, Any]]] = expr match {
+    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[Expr[ScalarPlanter[_, _]]] = expr match {
       case '{ ($scalarPlanter: ScalarPlanter[$tt, $pr]).unquote } => 
-        Some(scalarPlanter.asInstanceOf[Expr[ScalarPlanter[Any, Any]]])
+        Some(scalarPlanter/* .asInstanceOf[Expr[ScalarPlanter[A, A]]] */)
       case _ => 
         None
     }
   }
 
   object InlineUnquote {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[ScalarPlanterExpr] = expr match {
+    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[ScalarPlanterExpr[_, _]] = expr match {
       case `(ScalarPlanter).unquote`(planterUnquote) =>
         planterUnquote match {
           case Inline(planterExpr) => 
@@ -77,7 +80,7 @@ object ScalarPlanterExpr {
   }
 
 
-  def findUnquotes(expr: Expr[Any])(given qctx: QuoteContext): List[ScalarPlanterExpr] =
+  def findUnquotes(expr: Expr[Any])(given qctx: QuoteContext): List[ScalarPlanterExpr[_, _]] =
     ExprAccumulate(expr) {
       case InlineUnquote(scalarPlanter) => scalarPlanter
     }
@@ -85,16 +88,21 @@ object ScalarPlanterExpr {
   // TODO Find a way to propogate PrepareRow into here
   // pull vases out of Quotation.lifts
   object InlineList {
-    def unapply(expr: Expr[List[Any]])(given qctx: QuoteContext): Option[List[ScalarPlanterExpr]] = {
+    def unapply(expr: Expr[List[Any]])(given qctx: QuoteContext): Option[List[ScalarPlanterExpr[_, _]]] = {
       expr match {
         case '{ Nil } =>
           Some(List())
 
-        case '{ scala.List[$t](${ExprSeq(elems)}: _*) } => 
+        case '{ scala.List.apply[$t](${ExprSeq(elems)}: _*) } => 
           val scalarValues = 
             elems.collect {
               case ScalarPlanterExpr.Inline(vaseExpr) => vaseExpr
             }
+
+          import qctx.tasty.{given, _}
+          println("****************** GOT HERE **************")
+          println(s"Scalar values: ${scalarValues.mkString("(", ",", ")")}")
+          println(s"Elems: ${elems.map(_.show).mkString("(", ",", ")")}")
 
           // if all the elements match SingleValueVase then return them, otherwise don't
           if (scalarValues.length == elems.length) Some(scalarValues.toList)
@@ -106,7 +114,7 @@ object ScalarPlanterExpr {
   }
 }
 
-case class QuotedExpr(ast: Expr[Ast], lifts: Expr[List[ScalarPlanter[Any, Any]]], runtimeQuotes: Expr[List[QuotationVase]])
+case class QuotedExpr(ast: Expr[Ast], lifts: Expr[List[ScalarPlanter[_, _]]], runtimeQuotes: Expr[List[QuotationVase]])
 object QuotedExpr {
     //object `EmptyQuotationPouchList`
 
@@ -213,5 +221,5 @@ case class InlineableQuotationBinExpr(
   uid: String, 
   ast: Expr[Ast],
   vase: Expr[QuotationBin[Any]], 
-  inlineLifts: List[ScalarPlanterExpr]
+  inlineLifts: List[ScalarPlanterExpr[_, _]]
 ) extends QuotationBinExpr

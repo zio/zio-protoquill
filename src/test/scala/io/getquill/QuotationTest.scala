@@ -36,6 +36,25 @@ class QuotationTest {
     assertEquals(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), qq.ast)
   }
 
+  @Test
+  def compiletime_quotationProducingAstUnquote3Level() = { //helloooooooooooooooooo
+    inline def q = quote {
+      query[Person] // also try _.name
+    }
+    inline def qq = quote {
+      q.map(p => p.name)
+    }
+    // We only need a context to do lifts
+    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    import ctx._
+    inline def qqq = quote {
+      qq.map(s => s + lift("hello")) // TODO Need to add tests with lift to QueryTest
+    }
+    printer.lnf(qqq)
+    assertEquals(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), qq.ast)
+    println(run(qqq).string)
+  }
+
   // // test a quotation producing an ast
   // // note this is actually fine and should be able to produce a query since
   // // we are not passing one query into another. I.e. there is no QuotationTag
@@ -148,27 +167,48 @@ class QuotationTest {
 
   @Test
   def compiletime_doubleLiftPlusOperator() = {
-    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-    import ctx._
-
+    case class Address(street:String, zip:Int) extends Embedded
+    case class Person(name: String, age: Int, address: Address)
+  
     inline def q = quote {
-      query[Person].map(p => p.name + lift("hello") + lift("world"))
+      query[Person] // also try _.name
     }
-    printer.lnf(q)
-    assertTrue(q match {
-      case Quoted(
-          Map(Entity("Person", List()), Ident("p"), 
-            BinaryOperation(
-              BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid)),
-              StringOperator.+, ScalarTag(tagUid2)
-            )
-          ),
-          List(ScalarPlanter("hello", _, planterUid), ScalarPlanter("world", _, planterUid2)),
-          List()
-        ) if (tagUid == planterUid && tagUid2 == planterUid2) => true
-      case _ => false
-    })
+    inline def qq = quote {
+      q.map(p => p.name)
+    }
+    // We only need a context to do lifts
+    val ctx = new MirrorContext(PostgresDialect, Literal) //hello
+    import ctx._
+    inline def qqq = quote {
+      qq.map(s => s + lift("hello"))
+    }
+    printer.lnf(qqq)
+    assertEquals(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), qq.ast)
+    // TODO Move all expressed value testing to QueryTest
+    assertEquals(run(qqq).string, "SELECT p.name || ? FROM Person p")
   }
+}
+
+@main def liftAndQuery = { //helloooooooooooooooooo
+  case class Address(street:String, zip:Int) extends Embedded
+  case class Person(name: String, age: Int, address: Address)
+
+  inline def q = quote {
+    query[Person] // also try _.name
+  }
+  inline def qq = quote {
+    q.map(p => p.name)
+  }
+  // We only need a context to do lifts
+  val ctx = new MirrorContext(PostgresDialect, Literal) //hello
+  import ctx._
+  inline def qqq = quote {
+    qq.map(s => s + lift("hello"))
+  }
+  printer.lnf(qqq)
+  assertEquals(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), qq.ast)
+  // TODO Move all expressed value testing to QueryTest
+  assertEquals(run(qqq).string, "SELECT p.name || ? FROM Person p")
 }
 
 

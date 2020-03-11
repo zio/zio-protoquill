@@ -115,7 +115,10 @@ extends EncodingDsl
             val (_, values, prepare) =
               lifts.foldLeft((0, List.empty[Any], row)) {
                 case ((idx, values, row), lift) =>
-                  val newRow = lift.encoder(idx, lift.value, row).asInstanceOf[PrepareRow] // TODO since summoned encoders are casted
+                  val newRow = 
+                    lift
+                    .asInstanceOf[ScalarPlanter[Any, PrepareRow]]
+                    .encoder(idx, lift.value, row).asInstanceOf[PrepareRow] // TODO since summoned encoders are casted
                   (idx + 1, lift.value :: values, newRow)
               }
             (values, prepare)
@@ -134,7 +137,7 @@ extends EncodingDsl
   protected val identityPrepare: Prepare = (Nil, _)
   protected val identityExtractor = identity[ResultRow] _
 
-  inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[ScalarPlanter[Any, Any]])] =
+  inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[ScalarPlanter[_, _]])] =
     ${ Context.translateStaticImpl[T, Dialect, Naming, PrepareRow]('quoted, 'this) }
 
   inline def lift[T](inline vv: T): T = 
@@ -195,7 +198,7 @@ object Context {
   // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
   def translateStaticImpl[T: Type, D <: Idiom, N <: NamingStrategy, PrepareRow](
     quotedRaw: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]]
-  )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N], prepareRow:TType[PrepareRow]): Expr[Option[(String, List[ScalarPlanter[Any, Any]])]] = {
+  )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N], prepareRow:TType[PrepareRow]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
 
     import qctx.tasty.{Try => TTry, _, given _}
     import io.getquill.ast.{CollectAst, QuotationTag}
@@ -208,21 +211,26 @@ object Context {
     val tryStatic =
       for {
         (idiom, naming) <- idiomAndNamingStatic
-        (astExpr, liftsExpr) <- Try {
+        quotedExpr <- Try {
           quoted match { // use to have 'unInline' here
-            case QuotedExpr.Inline(ast, lifts, _) => (ast, lifts)
+            case QuotedExpr.Inline(quotedExpr) => quotedExpr
             // Warn user that a not-inline QuotedExpr was detected. Do println or is there a qctx.warn??
+            case _ => println("Lifts do meet compiletime criteria"); ???
           }
         }
 
         lifts <- Try {
-          liftsExpr match {
-            case ScalarPlanterExpr.InlineList(liftsExpr) => liftsExpr
+          quotedExpr.lifts match {
+            case ScalarPlanterExpr.InlineList(liftsExprMatch) => liftsExprMatch
             // If lifts are not an inlineable list, throw an exception and resort to trying during runtime
+            case _ => 
+              println("Lifts do meet compiletime criteria:"); 
+              println(quotedExpr.lifts.show)
+              ???
           }
         }
 
-        ast = new Unlifter(given qctx).apply(astExpr)
+        ast = new Unlifter(given qctx).apply(quotedExpr.ast)
 
         expandedAst <- Try { Expander.static[T](ast) } if noRuntimeQuotations(ast)
       } yield {
@@ -263,11 +271,11 @@ object Context {
         // What about a missing decoder?
         // need to make sure that that kind of error happens during compile time
         // (also need to propagate the line number, talk to Li Houyi about that)
-        '{ Some((${Expr(string)}, ${Expr.ofList(encodedLifts)})) }
+        '{ Option((${Expr(string)}, ${Expr.ofList(encodedLifts)})) }
       }
 
     if (tryStatic.isFailure) {
-      println("WARNING: Dynamic Query Detected")
+      println("WARNING: Dynamic Query Detected: ")
     }
 
     tryStatic.getOrElse {
