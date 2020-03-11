@@ -58,7 +58,6 @@ class QuotationTest {
     val qq = quote {
       q.map(p => p.name)
     }
-    printer.lnf(qq)
     val matches = 
       qq match {
         case Quoted(
@@ -137,7 +136,6 @@ class QuotationTest {
     inline def q = quote {
       query[Person].map(p => p.name + lift("hello"))
     }
-    printer.lnf(q)
     assertTrue(q match {
       case Quoted(
           Map(Entity("Person", List()), Ident("p"), BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid))),
@@ -147,8 +145,31 @@ class QuotationTest {
       case _ => false
     })
   }
-}
 
+  @Test
+  def compiletime_doubleLiftPlusOperator() = {
+    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    import ctx._
+
+    inline def q = quote {
+      query[Person].map(p => p.name + lift("hello") + lift("world"))
+    }
+    printer.lnf(q)
+    assertTrue(q match {
+      case Quoted(
+          Map(Entity("Person", List()), Ident("p"), 
+            BinaryOperation(
+              BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid)),
+              StringOperator.+, ScalarTag(tagUid2)
+            )
+          ),
+          List(ScalarPlanter("hello", _, planterUid), ScalarPlanter("world", _, planterUid2)),
+          List()
+        ) if (tagUid == planterUid && tagUid2 == planterUid2) => true
+      case _ => false
+    })
+  }
+}
 
 
 // @main def simpleLift = {
