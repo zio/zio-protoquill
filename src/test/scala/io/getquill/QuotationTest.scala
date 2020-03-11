@@ -12,7 +12,7 @@ import miniquill.quoter.ScalarPlanter
 import miniquill.quoter.QuotationVase
 import miniquill.quoter.QuotationBin
 
-object QuotationTest {
+class QuotationTest {
   case class Address(street:String, zip:Int) extends Embedded
   case class Person(name: String, age: Int, address: Address)
 
@@ -40,38 +40,38 @@ object QuotationTest {
   // // note this is actually fine and should be able to produce a query since
   // // we are not passing one query into another. I.e. there is no QuotationTag
   // // that needs to be joined later
-  // @Test
-  // def runtime_quotationProducingAst() = {
-  //   val q = quote {
-  //     query[Person].map(p => p.name) // also try _.name
-  //   }
-  //   assertEquals(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), q.ast)
-  // }
+  @Test
+  def runtime_oneLevel() = {
+    val q = quote {
+      query[Person].map(p => p.name) // also try _.name
+    }
+    assertEquals(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), q.ast)
+  }
 
   // // test a quotation going into another
   // // (with/without auto unquoting?)
-  // @Test
-  // def runtime_quotationProducingAstAutoUnquote() = { //hello
-  //   val q = quote {
-  //     query[Person]
-  //   }
-  //   val qq = quote {
-  //     q.map(p => p.name)
-  //   }
-  //   printer.lnf(qq)
-  //   val matches = 
-  //     qq match {
-  //       case Quoted(
-  //         Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "name")),
-  //         List(),
-  //         List(QuotationVase(Quoted(Entity("Person", List()), List(), List()), _))
-  //       ) => true
-  //       case _ => false
-  //     }
-  //   assertTrue(matches)
-  // }
+  @Test
+  def runtime_quotationProducingAstAutoUnquote() = { //hello
+    val q = quote {
+      query[Person]
+    }
+    val qq = quote {
+      q.map(p => p.name)
+    }
+    printer.lnf(qq)
+    val matches = 
+      qq match {
+        case Quoted(
+          Map(QuotationTag(tagId), Ident("p"), Property(Ident("p"), "name")),
+          List(),
+          List(QuotationVase(Quoted(Entity("Person", List()), List(), List()), vaseId))
+        ) if (vaseId == tagId) => true
+        case _ => false
+      }
+    assertTrue(matches)
+  }
 
-  @main
+  @Test
   def compiletime_simpleLift() = {
     import miniquill.context.mirror.Row
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
@@ -79,60 +79,74 @@ object QuotationTest {
     inline def q = quote {
       lift("hello")
     }
-    printer.lnf(q)
     assertTrue(q match {
       case Quoted(ScalarTag(tagUid), List(ScalarPlanter("hello", encoder, vaseUid)), List()) if (tagUid == vaseUid) => true
       case _ => false
     })
     val vase = 
-      q.lifts.asInstanceOf[Product].productIterator.toList match {
+      q.lifts match {
         case head :: Nil => head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
       }
       
     assertEquals(Row("hello"), vase.encoder.apply(0, vase.value, new Row()))
   }
 
-  // // @Test
-  // // def compiletime_simpleLift_runtime() = {
-  // //   import miniquill.context.mirror.Row
-  // //   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-  // //   import ctx._
-  // //   def q = quote {
-  // //     lift("hello")
-  // //   }
-  // //   def qq = quote {
-  // //     q
-  // //   }
-  // //   printer.lnf(qq)
-  // //   assertTrue(qq match {
-  // //     case Quoted(QuotationTag(tagUid), (QuotationBin("hello", encoder, vaseUid) *: ())) if (tagUid == vaseUid) => true
-  // //     case _ => false
-  // //   })
-  // //   val vase = 
-  // //     q.lifts.asInstanceOf[Product].productIterator.toList match {
-  // //       case head :: Nil => head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
-  // //     }
+  @Test
+  def runtime_simpleLift() = {
+    import miniquill.context.mirror.Row
+    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    import ctx._
+    val q = quote {
+      lift("hello")
+    }
+    val qq = quote {
+      q
+    }
+    assertTrue(qq match {
+      case 
+        Quoted(
+          QuotationTag(quotationTagId),
+          List(),
+          List(
+            QuotationVase(
+              Quoted(
+                ScalarTag(scalarTagId),
+                List(ScalarPlanter("hello", _, scalarPlanterId)),
+                List()
+              ),
+              quotationVaseId
+            )
+          )
+        ) if (quotationTagId == quotationVaseId && scalarTagId == scalarPlanterId)
+        => true
+      case _ => false
+    })
+    val vase = 
+      q.lifts match {
+        case head :: Nil => head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
+      }
       
-  // //   assertEquals(Row("hello"), vase.encoder.apply(0, vase.value, new Row()))
-  // // }
+    assertEquals(Row("hello"), vase.encoder.apply(0, vase.value, new Row()))
+  }
 
-  // @Test
-  // def compiletime_liftPlusOperator() = {
-  //   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-  //   import ctx._
+  @Test
+  def compiletime_liftPlusOperator() = {
+    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    import ctx._
 
-  //   inline def q = quote {
-  //     query[Person].map(p => p.name + lift("hello"))
-  //   }
-  //   assertTrue(q match {
-  //     case Quoted(
-  //         Map(Entity("Person", List()), Ident("p"), BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid))),
-  //         List(ScalarPlanter("hello", _, vaseUid)), // TODO Test what kind of encoder it is? Or try to run it and make sure it works?
-  //         List()
-  //       ) => true
-  //     case _ => false
-  //   })
-  // }
+    inline def q = quote {
+      query[Person].map(p => p.name + lift("hello"))
+    }
+    printer.lnf(q)
+    assertTrue(q match {
+      case Quoted(
+          Map(Entity("Person", List()), Ident("p"), BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid))),
+          List(ScalarPlanter("hello", _, planterUid)), // TODO Test what kind of encoder it is? Or try to run it and make sure it works?
+          List()
+        ) if (tagUid == planterUid) => true
+      case _ => false
+    })
+  }
 }
 
 

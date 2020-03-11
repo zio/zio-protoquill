@@ -19,8 +19,8 @@ case class ScalarPlanterExpr(uid: String, expr: Expr[Any], encoder: Expr[Generic
 object ScalarPlanterExpr {
   object Inline {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[ScalarPlanterExpr] = expr match {
-      case vase @ '{ ScalarPlanter.apply[$qt, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) } =>
-        Some(ScalarPlanterExpr(uid, vase, encoder.asInstanceOf[Expr[GenericEncoder[Any, Any]]]))
+      case '{ ScalarPlanter.apply[$qt, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) } =>
+        Some(ScalarPlanterExpr(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, Any]]]))
       case _ => 
         None
     }
