@@ -3,6 +3,7 @@ package io.getquill
 import scala.language.implicitConversions
 import miniquill.quoter.QuoteDsl._
 import miniquill.quoter.Quoted
+import miniquill.quoter._
 import io.getquill._
 import io.getquill.ast._
 import org.junit.Test
@@ -60,6 +61,22 @@ class QueryTest { //hellooooooo
     }
   }
 
+  @Test
+  def directInRunFunctionTest():Unit = {
+    {
+      import ctx._
+      val result = run(people.map(p => p.name))
+      assertEquals("""querySchema("Person").map(p => p.name)""", result.string)
+      assertEquals(ExecutionType.Static, result.executionType)
+    }
+    {
+      import sqlCtx._
+      val result = sqlCtx.run(people.map(p => p.name))
+      assertEquals("SELECT p.name FROM Person p", result.string)
+      assertEquals(ExecutionType.Static, result.executionType)
+    }
+  }
+
   // person with address mapping to address
   @Test
   def personToAddressMap(): Unit = { //hello
@@ -73,6 +90,24 @@ class QueryTest { //hellooooooo
       import sqlCtx._
       val result = sqlCtx.run(addresses)
       assertEquals("SELECT p.street, p.zip FROM Person p", result.string)
+      assertEquals(ExecutionType.Static, result.executionType)
+    }
+  }
+
+  @Test
+  def personToAddressMapWithLift(): Unit = { //hello
+    {
+      import ctx._
+      inline def extQuery = quote(addresses.map(a => a.street + lift("-ext"))) 
+      val result = run(extQuery)
+      assertEquals("""querySchema("Person").map(p => p.address.street + ?)""", result.string)
+      assertEquals(ExecutionType.Static, result.executionType)
+    }
+    {
+      import sqlCtx._
+      inline def extQuery = quote(addresses.map(a => a.street + lift("-ext"))) 
+      val result = run(extQuery)
+      assertEquals("SELECT p.street || ? FROM Person p", result.string)
       assertEquals(ExecutionType.Static, result.executionType)
     }
   }

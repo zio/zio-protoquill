@@ -100,6 +100,9 @@ extends EncodingDsl
 
   inline def summonDecoder[T]: Decoder[T] = ${ Context.summonDecoderImpl[T, ResultRow] }
 
+  //inline def run[T](inline qry: Query[T])(implicit quoter: miniquill.quoter.Quoter): Result[RunQueryResult[T]] =
+  //  run(quoter.quote(qry))
+
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val staticQuery = translateStatic[T](quoted)
     staticQuery match {

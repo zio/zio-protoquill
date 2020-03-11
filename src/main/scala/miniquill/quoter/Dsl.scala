@@ -10,9 +10,12 @@ import scala.deriving._
 import scala.quoted.matching.Const
 import miniquill.dsl.GenericEncoder
 
+// trait Quoter {
+//   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???
+//   def quote[T](bodyExpr: T): Quoted[T] = ???
+// }
+
 object QuoteDsl {
-
-
 
   def parserFactory: (QuoteContext) => PartialFunction[Expr[_], Ast] = 
     (qctx: QuoteContext) => new Parser(given qctx)
@@ -83,4 +86,5 @@ object QuoteDsl {
 
   def querySchema[T](entity: String): EntityQuery[T] = ???
 
+  inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ quoteImpl[T]('body) }
 }
