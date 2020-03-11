@@ -8,7 +8,33 @@ import miniquill.parser.MatroshkaHelper
 import miniquill.parser.SealUnseal
 import miniquill.quoter.Quoted
 
+/* As the different kinds of parsing in Quill-Dotty became more complex, the need for an
+overarching model of "how stuff works" became necessary. There are several places in the
+Quill codebase where Dotty trees need to be parsed and their contents extracted, the most
+noteable is the parser. However, a second important place is the methods that extract
+lifts and quotations. This model is for the latter.
 
+The conceptual model for this context is the following. A Dotty (i.e. Tasty) tree
+is extracted from a quotation (a.k.a. "the ground") into either a Planter or a Vase.
+When the tree matches a couple of criteria, it is re-insertable into the next quotation
+and therefore placed into a Planter. Otherwise, the tree is *not* re-insertable and it 
+has to be "plucked" and inserted into a vase. Until we ascertain whether to re-insert
+or pluck, the Tree is held (temporarily) inside of a Bin.
+
+Different construcuts follow these rules in different ways. Scalar values for instances
+cannot contain contents making them non-re-insertable and therefore are always
+held inside of planters (i.e. the ScalarPlanter) and replanted back into the part
+of the tree constructing the PrepareRow in the 'run' method. 
+Quotations are held in a QuotationBin until it is determined 
+whether they are re-insertable. If they are, the Parser
+will transparently read the AST through them. Otherwise they will be 'plucked' into a
+QuotationVase and eventually processed during runtime.
+*/
+class ExprModel {
+}
+
+
+// Holds and parses variations of the ScalarPlanter
 case class ScalarPlanterExpr(uid: String, expr: Expr[Any], encoder: Expr[GenericEncoder[Any, Any]]) {
   // TODO Change to 'replant' ?
   // Plant the ScalarPlanter back into the Scala AST
@@ -105,6 +131,7 @@ object QuotedExpr {
 }
 
 
+
 sealed trait QuotationBinExpr
 object QuotationBinExpr {
 
@@ -161,7 +188,7 @@ object QuotationBinExpr {
           Some(InlineableQuotationBinExpr(uid, ast, vase.asInstanceOf[Expr[QuotationBin[Any]]], lifts))
 
         case `QuotationBin.apply`(quotation, uid) =>
-          Some(PluckedQuotationBinExpr(uid, quotation))
+          Some(PluckableQuotationBinExpr(uid, quotation))
 
         // If it's a QuotationBin but we can't extract it at all, need to throw an error
         case '{ ($qb: QuotationBin[$t]) } =>
@@ -177,8 +204,8 @@ object QuotationBinExpr {
 
 // QuotationBins that have runtime values hance cannot be re-planted into the scala AST and
 // they need to be put into QuotationVasees
-case class PluckedQuotationBinExpr(uid: String, expr: Expr[Quoted[Any]]) extends QuotationBinExpr {
-  def toVaseExpr(given qctx: QuoteContext) = '{ QuotationVase($expr, ${Expr(uid)}) }
+case class PluckableQuotationBinExpr(uid: String, expr: Expr[Quoted[Any]]) extends QuotationBinExpr {
+  def pluck(given qctx: QuoteContext) = '{ QuotationVase($expr, ${Expr(uid)}) }
 }
 
 // QuotationBins expressions that can be further inlined into quotated clauses

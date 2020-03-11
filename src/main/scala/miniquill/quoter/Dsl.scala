@@ -59,8 +59,8 @@ object QuoteDsl {
   def extractRuntimeUnquotes(body: Expr[Any])(given qctx: QuoteContext) = {
     val unquotes = QuotationBinExpr.findUnquotes(body)
     unquotes
-      .collect { case expr: PluckedQuotationBinExpr => expr }
-      .map(_.toVaseExpr)
+      .collect { case expr: PluckableQuotationBinExpr => expr }
+      .map(_.pluck)
   }
 
 

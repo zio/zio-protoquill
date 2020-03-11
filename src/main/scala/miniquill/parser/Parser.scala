@@ -58,7 +58,7 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     case QuotationBinExpr.InlineOrPluckedUnquoted(quotationBin) =>
       quotationBin match {
         case InlineableQuotationBinExpr(uid, astTree, _, _) => unlift(astTree)
-        case PluckedQuotationBinExpr(uid, astTree) => QuotationTag(uid)
+        case PluckableQuotationBinExpr(uid, astTree) => QuotationTag(uid)
       }
 
     case ScalarPlanterExpr.InlineUnquote(expr) =>
