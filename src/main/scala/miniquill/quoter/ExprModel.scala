@@ -46,8 +46,22 @@ object ScalarPlanterExpr {
   object Inline {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[ScalarPlanterExpr] = expr match {
       case '{ ScalarPlanter.apply[$qt, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) } =>
+        import qctx.tasty.{given, _}
+        println("***************************** Matched Expr *****************************")
+        println(expr.show)
+        println("----------------------------------------------------------------------------")
+        println(expr.unseal.showExtractors)
+        println("****************************************************************************")
+        None
+
         Some(ScalarPlanterExpr(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, Any]]]))
       case _ => 
+        import qctx.tasty.{given, _}
+        println("***************************** NOT MATCHED EXPR *****************************")
+        println(expr.show)
+        println("----------------------------------------------------------------------------")
+        println(expr.unseal.showExtractors)
+        println("****************************************************************************")
         None
     }
   }
@@ -91,6 +105,7 @@ object ScalarPlanterExpr {
           Some(List())
 
         case '{ scala.List[$t](${ExprSeq(elems)}: _*) } => 
+          println("****************** Checking Inlines List ******************")
           val scalarValues = 
             elems.collect {
               case ScalarPlanterExpr.Inline(vaseExpr) => vaseExpr

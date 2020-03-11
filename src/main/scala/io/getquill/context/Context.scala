@@ -216,6 +216,7 @@ object Context {
         }
 
         lifts <- Try {
+          println("***************** Context Checking Inlines List ****************")
           liftsExpr match {
             case ScalarPlanterExpr.InlineList(liftsExpr) => liftsExpr
             // If lifts are not an inlineable list, throw an exception and resort to trying during runtime

@@ -11,166 +11,42 @@ import miniquill.quoter.Quoted
 import miniquill.quoter.ScalarPlanter
 import miniquill.quoter.QuotationVase
 import miniquill.quoter.QuotationBin
+import io.getquill.context.ExecutionType._
 
-class QuotationTest {
+case class Address(street:String, zip:Int) extends Embedded
+case class Person(name: String, age: Int, address: Address)
+
+@main def liftAndQuery = { //helloooooooooooooooooo
   case class Address(street:String, zip:Int) extends Embedded
   case class Person(name: String, age: Int, address: Address)
 
-  // // test a quotation producing an ast
-  @Test
-  def compiletime_quotationProducingAst() = {
-    inline def q = quote {
-      query[Person].map(p => p.name) // also try _.name
-    }
-    assertEquals(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), q.ast)
+  inline def q = quote {
+    query[Person] // also try _.name
   }
-
-  @Test
-  def compiletime_quotationProducingAstUnquote() = { //helloooooooooooooooooo
-    inline def q = quote {
-      query[Person] // also try _.name
-    }
-    inline def qq = quote {
-      q.map(p => p.name)
-    }
-    assertEquals(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), qq.ast)
+  inline def qq = quote {
+    q.map(p => p.name)
   }
-
-  // // test a quotation producing an ast
-  // // note this is actually fine and should be able to produce a query since
-  // // we are not passing one query into another. I.e. there is no QuotationTag
-  // // that needs to be joined later
-  @Test
-  def runtime_oneLevel() = {
-    val q = quote {
-      query[Person].map(p => p.name) // also try _.name
-    }
-    assertEquals(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), q.ast)
+  // We only need a context to do lifts
+  val ctx = new MirrorContext(PostgresDialect, Literal) //hello
+  import ctx._
+  inline def qqq = quote {
+    qq.map(s => s + lift("hello"))
   }
+  printer.lnf(qqq)
 
-  // // test a quotation going into another
-  // // (with/without auto unquoting?)
-  @Test
-  def runtime_quotationProducingAstAutoUnquote() = { //hello
-    val q = quote {
-      query[Person]
-    }
-    val qq = quote {
-      q.map(p => p.name)
-    }
-    val matches = 
-      qq match {
-        case Quoted(
-          Map(QuotationTag(tagId), Ident("p"), Property(Ident("p"), "name")),
-          List(),
-          List(QuotationVase(Quoted(Entity("Person", List()), List(), List()), vaseId))
-        ) if (vaseId == tagId) => true
-        case _ => false
-      }
-    assertTrue(matches)
-  }
+  printer.lnf(run(qqq))
 
-  @Test
-  def compiletime_simpleLift() = {
-    import miniquill.context.mirror.Row
-    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-    import ctx._
-    inline def q = quote {
-      lift("hello")
-    }
-    assertTrue(q match {
-      case Quoted(ScalarTag(tagUid), List(ScalarPlanter("hello", encoder, vaseUid)), List()) if (tagUid == vaseUid) => true
-      case _ => false
-    })
-    val vase = 
-      q.lifts match {
-        case head :: Nil => head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
-      }
-      
-    assertEquals(Row("hello"), vase.encoder.apply(0, vase.value, new Row()))
-  }
+  // Should not be a dynamic context, this is because in Context this:
+  // "ScalarPlanterExpr.InlineList(liftsExpr) => liftsExpr" messes up.
+  // That's because "case ScalarPlanterExpr.Inline(vaseExpr) => vaseExpr"
+  // does not match properly once the types are re-cast into ScalarPlanter[Any, Any]
+  assertEquals(run(qqq).executionType, Static)
 
-  @Test
-  def runtime_simpleLift() = {
-    import miniquill.context.mirror.Row
-    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-    import ctx._
-    val q = quote {
-      lift("hello")
-    }
-    val qq = quote {
-      q
-    }
-    assertTrue(qq match {
-      case 
-        Quoted(
-          QuotationTag(quotationTagId),
-          List(),
-          List(
-            QuotationVase(
-              Quoted(
-                ScalarTag(scalarTagId),
-                List(ScalarPlanter("hello", _, scalarPlanterId)),
-                List()
-              ),
-              quotationVaseId
-            )
-          )
-        ) if (quotationTagId == quotationVaseId && scalarTagId == scalarPlanterId)
-        => true
-      case _ => false
-    })
-    val vase = 
-      q.lifts match {
-        case head :: Nil => head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
-      }
-      
-    assertEquals(Row("hello"), vase.encoder.apply(0, vase.value, new Row()))
-  }
-
-  @Test
-  def compiletime_liftPlusOperator() = {
-    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-    import ctx._
-
-    inline def q = quote {
-      query[Person].map(p => p.name + lift("hello"))
-    }
-    assertTrue(q match {
-      case Quoted(
-          Map(Entity("Person", List()), Ident("p"), BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid))),
-          List(ScalarPlanter("hello", _, planterUid)), // TODO Test what kind of encoder it is? Or try to run it and make sure it works?
-          List()
-        ) if (tagUid == planterUid) => true
-      case _ => false
-    })
-  }
-
-  @Test
-  def compiletime_doubleLiftPlusOperator() = {
-    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-    import ctx._
-
-    inline def q = quote {
-      query[Person].map(p => p.name + lift("hello") + lift("world"))
-    }
-    printer.lnf(q)
-    assertTrue(q match {
-      case Quoted(
-          Map(Entity("Person", List()), Ident("p"), 
-            BinaryOperation(
-              BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid)),
-              StringOperator.+, ScalarTag(tagUid2)
-            )
-          ),
-          List(ScalarPlanter("hello", _, planterUid), ScalarPlanter("world", _, planterUid2)),
-          List()
-        ) if (tagUid == planterUid && tagUid2 == planterUid2) => true
-      case _ => false
-    })
-  }
+  assertEquals(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), qq.ast)
+  // TODO Move all expressed value testing to QueryTest
+  assertEquals(run(qqq).string, "SELECT p.name || ? FROM Person p")
+  
 }
-
 
 // @main def simpleLift = {
 //   import miniquill.context.mirror.Row
