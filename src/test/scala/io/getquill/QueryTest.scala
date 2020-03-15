@@ -11,8 +11,9 @@ import org.junit.Assert._
 import miniquill.quoter.QuotationBin
 import miniquill.quoter.QuotationVase
 import io.getquill.context.ExecutionType
+import org.scalatest._
 
-class QueryTest { //hellooooooo
+class QueryTest extends Spec with Inside { //hellooooooo
 
   // TODO Need to test 3-level injection etc...
   case class Address(street:String, zip:Int) extends Embedded
@@ -29,120 +30,119 @@ class QueryTest { //hellooooooo
   def peopleRuntime = quote {
     query[Person]
   }
-  // should also test this
-  //def addressesRuntimePeopleCompiletime = quote {
-  //  people.map(p => p.address)
-  //}
+  // TODO Need join semantics to test these (also add id, fk to case classes)
+  // def addressesRuntimePeopleCompiletime = quote {
+  //  peopleRuntime.join(address).on(_.name == _.street)
+  // }
+  // def addressesCompiletimePeopleRuntime = quote {
+  //  peopleRuntime.join(addressRuntime).on(_.name == _.street)
+  // }
   def addressesRuntime = quote {
     peopleRuntime.map(p => p.address)
   }
 
 
   // one level object query
-  @Test
+  // @Test
   def oneLevelQuery(): Unit = {
     
   }
 
   // nested object query (person with address)
-  @Test
-  def doubleLayerTest():Unit = {
-    {
+  convertToFreeSpecStringWrapper("Query with embedded entity") - {
+    ("should express embedded props as x.y.z with MirrorContext") - {
       import ctx._
-      val result = run(people)
-      assertEquals("""querySchema("Person").map(x => (x.name, x.age, x.address.street, x.address.zip))""", result.string)
-      assertEquals(ExecutionType.Static, result.executionType)
+      "with full expansion" in {
+        val result = ctx.run(people)
+        result.string mustEqual """querySchema("Person").map(x => (x.name, x.age, x.address.street, x.address.zip))"""
+        result.executionType mustEqual ExecutionType.Static
+      }
+      "with field select and lift" in {
+        inline def extQuery = quote(addresses.map(a => a.street + lift("-ext"))) 
+        val result = ctx.run(extQuery)
+        result.string mustEqual """querySchema("Person").map(p => p.address.street + ?)"""
+        result.executionType mustEqual ExecutionType.Static
+      }
     }
-    {
+    convertToFreeSpecStringWrapper("should express embedded props as x.z in SqlMirrorContext") - {
       import sqlCtx._
-      val result = sqlCtx.run(people)
-      assertEquals("SELECT x.name, x.age, x.street, x.zip FROM Person x", result.string)
-      assertEquals(ExecutionType.Static, result.executionType)
+      "with full expansion" in {
+        val result = sqlCtx.run(people)
+        result.string mustEqual "SELECT x.name, x.age, x.street, x.zip FROM Person x"
+        result.executionType mustEqual ExecutionType.Static
+      }
+      "with field select and list" in {
+        inline def extQuery = quote(addresses.map(a => a.street + lift("-ext"))) 
+        val result = sqlCtx.run(extQuery)
+        result.string mustEqual "SELECT p.street || ? FROM Person p"
+        result.executionType mustEqual ExecutionType.Static
+      }
     }
   }
 
-  @Test
-  def directInRunFunctionTest():Unit = {
-    {
+  // @Test
+  convertToFreeSpecStringWrapper("simple query mapping") - {
+    ("should work with MirrorContext") in {
       import ctx._
-      val result = run(people.map(p => p.name))
-      assertEquals("""querySchema("Person").map(p => p.name)""", result.string)
-      assertEquals(ExecutionType.Static, result.executionType)
+      val result = ctx.run(people.map(p => p.name))
+      result.string mustEqual """querySchema("Person").map(p => p.name)"""
+      result.executionType mustEqual ExecutionType.Static
     }
-    {
+    "should work with SqlMirrorContext" in {
       import sqlCtx._
       val result = sqlCtx.run(people.map(p => p.name))
-      assertEquals("SELECT p.name FROM Person p", result.string)
-      assertEquals(ExecutionType.Static, result.executionType)
+      result.string mustEqual "SELECT p.name FROM Person p"
+      result.executionType mustEqual ExecutionType.Static
     }
   }
 
   // person with address mapping to address
-  @Test
-  def personToAddressMap(): Unit = { //hello
-    {
+  // @Test
+  convertToFreeSpecStringWrapper("returning a whole embdded entity") - { //hello
+    ("should expand with MirrorContext") in {
       import ctx._
-      val result = run(addresses)
-      assertEquals("""querySchema("Person").map(p => (p.address.street, p.address.zip))""", result.string)
-      assertEquals(ExecutionType.Static, result.executionType)
+      val result = ctx.run(addresses)
+      result.string mustEqual """querySchema("Person").map(p => (p.address.street, p.address.zip))"""
+      result.executionType mustEqual ExecutionType.Static
     }
-    {
+    ("should expand with SqlMirrorContext") in {
       import sqlCtx._
       val result = sqlCtx.run(addresses)
-      assertEquals("SELECT p.street, p.zip FROM Person p", result.string)
-      assertEquals(ExecutionType.Static, result.executionType)
+      result.string mustEqual "SELECT p.street, p.zip FROM Person p"
+      result.executionType mustEqual ExecutionType.Static
     }
   }
 
-  @Test
-  def personToAddressMapWithLift(): Unit = { //hello
-    {
-      import ctx._
-      inline def extQuery = quote(addresses.map(a => a.street + lift("-ext"))) 
-      val result = run(extQuery)
-      assertEquals("""querySchema("Person").map(p => p.address.street + ?)""", result.string)
-      assertEquals(ExecutionType.Static, result.executionType)
-    }
-    {
-      import sqlCtx._
-      inline def extQuery = quote(addresses.map(a => a.street + lift("-ext"))) 
-      val result = run(extQuery)
-      assertEquals("SELECT p.street || ? FROM Person p", result.string)
-      assertEquals(ExecutionType.Static, result.executionType)
-    }
-  }
 
-  @Test
-  def personToAddressMapRuntime(): Unit = {
-    {
-      assertTrue(
-        peopleRuntime match { 
-          case Quoted(Entity("Person", List()), List(), _) => true 
-          case _ => false
-        } 
-      )
-      
-      assertTrue(
-        addressesRuntime match { 
-          case Quoted(
-            Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "address")), 
-            List(),
-            List(QuotationVase(Quoted(Entity("Person", List()), List(), _), _))
-          ) => true
-          case _ => false
-        }
-      )
-
-      import ctx._
-      val result = run(addressesRuntime)
-      assertEquals("""querySchema("Person").map(p => (p.address.street, p.address.zip))""", result.string)
-      assertEquals(ExecutionType.Dynamic, result.executionType)
+  // @Test
+  convertToFreeSpecStringWrapper("runtime query") - {
+    ("should be the same as compile-time when not referencing anything else") in {
+      inside(peopleRuntime) { case Quoted(Entity(entityName, List()), List(), _) => 
+        entityName mustEqual "Person"
+      }
     }
-    {
+
+    ("should contain a QuotationVase when referencing a runtime query") in {
+      inside(addressesRuntime) { 
+        case Quoted(
+          Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "address")), 
+          List(),
+          List(QuotationVase(Quoted(Entity("Person", List()), List(), _), _))
+        ) =>
+      }
+    }
+
+    "runtime query reference should express correct in MirrorContext" in {
+      import ctx._
+      val result = ctx.run(addressesRuntime)
+      result.string mustEqual """querySchema("Person").map(p => (p.address.street, p.address.zip))"""
+      result.executionType mustEqual ExecutionType.Dynamic
+    }
+    "runtime query reference should express correct in SqlMirrorContext" in {
       import sqlCtx._
       val result = sqlCtx.run(addressesRuntime)
-      assertEquals("SELECT p.street, p.zip FROM Person p", result.string)
-      assertEquals(ExecutionType.Dynamic, result.executionType)
+      result.string mustEqual "SELECT p.street, p.zip FROM Person p"
+      result.executionType mustEqual ExecutionType.Dynamic
     }
   }
 

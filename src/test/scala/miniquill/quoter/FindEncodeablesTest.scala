@@ -3,16 +3,14 @@ package miniquill.quoter
 import org.junit.Test
 import org.junit.Assert._
 import miniquill.context.mirror.Row
-
 import io.getquill._
 
-class FindEncodeablesTest {
+class FindEncodeablesTest extends Spec {
   
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
-  @Test
-  def simpleStringEncodeable(): Unit = {
+  "Locate and apply encodeables" in {
     val row = new Row()
     val output = 
       FindEncodeablesUserMacro.apply[Row](List(
