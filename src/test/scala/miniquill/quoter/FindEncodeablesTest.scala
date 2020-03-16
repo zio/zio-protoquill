@@ -4,8 +4,9 @@ import org.junit.Test
 import org.junit.Assert._
 import miniquill.context.mirror.Row
 import io.getquill._
+import org.scalatest._
 
-class FindEncodeablesTest extends Spec {
+class FindEncodeablesTest extends Spec with Inside {
   
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
@@ -17,9 +18,8 @@ class FindEncodeablesTest extends Spec {
         LazyPlanter("123", "foo"), LazyPlanter("456", "bar")
       ), row)
 
-    assertTrue(output match {
-      case List(("foo", Row("foo")), ("bar", Row("bar"))) => true
-      case _ => false
-    })
+    inside(output) {
+      case List(("foo", Row("foo")), ("bar", Row("bar"))) =>
+    }
   }
 }

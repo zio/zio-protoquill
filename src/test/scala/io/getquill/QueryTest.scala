@@ -49,7 +49,7 @@ class QueryTest extends Spec with Inside { //hellooooooo
   }
 
   // nested object query (person with address)
-  convertToFreeSpecStringWrapper("Query with embedded entity") - {
+  ("Query with embedded entity") - {
     ("should express embedded props as x.y.z with MirrorContext") - {
       import ctx._
       "with full expansion" in {
@@ -64,7 +64,7 @@ class QueryTest extends Spec with Inside { //hellooooooo
         result.executionType mustEqual ExecutionType.Static
       }
     }
-    convertToFreeSpecStringWrapper("should express embedded props as x.z in SqlMirrorContext") - {
+    ("should express embedded props as x.z in SqlMirrorContext") - {
       import sqlCtx._
       "with full expansion" in {
         val result = sqlCtx.run(people)
@@ -81,7 +81,7 @@ class QueryTest extends Spec with Inside { //hellooooooo
   }
 
   // @Test
-  convertToFreeSpecStringWrapper("simple query mapping") - {
+  ("simple query mapping") - {
     ("should work with MirrorContext") in {
       import ctx._
       val result = ctx.run(people.map(p => p.name))
@@ -98,7 +98,7 @@ class QueryTest extends Spec with Inside { //hellooooooo
 
   // person with address mapping to address
   // @Test
-  convertToFreeSpecStringWrapper("returning a whole embdded entity") - { //hello
+  ("returning a whole embdded entity") - { //hello
     ("should expand with MirrorContext") in {
       import ctx._
       val result = ctx.run(addresses)
@@ -115,7 +115,7 @@ class QueryTest extends Spec with Inside { //hellooooooo
 
 
   // @Test
-  convertToFreeSpecStringWrapper("runtime query") - {
+  ("runtime query") - {
     ("should be the same as compile-time when not referencing anything else") in {
       inside(peopleRuntime) { case Quoted(Entity(entityName, List()), List(), _) => 
         entityName mustEqual "Person"
