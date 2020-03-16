@@ -6,8 +6,6 @@ import miniquill.quoter.Quoted
 import miniquill.quoter._
 import io.getquill._
 import io.getquill.ast._
-import org.junit.Test
-import org.junit.Assert._
 import miniquill.quoter.QuotationBin
 import miniquill.quoter.QuotationVase
 import io.getquill.context.ExecutionType

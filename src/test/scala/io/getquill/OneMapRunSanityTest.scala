@@ -4,8 +4,6 @@ import scala.language.implicitConversions
 import miniquill.quoter.QuoteDsl._
 import io.getquill._
 import io.getquill.ast._
-import org.junit.Test
-import org.junit.Assert._
 import miniquill.quoter.Quoted
 import io.getquill._
 

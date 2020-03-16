@@ -1,7 +1,5 @@
 package miniquill.quoter
 
-import org.junit.Test
-import org.junit.Assert._
 import miniquill.context.mirror.Row
 import io.getquill._
 import org.scalatest._
