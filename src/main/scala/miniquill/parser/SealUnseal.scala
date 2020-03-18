@@ -2,7 +2,10 @@ package miniquill.parser
 
 import scala.quoted._
 
-class SealUnseal(given val qctx: QuoteContext) {
+class SealUnseal(given val qctx: QuoteContext) extends CanSealUnseal
+
+trait CanSealUnseal {
+  val qctx: QuoteContext
   import qctx.tasty.{given, _}
 
   object Unseal {

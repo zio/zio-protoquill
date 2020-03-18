@@ -7,6 +7,7 @@ object Lifter {
   type Lift[T] = PartialFunction[T, Expr[T]]
 }
 
+// TODO Rewrite this the way Parser is written (i.e. with ability to compose???)
 class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
   import qctx.tasty.{_, given _}
   import Lifter._

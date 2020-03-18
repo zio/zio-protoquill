@@ -9,51 +9,55 @@ import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
 
+// TODO change all Expr[_] to Expr[Ast]?
+val IdentityParser = PartialFunction.empty[Expr[_], Ast]
+trait ParserComponent extends (Parser => PartialFunction[Expr[_], Ast]) with CanSealUnseal {
+  def apply(root: Parser): PartialFunction[Expr[_], Ast]  
+}
+
+class Parser(given val qctx:QuoteContext) { self =>
+  def parse(expr: Expr[_]): Ast = composite.apply(expr)
+  def children: List[ParserComponent] = List()
+  def composite = children.map(child => child(self)).foldRight(IdentityParser)(_ orElse _)
+  def combine(other: Parser): Parser =
+    new Parser { base =>
+      override def children = self.children ++ other.children
+    }
+}
+
+object Parser {
+  def apply(comp: ParserComponent)(given qctx:QuoteContext): Parser =
+    new Parser {
+      override def children = List(comp)
+    }
+}
+
+class BaseParser(given val qctx:QuoteContext) {
+  val quotationParser = Parser(new QuotationParser)
+  val queryParser = Parser(new QueryParser)
+  val operationsParser = Parser(new OperationsParser)
+  val genericExpressionsParser = Parser(new GenericExpressionsParser)
+  // TODO Maybe tack this on at the very end at the DSL Level
+  // Alternatively, separate parsers out into Generic+Error (last two) groups tacked on at the end in Dsl
+  // TODO Write a test that adds a custom quotation right in between here
+  val errorFallbackParser = Parser(new ErrorFallbackParser) 
+  def parser =
+    quotationParser
+    .combine(queryParser)
+    .combine(operationsParser)
+    // additional parsing constructs should probably go here. Figure out how to add a better extension point here?
+    .combine(genericExpressionsParser)
+    .combine(errorFallbackParser)
+}
+
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
-class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
+class QuotationParser(given val qctx:QuoteContext) extends ParserComponent {
   import qctx.tasty.{Type => TType, _, given}
 
+  // TODO Need to inject this somehow?
   val unlift = new Unlifter()
-  
-  private object Seal {
-    def unapply[T](e: Term) = {
-      implicit val ttpe: Type[T] = e.tpe.seal.asInstanceOf[Type[T]]
 
-      Some(e.seal.cast[T])
-    }
-  }
-
-  private object Unseal {
-    def unapply(t: Expr[Any]) = {
-      Some(t.unseal)
-    }
-  }
-
-  private object PossibleTypeApply {
-    def unapply[T](tree: Tree): Option[Tree] =
-      tree match {
-        case TypeApply(inner, _) => Some(inner)
-        case other => Some(other)
-      }
-  }
-
-  // TODO LambdaN ?
-  private object Lambda1 {
-    def unapply(term: Term) = term match {
-      case Lambda(ValDef(ident, _, _) :: Nil, Seal(methodBody)) => Some((ident, methodBody))
-    }
-  }
-
-  def apply(inRaw: Expr[_]): Ast = {
-    // NOTE Can disable if needed and make in = inRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
-    val in = inRaw.unseal.underlyingArgument.seal
-    astParser(in)
-  }
-
-  def isDefinedAt(in: Expr[_]): Boolean =
-    astParser.isDefinedAt(in.unseal.underlyingArgument.seal)
-
-  def astParser: PartialFunction[Expr[_], Ast] = {
+  def apply(root: Parser): PartialFunction[Expr[_], Ast] = {
     
     case QuotationBinExpr.InlineOrPluckedUnquoted(quotationBin) =>
       quotationBin match {
@@ -69,22 +73,21 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
     // since we would not know the UID since it is not inside of a bin. This situation
     // should only be encountered to a top-level quote passed to the 'run' function and similar situations.
     case QuotedExpr.Inline(quotedExpr) => // back here
-      unlift(quotedExpr.ast)
+      unlift(quotedExpr.ast) 
+  }
+}
 
-    case Unseal(Inlined(_, _, v)) =>
-      //println("Case Inlined")
-      //astParser(v.seal.cast[T]) // With method-apply can't rely on it always being T?
-      astParser(v.seal)
+class QueryParser(given val qctx: QuoteContext) extends ParserComponent {
+  import qctx.tasty.{given, _}
 
-      // TODO Need to figure how how to do with other datatypes
-    case Unseal(Literal(Constant(v: Double))) => 
-      //println("Case Literal Constant")
-      Const(v)
+  private object Lambda1 {
+    def unapply(term: Term) = term match {
+      case Lambda(ValDef(ident, _, _) :: Nil, Seal(methodBody)) => Some((ident, methodBody))
+    }
+  }
 
-    case Unseal(Literal(Constant(v: String))) => 
-      //println("Case Literal Constant")
-      Const(v)
-    
+  def apply(root: Parser) = {
+    // TODO can we do this with quoted matching?
     case 
       Unseal(
         Apply(
@@ -93,49 +96,41 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
             Select(New(TypeIdent("EntityQuery")), /* <Init> */ _), List(targ)
           ), _
         )
-      )
-      =>
+      ) =>
       val name: String = targ.tpe.classSymbol.get.name
       Entity(name, List())
 
-
     case vv @ '{ ($q:Query[$qt]).map[$mt](${Unseal(Lambda1(ident, body))}) } => 
-      Map(astParser(q), Idnt(ident), astParser(body))
-      
-  
+      Map(root.parse(q), Idnt(ident), root.parse(body))
+  }
+}
 
-    // // If the inner quoted is a runtime value
-    // case Unseal(vv @ Select(Ident(tree), "unquote")) =>
+class OperationsParser(given val qctx: QuoteContext) extends ParserComponent {
+  import qctx.tasty.{given, _}
 
-    // // When just doing .unquote in the AST
-    // case Unseal(vv @ Select(TypedMatroshka(tree), "unquote")) => // TODO Further specialize by checking that the type is Quoted[T]?
-    //   //println("=============== NEW Unquoted RHS ================\n" + AstPrinter().apply(tree))
-    //   println("===================== Case Unquote Selector: " + AstPrinter().apply(vv) + " =====================")
-    //   tree.seal match {
-    //     // TODO Need an unlift error if there's no match
-    //     // Note, don't care about lifts here, they are extracted in Quotation
-
-    //     // Try to file the case where _ is a bug here
-    //     case '{ Quoted[$t]($ast, $v) } => unlift(ast) // doesn't work with 'new' // Note, replacing $v with _ causes compiler to compile forever
-    //   }
-
-    // // When doing the 'unquote' method it adds an extra Typed node since that function has a Type
-    // // (I'm not sure that both this method as well as the one before it are needed)
-    // case Unseal(vv @ TypedMatroshka(Select(TypedMatroshka(tree), "unquote"), _)) => // TODO Further specialize by checking that the type is Quoted[T]?
-    //   //println("=============== NEW Unquoted RHS Typed ================\n" + AstPrinter().apply(tree))
-    //   println("===================== Case Unquote Typed Selector" + AstPrinter().apply(tree) + "=====================")
-    //   tree.seal match {
-    //     // TODO Need an unlift error if there's no match
-    //     // Note, don't care about lifts here, they are extracted in Quotation
-    //     case '{ Quoted[$t]($ast, $v) } => unlift(ast) // doesn't work with 'new' // Note, replacing $v with _ causes compiler to compile forever
-    //   }
-
-    // TODO Need to check if entity is a string
+  def apply(root: Parser) = {
+      // TODO Need to check if entity is a string
     case Unseal(Apply(Select(Seal(left), "+"), Seal(right) :: Nil)) =>
-      BinaryOperation(astParser(left), StringOperator.+, astParser(right))
+      BinaryOperation(root.parse(left), StringOperator.+, root.parse(right))
 
     case Unseal(Apply(Select(Seal(left), "*"), Seal(right) :: Nil)) =>
-      BinaryOperation(astParser(left), NumericOperator.*, astParser(right))
+      BinaryOperation(root.parse(left), NumericOperator.*, root.parse(right))
+  }
+}
+
+class GenericExpressionsParser(given val qctx: QuoteContext) extends ParserComponent {
+  import qctx.tasty.{given, _}
+
+  def apply(root: Parser) = {
+
+    // TODO Need to figure how how to do with other datatypes
+    case Unseal(Literal(Constant(v: Double))) => 
+      //println("Case Literal Constant")
+      Const(v)
+
+    case Unseal(Literal(Constant(v: String))) => 
+      //println("Case Literal Constant")
+      Const(v)
 
     case Unseal(value @ Select(Seal(prefix), member)) =>
       //println(s"Select ${value.show}")
@@ -143,9 +138,9 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
       if ((value.tpe <:< '[io.getquill.Embedded].unseal.tpe)) { 
         // TODO Figure how how to check the summon here
         // || (summonExpr(given '[Embedable[$tpee]]).isDefined)
-        Property.Opinionated(astParser(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
+        Property.Opinionated(root.parse(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
       } else {
-        Property(astParser(prefix), member)
+        Property(root.parse(prefix), member)
       }
 
     case Unseal(Ident(x)) => 
@@ -154,15 +149,26 @@ class Parser(given qctx:QuoteContext) extends PartialFunction[Expr[_], Ast] {
 
     // If at the end there's an inner tree that's typed, move inside and try to parse again
     case Unseal(Typed(innerTree, _)) =>
-      astParser(innerTree.seal)
+      root.parse(innerTree.seal)
 
-  // TODO define this a last-resort printing function inside the parser
-  case Unseal(t) =>
-    println("=============== Parsing Error ================\n" + printer.ln(t))
-    println("=============== Extracted ================\n" + t.showExtractors)
-    ???
-    //println(t)
-    //summon[QuoteContext].error("Parsing error: " + in.show, in)
-    //???
+    case Unseal(Inlined(_, _, v)) =>
+      //println("Case Inlined")
+      //root.parse(v.seal.cast[T]) // With method-apply can't rely on it always being T?
+      root.parse(v.seal)
+  }
+}
+
+class ErrorFallbackParser(given val qctx: QuoteContext) extends ParserComponent {
+  import qctx.tasty.{given, _}
+
+  def apply(root: Parser): PartialFunction[Expr[_], Ast] = {
+    // TODO define this a last-resort printing function inside the parser
+    case Unseal(t) =>
+      println("=============== Parsing Error ================\n" + printer.ln(t))
+      println("=============== Extracted ================\n" + t.showExtractors)
+      ???
+      //println(t)
+      //summon[QuoteContext].error("Parsing error: " + in.show, in)
+      //???
   }
 }

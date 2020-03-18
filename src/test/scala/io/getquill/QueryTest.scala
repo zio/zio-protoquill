@@ -130,16 +130,32 @@ class QueryTest extends Spec with Inside { //hellooooooo
       }
     }
 
-    "runtime query reference should express correct in MirrorContext" in {
+    "reference should express correct in MirrorContext" in {
       import ctx._
       val result = ctx.run(addressesRuntime)
       result.string mustEqual """querySchema("Person").map(p => (p.address.street, p.address.zip))"""
       result.executionType mustEqual ExecutionType.Dynamic
     }
-    "runtime query reference should express correct in SqlMirrorContext" in {
+    "reference should express correct in SqlMirrorContext" in {
       import sqlCtx._
       val result = sqlCtx.run(addressesRuntime)
       result.string mustEqual "SELECT p.street, p.zip FROM Person p"
+      result.executionType mustEqual ExecutionType.Dynamic
+    }
+    "shuold work correctly with lift" in {
+      import ctx._
+      val result = ctx.run(peopleRuntime.map(p => p.name + lift("hello")))
+      result.string mustEqual """querySchema("Person").map(p => p.name + ?)"""
+      result.executionType mustEqual ExecutionType.Dynamic
+    }
+    "two-level shuold work correctly with lift" in {
+      import ctx._
+      def addressesRuntimeAndLift = quote {
+        peopleRuntime.map(p => p.address.street + lift("hello"))
+      }
+      printer.lnf(addressesRuntimeAndLift)
+      val result = ctx.run(addressesRuntimeAndLift)
+      result.string mustEqual """querySchema("Person").map(p => p.address.street + ?)"""
       result.executionType mustEqual ExecutionType.Dynamic
     }
   }

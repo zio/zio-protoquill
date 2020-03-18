@@ -17,8 +17,8 @@ import miniquill.dsl.GenericEncoder
 
 object QuoteDsl {
 
-  def parserFactory: (QuoteContext) => PartialFunction[Expr[_], Ast] = 
-    (qctx: QuoteContext) => new Parser(given qctx)
+  def parserFactory: (QuoteContext) => Parser = 
+    (qctx: QuoteContext) => new BaseParser(given qctx).parser
 
   def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
     (qctx: QuoteContext) => new Lifter(given qctx)
@@ -35,7 +35,7 @@ object QuoteDsl {
     val body = bodyRaw.unseal.underlyingArgument.seal
 
     // TODo add an error if body cannot be parsed
-    val ast = parserFactory(qctx).apply(body)
+    val ast = parserFactory(qctx).parse(body)
 
     println("Ast Is: " + ast)
 

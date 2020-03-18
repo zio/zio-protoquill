@@ -6,6 +6,8 @@ import io.getquill.ast.{Ident => Idnt, Constant => Const, Query => Qry, _}
 object Unlifter {
   type Unlift[T] = PartialFunction[Expr[T], T]
 }
+
+// TODO Rewrite this the way Parser is written (i.e. with ability to compose???)
 class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] {
   import Unlifter._
 
