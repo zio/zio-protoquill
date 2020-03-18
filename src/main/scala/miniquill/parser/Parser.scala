@@ -40,25 +40,26 @@ trait BaseParserFactory extends ParserFactory {
   def quotationParser(given qctx: QuoteContext) = Parser(new QuotationParser)
   def queryParser(given qctx: QuoteContext) = Parser(new QueryParser)
   def operationsParser(given qctx: QuoteContext) = Parser(new OperationsParser)
+  def userDefined(given qctxInput: QuoteContext) = Parser(new ParserComponent {
+    val qctx = qctxInput
+    def apply(root: Parser) = PartialFunction.empty[Expr[_], Ast]
+  })
   def genericExpressionsParser(given qctx: QuoteContext) = Parser(new GenericExpressionsParser)
   def errorFallbackParser(given qctx: QuoteContext) = Parser(new ErrorFallbackParser) 
 
   // TODO Maybe tack this on at the very end at the DSL Level
   // Alternatively, separate parsers out into Generic+Error (last two) groups tacked on at the end in Dsl
   // TODO Write a test that adds a custom quotation right in between here
-  
+
   // TODO Is there an overhead to re-creating these all of the time? That's why a class holding the composite was created
-  private class Composite(given qctx: QuoteContext) {
-    def apply =
-      quotationParser
+  def apply(given qctx: QuoteContext): Parser =
+    quotationParser
         .combine(queryParser)
         .combine(operationsParser)
         // additional parsing constructs should probably go here. Figure out how to add a better extension point here?
+        .combine(userDefined)
         .combine(genericExpressionsParser)
         .combine(errorFallbackParser)
-  }
-
-  def apply(given qctx: QuoteContext): Parser = new Composite().apply
 }
 
 object BaseParserFactory extends BaseParserFactory with ParserFactory
