@@ -15,8 +15,8 @@ trait ParserComponent extends (Parser => PartialFunction[Expr[_], Ast]) with Can
   def apply(root: Parser): PartialFunction[Expr[_], Ast]  
 }
 
-class Parser(given val qctx:QuoteContext) { self =>
-  def parse(expr: Expr[_]): Ast = composite.apply(expr)
+class Parser { self =>
+  def parse(expr: Expr[_])(given qctx:QuoteContext): Ast = composite.apply(expr)
   def children: List[ParserComponent] = List()
   def composite = children.map(child => child(self)).foldRight(IdentityParser)(_ orElse _)
   def combine(other: Parser): Parser =
@@ -26,29 +26,42 @@ class Parser(given val qctx:QuoteContext) { self =>
 }
 
 object Parser {
-  def apply(comp: ParserComponent)(given qctx:QuoteContext): Parser =
+  def apply(comp: ParserComponent): Parser =
     new Parser {
       override def children = List(comp)
     }
 }
 
-class BaseParser(given val qctx:QuoteContext) {
-  val quotationParser = Parser(new QuotationParser)
-  val queryParser = Parser(new QueryParser)
-  val operationsParser = Parser(new OperationsParser)
-  val genericExpressionsParser = Parser(new GenericExpressionsParser)
+trait ParserFactory {
+  def apply(given qctx: QuoteContext): Parser
+}
+
+trait BaseParserFactory extends ParserFactory {
+  def quotationParser(given qctx: QuoteContext) = Parser(new QuotationParser)
+  def queryParser(given qctx: QuoteContext) = Parser(new QueryParser)
+  def operationsParser(given qctx: QuoteContext) = Parser(new OperationsParser)
+  def genericExpressionsParser(given qctx: QuoteContext) = Parser(new GenericExpressionsParser)
+  def errorFallbackParser(given qctx: QuoteContext) = Parser(new ErrorFallbackParser) 
+
   // TODO Maybe tack this on at the very end at the DSL Level
   // Alternatively, separate parsers out into Generic+Error (last two) groups tacked on at the end in Dsl
   // TODO Write a test that adds a custom quotation right in between here
-  val errorFallbackParser = Parser(new ErrorFallbackParser) 
-  def parser =
-    quotationParser
-    .combine(queryParser)
-    .combine(operationsParser)
-    // additional parsing constructs should probably go here. Figure out how to add a better extension point here?
-    .combine(genericExpressionsParser)
-    .combine(errorFallbackParser)
+  
+  // TODO Is there an overhead to re-creating these all of the time? That's why a class holding the composite was created
+  private class Composite(given qctx: QuoteContext) {
+    def apply =
+      quotationParser
+        .combine(queryParser)
+        .combine(operationsParser)
+        // additional parsing constructs should probably go here. Figure out how to add a better extension point here?
+        .combine(genericExpressionsParser)
+        .combine(errorFallbackParser)
+  }
+
+  def apply(given qctx: QuoteContext): Parser = new Composite().apply
 }
+
+object BaseParserFactory extends BaseParserFactory with ParserFactory
 
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
 class QuotationParser(given val qctx:QuoteContext) extends ParserComponent {

@@ -9,33 +9,56 @@ import derivation._
 import scala.deriving._
 import scala.quoted.matching.Const
 import miniquill.dsl.GenericEncoder
+import miniquill.parser.BaseParserFactory
 
 // trait Quoter {
 //   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???
 //   def quote[T](bodyExpr: T): Quoted[T] = ???
 // }
 
-object QuoteDsl {
+object QuoteDsl extends QuoteMeta[BaseParserFactory] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
-  def parserFactory: (QuoteContext) => Parser = 
-    (qctx: QuoteContext) => new BaseParser(given qctx).parser
+class QuoteMeta[P <: ParserFactory] {
+  inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('bodyExpr) }
+
+  inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('bodyExpr) }
+
+  inline def query[T]: EntityQuery[T] = new EntityQuery
+
+  def runQuery[T](query: Quoted[Query[T]]): String = ???
+
+  def run[T](query: Quoted[T]): String = {
+    query.ast.toString
+  }
+
+  import scala.language.implicitConversions
+
+  // TODO Should also probably name a method for this so don't need to enable explicit conversion
+  inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ QuoteImpl.unquoteImpl[T]('quoted) }
+  
+  def querySchema[T](entity: String): EntityQuery[T] = ???
+
+  inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('body) }
+}
+
+object QuoteImpl {
+  import io.getquill.util.LoadObject
+
+  // def parserFactory: (QuoteContext) => Parser = 
+  //   (qctx: QuoteContext) => new BaseParser(given qctx).parser
 
   def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
     (qctx: QuoteContext) => new Lifter(given qctx)
 
-  inline def query[T]: EntityQuery[T] = new EntityQuery
-
-  inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ quoteImpl[T]('bodyExpr) }
-
-  inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ quoteImpl[T]('bodyExpr) }
-
-  def quoteImpl[T: Type](bodyRaw: Expr[T])(given qctx: QuoteContext): Expr[Quoted[T]] = {
+  def quoteImpl[T, P <: ParserFactory](bodyRaw: Expr[T])(given qctx: QuoteContext, tType: Type[T], pType: Type[P]): Expr[Quoted[T]] = {
     import qctx.tasty.{_, given _}
     // NOTE Can disable if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val body = bodyRaw.unseal.underlyingArgument.seal
 
+    val parserFactory = LoadObject(pType).get
+
     // TODo add an error if body cannot be parsed
-    val ast = parserFactory(qctx).parse(body)
+    val ast = parserFactory.apply(given qctx).parse(body)
 
     println("Ast Is: " + ast)
 
@@ -55,28 +78,6 @@ object QuoteDsl {
     }
   }
 
-  def extractLifts(body: Expr[Any])(given qctx: QuoteContext) = {
-    ScalarPlanterExpr.findUnquotes(body).map(_.plant)
-  }
-
-  def extractRuntimeUnquotes(body: Expr[Any])(given qctx: QuoteContext) = {
-    val unquotes = QuotationBinExpr.findUnquotes(body)
-    unquotes
-      .collect { case expr: PluckableQuotationBinExpr => expr }
-      .map(_.pluck)
-  }
-
-
-  def runQuery[T](query: Quoted[Query[T]]): String = ???
-
-  def run[T](query: Quoted[T]): String = {
-    query.ast.toString
-  }
-
-  import scala.language.implicitConversions
-
-  // TODO Should also probably name a method for this so don't need to enable explicit conversion
-  inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ unquoteImpl[T]('quoted) }
   def unquoteImpl[T: Type](quoted: Expr[Quoted[T]])(given qctx: QuoteContext): Expr[T] = {
     import qctx.tasty.{given, _}
     '{
@@ -84,7 +85,14 @@ object QuoteDsl {
     }
   }
 
-  def querySchema[T](entity: String): EntityQuery[T] = ???
+  private def extractLifts(body: Expr[Any])(given qctx: QuoteContext) = {
+    ScalarPlanterExpr.findUnquotes(body).map(_.plant)
+  }
 
-  inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ quoteImpl[T]('body) }
+  private def extractRuntimeUnquotes(body: Expr[Any])(given qctx: QuoteContext) = {
+    val unquotes = QuotationBinExpr.findUnquotes(body)
+    unquotes
+      .collect { case expr: PluckableQuotationBinExpr => expr }
+      .map(_.pluck)
+  }
 }
