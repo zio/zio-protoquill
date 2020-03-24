@@ -49,6 +49,9 @@ object AstPrinter {
 def str(str: Any) =
   new AstPrinter()(str).render
 
+def lnfbw(str: Any): Unit = 
+  println(new AstPrinter()(str).plainText)
+
 def lnf(str: Any): Unit = 
   println(new AstPrinter()(str))
 

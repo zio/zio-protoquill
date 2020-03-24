@@ -10,12 +10,11 @@ import scala.deriving._
 import scala.quoted.matching.Const
 import miniquill.dsl.GenericEncoder
 
-class Query[+T] {
-  def map[R](f: T => R): Query[R] = new Query[R]
-  def foo(): String = "hello"
+trait Query[+T] {
+  def map[R](f: T => R): Query[R]
 }
 
-class EntityQuery[T] extends Query[T] // TODO can have a list of column renames?
+trait EntityQuery[T] extends Query[T] // TODO can have a list of column renames?
 
 // TODO lifts needs to be List of Planter to allow QueryLifts
 case class Quoted[+T](val ast: Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuotes: List[QuotationVase])
