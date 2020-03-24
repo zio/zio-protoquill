@@ -101,6 +101,7 @@ class QueryParser(given val qctx: QuoteContext) extends ParserComponent {
   }
 
   def apply(root: Parser) = {
+
     // TODO can we do this with quoted matching?
     case 
       Unseal(
@@ -116,6 +117,12 @@ class QueryParser(given val qctx: QuoteContext) extends ParserComponent {
 
     case vv @ '{ ($q:Query[$qt]).map[$mt](${Unseal(Lambda1(ident, body))}) } => 
       Map(root.parse(q), Idnt(ident), root.parse(body))
+
+    case '{ ($q:Query[$qt]).foobar($v) } => 
+      println("=============== We are about to produce: ===============")
+      printer.lnf(v.unseal)
+      println("================== We are done with the show =============")
+      Const("foobar")
   }
 }
 

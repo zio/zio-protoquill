@@ -12,6 +12,7 @@ import miniquill.dsl.GenericEncoder
 
 trait Query[+T] {
   def map[R](f: T => R): Query[R]
+  def foobar(str: String): String
 }
 
 trait EntityQuery[T] extends Query[T] // TODO can have a list of column renames?
