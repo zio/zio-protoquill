@@ -14,6 +14,27 @@ object MacroExample {
 
   // detectPlus(numberOne + numberInt)
 
+  inline def showTreeMatchLambda(inline expr: (String, String) => Int): Unit = ${ showTreeMatchLambdaImpl('expr) }
+  def showTreeMatchLambdaImpl(expr: Expr[(String, String) => Int])(given qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{given, _}
+    printer.lnf(expr.unseal.underlyingArgument)
+    expr.unseal.underlyingArgument match {
+      case Lambda(List(ValDef(argName, _, _), ValDef(argName1, _, _)), body) =>
+        println("Arg is: " + argName + " and " + argName1)
+        println("Body is: " + body.showExtractors)
+    }
+
+    '{ () }
+  }
+
+  inline def showTree(inline expr: Any): Unit = ${ showTreeImpl('expr) }
+  def showTreeImpl(expr: Expr[Any])(given qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{given, _}
+    //println(expr.unseal.underlyingArgument.showExtractors)
+    printer.lnf(expr.unseal.underlyingArgument)
+    '{ () }
+  }
+
   inline def detectPlus(inline expr: Int): (Int, String) = ${ detectPlusImpl('expr) }
   def detectPlusImpl(expr: Expr[Int])(given qctx: QuoteContext): Expr[(Int, String)] = {
     import qctx.tasty.{given, _}
