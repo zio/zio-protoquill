@@ -8,26 +8,30 @@ import scala.quoted._
 
 class AstPrinter extends io.getquill.AstPrinter(false, false) {
 
-  def shouldNotPrettifyCaseClass(x: Product) = {
+  val removePrefixes = Set(
+
+  )
+
+  def shouldAddProperties(x: Product) = {
     val className = x.getClass.getName
-    x.productArity == 0 || 
-    (x.productArity == 2 && Util.isOperator(x.productPrefix)) || 
-    className.startsWith(tuplePrefix) || 
-    className == "scala.Some"
+    (x.productArity > 2) && //&& Util.isOperator(x.productPrefix) 
+    (removePrefixes.filter(prefix => className.startsWith(prefix)).isEmpty)
   }
 
-  // override def additionalHandlers: PartialFunction[Any, Tree] = {
-  //   case x: Product if !shouldNotPrettifyCaseClass(x) =>
-  //     val fieldMap = caseClassToMap(x)
-  //     Tree.Apply(
-  //       x.productPrefix,
-  //       fieldMap.iterator.flatMap { case (k, v) =>
-  //         val prettyValue: Tree = additionalHandlers.lift(v).getOrElse(treeify(v))
-  //         //Seq(Tree.Infix(Tree.Literal(k), "=", prettyValue))
-  //         Seq(prettyValue).iterator
-  //       }
-  //     )
-  // }
+  override def additionalHandlers: PartialFunction[Any, Tree] = {
+    case x: Product if shouldAddProperties(x) =>
+      val fieldMap = caseClassToMap(x)
+      Tree.Apply(
+        x.productPrefix,
+        fieldMap.iterator.flatMap { case (k, v) =>
+          val prettyValue: Tree = additionalHandlers.lift(v).getOrElse(treeify(v))
+          if (System.getProperty("quill.ast.props", "false") == "true")
+            Seq(Tree.Infix(Tree.Literal(k), "=", prettyValue))
+          else
+            Seq(prettyValue).iterator
+        }
+      )
+  }
 
   protected def caseClassToMap(cc: Product): Map[String, Any] = {
     val fieldValues = cc.productIterator.toSet

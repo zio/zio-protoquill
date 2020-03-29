@@ -45,8 +45,10 @@ def doIt = {
     Closure(List(), Ident($anonfun), Thicket(List()))
   )
   */
-  //MacroExample.showTree((v: String) => v.length)
-
-  MacroExample.showTreeMatchLambda((v: String, vv: String) => v.length)
+  MacroExample.showTree((v: String) => v.length) //hellooooooooo
   
+
+  //MacroExample.showTreeMatchLambda((v: String, vv: String) => v.length)
+  
+  //MacroExample.getMethods("123")
 }

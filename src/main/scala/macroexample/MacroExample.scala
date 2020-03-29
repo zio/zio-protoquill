@@ -14,6 +14,25 @@ object MacroExample {
 
   // detectPlus(numberOne + numberInt)
 
+  inline def getMethods(inline expr: Any): Unit = ${ geteMethodsImpl('expr) }
+  def geteMethodsImpl(exprRaw: Expr[Any])(given qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty.{given, _}
+    import scala.collection.JavaConverters._
+    // Note is a TypeRef and a TypeTree
+    val expr = exprRaw.unseal.underlyingArgument
+    val tpe = expr.tpe
+    // println(tpe.widen) // TypeRef(ThisType(TypeRef(NoPrefix,module class lang)),class String)
+    //println(tpe.decls.getClass.getMethods.filter(_.isAccessible).map(_.getName).foreach(println(_)))
+    
+    //println(tpe.classSymbol.get.asTerm)
+    
+    
+    
+
+
+    '{ () }
+  }
+
   inline def showTreeMatchLambda(inline expr: (String, String) => Int): Unit = ${ showTreeMatchLambdaImpl('expr) }
   def showTreeMatchLambdaImpl(expr: Expr[(String, String) => Int])(given qctx: QuoteContext): Expr[Unit] = {
     import qctx.tasty.{given, _}
