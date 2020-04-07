@@ -44,11 +44,39 @@ def doIt = {
     ),
     Closure(List(), Ident($anonfun), Thicket(List()))
   )
+
+
   */
-  MacroExample.showTree((v: String) => v.length) //hellooooooooo
-  
+
+  // class Foo
+  // MacroExample.showTree(new Foo)
+  // =>
+  // Apply(Select(New(Ident(Foo)), <init>), List())
+
+  // class Foo[T]
+  // MacroExample.showTree(new Foo[String])
+  // =>
+  // Apply(
+  //   TypeApply(
+  //     Select(New(AppliedTypeTree(Ident(Foo), List(Ident(String)))), <init>),
+  //     List(TypeTree[TypeRef(TermRef(ThisType(TypeRef(NoPrefix,module class scala)),module Predef),type String)])
+  //   ),
+  //   List()oot / Compile / compileIncremental 0s
+  // )
+
+
+
+  //class Foo[T](something: T)
+
+  //MacroExample.showTree(new Foo("123")) //helloooooooooo
+
 
   //MacroExample.showTreeMatchLambda((v: String, vv: String) => v.length)
   
-  //MacroExample.getMethods("123")
+  case class Person(name: String, age: Int) {
+    def something: String = "blah"
+  }
+  val p = Person("Joe", 123)
+
+  println( MacroExample.getMethods(p) )
 }

@@ -14,23 +14,34 @@ object MacroExample {
 
   // detectPlus(numberOne + numberInt)
 
-  inline def getMethods(inline expr: Any): Unit = ${ geteMethodsImpl('expr) }
-  def geteMethodsImpl(exprRaw: Expr[Any])(given qctx: QuoteContext): Expr[Unit] = {
+  inline def getMethods(inline expr: Any): Any = ${ geteMethodsImpl('expr) }
+  def geteMethodsImpl(exprRaw: Expr[Any])(given qctx: QuoteContext): Expr[Any] = {
     import qctx.tasty.{given, _}
     import scala.collection.JavaConverters._
     // Note is a TypeRef and a TypeTree
-    val expr = exprRaw.unseal.underlyingArgument
-    val tpe = expr.tpe
+    
+    val expr = exprRaw.unseal.underlyingArgument.seal
+    printer.lnf(expr.unseal.tpe.widen.classSymbol)
+    val sym = expr.unseal.tpe.widen.classSymbol // To Go from TermRef(p) to TypeRef(Person)
+    
+    val namesAndApplys =
+      sym.get.caseFields.map(field => {
+        (field.name, Select(expr.unseal, field).seal.cast[Any])
+      })
+
+    val mapFields = namesAndApplys.map { case (name, applyField) =>
+      '{ (${Expr(name)}, $applyField) }
+    }
+    '{ Map[String, Any](${Expr.ofList(mapFields)}:_*) }
+
+    //val sym = expr.unseal.tpe.asInstanceOf[TypeRef].symbol
+    //sym.get.caseFields.foreach(println(_))
+    //printer.lnf(field.tree)
+
     // println(tpe.widen) // TypeRef(ThisType(TypeRef(NoPrefix,module class lang)),class String)
     //println(tpe.decls.getClass.getMethods.filter(_.isAccessible).map(_.getName).foreach(println(_)))
-    
     //println(tpe.classSymbol.get.asTerm)
-    
-    
-    
-
-
-    '{ () }
+    //'{ () }
   }
 
   inline def showTreeMatchLambda(inline expr: (String, String) => Int): Unit = ${ showTreeMatchLambdaImpl('expr) }
