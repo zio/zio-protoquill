@@ -95,12 +95,19 @@ class QueryParser(given val qctx: QuoteContext) extends ParserComponent {
   import qctx.tasty.{given, _}
 
   private object Lambda1 {
-    def unapply(term: Term) = term match {
-      case Lambda(ValDef(ident, _, _) :: Nil, Seal(methodBody)) => Some((ident, methodBody))
+    def unapply(term: Term): Some[(String, quoted.Expr[_])] = term match {
+      case Lambda(List(ValDef(ident, _, _)), Seal(methodBody)) => Some((ident, methodBody))
+    }
+  }
+
+  private object Lambda2 {
+    def unapply(term: Term): Some[(String, String, quoted.Expr[_])] = term match {
+      case Lambda(List(ValDef(ident, _, _), ValDef(ident2, _, _)), Seal(methodBody)) => Some((ident, ident2, methodBody))
     }
   }
 
   def apply(root: Parser) = {
+
     // TODO can we do this with quoted matching?
     case 
       Unseal(
@@ -116,6 +123,12 @@ class QueryParser(given val qctx: QuoteContext) extends ParserComponent {
 
     case vv @ '{ ($q:Query[$qt]).map[$mt](${Unseal(Lambda1(ident, body))}) } => 
       Map(root.parse(q), Idnt(ident), root.parse(body))
+
+    case '{ ($q:Query[$qt]).foobar($v) } => 
+      println("=============== We are about to produce: ===============")
+      printer.lnf(v.unseal)
+      println("================== We are done with the show =============")
+      Const("foobar")
   }
 }
 

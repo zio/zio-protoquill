@@ -23,7 +23,7 @@ class QuoteMeta[P <: ParserFactory] {
 
   inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('bodyExpr) }
 
-  inline def query[T]: EntityQuery[T] = new EntityQuery
+  inline def query[T]: EntityQuery[T] = new EntityQuery()
 
   def runQuery[T](query: Quoted[Query[T]]): String = ???
 

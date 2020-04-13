@@ -2,9 +2,9 @@ package scoping
 
 import PulloutExperiment._
 
-@main def pulloutTupleTest() = {
-  println( matchList(List("foo", "bar")) )
-}
+// @main def pulloutTupleTest() = {
+//   println( matchList(List("foo", "bar")) )
+// }
 
 // @main def pulloutTest() = {
 //   val v = "foo"
