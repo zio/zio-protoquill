@@ -1,17 +1,19 @@
 
 package miniquill.parser
 
-import io.getquill.ast.{Ident => Idnt, Constant => Const, Query => Qry, _}
+import io.getquill.ast.{Ident => Idnt, Query => Qry, _}
 import miniquill.quoter._
 import scala.quoted._
-import scala.quoted.matching._
+import scala.quoted.matching.{Const => ConstExpr, _}
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
+import miniquill.quoter.QuoteMeta
+
 
 // TODO change all Expr[_] to Expr[Ast]?
 val IdentityParser = PartialFunction.empty[Expr[_], Ast]
-trait ParserComponent extends (Parser => PartialFunction[Expr[_], Ast]) with CanSealUnseal {
+trait ParserComponent extends (Parser => PartialFunction[Expr[_], Ast]) with TastyMatchers {
   def apply(root: Parser): PartialFunction[Expr[_], Ast]  
 }
 
@@ -91,20 +93,20 @@ class QuotationParser(given val qctx:QuoteContext) extends ParserComponent {
   }
 }
 
+trait PropertyAliasParser extends ParserComponent {
+  implicit val qctx: QuoteContext
+  import qctx.tasty.{Constant => TConstant, given, _}
+  
+  def apply(root: Parser) = {
+    // def querySchema[T](entity: String, columns: (T => (Any, String))*)
+    // q"(($x1) => $pack.Predef.ArrowAssoc[$t]($prop).$arrow[$v](${ alias: String }))" =>
+    case '{ ($x1: $tpe1) => scala.Predef.ArrowAssoc[$t]($prop).->[$v](${ConstExpr(alias: String)}) } =>
+      Constant("foo")
+  }
+}
+
 class QueryParser(given val qctx: QuoteContext) extends ParserComponent {
-  import qctx.tasty.{given, _}
-
-  private object Lambda1 {
-    def unapply(term: Term): Some[(String, quoted.Expr[_])] = term match {
-      case Lambda(List(ValDef(ident, _, _)), Seal(methodBody)) => Some((ident, methodBody))
-    }
-  }
-
-  private object Lambda2 {
-    def unapply(term: Term): Some[(String, String, quoted.Expr[_])] = term match {
-      case Lambda(List(ValDef(ident, _, _), ValDef(ident2, _, _)), Seal(methodBody)) => Some((ident, ident2, methodBody))
-    }
-  }
+  import qctx.tasty.{Constant => TConstant, given,  _}
 
   def apply(root: Parser) = {
 
@@ -121,14 +123,21 @@ class QueryParser(given val qctx: QuoteContext) extends ParserComponent {
       val name: String = targ.tpe.classSymbol.get.name
       Entity(name, List())
 
-    case vv @ '{ ($q:Query[$qt]).map[$mt](${Unseal(Lambda1(ident, body))}) } => 
+     case '{ ($qm: QuoteMeta[$qt]).querySchema[$t](${ConstExpr(name: String)}, ${ExprSeq(properties)}: _*) } => // back here
+        Entity(name, List())
+
+    //     Entity.Opinionated(name, properties.map(propertyAliasParser(_)), Fixed)
+
+    case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
       Map(root.parse(q), Idnt(ident), root.parse(body))
+
+    
 
     case '{ ($q:Query[$qt]).foobar($v) } => 
       println("=============== We are about to produce: ===============")
       printer.lnf(v.unseal)
       println("================== We are done with the show =============")
-      Const("foobar")
+      Constant("foobar")
   }
 }
 
@@ -146,18 +155,18 @@ class OperationsParser(given val qctx: QuoteContext) extends ParserComponent {
 }
 
 class GenericExpressionsParser(given val qctx: QuoteContext) extends ParserComponent {
-  import qctx.tasty.{given, _}
+  import qctx.tasty.{Constant => TreeConst, Ident => TreeIdent, given, _}
 
   def apply(root: Parser) = {
 
     // TODO Need to figure how how to do with other datatypes
-    case Unseal(Literal(Constant(v: Double))) => 
+    case Unseal(Literal(TreeConst(v: Double))) => 
       //println("Case Literal Constant")
-      Const(v)
+      Constant(v)
 
-    case Unseal(Literal(Constant(v: String))) => 
+    case Unseal(Literal(TreeConst(v: String))) => 
       //println("Case Literal Constant")
-      Const(v)
+      Constant(v)
 
     case Unseal(value @ Select(Seal(prefix), member)) =>
       //println(s"Select ${value.show}")
@@ -170,8 +179,7 @@ class GenericExpressionsParser(given val qctx: QuoteContext) extends ParserCompo
         Property(root.parse(prefix), member)
       }
 
-    case Unseal(Ident(x)) => 
-      //println("Ident")
+    case Unseal(TreeIdent(x)) => 
       Idnt(x)
 
     // If at the end there's an inner tree that's typed, move inside and try to parse again

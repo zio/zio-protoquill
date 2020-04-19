@@ -4,8 +4,8 @@ import scala.quoted._
 import scala.quoted.matching._
 import miniquill.dsl.GenericEncoder
 import io.getquill.ast.Ast
-import miniquill.parser.MatroshkaHelper
-import miniquill.parser.SealUnseal
+import miniquill.parser.TastyMatchersContext
+import miniquill.parser.TastyMatchersContext
 import miniquill.quoter.Quoted
 
 /* As the different kinds of parsing in Quill-Dotty became more complex, the need for an
@@ -122,8 +122,8 @@ object QuotedExpr {
   object Inline {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotedExpr] = {
       import qctx.tasty.{Term => QTerm, given, _}
-      val matroshkaHelper = new MatroshkaHelper
-      import matroshkaHelper._
+      val tmc = new TastyMatchersContext
+      import tmc._
 
       expr match {
         /* No runtime lifts allowed for inline quotes so quotationPouches.length must be 0 */

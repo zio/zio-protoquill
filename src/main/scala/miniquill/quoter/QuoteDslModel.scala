@@ -9,10 +9,16 @@ import derivation._
 import scala.deriving._
 import scala.quoted.matching.Const
 import miniquill.dsl.GenericEncoder
+import io.getquill.quotation.NonQuotedException
+import scala.annotation.compileTimeOnly
 
 class Query[+T] {
   def map[R](f: T => R): Query[R] = new Query[R]
+
   def foobar(str: String): String = ""
+
+  
+  
 }
 
 class EntityQuery[T] extends Query[T] // TODO can have a list of column renames?
@@ -26,6 +32,8 @@ case class Quoted[+T](val ast: Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuo
   // flattening of the tree. This is the mechanism that will be used by the 'run' function
   // for dynamic queries
 
+
+case class SchemaMeta[T](val entity: Quoted[EntityQuery[T]])
 
 // Planters contain trees that can be re-inserted into compile-time code.
 // For example, a ScalarPlaner is re-inserted into the PrepareRow sequence

@@ -10,6 +10,8 @@ import scala.deriving._
 import scala.quoted.matching.Const
 import miniquill.dsl.GenericEncoder
 import miniquill.parser.BaseParserFactory
+import io.getquill.quotation.NonQuotedException
+import scala.annotation.compileTimeOnly
 
 // trait Quoter {
 //   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???
@@ -19,6 +21,13 @@ import miniquill.parser.BaseParserFactory
 object QuoteDsl extends QuoteMeta[BaseParserFactory] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
 class QuoteMeta[P <: ParserFactory] {
+
+  //@compileTimeOnly(NonQuotedException.message)
+  def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
+
+  inline def schemaMeta[T](entity: String, columns: (T => (Any, String))*): SchemaMeta[T] = 
+    SchemaMeta(quote { querySchema[T](entity, columns: _*) })
+
   inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('bodyExpr) }
 
   inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('bodyExpr) }
@@ -35,8 +44,6 @@ class QuoteMeta[P <: ParserFactory] {
 
   // TODO Should also probably name a method for this so don't need to enable explicit conversion
   inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ QuoteImpl.unquoteImpl[T]('quoted) }
-  
-  def querySchema[T](entity: String): EntityQuery[T] = ???
 
   inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('body) }
 }

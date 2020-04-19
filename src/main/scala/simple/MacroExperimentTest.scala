@@ -1,6 +1,7 @@
-// package simple
+package simple
 
-// import simple.MacroExperiment._
+import miniquill.quoter.QuoteDsl
+import simple.MacroExperiment._
 
 // @main def testStuff() = {
 
@@ -12,3 +13,30 @@
 
   
 // }
+
+object FunObject {
+  def fun[T](t: T => String) = t
+  def funString(t: String => String) = t
+}
+
+case class Age(value: Int)
+case class MyPerson(name: String, age: Option[Age])
+
+@main def testOtherstuff() = { //hello
+
+  // Step 6
+  //import miniquill.quoter.QuoteDsl._
+  import miniquill.quoter.QuoteDsl
+  // import ShellObj._
+
+  printTree {
+  //   //querySchema[MyPerson]("personTable", _.name -> "tableNameColumn")
+  //   //FunObject.fun((x: String) => "blah")
+  //   //(x: String) => x.length -> "len" // Step 1, 2
+  //   (x: String) => "blahblah" // Step 3, 4, 5
+    QuoteDsl.querySchema[MyPerson]("personTbl", _.name -> "blah", _.age.map(_.value) -> "blaaah") //hello
+  //   //colVar[MyPerson]("blah", _.name -> "bar", _.age -> "blin")
+  //   //colVar[MyPerson]("blah")
+  //   // colVar("blah")
+  }
+}
