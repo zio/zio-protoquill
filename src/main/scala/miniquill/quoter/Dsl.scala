@@ -9,7 +9,7 @@ import derivation._
 import scala.deriving._
 import scala.quoted.matching.Const
 import miniquill.dsl.GenericEncoder
-import miniquill.parser.BaseParserFactory
+import miniquill.parser.ParserFactory
 import io.getquill.quotation.NonQuotedException
 import scala.annotation.compileTimeOnly
 
@@ -18,7 +18,7 @@ import scala.annotation.compileTimeOnly
 //   def quote[T](bodyExpr: T): Quoted[T] = ???
 // }
 
-object QuoteDsl extends QuoteMeta[BaseParserFactory] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
+object QuoteDsl extends QuoteMeta[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
 class QuoteMeta[P <: ParserFactory] {
 

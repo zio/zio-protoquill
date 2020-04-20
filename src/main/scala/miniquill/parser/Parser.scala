@@ -12,17 +12,13 @@ import miniquill.quoter.QuoteMeta
 import scala.reflect.ClassTag
 
 
-object Parsing {
+type Parser[R <: Ast] = PartialFunction[Expr[_], R]
+object Parser {
+  val empty: Parser[Ast] = PartialFunction.empty[Expr[_], Ast]
 
-  trait RootDelegate { def root: Parser[Ast] }
-  trait QuoteContextDelegate { implicit def qctx:QuoteContext }
-
-  type Parser[R <: Ast] = PartialFunction[Expr[_], R]
-  object Parser {
-    val empty: Parser[Ast] = PartialFunction.empty[Expr[_], Ast]
-  }
-
-  trait Delegated[R <: Ast] extends Parser[R] with RootDelegate with QuoteContextDelegate with TastyMatchers {
+  trait Delegated[R <: Ast] extends Parser[R] with TastyMatchers {
+    implicit val qctx:QuoteContext
+    def root: Parser[Ast]
     def delegate: PartialFunction[Expr[_], R]
     def apply(expr: Expr[_]): R = delegate.apply(expr)
     def isDefinedAt(expr: Expr[_]): Boolean = delegate.isDefinedAt(expr)
@@ -36,7 +32,6 @@ object Parsing {
     def root = self
 
     def delegate = composite
-    // def parseOption(expr: Expr[_])(given qctx:QuoteContext): Ast = composite.lift(expr)
   
     def children: List[Clause[Ast]] = List()
     
@@ -59,11 +54,10 @@ object Parsing {
 }
 
 trait ParserFactory {
-  def apply(given qctx: QuoteContext): Parsing.Parser[Ast]
+  def apply(given qctx: QuoteContext): Parser[Ast]
 }
-
-trait BaseParserFactory extends ParserFactory {
-  import Parsing._
+trait ParserLibrary extends ParserFactory {
+  import Parser._
 
   def quotationParser(given qctx: QuoteContext)  = Series(new QuotationParser)
   def queryParser(given qctx: QuoteContext)      = Series(new QueryParser)
@@ -75,7 +69,7 @@ trait BaseParserFactory extends ParserFactory {
   def genericExpressionsParser(given qctx: QuoteContext) = Series(new GenericExpressionsParser)
   def errorFallbackParser(given qctx: QuoteContext) = Series(new ErrorFallbackParser) 
 
-  def apply(given qctx: QuoteContext): Parsing.Parser[Ast] =
+  def apply(given qctx: QuoteContext): Parser[Ast] =
     quotationParser
         .combine(queryParser)
         .combine(operationsParser)
@@ -84,12 +78,14 @@ trait BaseParserFactory extends ParserFactory {
         .combine(errorFallbackParser)
 }
 
-object BaseParserFactory extends BaseParserFactory with ParserFactory
+object ParserLibrary extends ParserLibrary
 
-import Parsing._
+
+
+
 
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
-case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parsing.Clause[Ast] {
+case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Type => TType, _, given}
 
   // TODO Need to inject this somehow?
@@ -129,7 +125,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 //   }
 // }
 
-case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parsing.Clause[Ast] {
+case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Constant => TConstant, given,  _}
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -167,7 +163,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
   }
 }
 
-case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parsing.Clause[Ast] {
+case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{given, _}
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -182,7 +178,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   }
 }
 
-case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parsing.Clause[Ast] {
+case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Constant => TreeConst, Ident => TreeIdent, given, _}
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -223,7 +219,7 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
   }
 }
 
-case class ErrorFallbackParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parsing.Clause[Ast] {
+case class ErrorFallbackParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{given _, _}
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
