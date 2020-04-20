@@ -52,15 +52,29 @@ object MacroExperiment {
           prop match {
             // Causes Hang
             //case vvv @ '{ ($x1: `$t`) => scala.Predef.ArrowAssoc[$tPA]($prop).->[$v](${ConstExpr(alias: String)}) } =>
-            case vvv @ Lambda1(_, av @ '{ scala.Predef.ArrowAssoc[$tPA]($prop).->[$v](${ConstExpr(alias: String)}) } ) =>
+            case vvv @ Lambda1(_, av @ '{ ArrowAssoc[$tpa]($prop).->[$v](${ConstExpr(alias: String)}) } ) =>
               def path(tree: Expr[_]): List[String] =
                 tree match {
                   // case q"$a.$b" =>
-                  case SelectExpr(a, b) => path(a) :+ b
+                  case a`.`b => path(a) :+ b
                   // case q"$a.$b.map[$tpe]((..$args) => $tr)" =>
+
+                  // This doesn't work, let's try this:
                   //case '{ type $ot; ($b: Option[`$ot`]).map[$tpe](($arg: `$ot`) => $tr) } =>
-                  case SelectApply1(SelectExpr(a, b), "map", Lambda1(arg, body)) => 
-                    path(a) ++ (b :: path(body))   //helloo
+
+                  // This doesn't work, let's try this
+                  //case SelectApply1(SelectExpr(a, b), "map", Lambda1(arg, body)) => 
+                  //  path(a) ++ (b :: path(body))
+
+                  // This seems to work
+                  case '{ (${a`.`b}: Option[$t]).map[$r](${Lambda1(arg, body)}) } =>
+
+                  //case '{ type $t; (${SelectExpr(a, b)}: Option[`$t`]).map[$r]($f) } =>
+
+                    path(a) ++ (b :: path(body))
+
+                  //case '{ type $tt; (${SelectExpr(a, b)}: Option[`$tt`]).map[$rr](($arg: `$tt`) => $body) } =>
+                  // List("foo")
 
                   // TODO Something more generic that covers SelectApply as well as just Select1?
 

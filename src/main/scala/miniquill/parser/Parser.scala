@@ -9,71 +9,95 @@ import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
 import miniquill.quoter.QuoteMeta
+import scala.reflect.ClassTag
 
 
-// TODO change all Expr[_] to Expr[Ast]?
-val IdentityParser = PartialFunction.empty[Expr[_], Ast]
-trait ParserComponent extends (Parser => PartialFunction[Expr[_], Ast]) with TastyMatchers {
-  def apply(root: Parser): PartialFunction[Expr[_], Ast]  
-}
+object Parsing {
 
-class Parser { self =>
-  def parse(expr: Expr[_])(given qctx:QuoteContext): Ast = composite.apply(expr)
-  def children: List[ParserComponent] = List()
-  def composite = children.map(child => child(self)).foldRight(IdentityParser)(_ orElse _)
-  def combine(other: Parser): Parser =
-    new Parser { base =>
-      override def children = self.children ++ other.children
-    }
-}
+  trait RootDelegate { def root: Parser[Ast] }
+  trait QuoteContextDelegate { implicit def qctx:QuoteContext }
 
-object Parser {
-  def apply(comp: ParserComponent): Parser =
-    new Parser {
-      override def children = List(comp)
-    }
+  type Parser[R <: Ast] = PartialFunction[Expr[_], R]
+  object Parser {
+    val empty: Parser[Ast] = PartialFunction.empty[Expr[_], Ast]
+  }
+
+  trait Delegated[R <: Ast] extends Parser[R] with RootDelegate with QuoteContextDelegate with TastyMatchers {
+    def delegate: PartialFunction[Expr[_], R]
+    def apply(expr: Expr[_]): R = delegate.apply(expr)
+    def isDefinedAt(expr: Expr[_]): Boolean = delegate.isDefinedAt(expr)
+  }
+
+  trait Clause[R <: Ast](implicit val qctx: QuoteContext) extends Delegated[R] with TastyMatchers { base =>
+    def reparent(root: Parser[Ast]): Clause[R]
+  }
+
+  class Series(override implicit val qctx: QuoteContext) extends Delegated[Ast] { self =>
+    def root = self
+
+    def delegate = composite
+    // def parseOption(expr: Expr[_])(given qctx:QuoteContext): Ast = composite.lift(expr)
+  
+    def children: List[Clause[Ast]] = List()
+    
+    def composite: PartialFunction[Expr[_], Ast] =
+      children.map(child => child.reparent(this)).foldRight(PartialFunction.empty[Expr[_], Ast])(_ orElse _) //back here
+    
+    def combine(other: Series): Series =
+      new Series { base =>
+        override def root = base
+        override def children = self.children ++ other.children
+      }
+  }
+
+  object Series {
+    def apply(clause: Clause[Ast])(implicit qctx: QuoteContext): Series =
+      new Series {
+        override def children = List(clause)
+      }
+  }
 }
 
 trait ParserFactory {
-  def apply(given qctx: QuoteContext): Parser
+  def apply(given qctx: QuoteContext): Parsing.Parser[Ast]
 }
 
 trait BaseParserFactory extends ParserFactory {
-  def quotationParser(given qctx: QuoteContext) = Parser(new QuotationParser)
-  def queryParser(given qctx: QuoteContext) = Parser(new QueryParser)
-  def operationsParser(given qctx: QuoteContext) = Parser(new OperationsParser)
-  def userDefined(given qctxInput: QuoteContext) = Parser(new ParserComponent {
-    val qctx = qctxInput
-    def apply(root: Parser) = PartialFunction.empty[Expr[_], Ast]
-  })
-  def genericExpressionsParser(given qctx: QuoteContext) = Parser(new GenericExpressionsParser)
-  def errorFallbackParser(given qctx: QuoteContext) = Parser(new ErrorFallbackParser) 
+  import Parsing._
 
-  // TODO Maybe tack this on at the very end at the DSL Level
-  // Alternatively, separate parsers out into Generic+Error (last two) groups tacked on at the end in Dsl
-  // TODO Write a test that adds a custom quotation right in between here
+  def quotationParser(given qctx: QuoteContext)  = Series(new QuotationParser)
+  def queryParser(given qctx: QuoteContext)      = Series(new QueryParser)
+  def operationsParser(given qctx: QuoteContext) = Series(new OperationsParser)
+  // def userDefined(given qctxInput: QuoteContext) = Series(new Glosser[Ast] {
+  //   val qctx = qctxInput
+  //   def apply(root: Parser[Ast]) = PartialFunction.empty[Expr[_], Ast]
+  // })
+  def genericExpressionsParser(given qctx: QuoteContext) = Series(new GenericExpressionsParser)
+  def errorFallbackParser(given qctx: QuoteContext) = Series(new ErrorFallbackParser) 
 
-  // TODO Is there an overhead to re-creating these all of the time? That's why a class holding the composite was created
-  def apply(given qctx: QuoteContext): Parser =
+  def apply(given qctx: QuoteContext): Parsing.Parser[Ast] =
     quotationParser
         .combine(queryParser)
         .combine(operationsParser)
-        // additional parsing constructs should probably go here. Figure out how to add a better extension point here?
-        .combine(userDefined)
+        // .combine(userDefined)
         .combine(genericExpressionsParser)
         .combine(errorFallbackParser)
 }
 
 object BaseParserFactory extends BaseParserFactory with ParserFactory
 
+import Parsing._
+
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
-class QuotationParser(given val qctx:QuoteContext) extends ParserComponent {
+case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parsing.Clause[Ast] {
   import qctx.tasty.{Type => TType, _, given}
 
   // TODO Need to inject this somehow?
   val unlift = new Unlifter()
 
-  def apply(root: Parser): PartialFunction[Expr[_], Ast] = {
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
     
     case QuotationBinExpr.InlineOrPluckedUnquoted(quotationBin) =>
       quotationBin match {
@@ -93,22 +117,24 @@ class QuotationParser(given val qctx:QuoteContext) extends ParserComponent {
   }
 }
 
-trait PropertyAliasParser extends ParserComponent {
-  implicit val qctx: QuoteContext
-  import qctx.tasty.{Constant => TConstant, given, _}
+// trait PropertyAliasParser extends Glosser[Ast] {
+//   implicit val qctx: QuoteContext
+//   import qctx.tasty.{Constant => TConstant, given, _}
   
-  def apply(root: Parser) = {
-    // def querySchema[T](entity: String, columns: (T => (Any, String))*)
-    // q"(($x1) => $pack.Predef.ArrowAssoc[$t]($prop).$arrow[$v](${ alias: String }))" =>
-    case '{ ($x1: $tpe1) => scala.Predef.ArrowAssoc[$t]($prop).->[$v](${ConstExpr(alias: String)}) } =>
-      Constant("foo")
-  }
-}
+//   def apply(root: Parser[Ast]) = {
+//     // def querySchema[T](entity: String, columns: (T => (Any, String))*)
+//     // q"(($x1) => $pack.Predef.ArrowAssoc[$t]($prop).$arrow[$v](${ alias: String }))" =>
+//     case '{ ($x1: $tpe1) => scala.Predef.ArrowAssoc[$t]($prop).->[$v](${ConstExpr(alias: String)}) } =>
+//       Constant("foo")
+//   }
+// }
 
-class QueryParser(given val qctx: QuoteContext) extends ParserComponent {
+case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parsing.Clause[Ast] {
   import qctx.tasty.{Constant => TConstant, given,  _}
 
-  def apply(root: Parser) = {
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
 
     // TODO can we do this with quoted matching?
     case 
@@ -129,7 +155,7 @@ class QueryParser(given val qctx: QuoteContext) extends ParserComponent {
     //     Entity.Opinionated(name, properties.map(propertyAliasParser(_)), Fixed)
 
     case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
-      Map(root.parse(q), Idnt(ident), root.parse(body))
+      Map(root(q), Idnt(ident), root(body))
 
     
 
@@ -141,23 +167,27 @@ class QueryParser(given val qctx: QuoteContext) extends ParserComponent {
   }
 }
 
-class OperationsParser(given val qctx: QuoteContext) extends ParserComponent {
+case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parsing.Clause[Ast] {
   import qctx.tasty.{given, _}
 
-  def apply(root: Parser) = {
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
       // TODO Need to check if entity is a string
     case Unseal(Apply(Select(Seal(left), "+"), Seal(right) :: Nil)) =>
-      BinaryOperation(root.parse(left), StringOperator.+, root.parse(right))
+      BinaryOperation(root(left), StringOperator.+, root(right))
 
     case Unseal(Apply(Select(Seal(left), "*"), Seal(right) :: Nil)) =>
-      BinaryOperation(root.parse(left), NumericOperator.*, root.parse(right))
+      BinaryOperation(root(left), NumericOperator.*, root(right))
   }
 }
 
-class GenericExpressionsParser(given val qctx: QuoteContext) extends ParserComponent {
+case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parsing.Clause[Ast] {
   import qctx.tasty.{Constant => TreeConst, Ident => TreeIdent, given, _}
 
-  def apply(root: Parser) = {
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
 
     // TODO Need to figure how how to do with other datatypes
     case Unseal(Literal(TreeConst(v: Double))) => 
@@ -174,9 +204,9 @@ class GenericExpressionsParser(given val qctx: QuoteContext) extends ParserCompo
       if ((value.tpe <:< '[io.getquill.Embedded].unseal.tpe)) { 
         // TODO Figure how how to check the summon here
         // || (summonExpr(given '[Embedable[$tpee]]).isDefined)
-        Property.Opinionated(root.parse(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
+        Property.Opinionated(root(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
       } else {
-        Property(root.parse(prefix), member)
+        Property(root(prefix), member)
       }
 
     case Unseal(TreeIdent(x)) => 
@@ -184,19 +214,21 @@ class GenericExpressionsParser(given val qctx: QuoteContext) extends ParserCompo
 
     // If at the end there's an inner tree that's typed, move inside and try to parse again
     case Unseal(Typed(innerTree, _)) =>
-      root.parse(innerTree.seal)
+      root(innerTree.seal)
 
     case Unseal(Inlined(_, _, v)) =>
       //println("Case Inlined")
       //root.parse(v.seal.cast[T]) // With method-apply can't rely on it always being T?
-      root.parse(v.seal)
+      root(v.seal)
   }
 }
 
-class ErrorFallbackParser(given val qctx: QuoteContext) extends ParserComponent {
-  import qctx.tasty.{given, _}
+case class ErrorFallbackParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parsing.Clause[Ast] {
+  import qctx.tasty.{given _, _}
 
-  def apply(root: Parser): PartialFunction[Expr[_], Ast] = {
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
     // TODO define this a last-resort printing function inside the parser
     case Unseal(t) =>
       println("=============== Parsing Error ================\n" + printer.ln(t))

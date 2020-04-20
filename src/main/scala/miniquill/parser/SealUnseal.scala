@@ -5,7 +5,7 @@ import scala.quoted._
 class TastyMatchersContext(given val qctx: QuoteContext) extends TastyMatchers
 
 trait TastyMatchers {
-  val qctx: QuoteContext
+  implicit val qctx: QuoteContext
   import qctx.tasty.{given, _}
 
   object SelectApply1 {
@@ -33,6 +33,20 @@ trait TastyMatchers {
   object SelectExpr {
     def unapply(term: Expr[_]): Option[(Expr[_], String)] = term match {
       case Unseal(Select(Seal(prefix), memberName)) => Some((prefix, memberName))
+      case _ => None
+    }
+  }
+
+  object `.` {
+    def unapply(term: Expr[_]): Option[(Expr[_], String)] = term match {
+      case Unseal(Select(Seal(prefix), memberName)) => Some((prefix, memberName))
+      case _ => None
+    }
+  }
+
+  object SelectExprOpt {
+    def unapply(term: Expr[_]): Option[(Expr[Option[_]], String)] = term match {
+      case Unseal(Select(prefix, memberName)) => Some((prefix.seal.cast[Option[Any]], memberName))
       case _ => None
     }
   }

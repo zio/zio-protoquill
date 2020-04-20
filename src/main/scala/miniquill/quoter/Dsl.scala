@@ -65,7 +65,7 @@ object QuoteImpl {
     val parserFactory = LoadObject(pType).get
 
     // TODo add an error if body cannot be parsed
-    val ast = parserFactory.apply(given qctx).parse(body)
+    val ast = parserFactory.apply(given qctx).apply(body)
 
     println("Ast Is: " + ast)
 
