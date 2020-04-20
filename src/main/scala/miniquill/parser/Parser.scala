@@ -12,11 +12,23 @@ import miniquill.quoter.QuoteMeta
 import scala.reflect.ClassTag
 
 
-type Parser[R <: Ast] = PartialFunction[Expr[_], R]
+type Parser[R] = PartialFunction[Expr[_], R]
+type SealedParser[R] = (Expr[_] => R)
+
 object Parser {
   val empty: Parser[Ast] = PartialFunction.empty[Expr[_], Ast]
 
-  trait Delegated[R <: Ast] extends Parser[R] with TastyMatchers {
+  implicit class ParserExtensions[R](parser: Parser[R])(implicit val qctx: QuoteContext, ct: ClassTag[R]) {
+    import qctx.tasty.{given, _}
+
+    def seal: SealedParser[R] = 
+      (expr: Expr[_]) => parser.lift(expr).getOrElse {
+        // c.fail(s"Tree '$tree' can't be parsed to '${ct.runtimeClass.getSimpleName}'")
+        qctx.throwError(s"Tree '${expr.show}' can't be parsed to '${ct.runtimeClass.getSimpleName}'", expr)
+      }
+  }
+
+  trait Delegated[R] extends Parser[R] with TastyMatchers {
     implicit val qctx:QuoteContext
     def root: Parser[Ast]
     def delegate: PartialFunction[Expr[_], R]
@@ -24,7 +36,7 @@ object Parser {
     def isDefinedAt(expr: Expr[_]): Boolean = delegate.isDefinedAt(expr)
   }
 
-  trait Clause[R <: Ast](implicit val qctx: QuoteContext) extends Delegated[R] with TastyMatchers { base =>
+  trait Clause[R](implicit val qctx: QuoteContext) extends Delegated[R] with TastyMatchers { base =>
     def reparent(root: Parser[Ast]): Clause[R]
   }
 
@@ -113,22 +125,32 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
   }
 }
 
-// trait PropertyAliasParser extends Glosser[Ast] {
-//   implicit val qctx: QuoteContext
-//   import qctx.tasty.{Constant => TConstant, given, _}
+case class PropertyAliasParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[PropertyAlias] {
+  import qctx.tasty.{Constant => TConstant, given, _}
   
-//   def apply(root: Parser[Ast]) = {
-//     // def querySchema[T](entity: String, columns: (T => (Any, String))*)
-//     // q"(($x1) => $pack.Predef.ArrowAssoc[$t]($prop).$arrow[$v](${ alias: String }))" =>
-//     case '{ ($x1: $tpe1) => scala.Predef.ArrowAssoc[$t]($prop).->[$v](${ConstExpr(alias: String)}) } =>
-//       Constant("foo")
-//   }
-// }
+  def delegate: PartialFunction[Expr[_], PropertyAlias] = {
+      case Lambda1(_, '{ ArrowAssoc[$tpa]($prop).->[$v](${ConstExpr(alias: String)}) } ) =>
+        def path(tree: Expr[_]): List[String] =
+          tree match {
+            case a`.`b => 
+              path(a) :+ b
+            case '{ (${a`.`b}: Option[$t]).map[$r](${Lambda1(arg, body)}) } =>
+              path(a) ++ (b :: path(body))
+            case _ => 
+              Nil
+          }
+
+        PropertyAlias(path(prop), alias)
+  }
+
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+}
 
 case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Constant => TConstant, given,  _}
 
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+  // TODO If this was copied would 'root' inside of this thing update correctly?
+  protected def propertyAliasParser: SealedParser[PropertyAlias] = PropertyAliasParser(root).seal
 
   def delegate: PartialFunction[Expr[_], Ast] = {
 
@@ -145,10 +167,8 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       val name: String = targ.tpe.classSymbol.get.name
       Entity(name, List())
 
-     case '{ ($qm: QuoteMeta[$qt]).querySchema[$t](${ConstExpr(name: String)}, ${ExprSeq(properties)}: _*) } => // back here
-        Entity(name, List())
-
-    //     Entity.Opinionated(name, properties.map(propertyAliasParser(_)), Fixed)
+    case '{ ($qm: QuoteMeta[$qt]).querySchema[$t](${ConstExpr(name: String)}, ${ExprSeq(properties)}: _*) } => // back here
+      Entity.Opinionated(name, properties.toList.map(propertyAliasParser(_)), Renameable.Fixed)
 
     case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
       Map(root(q), Idnt(ident), root(body))
@@ -161,6 +181,8 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       println("================== We are done with the show =============")
       Constant("foobar")
   }
+
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
 
 case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
