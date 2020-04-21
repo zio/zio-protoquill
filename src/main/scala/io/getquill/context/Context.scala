@@ -87,7 +87,15 @@ extends EncodingDsl
     val expandedAst = spliceQuotations(ast)
       
     val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
-    val queryString = stmt.toString
+
+    val (string, externals) =
+      ReifyStatement(
+        idiom.liftingPlaceholder,
+        idiom.emptySetContainsToken,
+        stmt,
+        forProbing = false
+      )
+
     // summon a decoder and a expander (as well as an encoder) all three should be provided by the context
     val decoder = summonDecoder[T]
       // summonFrom {
@@ -95,7 +103,7 @@ extends EncodingDsl
       //   case decoder: Decoder[T] => decoder
       // }
     val extractor = (r: ResultRow) => decoder.apply(1, r)
-    this.executeQuery(queryString, null, extractor, ExecutionType.Dynamic)
+    this.executeQuery(string, null, extractor, ExecutionType.Dynamic)
   }
 
   inline def summonDecoder[T]: Decoder[T] = ${ Context.summonDecoderImpl[T, ResultRow] }

@@ -30,38 +30,29 @@ object Parser {
 
   trait Delegated[R] extends Parser[R] with TastyMatchers {
     implicit val qctx:QuoteContext
-    def root: Parser[Ast]
     def delegate: PartialFunction[Expr[_], R]
     def apply(expr: Expr[_]): R = delegate.apply(expr)
     def isDefinedAt(expr: Expr[_]): Boolean = delegate.isDefinedAt(expr)
   }
 
   trait Clause[R](implicit val qctx: QuoteContext) extends Delegated[R] with TastyMatchers { base =>
+    def root: Parser[Ast]
     def reparent(root: Parser[Ast]): Clause[R]
   }
 
-  class Series(override implicit val qctx: QuoteContext) extends Delegated[Ast] { self =>
-    def root = self
-
+  case class Series private (children: List[Clause[Ast]] = List())(override implicit val qctx: QuoteContext) extends Delegated[Ast] { self =>
+    
     def delegate = composite
-  
-    def children: List[Clause[Ast]] = List()
     
     def composite: PartialFunction[Expr[_], Ast] =
-      children.map(child => child.reparent(this)).foldRight(PartialFunction.empty[Expr[_], Ast])(_ orElse _) //back here
+      children.map(child => child.reparent(this)).foldRight(PartialFunction.empty[Expr[_], Ast])(_ orElse _)
     
     def combine(other: Series): Series =
-      new Series { base =>
-        override def root = base
-        override def children = self.children ++ other.children
-      }
+      Series(self.children ++ other.children)
   }
 
   object Series {
-    def apply(clause: Clause[Ast])(implicit qctx: QuoteContext): Series =
-      new Series {
-        override def children = List(clause)
-      }
+    def single(clause: Clause[Ast])(implicit qctx: QuoteContext): Series = Series(List(clause))
   }
 }
 
@@ -71,15 +62,15 @@ trait ParserFactory {
 trait ParserLibrary extends ParserFactory {
   import Parser._
 
-  def quotationParser(given qctx: QuoteContext)  = Series(new QuotationParser)
-  def queryParser(given qctx: QuoteContext)      = Series(new QueryParser)
-  def operationsParser(given qctx: QuoteContext) = Series(new OperationsParser)
+  def quotationParser(given qctx: QuoteContext)  =         Series.single(new QuotationParser)
+  def queryParser(given qctx: QuoteContext)      =         Series.single(new QueryParser)
+  def operationsParser(given qctx: QuoteContext) =         Series.single(new OperationsParser)
+  def genericExpressionsParser(given qctx: QuoteContext) = Series.single(new GenericExpressionsParser)
+  def errorFallbackParser(given qctx: QuoteContext) =      Series.single(new ErrorFallbackParser) 
   // def userDefined(given qctxInput: QuoteContext) = Series(new Glosser[Ast] {
   //   val qctx = qctxInput
   //   def apply(root: Parser[Ast]) = PartialFunction.empty[Expr[_], Ast]
   // })
-  def genericExpressionsParser(given qctx: QuoteContext) = Series(new GenericExpressionsParser)
-  def errorFallbackParser(given qctx: QuoteContext) = Series(new ErrorFallbackParser) 
 
   def apply(given qctx: QuoteContext): Parser[Ast] =
     quotationParser

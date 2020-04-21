@@ -15,6 +15,8 @@ class QuotationTest extends Spec with Inside {
   case class Address(street:String, zip:Int) extends Embedded
   case class Person(name: String, age: Int, address: Address)
 
+  
+
   ("compiletime quotation has correct ast for") - {
     "trivial whole-record select" in {
       inline def q = quote {
