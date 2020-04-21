@@ -25,7 +25,7 @@ class QuoteMeta[P <: ParserFactory] {
   //@compileTimeOnly(NonQuotedException.message)
   def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
 
-  inline def schemaMeta[T](entity: String, columns: (T => (Any, String))*): SchemaMeta[T] = 
+  inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
     SchemaMeta(quote { querySchema[T](entity, columns: _*) })
 
   inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('bodyExpr) }
@@ -64,8 +64,10 @@ object QuoteImpl {
 
     val parserFactory = LoadObject(pType).get
 
+    import Parser.{given _}
+
     // TODo add an error if body cannot be parsed
-    val ast = parserFactory.apply(given qctx).apply(body)
+    val ast = parserFactory.apply(given qctx).seal.apply(body)
 
     println("Ast Is: " + ast)
 

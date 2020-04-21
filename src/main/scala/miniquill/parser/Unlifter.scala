@@ -1,7 +1,8 @@
 package miniquill.parser
 
 import scala.quoted._
-import io.getquill.ast.{Ident => Idnt, Constant => Const, Query => Qry, _}
+import scala.quoted.matching._
+import io.getquill.ast.{Ident => Idnt, Query => Qry, _}
 
 object Unlifter {
   type Unlift[T] = PartialFunction[Expr[T], T]
@@ -14,21 +15,35 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
   def apply(astExpr: Expr[Ast]): Ast = unliftAst(astExpr)
   def isDefinedAt(astExpr: Expr[Ast]): Boolean = unliftAst.isDefinedAt(astExpr)
   private def fixedString(expr: Expr[Any]): String = 
-    expr match {
-      case scala.quoted.matching.Const(v: String) => v
-    }
+    expr match { case Const(v: String) => v }
 
-  def unliftVisibility: Unlift[Visibility] = {
+  implicit def unliftString: Unlift[String] = { case Const(v: String) => v }
+  implicit def unliftDouble: Unlift[Double] = { case Const(v: Double) => v }
+  implicit def unliftFloat: Unlift[Float] = { case Const(v: Float) => v }
+  implicit def unliftLong: Unlift[Long] = { case Const(v: Long) => v }
+  implicit def unliftInt: Unlift[Int] = { case Const(v: Int) => v }
+  implicit def unliftShort: Unlift[Short] = { case Const(v: Short) => v }
+  implicit def unliftByte: Unlift[Byte] = { case Const(v: Byte) => v }
+  implicit def unliftChar: Unlift[Char] = { case Const(v: Char) => v }
+  implicit def unliftBoolean: Unlift[Boolean] = { case Const(v: Boolean) => v }
+
+  implicit def unliftList[T](implicit u: Unlift[T]): Unlift[List[T]] = {
+    case '{ Nil } => Nil
+    case '{ List.apply[$t](${ExprSeq(props)}: _*) } => 
+      props.toList.map(p => u.apply(p.asInstanceOf[Expr[T]])) // Can we get the type into here so we don't have to cast?
+  }
+
+  implicit def unliftVisibility: Unlift[Visibility] = {
     case '{ Visibility.Hidden } => Visibility.Hidden
     case '{ Visibility.Visible } => Visibility.Visible
   }
 
-  def unliftRenameable: Unlift[Renameable] = {
+  implicit def unliftRenameable: Unlift[Renameable] = {
     case '{ Renameable.ByStrategy } => Renameable.ByStrategy
     case '{ Renameable.Fixed } => Renameable.Fixed
   }
 
-  def unliftProperty: Unlift[Property] = {
+  implicit def unliftProperty: Unlift[Property] = {
     // Unlike in liftProperty, we need both variants here since we are matching the scala AST expressions
     case '{ Property(${ast}, ${name}) } =>
       Property(unliftAst(ast), fixedString(name))
@@ -36,12 +51,20 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
       Property.Opinionated(unliftAst(ast), fixedString(name), unliftRenameable(renameable), unliftVisibility(visibility))
   }
 
+  implicit def unliftPropertyAlias: Unlift[PropertyAlias] = {
+    case '{ PropertyAlias($a, $b) } => PropertyAlias(a.unlift, b.unlift)
+  }
+
+  implicit class UnliftExt[T](expr: Expr[T])(implicit u: Unlift[T]) {
+    def unlift: T = u.apply(expr)
+  }
+
   def unliftBase: Unlift[Ast] = {
     // TODO have a typeclass like Splicer to translate constant to strings
-    case '{ Const(${b}) } =>
-      Const(fixedString(b))
+    case '{ Constant(${b}) } =>
+      Constant(fixedString(b))
     case '{ Entity(${b}, ${l})  } =>
-      Entity(fixedString(b), List())
+      Entity(fixedString(b), l.unlift)
     case '{ Idnt(${b}) } =>
       Idnt(fixedString(b))
     case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(unliftAst(query), unliftAst(alias).asInstanceOf[Idnt], unliftAst(body))
@@ -54,12 +77,12 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
       QuotationTag(fixedString(uid))
   }
 
-  def unliftOperator: Unlift[Operator] = {
+  implicit def unliftOperator: Unlift[Operator] = {
     case '{ NumericOperator.* } =>  NumericOperator.*
     case '{ StringOperator.+ } =>  StringOperator.+
   }
 
-  def unliftAst: Unlift[Ast] = {
+  implicit def unliftAst: Unlift[Ast] = {
     // Doing it this way so that users can override the unlift functions
     // in a custom parser
     val unliftBaseActual = unliftBase

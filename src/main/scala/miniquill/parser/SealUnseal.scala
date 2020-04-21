@@ -1,6 +1,7 @@
 package miniquill.parser
 
 import scala.quoted._
+import scala.quoted.matching._
 
 class TastyMatchersContext(given val qctx: QuoteContext) extends TastyMatchers
 
@@ -13,6 +14,17 @@ trait TastyMatchers {
       case Unseal(Apply(Select(body, method), List(arg))) => Some((body.seal, method, arg.seal))
       case Unseal(Apply(TypeApply(Select(body, method), _), List(arg))) => Some((body.seal, method, arg.seal))
       case _ => None
+    }
+  }
+
+  // Designed to be a more generic version the ExprSeq which does not handle all cases.
+  // Particularily when a varargs parameter is passed from one inline function into another.
+  object GenericSeq {
+    def unapply(term: Expr[_]): Option[List[Expr[_]]] = {
+      term match {
+        case ExprSeq(props) => Some(props.toList)
+        case TypedMatroshka(Unseal(Repeated(props, _))) => Some(props.map(_.seal))
+      }
     }
   }
 

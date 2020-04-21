@@ -24,15 +24,26 @@ object Parser {
     def seal: SealedParser[R] = 
       (expr: Expr[_]) => parser.lift(expr).getOrElse {
         // c.fail(s"Tree '$tree' can't be parsed to '${ct.runtimeClass.getSimpleName}'")
-        qctx.throwError(s"Tree '${expr.show}' can't be parsed to '${ct.runtimeClass.getSimpleName}'", expr)
+        qctx.throwError(
+          s"""
+          s"==== Tree cannot be parsed to '${ct.runtimeClass.getSimpleName}' ===
+          ${expr.show.split("\n").map("  " + _).mkString("\n")}
+          ==== Raw ===
+          ${println(expr.unseal.showExtractors)}
+          """, 
+          expr)
       }
   }
 
   trait Delegated[R] extends Parser[R] with TastyMatchers {
     implicit val qctx:QuoteContext
     def delegate: PartialFunction[Expr[_], R]
-    def apply(expr: Expr[_]): R = delegate.apply(expr)
-    def isDefinedAt(expr: Expr[_]): Boolean = delegate.isDefinedAt(expr)
+    override def apply(expr: Expr[_]): R = {
+      delegate.apply(expr)
+    }
+    def isDefinedAt(expr: Expr[_]): Boolean = {
+      delegate.isDefinedAt(expr)
+    }
   }
 
   trait Clause[R](implicit val qctx: QuoteContext) extends Delegated[R] with TastyMatchers { base =>
@@ -78,7 +89,7 @@ trait ParserLibrary extends ParserFactory {
         .combine(operationsParser)
         // .combine(userDefined)
         .combine(genericExpressionsParser)
-        .combine(errorFallbackParser)
+        //.combine(errorFallbackParser)
 }
 
 object ParserLibrary extends ParserLibrary
@@ -142,7 +153,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
 
   // TODO If this was copied would 'root' inside of this thing update correctly?
   protected def propertyAliasParser: SealedParser[PropertyAlias] = PropertyAliasParser(root).seal
-
+  
   def delegate: PartialFunction[Expr[_], Ast] = {
 
     // TODO can we do this with quoted matching?
@@ -158,13 +169,16 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       val name: String = targ.tpe.classSymbol.get.name
       Entity(name, List())
 
-    case '{ ($qm: QuoteMeta[$qt]).querySchema[$t](${ConstExpr(name: String)}, ${ExprSeq(properties)}: _*) } => // back here
-      Entity.Opinionated(name, properties.toList.map(propertyAliasParser(_)), Renameable.Fixed)
+    case '{ QuoteDsl.querySchema[$t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
+      println("&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&")
+      println("Props are: " + properties.map(_.show))
+      val output = Entity.Opinionated(name, properties.toList.map(propertyAliasParser(_)), Renameable.Fixed)
+      println("********************** RETURNING ENTITY ****************")
+      printer.lnf(output)
+      output
 
     case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
       Map(root(q), Idnt(ident), root(body))
-
-    
 
     case '{ ($q:Query[$qt]).foobar($v) } => 
       println("=============== We are about to produce: ===============")
