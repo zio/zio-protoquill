@@ -18,21 +18,23 @@ type SealedParser[R] = (Expr[_] => R)
 object Parser {
   val empty: Parser[Ast] = PartialFunction.empty[Expr[_], Ast]
 
-  implicit class ParserExtensions[R](parser: Parser[R])(implicit val qctx: QuoteContext, ct: ClassTag[R]) {
-    import qctx.tasty.{given, _}
+  object Implicits {
+    implicit class ParserExtensions[R](parser: Parser[R])(implicit val qctx: QuoteContext, ct: ClassTag[R]) {
+      import qctx.tasty.{given, _}
 
-    def seal: SealedParser[R] = 
-      (expr: Expr[_]) => parser.lift(expr).getOrElse {
-        // c.fail(s"Tree '$tree' can't be parsed to '${ct.runtimeClass.getSimpleName}'")
-        qctx.throwError(
-          s"""
-          s"==== Tree cannot be parsed to '${ct.runtimeClass.getSimpleName}' ===
-          ${expr.show.split("\n").map("  " + _).mkString("\n")}
-          ==== Raw ===
-          ${println(expr.unseal.showExtractors)}
-          """, 
-          expr)
-      }
+      def seal: SealedParser[R] = 
+        (expr: Expr[_]) => parser.lift(expr).getOrElse { //hello
+          // c.fail(s"Tree '$tree' can't be parsed to '${ct.runtimeClass.getSimpleName}'")
+          qctx.throwError(
+        s"""|s"==== Tree cannot be parsed to '${ct.runtimeClass.getSimpleName}' ===
+            |${expr.show.split("\n").map("  " + _).mkString("\n")}
+            |==== Raw ===
+            |  ${expr.unseal.showExtractors}
+            |  ${printer.str(expr.unseal)}
+            |""".stripMargin, 
+            expr)
+        }
+    }
   }
 
   trait Delegated[R] extends Parser[R] with TastyMatchers {
@@ -47,7 +49,10 @@ object Parser {
   }
 
   trait Clause[R](implicit val qctx: QuoteContext) extends Delegated[R] with TastyMatchers { base =>
+    import Implicits._
+
     def root: Parser[Ast]
+    def rootDone = root.seal
     def reparent(root: Parser[Ast]): Clause[R]
   }
 
@@ -83,13 +88,12 @@ trait ParserLibrary extends ParserFactory {
   //   def apply(root: Parser[Ast]) = PartialFunction.empty[Expr[_], Ast]
   // })
 
-  def apply(given qctx: QuoteContext): Parser[Ast] =
+  def apply(given qctx: QuoteContext): Parser[Ast] = {
     quotationParser
         .combine(queryParser)
         .combine(operationsParser)
-        // .combine(userDefined)
         .combine(genericExpressionsParser)
-        //.combine(errorFallbackParser)
+        }
 }
 
 object ParserLibrary extends ParserLibrary
@@ -101,6 +105,7 @@ object ParserLibrary extends ParserLibrary
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
 case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Type => TType, _, given}
+  import Parser.Implicits._
 
   // TODO Need to inject this somehow?
   val unlift = new Unlifter()
@@ -108,6 +113,11 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
+    println("********************************* Trying Quotation Parser **************************")
+    del
+  }
+
+  def del: PartialFunction[Expr[_], Ast] = {
     
     case QuotationBinExpr.InlineOrPluckedUnquoted(quotationBin) =>
       quotationBin match {
@@ -150,40 +160,60 @@ case class PropertyAliasParser(root: Parser[Ast] = Parser.empty)(implicit qctx: 
 
 case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Constant => TConstant, given,  _}
+  import Parser.Implicits._
 
   // TODO If this was copied would 'root' inside of this thing update correctly?
   protected def propertyAliasParser: SealedParser[PropertyAlias] = PropertyAliasParser(root).seal
   
   def delegate: PartialFunction[Expr[_], Ast] = {
+    del
+  }
 
-    // TODO can we do this with quoted matching?
-    case 
-      Unseal(
-        Apply(
-          TypeApply(
-            // Need to use showExtractors to get TypeIdentt
-            Select(New(TypeIdent("EntityQuery")), /* <Init> */ _), List(targ)
-          ), _
-        )
-      ) =>
-      val name: String = targ.tpe.classSymbol.get.name
+  def del: PartialFunction[Expr[_], Ast] = {
+
+  // This seems to work?
+    case '{ type $t; (new EntityQuery[`$t`]()) } => //: EntityQuery[`$t`]
+      val name: String = t.unseal.tpe.classSymbol.get.name
       Entity(name, List())
 
+
+    // TODO can we do this with quoted matching?
+    // case 
+      
+    //   Unseal(
+    //     Apply(
+    //       TypeApply(
+    //         // Need to use showExtractors to get TypeIdentt
+    //         Select(New(TypeIdent("EntityQuery")), /* <Init> */ _), _ //List(targ)
+    //       ), _
+    //     )
+        
+    //   ) =>
+    //   //val name: String = targ.tpe.classSymbol.get.name
+    //   Entity("name", List())
+
     case '{ QuoteDsl.querySchema[$t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
-      println("&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&")
       println("Props are: " + properties.map(_.show))
       val output = Entity.Opinionated(name, properties.toList.map(propertyAliasParser(_)), Renameable.Fixed)
-      println("********************** RETURNING ENTITY ****************")
       printer.lnf(output)
       output
 
+    // case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
+    //   //println(e.unseal.showExtractors)
+    //   println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GOT TO MAP HERE ^^^^^^^^^^^^^^^^^^^^^^^")
+    //   Map(root(q), Idnt("foo"), null)
+
+    //  case q"$query.map[$mt]((x) => y) }"
     case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
-      Map(root(q), Idnt(ident), root(body))
+      println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Recurse Query ^^^^^^^^^^^^^^^^^^^^^^^")
+      println(q.show)
+      val a = this.root.seal(q)
+      println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Recurse Body ^^^^^^^^^^^^^^^^^^^^^^^")
+      val b = rootDone(body)
+      Map(a, Idnt(ident), b)
 
     case '{ ($q:Query[$qt]).foobar($v) } => 
-      println("=============== We are about to produce: ===============")
       printer.lnf(v.unseal)
-      println("================== We are done with the show =============")
       Constant("foobar")
   }
 
@@ -196,17 +226,23 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
+      del
+  }
+
+
+  def del: PartialFunction[Expr[_], Ast] = {
       // TODO Need to check if entity is a string
     case Unseal(Apply(Select(Seal(left), "+"), Seal(right) :: Nil)) =>
-      BinaryOperation(root(left), StringOperator.+, root(right))
+      BinaryOperation(rootDone(left), StringOperator.+, rootDone(right))
 
     case Unseal(Apply(Select(Seal(left), "*"), Seal(right) :: Nil)) =>
-      BinaryOperation(root(left), NumericOperator.*, root(right))
+      BinaryOperation(rootDone(left), NumericOperator.*, rootDone(right))
   }
 }
 
 case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Constant => TreeConst, Ident => TreeIdent, given, _}
+  val u = printer.xunapplier("Generic Expressions Parser")
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -221,15 +257,11 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
       //println("Case Literal Constant")
       Constant(v)
 
-    case Unseal(value @ Select(Seal(prefix), member)) =>
-      //println(s"Select ${value.show}")
-      //val sealedTpe = value.tpe.seal
+    case u(Unseal(value @ Select(Seal(prefix), member))) =>
       if ((value.tpe <:< '[io.getquill.Embedded].unseal.tpe)) { 
-        // TODO Figure how how to check the summon here
-        // || (summonExpr(given '[Embedable[$tpee]]).isDefined)
-        Property.Opinionated(root(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
+        Property.Opinionated(rootDone(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
       } else {
-        Property(root(prefix), member)
+        Property(rootDone(prefix), member)
       }
 
     case Unseal(TreeIdent(x)) => 

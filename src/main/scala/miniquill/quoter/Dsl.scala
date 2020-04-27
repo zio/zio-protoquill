@@ -10,8 +10,10 @@ import scala.deriving._
 import scala.quoted.matching.Const
 import miniquill.dsl.GenericEncoder
 import miniquill.parser.ParserFactory
+import miniquill.parser.Parser.Implicits._
 import io.getquill.quotation.NonQuotedException
 import scala.annotation.compileTimeOnly
+import scala.compiletime.summonFrom
 
 // trait Quoter {
 //   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???
@@ -32,7 +34,10 @@ class QuoteMeta[P <: ParserFactory] {
 
   inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('bodyExpr) }
 
-  inline def query[T]: EntityQuery[T] = new EntityQuery()
+  inline def query[T]: EntityQuery[T] = summonFrom {
+    case sm: SchemaMeta[T] => unquote(sm.entity)
+    case _ => new EntityQuery[T]()
+  }
 
   def runQuery[T](query: Quoted[Query[T]]): String = ???
 

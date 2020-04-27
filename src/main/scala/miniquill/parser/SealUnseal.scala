@@ -36,9 +36,14 @@ trait TastyMatchers {
       case other => other
     }
 
+    def unapplyTerm(term: Term): Option[Term] = term match {
+      case Typed(tree, _) => Some(recurse(tree))
+      case other => Some(other)
+    }
+
     def unapply(term: Expr[Any]): Option[Expr[Any]] = term.unseal match {
       case Typed(tree, _) => Some(recurse(tree).seal)
-      case _ => None
+      case other => Some(other.seal)
     }
   }
 
@@ -64,10 +69,14 @@ trait TastyMatchers {
   }
 
   object Lambda1 {
-    def unapply(term: Expr[_]): Option[(String, quoted.Expr[_])] = term match {
-      case Unseal(Lambda(List(ValDef(ident, _, _)), Seal(methodBody))) => Some((ident, methodBody))
+    def unapplyTerm(term: Term): Option[(String, Term)] = term match {
+      case Lambda(List(ValDef(ident, Inferred(), None)), methodBody) => Some((ident, methodBody))
+      case Block(List(), expr) => unapplyTerm(expr)
       case _ => None
     }
+
+    def unapply(term: Expr[_]): Option[(String, quoted.Expr[_])] =
+      unapplyTerm(term.unseal).map((str, term) => (str, term.seal))
   }
 
   object Lambda2 {
@@ -78,8 +87,8 @@ trait TastyMatchers {
   }
 
   object Unseal {
-    def unapply(t: Expr[Any]) = {
-      Some(t.unseal)
+    def unapply(t: Expr[Any]): Option[Term] = {
+      TypedMatroshka.unapplyTerm(t.unseal)
     }
   }
   object Seal {

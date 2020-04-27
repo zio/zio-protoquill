@@ -59,6 +59,31 @@ def lnfbw(str: Any): Unit =
 def lnf(str: Any): Unit = 
   println(new AstPrinter()(str))
 
+def unapplier(message: String) = new Unapplier(message)
+class Unapplier(message: String) {
+  def unapply[T](t: T): Option[T] = 
+    println(s"***************** [[[[[${message}]]]]]] *****************")
+    println(s"Encountered:\n${t.toString.split("\n").map("  " + _).mkString("\n")}")
+    Some(t)
+}
+
+
+def xunapplier(message: String)(given qctx: QuoteContext) = new XUnapplier(message)
+class XUnapplier(message: String)(given qctx: QuoteContext) {
+  import qctx.tasty.{given, _}
+  def unapply[T](t: T): Option[T] = 
+    println(s"***************** [[[[[${message}]]]]]] *****************")
+    def tString = 
+      t match {
+        case e: Expr[_] => e.show
+        case Some(e: Expr[_]) => e.show
+        case t: Term => printer.str(t)
+        case other => other.toString
+      }
+    println(s"Encountered:\n${tString.split("\n").map("  " + _).mkString("\n")}")
+    Some(t)
+}
+
 def ln(str: Any, delimiter: Option[String] = None):Unit = 
   if (System.getProperty("printAst", "false").toBoolean)
     delimiter match {

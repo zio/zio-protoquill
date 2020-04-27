@@ -27,5 +27,12 @@ class QuerySchemaTest extends Spec with Inside { //hellooooooo
       schema.entity.ast mustEqual ent
     }
   }
+
+  "schema meta lookup" - {
+    case class Person(name: String, age: Int)
+    given SchemaMeta[Person] = schemaMeta[Person]("tblPerson")
+    val q = quote { query[Person].map(p => p.name) }
+    printer.lnf(q.ast)
+  }
   
 }

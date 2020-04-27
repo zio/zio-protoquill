@@ -147,6 +147,9 @@ object QuotationBinExpr {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext) = expr match {
       // When a QuotationBin is embedded into an ast
       case '{ (${quotationBin}: QuotationBin[$tt]).unquote } => Some(quotationBin)
+      // There are situations e.g. SchemaMeta where there's an additional type ascription needed
+      // there it needs to be specified in the AST manually. Maybe this is a bug?
+      case '{ type $tt; ((${quotationBin}: QuotationBin[`$tt`]).unquote: `$tt`) } => Some(quotationBin)
       case _ => None
     }
   }
@@ -177,11 +180,17 @@ object QuotationBinExpr {
   //   }
   // }
 
+  
+  
+
   object InlineOrPluckedUnquoted {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationBinExpr] = expr match {
-      case `(QuotationBin).unquote`(QuotationBinExpr.InlineOrPlucked(vaseExpr)) => Some(vaseExpr)
-      case _ => None
-    }
+    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationBinExpr] = 
+      val u = printer.xunapplier("Outer Matcher")
+      val im = printer.xunapplier("Inner Matcher")
+      expr match {
+        case u(`(QuotationBin).unquote`(im(QuotationBinExpr.InlineOrPlucked(vaseExpr)))) => Some(vaseExpr)
+        case _ => None
+      }
   }
 
   // Verify that a quotation is inline. It is inline if all the lifts are inline. There is no need
