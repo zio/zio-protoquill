@@ -95,7 +95,7 @@ object QuoteImpl {
   def unquoteImpl[T: Type](quoted: Expr[Quoted[T]])(given qctx: QuoteContext): Expr[T] = {
     import qctx.tasty.{given, _}
     '{
-      QuotationBin[T](${quoted}, ${Expr(java.util.UUID.randomUUID().toString)}).unquote
+      Unquote[T](${quoted}, ${Expr(java.util.UUID.randomUUID().toString)}).unquote
     }
   }
 

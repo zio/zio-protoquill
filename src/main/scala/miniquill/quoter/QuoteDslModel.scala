@@ -51,7 +51,9 @@ case class QuotationVase(quoted: Quoted[Any], uid: String)
 
 // Quotations go from a QuotationBin directly inline into the tree or put into a QuotationVase
 // to be added into the runtime inlining later
-case class QuotationBin[+T](quoted: Quoted[T], uid: String) {
+trait QuotationBin[+T](quoted: Quoted[T], uid: String) {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
+
+case class Unquote[+T](quoted: Quoted[T], uid: String) extends QuotationBin[T](quoted, uid)

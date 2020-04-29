@@ -175,22 +175,6 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       val name: String = t.unseal.tpe.classSymbol.get.name
       Entity(name, List())
 
-
-    // TODO can we do this with quoted matching?
-    // case 
-      
-    //   Unseal(
-    //     Apply(
-    //       TypeApply(
-    //         // Need to use showExtractors to get TypeIdentt
-    //         Select(New(TypeIdent("EntityQuery")), /* <Init> */ _), _ //List(targ)
-    //       ), _
-    //     )
-        
-    //   ) =>
-    //   //val name: String = targ.tpe.classSymbol.get.name
-    //   Entity("name", List())
-
     case '{ QuoteDsl.querySchema[$t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
       println("Props are: " + properties.map(_.show))
       val output = Entity.Opinionated(name, properties.toList.map(propertyAliasParser(_)), Renameable.Fixed)
@@ -198,16 +182,11 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       output
 
     // case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
-    //   //println(e.unseal.showExtractors)
-    //   println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GOT TO MAP HERE ^^^^^^^^^^^^^^^^^^^^^^^")
     //   Map(rootDone(q), Idnt("foo"), null)
 
     //  case q"$query.map[$mt]((x) => y) }"
     case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
-      println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Recurse Query ^^^^^^^^^^^^^^^^^^^^^^^")
-      println(q.show)
       val a = this.root.seal(q)
-      println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Recurse Body ^^^^^^^^^^^^^^^^^^^^^^^")
       val b = rootDone(body)
       Map(a, Idnt(ident), b)
 

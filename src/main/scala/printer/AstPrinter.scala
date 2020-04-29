@@ -80,7 +80,17 @@ class XUnapplier(message: String)(given qctx: QuoteContext) {
         case t: Term => printer.str(t)
         case other => other.toString
       }
+
+    def tStringAst = 
+      t match {
+        case e: Expr[_] => printer.str(e.unseal)
+        case Some(e: Expr[_]) => printer.str(e.unseal)
+        case t: Term => printer.str(t)
+        case other => other.toString
+      }
+
     println(s"Encountered:\n${tString.split("\n").map("  " + _).mkString("\n")}")
+    println(tStringAst)
     Some(t)
 }
 

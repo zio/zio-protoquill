@@ -155,10 +155,17 @@ object QuotationBinExpr {
   }
 
   protected object `QuotationBin.apply` {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[(Expr[Quoted[Any]], String)] = expr match {
-      case '{ QuotationBin.apply[$qt]($quotation, ${scala.quoted.matching.Const(uid: String)}) } => 
-        Some((quotation, uid))
-      case _ => None
+    
+
+    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[(Expr[Quoted[Any]], String)] = {
+      import qctx.tasty.{given, _}
+      val tm = new TastyMatchersContext
+      import tm._
+      expr match {
+        case '{ (${Unseal(Apply(TypeApply(Select(id, "apply"), tpe), List(quotation, Literal(Constant(uid: String)))))}: QuotationBin[$t]) } => 
+          Some((quotation.seal.cast[Quoted[Any]], uid))
+        case _ => None
+      }
     }
   }
 

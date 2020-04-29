@@ -15,13 +15,14 @@ object AdvTest {
 
     // PriceIncrement()
     // Strike(price: )
-    inline def personToField(inline p: Person) = p.name
+    //inline def personToField(inline p: Person) = p.name
 
     inline def people = quote {
       query[Person]
     }
     inline def names = quote {
-      people.map(p => personToField(p))
+      //people.map(p => personToField(p))
+      people.map(p => p.name)
     }
 
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
