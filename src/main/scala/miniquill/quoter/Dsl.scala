@@ -28,16 +28,14 @@ class QuoteMeta[P <: ParserFactory] {
   def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
 
   inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
-    SchemaMeta(quote { querySchema[T](entity, columns: _*) })
+    SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.
+    //${ QuoteImpl.schemaMetaImpl[T]('entity, 'columns) }
 
   inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('bodyExpr) }
 
   inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('bodyExpr) }
 
-  inline def query[T]: EntityQuery[T] = summonFrom {
-    case given sm: SchemaMeta[T] => unquote(sm.entity)
-    case _ => new EntityQuery[T]()
-  }
+  inline def query[T]: EntityQuery[T] = ${ QuoteImpl.queryImpl[T] }
 
   def runQuery[T](query: Quoted[Query[T]]): String = ???
 
@@ -55,6 +53,30 @@ class QuoteMeta[P <: ParserFactory] {
 
 object QuoteImpl {
   import io.getquill.util.LoadObject
+
+  inline def spliceUuid: String = ${ spliceUuidImpl }
+  def spliceUuidImpl(using qctx: QuoteContext): Expr[String] = {
+    Expr(java.util.UUID.randomUUID().toString)
+  }
+
+  //inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
+  //SchemaMeta(quote { querySchema[T](entity, columns: _*) }, QuoteImpl.spliceUuid)
+  // def schemaMetaImpl[T:Type](entity: Expr[String], columns: Expr[(T => (Any, String))]*): SchemaMeta[T] = {
+  //   '{ SchemaMeta(quote { querySchema[T](entity, columns: _*) }, QuoteImpl.spliceUuid) }
+  // }
+
+  def queryImpl[T: Type](given qctx: QuoteContext): Expr[EntityQuery[T]] = {
+    import qctx.tasty.{given, _}
+    import scala.quoted.matching.summonExpr
+
+    summonExpr(given '[SchemaMeta[T]]) match {
+      case Some(meta) =>
+        '{ $meta.unquote }
+
+      case None => 
+        '{ new EntityQuery[T]() }
+    }
+  }
 
   // def parserFactory: (QuoteContext) => Parser = 
   //   (qctx: QuoteContext) => new BaseParser(given qctx).parser

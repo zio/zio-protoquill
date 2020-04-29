@@ -33,7 +33,7 @@ case class Quoted[+T](val ast: Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuo
   // for dynamic queries
 
 
-case class SchemaMeta[T](val entity: Quoted[EntityQuery[T]])
+
 
 // Planters contain trees that can be re-inserted into compile-time code.
 // For example, a ScalarPlaner is re-inserted into the PrepareRow sequence
@@ -57,3 +57,6 @@ trait QuotationBin[+T](quoted: Quoted[T], uid: String) {
 }
 
 case class Unquote[+T](quoted: Quoted[T], uid: String) extends QuotationBin[T](quoted, uid)
+
+// TODO Does this need to be covariant? It is in current quill. Need to look up what use cases they are for covariant schemas.
+case class SchemaMeta[T](val entity: Quoted[EntityQuery[T]], uid: String) extends QuotationBin[EntityQuery[T]](entity, uid)

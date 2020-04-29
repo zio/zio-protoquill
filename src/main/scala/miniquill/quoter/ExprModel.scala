@@ -162,7 +162,7 @@ object QuotationBinExpr {
       val tm = new TastyMatchersContext
       import tm._
       expr match {
-        case '{ (${Unseal(Apply(TypeApply(Select(id, "apply"), tpe), List(quotation, Literal(Constant(uid: String)))))}: QuotationBin[$t]) } => 
+        case '{ (${Unseal(Untype(Apply(TypeApply(Select(id, "apply"), tpe), List(quotation, Literal(Constant(uid: String))))))}: QuotationBin[$t]) } => 
           Some((quotation.seal.cast[Quoted[Any]], uid))
         case _ => None
       }
@@ -214,6 +214,8 @@ object QuotationBinExpr {
 
         // If it's a QuotationBin but we can't extract it at all, need to throw an error
         case '{ ($qb: QuotationBin[$t]) } =>
+          println(qb.show)
+          printer.lnf(qb.unseal)
           qctx.throwError("Invalid quotation form. Quotations need to at least contain the inline block needed to extract a UID.", qb)
 
         case _ => 
@@ -234,6 +236,6 @@ case class PluckableQuotationBinExpr(uid: String, expr: Expr[Quoted[Any]]) exten
 case class InlineableQuotationBinExpr(
   uid: String, 
   ast: Expr[Ast],
-  vase: Expr[QuotationBin[Any]], 
+  bin: Expr[QuotationBin[Any]], 
   inlineLifts: List[ScalarPlanterExpr[_, _]]
 ) extends QuotationBinExpr

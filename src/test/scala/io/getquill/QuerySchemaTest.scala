@@ -28,11 +28,11 @@ class QuerySchemaTest extends Spec with Inside { //hellooooooo
     }
   }
 
-  // "schema meta lookup" - {
-  //   case class Person(name: String, age: Int)
-  //   inline given SchemaMeta[Person] = schemaMeta[Person]("tblPerson")
-  //   val q = quote { query[Person].map(p => p.name) }
-  //   printer.lnf(q.ast)
-  // }
+  "schema meta lookup" - {
+    case class Person(name: String, age: Int)
+    inline given SchemaMeta[Person] = schemaMeta[Person]("tblPerson") //, _.name -> "colName", _.age -> "colAge"
+    val q = quote { query[Person].map(p => p.name) }
+    printer.lnf(q.ast)
+  }
   
 }
