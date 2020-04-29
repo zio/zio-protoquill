@@ -185,10 +185,8 @@ object QuotationBinExpr {
 
   object InlineOrPluckedUnquoted {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationBinExpr] = 
-      val u = printer.xunapplier("Outer Matcher")
-      val im = printer.xunapplier("Inner Matcher")
       expr match {
-        case u(`(QuotationBin).unquote`(im(QuotationBinExpr.InlineOrPlucked(vaseExpr)))) => Some(vaseExpr)
+        case `(QuotationBin).unquote`(QuotationBinExpr.InlineOrPlucked(vaseExpr)) => Some(vaseExpr)
         case _ => None
       }
   }

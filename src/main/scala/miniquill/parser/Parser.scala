@@ -113,7 +113,6 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-    println("********************************* Trying Quotation Parser **************************")
     del
   }
 
@@ -201,7 +200,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
     // case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
     //   //println(e.unseal.showExtractors)
     //   println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ GOT TO MAP HERE ^^^^^^^^^^^^^^^^^^^^^^^")
-    //   Map(root(q), Idnt("foo"), null)
+    //   Map(rootDone(q), Idnt("foo"), null)
 
     //  case q"$query.map[$mt]((x) => y) }"
     case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
@@ -242,7 +241,6 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
 case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Constant => TreeConst, Ident => TreeIdent, given, _}
-  val u = printer.xunapplier("Generic Expressions Parser")
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -257,7 +255,7 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
       //println("Case Literal Constant")
       Constant(v)
 
-    case u(Unseal(value @ Select(Seal(prefix), member))) =>
+    case Unseal(value @ Select(Seal(prefix), member)) =>
       if ((value.tpe <:< '[io.getquill.Embedded].unseal.tpe)) { 
         Property.Opinionated(rootDone(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
       } else {
@@ -269,12 +267,12 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
 
     // If at the end there's an inner tree that's typed, move inside and try to parse again
     case Unseal(Typed(innerTree, _)) =>
-      root(innerTree.seal)
+      rootDone(innerTree.seal)
 
     case Unseal(Inlined(_, _, v)) =>
       //println("Case Inlined")
       //root.parse(v.seal.cast[T]) // With method-apply can't rely on it always being T?
-      root(v.seal)
+      rootDone(v.seal)
   }
 }
 

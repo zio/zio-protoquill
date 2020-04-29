@@ -37,15 +37,10 @@ object NewType1 {
 
 trait NewTypeInline[A] {
   type Type = A
-  def apply(a: A): Type = a
-  /* breaks when I add 'inline' here */ //inline def apply(inline a: A): Type = a
+  inline def apply(inline a: A): Type = a
 }
 
-def newTypeInline[A]: NewTypeInline[A] =
-  new NewTypeInline[A] {
-    type Type = A
-    override inline def apply(inline a: A): Type = a
-}
+def newTypeInline[A]: NewTypeInline[A] = new NewTypeInline[A] {}
 
 object NewTypeInline {
 

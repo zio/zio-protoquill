@@ -28,23 +28,29 @@ trait TastyMatchers {
     }
   }
 
-  object TypedMatroshka {
-    // need to define a case where it won't go into matcher otherwise recursion is infinite
-    //@tailcall // should be tail recursive
+  // Always match (whether ast starts with Typed or not). If it does, strip the Typed node.
+  object Untype {
+    def unapply(term: Term): Option[Term] = term match {
+      case TypedMatroshkaTerm(t) => Some(t)
+      case other => Some(other)
+    }
+  }
+
+  object TypedMatroshkaTerm {
     def recurse(innerTerm: Term): Term = innerTerm match {
       case Typed(innerTree, _) => recurse(innerTree)
       case other => other
     }
 
-    def unapplyTerm(term: Term): Option[Term] = term match {
+    def unapply(term: Term): Option[Term] = term match {
       case Typed(tree, _) => Some(recurse(tree))
-      case other => Some(other)
+      case other => None
     }
+  }
 
-    def unapply(term: Expr[Any]): Option[Expr[Any]] = term.unseal match {
-      case Typed(tree, _) => Some(recurse(tree).seal)
-      case other => Some(other.seal)
-    }
+  object TypedMatroshka {
+    def unapply(term: Expr[Any]): Option[Expr[Any]] = 
+      TypedMatroshkaTerm.unapply(term.unseal).map(_.seal)
   }
 
   object SelectExpr {
@@ -87,9 +93,7 @@ trait TastyMatchers {
   }
 
   object Unseal {
-    def unapply(t: Expr[Any]): Option[Term] = {
-      TypedMatroshka.unapplyTerm(t.unseal)
-    }
+    def unapply(t: Expr[Any]): Option[Term] = Some(t.unseal)
   }
   object Seal {
     def unapply[T](e: Term) = {

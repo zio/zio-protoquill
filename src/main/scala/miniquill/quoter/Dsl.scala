@@ -35,7 +35,7 @@ class QuoteMeta[P <: ParserFactory] {
   inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('bodyExpr) }
 
   inline def query[T]: EntityQuery[T] = summonFrom {
-    case sm: SchemaMeta[T] => unquote(sm.entity)
+    case given sm: SchemaMeta[T] => unquote(sm.entity)
     case _ => new EntityQuery[T]()
   }
 
