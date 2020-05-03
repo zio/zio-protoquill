@@ -14,25 +14,29 @@ import org.scalatest._
 
 class QuerySchemaTest extends Spec with Inside { //hellooooooo
 
-  "quoting schema meta" - {
-    case class OneLevelPerson(name: String, age: Int)
-    case class OneLevelPersonOpt(name: String, age: Option[Int])
-    case class Age(value: Int)
-    case class TwoLevelPerson(name: String, age: Age)
-    case class TwoLevelPersonOpt(name: String, age: Option[Int])
+  // "quoting schema meta" - {
+  //   case class OneLevelPerson(name: String, age: Int)
+  //   case class OneLevelPersonOpt(name: String, age: Option[Int])
+  //   case class Age(value: Int)
+  //   case class TwoLevelPerson(name: String, age: Age)
+  //   case class TwoLevelPersonOpt(name: String, age: Option[Int])
 
-    "should parse one-level" in { //hellooooo
-      def schema = QuoteDsl.schemaMeta[OneLevelPerson]("personTbl", _.name -> "nameCol", _.age -> "ageCol")
-      val ent = Entity("personTbl", List(PropertyAlias(List("name"), "nameCol"), PropertyAlias(List("age"), "ageCol")))
-      schema.entity.ast mustEqual ent
-    }
-  }
+  //   "should parse one-level" in { //hellooooo
+  //     def schema = QuoteDsl.schemaMeta[OneLevelPerson]("personTbl", _.name -> "nameCol", _.age -> "ageCol")
+  //     val ent = Entity("personTbl", List(PropertyAlias(List("name"), "nameCol"), PropertyAlias(List("age"), "ageCol")))
+  //     schema.entity.ast mustEqual ent
+  //   }
+  // }
 
-  "schema meta lookup" - {
+  "schema meta lookup" - { //hellooooo
     case class Person(name: String, age: Int)
-    inline given SchemaMeta[Person] = schemaMeta[Person]("tblPerson") //, _.name -> "colName", _.age -> "colAge"
-    val q = quote { query[Person].map(p => p.name) }
+    inline given SchemaMeta[Person] = schemaMeta[Person]("tblPerson", _.name -> "colName", _.age -> "colAge")
+    inline def q = quote { query[Person] } //.map(p => p.name)
     printer.lnf(q.ast)
+
+    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    import ctx._
+    println(ctx.run(q).string)
   }
   
 }

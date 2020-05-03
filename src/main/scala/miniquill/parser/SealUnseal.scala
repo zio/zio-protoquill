@@ -23,7 +23,11 @@ trait TastyMatchers {
     def unapply(term: Expr[_]): Option[List[Expr[_]]] = {
       term match {
         case ExprSeq(props) => Some(props.toList)
-        case TypedMatroshka(Unseal(Repeated(props, _))) => Some(props.map(_.seal))
+        case Unseal(Untype(Repeated(props, _))) => Some(props.map(_.seal))
+        case other =>
+          //println("Could not parse sequence expression:")
+          //printer.lnf(term.unseal)
+          qctx.throwError("Could not parse sequence expression:\n" + printer.str(term.unseal))
       }
     }
   }

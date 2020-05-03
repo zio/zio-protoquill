@@ -11,6 +11,24 @@ object ExprAccumulate {
 
     val buff: ArrayBuffer[T] = new ArrayBuffer[T]()
     val accum = new ExprMap {
+
+      // =================== Transforming Children ================
+      //   Literal(("name"))
+      //   ============== Could not transform over expression ===========
+      //   scala.tasty.reflect.ExprCastError: Expr: ["name" : String]
+      //   did not conform to type: String*
+      override def transformChildren[TF](expr: Expr[TF])(given qctx: QuoteContext, tpe: Type[TF]): Expr[TF] = {
+        try {
+          super.transformChildren(expr)
+        } catch {
+          case e: scala.tasty.reflect.ExprCastError => //hello
+            //println("============== Could not transform over expression ===========")
+            //e.printStackTrace
+            //printer.lnf(expr.unseal)
+            expr
+        }
+      }
+
       def transform[TF](expr: Expr[TF])(given qctx: QuoteContext, tpe: Type[TF]): Expr[TF] = {
         matcher.lift(expr) match {
           case Some(result) => 

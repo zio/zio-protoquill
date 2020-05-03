@@ -226,7 +226,10 @@ object Context {
           quoted match { // use to have 'unInline' here
             case QuotedExpr.Inline(quotedExpr) => quotedExpr
             // Warn user that a not-inline QuotedExpr was detected. Do println or is there a qctx.warn??
-            case _ => println("Lifts do meet compiletime criteria"); ???
+            case _ => 
+              println("Lifts do meet compiletime criteria"); 
+              println(quoted.show)
+              ???
           }
         }
 

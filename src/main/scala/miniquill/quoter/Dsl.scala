@@ -28,8 +28,9 @@ class QuoteMeta[P <: ParserFactory] {
   def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
 
   inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
-    SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.
-    //${ QuoteImpl.schemaMetaImpl[T]('entity, 'columns) }
+    //SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.
+    ${ QuoteImpl.schemaMetaImpl[T, P]('this, 'entity, 'columns) }
+    
 
   inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteImpl.quoteImpl[T, P]('bodyExpr) }
 
@@ -83,6 +84,21 @@ object QuoteImpl {
 
   def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
     (qctx: QuoteContext) => new Lifter(given qctx)
+
+  // inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
+  // SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.
+  def schemaMetaImpl[T, P <: ParserFactory](qm: Expr[QuoteMeta[P]], entity: Expr[String], columns: Expr[Seq[(T => (Any, String))]])(given qctx: QuoteContext, tType: Type[T], pType: Type[P]): Expr[SchemaMeta[T]] = {
+    val parserFactory = LoadObject(pType).get
+    val uuid = Expr(java.util.UUID.randomUUID().toString)
+    import scala.quoted.matching.ExprSeq
+    val exprs = 
+      (columns match {
+        case ExprSeq(argsExprs) => argsExprs
+      }).toList
+    //val quote = quoteImpl('{ $qm.querySchema[T]($entity, ${Expr.ofList(exprs)}: _*) })
+    val quote = quoteImpl('{ $qm.querySchema[T]($entity, $columns: _*) })
+    '{ SchemaMeta($quote, $uuid) }
+  }
 
   def quoteImpl[T, P <: ParserFactory](bodyRaw: Expr[T])(given qctx: QuoteContext, tType: Type[T], pType: Type[P]): Expr[Quoted[T]] = {
     import qctx.tasty.{_, given _}
