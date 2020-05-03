@@ -22,7 +22,7 @@ import scala.compiletime.summonFrom
 
 object QuoteDsl extends QuoteMeta[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
-class QuoteMeta[Parser <: ParserFactory] {
+class QuoteMeta[Parser <: ParserFactory] extends QuoteExt[Parser] {
 
   //@compileTimeOnly(NonQuotedException.message)
   def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
@@ -30,12 +30,7 @@ class QuoteMeta[Parser <: ParserFactory] {
   inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
     //SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.
     ${ SchemaMetaMacro[T, Parser]('this, 'entity, 'columns) }
-    
-
-  inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteMacro[T, Parser]('bodyExpr) }
-
-  inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteMacro[T, Parser]('bodyExpr) }
-
+   
   inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
 
   def runQuery[T](query: Quoted[Query[T]]): String = ???
@@ -43,8 +38,14 @@ class QuoteMeta[Parser <: ParserFactory] {
   def run[T](query: Quoted[T]): String = {
     query.ast.toString
   }
+}
 
+trait QuoteExt[Parser <: ParserFactory] {
   import scala.language.implicitConversions
+
+  inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteMacro[T, Parser]('bodyExpr) }
+
+  inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteMacro[T, Parser]('bodyExpr) }
 
   // TODO Should also probably name a method for this so don't need to enable explicit conversion
   inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ UnquoteMacro[T]('quoted) }
