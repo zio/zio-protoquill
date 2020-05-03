@@ -22,7 +22,7 @@ import scala.compiletime.summonFrom
 
 object Dsl extends QuoteMeta[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
-trait QuoteMeta[Parser <: ParserFactory] extends QuoteExt[Parser] {
+trait QuoteMeta[Parser <: ParserFactory] extends QuoteDsl[Parser] {
 
   //@compileTimeOnly(NonQuotedException.message)
   def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
@@ -33,14 +33,12 @@ trait QuoteMeta[Parser <: ParserFactory] extends QuoteExt[Parser] {
    
   inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
 
-  def runQuery[T](query: Quoted[Query[T]]): String = ???
-
   def run[T](query: Quoted[T]): String = {
     query.ast.toString
   }
 }
 
-trait QuoteExt[Parser <: ParserFactory] {
+trait QuoteDsl[Parser <: ParserFactory] {
   import scala.language.implicitConversions
 
   inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteMacro[T, Parser]('bodyExpr) }
