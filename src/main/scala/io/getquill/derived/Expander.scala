@@ -128,6 +128,8 @@ object Expander {
         childTerm :: flatten(node, fields, types)
 
       case (_, '[Unit]) => Nil
+
+      case _ => qctx.throwError("Cannot Types In Expression Expression:\n" + (fieldsTup, typesTup))
     } 
   }
 
@@ -141,7 +143,12 @@ object Expander {
         ev match {
           case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = $elementLabels; type MirroredElemTypes = $elementTypes }} =>
             val children = flatten(term, elementLabels, elementTypes)
-            term.withChildren(children) 
+            term.withChildren(children)
+          case _ =>
+            summonExpr(given '[GenericDecoder[_, T]]) match {
+              case Some(decoder) => term
+              case _ => qctx.throwError("Cannot Find Decoder or Expand a Product of the Type:\n" + ev.show)
+            }
         }
       }
       case None => 

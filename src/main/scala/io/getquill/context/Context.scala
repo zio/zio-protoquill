@@ -229,6 +229,7 @@ object Context {
             case _ => 
               println("Lifts do meet compiletime criteria"); 
               println(quoted.show)
+              printer.lnf(quoted.show)
               ???
           }
         }

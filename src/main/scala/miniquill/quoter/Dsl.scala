@@ -137,14 +137,17 @@ object QuoteImpl {
     }
   }
 
+  // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
+  // appearing in the AST in multiple places.
   private def extractLifts(body: Expr[Any])(given qctx: QuoteContext) = {
-    ScalarPlanterExpr.findUnquotes(body).map(_.plant)
+    ScalarPlanterExpr.findUnquotes(body).distinctBy(_.uid).map(_.plant)
   }
 
   private def extractRuntimeUnquotes(body: Expr[Any])(given qctx: QuoteContext) = {
     val unquotes = QuotationBinExpr.findUnquotes(body)
     unquotes
       .collect { case expr: PluckableQuotationBinExpr => expr }
+      .distinctBy(_.uid)
       .map(_.pluck)
   }
 }
