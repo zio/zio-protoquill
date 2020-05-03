@@ -6,6 +6,9 @@ import io.getquill.ast.{Ident => Idnt, Query => Qry, _}
 
 object Lifter {
   type Lift[T] = PartialFunction[T, Expr[T]]
+
+  def apply(qctx: QuoteContext): PartialFunction[Ast, Expr[Ast]] =
+    new Lifter(given qctx)
 }
 
 // TODO Rewrite this the way Parser is written (i.e. with ability to compose???)
