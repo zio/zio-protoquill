@@ -157,13 +157,15 @@ object QuotationBinExpr {
   protected object `QuotationBin.apply` {
     
 
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[(Expr[Quoted[Any]], String)] = {
+    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[(Expr[Quoted[Any]], String, List[Expr[_]])] = {
       import qctx.tasty.{given, _}
       val tm = new TastyMatchersContext
       import tm._
       expr match {
-        case '{ (${Unseal(Untype(Apply(TypeApply(Select(id, "apply"), tpe), List(quotation, Literal(Constant(uid: String))))))}: QuotationBin[$t]) } => 
-          Some((quotation.seal.cast[Quoted[Any]], uid))
+        // Extract the entity, the uid and any other expressions the qutation bin may have 
+        // (e.g. the extractor if the QuotationBin is a QueryMeta)
+        case '{ (${Unseal(Untype(Apply(TypeApply(Select(id, "apply"), tpe), quotation::Literal(Constant(uid: String))::tail )))}: QuotationBin[$t]) } => 
+          Some((quotation.seal.cast[Quoted[Any]], uid, tail.map(_.seal)))
         case _ => None
       }
     }
@@ -206,11 +208,11 @@ object QuotationBinExpr {
 
       
       expr match {
-        case vase @ `QuotationBin.apply`(QuotedExpr.Inline(ast, ScalarPlanterExpr.InlineList(lifts), _), uid) => // TODO Also match .unapply?
-          Some(InlineableQuotationBinExpr(uid, ast, vase.asInstanceOf[Expr[QuotationBin[Any]]], lifts))
+        case vase @ `QuotationBin.apply`(QuotedExpr.Inline(ast, ScalarPlanterExpr.InlineList(lifts), _), uid, rest) => // TODO Also match .unapply?
+          Some(InlineableQuotationBinExpr(uid, ast, vase.asInstanceOf[Expr[QuotationBin[Any]]], lifts, rest))
 
-        case `QuotationBin.apply`(quotation, uid) =>
-          Some(PluckableQuotationBinExpr(uid, quotation))
+        case `QuotationBin.apply`(quotation, uid, rest) =>
+          Some(PluckableQuotationBinExpr(uid, quotation, rest))
 
         // If it's a QuotationBin but we can't extract it at all, need to throw an error
         case '{ ($qb: QuotationBin[$t]) } =>
@@ -228,7 +230,7 @@ object QuotationBinExpr {
 
 // QuotationBins that have runtime values hance cannot be re-planted into the scala AST and
 // they need to be put into QuotationVasees
-case class PluckableQuotationBinExpr(uid: String, expr: Expr[Quoted[Any]]) extends QuotationBinExpr {
+case class PluckableQuotationBinExpr(uid: String, expr: Expr[Quoted[Any]], other: List[Expr[_]]) extends QuotationBinExpr {
   def pluck(given qctx: QuoteContext) = '{ QuotationVase($expr, ${Expr(uid)}) }
 }
 
@@ -237,5 +239,6 @@ case class InlineableQuotationBinExpr(
   uid: String, 
   ast: Expr[Ast],
   bin: Expr[QuotationBin[Any]], 
-  inlineLifts: List[ScalarPlanterExpr[_, _]]
+  inlineLifts: List[ScalarPlanterExpr[_, _]],
+  rest: List[Expr[_]]
 ) extends QuotationBinExpr
