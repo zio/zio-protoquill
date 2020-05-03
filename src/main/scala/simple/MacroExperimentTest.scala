@@ -1,6 +1,6 @@
 // package simple
 
-// import miniquill.quoter.CoreDsl
+// import miniquill.quoter.Dsl
 // import simple.MacroExperiment._
 
 // // @main def testStuff() = {
@@ -25,8 +25,8 @@
 // @main def testOtherstuff() = { //hello
 
 //   // Step 6
-//   //import miniquill.quoter.CoreDsl._
-//   import miniquill.quoter.CoreDsl
+//   //import miniquill.quoter.Dsl._
+//   import miniquill.quoter.Dsl
 //   // import ShellObj._
 
 //   printTree {
@@ -34,7 +34,7 @@
 //   //   //FunObject.fun((x: String) => "blah")
 //   //   //(x: String) => x.length -> "len" // Step 1, 2
 //   //   (x: String) => "blahblah" // Step 3, 4, 5
-//     CoreDsl.querySchema[MyPerson]("personTbl", _.name -> "blah", _.age.map(_.value) -> "blaaah") //hello
+//     Dsl.querySchema[MyPerson]("personTbl", _.name -> "blah", _.age.map(_.value) -> "blaaah") //hello
 //   //   //colVar[MyPerson]("blah", _.name -> "bar", _.age -> "blin")
 //   //   //colVar[MyPerson]("blah")
 //   //   // colVar("blah")

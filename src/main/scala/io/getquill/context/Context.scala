@@ -2,7 +2,7 @@ package io.getquill.context
 
 import scala.language.higherKinds
 import scala.language.experimental.macros
-//import io.getquill.dsl.CoreDsl
+//import io.getquill.dsl.Dsl
 //import io.getquill.util.Messages.fail
 import java.io.Closeable
 import scala.compiletime.summonFrom
@@ -40,7 +40,7 @@ object ExecutionType {
 trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] 
 extends EncodingDsl
 //  extends Closeable
-//  with CoreDsl 
+//  with Dsl 
 {
   implicit inline def autoDecoder[T]:Decoder[T] = GenericDecoder.derived
 

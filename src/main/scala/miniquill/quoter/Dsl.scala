@@ -20,9 +20,9 @@ import scala.compiletime.summonFrom
 //   def quote[T](bodyExpr: T): Quoted[T] = ???
 // }
 
-object CoreDsl extends QuoteMeta[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
+object Dsl extends QuoteMeta[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
-class QuoteMeta[Parser <: ParserFactory] extends QuoteExt[Parser] {
+trait QuoteMeta[Parser <: ParserFactory] extends QuoteExt[Parser] {
 
   //@compileTimeOnly(NonQuotedException.message)
   def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()

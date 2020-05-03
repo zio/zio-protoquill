@@ -1,7 +1,7 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import miniquill.quoter.CoreDsl._
+import miniquill.quoter.Dsl._
 import io.getquill._
 import io.getquill.ast._
 import miniquill.quoter.Quoted

@@ -2,7 +2,7 @@ package miniquill
 
 import simple.SimpleMacro._
 import scala.language.implicitConversions
-import miniquill.quoter.CoreDsl._
+import miniquill.quoter.Dsl._
 
 object AdvTest {
   def runAdvTest(): Unit = {

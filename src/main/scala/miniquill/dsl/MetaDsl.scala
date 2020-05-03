@@ -10,11 +10,11 @@ import scala.compiletime.erasedValue
 
 
 // TODO If want to have Index by a type, need some way to add to it
-trait CoreDsl extends EncodingDsl
+trait Dsl extends EncodingDsl
 
 
 
-trait MetaDsl { this: CoreDsl =>
+trait MetaDsl { this: Dsl =>
   trait QueryMeta[T] {
     def expand: Query[T] => Query[_] //Quoted[Query[T] => Query[_]]
     def extract: ResultRow => T
