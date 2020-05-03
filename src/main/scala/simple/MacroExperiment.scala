@@ -2,7 +2,7 @@
 
 // import scala.quoted._
 // import scala.quoted.matching.{Const => ConstExpr, _} // Including ExprSeq?
-// import miniquill.quoter.{QuoteMeta, QuoteDsl}
+// import miniquill.quoter.{QuoteMeta, CoreDsl}
 // import miniquill.parser.TastyMatchersContext
 
 // object MacroExperiment {

@@ -8,7 +8,7 @@
 // import io.getquill._
 // import org.scalatest._
 
-// object CustomQuoteDsl extends QuoteMeta[CustomParserFactory]
+// object CustomCoreDsl extends QuoteMeta[CustomParserFactory]
 
 // class CustomParseTest extends Spec with Inside {
 //   val customDsl = CustomParserFactory

@@ -20,7 +20,7 @@ import scala.compiletime.summonFrom
 //   def quote[T](bodyExpr: T): Quoted[T] = ???
 // }
 
-object QuoteDsl extends QuoteMeta[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
+object CoreDsl extends QuoteMeta[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
 class QuoteMeta[Parser <: ParserFactory] extends QuoteExt[Parser] {
 
