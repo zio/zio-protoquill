@@ -20,22 +20,29 @@ import scala.compiletime.summonFrom
 //   def quote[T](bodyExpr: T): Quoted[T] = ???
 // }
 
-object Dsl extends QuoteMeta[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
+object Dsl extends Dsl[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
-trait QuoteMeta[Parser <: ParserFactory] extends QuoteDsl[Parser] {
+trait Dsl[Parser <: ParserFactory] 
+extends QuoteDsl[Parser] 
+with QueryDsl[Parser] 
+with MetaDsl[Parser] {
 
+  def run[T](query: Quoted[T]): String = {
+    query.ast.toString
+  }
+}
+
+trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
   //@compileTimeOnly(NonQuotedException.message)
   def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
 
   inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
     //SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.
     ${ SchemaMetaMacro[T, Parser]('this, 'entity, 'columns) }
-   
-  inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
+}
 
-  def run[T](query: Quoted[T]): String = {
-    query.ast.toString
-  }
+trait QueryDsl[Parser <: ParserFactory] {
+  inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
 }
 
 trait QuoteDsl[Parser <: ParserFactory] {
@@ -105,7 +112,7 @@ object SchemaMetaMacro {
 
   // inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
   // SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.
-  def apply[T, P <: ParserFactory](qm: Expr[QuoteMeta[P]], entity: Expr[String], columns: Expr[Seq[(T => (Any, String))]])(given qctx: QuoteContext, tType: Type[T], pType: Type[P]): Expr[SchemaMeta[T]] = {
+  def apply[T, P <: ParserFactory](qm: Expr[MetaDsl[P]], entity: Expr[String], columns: Expr[Seq[(T => (Any, String))]])(given qctx: QuoteContext, tType: Type[T], pType: Type[P]): Expr[SchemaMeta[T]] = {
     val parserFactory = LoadObject(pType).get
     val uuid = Expr(java.util.UUID.randomUUID().toString)
     import scala.quoted.matching.ExprSeq

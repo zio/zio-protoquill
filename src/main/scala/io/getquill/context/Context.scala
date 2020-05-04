@@ -9,10 +9,8 @@ import scala.compiletime.summonFrom
 import scala.util.Try
 import io.getquill.{ ReturnAction }
 import miniquill.quoter.Query
-
 import miniquill.dsl.EncodingDsl
 import miniquill.quoter.Quoted
-import miniquill.quoter.Query
 import io.getquill.derived._
 import miniquill.context.mirror.MirrorDecoders
 import miniquill.context.mirror.Row
@@ -174,6 +172,7 @@ object Context {
   import io.getquill.idiom.LoadNaming
   import io.getquill.util.LoadObject
   import miniquill.dsl.GenericEncoder
+  import io.getquill.ast.External
 
   //inline def summonDecoder[T]: Decoder[T] = ${ summonDecoderImpl[T] }
   def summonDecoderImpl[T: Type, ResultRow: Type](given qctx: QuoteContext): Expr[GenericDecoder[ResultRow, T]] = {
@@ -200,101 +199,106 @@ object Context {
 
   }
 
+  // Process the AST during compile-time. If this cannot be done, try it again
+  // later during runtime.
+  def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(given qctx: QuoteContext):Option[(String, List[External])] = {
+    import io.getquill.ast.{CollectAst, QuotationTag}
+
+    def noRuntimeQuotations(ast: Ast) =
+      CollectAst.byType[QuotationTag](ast).isEmpty
+
+    val unliftedAst = new Unlifter(given qctx).apply(astExpr)
+    if (noRuntimeQuotations(unliftedAst)) {
+      val expandedAst = Expander.static[T](unliftedAst) 
+      val (ast, stmt) = idiom.translate(expandedAst)(given naming)
+      val output =
+        ReifyStatement(
+          idiom.liftingPlaceholder,
+          idiom.emptySetContainsToken,
+          stmt,
+          forProbing = false
+        )
+      Some(output)
+    } else {
+      None
+    }
+  }
+
+  // Process compile-time lifts. If they cannot be processed, try it again later
+  // during runtime.
+  // liftExprs = Lifts that were put into planters during the quotation. They are
+  // 're-planted' back into the PreparedStatement vars here.
+  // matchingExternals = the matching placeholders (i.e 'lift tags') in the AST 
+  // that contains the UUIDs of lifted elements. We check against list to make
+  // sure that that only needed lifts are used and in the right order.
+  def processLifts(liftExprs: Expr[List[ScalarPlanter[_, _]]], matchingExternals: List[External])(given qctx: QuoteContext): Option[List[Expr[ScalarPlanter[_, _]]]] = {
+    val extractedEncodeables =
+      liftExprs match {
+        case ScalarPlanterExpr.InlineList(lifts) =>
+          // get all existing expressions that can be encoded
+          Some(lifts.map(e => (e.uid, e)).toMap)
+        case _ => 
+          // TODO Maybe do ctx.error here to show the lifts to the user, if 'verbose mode' is enabled.
+          // Try it out to see how it looks
+          println("Lifts do meet compiletime criteria:\n"+liftExprs.show); 
+          None
+      }
+
+    extractedEncodeables.map { encodeables => 
+      matchingExternals.collect {
+        case tag: ScalarTag =>
+          encodeables.get(tag.uid) match {
+            case Some(encodeable) => encodeable
+            case None =>
+              qctx.throwError(s"Invalid Transformations Encountered. Cannot find lift with ID: ${tag.uid}.")
+              // TODO Throw an error here or attempt to resolve encoders during runtime?
+              // maybe the user has hand-modified a quoted block and only the
+              // lifts are modified with some runtime values?
+              // If throwing an error (or maybe even not?) need to tell the user which lifted ids cannot be found
+              // should probably add some info to the reifier to "highlight" the question marks that
+              // cannot be plugged in. It would also be really nice to show the user which lift-statements
+              // are wrong but that requires a bit more thought (maybe match them somehow into the original AST
+              // from quotedRow via the UUID???)
+          }
+      }.map(_.plant) // todo dedupe here?
+    }
+  }
+
   def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](given qctx: QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Try[(Idiom, NamingStrategy)] =
     for {
       idiom <- LoadObject(dialectTpe)
       namingStrategy <- LoadNaming.static(namingType)
     } yield (idiom, namingStrategy)
 
-  // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
+
   def translateStaticImpl[T: Type, D <: Idiom, N <: NamingStrategy, PrepareRow](
     quotedRaw: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]]
   )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N], prepareRow:TType[PrepareRow]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
-
     import qctx.tasty.{Try => TTry, _, given _}
-    import io.getquill.ast.{CollectAst, QuotationTag}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.unseal.underlyingArgument.seal
 
-    def noRuntimeQuotations(ast: Ast) =
-      CollectAst.byType[QuotationTag](ast).isEmpty
-    
     val tryStatic =
       for {
-        (idiom, naming) <- idiomAndNamingStatic
-        quotedExpr <- Try {
-          quoted match { // use to have 'unInline' here
-            case QuotedExpr.Inline(quotedExpr) => quotedExpr
-            // Warn user that a not-inline QuotedExpr was detected. Do println or is there a qctx.warn??
-            case _ => 
-              println("Lifts do meet compiletime criteria"); 
-              println(quoted.show)
-              printer.lnf(quoted.show)
-              ???
-          }
-        }
-
-        lifts <- Try {
-          quotedExpr.lifts match {
-            case ScalarPlanterExpr.InlineList(liftsExprMatch) => liftsExprMatch
-            // If lifts are not an inlineable list, throw an exception and resort to trying during runtime
-            case _ => 
-              println("Lifts do meet compiletime criteria:"); 
-              println(quotedExpr.lifts.show)
-              ???
-          }
-        }
-
-        ast = new Unlifter(given qctx).apply(quotedExpr.ast)
-
-        expandedAst <- Try { Expander.static[T](ast) } if noRuntimeQuotations(ast)
+        (idiom, naming)          <- idiomAndNamingStatic.toOption
+        quotedExpr               <- QuotedExpr.inlineOpt(quoted)
+        (queryString, externals) <- processAst[T](quotedExpr.ast, idiom, naming)
+        encodedLifts             <- processLifts(quotedExpr.lifts, externals)
       } yield {
-
-        // Get all existing encoders
-        val encodeables = lifts.map(e => (e.uid, e)).toMap //[PrepareRow]
-
-        val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
-
-        val (string, externals) =
-          ReifyStatement(
-            idiom.liftingPlaceholder,
-            idiom.emptySetContainsToken,
-            stmt,
-            forProbing = false
-          )
-        
-        val encodedLifts = externals.collect {
-          case tag: ScalarTag =>
-            encodeables.get(tag.uid) match {
-              case Some(encodeable) => encodeable
-              case None => ??? 
-                // TODO Throw an error here or attempt to resolve encoders during runtime?
-                // maybe the user has hand-modified a quoted block and only the
-                // lifts are modified with some runtime values?
-                // If throwing an error (or maybe even not?) need to tell the user which lifted ids cannot be found
-                // should probably add some info to the reifier to "highlight" the question marks that
-                // cannot be plugged in. It would also be really nice to show the user which lift-statements
-                // are wrong but that requires a bit more thought (maybe match them somehow into the original AST
-                // from quotedRow via the UUID???)
-            }
-        }.map(_.plant)
-
-        //val sql = stmt.toString
-
-        println("Compile Time Query Is: " + string)
+        println("Compile Time Query Is: " + queryString)
 
         // What about a missing decoder?
         // need to make sure that that kind of error happens during compile time
         // (also need to propagate the line number, talk to Li Houyi about that)
-        '{ Option((${Expr(string)}, ${Expr.ofList(encodedLifts)})) }
+        '{ (${Expr(queryString)}, ${Expr.ofList(encodedLifts)}) }
       }
 
-    if (tryStatic.isFailure) {
+    if (tryStatic.isEmpty)
       println("WARNING: Dynamic Query Detected: ")
-    }
 
-    tryStatic.getOrElse {
-      '{ None }
+    tryStatic match {
+      case Some(value) => '{ Option($value) }
+      case None        => '{ None }
     }
   }
 }

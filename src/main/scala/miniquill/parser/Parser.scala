@@ -8,7 +8,7 @@ import scala.quoted.matching.{Const => ConstExpr, _}
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
-import miniquill.quoter.QuoteMeta
+import miniquill.quoter.Dsl
 import scala.reflect.ClassTag
 
 

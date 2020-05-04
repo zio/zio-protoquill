@@ -136,6 +136,16 @@ object QuotedExpr {
       }
     }
   }
+
+  // Does the Quoted expression match the correct format needed for it to
+  // be inlineable i.e. transpileable into a Query during Compile-Time.
+  def inlineOpt(quoted: Expr[Any])(given qctx: QuoteContext): Option[QuotedExpr] = 
+    quoted match {
+      case QuotedExpr.Inline(quotedExpr) => Some(quotedExpr)
+      case _ => 
+        println("Quotations do meet compiletime criteria\n" + quoted.show); 
+        None
+    }
 }
 
 
