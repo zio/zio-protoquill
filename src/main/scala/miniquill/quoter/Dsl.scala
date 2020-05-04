@@ -33,12 +33,13 @@ with MetaDsl[Parser] {
 }
 
 trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
-  //@compileTimeOnly(NonQuotedException.message)
+  @compileTimeOnly(NonQuotedException.message)
   def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
 
   inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
-    //SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.
     ${ SchemaMetaMacro[T, Parser]('this, 'entity, 'columns) }
+
+  
 }
 
 trait QueryDsl[Parser <: ParserFactory] {
