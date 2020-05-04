@@ -34,37 +34,9 @@ object ExecutionType {
   case object Static extends ExecutionType
 }
 
-// TODO Non Portable
-trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] 
-extends EncodingDsl
-//  extends Closeable
-//  with Dsl 
-{
-  implicit inline def autoDecoder[T]:Decoder[T] = GenericDecoder.derived
-
-  type PrepareRow
-  type ResultRow
-
-  type Result[T]
-  type RunQuerySingleResult[T]
-  type RunQueryResult[T]
-  type RunActionResult
-  type RunActionReturningResult[T]
-  type RunBatchActionResult
-  type RunBatchActionReturningResult[T]
-  type Session
-
-  type Prepare = PrepareRow => (List[Any], PrepareRow)
-  type Extractor[T] = ResultRow => T
-
-  case class BatchGroup(string: String, prepare: List[Prepare])
-  case class BatchGroupReturning(string: String, returningBehavior: ReturnAction, prepare: List[Prepare])
-
-  //def probe(statement: String): Try[_]
-
-  def idiom: Dialect
-  def naming: Naming
-
+trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] { 
+  context: Context[Dialect, Naming] =>
+  
   inline def runDynamic[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val ast = Expander.runtime[T](quoted.ast)
     val lifts = quoted.lifts
@@ -109,36 +81,72 @@ extends EncodingDsl
   //inline def run[T](inline qry: Query[T])(implicit quoter: miniquill.quoter.Quoter): Result[RunQueryResult[T]] =
   //  run(quoter.quote(qry))
 
+  def staticExtractor(lifts: List[ScalarPlanter[_, _]], row: PrepareRow) = {
+    val (_, values, prepare) =
+      lifts.foldLeft((0, List.empty[Any], row)) {
+        case ((idx, values, row), lift) =>
+          val newRow = 
+            lift
+            .asInstanceOf[ScalarPlanter[Any, PrepareRow]]
+            .encoder(idx, lift.value, row).asInstanceOf[PrepareRow] // TODO since summoned encoders are casted
+          (idx + 1, lift.value :: values, newRow)
+      }
+    (values, prepare)
+  }
+
+  inline def runStatic[T](queryString: String, lifts: List[ScalarPlanter[_, _]]) = {
+    val decoder =
+      summonFrom {
+        case decoder: Decoder[T] => decoder
+      }
+    val extractor = (r: ResultRow) => decoder.apply(1, r)
+    val prepare = (row: PrepareRow) => staticExtractor(lifts, row)
+
+    this.executeQuery(queryString, prepare, extractor, ExecutionType.Static)
+  }
+
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val staticQuery = translateStatic[T](quoted)
     staticQuery match {
       case Some((query, lifts)) => // use FindLifts as part of this match?
-        val decoder =
-          summonFrom {
-            case decoder: Decoder[T] => decoder
-          }
-        val extractor = (r: ResultRow) => decoder.apply(1, r)
-
-        val prepare = 
-          (row: PrepareRow) => {
-            val (_, values, prepare) =
-              lifts.foldLeft((0, List.empty[Any], row)) {
-                case ((idx, values, row), lift) =>
-                  val newRow = 
-                    lift
-                    .asInstanceOf[ScalarPlanter[Any, PrepareRow]]
-                    .encoder(idx, lift.value, row).asInstanceOf[PrepareRow] // TODO since summoned encoders are casted
-                  (idx + 1, lift.value :: values, newRow)
-              }
-            (values, prepare)
-          }
-
-        this.executeQuery(query, prepare, extractor, ExecutionType.Static)
+        runStatic[T](query, lifts)
 
       case None =>
         runDynamic(quoted)
     }
   }
+}
+
+// TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
+trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] 
+extends RunDsl[Dialect, Naming]
+with EncodingDsl
+//  extends Closeable
+{
+  implicit inline def autoDecoder[T]:Decoder[T] = GenericDecoder.derived
+
+  type PrepareRow
+  type ResultRow
+
+  type Result[T]
+  type RunQuerySingleResult[T]
+  type RunQueryResult[T]
+  type RunActionResult
+  type RunActionReturningResult[T]
+  type RunBatchActionResult
+  type RunBatchActionReturningResult[T]
+  type Session
+
+  type Prepare = PrepareRow => (List[Any], PrepareRow)
+  type Extractor[T] = ResultRow => T
+
+  case class BatchGroup(string: String, prepare: List[Prepare])
+  case class BatchGroupReturning(string: String, returningBehavior: ReturnAction, prepare: List[Prepare])
+
+  //def probe(statement: String): Try[_]
+
+  def idiom: Dialect
+  def naming: Naming
 
   // todo add 'prepare' i.e. encoders here
   def executeQuery[T](sql: String, prepare: Prepare, extractor: Extractor[T], executionType: ExecutionType): Result[RunQueryResult[T]]
@@ -196,8 +204,7 @@ object StaticTranslationMacro {
   import miniquill.dsl.GenericEncoder
   import io.getquill.ast.External
 
-  // Process the AST during compile-time. If this cannot be done, try it again
-  // later during runtime.
+  // Process the AST during compile-time. Return `None` if that can't be done.
   private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(given qctx: QuoteContext):Option[(String, List[External])] = {
     import io.getquill.ast.{CollectAst, QuotationTag}
 
@@ -221,8 +228,7 @@ object StaticTranslationMacro {
     }
   }
 
-  // Process compile-time lifts. If they cannot be processed, try it again later
-  // during runtime.
+  // Process compile-time lifts, return `None` if that can't be done.
   // liftExprs = Lifts that were put into planters during the quotation. They are
   // 're-planted' back into the PreparedStatement vars here.
   // matchingExternals = the matching placeholders (i.e 'lift tags') in the AST 
