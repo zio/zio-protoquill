@@ -104,7 +104,7 @@ extends EncodingDsl
     this.executeQuery(string, null, extractor, ExecutionType.Dynamic)
   }
 
-  inline def summonDecoder[T]: Decoder[T] = ${ Context.summonDecoderImpl[T, ResultRow] }
+  inline def summonDecoder[T]: Decoder[T] = ${ SummonDecoderMacro[T, ResultRow] }
 
   //inline def run[T](inline qry: Query[T])(implicit quoter: miniquill.quoter.Quoter): Result[RunQueryResult[T]] =
   //  run(quoter.quote(qry))
@@ -147,31 +147,34 @@ extends EncodingDsl
   protected val identityExtractor = identity[ResultRow] _
 
   inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[ScalarPlanter[_, _]])] =
-    ${ Context.translateStaticImpl[T, Dialect, Naming, PrepareRow]('quoted, 'this) }
+    ${ StaticTranslationMacro[T, Dialect, Naming, PrepareRow]('quoted, 'this) }
 
   inline def lift[T](inline vv: T): T = 
-    ${ Context.eagerLiftImpl[T, PrepareRow]('vv) }
+    ${ LiftMacro[T, PrepareRow]('vv) }
 }
 
-object Context {
+object SummonDecoderMacro {
   import miniquill.parser._
   import scala.quoted._ // summonExpr is actually from here
   import scala.quoted.matching._ // ... or from here
   import miniquill.quoter.ScalarPlanter
-  import io.getquill.idiom.LoadNaming
-  import io.getquill.util.LoadObject
-  import miniquill.dsl.GenericEncoder
-  import io.getquill.ast.External
 
-  def summonDecoderImpl[T: Type, ResultRow: Type](given qctx: QuoteContext): Expr[GenericDecoder[ResultRow, T]] = {
+  def apply[T: Type, ResultRow: Type](given qctx: QuoteContext): Expr[GenericDecoder[ResultRow, T]] = {
     import qctx.tasty.{Type => TType, given, _}
     summonExpr(given '[GenericDecoder[ResultRow, T]]) match {
       case Some(decoder) => decoder
       case None => qctx.throwError(s"Cannot Find decoder for ${summon[Type[T]]}")
     }
-  }
+  }  
+}
 
-  def eagerLiftImpl[T, PrepareRow](vvv: Expr[T])(given qctx: QuoteContext, tType: TType[T], prepareRowType: TType[PrepareRow]): Expr[T] = {
+object LiftMacro {
+  import scala.quoted._ // summonExpr is actually from here
+  import scala.quoted.matching._ // ... or from here
+  import miniquill.quoter.ScalarPlanter
+  import miniquill.dsl.GenericEncoder
+
+  def apply[T, PrepareRow](vvv: Expr[T])(given qctx: QuoteContext, tType: TType[T], prepareRowType: TType[PrepareRow]): Expr[T] = {
     import qctx.tasty.{given, _}
     val uuid = java.util.UUID.randomUUID().toString
     val encoder = 
@@ -181,10 +184,21 @@ object Context {
       }
     '{ ScalarPlanter($vvv, $encoder, ${Expr(uuid)}).unquote } //[$tType, $prepareRowType] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
+}
+
+object StaticTranslationMacro {
+  import miniquill.parser._
+  import scala.quoted._ // summonExpr is actually from here
+  import scala.quoted.matching._ // ... or from here
+  import miniquill.quoter.ScalarPlanter
+  import io.getquill.idiom.LoadNaming
+  import io.getquill.util.LoadObject
+  import miniquill.dsl.GenericEncoder
+  import io.getquill.ast.External
 
   // Process the AST during compile-time. If this cannot be done, try it again
   // later during runtime.
-  def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(given qctx: QuoteContext):Option[(String, List[External])] = {
+  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(given qctx: QuoteContext):Option[(String, List[External])] = {
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
@@ -214,7 +228,7 @@ object Context {
   // matchingExternals = the matching placeholders (i.e 'lift tags') in the AST 
   // that contains the UUIDs of lifted elements. We check against list to make
   // sure that that only needed lifts are used and in the right order.
-  def processLifts(liftExprs: Expr[List[ScalarPlanter[_, _]]], matchingExternals: List[External])(given qctx: QuoteContext): Option[List[Expr[ScalarPlanter[_, _]]]] = {
+  private[getquill] def processLifts(liftExprs: Expr[List[ScalarPlanter[_, _]]], matchingExternals: List[External])(given qctx: QuoteContext): Option[List[Expr[ScalarPlanter[_, _]]]] = {
     val extractedEncodeables =
       liftExprs match {
         case ScalarPlanterExpr.InlineList(lifts) =>
@@ -254,7 +268,7 @@ object Context {
     } yield (idiom, namingStrategy)
 
 
-  def translateStaticImpl[T: Type, D <: Idiom, N <: NamingStrategy, PrepareRow](
+  def apply[T: Type, D <: Idiom, N <: NamingStrategy, PrepareRow](
     quotedRaw: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]]
   )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N], prepareRow:TType[PrepareRow]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
     import qctx.tasty.{Try => TTry, _, given _}
