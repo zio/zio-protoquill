@@ -158,28 +158,16 @@ object Context {
   import scala.quoted._ // summonExpr is actually from here
   import scala.quoted.matching._ // ... or from here
   import miniquill.quoter.ScalarPlanter
-
-  // (**) It seems like only unlift is needed here. If a parser needs to be passed into here,
-  // extending it is hard (e.g. need the same approach as Literal/Dialect Class.forName stuff)
-  // however if all we need is a unlifter which is not designed to be extended, can just
-  // reuse it here
-  // def parserFactory: (QuoteContext) => PartialFunction[Expr[_], Ast] = 
-  //   (qctx: QuoteContext) => new Parser(given qctx)
-
-  // def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
-  //   (qctx: QuoteContext) => new Lifter(given qctx)
-
   import io.getquill.idiom.LoadNaming
   import io.getquill.util.LoadObject
   import miniquill.dsl.GenericEncoder
   import io.getquill.ast.External
 
-  //inline def summonDecoder[T]: Decoder[T] = ${ summonDecoderImpl[T] }
   def summonDecoderImpl[T: Type, ResultRow: Type](given qctx: QuoteContext): Expr[GenericDecoder[ResultRow, T]] = {
     import qctx.tasty.{Type => TType, given, _}
     summonExpr(given '[GenericDecoder[ResultRow, T]]) match {
       case Some(decoder) => decoder
-      case None => qctx.error(s"Cannot Find decoder for ${summon[Type[T]]}"); '{???}
+      case None => qctx.throwError(s"Cannot Find decoder for ${summon[Type[T]]}")
     }
   }
 
@@ -189,14 +177,9 @@ object Context {
     val encoder = 
       summonExpr(given '[GenericEncoder[$tType, $prepareRowType]]) match {
         case Some(enc) => enc
-        case None => qctx.error(s"Cannot Find encode for ${tType.unseal}", vvv); '{???}
-        // TODO return summoning error if not correct
+        case None => qctx.throwError(s"Cannot Find encode for ${tType.unseal}", vvv)
       }
     '{ ScalarPlanter($vvv, $encoder, ${Expr(uuid)}).unquote } //[$tType, $prepareRowType] // adding these causes assertion failed: unresolved symbols: value Context_this
-  }
-
-  class ExpandTags[D <: Idiom, N <: NamingStrategy](ast: Expr[Any])(given qctx: QuoteContext, dialectTpe:TType[D], namingType:TType[N]) {
-
   }
 
   // Process the AST during compile-time. If this cannot be done, try it again
