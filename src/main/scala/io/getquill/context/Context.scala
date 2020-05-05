@@ -46,12 +46,12 @@ object RunMacro {
   import miniquill.quoter._
   import io.getquill.ast.FunctionApply
 
-  inline def run[T, D <: Idiom, N <: NamingStrategy, ResultRow, CTX <: Context[D, N]](inline quotedRaw: Quoted[Query[T]], inline context: CTX): Unit = 
-    ${ runImpl[T, D, N, ResultRow, CTX]('quotedRaw, 'context) }
+  inline def run[T, D <: Idiom, N <: NamingStrategy, ResultRow, CTX <: Context[D, N], ResultType](inline quotedRaw: Quoted[Query[T]], inline context: CTX): Option[ResultType] = 
+    ${ runImpl[T, D, N, ResultRow, CTX, ResultType]('quotedRaw, 'context) }
 
-  def runImpl[T: Type, D <: Idiom, N <: NamingStrategy, ResultRow: Type, CTX <: Context[D, N]:Type](
+  def runImpl[T: Type, D <: Idiom, N <: NamingStrategy, ResultRow: Type, CTX <: Context[D, N]:Type, ResultType: Type](
     quotedRaw: Expr[Quoted[Query[T]]], context: Expr[CTX]
-  )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Unit] = {
+  )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Option[ResultType]] = {
     import qctx.tasty.{Try => TTry, _, given _}
     val quotedArg = quotedRaw.unseal.underlyingArgument.seal.cast[Quoted[Query[T]]]
 
@@ -69,6 +69,8 @@ object RunMacro {
             (inlineQuoteOpt, qmm) match {
               // TODO Need a case where these are not matched
               case (Some((quotedExr, quotedExprLifts)), QuotationBinExpr.InlineOrPlucked(quotationBin)) =>
+                println("~~~~~~~~~~~~~~~~~~~~~~~ Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
+
                 quotationBin match {
                   // todo try astMappingFunc rename to `Ast(T => r)` or $r
                   case InlineableQuotationBinExpr(uid, astMappingFunc, _, quotation, lifts, List(extractor)) => 
@@ -114,13 +116,15 @@ object RunMacro {
                     '{
                       // Addint PrepareRow to translateStatic seems to cause a wrong-access-level error
                       val staticQuery = $context.translateStatic[`$r`]($reappliedQuery)
-                      staticQuery match {
-                        case Some((query, lifts)) => // use FindLifts as part of this match?
-                          $context.runStatic[`$r`, T](query, lifts, $decoder, $extractorFunc)
+                      val output =
+                        staticQuery match {
+                          case Some((query, lifts)) => // use FindLifts as part of this match?
+                            $context.runStatic[`$r`, T](query, lifts, $decoder, $extractorFunc)
 
-                        case None =>
-                          $context.runDynamic[`$r`, T]($reappliedQuery, $decoder, $extractorFunc)
-                      }                      
+                          case None =>
+                            $context.runDynamic[`$r`, T]($reappliedQuery, $decoder, $extractorFunc)
+                        }
+                      Some(output).asInstanceOf[Option[ResultType]]                      
                     }
 
                     
@@ -129,20 +133,18 @@ object RunMacro {
                 }
             }
 
-            
-            println("~~~~~~~~~~~~~~~~~~~~~~~ Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
             //printer.lnf(r.unseal)
           case _ =>
             println("~~~~~~~~~~~~~~~~~~~~~~~ NOT Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
+            // TODO Should probably check them one at a time to see if they are correct
+            qctx.throwError("Invalid Quotation or Quote Meta")
         }
         
-        '{ () }
+        '{ None }
       case None => 
         println("=============== Query Meta NOT FOUND! ============")
-        '{ () }
+        '{ None }
     }
-
-    '{ () }
   }
 }
 
@@ -276,19 +278,23 @@ extends EncodingDsl
     //   case _ =>
     // }
 
-    RunMacro.run[T, Dialect, Naming, ResultRow, Context[Dialect, Naming]](quoted, this)
-    val staticQuery = translateStatic[T](quoted)
-    staticQuery match {
-      case Some((query, lifts)) => // use FindLifts as part of this match?
-        val decoder =
-          summonFrom {
-            case decoder: GenericDecoder[ResultRow, T] => decoder
-          }
-        runStatic[T, T](query, lifts, decoder, t => t)
-
+    val output = RunMacro.run[T, Dialect, Naming, ResultRow, Context[Dialect, Naming], Result[RunQueryResult[T]]](quoted, this)
+    output match {
+      case Some(value) => value
       case None =>
-        val decoder = summonDecoder[T]
-        runDynamic[T, T](quoted, decoder, t => t)
+        val staticQuery = translateStatic[T](quoted)
+        staticQuery match {
+          case Some((query, lifts)) => // use FindLifts as part of this match?
+            val decoder =
+              summonFrom {
+                case decoder: GenericDecoder[ResultRow, T] => decoder
+              }
+            runStatic[T, T](query, lifts, decoder, t => t)
+
+          case None =>
+            val decoder = summonDecoder[T]
+            runDynamic[T, T](quoted, decoder, t => t)
+        }
     }
   }
 }

@@ -32,7 +32,8 @@ class QueryMetaTest extends Spec with Inside {
     println("~~~~~~~~~~~~~~~~ Query Schema Entity ~~~~~~~~~~~~~")
     printer.lnf(qm.entity.ast)
 
-    inline def people = quote { query[PersonName] } //hellooooooooooooo
-    ctx.run(people)
+    inline def people = quote { query[PersonName] } //helloooooooooooooo
+    println("************************* Output ********************")
+    println( ctx.run(people) )
   }
 }
