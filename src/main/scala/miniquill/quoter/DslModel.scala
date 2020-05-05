@@ -13,7 +13,7 @@ import io.getquill.quotation.NonQuotedException
 import scala.annotation.compileTimeOnly
 
 class Query[+T] {
-  @compileTimeOnly(NonQuotedException.message)
+  
   def map[R](f: T => R): Query[R] = new Query[R]
 
   def foobar(str: String): String = ""

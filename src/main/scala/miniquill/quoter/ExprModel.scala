@@ -137,6 +137,24 @@ object QuotedExpr {
     }
   }
 
+  object InlineWithList {
+    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] =
+      expr match {
+        case QuotedExpr.Inline(quotedExpr @ QuotedExpr(ast, ScalarPlanterExpr.InlineList(lifts), _)) => 
+          Some((quotedExpr, lifts))
+        case _ => 
+          None
+      }
+  }
+
+  def inlineWithListOpt(quoted: Expr[Any])(given qctx: QuoteContext): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] = 
+    quoted match {
+      case QuotedExpr.InlineWithList(quotedExpr) => Some(quotedExpr)
+      case _ => 
+        println("Quotations do meet compiletime criteria\n" + quoted.show); 
+        None
+    }
+
   // Does the Quoted expression match the correct format needed for it to
   // be inlineable i.e. transpileable into a Query during Compile-Time.
   def inlineOpt(quoted: Expr[Any])(given qctx: QuoteContext): Option[QuotedExpr] = 
@@ -218,8 +236,8 @@ object QuotationBinExpr {
 
       
       expr match {
-        case vase @ `QuotationBin.apply`(QuotedExpr.Inline(ast, ScalarPlanterExpr.InlineList(lifts), _), uid, rest) => // TODO Also match .unapply?
-          Some(InlineableQuotationBinExpr(uid, ast, vase.asInstanceOf[Expr[QuotationBin[Any]]], lifts, rest))
+        case vase @ `QuotationBin.apply`(quoted @ QuotedExpr.Inline(ast, ScalarPlanterExpr.InlineList(lifts), _), uid, rest) => // TODO Also match .unapply?
+          Some(InlineableQuotationBinExpr(uid, ast, vase.asInstanceOf[Expr[QuotationBin[Any]]], quoted, lifts, rest))
 
         case `QuotationBin.apply`(quotation, uid, rest) =>
           Some(PluckableQuotationBinExpr(uid, quotation, rest))
@@ -249,6 +267,7 @@ case class InlineableQuotationBinExpr(
   uid: String, 
   ast: Expr[Ast],
   bin: Expr[QuotationBin[Any]], 
+  quotation: Expr[Quoted[Any]],
   inlineLifts: List[ScalarPlanterExpr[_, _]],
   rest: List[Expr[_]]
 ) extends QuotationBinExpr

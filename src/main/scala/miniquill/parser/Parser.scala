@@ -159,7 +159,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
     
     case QuotationBinExpr.InlineOrPluckedUnquoted(quotationBin) =>
       quotationBin match {
-        case InlineableQuotationBinExpr(uid, astTree, _, _, _) => unlift(astTree)
+        case InlineableQuotationBinExpr(uid, astTree, _, _, _, _) => unlift(astTree)
         case PluckableQuotationBinExpr(uid, astTree, _) => QuotationTag(uid)
       }
 

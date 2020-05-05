@@ -154,7 +154,7 @@ object Expander {
       case None => 
         summonExpr(given '[GenericDecoder[_, T]]) match {
           case Some(decoder) => term
-          // None => TODO Macro Error, cannot find decoder for tail entity (i.e. decoder not found and it's not a product)
+          case None => qctx.throwError(s"Cannot find derive or summon a decoder for ${tpe.show}")
         }
     }
   }

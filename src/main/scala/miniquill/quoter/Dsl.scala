@@ -39,7 +39,25 @@ trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
   inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
     ${ SchemaMetaMacro[T, Parser]('this, 'entity, 'columns) }
 
-  
+  inline def queryMeta[T, R](inline expand: Quoted[Query[T] => Query[R]])(inline extract: R => T): QueryMeta[T, R] =
+    ${ QueryMetaMacro.embed[T, R, Parser]('this, 'expand, 'extract) }
+}
+
+
+object QueryMetaMacro {
+  import io.getquill.util.LoadObject
+
+  def embed[T: Type, R: Type, P <: ParserFactory: Type](qm: Expr[MetaDsl[P]], expand: Expr[Quoted[Query[T] => Query[R]]], extract: Expr[R => T])(given qctx: QuoteContext): Expr[QueryMeta[T, R]] = {
+    val parserFactory = LoadObject(summon[Type[T]]).get
+    val uuid = Expr(java.util.UUID.randomUUID().toString)
+    '{ QueryMeta[T, R]($expand, $uuid, $extract) }
+  }
+
+  // def extractApply[T: Type, R: Type](qm: Expr[QueryMeta[T, R]], qry: Quoted[Query[T]])(given qctx: QuoteContext): Option[Expr[Quoted[Query[R]]]] = {
+  //   qm match {
+  //     ``
+  //   }
+  // }
 }
 
 trait QueryDsl[Parser <: ParserFactory] {
@@ -110,15 +128,16 @@ object QuoteMacro {
   }
 }
 
+
 object SchemaMetaMacro {
   import io.getquill.util.LoadObject
+  import scala.quoted.matching.ExprSeq
 
   // inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
   // SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.
   def apply[T, P <: ParserFactory](qm: Expr[MetaDsl[P]], entity: Expr[String], columns: Expr[Seq[(T => (Any, String))]])(given qctx: QuoteContext, tType: Type[T], pType: Type[P]): Expr[SchemaMeta[T]] = {
     val parserFactory = LoadObject(pType).get
     val uuid = Expr(java.util.UUID.randomUUID().toString)
-    import scala.quoted.matching.ExprSeq
     val exprs = 
       (columns match {
         case ExprSeq(argsExprs) => argsExprs
