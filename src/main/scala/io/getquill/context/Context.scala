@@ -35,7 +35,7 @@ object ExecutionType {
   case object Static extends ExecutionType
 }
 
-trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] { 
+trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] extends EncodingDsl { 
   context: Context[Dialect, Naming] =>
   
   inline def runDynamic[RawT, T](inline quoted: Quoted[Query[RawT]], inline converter: RawT => T): Result[RunQueryResult[T]] = {
@@ -77,7 +77,7 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
     this.executeQuery(string, null, extractor, ExecutionType.Dynamic)
   }
 
-  inline def summonDecoder[T]: Decoder[T] = ${ SummonDecoderMacro[T, ResultRow] }
+  inline def summonDecoder[T]: GenericDecoder[ResultRow, T] = ${ SummonDecoderMacro[T, ResultRow] }
 
   //inline def run[T](inline qry: Query[T])(implicit quoter: miniquill.quoter.Quoter): Result[RunQueryResult[T]] =
   //  run(quoter.quote(qry))
@@ -101,7 +101,7 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
   inline def runStatic[RawT,T](queryString: String, lifts: List[ScalarPlanter[_, _]], converter: RawT => T) = {
     val decoder =
       summonFrom {
-        case decoder: Decoder[RawT] => decoder
+        case decoder: GenericDecoder[ResultRow, RawT] => decoder
       }
     val extractor = (r: ResultRow) => converter(decoder.apply(1, r))
     val prepare = (row: PrepareRow) => staticExtractor(lifts, row)
@@ -147,7 +147,7 @@ object RunMacro {
   import miniquill.quoter._
   import io.getquill.ast.FunctionApply
 
-  inline def run[T, D <: Idiom, N <: NamingStrategy](quotedRaw: Quoted[Query[T]], context: Context[D, N]): Unit = 
+  inline def run[T, D <: Idiom, N <: NamingStrategy](inline quotedRaw: Quoted[Query[T]], inline context: Context[D, N]): Unit = 
     ${ runImpl[T, D, N]('quotedRaw, 'context) }
 
   def runImpl[T: Type, D <: Idiom, N <: NamingStrategy](
@@ -199,14 +199,15 @@ object RunMacro {
                     val extractorFunc = '{ $extractor.asInstanceOf[`$r` => T] }
 
                     '{
-                      //val staticQuery = $context.translateStatic[`$r`]($reappliedQuery)
-                      // staticQuery match {
-                      //   case Some((query, lifts)) => // use FindLifts as part of this match?
-                      //     runStatic[T, T](query, lifts, t => t)
+                      // Addint PrepareRow to translateStatic seems to cause a wrong-access-level error
+                      val staticQuery = $context.translateStatic[`$r`]($reappliedQuery)
+                      staticQuery match {
+                        case Some((query, lifts)) => // use FindLifts as part of this match?
+                          $context.runStatic[`$r`, T](query, lifts, $extractorFunc)
 
-                      //   case None =>
-                      //     runDynamic[T, T](quoted, t => t)
-                      // }
+                        case None =>
+                          $context.runDynamic[`$r`, T]($reappliedQuery, $extractorFunc)
+                      }
                     }
 
                     
@@ -237,7 +238,9 @@ trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingSt
 extends RunDsl[Dialect, Naming]
 with EncodingDsl
 //  extends Closeable
-{
+{ self =>
+  
+
   implicit inline def autoDecoder[T]:Decoder[T] = GenericDecoder.derived
 
   type PrepareRow
@@ -270,7 +273,7 @@ with EncodingDsl
   protected val identityExtractor = identity[ResultRow] _
 
   inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[ScalarPlanter[_, _]])] =
-    ${ StaticTranslationMacro[T, Dialect, Naming, PrepareRow]('quoted, 'this) }
+    ${ StaticTranslationMacro[T, Dialect, Naming]('quoted, 'self) }
 
   inline def lift[T](inline vv: T): T = 
     ${ LiftMacro[T, PrepareRow]('vv) }
@@ -392,9 +395,9 @@ object StaticTranslationMacro {
     } yield (idiom, namingStrategy)
 
 
-  def apply[T: Type, D <: Idiom, N <: NamingStrategy, PrepareRow](
+  def apply[T: TType, D <: Idiom, N <: NamingStrategy](
     quotedRaw: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]]
-  )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N], prepareRow:TType[PrepareRow]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
+  )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
     import qctx.tasty.{Try => TTry, _, given _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.unseal.underlyingArgument.seal
