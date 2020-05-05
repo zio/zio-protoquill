@@ -10,6 +10,7 @@ import scala.deriving._
 import io.getquill.Embedable
 import miniquill.quoter.Dsl
 import scala.reflect.ClassTag
+import io.getquill.norm.capture.AvoidAliasConflict
 
 
 type Parser[R] = PartialFunction[Expr[_], R]
@@ -80,6 +81,8 @@ trait ParserLibrary extends ParserFactory {
 
   def quotationParser(given qctx: QuoteContext)  =         Series.single(new QuotationParser)
   def queryParser(given qctx: QuoteContext)      =         Series.single(new QueryParser)
+  def functionParser(given qctx: QuoteContext)   =         Series.single(new FunctionParser)
+  def functionApplyParser(given qctx: QuoteContext) =      Series.single(new FunctionApplyParser)
   def operationsParser(given qctx: QuoteContext) =         Series.single(new OperationsParser)
   def genericExpressionsParser(given qctx: QuoteContext) = Series.single(new GenericExpressionsParser)
   def errorFallbackParser(given qctx: QuoteContext) =      Series.single(new ErrorFallbackParser) 
@@ -91,15 +94,55 @@ trait ParserLibrary extends ParserFactory {
   def apply(given qctx: QuoteContext): Parser[Ast] = {
     quotationParser
         .combine(queryParser)
+        .combine(functionParser) // decided to have it be it's own parser unlike Quill3
         .combine(operationsParser)
+        .combine(functionApplyParser) // must go before genericExpressionsParser otherwise that will consume the 'apply' clauses
         .combine(genericExpressionsParser)
         }
 }
 
 object ParserLibrary extends ParserLibrary
 
+case class FunctionApplyParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
+  import qctx.tasty.{Type => TType, _, given}
+  import Parser.Implicits._
+  import io.getquill.norm.capture.AvoidAliasConflict
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  //case q"new { def apply[..$t1](...$params) = $body }" =>
+  //  c.fail("Anonymous classes aren't supported for function declaration anymore. Use a method with a type parameter instead. " +
+  //    "For instance, replace `val q = quote { new { def apply[T](q: Query[T]) = ... } }` by `def q[T] = quote { (q: Query[T] => ... }`")
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case Unseal(Apply(Select(term, "apply"), args)) =>
+      FunctionApply(rootDone(term.seal), args.map(arg => rootDone(arg.seal)))
+  }
+}
 
 
+case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
+  import qctx.tasty.{Type => TType, _, given}
+  import Parser.Implicits._
+  import io.getquill.norm.capture.AvoidAliasConflict
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  //case q"new { def apply[..$t1](...$params) = $body }" =>
+  //  c.fail("Anonymous classes aren't supported for function declaration anymore. Use a method with a type parameter instead. " +
+  //    "For instance, replace `val q = quote { new { def apply[T](q: Query[T]) = ... } }` by `def q[T] = quote { (q: Query[T] => ... }`")
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case Unseal(RawLambdaN(params, body)) =>
+      val subtree = Function(params.map(Idnt(_)), rootDone(body.seal))
+      // If there are actions inside the subtree, we need to do some additional sanitizations
+      // of the variables so that their content will not collide with code that we have generated.
+
+      // TODO Add back once moved to the quill subtree because AvoidAliasConflict is private[getquill]
+      //if (CollectAst.byType[Action](subtree).nonEmpty)
+      //  AvoidAliasConflict.sanitizeVariables(subtree, dangerousVariables)
+      //else
+      subtree
+  }
+}
 
 
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
@@ -113,10 +156,6 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-    del
-  }
-
-  def del: PartialFunction[Expr[_], Ast] = {
     
     case QuotationBinExpr.InlineOrPluckedUnquoted(quotationBin) =>
       quotationBin match {

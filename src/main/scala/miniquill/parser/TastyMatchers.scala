@@ -89,6 +89,25 @@ trait TastyMatchers {
       unapplyTerm(term.unseal).map((str, term) => (str, term.seal))
   }
 
+  object RawLambdaN {
+    def unapply(term: Term): Option[(List[String], Term)] = term match {
+        case Lambda(valDefs, methodBody) => 
+          val idents =
+            valDefs.map {
+              case ValDef(ident, i, u) => ident
+            }
+
+          Some((idents, methodBody))
+        case Block(List(), expr) => unapply(expr)
+        case _ => None
+    }
+  }
+
+  object LambdaN {
+    def unapply(term: Expr[_]): Option[(List[String], quoted.Expr[_])] =
+      RawLambdaN.unapply(term.unseal).map((str, term) => (str, term.seal))
+  }
+
   object Lambda2 {
     def unapply(term: Expr[_]): Option[(String, String, quoted.Expr[_])] = term match {
       case Unseal(Lambda(List(ValDef(ident, _, _), ValDef(ident2, _, _)), Seal(methodBody))) => Some((ident, ident2, methodBody))

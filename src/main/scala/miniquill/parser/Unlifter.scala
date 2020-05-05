@@ -43,6 +43,10 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
     case '{ Renameable.Fixed } => Renameable.Fixed
   }
 
+  implicit def unliftIdent: Unlift[Idnt] = {
+    case '{ Idnt(${Const(name: String)}) } => Idnt(name)
+  }
+
   implicit def unliftProperty: Unlift[Property] = {
     // Unlike in liftProperty, we need both variants here since we are matching the scala AST expressions
     case '{ Property(${ast}, ${name}) } =>
@@ -65,8 +69,8 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
       Constant(fixedString(b))
     case '{ Entity(${b}, ${l})  } =>
       Entity(fixedString(b), l.unlift)
-    case '{ Idnt(${b}) } =>
-      Idnt(fixedString(b))
+    case '{ Function($params, $body) } => Function(params.unlift, unliftAst(body))
+    case '{ FunctionApply($function, $values) } => FunctionApply(function.unlift, values.unlift)
     case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(unliftAst(query), unliftAst(alias).asInstanceOf[Idnt], unliftAst(body))
     case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(unliftAst(a), unliftOperator(operator).asInstanceOf[BinaryOperator], unliftAst(b))
     case '{ Property(${ast}, ${name}) } =>
@@ -86,10 +90,13 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
     // Doing it this way so that users can override the unlift functions
     // in a custom parser
     val unliftBaseActual = unliftBase
-    val unliftRenableableActual = unliftRenameable
     val unliftPropertyActual = unliftProperty
+    val unliftIdentActual = unliftIdent
+    val unliftRenableableActual = unliftRenameable
+    
     def unliftActual: Unlift[Ast] = {
       case unliftPropertyActual(ast) => ast
+      case unliftIdentActual(ast) => ast
       case unliftBaseActual(ast) => ast
     }
     unliftActual

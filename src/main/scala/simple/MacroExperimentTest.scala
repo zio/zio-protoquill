@@ -1,42 +1,19 @@
-// package simple
+package simple
 
-// import miniquill.quoter.Dsl
-// import simple.MacroExperiment._
+import miniquill.quoter.Dsl
+import miniquill.quoter._
+import simple.MacroExperiment._
+import miniquill.quoter.Dsl._
 
-// // @main def testStuff() = {
+@main def testOtherstuff() = { //hello
+  import miniquill.quoter.Dsl
 
-// //   println("******** Reg Stuff *******")
-// //   printTree(reg_stuff)
+  //inline def fun[T,R](inline funfun: Function[T,R]): Function[T,R] = funfun
+  val fun = (str: String) => str.length
 
-// //   println("******** Stuff *******")
-// //   printTree(stuff)
+  case class Person(name: String, age: Int)
 
-  
-// // }
-
-// object FunObject {
-//   def fun[T](t: T => String) = t
-//   def funString(t: String => String) = t
-// }
-
-// case class Age(value: Int)
-// case class MyPerson(name: String, age: Option[Age])
-
-// @main def testOtherstuff() = { //hello
-
-//   // Step 6
-//   //import miniquill.quoter.Dsl._
-//   import miniquill.quoter.Dsl
-//   // import ShellObj._
-
-//   printTree {
-//   //   //querySchema[MyPerson]("personTable", _.name -> "tableNameColumn")
-//   //   //FunObject.fun((x: String) => "blah")
-//   //   //(x: String) => x.length -> "len" // Step 1, 2
-//   //   (x: String) => "blahblah" // Step 3, 4, 5
-//     Dsl.querySchema[MyPerson]("personTbl", _.name -> "blah", _.age.map(_.value) -> "blaaah") //hello
-//   //   //colVar[MyPerson]("blah", _.name -> "bar", _.age -> "blin")
-//   //   //colVar[MyPerson]("blah")
-//   //   // colVar("blah")
-//   }
-// }
+  // printTree {
+  //   ((q: Query[Person]) => q.map(p => p.name)).apply(EntityQuery[Person])
+  // }
+}

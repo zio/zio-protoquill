@@ -49,33 +49,40 @@ class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
       '{ Property.Opinionated(${liftAst(ast)}, ${Expr(name)}, ${liftRenameable(renameable)}, ${liftVisbility(visibility)}) }
   }
 
-  implicit def liftList[T](implicit liftElement: Lift[T], t: scala.quoted.Type[T]): Lift[List[T]] = {
-    case list: List[T] => Expr.ofList(list.map(liftElement(_)))
+  implicit def liftIdent: Lift[Idnt] = {
+    case Idnt(name: String) => '{ Idnt(${Expr(name)})  }
   }
 
   implicit def liftPropertyAlias: Lift[PropertyAlias] = {
     case PropertyAlias(a, b) => '{ PropertyAlias(${a.liftable}, ${b.liftable}) }
   }
 
+  implicit def liftList[T](implicit liftElement: Lift[T], t: scala.quoted.Type[T]): Lift[List[T]] = {
+    case list: List[T] => Expr.ofList(list.map(liftElement(_)))
+  }
+
   implicit def liftAst: Lift[Ast] = {
     val liftBaseActual = liftBase
     val liftPropertyActual = liftProperty
+    val liftIdentActual = liftIdent
     def liftActual: Lift[Ast] = {
       case liftPropertyActual(ast) => ast
+      case liftIdentActual(ast) => ast
       case liftBaseActual(ast) => ast
     }
     liftActual
   }
 
+  // TODO Make liftBase implicit so can do .liftable to any element?
   // TODO Can implement liftConstant now
-
   def liftBase: Lift[Ast] = {
     // TODO Need some type info to be able to lift a const
     // TODO cover primitive cases? Have something that splices certain things to a string?
     case Constant(v: String) => '{ Constant(${Expr(v)}) }
     case Constant(v: Double) => '{ Constant(${Expr(v)}) }
+    case Function(params: List[Idnt], body: Ast) => '{ Function(${params.liftable}, ${liftAst(body)}) }
+    case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.liftable}, ${values.liftable}) }
     case Entity(name: String, list) => '{ Entity(${name.liftable}, ${list.liftable})  }
-    case Idnt(name: String) => '{ Idnt(${Expr(name)})  }
     case Map(query: Ast, alias: Idnt, body: Ast) => '{ Map(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }
     case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${liftAst(a)}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${liftAst(b)})  }
     case ScalarTag(uid: String) => '{ScalarTag(${Expr(uid)})}

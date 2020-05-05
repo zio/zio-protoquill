@@ -61,7 +61,8 @@ trait QuoteDsl[Parser <: ParserFactory] {
 
 
 object QuoteMacro {
-  import io.getquill.util.LoadObject  
+  import io.getquill.util.LoadObject 
+  import io.getquill.norm.BetaReduction 
 
   def apply[T, Parser <: ParserFactory](bodyRaw: Expr[T])(given qctx: QuoteContext, tType: Type[T], pType: Type[Parser]): Expr[Quoted[T]] = {
     import qctx.tasty.{_, given _}
@@ -73,7 +74,8 @@ object QuoteMacro {
     import Parser.{given _}
 
     // TODo add an error if body cannot be parsed
-    val ast = parserFactory.apply(given qctx).seal.apply(body)
+    val rawAst = parserFactory.apply(given qctx).seal.apply(body)
+    val ast = BetaReduction(rawAst)
 
     println("Ast Is: " + ast)
 
