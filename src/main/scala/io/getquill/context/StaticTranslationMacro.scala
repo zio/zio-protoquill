@@ -73,7 +73,7 @@ object StaticTranslationMacro {
   private[getquill] def processLifts(liftExprs: Expr[List[ScalarPlanter[_, _]]], matchingExternals: List[External])(given qctx: QuoteContext): Option[List[Expr[ScalarPlanter[_, _]]]] = {
     val extractedEncodeables =
       liftExprs match {
-        case ScalarPlanterExpr.InlineList(lifts) =>
+        case ScalarPlanterExpr.UprootableList(lifts) =>
           // get all existing expressions that can be encoded
           Some(lifts.map(e => (e.uid, e)).toMap)
         case _ => 

@@ -43,7 +43,7 @@ case class ScalarPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[
   }
 }
 object ScalarPlanterExpr {
-  object Inline {
+  object Uprootable {
     
 
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[ScalarPlanterExpr[_, _]] = 
@@ -64,11 +64,11 @@ object ScalarPlanterExpr {
     }
   }
 
-  object InlineUnquote {
+  object UprootableUnquote {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[ScalarPlanterExpr[_, _]] = expr match {
       case `(ScalarPlanter).unquote`(planterUnquote) =>
         planterUnquote match {
-          case Inline(planterExpr) => 
+          case Uprootable(planterExpr) => 
             Some(planterExpr)
           case _ => 
             // All lifts re-inserted as ScalarPlanters must be inlined values containing
@@ -82,12 +82,12 @@ object ScalarPlanterExpr {
 
   def findUnquotes(expr: Expr[Any])(given qctx: QuoteContext): List[ScalarPlanterExpr[_, _]] =
     ExprAccumulate(expr) {
-      case InlineUnquote(scalarPlanter) => scalarPlanter
+      case UprootableUnquote(scalarPlanter) => scalarPlanter
     }
 
   // TODO Find a way to propogate PrepareRow into here
   // pull vases out of Quotation.lifts
-  object InlineList {
+  object UprootableList {
     def unapply(expr: Expr[List[Any]])(given qctx: QuoteContext): Option[List[ScalarPlanterExpr[_, _]]] = {
       expr match {
         case '{ Nil } =>
@@ -96,7 +96,7 @@ object ScalarPlanterExpr {
         case '{ scala.List.apply[$t](${ExprSeq(elems)}: _*) } => 
           val scalarValues = 
             elems.collect {
-              case ScalarPlanterExpr.Inline(vaseExpr) => vaseExpr
+              case ScalarPlanterExpr.Uprootable(vaseExpr) => vaseExpr
             }
 
           import qctx.tasty.{given, _}
@@ -140,7 +140,7 @@ object QuotedExpr {
   object UprootableWithLifts {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] =
       expr match {
-        case QuotedExpr.Uprootable(quotedExpr @ QuotedExpr(ast, ScalarPlanterExpr.InlineList(lifts), _)) => 
+        case QuotedExpr.Uprootable(quotedExpr @ QuotedExpr(ast, ScalarPlanterExpr.UprootableList(lifts), _)) => 
           Some((quotedExpr, lifts))
         case _ => 
           None
@@ -202,16 +202,16 @@ object QuotationBinExpr {
   object findUnquotes {
     def apply(expr: Expr[Any])(given qctx: QuoteContext) =
       ExprAccumulate(expr) {
-        case InlineOrPluckedUnquoted(vaseExpr) => 
+        case UprootableOrPluckableUnquoted(vaseExpr) => 
           vaseExpr
       }
   }
 
   // Doesn't look like this is needed
-  // object InlineUnquoted {
-  //   def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[InlineableQuotationBinExpr] = {
-  //     InlineOrPlucked match {
-  //       case inlineable: InlineableQuotationBinExpr => Some(inlineable)
+  // object UprootableUnquoted {
+  //   def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[UprootableQuotationBinExpr] = {
+  //     UprootableOrPluckable match {
+  //       case inlineable: UprootableQuotationBinExpr => Some(inlineable)
   //       case _ => None
   //     }
   //   }
@@ -220,24 +220,24 @@ object QuotationBinExpr {
   
   
 
-  object InlineOrPluckedUnquoted {
+  object UprootableOrPluckableUnquoted {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationBinExpr] = 
       expr match {
-        case `(QuotationBin).unquote`(QuotationBinExpr.InlineOrPlucked(vaseExpr)) => Some(vaseExpr)
+        case `(QuotationBin).unquote`(QuotationBinExpr.UprootableOrPluckable(vaseExpr)) => Some(vaseExpr)
         case _ => None
       }
   }
 
   // Verify that a quotation is inline. It is inline if all the lifts are inline. There is no need
   // to search the AST since it has been parsed already
-  object InlineOrPlucked {
+  object UprootableOrPluckable {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationBinExpr] = {
       import qctx.tasty.{given, _}
 
       
       expr match {
-        case vase @ `QuotationBin.apply`(quoted @ QuotedExpr.Uprootable(ast, ScalarPlanterExpr.InlineList(lifts), _), uid, rest) => // TODO Also match .unapply?
-          Some(InlineableQuotationBinExpr(uid, ast, vase.asInstanceOf[Expr[QuotationBin[Any]]], quoted, lifts, rest))
+        case vase @ `QuotationBin.apply`(quoted @ QuotedExpr.Uprootable(ast, ScalarPlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
+          Some(UprootableQuotationBinExpr(uid, ast, vase.asInstanceOf[Expr[QuotationBin[Any]]], quoted, lifts, rest))
 
         case `QuotationBin.apply`(quotation, uid, rest) =>
           Some(PluckableQuotationBinExpr(uid, quotation, rest))
@@ -263,7 +263,7 @@ case class PluckableQuotationBinExpr(uid: String, expr: Expr[Quoted[Any]], other
 }
 
 // QuotationBins expressions that can be further inlined into quotated clauses
-case class InlineableQuotationBinExpr(
+case class UprootableQuotationBinExpr(
   uid: String, 
   ast: Expr[Ast],
   bin: Expr[QuotationBin[Any]], 

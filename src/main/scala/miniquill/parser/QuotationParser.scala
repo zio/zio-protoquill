@@ -131,7 +131,7 @@
 //       }
 //     }
 
-//   object MatchInlineUnquote {
+//   object MatchUprootableUnquote {
 //     def unapply(expr: Expr[Any]): Option[(Expr[Ast], String)] =
 //       expr match {
 //         case `QuotationBin.unquote`(`QuotationBin.apply`(`Quoted.apply`((astTree, _)), uuid, _)) =>

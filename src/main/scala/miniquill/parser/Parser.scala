@@ -157,13 +157,13 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 
   def delegate: PartialFunction[Expr[_], Ast] = {
     
-    case QuotationBinExpr.InlineOrPluckedUnquoted(quotationBin) =>
+    case QuotationBinExpr.UprootableOrPluckableUnquoted(quotationBin) =>
       quotationBin match {
-        case InlineableQuotationBinExpr(uid, astTree, _, _, _, _) => unlift(astTree)
+        case UprootableQuotationBinExpr(uid, astTree, _, _, _, _) => unlift(astTree)
         case PluckableQuotationBinExpr(uid, astTree, _) => QuotationTag(uid)
       }
 
-    case ScalarPlanterExpr.InlineUnquote(expr) =>
+    case ScalarPlanterExpr.UprootableUnquote(expr) =>
       ScalarTag(expr.uid) // TODO Want special scalar tag for an encodeable scalar
 
     // A inline quotation can be parsed if it is directly inline. If it is not inline, a error

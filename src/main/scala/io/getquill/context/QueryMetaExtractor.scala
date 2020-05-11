@@ -56,13 +56,13 @@ object QueryMetaExtractor {
     println("~~~~~~~~~~~~~~~~~~~~~~~ Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
 
     val quotationBin = qmm match {
-      case QuotationBinExpr.InlineOrPlucked(qbin) => qbin
+      case QuotationBinExpr.UprootableOrPluckable(qbin) => qbin
       case _ => qctx.throwError("QueryMeta expression is not in a valid form: " + qmm)
     }
     
     quotationBin match {
       // todo try astMappingFunc rename to `Ast(T => r)` or $r
-      case InlineableQuotationBinExpr(uid, astMappingFunc, _, quotation, lifts, List(extractor)) => 
+      case UprootableQuotationBinExpr(uid, astMappingFunc, _, quotation, lifts, List(extractor)) => 
         // Don't need to unlift the ASTs and re-lift them. Just put them into a FunctionApply
         val astApply = 
           '{FunctionApply($astMappingFunc, List(${quotedExpr.ast}))}
