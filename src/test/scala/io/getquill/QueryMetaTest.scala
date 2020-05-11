@@ -12,11 +12,12 @@ import miniquill.quoter.QuotationVase
 import miniquill.quoter.QuotationBin
 import org.scalatest._
 
+case class PersonName(name: String)
+
 class QueryMetaTest extends Spec with Inside {
   val ctx = new MirrorContext(MirrorIdiom, Literal)
   import ctx._
 
-  
   
   
 
@@ -32,8 +33,9 @@ class QueryMetaTest extends Spec with Inside {
     println("~~~~~~~~~~~~~~~~ Query Schema Entity ~~~~~~~~~~~~~")
     printer.lnf(qm.entity.ast)
 
-    inline def people = quote { query[PersonName] } //helloooooooooooooo
+    inline def people = quote { query[PersonName] } //hellooooooooooooooo
     println("************************* Output ********************")
+    //println( ctx.run(people) )
     println( ctx.run(people) )
   }
 }

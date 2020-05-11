@@ -45,10 +45,7 @@ trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
 
 
 object QueryMetaMacro {
-  import io.getquill.util.LoadObject
-
   def embed[T: Type, R: Type, P <: ParserFactory: Type](qm: Expr[MetaDsl[P]], expand: Expr[Quoted[Query[T] => Query[R]]], extract: Expr[R => T])(given qctx: QuoteContext): Expr[QueryMeta[T, R]] = {
-    val parserFactory = LoadObject(summon[Type[T]]).get
     val uuid = Expr(java.util.UUID.randomUUID().toString)
     '{ QueryMeta[T, R]($expand, $uuid, $extract) }
   }
