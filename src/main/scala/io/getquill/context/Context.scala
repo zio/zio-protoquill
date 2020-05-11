@@ -196,8 +196,6 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
       this.executeQuery(queryString, prepare, extractor, ExecutionType.Static)
     }
 
-
-
   inline def encodeAndExecute[T, R](
     inline staticState: Option[(String, List[ScalarPlanter[_, _]])], 
     inline quoted: Quoted[Query[R]],
@@ -219,6 +217,17 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
     }
   }
   
+
+  inline def runQuery[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
+    summonFrom {
+      case qm: QueryMeta[T, someR] =>
+        val (reappliedQuery, converter, staticState) = QueryMetaExtractor.run[T, someR, Dialect, Naming](quoted, this)
+        encodeAndExecute[T, someR](staticState, reappliedQuery, converter)
+      case _ => 
+        val staticState = translateStatic[T](quoted)
+        encodeAndExecute[T, T](staticState, quoted, t => t)
+    }
+  }
 }
 
 // TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
@@ -257,24 +266,18 @@ with EncodingDsl
   // todo add 'prepare' i.e. encoders here
   def executeQuery[T](sql: String, prepare: Prepare, extractor: Extractor[T], executionType: ExecutionType): Result[RunQueryResult[T]]
 
-  protected val identityPrepare: Prepare = (Nil, _)
-  protected val identityExtractor = identity[ResultRow] _
+  val identityPrepare: Prepare = (Nil, _)
+  val identityExtractor = identity[ResultRow] _
 
   
 
   inline def lift[T](inline vv: T): T = 
     ${ LiftMacro[T, PrepareRow]('vv) }
 
-  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
-    summonFrom {
-      case qm: QueryMeta[T, someR] =>
-        val (reappliedQuery, converter, staticState) = QueryMetaExtractor.run[T, someR, Dialect, Naming](quoted, this)
-        encodeAndExecute[T, someR](staticState, reappliedQuery, converter)
-      case _ => 
-        val staticState = translateStatic[T](quoted)
-        encodeAndExecute[T, T](staticState, quoted, t => t)
-    }
-  }
+  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = 
+    runQuery[T](quoted)
+
+
 }
 
 object SummonDecoderMacro {
