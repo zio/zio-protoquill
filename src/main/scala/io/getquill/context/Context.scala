@@ -35,6 +35,7 @@ object ExecutionType {
   case object Static extends ExecutionType
 }
 
+
   
 
 
@@ -95,7 +96,7 @@ object QueryMetaExtractor {
 
                     val extractorFunc = '{ $extractor.asInstanceOf[R => T] }
 
-                    val staticTranslation = StaticTranslationMacro[R, D, N](reappliedQuery, ctx)
+                    val staticTranslation = StaticTranslationMacro[R, D, N](reappliedQuery)
 
                     '{ ($reappliedQuery, $extractorFunc, $staticTranslation) }
 
@@ -121,9 +122,109 @@ object QueryMetaExtractor {
   }
 }
 
+
+trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] { 
+  context: Context[Dialect, Naming] =>
+
+    inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[ScalarPlanter[_, _]])] =
+      ${ StaticTranslationMacro[T, Dialect, Naming]('quoted) }
+  
+    inline def runDynamic[RawT, T](inline quoted: Quoted[Query[RawT]], inline decoder: GenericDecoder[_, RawT], inline converter: RawT => T): Result[RunQueryResult[T]] = {
+      val ast = Expander.runtime[RawT](quoted.ast)
+      val lifts = quoted.lifts
+      val quotationVases = quoted.runtimeQuotes
+  
+      def spliceQuotations(ast: Ast): Ast =
+        Transform(ast) {
+          case v @ QuotationTag(uid) => 
+            // When a quotation to splice has been found, retrieve it and continue
+            // splicing inside since there could be nested sections that need to be spliced
+            quotationVases.find(_.uid == uid) match {
+              case Some(vase) => 
+                spliceQuotations(vase.quoted.ast)
+              // TODO Macro error if a uid can't be looked up (also show all uid secionds that currently exist)
+            }
+        }
+  
+      val expandedAst = spliceQuotations(ast)
+        
+      val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
+  
+      val (string, externals) =
+        ReifyStatement(
+          idiom.liftingPlaceholder,
+          idiom.emptySetContainsToken,
+          stmt,
+          forProbing = false
+        )
+  
+      // summon a decoder and a expander (as well as an encoder) all three should be provided by the context
+        // summonFrom {
+        //   // TODO Implicit summoning error
+        //   case decoder: Decoder[T] => decoder
+        // }
+      val extractor = (r: ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[ResultRow, RawT]].apply(1, r))
+      this.executeQuery(string, null, extractor, ExecutionType.Dynamic)
+    }
+  
+    inline def summonDecoder[T]: GenericDecoder[ResultRow, T] = ${ SummonDecoderMacro[T, ResultRow] }
+  
+    //inline def run[T](inline qry: Query[T])(implicit quoter: miniquill.quoter.Quoter): Result[RunQueryResult[T]] =
+    //  run(quoter.quote(qry))
+  
+    def staticExtractor(lifts: List[ScalarPlanter[_, _]], row: PrepareRow) = {
+      val (_, values, prepare) =
+        lifts.foldLeft((0, List.empty[Any], row)) {
+          case ((idx, values, row), lift) =>
+            val newRow = 
+              lift
+              .asInstanceOf[ScalarPlanter[Any, PrepareRow]]
+              .encoder(idx, lift.value, row).asInstanceOf[PrepareRow] // TODO since summoned encoders are casted
+            (idx + 1, lift.value :: values, newRow)
+        }
+      (values, prepare)
+    }
+  
+    // Run the query with a queryString as well as extractors. If the final row is different from the row
+    // that is being decoded (they will be different unless a QueryMeta changes it) then run the
+    // additional converter on every row.
+    
+    inline def runStatic[RawT,T](queryString: String, lifts: List[ScalarPlanter[_, _]], decoder: GenericDecoder[_, RawT], converter: RawT => T) = {
+      val extractor = (r: ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[ResultRow, RawT]].apply(1, r))
+      val prepare = (row: PrepareRow) => staticExtractor(lifts, row)
+  
+      this.executeQuery(queryString, prepare, extractor, ExecutionType.Static)
+    }
+
+
+
+  inline def encodeAndExecute[T, R](
+    inline staticState: Option[(String, List[ScalarPlanter[_, _]])], 
+    inline quoted: Quoted[Query[R]],
+    inline converter: R => T): Result[RunQueryResult[T]] = 
+  {
+    staticState match {
+      case Some((query, lifts)) => // use FindLifts as part of this match?
+        // val decoder =
+        //   summonFrom {
+        //     case decoder: GenericDecoder[ResultRow, R] => decoder
+        //     // TODO Extract into meta function, have a good error if decoder not found
+        //   }
+        val decoder = summonDecoder[R]
+        runStatic[R, T](query, lifts, decoder, converter)
+
+      case None =>
+        val decoder = summonDecoder[R]
+        runDynamic[R, T](quoted, decoder, converter)
+    }
+  }
+  
+}
+
 // TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
 trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy]
-extends EncodingDsl
+extends RunDsl[Dialect, Naming]
+with EncodingDsl
 //  extends Closeable
 { self =>
   
@@ -159,82 +260,10 @@ extends EncodingDsl
   protected val identityPrepare: Prepare = (Nil, _)
   protected val identityExtractor = identity[ResultRow] _
 
-  inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[ScalarPlanter[_, _]])] =
-    ${ StaticTranslationMacro[T, Dialect, Naming]('quoted, 'self) }
+  
 
   inline def lift[T](inline vv: T): T = 
     ${ LiftMacro[T, PrepareRow]('vv) }
-
-
-    
-  inline def runDynamic[RawT, T](inline quoted: Quoted[Query[RawT]], inline decoder: GenericDecoder[_, RawT], inline converter: RawT => T): Result[RunQueryResult[T]] = {
-    val ast = Expander.runtime[RawT](quoted.ast)
-    val lifts = quoted.lifts
-    val quotationVases = quoted.runtimeQuotes
-
-    def spliceQuotations(ast: Ast): Ast =
-      Transform(ast) {
-        case v @ QuotationTag(uid) => 
-          // When a quotation to splice has been found, retrieve it and continue
-          // splicing inside since there could be nested sections that need to be spliced
-          quotationVases.find(_.uid == uid) match {
-            case Some(vase) => 
-              spliceQuotations(vase.quoted.ast)
-            // TODO Macro error if a uid can't be looked up (also show all uid secionds that currently exist)
-          }
-      }
-
-    val expandedAst = spliceQuotations(ast)
-      
-    val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
-
-    val (string, externals) =
-      ReifyStatement(
-        idiom.liftingPlaceholder,
-        idiom.emptySetContainsToken,
-        stmt,
-        forProbing = false
-      )
-
-    // summon a decoder and a expander (as well as an encoder) all three should be provided by the context
-      // summonFrom {
-      //   // TODO Implicit summoning error
-      //   case decoder: Decoder[T] => decoder
-      // }
-    val extractor = (r: ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[ResultRow, RawT]].apply(1, r))
-    this.executeQuery(string, null, extractor, ExecutionType.Dynamic)
-  }
-
-  inline def summonDecoder[T]: GenericDecoder[ResultRow, T] = ${ SummonDecoderMacro[T, ResultRow] }
-
-  //inline def run[T](inline qry: Query[T])(implicit quoter: miniquill.quoter.Quoter): Result[RunQueryResult[T]] =
-  //  run(quoter.quote(qry))
-
-  def staticExtractor(lifts: List[ScalarPlanter[_, _]], row: PrepareRow) = {
-    val (_, values, prepare) =
-      lifts.foldLeft((0, List.empty[Any], row)) {
-        case ((idx, values, row), lift) =>
-          val newRow = 
-            lift
-            .asInstanceOf[ScalarPlanter[Any, PrepareRow]]
-            .encoder(idx, lift.value, row).asInstanceOf[PrepareRow] // TODO since summoned encoders are casted
-          (idx + 1, lift.value :: values, newRow)
-      }
-    (values, prepare)
-  }
-
-  // Run the query with a queryString as well as extractors. If the final row is different from the row
-  // that is being decoded (they will be different unless a QueryMeta changes it) then run the
-  // additional converter on every row.
-  
-  inline def runStatic[RawT,T](queryString: String, lifts: List[ScalarPlanter[_, _]], decoder: GenericDecoder[_, RawT], converter: RawT => T) = {
-    val extractor = (r: ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[ResultRow, RawT]].apply(1, r))
-    val prepare = (row: PrepareRow) => staticExtractor(lifts, row)
-
-    this.executeQuery(queryString, prepare, extractor, ExecutionType.Static)
-  }
-
-  
 
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     summonFrom {
@@ -244,27 +273,6 @@ extends EncodingDsl
       case _ => 
         val staticState = translateStatic[T](quoted)
         encodeAndExecute[T, T](staticState, quoted, t => t)
-    }
-  }
-
-  inline def encodeAndExecute[T, R](
-    inline staticState: Option[(String, List[ScalarPlanter[_, _]])], 
-    inline quoted: Quoted[Query[R]],
-    inline converter: R => T): Result[RunQueryResult[T]] = 
-  {
-    staticState match {
-      case Some((query, lifts)) => // use FindLifts as part of this match?
-        // val decoder =
-        //   summonFrom {
-        //     case decoder: GenericDecoder[ResultRow, R] => decoder
-        //     // TODO Extract into meta function, have a good error if decoder not found
-        //   }
-        val decoder = summonDecoder[R]
-        runStatic[R, T](query, lifts, decoder, converter)
-
-      case None =>
-        val decoder = summonDecoder[R]
-        runDynamic[R, T](quoted, decoder, converter)
     }
   }
 }
@@ -386,7 +394,7 @@ object StaticTranslationMacro {
 
 
   def apply[T: TType, D <: Idiom, N <: NamingStrategy](
-    quotedRaw: Expr[Quoted[Query[T]]], context: Expr[Context[D, N]]
+    quotedRaw: Expr[Quoted[Query[T]]]
   )(given qctx:QuoteContext, dialectTpe:TType[D], namingType:TType[N]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
     import qctx.tasty.{Try => TTry, _, given _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
