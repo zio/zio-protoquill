@@ -43,65 +43,71 @@ object QueryMetaExtractor {
   ): (Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_, _]])]) = 
     ${ runImpl[T, R, D, N]('quotedRaw, 'ctx) }
 
+
+  def summonQueryMeta[T: Type, R: Type](given qctx:QuoteContext): Option[Expr[QueryMeta[T, R]]] =
+    summonExpr(given '[QueryMeta[T, R]])
+
+  def reapplyQuotation[T: Type, R: Type](
+    quotedExpr: QuotedExpr, 
+    quotedExprLifts: List[ScalarPlanterExpr[_, _]], 
+    qmm: Expr[QueryMeta[T, R]]
+  )(given qctx: QuoteContext): (Expr[Quoted[Query[R]]], Expr[R => T]) = {
+    
+    println("~~~~~~~~~~~~~~~~~~~~~~~ Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
+
+    val quotationBin = qmm match {
+      case QuotationBinExpr.InlineOrPlucked(qbin) => qbin
+      case _ => qctx.throwError("QueryMeta expression is not in a valid form: " + qmm)
+    }
+    
+    quotationBin match {
+      // todo try astMappingFunc rename to `Ast(T => r)` or $r
+      case InlineableQuotationBinExpr(uid, astMappingFunc, _, quotation, lifts, List(extractor)) => 
+        // Don't need to unlift the ASTs and re-lift them. Just put them into a FunctionApply
+        val astApply = 
+          '{FunctionApply($astMappingFunc, List(${quotedExpr.ast}))}
+
+        // TODO Dedupe?
+        val newLifts = (lifts ++ quotedExprLifts).map(_.plant)
+
+        // In the compile-time case, we can synthesize the new quotation
+        // much more easily since we can just combine the lifts and Apply the
+        // QueryMeta quotation to the initial one
+        
+        // Syntheize a new quotation to combine the lifts and quotes of the reapplied
+        // query. I do not want to use QuoteMacro here because that requires a parser
+        // which means that the Context will require a parser as well. That will
+        // make the parser harder to customize by users
+        val reappliedQuery =
+          '{ Quoted[Query[R]]($astApply, ${Expr.ofList(newLifts)}, List()) }
+
+        val extractorFunc = '{ $extractor.asInstanceOf[R => T] }
+
+        (reappliedQuery, extractorFunc)
+        
+      case PluckableQuotationBinExpr(uid, astTree, _) => 
+        qctx.throwError("Runtime-only query schemas are not allowed for now")
+    }
+  }
+
   def runImpl[T: Type, R: Type, D <: io.getquill.idiom.Idiom: Type, N <: io.getquill.NamingStrategy: Type](
     quotedRaw: Expr[Quoted[Query[T]]],
     ctx: Expr[Context[D, N]]
   )(given qctx:QuoteContext): Expr[(Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_,_]])])] = {
     import qctx.tasty.{Try => TTry, _, given _}
     val quotedArg = quotedRaw.unseal.underlyingArgument.seal.cast[Quoted[Query[T]]]
-
     summonExpr(given '[QueryMeta[T, R]]) match {
-      case Some(queryMeta) =>  
-        queryMeta match {
-          case '{ ($qmm: QueryMeta[T, R]) } =>
+      case Some(qmm) =>  
+        val inlineQuoteOpt = QuotedExpr.uprootableWithLiftsOpt(quotedArg)
+        inlineQuoteOpt match {
+          // TODO Need a case where these are not matched
+          case Some((quotedExpr, quotedExprLifts)) =>
+            val (reappliedQuery, extractorFunc) = 
+              reapplyQuotation[T, R](quotedExpr, quotedExprLifts, qmm)
 
-            val inlineQuoteOpt = QuotedExpr.inlineWithListOpt(quotedArg)
-            (inlineQuoteOpt, qmm) match {
-              // TODO Need a case where these are not matched
-              case (Some((quotedExr, quotedExprLifts)), QuotationBinExpr.InlineOrPlucked(quotationBin)) =>
-                println("~~~~~~~~~~~~~~~~~~~~~~~ Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
+            val staticTranslation = StaticTranslationMacro[R, D, N](reappliedQuery)
 
-                quotationBin match {
-                  // todo try astMappingFunc rename to `Ast(T => r)` or $r
-                  case InlineableQuotationBinExpr(uid, astMappingFunc, _, quotation, lifts, List(extractor)) => 
-                    // Don't need to unlift the ASTs and re-lift them. Just put them into a FunctionApply
-                    val astApply = 
-                      '{FunctionApply($astMappingFunc, List(${quotedExr.ast}))}
-
-                    // TODO Dedupe?
-                    val newLifts = (lifts ++ quotedExprLifts).map(_.plant)
-
-                    
-
-                    // In the compile-time case, we can synthesize the new quotation
-                    // much more easily since we can just combine the lifts and Apply the
-                    // QueryMeta quotation to the initial one
-                    
-                    // Syntheize a new quotation to combine the lifts and quotes of the reapplied
-                    // query. I do not want to use QuoteMacro here because that requires a parser
-                    // which means that the Context will require a parser as well. That will
-                    // make the parser harder to customize by users
-                    val reappliedQuery =
-                      '{ Quoted[Query[R]]($astApply, ${Expr.ofList(newLifts)}, List()) }
-
-                    val extractorFunc = '{ $extractor.asInstanceOf[R => T] }
-
-                    val staticTranslation = StaticTranslationMacro[R, D, N](reappliedQuery)
-
-                    '{ ($reappliedQuery, $extractorFunc, $staticTranslation) }
-
-                    //StaticTranslationMacro[R, D, N](reappliedQuery, context)
-                    
-                  case PluckableQuotationBinExpr(uid, astTree, _) => 
-                    qctx.throwError("Runtime-only query schemas are not allowed for now")
-                }
-            }
-
-            //printer.lnf(r.unseal)
-          case _ =>
-            println("~~~~~~~~~~~~~~~~~~~~~~~ NOT Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
-            // TODO Should probably check them one at a time to see if they are correct
-            qctx.throwError("Invalid Quotation or Quote Meta")
+            '{ ($reappliedQuery, $extractorFunc, $staticTranslation) }
         }
         
         //qctx.throwError("Quote Meta Identified but not found!")

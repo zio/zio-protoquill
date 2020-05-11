@@ -119,7 +119,7 @@ object QuotedExpr {
     //object `EmptyQuotationPouchList`
 
   // Note, the quotation is not considered to be inline if there are any runtime lifts
-  object Inline {
+  object Uprootable {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotedExpr] = {
       import qctx.tasty.{Term => QTerm, given, _}
       val tmc = new TastyMatchersContext
@@ -130,26 +130,26 @@ object QuotedExpr {
         case exprr @  '{ Quoted.apply[$qt]($ast, $v, Nil) } =>  //List.apply[$ttt](${ExprSeq(args)}: _*) if (args.length == 0)
           Some(QuotedExpr(ast, v, '{ List[QuotationVase]() }))
         case 
-          TypedMatroshka(tree) => Inline.unapply(tree)
+          TypedMatroshka(tree) => Uprootable.unapply(tree)
         case _ => 
           None
       }
     }
   }
 
-  object InlineWithList {
+  object UprootableWithLifts {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] =
       expr match {
-        case QuotedExpr.Inline(quotedExpr @ QuotedExpr(ast, ScalarPlanterExpr.InlineList(lifts), _)) => 
+        case QuotedExpr.Uprootable(quotedExpr @ QuotedExpr(ast, ScalarPlanterExpr.InlineList(lifts), _)) => 
           Some((quotedExpr, lifts))
         case _ => 
           None
       }
   }
 
-  def inlineWithListOpt(quoted: Expr[Any])(given qctx: QuoteContext): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] = 
+  def uprootableWithLiftsOpt(quoted: Expr[Any])(given qctx: QuoteContext): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] = 
     quoted match {
-      case QuotedExpr.InlineWithList(quotedExpr) => Some(quotedExpr)
+      case QuotedExpr.UprootableWithLifts(quotedExpr) => Some(quotedExpr)
       case _ => 
         println("Quotations do meet compiletime criteria\n" + quoted.show); 
         None
@@ -157,9 +157,9 @@ object QuotedExpr {
 
   // Does the Quoted expression match the correct format needed for it to
   // be inlineable i.e. transpileable into a Query during Compile-Time.
-  def inlineOpt(quoted: Expr[Any])(given qctx: QuoteContext): Option[QuotedExpr] = 
+  def uprootableOpt(quoted: Expr[Any])(given qctx: QuoteContext): Option[QuotedExpr] = 
     quoted match {
-      case QuotedExpr.Inline(quotedExpr) => Some(quotedExpr)
+      case QuotedExpr.Uprootable(quotedExpr) => Some(quotedExpr)
       case _ => 
         println("Quotations do meet compiletime criteria\n" + quoted.show); 
         None
@@ -236,7 +236,7 @@ object QuotationBinExpr {
 
       
       expr match {
-        case vase @ `QuotationBin.apply`(quoted @ QuotedExpr.Inline(ast, ScalarPlanterExpr.InlineList(lifts), _), uid, rest) => // TODO Also match .unapply?
+        case vase @ `QuotationBin.apply`(quoted @ QuotedExpr.Uprootable(ast, ScalarPlanterExpr.InlineList(lifts), _), uid, rest) => // TODO Also match .unapply?
           Some(InlineableQuotationBinExpr(uid, ast, vase.asInstanceOf[Expr[QuotationBin[Any]]], quoted, lifts, rest))
 
         case `QuotationBin.apply`(quotation, uid, rest) =>

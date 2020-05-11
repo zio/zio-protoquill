@@ -120,7 +120,7 @@ object StaticTranslationMacro {
     val tryStatic =
       for {
         (idiom, naming)          <- idiomAndNamingStatic.toOption
-        quotedExpr               <- QuotedExpr.inlineOpt(quoted)
+        quotedExpr               <- QuotedExpr.uprootableOpt(quoted)
         (queryString, externals) <- processAst[T](quotedExpr.ast, idiom, naming)
         encodedLifts             <- processLifts(quotedExpr.lifts, externals)
       } yield {

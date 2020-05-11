@@ -170,7 +170,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
     // must happen (specifically have a check for it or just fail to parse?) 
     // since we would not know the UID since it is not inside of a bin. This situation
     // should only be encountered to a top-level quote passed to the 'run' function and similar situations.
-    case QuotedExpr.Inline(quotedExpr) => // back here
+    case QuotedExpr.Uprootable(quotedExpr) => // back here
       unlift(quotedExpr.ast) 
   }
 }

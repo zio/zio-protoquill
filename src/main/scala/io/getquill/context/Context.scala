@@ -35,6 +35,7 @@ object ExecutionType {
   case object Static extends ExecutionType
 }
 
+
 trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] { 
   context: Context[Dialect, Naming] =>
 
