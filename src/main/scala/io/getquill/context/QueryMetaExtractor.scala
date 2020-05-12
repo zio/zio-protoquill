@@ -79,7 +79,7 @@ object QueryMetaExtractor {
         // which means that the Context will require a parser as well. That will
         // make the parser harder to customize by users
         val reappliedQuery =
-          '{ Quoted[Query[R]]($astApply, ${Expr.ofList(newLifts)}, List()) }
+          '{ Quoted[Query[R]]($astApply, ${Expr.ofList(newLifts)}, Nil) } // has to be strictly Nil otherwise does not match
 
         val extractorFunc = '{ $extractor.asInstanceOf[R => T] }
 
@@ -105,9 +105,26 @@ object QueryMetaExtractor {
             val (reappliedQuery, extractorFunc) = 
               reapplyQuotation[T, R](quotedExpr, quotedExprLifts, qmm)
 
+            println("((((((((((((((((((( REAPPLIED QUERY ))))))))))))))))))))))))")
+            println(reappliedQuery.show)
+
             val staticTranslation = StaticTranslationMacro[R, D, N](reappliedQuery)
 
+            println("((((((((((((((((((( RETURN WITH STATIC STATE ))))))))))))))))))))))))")
+            println(staticTranslation.show)
             '{ ($reappliedQuery, $extractorFunc, $staticTranslation) }
+
+          case None =>
+            println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Attempting Dynamice Reapply ~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
+            val reappliedAst = 
+              '{ FunctionApply($qmm.entity.ast, List($quotedArg.ast)) }
+
+            val reappliedQuery =
+              '{ Quoted[Query[R]]($reappliedAst, $qmm.entity.lifts ++ $quotedArg.lifts, $qmm.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes) }
+
+
+            '{ ($reappliedQuery, $qmm.extract, None) }
         }
         
         //qctx.throwError("Quote Meta Identified but not found!")

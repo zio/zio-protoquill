@@ -11,6 +11,7 @@ import miniquill.quoter.ScalarPlanter
 import miniquill.quoter.QuotationVase
 import miniquill.quoter.QuotationBin
 import org.scalatest._
+import io.getquill.context.ExecutionType
 
 case class PersonName(name: String)
 
@@ -21,7 +22,7 @@ class QueryMetaTest extends Spec with Inside {
   
   
 
-  "summon schema meta" in {
+  "summon schema meta" - {
     implicit inline given qm: QueryMeta[PersonName, String] = {
       queryMeta[PersonName, String](
         quote { 
@@ -30,12 +31,21 @@ class QueryMetaTest extends Spec with Inside {
       )((name: String) => PersonName(name))
     }
 
-    println("~~~~~~~~~~~~~~~~ Query Schema Entity ~~~~~~~~~~~~~")
+    
     printer.lnf(qm.entity.ast)
 
-    inline def people = quote { query[PersonName] } //hellooooooooooooooo
-    println("************************* Output ********************")
-    //println( ctx.run(people) )
-    println( ctx.run(people) )
+    "static" in {
+      inline def people = quote { query[PersonName] }
+      val result = ctx.run(people)
+      result.string mustEqual """querySchema("PersonName").map(p => p.name)"""
+      result.executionType mustEqual ExecutionType.Static
+    }
+
+    "dynamic" in {
+      val people = quote { query[PersonName] }
+      val result = ctx.run(people)
+      result.string mustEqual """querySchema("PersonName").map(p => p.name)"""
+      result.executionType mustEqual ExecutionType.Dynamic
+    }
   }
 }

@@ -16,9 +16,11 @@ lifts and quotations. This model is for the latter.
 
 The conceptual model for this context is the following. A Dotty (i.e. Tasty) tree
 is extracted from a quotation (a.k.a. "the ground") into either a Planter or a Vase.
-When the tree matches a couple of criteria, it is re-insertable into the next quotation
-and therefore placed into a Planter. Otherwise, the tree is *not* re-insertable and it 
-has to be "plucked" and inserted into a vase. Until we ascertain whether to re-insert
+When the tree matches a couple of criteria, it is considered to be "uprootable"
+and can therefore be re-inserted into a planer for the next quotation (as are lifts)
+or consumed immediately as are inline Quotations. Otherwise, the tree is *not* re-insertable and it 
+has to be "plucked" and inserted into a vase. The are still some conditions that this kind
+of tree has to match so we call it "pluckable." Until we ascertain whether to re-insert
 or pluck, the Tree is held (temporarily) inside of a Bin.
 
 Different construcuts follow these rules in different ways. Scalar values for instances
