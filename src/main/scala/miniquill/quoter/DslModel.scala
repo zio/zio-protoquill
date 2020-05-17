@@ -50,16 +50,16 @@ case class ScalarPlanter[T, PrepareRow](value: T, encoder: GenericEncoder[T, Pre
 // QuotationVase are only inserted back in during runtime.
 case class QuotationVase(quoted: Quoted[Any], uid: String)
 
-// Quotations go from a QuotationBin directly inline into the tree or put into a QuotationVase
+// Quotations go from a QuotationLot directly inline into the tree or put into a QuotationVase
 // to be added into the runtime inlining later
-trait QuotationBin[+T](quoted: Quoted[T], uid: String) {
+trait QuotationLot[+T](quoted: Quoted[T], uid: String) {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
 
-case class Unquote[+T](quoted: Quoted[T], uid: String) extends QuotationBin[T](quoted, uid)
+case class Unquote[+T](quoted: Quoted[T], uid: String) extends QuotationLot[T](quoted, uid)
 
 // TODO Does this need to be covariant? It is in current quill. Need to look up what use cases they are for covariant schemas.
-case class SchemaMeta[T](val entity: Quoted[EntityQuery[T]], uid: String) extends QuotationBin[EntityQuery[T]](entity, uid)
+case class SchemaMeta[T](val entity: Quoted[EntityQuery[T]], uid: String) extends QuotationLot[EntityQuery[T]](entity, uid)
 
-case class QueryMeta[T, R](val entity: Quoted[Query[T] => Query[R]], uid: String, extract: R => T) extends QuotationBin[Query[T] => Query[R]](entity, uid)
+case class QueryMeta[T, R](val entity: Quoted[Query[T] => Query[R]], uid: String, extract: R => T) extends QuotationLot[Query[T] => Query[R]](entity, uid)

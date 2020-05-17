@@ -7,7 +7,7 @@ import miniquill.quoter.Quoted
 import miniquill.quoter._
 import io.getquill._
 import io.getquill.ast._
-import miniquill.quoter.QuotationBin
+import miniquill.quoter.QuotationLot
 import miniquill.quoter.QuotationVase
 import io.getquill.context.ExecutionType
 import org.scalatest._

@@ -1,14 +1,14 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import miniquill.quoter.QuotationBin
+import miniquill.quoter.QuotationLot
 import miniquill.quoter.Dsl._
 import io.getquill._
 import io.getquill.ast._
 import miniquill.quoter.Quoted
 import miniquill.quoter.ScalarPlanter
 import miniquill.quoter.QuotationVase
-import miniquill.quoter.QuotationBin
+import miniquill.quoter.QuotationLot
 import org.scalatest._
 
 class QuotationTest extends Spec with Inside {

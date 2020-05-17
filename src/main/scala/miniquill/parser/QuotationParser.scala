@@ -74,9 +74,9 @@
 //     }
 //   }
 
-//   protected object `QuotationBin.apply` {
+//   protected object `QuotationLot.apply` {
 //     def unapply(expr: Expr[Any]) = expr match {
-//       case vase @ '{ QuotationBin.apply[$qt]($quotation, ${scala.quoted.matching.Const(uid: String)}) } => 
+//       case vase @ '{ QuotationLot.apply[$qt]($quotation, ${scala.quoted.matching.Const(uid: String)}) } => 
 //         //println("********************** MATCHED VASE APPLY **********************")
 //         //printer.lnf(expr.unseal)
 //         Some((quotation, uid, vase))
@@ -92,13 +92,13 @@
 //     }
 //   }
 
-//   // Match the QuotationBin(...).unquote values which are tacked on to every
+//   // Match the QuotationLot(...).unquote values which are tacked on to every
 //   // child-quote (inside of a parent quote) when the 'unquote' function (i.e macro)
 //   // is applied.
-//   protected object `QuotationBin.unquote` {
+//   protected object `QuotationLot.unquote` {
 //     def unapply(expr: Expr[Any]) = expr match {
-//       // When a QuotationBin is embedded into an ast
-//       case '{ (${quotationBin}: QuotationBin[$tt]).unquote } => Some(quotationBin)
+//       // When a QuotationLot is embedded into an ast
+//       case '{ (${quotationLot}: QuotationLot[$tt]).unquote } => Some(quotationLot)
 //       case _ => None
 //     }
 //   }
@@ -110,20 +110,20 @@
 //     }
 //   }
 
-//   object MatchRuntimeQuotationBins {
-//     def unapply(expr: Expr[Any]): Option[(Expr[QuotationBin[Any]], String)] =
+//   object MatchRuntimeQuotationLots {
+//     def unapply(expr: Expr[Any]): Option[(Expr[QuotationLot[Any]], String)] =
 //       expr match {
 //         // case MatchQuotationRef(tree, uuid) => 
 //         //   println("******************** Runtime: Match Quotation Ref ********************")
 //         //   printer.lnf((tree.unseal, uuid))
 //         //   Some((tree, uuid))
-//         case `QuotationBin.unquote`(innards) =>
+//         case `QuotationLot.unquote`(innards) =>
 //           //println("******************** Runtime: Match Unquote ********************")
 //           //printer.lnf(innards.unseal)
 //           unapply(innards)
 //         // sometimes there are multiple levels of vases when references are spliced,
 //         // we should only care about the innermost one
-//         case `QuotationBin.apply`(_, uuid, vase) =>
+//         case `QuotationLot.apply`(_, uuid, vase) =>
 //           //println("******************** Runtime: Vase Apply ********************")
 //           //printer.lnf(uuid, vase)
 //           Some((vase, uuid))
@@ -134,7 +134,7 @@
 //   object MatchUprootableUnquote {
 //     def unapply(expr: Expr[Any]): Option[(Expr[Ast], String)] =
 //       expr match {
-//         case `QuotationBin.unquote`(`QuotationBin.apply`(`Quoted.apply`((astTree, _)), uuid, _)) =>
+//         case `QuotationLot.unquote`(`QuotationLot.apply`(`Quoted.apply`((astTree, _)), uuid, _)) =>
 //           Some((astTree, uuid))
 //         case _ => None
 //       }

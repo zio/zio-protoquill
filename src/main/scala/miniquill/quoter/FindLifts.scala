@@ -48,9 +48,9 @@
 
 
 
-// object FindRuntimeQuotationBins {
+// object FindRuntimeQuotationLots {
 
-//   def apply[T](input: Expr[Any])(given qctx: QuoteContext, tpe: quoted.Type[T]): List[(String, Expr[QuotationBin[Any]])] = {
+//   def apply[T](input: Expr[Any])(given qctx: QuoteContext, tpe: quoted.Type[T]): List[(String, Expr[QuotationLot[Any]])] = {
 //     import qctx.tasty.{given, _}
 //     val quotationParser = new miniquill.parser.QuotationParser
 //     import quotationParser._
@@ -61,7 +61,7 @@
 //       // of lifts (i.e. runtime values) and the later evaluate it during the 'run' function.
 //       // Match the vase and add it to the list.
       
-//       case MatchRuntimeQuotationBins(tree, uid) => (uid, tree) // can't traverse inside here or errors happen
+//       case MatchRuntimeQuotationLots(tree, uid) => (uid, tree) // can't traverse inside here or errors happen
 //     }
 //   }
 // }

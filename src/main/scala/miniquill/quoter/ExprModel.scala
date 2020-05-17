@@ -27,7 +27,7 @@ Different construcuts follow these rules in different ways. Scalar values for in
 cannot contain contents making them non-re-insertable and therefore are always
 held inside of planters (i.e. the ScalarPlanter) and replanted back into the part
 of the tree constructing the PrepareRow in the 'run' method. 
-Quotations are held in a QuotationBin until it is determined 
+Quotations are held in a QuotationLot until it is determined 
 whether they are re-insertable. If they are, the Parser
 will transparently read the AST through them. Otherwise they will be 'plucked' into a
 QuotationVase and eventually processed during runtime.
@@ -170,21 +170,21 @@ object QuotedExpr {
 
 
 
-sealed trait QuotationBinExpr
-object QuotationBinExpr {
+sealed trait QuotationLotExpr
+object QuotationLotExpr {
 
-  protected object `(QuotationBin).unquote` {
+  protected object `(QuotationLot).unquote` {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext) = expr match {
-      // When a QuotationBin is embedded into an ast
-      case '{ (${quotationBin}: QuotationBin[$tt]).unquote } => Some(quotationBin)
+      // When a QuotationLot is embedded into an ast
+      case '{ (${quotationLot}: QuotationLot[$tt]).unquote } => Some(quotationLot)
       // There are situations e.g. SchemaMeta where there's an additional type ascription needed
       // there it needs to be specified in the AST manually. Maybe this is a bug?
-      case '{ type $tt; ((${quotationBin}: QuotationBin[`$tt`]).unquote: `$tt`) } => Some(quotationBin)
+      case '{ type $tt; ((${quotationLot}: QuotationLot[`$tt`]).unquote: `$tt`) } => Some(quotationLot)
       case _ => None
     }
   }
 
-  protected object `QuotationBin.apply` {
+  protected object `QuotationLot.apply` {
     
 
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[(Expr[Quoted[Any]], String, List[Expr[_]])] = {
@@ -193,8 +193,8 @@ object QuotationBinExpr {
       import tm._
       expr match {
         // Extract the entity, the uid and any other expressions the qutation bin may have 
-        // (e.g. the extractor if the QuotationBin is a QueryMeta)
-        case '{ (${Unseal(Untype(Apply(TypeApply(Select(id, "apply"), tpe), quotation::Literal(Constant(uid: String))::tail )))}: QuotationBin[$t]) } => 
+        // (e.g. the extractor if the QuotationLot is a QueryMeta)
+        case '{ (${Unseal(Untype(Apply(TypeApply(Select(id, "apply"), tpe), quotation::Literal(Constant(uid: String))::tail )))}: QuotationLot[$t]) } => 
           Some((quotation.seal.cast[Quoted[Any]], uid, tail.map(_.seal)))
         case _ => None
       }
@@ -211,9 +211,9 @@ object QuotationBinExpr {
 
   // Doesn't look like this is needed
   // object UprootableUnquoted {
-  //   def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[UprootableQuotationBinExpr] = {
+  //   def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[UprootableQuotationLotExpr] = {
   //     UprootableOrPluckable match {
-  //       case inlineable: UprootableQuotationBinExpr => Some(inlineable)
+  //       case inlineable: UprootableQuotationLotExpr => Some(inlineable)
   //       case _ => None
   //     }
   //   }
@@ -223,9 +223,9 @@ object QuotationBinExpr {
   
 
   object UprootableOrPluckableUnquoted {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationBinExpr] = 
+    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationLotExpr] = 
       expr match {
-        case `(QuotationBin).unquote`(QuotationBinExpr.UprootableOrPluckable(vaseExpr)) => Some(vaseExpr)
+        case `(QuotationLot).unquote`(QuotationLotExpr.UprootableOrPluckable(vaseExpr)) => Some(vaseExpr)
         case _ => None
       }
   }
@@ -233,19 +233,19 @@ object QuotationBinExpr {
   // Verify that a quotation is inline. It is inline if all the lifts are inline. There is no need
   // to search the AST since it has been parsed already
   object UprootableOrPluckable {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationBinExpr] = {
+    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationLotExpr] = {
       import qctx.tasty.{given, _}
 
       
       expr match {
-        case vase @ `QuotationBin.apply`(quoted @ QuotedExpr.Uprootable(ast, ScalarPlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
-          Some(UprootableQuotationBinExpr(uid, ast, vase.asInstanceOf[Expr[QuotationBin[Any]]], quoted, lifts, rest))
+        case vase @ `QuotationLot.apply`(quoted @ QuotedExpr.Uprootable(ast, ScalarPlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
+          Some(UprootableQuotationLotExpr(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
 
-        case `QuotationBin.apply`(quotation, uid, rest) =>
-          Some(PluckableQuotationBinExpr(uid, quotation, rest))
+        case `QuotationLot.apply`(quotation, uid, rest) =>
+          Some(PluckableQuotationLotExpr(uid, quotation, rest))
 
-        // If it's a QuotationBin but we can't extract it at all, need to throw an error
-        case '{ ($qb: QuotationBin[$t]) } =>
+        // If it's a QuotationLot but we can't extract it at all, need to throw an error
+        case '{ ($qb: QuotationLot[$t]) } =>
           println(qb.show)
           printer.lnf(qb.unseal)
           qctx.throwError("Invalid quotation form. Quotations need to at least contain the inline block needed to extract a UID.", qb)
@@ -258,18 +258,18 @@ object QuotationBinExpr {
 }
 
 
-// QuotationBins that have runtime values hance cannot be re-planted into the scala AST and
+// QuotationLots that have runtime values hance cannot be re-planted into the scala AST and
 // they need to be put into QuotationVasees
-case class PluckableQuotationBinExpr(uid: String, expr: Expr[Quoted[Any]], other: List[Expr[_]]) extends QuotationBinExpr {
+case class PluckableQuotationLotExpr(uid: String, expr: Expr[Quoted[Any]], other: List[Expr[_]]) extends QuotationLotExpr {
   def pluck(given qctx: QuoteContext) = '{ QuotationVase($expr, ${Expr(uid)}) }
 }
 
-// QuotationBins expressions that can be further inlined into quotated clauses
-case class UprootableQuotationBinExpr(
+// QuotationLots expressions that can be further inlined into quotated clauses
+case class UprootableQuotationLotExpr(
   uid: String, 
   ast: Expr[Ast],
-  bin: Expr[QuotationBin[Any]], 
+  bin: Expr[QuotationLot[Any]], 
   quotation: Expr[Quoted[Any]],
   inlineLifts: List[ScalarPlanterExpr[_, _]],
   rest: List[Expr[_]]
-) extends QuotationBinExpr
+) extends QuotationLotExpr

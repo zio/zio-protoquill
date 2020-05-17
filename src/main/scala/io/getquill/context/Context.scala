@@ -22,7 +22,7 @@ import io.getquill.ast.ScalarTag
 import scala.quoted.{Type => TType, _}
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
-import miniquill.quoter.QuotationBin
+import miniquill.quoter.QuotationLot
 import miniquill.quoter.QuotedExpr
 import miniquill.quoter.ScalarPlanterExpr
 import io.getquill.idiom.ReifyStatement

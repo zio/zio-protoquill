@@ -97,7 +97,7 @@
 // //   def defineSchema[T](t: T): Schema[T] = Schema.apply[T](Container[T](t))
 // // }
 
-// // object SchemaAndQuotationBinEx {
+// // object SchemaAndQuotationLotEx {
 // //   import Api._
 // //   case class Person(name: String, age: Int)
 // //   def main(args: Array[String]): Unit = {
@@ -123,7 +123,7 @@
 //     override def fromF[F[_]](fa: F[Type]): F[A] = fa
 //   }
 
-// // Go from SchemaMeta[T] -> QuotationBin[T]
+// // Go from SchemaMeta[T] -> QuotationLot[T]
 // // define implicit SchemaMeta[T] for some T
 // // from the SchemaMeta macro, return a SchemaMeta[T]
 // // then summonFrom { case sm: SchemaMeta[T] => SchemaMeta. }

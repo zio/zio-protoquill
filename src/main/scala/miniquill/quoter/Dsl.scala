@@ -117,9 +117,9 @@ object QuoteMacro {
   }
 
   private def extractRuntimeUnquotes(body: Expr[Any])(given qctx: QuoteContext) = {
-    val unquotes = QuotationBinExpr.findUnquotes(body)
+    val unquotes = QuotationLotExpr.findUnquotes(body)
     unquotes
-      .collect { case expr: PluckableQuotationBinExpr => expr }
+      .collect { case expr: PluckableQuotationLotExpr => expr }
       .distinctBy(_.uid)
       .map(_.pluck)
   }

@@ -22,7 +22,7 @@ import io.getquill.ast.ScalarTag
 import scala.quoted.{Type => TType, _}
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
-import miniquill.quoter.QuotationBin
+import miniquill.quoter.QuotationLot
 import miniquill.quoter.QuotedExpr
 import miniquill.quoter.ScalarPlanterExpr
 import io.getquill.idiom.ReifyStatement
@@ -34,14 +34,17 @@ import io.getquill._
 * an extractor R => T. That is to say a function Query[T] => Query[R] and R => T function
 * is automatically swapped in for a Query[T].
 *
-* Internally, we use the term 'quip' (i.e. query + flip) to mean the QueryMeta construct.
+* Internally, we use the term 'quip' (i.e. query + flip) to mean the QueryMeta construct,
+* The Query[T] => Query[R] function itself is called the Quipper.
+* Since a QueryMeta comes with an R=>M contramap 
+* function to apply to an extractor we call that the 'baq' since it mapps the inner query back
+* from R to T.
+*
 * Once the quip is summoned, it is applied to the original user-create query and then called
 * a requip (i.e. re-applied quip). That it to say the requip is:
 * `FunctionApply(Query[T] => Query[R], Query[R])`
 * 
-* Additionally, since a QueryMeta comes with an R=>M contramap 
-* function to apply to an extractor we call that the 'baq' since it mapps the inner query back
-* from R to T.
+* 
 */
 object QueryMetaExtractor {
   import miniquill.parser._
@@ -62,24 +65,24 @@ object QueryMetaExtractor {
     summonExpr(given '[QueryMeta[T, R]])
 
   def reapplyQuotation[T: Type, R: Type](
-    queryTurf: QuotedExpr, 
+    queryLot: QuotedExpr, 
     queryLifts: List[ScalarPlanterExpr[_, _]], 
     quip: Expr[QueryMeta[T, R]]
   )(given qctx: QuoteContext): (Expr[Quoted[Query[R]]], Expr[R => T]) = {
     
     println("~~~~~~~~~~~~~~~~~~~~~~~ Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
 
-    val quotationBin = quip match {
-      case QuotationBinExpr.UprootableOrPluckable(qbin) => qbin
+    val quotationLot = quip match {
+      case QuotationLotExpr.UprootableOrPluckable(qbin) => qbin
       case _ => qctx.throwError("QueryMeta expression is not in a valid form: " + quip)
     }
     
-    quotationBin match {
+    quotationLot match {
       // todo try astMappingFunc rename to `Ast(T => r)` or $r
-      case UprootableQuotationBinExpr(uid, astMappingFunc, _, quotation, lifts, List(baq)) => 
+      case UprootableQuotationLotExpr(uid, quipperAst, _, quotation, lifts, List(baq)) => 
         // Don't need to unlift the ASTs and re-lift them. Just put them into a FunctionApply
         val astApply = 
-          '{FunctionApply($astMappingFunc, List(${queryTurf.ast}))}
+          '{FunctionApply($quipperAst, List(${queryLot.ast}))}
 
         // TODO Dedupe?
         val newLifts = (lifts ++ queryLifts).map(_.plant)
@@ -99,7 +102,7 @@ object QueryMetaExtractor {
 
         (reappliedQuery, extractorFunc)
         
-      case PluckableQuotationBinExpr(uid, astTree, _) => 
+      case PluckableQuotationLotExpr(uid, astTree, _) => 
         qctx.throwError("Runtime-only query schemas are not allowed for now")
     }
   }
@@ -111,13 +114,13 @@ object QueryMetaExtractor {
     import qctx.tasty.{Try => TTry, _, given _}
     val quotedArg = quotedRaw.unseal.underlyingArgument.seal.cast[Quoted[Query[T]]]
     summonExpr(given '[QueryMeta[T, R]]) match {
-      case Some(quip) =>  
+      case Some(quip) =>
         val possiblyUprootableQuery = QuotedExpr.uprootableWithLiftsOpt(quotedArg)
         possiblyUprootableQuery match {
           // TODO Need a case where these are not matched
-          case Some((queryTurf, queryLifts)) =>
+          case Some((queryLot, queryLifts)) =>
             val (requip, baq) = 
-              reapplyQuotation[T, R](queryTurf, queryLifts, quip)
+              reapplyQuotation[T, R](queryLot, queryLifts, quip)
 
             println("((((((((((((((((((( REAPPLIED QUERY ))))))))))))))))))))))))")
             println(requip.show)

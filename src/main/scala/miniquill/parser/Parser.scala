@@ -157,10 +157,10 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 
   def delegate: PartialFunction[Expr[_], Ast] = {
     
-    case QuotationBinExpr.UprootableOrPluckableUnquoted(quotationBin) =>
-      quotationBin match {
-        case UprootableQuotationBinExpr(uid, astTree, _, _, _, _) => unlift(astTree)
-        case PluckableQuotationBinExpr(uid, astTree, _) => QuotationTag(uid)
+    case QuotationLotExpr.UprootableOrPluckableUnquoted(quotationLot) =>
+      quotationLot match {
+        case UprootableQuotationLotExpr(uid, astTree, _, _, _, _) => unlift(astTree)
+        case PluckableQuotationLotExpr(uid, astTree, _) => QuotationTag(uid)
       }
 
     case ScalarPlanterExpr.UprootableUnquote(expr) =>

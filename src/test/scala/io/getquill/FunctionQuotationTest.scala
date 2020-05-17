@@ -1,7 +1,7 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import miniquill.quoter.QuotationBin
+import miniquill.quoter.QuotationLot
 import miniquill.quoter.Dsl._
 import miniquill.quoter._
 import io.getquill._
@@ -9,7 +9,7 @@ import io.getquill.ast.{Query => AQuery, _}
 import miniquill.quoter.Quoted
 import miniquill.quoter.ScalarPlanter
 import miniquill.quoter.QuotationVase
-import miniquill.quoter.QuotationBin
+import miniquill.quoter.QuotationLot
 import org.scalatest._
 
 class FunctionQuotationTest extends Spec with Inside {
