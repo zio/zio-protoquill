@@ -29,6 +29,20 @@ import io.getquill.idiom.ReifyStatement
 
 import io.getquill._
 
+/**
+* A QueryMeta allows contra-mapping some Query[T] to a combination of a Query[R] and then
+* an extractor R => T. That is to say a function Query[T] => Query[R] and R => T function
+* is automatically swapped in for a Query[T].
+*
+* Internally, we use the term 'quip' (i.e. query + flip) to mean the QueryMeta construct.
+* Once the quip is summoned, it is applied to the original user-create query and then called
+* a requip (i.e. re-applied quip). That it to say the requip is:
+* `FunctionApply(Query[T] => Query[R], Query[R])`
+* 
+* Additionally, since a QueryMeta comes with an R=>M contramap 
+* function to apply to an extractor we call that the 'baq' since it mapps the inner query back
+* from R to T.
+*/
 object QueryMetaExtractor {
   import miniquill.parser._
   import scala.quoted._ // summonExpr is actually from here
@@ -48,27 +62,27 @@ object QueryMetaExtractor {
     summonExpr(given '[QueryMeta[T, R]])
 
   def reapplyQuotation[T: Type, R: Type](
-    quotedExpr: QuotedExpr, 
-    quotedExprLifts: List[ScalarPlanterExpr[_, _]], 
-    qmm: Expr[QueryMeta[T, R]]
+    queryTurf: QuotedExpr, 
+    queryLifts: List[ScalarPlanterExpr[_, _]], 
+    quip: Expr[QueryMeta[T, R]]
   )(given qctx: QuoteContext): (Expr[Quoted[Query[R]]], Expr[R => T]) = {
     
     println("~~~~~~~~~~~~~~~~~~~~~~~ Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
 
-    val quotationBin = qmm match {
+    val quotationBin = quip match {
       case QuotationBinExpr.UprootableOrPluckable(qbin) => qbin
-      case _ => qctx.throwError("QueryMeta expression is not in a valid form: " + qmm)
+      case _ => qctx.throwError("QueryMeta expression is not in a valid form: " + quip)
     }
     
     quotationBin match {
       // todo try astMappingFunc rename to `Ast(T => r)` or $r
-      case UprootableQuotationBinExpr(uid, astMappingFunc, _, quotation, lifts, List(extractor)) => 
+      case UprootableQuotationBinExpr(uid, astMappingFunc, _, quotation, lifts, List(baq)) => 
         // Don't need to unlift the ASTs and re-lift them. Just put them into a FunctionApply
         val astApply = 
-          '{FunctionApply($astMappingFunc, List(${quotedExpr.ast}))}
+          '{FunctionApply($astMappingFunc, List(${queryTurf.ast}))}
 
         // TODO Dedupe?
-        val newLifts = (lifts ++ quotedExprLifts).map(_.plant)
+        val newLifts = (lifts ++ queryLifts).map(_.plant)
 
         // In the compile-time case, we can synthesize the new quotation
         // much more easily since we can just combine the lifts and Apply the
@@ -81,7 +95,7 @@ object QueryMetaExtractor {
         val reappliedQuery =
           '{ Quoted[Query[R]]($astApply, ${Expr.ofList(newLifts)}, Nil) } // has to be strictly Nil otherwise does not match
 
-        val extractorFunc = '{ $extractor.asInstanceOf[R => T] }
+        val extractorFunc = '{ $baq.asInstanceOf[R => T] }
 
         (reappliedQuery, extractorFunc)
         
@@ -97,34 +111,34 @@ object QueryMetaExtractor {
     import qctx.tasty.{Try => TTry, _, given _}
     val quotedArg = quotedRaw.unseal.underlyingArgument.seal.cast[Quoted[Query[T]]]
     summonExpr(given '[QueryMeta[T, R]]) match {
-      case Some(qmm) =>  
-        val inlineQuoteOpt = QuotedExpr.uprootableWithLiftsOpt(quotedArg)
-        inlineQuoteOpt match {
+      case Some(quip) =>  
+        val possiblyUprootableQuery = QuotedExpr.uprootableWithLiftsOpt(quotedArg)
+        possiblyUprootableQuery match {
           // TODO Need a case where these are not matched
-          case Some((quotedExpr, quotedExprLifts)) =>
-            val (reappliedQuery, extractorFunc) = 
-              reapplyQuotation[T, R](quotedExpr, quotedExprLifts, qmm)
+          case Some((queryTurf, queryLifts)) =>
+            val (requip, baq) = 
+              reapplyQuotation[T, R](queryTurf, queryLifts, quip)
 
             println("((((((((((((((((((( REAPPLIED QUERY ))))))))))))))))))))))))")
-            println(reappliedQuery.show)
+            println(requip.show)
 
-            val staticTranslation = StaticTranslationMacro[R, D, N](reappliedQuery)
+            val staticTranslation = StaticTranslationMacro[R, D, N](requip)
 
             println("((((((((((((((((((( RETURN WITH STATIC STATE ))))))))))))))))))))))))")
             println(staticTranslation.show)
-            '{ ($reappliedQuery, $extractorFunc, $staticTranslation) }
+            '{ ($requip, $baq, $staticTranslation) }
 
           case None =>
             println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Attempting Dynamice Reapply ~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
             val reappliedAst = 
-              '{ FunctionApply($qmm.entity.ast, List($quotedArg.ast)) }
+              '{ FunctionApply($quip.entity.ast, List($quotedArg.ast)) }
 
-            val reappliedQuery =
-              '{ Quoted[Query[R]]($reappliedAst, $qmm.entity.lifts ++ $quotedArg.lifts, $qmm.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes) }
+            val requip =
+              '{ Quoted[Query[R]]($reappliedAst, $quip.entity.lifts ++ $quotedArg.lifts, $quip.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes) }
 
 
-            '{ ($reappliedQuery, $qmm.extract, None) }
+            '{ ($requip, $quip.extract, None) }
         }
         
         //qctx.throwError("Quote Meta Identified but not found!")
