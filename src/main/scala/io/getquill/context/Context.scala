@@ -55,7 +55,8 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
             quotationVases.find(_.uid == uid) match {
               case Some(vase) => 
                 spliceQuotations(vase.quoted.ast)
-              // TODO Macro error if a uid can't be looked up (also show all uid secionds that currently exist)
+              case None =>
+                throw new IllegalArgumentException(s"Quotation vase with UID ${uid} could not be found!")
             }
         }
   

@@ -32,6 +32,18 @@ trait TastyMatchers {
     }
   }
 
+  // Whether you are unapplying this or applying this to an Expr, the functionality is the same.
+  // Take a Expr that has a type ascription (e.g. '{ blah: BlahType }) and remove the type ascription
+  // if such an ascription exists (note that there could be more then one e.g.
+  // '{ ((blah: BlahType): BlahType) } ). If there are no type ascriptions, just return the term.
+  // The unapply allows it to be done inside of a matcher.
+  object UntypeExpr {
+    def unapply(expr: Expr[_]): Option[Expr[_]] = 
+      Untype.unapply(expr.unseal).map(_.seal)
+
+    def apply(expr: Expr[_]): Expr[_] = Untype.unapply(expr.unseal).map(_.seal).get
+  }
+
   // Always match (whether ast starts with Typed or not). If it does, strip the Typed node.
   object Untype {
     def unapply(term: Term): Option[Term] = term match {

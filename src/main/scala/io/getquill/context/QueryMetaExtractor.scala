@@ -44,7 +44,9 @@ import io.getquill._
 * a requip (i.e. re-applied quip). That it to say the requip is:
 * `FunctionApply(Query[T] => Query[R], Query[R])`
 * 
-* 
+* Note that since internally, a QueryMeta carries a Quoted instance, the QueryMeta itself
+* is a QuotationLot. For that reason, we call the whole QueryMeta structure a quip-lot.
+* (Metaphorically speaking, a 'lot' meta real-estate containing a quip)
 */
 object QueryMetaExtractor {
   import miniquill.parser._
@@ -64,22 +66,25 @@ object QueryMetaExtractor {
   def summonQueryMeta[T: Type, R: Type](given qctx:QuoteContext): Option[Expr[QueryMeta[T, R]]] =
     summonExpr(given '[QueryMeta[T, R]])
 
-  def reapplyQuotation[T: Type, R: Type](
+  case class StaticRequip[T, R](requip: Expr[Quoted[Query[R]]], baq: Expr[R => T])
+
+  def attemptStaticRequip[T: Type, R: Type](
     queryLot: QuotedExpr, 
     queryLifts: List[ScalarPlanterExpr[_, _]], 
     quip: Expr[QueryMeta[T, R]]
-  )(given qctx: QuoteContext): (Expr[Quoted[Query[R]]], Expr[R => T]) = {
+  )(given qctx: QuoteContext): Option[StaticRequip[T, R]] = {
     
     println("~~~~~~~~~~~~~~~~~~~~~~~ Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
 
-    val quotationLot = quip match {
+    val quipLotExpr = quip match {
       case QuotationLotExpr.UprootableOrPluckable(qbin) => qbin
       case _ => qctx.throwError("QueryMeta expression is not in a valid form: " + quip)
     }
     
-    quotationLot match {
+    quipLotExpr match {
       // todo try astMappingFunc rename to `Ast(T => r)` or $r
       case UprootableQuotationLotExpr(uid, quipperAst, _, quotation, lifts, List(baq)) => 
+        println("***************** Matched Uprootable Quote ******************")
         // Don't need to unlift the ASTs and re-lift them. Just put them into a FunctionApply
         val astApply = 
           '{FunctionApply($quipperAst, List(${queryLot.ast}))}
@@ -100,10 +105,13 @@ object QueryMetaExtractor {
 
         val extractorFunc = '{ $baq.asInstanceOf[R => T] }
 
-        (reappliedQuery, extractorFunc)
+        Some(StaticRequip(reappliedQuery, extractorFunc))
         
-      case PluckableQuotationLotExpr(uid, astTree, _) => 
-        qctx.throwError("Runtime-only query schemas are not allowed for now")
+      // In these two cases, the quoation applies during runtime at which point the quotation of the quip
+      // and query quotes and lifts will all be done during runtime.
+      case _: PluckableQuotationLotExpr | _: PointableQuotationLotExpr => 
+        println("***************** Did not match Uprootable Quote ******************")
+        None
     }
   }
 
@@ -113,23 +121,38 @@ object QueryMetaExtractor {
   )(given qctx:QuoteContext): Expr[(Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_,_]])])] = {
     import qctx.tasty.{Try => TTry, _, given _}
     val quotedArg = quotedRaw.unseal.underlyingArgument.seal.cast[Quoted[Query[T]]]
-    summonExpr(given '[QueryMeta[T, R]]) match {
+    val summonedMeta = summonExpr(given '[QueryMeta[T, R]]).map(_.unseal.underlyingArgument.seal.cast[QueryMeta[T, R]])
+    summonedMeta match {
       case Some(quip) =>
         val possiblyUprootableQuery = QuotedExpr.uprootableWithLiftsOpt(quotedArg)
         possiblyUprootableQuery match {
           // TODO Need a case where these are not matched
           case Some((queryLot, queryLifts)) =>
-            val (requip, baq) = 
-              reapplyQuotation[T, R](queryLot, queryLifts, quip)
+            attemptStaticRequip[T, R](queryLot, queryLifts, quip) match {
+              case Some(StaticRequip(requip, baq)) =>
+                println("((((((((((((((((((( REAPPLIED QUERY ))))))))))))))))))))))))")
+                println(requip.show)
 
-            println("((((((((((((((((((( REAPPLIED QUERY ))))))))))))))))))))))))")
-            println(requip.show)
+                val staticTranslation = StaticTranslationMacro[R, D, N](requip)
 
-            val staticTranslation = StaticTranslationMacro[R, D, N](requip)
+                println("((((((((((((((((((( RETURN WITH STATIC STATE ))))))))))))))))))))))))")
+                println(staticTranslation.show)
+                '{ ($requip, $baq, $staticTranslation) }
 
-            println("((((((((((((((((((( RETURN WITH STATIC STATE ))))))))))))))))))))))))")
-            println(staticTranslation.show)
-            '{ ($requip, $baq, $staticTranslation) }
+              case None =>
+                println("WARNING: Query Was Static but Dynamic Meta was found which forced the query to become dynamic!")
+                println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Attempting Dynamice Reapply Inside ~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+
+                val reappliedAst = 
+                  '{ FunctionApply($quip.entity.ast, List($quotedArg.ast)) }
+    
+                val requip =
+                  '{ Quoted[Query[R]]($reappliedAst, $quip.entity.lifts ++ $quotedArg.lifts, $quip.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes) }
+    
+    
+                '{ ($requip, $quip.extract, None) }
+                
+            }
 
           case None =>
             println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Attempting Dynamice Reapply ~~~~~~~~~~~~~~~~~~~~~~~~~~~")

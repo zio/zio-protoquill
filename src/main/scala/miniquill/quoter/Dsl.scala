@@ -119,7 +119,11 @@ object QuoteMacro {
   private def extractRuntimeUnquotes(body: Expr[Any])(given qctx: QuoteContext) = {
     val unquotes = QuotationLotExpr.findUnquotes(body)
     unquotes
-      .collect { case expr: PluckableQuotationLotExpr => expr }
+      .collect {
+        case expr: PluckableQuotationLotExpr => expr
+        case PointableQuotationLotExpr(expr) =>
+          qctx.throwError(s"Invalid runtime Quotation: ${expr.show}. Cannot extract a unique identifier.", expr)
+      }
       .distinctBy(_.uid)
       .map(_.pluck)
   }
@@ -148,14 +152,17 @@ object SchemaMetaMacro {
 
 object QueryMacro {
   def apply[T: Type](given qctx: QuoteContext): Expr[EntityQuery[T]] = {
-    import qctx.tasty.{given, _}
+    import qctx.tasty.{Type => TType, given, _}
     import scala.quoted.matching.summonExpr
 
     summonExpr(given '[SchemaMeta[T]]) match {
       case Some(meta) =>
+        println("~~~~~~~~~~~~~~~~~~~~~~~ Got Meta ~~~~~~~~~~~~~~~~~~~~~")
+        println(meta.show)
         '{ $meta.unquote }
 
       case None => 
+        println(s"~~~~~~~~~~~~~~~~~~~~~~~ Did not get schema meta for ${summon[Type[T]].show} ~~~~~~~~~~~~~~~~~~~~~")
         '{ new EntityQuery[T]() }
     }
   }

@@ -1,7 +1,7 @@
 package miniquill.quoter
 
 import scala.quoted._
-import scala.quoted.matching._
+import scala.quoted.matching.{Const => ConstExpr, _}
 import miniquill.dsl.GenericEncoder
 import io.getquill.ast.Ast
 import miniquill.parser.TastyMatchersContext
@@ -130,7 +130,7 @@ object QuotedExpr {
       expr match {
         /* No runtime lifts allowed for inline quotes so quotationPouches.length must be 0 */
         case exprr @  '{ Quoted.apply[$qt]($ast, $v, Nil) } =>  //List.apply[$ttt](${ExprSeq(args)}: _*) if (args.length == 0)
-          Some(QuotedExpr(ast, v, '{ List[QuotationVase]() }))
+          Some(QuotedExpr(ast, v, '{ Nil }))
         case 
           TypedMatroshka(tree) => Uprootable.unapply(tree)
         case _ => 
@@ -184,19 +184,33 @@ object QuotationLotExpr {
     }
   }
 
+  /**
+  * Match all of the different kinds of QuotationLots and unpack their contents.
+  */
   protected object `QuotationLot.apply` {
     
-
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[(Expr[Quoted[Any]], String, List[Expr[_]])] = {
       import qctx.tasty.{given, _}
       val tm = new TastyMatchersContext
       import tm._
-      expr match {
+      UntypeExpr(expr) match {
         // Extract the entity, the uid and any other expressions the qutation bin may have 
         // (e.g. the extractor if the QuotationLot is a QueryMeta)
-        case '{ (${Unseal(Untype(Apply(TypeApply(Select(id, "apply"), tpe), quotation::Literal(Constant(uid: String))::tail )))}: QuotationLot[$t]) } => 
-          Some((quotation.seal.cast[Quoted[Any]], uid, tail.map(_.seal)))
-        case _ => None
+
+        case '{ Unquote.apply[$t]($quotation, ${ConstExpr(uid: String)}) } =>
+          Some((quotation, uid, List()))
+
+        case '{ SchemaMeta.apply[$t]($quotation, ${ConstExpr(uid: String)}) } =>
+          Some((quotation, uid, List()))
+
+        case '{ QueryMeta.apply[$t, $r]($quotation, ${ConstExpr(uid: String)}, $extractor) } =>
+          println("****************** Internall matched query meta **************")
+          Some((quotation, uid, List(extractor)))
+
+        case other => 
+          println("****************** Internall DID NOT match query meta **************")
+          printer.lnf(other.unseal)
+          None
       }
     }
   }
@@ -246,9 +260,7 @@ object QuotationLotExpr {
 
         // If it's a QuotationLot but we can't extract it at all, need to throw an error
         case '{ ($qb: QuotationLot[$t]) } =>
-          println(qb.show)
-          printer.lnf(qb.unseal)
-          qctx.throwError("Invalid quotation form. Quotations need to at least contain the inline block needed to extract a UID.", qb)
+          Some(PointableQuotationLotExpr(qb))
 
         case _ => 
           None
@@ -256,6 +268,8 @@ object QuotationLotExpr {
     }
   }
 }
+
+case class PointableQuotationLotExpr(expr: Expr[QuotationLot[Any]]) extends QuotationLotExpr
 
 
 // QuotationLots that have runtime values hance cannot be re-planted into the scala AST and
