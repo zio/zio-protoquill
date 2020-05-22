@@ -74,8 +74,6 @@ object QueryMetaExtractor {
     quip: Expr[QueryMeta[T, R]]
   )(given qctx: QuoteContext): Option[StaticRequip[T, R]] = {
     
-    println("~~~~~~~~~~~~~~~~~~~~~~~ Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
-
     val quipLotExpr = quip match {
       case QuotationLotExpr(qbin) => qbin
       case _ => qctx.throwError("QueryMeta expression is not in a valid form: " + quip)
@@ -84,7 +82,6 @@ object QueryMetaExtractor {
     quipLotExpr match {
       // todo try astMappingFunc rename to `Ast(T => r)` or $r
       case Uprootable(uid, quipperAst, _, quotation, lifts, List(baq)) => 
-        println("***************** Matched Uprootable Quote ******************")
         // Don't need to unlift the ASTs and re-lift them. Just put them into a FunctionApply
         val astApply = 
           '{FunctionApply($quipperAst, List(${queryLot.ast}))}
@@ -124,8 +121,8 @@ object QueryMetaExtractor {
     summonedMeta match {
       case Some(quip) =>
         val possiblyUprootableQuery = QuotedExpr.uprootableWithLiftsOpt(quotedArg)
+
         possiblyUprootableQuery match {
-          // TODO Need a case where these are not matched
           case Some((queryLot, queryLifts)) =>
             attemptStaticRequip[T, R](queryLot, queryLifts, quip) match {
               
@@ -142,9 +139,7 @@ object QueryMetaExtractor {
                 val requip =
                   '{ Quoted[Query[R]]($reappliedAst, $quip.entity.lifts ++ $quotedArg.lifts, $quip.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes) }
     
-    
                 '{ ($requip, $quip.extract, None) }
-                
             }
 
           case None =>
@@ -153,7 +148,6 @@ object QueryMetaExtractor {
 
             val requip =
               '{ Quoted[Query[R]]($reappliedAst, $quip.entity.lifts ++ $quotedArg.lifts, $quip.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes) }
-
 
             '{ ($requip, $quip.extract, None) }
         }
