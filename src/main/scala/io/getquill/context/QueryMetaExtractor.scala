@@ -83,7 +83,7 @@ object QueryMetaExtractor {
     
     quipLotExpr match {
       // todo try astMappingFunc rename to `Ast(T => r)` or $r
-      case UprootableQuotationLotExpr(uid, quipperAst, _, quotation, lifts, List(baq)) => 
+      case Uprootable(uid, quipperAst, _, quotation, lifts, List(baq)) => 
         println("***************** Matched Uprootable Quote ******************")
         // Don't need to unlift the ASTs and re-lift them. Just put them into a FunctionApply
         val astApply = 
@@ -109,7 +109,7 @@ object QueryMetaExtractor {
         
       // In these two cases, the quoation applies during runtime at which point the quotation of the quip
       // and query quotes and lifts will all be done during runtime.
-      case _: PluckableQuotationLotExpr | _: PointableQuotationLotExpr => 
+      case _: Pluckable | _: Pointable => 
         println("***************** Did not match Uprootable Quote ******************")
         None
     }

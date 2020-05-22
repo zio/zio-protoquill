@@ -9,6 +9,7 @@ import miniquill.parser.TastyMatchersContext
 import miniquill.quoter.Quoted
 import miniquill.quoter.QuotationLotExpr
 
+
 /* As the different kinds of parsing in Quill-Dotty became more complex, the need for an
 overarching model of "how stuff works" became necessary. There are several places in the
 Quill codebase where Dotty trees need to be parsed and their contents extracted, the most
@@ -240,36 +241,40 @@ object QuotationLotExpr {
     
     expr match {
       case vase @ `QuotationLot.apply`(quoted @ QuotedExpr.Uprootable(ast, ScalarPlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
-        Some(UprootableQuotationLotExpr(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
+        Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
 
       case `QuotationLot.apply`(quotation, uid, rest) =>
-        Some(PluckableQuotationLotExpr(uid, quotation, rest))
+        Some(Pluckable(uid, quotation, rest))
 
       // If it's a QuotationLot but we can't extract it at all, need to throw an error
       case '{ ($qb: QuotationLot[$t]) } =>
-        Some(PointableQuotationLotExpr(qb))
+        Some(Pointable(qb))
 
       case _ => 
         None
     }
   }
+
+  case class Pointable(expr: Expr[QuotationLot[Any]]) extends QuotationLotExpr
+
+  // QuotationLots that have runtime values hance cannot be re-planted into the scala AST and
+  // they need to be put into QuotationVasees
+  case class Pluckable(uid: String, expr: Expr[Quoted[Any]], other: List[Expr[_]]) extends QuotationLotExpr {
+    def pluck(given qctx: QuoteContext) = '{ QuotationVase($expr, ${Expr(uid)}) }
+  }
+
+  // QuotationLots expressions that can be further inlined into quotated clauses
+  case class Uprootable(
+    uid: String, 
+    ast: Expr[Ast],
+    bin: Expr[QuotationLot[Any]], 
+    quotation: Expr[Quoted[Any]],
+    inlineLifts: List[ScalarPlanterExpr[_, _]],
+    rest: List[Expr[_]]
+  ) extends QuotationLotExpr
 }
 
-case class PointableQuotationLotExpr(expr: Expr[QuotationLot[Any]]) extends QuotationLotExpr
-
-
-// QuotationLots that have runtime values hance cannot be re-planted into the scala AST and
-// they need to be put into QuotationVasees
-case class PluckableQuotationLotExpr(uid: String, expr: Expr[Quoted[Any]], other: List[Expr[_]]) extends QuotationLotExpr {
-  def pluck(given qctx: QuoteContext) = '{ QuotationVase($expr, ${Expr(uid)}) }
-}
-
-// QuotationLots expressions that can be further inlined into quotated clauses
-case class UprootableQuotationLotExpr(
-  uid: String, 
-  ast: Expr[Ast],
-  bin: Expr[QuotationLot[Any]], 
-  quotation: Expr[Quoted[Any]],
-  inlineLifts: List[ScalarPlanterExpr[_, _]],
-  rest: List[Expr[_]]
-) extends QuotationLotExpr
+// This allows anyone who imports miniquill.quoter automatically bring in QuotationLot subclasses
+export QuotationLotExpr.Pointable
+export QuotationLotExpr.Pluckable
+export QuotationLotExpr.Uprootable

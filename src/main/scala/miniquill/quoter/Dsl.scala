@@ -120,8 +120,8 @@ object QuoteMacro {
     val unquotes = QuotationLotExpr.findUnquotes(body)
     unquotes
       .collect {
-        case expr: PluckableQuotationLotExpr => expr
-        case PointableQuotationLotExpr(expr) =>
+        case expr: Pluckable => expr
+        case Pointable(expr) =>
           qctx.throwError(s"Invalid runtime Quotation: ${expr.show}. Cannot extract a unique identifier.", expr)
       }
       .distinctBy(_.uid)
@@ -166,19 +166,19 @@ object QueryMacro {
         //println(meta.show)
         meta.reseal match {
           // If it is uprootable, unquote the meta and pass it on
-          case QuotationLotExpr(UprootableQuotationLotExpr(_, _, _, _, _, _)) =>
+          case QuotationLotExpr(Uprootable(_, _, _, _, _, _)) =>
             println("~~~~~~~~~~~~~~~~~ Expression is Uprootable ~~~~~~~~~~~~~~~~")
             //printer.lnf(meta.unseal)
             '{ $meta.unquote }
 
           // If it's pluckabke can also return that because the parser/Expr accumulate in Context will find it.
           // I am not sure this has use cases.
-          case QuotationLotExpr(PluckableQuotationLotExpr(_, _, _)) =>
+          case QuotationLotExpr(Pluckable(_, _, _)) =>
             println("~~~~~~~~~~~~~~~~~ Expression is Pluckable ~~~~~~~~~~~~~~~~")
             '{ $meta.unquote }
               
           // In case it's only pointable, need to synthesize a new UID for the quotation
-          case QuotationLotExpr(PointableQuotationLotExpr(_)) => //hello
+          case QuotationLotExpr(Pointable(_)) => //hello
             println("~~~~~~~~~~~~~~~~~ Expression is Pointable ~~~~~~~~~~~~~~~~")
             UnquoteMacro('{$meta.entity})
 

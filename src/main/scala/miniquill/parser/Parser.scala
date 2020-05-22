@@ -159,8 +159,8 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
     
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
-        case UprootableQuotationLotExpr(uid, astTree, _, _, _, _) => unlift(astTree)
-        case PluckableQuotationLotExpr(uid, astTree, _) => QuotationTag(uid)
+        case Uprootable(uid, astTree, _, _, _, _) => unlift(astTree)
+        case Pluckable(uid, astTree, _) => QuotationTag(uid)
       }
 
     case ScalarPlanterExpr.UprootableUnquote(expr) =>
