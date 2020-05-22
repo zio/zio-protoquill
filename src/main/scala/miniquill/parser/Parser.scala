@@ -85,7 +85,7 @@ trait ParserLibrary extends ParserFactory {
   def functionApplyParser(given qctx: QuoteContext) =      Series.single(new FunctionApplyParser)
   def operationsParser(given qctx: QuoteContext) =         Series.single(new OperationsParser)
   def genericExpressionsParser(given qctx: QuoteContext) = Series.single(new GenericExpressionsParser)
-  def errorFallbackParser(given qctx: QuoteContext) =      Series.single(new ErrorFallbackParser) 
+
   // def userDefined(given qctxInput: QuoteContext) = Series(new Glosser[Ast] {
   //   val qctx = qctxInput
   //   def apply(root: Parser[Ast]) = PartialFunction.empty[Expr[_], Ast]
@@ -161,6 +161,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
       quotationLot match {
         case Uprootable(uid, astTree, _, _, _, _) => unlift(astTree)
         case Pluckable(uid, astTree, _) => QuotationTag(uid)
+        case Pointable(quote) => qctx.throwError(s"Quotation is invalid for compile-time or processing: ${quote.show}", quote)
       }
 
     case ScalarPlanterExpr.UprootableUnquote(expr) =>
@@ -291,22 +292,5 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
       //println("Case Inlined")
       //root.parse(v.seal.cast[T]) // With method-apply can't rely on it always being T?
       rootDone(v.seal)
-  }
-}
-
-case class ErrorFallbackParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{given _, _}
-
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
-
-  def delegate: PartialFunction[Expr[_], Ast] = {
-    // TODO define this a last-resort printing function inside the parser
-    case Unseal(t) =>
-      println("=============== Parsing Error ================\n" + printer.ln(t))
-      println("=============== Extracted ================\n" + t.showExtractors)
-      ???
-      //println(t)
-      //summon[QuoteContext].error("Parsing error: " + in.show, in)
-      //???
   }
 }
