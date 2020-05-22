@@ -110,7 +110,6 @@ object QueryMetaExtractor {
       // In these two cases, the quoation applies during runtime at which point the quotation of the quip
       // and query quotes and lifts will all be done during runtime.
       case _: Pluckable | _: Pointable => 
-        println("***************** Did not match Uprootable Quote ******************")
         None
     }
   }
@@ -129,19 +128,13 @@ object QueryMetaExtractor {
           // TODO Need a case where these are not matched
           case Some((queryLot, queryLifts)) =>
             attemptStaticRequip[T, R](queryLot, queryLifts, quip) match {
+              
               case Some(StaticRequip(requip, baq)) =>
-                println("((((((((((((((((((( REAPPLIED QUERY ))))))))))))))))))))))))")
-                println(requip.show)
-
                 val staticTranslation = StaticTranslationMacro[R, D, N](requip)
-
-                println("((((((((((((((((((( RETURN WITH STATIC STATE ))))))))))))))))))))))))")
-                println(staticTranslation.show)
                 '{ ($requip, $baq, $staticTranslation) }
 
               case None =>
                 println("WARNING: Query Was Static but Dynamic Meta was found which forced the query to become dynamic!")
-                println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Attempting Dynamice Reapply Inside ~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
                 val reappliedAst = 
                   '{ FunctionApply($quip.entity.ast, List($quotedArg.ast)) }
@@ -155,8 +148,6 @@ object QueryMetaExtractor {
             }
 
           case None =>
-            println("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Attempting Dynamice Reapply ~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-
             val reappliedAst = 
               '{ FunctionApply($quip.entity.ast, List($quotedArg.ast)) }
 
@@ -169,7 +160,6 @@ object QueryMetaExtractor {
         
         //qctx.throwError("Quote Meta Identified but not found!")
       case None => 
-        println("=============== Query Meta NOT FOUND! ============")
         qctx.throwError("Quote Meta needed but not found!")
     }
   }

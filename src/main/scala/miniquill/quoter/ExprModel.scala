@@ -208,7 +208,7 @@ object QuotationLotExpr {
         case '{ QueryMeta.apply[$t, $r]($quotation, ${ConstExpr(uid: String)}, $extractor) } =>
           Some((quotation, uid, List(extractor)))
 
-        case other => 
+        case other =>
           None
       }
     }
