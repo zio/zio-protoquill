@@ -209,7 +209,7 @@ object QuotationLotExpr {
 
         case other => 
           println("****************** Internall DID NOT match query meta **************")
-          printer.lnf(other.unseal)
+          println(other.show)
           None
       }
     }

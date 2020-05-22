@@ -153,13 +153,37 @@ object SchemaMetaMacro {
 object QueryMacro {
   def apply[T: Type](given qctx: QuoteContext): Expr[EntityQuery[T]] = {
     import qctx.tasty.{Type => TType, given, _}
+    val tmc = new TastyMatchersContext
+    import tmc._
     import scala.quoted.matching.summonExpr
+    import miniquill.quoter._
+    import miniquill.quoter.QuotationLotExpr._
+
 
     summonExpr(given '[SchemaMeta[T]]) match {
       case Some(meta) =>
-        println("~~~~~~~~~~~~~~~~~~~~~~~ Got Meta ~~~~~~~~~~~~~~~~~~~~~")
-        println(meta.show)
-        '{ $meta.unquote }
+        //println("~~~~~~~~~~~~~~~~~~~~~~~ Got Meta ~~~~~~~~~~~~~~~~~~~~~")
+        //println(meta.show)
+        meta.reseal match {
+          // If it is uprootable, unquote the meta and pass it on
+          case UprootableOrPluckable(UprootableQuotationLotExpr(_, _, _, _, _, _)) =>
+            println("~~~~~~~~~~~~~~~~~ Expression is Uprootable ~~~~~~~~~~~~~~~~")
+            //printer.lnf(meta.unseal)
+            '{ $meta.unquote }
+
+          // If it's pluckabke can also return that because the parser/Expr accumulate in Context will find it.
+          // I am not sure this has use cases.
+          case UprootableOrPluckable(PluckableQuotationLotExpr(_, _, _)) =>
+            println("~~~~~~~~~~~~~~~~~ Expression is Pluckable ~~~~~~~~~~~~~~~~")
+            '{ $meta.unquote }
+              
+          // In case it's only pointable, need to synthesize a new UID for the quotation
+          case UprootableOrPluckable(PointableQuotationLotExpr(_)) => //hello
+            println("~~~~~~~~~~~~~~~~~ Expression is Pointable ~~~~~~~~~~~~~~~~")
+            UnquoteMacro('{$meta.entity})
+
+          case _ => qctx.throwError("Invalid Quotation:\n" + meta.show, meta)
+        }
 
       case None => 
         println(s"~~~~~~~~~~~~~~~~~~~~~~~ Did not get schema meta for ${summon[Type[T]].show} ~~~~~~~~~~~~~~~~~~~~~")

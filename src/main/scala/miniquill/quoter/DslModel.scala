@@ -53,6 +53,8 @@ case class QuotationVase(quoted: Quoted[Any], uid: String)
 // Quotations go from a QuotationLot directly inline into the tree or put into a QuotationVase
 // to be added into the runtime inlining later
 trait QuotationLot[+T](quoted: Quoted[T], uid: String) {
+  // TODO I think we should get rid of this operator. Unquote should be put on this via an implicit class which causes
+  // invocation of the unquote macro?
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }

@@ -7,7 +7,11 @@ class TastyMatchersContext(given val qctx: QuoteContext) extends TastyMatchers
 
 trait TastyMatchers {
   implicit val qctx: QuoteContext
-  import qctx.tasty.{given, _}
+  import qctx.tasty.{Type => TType, given, _}
+
+  implicit class ExprOps[T: Type](expr: Expr[T]) {
+    def reseal: Expr[T] = expr.unseal.underlyingArgument.seal.cast[T]
+  }
 
   object SelectApply1 {
     def unapply(term: Expr[_]): Option[(Expr[_], String, Expr[_])] = term match {
