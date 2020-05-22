@@ -11,7 +11,7 @@ import io.getquill.Embedable
 import miniquill.quoter.Dsl
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
-
+import miniquill.quoter.QuotationLotExpr
 
 type Parser[R] = PartialFunction[Expr[_], R]
 type SealedParser[R] = (Expr[_] => R)
@@ -157,7 +157,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 
   def delegate: PartialFunction[Expr[_], Ast] = {
     
-    case QuotationLotExpr.UprootableOrPluckableUnquoted(quotationLot) =>
+    case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
         case UprootableQuotationLotExpr(uid, astTree, _, _, _, _) => unlift(astTree)
         case PluckableQuotationLotExpr(uid, astTree, _) => QuotationTag(uid)

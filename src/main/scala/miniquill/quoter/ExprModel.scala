@@ -7,6 +7,7 @@ import io.getquill.ast.Ast
 import miniquill.parser.TastyMatchersContext
 import miniquill.parser.TastyMatchersContext
 import miniquill.quoter.Quoted
+import miniquill.quoter.QuotationLotExpr
 
 /* As the different kinds of parsing in Quill-Dotty became more complex, the need for an
 overarching model of "how stuff works" became necessary. There are several places in the
@@ -218,53 +219,38 @@ object QuotationLotExpr {
   object findUnquotes {
     def apply(expr: Expr[Any])(given qctx: QuoteContext) =
       ExprAccumulate(expr) {
-        case UprootableOrPluckableUnquoted(vaseExpr) => 
+        case QuotationLotExpr.Unquoted(vaseExpr) => 
           vaseExpr
       }
   }
 
-  // Doesn't look like this is needed
-  // object UprootableUnquoted {
-  //   def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[UprootableQuotationLotExpr] = {
-  //     UprootableOrPluckable match {
-  //       case inlineable: UprootableQuotationLotExpr => Some(inlineable)
-  //       case _ => None
-  //     }
-  //   }
-  // }
-
-  
-  
-
-  object UprootableOrPluckableUnquoted {
+  object Unquoted {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationLotExpr] = 
       expr match {
-        case `(QuotationLot).unquote`(QuotationLotExpr.UprootableOrPluckable(vaseExpr)) => Some(vaseExpr)
+        case `(QuotationLot).unquote`(QuotationLotExpr(vaseExpr)) => Some(vaseExpr)
         case _ => None
       }
   }
 
   // Verify that a quotation is inline. It is inline if all the lifts are inline. There is no need
   // to search the AST since it has been parsed already
-  object UprootableOrPluckable {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationLotExpr] = {
-      import qctx.tasty.{given, _}
+  def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationLotExpr] = {
+    import qctx.tasty.{given, _}
 
-      
-      expr match {
-        case vase @ `QuotationLot.apply`(quoted @ QuotedExpr.Uprootable(ast, ScalarPlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
-          Some(UprootableQuotationLotExpr(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
+    
+    expr match {
+      case vase @ `QuotationLot.apply`(quoted @ QuotedExpr.Uprootable(ast, ScalarPlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
+        Some(UprootableQuotationLotExpr(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
 
-        case `QuotationLot.apply`(quotation, uid, rest) =>
-          Some(PluckableQuotationLotExpr(uid, quotation, rest))
+      case `QuotationLot.apply`(quotation, uid, rest) =>
+        Some(PluckableQuotationLotExpr(uid, quotation, rest))
 
-        // If it's a QuotationLot but we can't extract it at all, need to throw an error
-        case '{ ($qb: QuotationLot[$t]) } =>
-          Some(PointableQuotationLotExpr(qb))
+      // If it's a QuotationLot but we can't extract it at all, need to throw an error
+      case '{ ($qb: QuotationLot[$t]) } =>
+        Some(PointableQuotationLotExpr(qb))
 
-        case _ => 
-          None
-      }
+      case _ => 
+        None
     }
   }
 }

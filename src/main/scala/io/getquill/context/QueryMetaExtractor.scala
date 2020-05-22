@@ -77,7 +77,7 @@ object QueryMetaExtractor {
     println("~~~~~~~~~~~~~~~~~~~~~~~ Matched Quote Meta ~~~~~~~~~~~~~~~~~~~~~~~")
 
     val quipLotExpr = quip match {
-      case QuotationLotExpr.UprootableOrPluckable(qbin) => qbin
+      case QuotationLotExpr(qbin) => qbin
       case _ => qctx.throwError("QueryMeta expression is not in a valid form: " + quip)
     }
     
