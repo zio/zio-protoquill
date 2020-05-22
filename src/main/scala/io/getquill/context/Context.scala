@@ -126,7 +126,6 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
         runStatic[R, T](query, lifts, decoder, converter)
 
       case None =>
-        println("~~~~~~~~~~~~~~~~~~~~~~ DYNAMIC STATED DETECTED ~~~~~~~~~~~~~~~~~~~~~~~~")
         val decoder = summonDecoder[R]
         runDynamic[R, T](quoted, decoder, converter)
     }

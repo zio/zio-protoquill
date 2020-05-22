@@ -206,12 +206,9 @@ object QuotationLotExpr {
           Some((quotation, uid, List()))
 
         case '{ QueryMeta.apply[$t, $r]($quotation, ${ConstExpr(uid: String)}, $extractor) } =>
-          println("****************** Internall matched query meta **************")
           Some((quotation, uid, List(extractor)))
 
         case other => 
-          println("****************** Internall DID NOT match query meta **************")
-          println(other.show)
           None
       }
     }
