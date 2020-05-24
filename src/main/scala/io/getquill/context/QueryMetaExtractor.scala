@@ -56,11 +56,11 @@ object QueryMetaExtractor {
   import miniquill.quoter._
   import io.getquill.ast.FunctionApply
 
-  inline def run[T, R, D <: io.getquill.idiom.Idiom, N <: io.getquill.NamingStrategy](
+  inline def apply[T, R, D <: io.getquill.idiom.Idiom, N <: io.getquill.NamingStrategy](
     inline quotedRaw: Quoted[Query[T]],
     inline ctx: Context[D, N]
   ): (Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_, _]])]) = 
-    ${ runImpl[T, R, D, N]('quotedRaw, 'ctx) }
+    ${ applyImpl[T, R, D, N]('quotedRaw, 'ctx) }
 
 
   def summonQueryMeta[T: Type, R: Type](given qctx:QuoteContext): Option[Expr[QueryMeta[T, R]]] =
@@ -111,7 +111,7 @@ object QueryMetaExtractor {
     }
   }
 
-  def runImpl[T: Type, R: Type, D <: io.getquill.idiom.Idiom: Type, N <: io.getquill.NamingStrategy: Type](
+  def applyImpl[T: Type, R: Type, D <: io.getquill.idiom.Idiom: Type, N <: io.getquill.NamingStrategy: Type](
     quotedRaw: Expr[Quoted[Query[T]]],
     ctx: Expr[Context[D, N]]
   )(given qctx:QuoteContext): Expr[(Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_,_]])])] = {

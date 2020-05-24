@@ -135,7 +135,7 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
   inline def runQuery[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     summonFrom {
       case qm: QueryMeta[T, someR] =>
-        val (reappliedQuery, converter, staticState) = QueryMetaExtractor.run[T, someR, Dialect, Naming](quoted, this)
+        val (reappliedQuery, converter, staticState) = QueryMetaExtractor[T, someR, Dialect, Naming](quoted, this)
         encodeAndExecute[T, someR](staticState, reappliedQuery, converter)
       case _ => 
         val staticState = translateStatic[T](quoted)
