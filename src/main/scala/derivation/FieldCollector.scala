@@ -74,7 +74,7 @@ object FieldCollector {
     }
   }
 
-  inline def derived[T](given ev: Mirror.Of[T], ct: ClassTag[T]): FieldCollector[T] = new FieldCollector[T] {
+  inline def derived[T](using ev: Mirror.Of[T], ct: ClassTag[T]): FieldCollector[T] = new FieldCollector[T] {
     def collect(fields: Collector): Collector = {
       inline ev match {
         case m: Mirror.SumOf[T] => 

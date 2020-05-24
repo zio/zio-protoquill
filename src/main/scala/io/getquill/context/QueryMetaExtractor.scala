@@ -63,8 +63,8 @@ object QueryMetaExtractor {
     ${ applyImpl[T, R, D, N]('quotedRaw, 'ctx) }
 
 
-  def summonQueryMeta[T: Type, R: Type](given qctx:QuoteContext): Option[Expr[QueryMeta[T, R]]] =
-    summonExpr(given '[QueryMeta[T, R]])
+  def summonQueryMeta[T: Type, R: Type](using qctx:QuoteContext): Option[Expr[QueryMeta[T, R]]] =
+    summonExpr(using '[QueryMeta[T, R]])
 
   case class StaticRequip[T, R](requip: Expr[Quoted[Query[R]]], baq: Expr[R => T])
 
@@ -72,7 +72,7 @@ object QueryMetaExtractor {
     queryLot: QuotedExpr, 
     queryLifts: List[ScalarPlanterExpr[_, _]], 
     quip: Expr[QueryMeta[T, R]]
-  )(given qctx: QuoteContext): Option[StaticRequip[T, R]] = {
+  )(using qctx: QuoteContext): Option[StaticRequip[T, R]] = {
     
     val quipLotExpr = quip match {
       case QuotationLotExpr(qbin) => qbin
@@ -98,7 +98,7 @@ object QueryMetaExtractor {
         // which means that the Context will require a parser as well. That will
         // make the parser harder to customize by users
         val reappliedQuery =
-          '{ Quoted[Query[R]]($astApply, ${Expr.ofList(newLifts)}, Nil) } // has to be strictly Nil otherwise does not match
+          '{ Quoted[Query[R]]($astApply, ${Expr.ofList(newLifts.asInstanceOf[List[Expr[ScalarPlanter[Any,Any]]]])}, Nil) } // has to be strictly Nil otherwise does not match
 
         val extractorFunc = '{ $baq.asInstanceOf[R => T] }
 
@@ -114,10 +114,10 @@ object QueryMetaExtractor {
   def applyImpl[T: Type, R: Type, D <: io.getquill.idiom.Idiom: Type, N <: io.getquill.NamingStrategy: Type](
     quotedRaw: Expr[Quoted[Query[T]]],
     ctx: Expr[Context[D, N]]
-  )(given qctx:QuoteContext): Expr[(Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_,_]])])] = {
+  )(using qctx:QuoteContext): Expr[(Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_,_]])])] = {
     import qctx.tasty.{Try => TTry, _, given _}
     val quotedArg = quotedRaw.unseal.underlyingArgument.seal.cast[Quoted[Query[T]]]
-    val summonedMeta = summonExpr(given '[QueryMeta[T, R]]).map(_.unseal.underlyingArgument.seal.cast[QueryMeta[T, R]])
+    val summonedMeta = summonExpr(using '[QueryMeta[T, R]]).map(_.unseal.underlyingArgument.seal.cast[QueryMeta[T, R]])
     summonedMeta match {
       case Some(quip) =>
         val possiblyUprootableQuery = QuotedExpr.uprootableWithLiftsOpt(quotedArg)

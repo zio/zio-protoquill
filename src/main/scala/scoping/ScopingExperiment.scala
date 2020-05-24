@@ -14,7 +14,7 @@ class OuterScoped extends InnerScoped {
 }
 
 object OuterScoped {
-  def outerCallerInfoImpl(i: Expr[Any])(given qctx: QuoteContext): Expr[Any] = {
+  def outerCallerInfoImpl(i: Expr[Any])(using qctx: QuoteContext): Expr[Any] = {
     import qctx.tasty.{_, given _}
     printer.lnf(i.show)
     i
@@ -22,5 +22,5 @@ object OuterScoped {
 }
 
 object InnerScoped {
-  def getValueImpl(i: Expr[Any])(given qctx: QuoteContext): Expr[Any] = '{$i}
+  def getValueImpl(i: Expr[Any])(using qctx: QuoteContext): Expr[Any] = '{$i}
 }

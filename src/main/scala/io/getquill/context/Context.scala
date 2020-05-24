@@ -42,9 +42,11 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
     inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[ScalarPlanter[_, _]])] =
       ${ StaticTranslationMacro[T, Dialect, Naming]('quoted) }
   
-    inline def runDynamic[RawT, T](inline quoted: Quoted[Query[RawT]], inline decoder: GenericDecoder[_, RawT], inline converter: RawT => T): Result[RunQueryResult[T]] = {
-      val ast = Expander.runtime[RawT](quoted.ast)
-      val lifts = quoted.lifts
+    // No longer a inline method, otherwise having "position not set compile problem". Also want to make this not public
+    // TODO Make this non public.
+    def runDynamic[RawT, T](expandedAstInitial: Ast, quoted: Quoted[Query[RawT]], decoder: GenericDecoder[_, RawT], converter: RawT => T): Result[RunQueryResult[T]] = {
+      val ast = expandedAstInitial
+      val lifts: List[ScalarPlanter[Any,Any]] = quoted.lifts // problem is here?
       val quotationVases = quoted.runtimeQuotes
   
       def spliceQuotations(ast: Ast): Ast =
@@ -62,7 +64,7 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
   
       val expandedAst = spliceQuotations(ast)
         
-      val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
+      val (outputAst, stmt) = idiom.translate(expandedAst)(using naming)
   
       val (string, externals) =
         ReifyStatement(
@@ -72,11 +74,6 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
           forProbing = false
         )
   
-      // summon a decoder and a expander (as well as an encoder) all three should be provided by the context
-        // summonFrom {
-        //   // TODO Implicit summoning error
-        //   case decoder: Decoder[T] => decoder
-        // }
       val extractor = (r: ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[ResultRow, RawT]].apply(1, r))
       this.executeQuery(string, null, extractor, ExecutionType.Dynamic)
     }
@@ -127,7 +124,9 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
 
       case None =>
         val decoder = summonDecoder[R]
-        runDynamic[R, T](quoted, decoder, converter)
+        // val expandedAst: Ast = Expander.runtimeQuote[R](quoted.ast) //blows up in 0.24-RC1
+        val expandedAst: Ast = Expander.runtimeQuote[R](quoted)
+        runDynamic[R, T](expandedAst, quoted, decoder, converter) // Looks like problem is here???
     }
   }
   

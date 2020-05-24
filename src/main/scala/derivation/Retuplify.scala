@@ -8,7 +8,7 @@ import scala.compiletime.{erasedValue, summonFrom}
 
 object Retuplify {
   inline def retuplify[T](tuple: Tuple, newValue: T): Tuple = ${ retuplifyImpl('tuple, 'newValue) }
-  def retuplifyImpl[T:Type](tuple: Expr[Tuple], newValue: Expr[T])(given qctx: QuoteContext): Expr[Tuple] = {
+  def retuplifyImpl[T:Type](tuple: Expr[Tuple], newValue: Expr[T])(using qctx: QuoteContext): Expr[Tuple] = {
     import qctx.tasty.{_, given _}
   
     printer.ln(tuple.unseal.underlyingArgument)
@@ -23,24 +23,24 @@ object Retuplify {
 
 object ChangeFoosToBars {
   inline def changeFoos(block: =>String): String = ${ changeFoosImpl('block) }
-  def changeFoosImpl(block: Expr[String])(given qctx: QuoteContext): Expr[String] = {
+  def changeFoosImpl(block: Expr[String])(using qctx: QuoteContext): Expr[String] = {
     import qctx.tasty.{_, given _}
     //printer.ln(block.unseal)
 
     object Unseal {
-      def unapply(t: Expr[Any])(given qctx: QuoteContext) = {
+      def unapply(t: Expr[Any])(using qctx: QuoteContext) = {
         Some(t.unseal)
       }
     }
     object Seal {
-      def unapply[T](e: Term)(given qctx: QuoteContext) = {
+      def unapply[T](e: Term)(using qctx: QuoteContext) = {
         implicit val ttpe: quoted.Type[T] = e.tpe.seal.asInstanceOf[quoted.Type[T]]
         Some(e.seal.cast[T])
       }
     }
 
     object rewriter extends util.ExprMap {
-      def transform[T](e: Expr[T])(given QuoteContext, quoted.Type[T]): Expr[T] = e match {
+      def transform[T](e: Expr[T])(using QuoteContext, quoted.Type[T]): Expr[T] = e match {
         //case '{ (${Unseal(Ident("foo"))}: String) } => 
         //  '{ "blahblah" }.cast[T]
         case _ => transformChildren(e)

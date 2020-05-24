@@ -51,23 +51,27 @@ object SimpleMacro {
         case m: Mirror.ProductOf[T] => m
       }
 
-    given sumDer:Introspector[T] = Introspector.derived(mirror)
+    given sumDer as Introspector[T] = Introspector.derived(mirror)
     sumDer.introspect
   }
 
 
 
-  trait Fooify[T] with
+  trait Fooify[T] {
     def fooify:String
+  }
   
-  // given Fooify[Long] = new Fooify[Long] with
+  // given Fooify[Long] = new Fooify[Long] {
   //     def fooify: String = "LongFoo"
+  // }
 
-  given Fooify[Int] = new Fooify[Int] with
+  given Fooify[Int] = new Fooify[Int] {
     def fooify: String = "IntFoo"
+  }
 
-  given Fooify[String] = new Fooify[String] with
+  given Fooify[String] = new Fooify[String] {
     def fooify: String = "StringFoo"
+  }
 
   inline def processType[Elems <: Tuple]: List[String] =
     inline erasedValue[Elems] match {
@@ -140,8 +144,8 @@ object SimpleMacro {
   }
 
   inline def typeInfo[T](stuff: =>T): T = ${ typeInfoImpl('stuff) }
-  def typeInfoImpl[T](stuff: Expr[T])(given qctx: QuoteContext, t: Type[T]): Expr[T] = {
-    import qctx.tasty.{Type => TType, _, given}
+  def typeInfoImpl[T](stuff: Expr[T])(using qctx: QuoteContext, t: Type[T]): Expr[T] = {
+    import qctx.tasty.{Type => TType, _, given _}
     
     //  summon[scala.quoted.Type[T]].unseal.tpe
     //def getExprType[T <: Mirror.Of[_]](expr: Expr[T])(t: Type[T]) = 
@@ -160,7 +164,7 @@ object SimpleMacro {
 
 
   // inline def printThenRun[T](print: String, thenRun: => T): T = ${ printThenRunImpl('print, 'thenRun) }
-  // def printThenRunImpl[T](print: Expr[String], thenRun: Expr[T])(given qctx: QuoteContext) = {
+  // def printThenRunImpl[T](print: Expr[String], thenRun: Expr[T])(using qctx: QuoteContext) = {
   //   import qctx.tasty.{_, given _} //Type => _,
     
   //   print.unseal.underlyingArgument match {
@@ -179,7 +183,7 @@ object SimpleMacro {
   // import dotty.tools.dotc.core.tasty.TastyPrinter
 
   // inline def betaReduceMethod(f: Int => Int ):Unit = ${betaReduceMethodImpl('f)}
-  // def betaReduceMethodImpl(f: Expr[Int => Int])(given qctx: QuoteContext): Expr[Int] = {
+  // def betaReduceMethodImpl(f: Expr[Int => Int])(using qctx: QuoteContext): Expr[Int] = {
   //   import qctx.tasty.{_, given _}
 
   //   val reduced = Expr.betaReduce(f)('{123}) //hello
@@ -193,7 +197,7 @@ object SimpleMacro {
   // // }
 
   // inline def stuff[T](str: T):T = ${ stuffImpl('str) }
-  // def stuffImpl[T](str: Expr[T])(given qctx: QuoteContext): Expr[T] = {
+  // def stuffImpl[T](str: Expr[T])(using qctx: QuoteContext): Expr[T] = {
   //   import qctx.tasty.{_, given _} //Type => _, 
   //   val und = str.unseal.underlyingArgument
 

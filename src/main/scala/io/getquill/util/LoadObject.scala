@@ -19,10 +19,10 @@ object LoadObject {
       field.get(cls).asInstanceOf[T]
     }
 
-  def apply[T](tpe: TType[T])(given qctx: QuoteContext): Try[T] = {
-    import qctx.tasty.{Try => _, given, _}
+  def apply[T](tpe: TType[T])(using qctx: QuoteContext): Try[T] = {
+    import qctx.tasty.{Try => _, given _, _}
     Try {
-      val className = '[$tpe].unseal.tpe.classSymbol.get.fullName
+      val className = '[$tpe].unseal.tpe.widen.typeSymbol.fullName
       val cls = Class.forName(`endWith$`(className))
       val field = cls.getField("MODULE$")
       field.get(cls).asInstanceOf[T]
@@ -32,7 +32,7 @@ object LoadObject {
 
 // TODO Move this to a test
 inline def loadMac[T]: String = ${ loadMacImpl[T] }
-def loadMacImpl[T](given qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
+def loadMacImpl[T](using qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
   val loaded = LoadObject(tpe)
   println( loaded )
   Expr(loaded.toString)

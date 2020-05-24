@@ -21,7 +21,7 @@
 
 // run(areas)
 
-import scala.quoted.{given, _}
+import scala.quoted.{given _, _}
 
 // def showExpr[T](expr: Expr[T]): Expr[String] = {
 //   val code: String = expr.show
@@ -31,7 +31,7 @@ import scala.quoted.{given, _}
 
 
 inline def typeInfo(stuff: Any): Any = ${ typeInfoImpl('stuff) }
-def typeInfoImpl(stuff: Expr[Any])(given qctx: QuoteContext) = {
+def typeInfoImpl(stuff: Expr[Any])(using qctx: QuoteContext) = {
   import qctx.tasty.{_, given _}
   
   val v = stuff.unseal match {

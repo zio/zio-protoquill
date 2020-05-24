@@ -4,13 +4,15 @@ import simple.SimpleMacro._
 import scala.language.implicitConversions
 import miniquill.quoter.Dsl._
 
+case class Blin(blah: String, waaa: Int)
+
 object AdvTest {
   def runAdvTest(): Unit = {
 
     //hello
     import io.getquill._
     case class Address(street: String, zip: Int) extends Embedded //helloooo
-    given Embedable[Address] //hello
+    //given Embedable[Address] //hello
     case class Person(id: Int, name: String, age: Int, addr: Address)
 
     // PriceIncrement()
@@ -18,17 +20,17 @@ object AdvTest {
     //inline def personToField(inline p: Person) = p.name
 
     inline def people = quote {
-      query[Person]
+      query[Blin]
     }
-    inline def names = quote {
-      //people.map(p => personToField(p))
-      people.map(p => p.name)
-    }
+    // inline def names = quote {
+    //   //people.map(p => personToField(p))
+    //   people.map(p => p.name)
+    // }
 
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
-    val output = run(names) //hellooooooooooooooooooooo
-    println(output)
+    val output = run(people) //hellooooooooooooooooooooo
+    
   }
 }
 

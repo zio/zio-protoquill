@@ -32,11 +32,11 @@ object LiftMacro {
   import miniquill.quoter.ScalarPlanter
   import miniquill.dsl.GenericEncoder
 
-  def apply[T, PrepareRow](vvv: Expr[T])(given qctx: QuoteContext, tType: Type[T], prepareRowType: Type[PrepareRow]): Expr[T] = {
-    import qctx.tasty.{given, _}
+  def apply[T, PrepareRow](vvv: Expr[T])(using qctx: QuoteContext, tType: Type[T], prepareRowType: Type[PrepareRow]): Expr[T] = {
+    import qctx.tasty.{given _, _}
     val uuid = java.util.UUID.randomUUID().toString
     val encoder = 
-      summonExpr(given '[GenericEncoder[$tType, $prepareRowType]]) match {
+      summonExpr(using '[GenericEncoder[$tType, $prepareRowType]]) match {
         case Some(enc) => enc
         case None => qctx.throwError(s"Cannot Find encode for ${tType.unseal}", vvv)
       }

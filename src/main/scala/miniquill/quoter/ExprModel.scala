@@ -42,7 +42,7 @@ class ExprModel {
 case class ScalarPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T], encoder: Expr[GenericEncoder[T, PrepareRow]]) {
   // TODO Change to 'replant' ?
   // Plant the ScalarPlanter back into the Scala AST
-  def plant(given qctx: QuoteContext) = {
+  def plant(using qctx: QuoteContext) = {
     '{ ScalarPlanter[T, PrepareRow]($expr, $encoder, ${Expr(uid)}) }
   }
 }
@@ -50,7 +50,7 @@ object ScalarPlanterExpr {
   object Uprootable {
     
 
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[ScalarPlanterExpr[_, _]] = 
+    def unapply(expr: Expr[Any])(using qctx: QuoteContext): Option[ScalarPlanterExpr[_, _]] = 
       expr match {
         case '{ ScalarPlanter.apply[$qt, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) } =>
           Some(ScalarPlanterExpr(uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */))
@@ -60,7 +60,7 @@ object ScalarPlanterExpr {
   }
 
   protected object `(ScalarPlanter).unquote` {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[Expr[ScalarPlanter[_, _]]] = expr match {
+    def unapply(expr: Expr[Any])(using qctx: QuoteContext): Option[Expr[ScalarPlanter[_, _]]] = expr match {
       case '{ ($scalarPlanter: ScalarPlanter[$tt, $pr]).unquote } => 
         Some(scalarPlanter/* .asInstanceOf[Expr[ScalarPlanter[A, A]]] */)
       case _ => 
@@ -69,7 +69,7 @@ object ScalarPlanterExpr {
   }
 
   object UprootableUnquote {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[ScalarPlanterExpr[_, _]] = expr match {
+    def unapply(expr: Expr[Any])(using qctx: QuoteContext): Option[ScalarPlanterExpr[_, _]] = expr match {
       case `(ScalarPlanter).unquote`(planterUnquote) =>
         planterUnquote match {
           case Uprootable(planterExpr) => 
@@ -84,7 +84,7 @@ object ScalarPlanterExpr {
   }
 
 
-  def findUnquotes(expr: Expr[Any])(given qctx: QuoteContext): List[ScalarPlanterExpr[_, _]] =
+  def findUnquotes(expr: Expr[Any])(using qctx: QuoteContext): List[ScalarPlanterExpr[_, _]] =
     ExprAccumulate(expr) {
       case UprootableUnquote(scalarPlanter) => scalarPlanter
     }
@@ -92,7 +92,7 @@ object ScalarPlanterExpr {
   // TODO Find a way to propogate PrepareRow into here
   // pull vases out of Quotation.lifts
   object UprootableList {
-    def unapply(expr: Expr[List[Any]])(given qctx: QuoteContext): Option[List[ScalarPlanterExpr[_, _]]] = {
+    def unapply(expr: Expr[List[Any]])(using qctx: QuoteContext): Option[List[ScalarPlanterExpr[_, _]]] = {
       expr match {
         case '{ Nil } =>
           Some(List())
@@ -103,7 +103,7 @@ object ScalarPlanterExpr {
               case ScalarPlanterExpr.Uprootable(vaseExpr) => vaseExpr
             }
 
-          import qctx.tasty.{given, _}
+          import qctx.tasty.{given _, _}
           println("****************** GOT HERE **************")
           println(s"Scalar values: ${scalarValues.mkString("(", ",", ")")}")
           println(s"Elems: ${elems.map(_.show).mkString("(", ",", ")")}")
@@ -124,8 +124,8 @@ object QuotedExpr {
 
   // Note, the quotation is not considered to be inline if there are any runtime lifts
   object Uprootable {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotedExpr] = {
-      import qctx.tasty.{Term => QTerm, given, _}
+    def unapply(expr: Expr[Any])(using qctx: QuoteContext): Option[QuotedExpr] = {
+      import qctx.tasty.{Term => QTerm, given _, _}
       val tmc = new TastyMatchersContext
       import tmc._
 
@@ -142,7 +142,7 @@ object QuotedExpr {
   }
 
   object UprootableWithLifts {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] =
+    def unapply(expr: Expr[Any])(using qctx: QuoteContext): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] =
       expr match {
         case QuotedExpr.Uprootable(quotedExpr @ QuotedExpr(ast, ScalarPlanterExpr.UprootableList(lifts), _)) => 
           Some((quotedExpr, lifts))
@@ -151,7 +151,7 @@ object QuotedExpr {
       }
   }
 
-  def uprootableWithLiftsOpt(quoted: Expr[Any])(given qctx: QuoteContext): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] = 
+  def uprootableWithLiftsOpt(quoted: Expr[Any])(using qctx: QuoteContext): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] = 
     quoted match {
       case QuotedExpr.UprootableWithLifts(quotedExpr) => Some(quotedExpr)
       case _ => 
@@ -161,7 +161,7 @@ object QuotedExpr {
 
   // Does the Quoted expression match the correct format needed for it to
   // be inlineable i.e. transpileable into a Query during Compile-Time.
-  def uprootableOpt(quoted: Expr[Any])(given qctx: QuoteContext): Option[QuotedExpr] = 
+  def uprootableOpt(quoted: Expr[Any])(using qctx: QuoteContext): Option[QuotedExpr] = 
     quoted match {
       case QuotedExpr.Uprootable(quotedExpr) => Some(quotedExpr)
       case _ => 
@@ -176,7 +176,7 @@ sealed trait QuotationLotExpr
 object QuotationLotExpr {
 
   protected object `(QuotationLot).unquote` {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext) = expr match {
+    def unapply(expr: Expr[Any])(using qctx: QuoteContext) = expr match {
       // When a QuotationLot is embedded into an ast
       case '{ (${quotationLot}: QuotationLot[$tt]).unquote } => Some(quotationLot)
       // There are situations e.g. SchemaMeta where there's an additional type ascription needed
@@ -191,8 +191,8 @@ object QuotationLotExpr {
   */
   protected object `QuotationLot.apply` {
     
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[(Expr[Quoted[Any]], String, List[Expr[_]])] = {
-      import qctx.tasty.{given, _}
+    def unapply(expr: Expr[Any])(using qctx: QuoteContext): Option[(Expr[Quoted[Any]], String, List[Expr[_]])] = {
+      import qctx.tasty.{given _, _}
       val tm = new TastyMatchersContext
       import tm._
       UntypeExpr(expr) match {
@@ -215,7 +215,7 @@ object QuotationLotExpr {
   }
 
   object findUnquotes {
-    def apply(expr: Expr[Any])(given qctx: QuoteContext) =
+    def apply(expr: Expr[Any])(using qctx: QuoteContext) =
       ExprAccumulate(expr) {
         case QuotationLotExpr.Unquoted(vaseExpr) => 
           vaseExpr
@@ -223,7 +223,7 @@ object QuotationLotExpr {
   }
 
   object Unquoted {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationLotExpr] = 
+    def unapply(expr: Expr[Any])(using qctx: QuoteContext): Option[QuotationLotExpr] = 
       expr match {
         case `(QuotationLot).unquote`(QuotationLotExpr(vaseExpr)) => Some(vaseExpr)
         case _ => None
@@ -232,8 +232,8 @@ object QuotationLotExpr {
 
   // Verify that a quotation is inline. It is inline if all the lifts are inline. There is no need
   // to search the AST since it has been parsed already
-  def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationLotExpr] = {
-    import qctx.tasty.{given, _}
+  def unapply(expr: Expr[Any])(using qctx: QuoteContext): Option[QuotationLotExpr] = {
+    import qctx.tasty.{given _, _}
 
     
     expr match {
@@ -257,7 +257,7 @@ object QuotationLotExpr {
   // QuotationLots that have runtime values hance cannot be re-planted into the scala AST and
   // they need to be put into QuotationVasees
   case class Pluckable(uid: String, expr: Expr[Quoted[Any]], other: List[Expr[_]]) extends QuotationLotExpr {
-    def pluck(given qctx: QuoteContext) = '{ QuotationVase($expr, ${Expr(uid)}) }
+    def pluck(using qctx: QuoteContext) = '{ QuotationVase($expr, ${Expr(uid)}) }
   }
 
   // QuotationLots expressions that can be further inlined into quotated clauses

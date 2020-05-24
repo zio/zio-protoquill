@@ -9,7 +9,7 @@ object MacroExperiment {
   
 
   inline def printTree(tree: Any): Any = ${ printTreeImpl('tree) }
-  def printTreeImpl(tree: Expr[Any])(given qctx: QuoteContext): Expr[Any] = {
+  def printTreeImpl(tree: Expr[Any])(using qctx: QuoteContext): Expr[Any] = {
     import qctx.tasty.{given _, _}
     val tctx = new TastyMatchersContext
     import tctx._

@@ -30,11 +30,11 @@ object Eq {
       def eqv(x: T, y: T): Boolean = body(x, y)
     }
 
-  def summonAll[T](t: Type[T])(given qctx: QuoteContext): List[Expr[Eq[_]]] = 
+  def summonAll[T](t: Type[T])(using qctx: QuoteContext): List[Expr[Eq[_]]] = 
     // TODO Make a PR proposing this change
     t match {
       case '[$tpe *: $tpes] => 
-        summonExpr(given '[Eq[$tpe]]) match {
+        summonExpr(using '[Eq[$tpe]]) match {
           case Some(value) => value :: summonAll(tpes)
         }
       case '[Unit] => Nil
@@ -42,10 +42,10 @@ object Eq {
 
 
 
-  given derived[T: Type](given qctx: QuoteContext): Expr[Eq[T]] = {
-    import qctx.tasty.{_, given}
+  implicit def derived[T: Type](using qctx: QuoteContext): Expr[Eq[T]] = {
+    import qctx.tasty.{_, given _}
 
-    val ev: Expr[Mirror.Of[T]] = summonExpr(given '[Mirror.Of[T]]).get
+    val ev: Expr[Mirror.Of[T]] = summonExpr(using '[Mirror.Of[T]]).get
 
     ev match {
       case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $elementTypes }} =>
@@ -83,7 +83,7 @@ object Eq {
 }
 
 object EqMacro {
-  inline def [T](x: =>T) === (y: =>T)(given eq: Eq[T]): Boolean = eq.eqv(x, y)
+  inline def [T](x: =>T) === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
 
   implicit inline def eqGen[T]: Eq[T] = ${ Eq.derived[T] }
 }

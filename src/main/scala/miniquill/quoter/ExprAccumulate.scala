@@ -6,8 +6,8 @@ import scala.collection.mutable.ArrayBuffer
 import scala.quoted.util.ExprMap
 
 object ExprAccumulate {
-  def apply[T](input: Expr[Any])(matcher: PartialFunction[Expr[Any], T])(given qctx: QuoteContext): List[T] = {
-    import qctx.tasty.{Type => QType, given, _}
+  def apply[T](input: Expr[Any])(matcher: PartialFunction[Expr[Any], T])(using qctx: QuoteContext): List[T] = {
+    import qctx.tasty.{Type => QType, given _, _}
 
     val buff: ArrayBuffer[T] = new ArrayBuffer[T]()
     val accum = new ExprMap {
@@ -17,7 +17,7 @@ object ExprAccumulate {
       //   ============== Could not transform over expression ===========
       //   scala.tasty.reflect.ExprCastError: Expr: ["name" : String]
       //   did not conform to type: String*
-      override def transformChildren[TF](expr: Expr[TF])(given qctx: QuoteContext, tpe: Type[TF]): Expr[TF] = {
+      override def transformChildren[TF](expr: Expr[TF])(using qctx: QuoteContext, tpe: Type[TF]): Expr[TF] = {
         try {
           super.transformChildren(expr)
         } catch {
@@ -29,7 +29,7 @@ object ExprAccumulate {
         }
       }
 
-      def transform[TF](expr: Expr[TF])(given qctx: QuoteContext, tpe: Type[TF]): Expr[TF] = {
+      def transform[TF](expr: Expr[TF])(using qctx: QuoteContext, tpe: Type[TF]): Expr[TF] = {
         matcher.lift(expr) match {
           case Some(result) => 
             buff += result

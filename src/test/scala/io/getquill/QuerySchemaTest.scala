@@ -76,7 +76,7 @@ class QuerySchemaTest extends Spec with Inside {
       ctx.run(q).strAndExec mustEqual ("""querySchema("test_entity", _.i -> "ii").map(x => (x.s, x.i, x.l, x.o))""", ExecutionType.Dynamic)
     }
     "custom dynamic-meta/static-query - idiomatic" in {
-      given meta: SchemaMeta[TestEntity] = schemaMeta[TestEntity]("test_entity", _.i -> "ii")
+      given meta as SchemaMeta[TestEntity] = schemaMeta[TestEntity]("test_entity", _.i -> "ii")
       inline def q = quote(query[TestEntity])
       printer.lnf(q.ast)
       println(q.ast)
@@ -102,14 +102,14 @@ class QuerySchemaTest extends Spec with Inside {
     // }
     "custom with embedded" in {
       case class Entity(emb: EmbValue)
-      implicit inline given meta: SchemaMeta[Entity] = schemaMeta[Entity]("test_entity", _.emb.i -> "ii")
+      implicit inline given meta as SchemaMeta[Entity] = schemaMeta[Entity]("test_entity", _.emb.i -> "ii")
       inline def q = quote(query[Entity])
       q.ast.toString mustEqual """querySchema("test_entity", _.emb.i -> "ii")"""
       ctx.run(q).strAndExec mustEqual ("""querySchema("test_entity", _.emb.i -> "ii").map(x => x.emb.i)""", ExecutionType.Static)
     }
     "custom with optional embedded" in {
       case class Entity(emb: Option[EmbValue])
-      implicit inline given meta: SchemaMeta[Entity] = schemaMeta[Entity]("test_entity", _.emb.map(_.i) -> "ii")
+      implicit inline given meta as SchemaMeta[Entity] = schemaMeta[Entity]("test_entity", _.emb.map(_.i) -> "ii")
       inline def q = quote(query[Entity])
       q.ast.toString mustEqual """querySchema("test_entity", _.emb.i -> "ii")"""
       ctx.run(q).strAndExec mustEqual ("""querySchema("test_entity", _.emb.i -> "ii").map(x => x.emb.map(v => v.i))""", ExecutionType.Static)

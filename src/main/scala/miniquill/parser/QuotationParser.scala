@@ -8,8 +8,8 @@
 // import scala.deriving._
 // import io.getquill.Embedable
 
-// class MatroshkaHelper(given val qctx: QuoteContext) {
-//   import qctx.tasty.{Term => QTerm, given, _}
+// class MatroshkaHelper(using val qctx: QuoteContext) {
+//   import qctx.tasty.{Term => QTerm, given _, _}
 
 //   object TypedMatroshka {
 //     // need to define a case where it won't go into matcher otherwise recursion is infinite
@@ -26,7 +26,7 @@
 //   }
 // }
 
-// class QuotationParser(given val qctx: QuoteContext) {
+// class QuotationParser(using val qctx: QuoteContext) {
 //   import qctx.tasty.{_, given _}
   
 //   def unInline(expr: Expr[Any]): Expr[Any] = 

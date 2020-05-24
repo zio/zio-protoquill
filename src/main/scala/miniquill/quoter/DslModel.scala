@@ -25,7 +25,7 @@ class Query[+T] {
 class EntityQuery[T] extends Query[T] // TODO can have a list of column renames?
 
 // TODO lifts needs to be List of Planter to allow QueryLifts
-case class Quoted[+T](val ast: Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuotes: List[QuotationVase])
+case class Quoted[+T](val ast: Ast, lifts: List[ScalarPlanter[Any, Any]], runtimeQuotes: List[QuotationVase])
   //override def toString = ast.toString
   // make a function that uses a stateless transformer to walk through the tuple,
   // gather the lifted quoted blocks, splice their qutations into the ast, and then

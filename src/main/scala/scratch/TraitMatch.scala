@@ -11,7 +11,7 @@ object TraitMatch {
 
   inline def traitMatch[T](inline t: T): T = ${ traitMatchImpl[T]('t) }
   def traitMatchImpl[T: Type](t: Expr[T])(using qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty.{given, _}
+    import qctx.tasty.{given _, _}
     val tm = new TastyMatchersContext
     import tm._
 

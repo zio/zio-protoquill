@@ -68,9 +68,9 @@ class Unapplier(message: String) {
 }
 
 
-def xunapplier(message: String)(given qctx: QuoteContext) = new XUnapplier(message)
-class XUnapplier(message: String)(given qctx: QuoteContext) {
-  import qctx.tasty.{given, _}
+def xunapplier(message: String)(using qctx: QuoteContext) = new XUnapplier(message)
+class XUnapplier(message: String)(using qctx: QuoteContext) {
+  import qctx.tasty.{given _, _}
   def unapply[T](t: T): Option[T] = 
     println(s"***************** [[[[[${message}]]]]]] *****************")
     def tString = 

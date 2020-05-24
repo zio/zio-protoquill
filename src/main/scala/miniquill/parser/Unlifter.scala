@@ -9,7 +9,7 @@ object Unlifter {
 }
 
 // TODO Rewrite this the way Parser is written (i.e. with ability to compose???)
-class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] {
+class Unlifter(using qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] {
   import Unlifter._
 
   def apply(astExpr: Expr[Ast]): Ast = unliftAst(astExpr)
@@ -56,11 +56,11 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
   }
 
   implicit def unliftPropertyAlias: Unlift[PropertyAlias] = {
-    case '{ PropertyAlias($a, $b) } => PropertyAlias(a.unlift, b.unlift)
+    case '{ PropertyAlias($a, $b) } => PropertyAlias(a.unliftify, b.unliftify)
   }
 
   implicit class UnliftExt[T](expr: Expr[T])(implicit u: Unlift[T]) {
-    def unlift: T = u.apply(expr)
+    def unliftify: T = u.apply(expr) // seems like 'unlift' is now an actual expr method
   }
 
   def unliftBase: Unlift[Ast] = {
@@ -68,9 +68,9 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
     case '{ Constant(${b}) } =>
       Constant(fixedString(b))
     case '{ Entity(${b}, ${l})  } =>
-      Entity(fixedString(b), l.unlift)
-    case '{ Function($params, $body) } => Function(params.unlift, unliftAst(body))
-    case '{ FunctionApply($function, $values) } => FunctionApply(function.unlift, values.unlift)
+      Entity(fixedString(b), l.unliftify)
+    case '{ Function($params, $body) } => Function(params.unliftify, unliftAst(body))
+    case '{ FunctionApply($function, $values) } => FunctionApply(function.unliftify, values.unliftify)
     case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(unliftAst(query), unliftAst(alias).asInstanceOf[Idnt], unliftAst(body))
     case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(unliftAst(a), unliftOperator(operator).asInstanceOf[BinaryOperator], unliftAst(b))
     case '{ Property(${ast}, ${name}) } =>

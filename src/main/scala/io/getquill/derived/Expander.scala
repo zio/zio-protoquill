@@ -82,8 +82,8 @@ object Expander {
     }
   }
 
-  class TypeExtensions(given qctx: QuoteContext) { self =>
-    import qctx.tasty.{Type => QType, given, _}
+  class TypeExtensions(using qctx: QuoteContext) { self =>
+    import qctx.tasty.{Type => QType, given _, _}
     
     implicit class TypeExt(tpe: Type[_]) {
       def constValue = self.constValue(tpe)
@@ -99,8 +99,8 @@ object Expander {
       tpe.unseal.tpe <:< '[Product].unseal.tpe
   }
 
-  def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(given qctx: QuoteContext): List[Term] = {
-    import qctx.tasty.{Type => QType, Term => QTerm, given, _}
+  def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(using qctx: QuoteContext): List[Term] = {
+    import qctx.tasty.{Type => QType, Term => QTerm, given _, _}
     val ext = new TypeExtensions
     import ext._
 
@@ -113,11 +113,11 @@ object Expander {
     (fieldsTup, typesTup) match {
       case ('[$field *: $fields], '[Option[$tpe] *: $types]) if (tpe.isProduct) =>
         val childTerm = Term(field.constValue, Branch, optional = true)
-        base(childTerm)(given tpe) :: flatten(node, fields, types)
+        base(childTerm)(using tpe) :: flatten(node, fields, types)
 
       case ('[$field *: $fields], '[$tpe *: $types]) if (tpe.isProduct) =>
         val childTerm = Term(field.constValue, Branch)
-        base(childTerm)(given tpe) :: flatten(node, fields, types)
+        base(childTerm)(using tpe) :: flatten(node, fields, types)
 
       case ('[$field *: $fields], '[Option[$tpe] *: $types]) =>
         val childTerm = Term(field.constValue, Leaf, optional = true)
@@ -133,11 +133,11 @@ object Expander {
     } 
   }
 
-  def base[T](term: Term)(given tpe: Type[T])(given qctx: QuoteContext): Term = {
-    import qctx.tasty.{Type => QType, Term => QTerm, _, given}
+  def base[T](term: Term)(using tpe: Type[T])(using qctx: QuoteContext): Term = {
+    import qctx.tasty.{Type => QType, Term => QTerm, _, given _}
 
     // if there is a decoder for the term, just return the term
-    summonExpr(given '[Mirror.Of[$tpe]]) match {
+    summonExpr(using '[Mirror.Of[$tpe]]) match {
       case Some(ev) => {
         // Otherwise, recursively summon fields
         ev match {
@@ -145,14 +145,14 @@ object Expander {
             val children = flatten(term, elementLabels, elementTypes)
             term.withChildren(children)
           case _ =>
-            summonExpr(given '[GenericDecoder[_, T]]) match {
+            summonExpr(using '[GenericDecoder[_, T]]) match {
               case Some(decoder) => term
               case _ => qctx.throwError("Cannot Find Decoder or Expand a Product of the Type:\n" + ev.show)
             }
         }
       }
       case None => 
-        summonExpr(given '[GenericDecoder[_, T]]) match {
+        summonExpr(using '[GenericDecoder[_, T]]) match {
           case Some(decoder) => term
           case None => qctx.throwError(s"Cannot find derive or summon a decoder for ${tpe.show}")
         }
@@ -160,8 +160,8 @@ object Expander {
   }
 
   import io.getquill.ast.{Map => AMap, _}
-  def static[T](ast: Ast)(given qctx: QuoteContext, tpe: Type[T]): AMap = {
-    val expanded = base[T](Term("x", Branch))(given tpe)
+  def static[T](ast: Ast)(using qctx: QuoteContext, tpe: Type[T]): AMap = {
+    val expanded = base[T](Term("x", Branch))(using tpe)
     val lifted = expanded.toAst
     println("Expanded to: " + expanded)
     val insert =
@@ -176,11 +176,16 @@ object Expander {
   import miniquill.parser.Lifter
   // TODO Load from implicit context?
   def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
-    (qctx: QuoteContext) => new Lifter(given qctx)  
+    (qctx: QuoteContext) => new Lifter(using qctx)  
 
-  inline def runtime[T](ast: Ast): AMap = ${ runtimeImpl[T]('ast) }
-  def runtimeImpl[T](ast: Expr[Ast])(given qctx: QuoteContext, tpe: Type[T]): Expr[AMap] = {
-    val expanded = base[T](Term("x", Branch))(given tpe)
+  inline def runtimeQuote[T](inline quoted: Quoted[miniquill.quoter.Query[T]]): AMap = ${ runtimeQuoteImpl[T]('quoted) }
+  def runtimeQuoteImpl[T](quoted: Expr[Quoted[miniquill.quoter.Query[T]]])(using qctx: QuoteContext, tpe: Type[T]): Expr[AMap] = {
+    runtimeImpl('{ $quoted.ast })
+  }
+
+  inline def runtime[T](inline ast: Ast): AMap = ${ runtimeImpl[T]('ast) }
+  def runtimeImpl[T](ast: Expr[Ast])(using qctx: QuoteContext, tpe: Type[T]): Expr[AMap] = {
+    val expanded = base[T](Term("x", Branch))(using tpe)
     val lifted = expanded.toAst.map(ast => lifterFactory(qctx).apply(ast))
     val insert = 
       if (lifted.length == 1) 

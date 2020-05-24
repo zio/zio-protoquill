@@ -10,7 +10,7 @@ case class LookInside[T](value: T, id: String)
 object PulloutExperiment {
 
   inline def printTree[T](value: T):T = ${ printTreeImpl('value) }
-  def printTreeImpl[T: Type](value: Expr[T])(given qctx: QuoteContext): Expr[T] = {
+  def printTreeImpl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[T] = {
     import qctx.tasty.{given _, _}
     //printer.ln(value.unseal.underlyingArgument)
     printer.ln("===================== printTree ================\n")
@@ -21,7 +21,7 @@ object PulloutExperiment {
   
   
   inline def lookInside[T](value: T): LookInside[T] = ${lookInsideImpl('value)}
-  def lookInsideImpl[T: Type](value: Expr[T])(given qctx: QuoteContext): Expr[LookInside[T]] = {
+  def lookInsideImpl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[LookInside[T]] = {
     val uuid = java.util.UUID.randomUUID().toString
     '{ LookInside[T]($value, ${Expr(uuid)}) }
   }
@@ -31,7 +31,7 @@ object PulloutExperiment {
   // Then next step afterward would be to have a function that adds a value to a tuple
 
   inline def parseTuple(input: Tuple): List[LookInside[_]] = ${parseTupleImpl('input)}
-  def parseTupleImpl(input: Expr[Tuple])(given qctx: QuoteContext): Expr[List[LookInside[_]]] = {
+  def parseTupleImpl(input: Expr[Tuple])(using qctx: QuoteContext): Expr[List[LookInside[_]]] = {
     import qctx.tasty.{given _, _}
     import scala.collection.mutable.ArrayBuffer
 
@@ -45,19 +45,22 @@ object PulloutExperiment {
     }
   }
 
-  trait Expresser[T] with
+  trait Expresser[T] {
     def express(t: T): String
+  }
 
-  given Expresser[String] = new Expresser with
+  given Expresser[String] = new Expresser {
     def express(t: String) = s"String--(${t})"
+  }
 
-  given Expresser[Int] = new Expresser with
+  given Expresser[Int] = new Expresser {
     def express(t: Int) = s"Int--(${t})"
+  }
 
 
 
   inline def summonExpressers(input: Tuple): List[(String, String)] = ${summonExpressersImpl('input)}
-  def summonExpressersImpl(input: Expr[Tuple])(given qctx: QuoteContext): Expr[List[(String, String)]] = {
+  def summonExpressersImpl(input: Expr[Tuple])(using qctx: QuoteContext): Expr[List[(String, String)]] = {
     import qctx.tasty.{given _, _}
     import scala.collection.mutable.ArrayBuffer
 
@@ -94,7 +97,7 @@ object PulloutExperiment {
           v match {
             case '{ LookInside[$tpe]($value, $uid) } => // find unique uids?
               val expressType =  '[Expresser[$tpe]]
-              summonExpr(given expressType) match {
+              summonExpr(using expressType) match {
                 case Some(expresserExpr) => '{ $expresserExpr.express($value) }
                 case None => throw new RuntimeException(s"Could not find expresser for ${expressType.unseal.show}")
               }
@@ -108,14 +111,14 @@ object PulloutExperiment {
 
 
   inline def addElementToTuple[T](tup: Tuple, elem: T): Tuple = ${addElementToTupleImpl('tup, 'elem)}
-  def addElementToTupleImpl[T: Type](tup: Expr[Tuple], elem: Expr[T])(given qctx: QuoteContext): Expr[Tuple] = {
+  def addElementToTupleImpl[T: Type](tup: Expr[Tuple], elem: Expr[T])(using qctx: QuoteContext): Expr[Tuple] = {
     import qctx.tasty.{given _, _}
     '{ (${elem} *: ${tup}) }
   }
 
   inline def matchList(list: List[Any]): List[Any] = ${ matchListImpl('list) }
-  def matchListImpl(list: Expr[List[Any]])(given qctx: QuoteContext): Expr[List[Any]] = {
-    import qctx.tasty.{given, _}
+  def matchListImpl(list: Expr[List[Any]])(using qctx: QuoteContext): Expr[List[Any]] = {
+    import qctx.tasty.{given _, _}
     println(list.unseal.underlyingArgument.seal.show)
     val elems = 
       list match {
@@ -127,9 +130,8 @@ object PulloutExperiment {
   }
 
   inline def pullout(input: Any): Tuple = ${pulloutImpl('input)}
-  def pulloutImpl(input: Expr[Any])(given qctx: QuoteContext): Expr[Tuple] = {
+  def pulloutImpl(input: Expr[Any])(using qctx: QuoteContext): Expr[Tuple] = {
     import qctx.tasty.{_, given _}
-    import qctx.tasty.given
     //import qctx.tasty.given_IsInstanceOf_Term
     import scala.collection.mutable.ArrayBuffer
 

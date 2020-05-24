@@ -37,8 +37,8 @@ class QueryMetaTest extends Spec with Inside {
       "static query" in {
         inline def people = quote { query[PersonName] }
         val result = ctx.run(people)
+        result.executionType mustEqual ExecutionType.Static
         result.string mustEqual """querySchema("PersonName").map(p => p.name)"""
-        result.executionType mustEqual ExecutionType.Static //hello
       }
 
       "dynamic query" in {

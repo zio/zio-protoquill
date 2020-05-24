@@ -38,19 +38,19 @@ object StaticTranslationMacro {
   import io.getquill.ast.External
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(given qctx: QuoteContext):Option[(String, List[External])] = {
+  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(using qctx: QuoteContext):Option[(String, List[External])] = {
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
       CollectAst.byType[QuotationTag](ast).isEmpty
 
     // val queryMeta = 
-    //   summonExpr(given '[QueryMeta])
+    //   summonExpr(using '[QueryMeta])
 
-    val unliftedAst = new Unlifter(given qctx).apply(astExpr)
+    val unliftedAst = new Unlifter(using qctx).apply(astExpr)
     if (noRuntimeQuotations(unliftedAst)) {
       val expandedAst = Expander.static[T](unliftedAst) 
-      val (ast, stmt) = idiom.translate(expandedAst)(given naming)
+      val (ast, stmt) = idiom.translate(expandedAst)(using naming)
       val output =
         ReifyStatement(
           idiom.liftingPlaceholder,
@@ -70,7 +70,7 @@ object StaticTranslationMacro {
   // matchingExternals = the matching placeholders (i.e 'lift tags') in the AST 
   // that contains the UUIDs of lifted elements. We check against list to make
   // sure that that only needed lifts are used and in the right order.
-  private[getquill] def processLifts(liftExprs: Expr[List[ScalarPlanter[_, _]]], matchingExternals: List[External])(given qctx: QuoteContext): Option[List[Expr[ScalarPlanter[_, _]]]] = {
+  private[getquill] def processLifts(liftExprs: Expr[List[ScalarPlanter[_, _]]], matchingExternals: List[External])(using qctx: QuoteContext): Option[List[Expr[ScalarPlanter[_, _]]]] = {
     val extractedEncodeables =
       liftExprs match {
         case ScalarPlanterExpr.UprootableList(lifts) =>
@@ -103,16 +103,25 @@ object StaticTranslationMacro {
     }
   }
 
-  def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](given qctx: QuoteContext, dialectTpe:Type[D], namingType:Type[N]): Try[(Idiom, NamingStrategy)] =
+  def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using qctx: QuoteContext, dialectTpe:Type[D], namingType:Type[N]): Try[(Idiom, NamingStrategy)] = {
+    import scala.util.{Try, Success, Failure}
+
+    def logFail[T](t: Try[T]) = 
+      t match {
+        case s @ Success(_) => s
+        case f @ Failure(e) => println(e.getMessage); f
+      }
+
     for {
-      idiom <- LoadObject(dialectTpe)
-      namingStrategy <- LoadNaming.static(namingType)
+      idiom <- logFail(LoadObject(dialectTpe))
+      namingStrategy <- logFail(LoadNaming.static(namingType))
     } yield (idiom, namingStrategy)
+  }
 
 
   def apply[T: Type, D <: Idiom, N <: NamingStrategy](
     quotedRaw: Expr[Quoted[Query[T]]]
-  )(given qctx:QuoteContext, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
+  )(using qctx:QuoteContext, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
     import qctx.tasty.{Try => TTry,Type => TType, _, given _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.unseal.underlyingArgument.seal

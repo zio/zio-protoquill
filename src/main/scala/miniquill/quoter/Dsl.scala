@@ -45,12 +45,12 @@ trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
 
 
 object QueryMetaMacro {
-  def embed[T: Type, R: Type, P <: ParserFactory: Type](qm: Expr[MetaDsl[P]], expand: Expr[Quoted[Query[T] => Query[R]]], extract: Expr[R => T])(given qctx: QuoteContext): Expr[QueryMeta[T, R]] = {
+  def embed[T: Type, R: Type, P <: ParserFactory: Type](qm: Expr[MetaDsl[P]], expand: Expr[Quoted[Query[T] => Query[R]]], extract: Expr[R => T])(using qctx: QuoteContext): Expr[QueryMeta[T, R]] = {
     val uuid = Expr(java.util.UUID.randomUUID().toString)
     '{ QueryMeta[T, R]($expand, $uuid, $extract) }
   }
 
-  // def extractApply[T: Type, R: Type](qm: Expr[QueryMeta[T, R]], qry: Quoted[Query[T]])(given qctx: QuoteContext): Option[Expr[Quoted[Query[R]]]] = {
+  // def extractApply[T: Type, R: Type](qm: Expr[QueryMeta[T, R]], qry: Quoted[Query[T]])(using qctx: QuoteContext): Option[Expr[Quoted[Query[R]]]] = {
   //   qm match {
   //     ``
   //   }
@@ -79,7 +79,7 @@ object QuoteMacro {
   import io.getquill.util.LoadObject 
   import io.getquill.norm.BetaReduction 
 
-  def apply[T, Parser <: ParserFactory](bodyRaw: Expr[T])(given qctx: QuoteContext, tType: Type[T], pType: Type[Parser]): Expr[Quoted[T]] = {
+  def apply[T, Parser <: ParserFactory](bodyRaw: Expr[T])(using qctx: QuoteContext, tType: Type[T], pType: Type[Parser]): Expr[Quoted[T]] = {
     import qctx.tasty.{_, given _}
     // NOTE Can disable if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val body = bodyRaw.unseal.underlyingArgument.seal
@@ -89,7 +89,7 @@ object QuoteMacro {
     import Parser.{given _}
 
     // TODo add an error if body cannot be parsed
-    val rawAst = parserFactory.apply(given qctx).seal.apply(body)
+    val rawAst = parserFactory.apply(using qctx).seal.apply(body)
     val ast = BetaReduction(rawAst)
 
     println("Ast Is: " + ast)
@@ -106,17 +106,17 @@ object QuoteMacro {
     // TODO Extract plucked quotations, transform into QuotationVase statements and insert into runtimeQuotations slot
 
     '{       
-      Quoted[T](${reifiedAst}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)})
+      Quoted[T](${reifiedAst}, ${Expr.ofList(lifts.asInstanceOf[List[Expr[ScalarPlanter[Any,Any]]]])}, ${Expr.ofList(pluckedUnquotes)})
     }
   }
 
   // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
   // appearing in the AST in multiple places.
-  private def extractLifts(body: Expr[Any])(given qctx: QuoteContext) = {
+  private def extractLifts(body: Expr[Any])(using qctx: QuoteContext) = {
     ScalarPlanterExpr.findUnquotes(body).distinctBy(_.uid).map(_.plant)
   }
 
-  private def extractRuntimeUnquotes(body: Expr[Any])(given qctx: QuoteContext) = {
+  private def extractRuntimeUnquotes(body: Expr[Any])(using qctx: QuoteContext) = {
     val unquotes = QuotationLotExpr.findUnquotes(body)
     unquotes
       .collect {
@@ -136,7 +136,7 @@ object SchemaMetaMacro {
 
   // inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
   // SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.
-  def apply[T, P <: ParserFactory](qm: Expr[MetaDsl[P]], entity: Expr[String], columns: Expr[Seq[(T => (Any, String))]])(given qctx: QuoteContext, tType: Type[T], pType: Type[P]): Expr[SchemaMeta[T]] = {
+  def apply[T, P <: ParserFactory](qm: Expr[MetaDsl[P]], entity: Expr[String], columns: Expr[Seq[(T => (Any, String))]])(using qctx: QuoteContext, tType: Type[T], pType: Type[P]): Expr[SchemaMeta[T]] = {
     val parserFactory = LoadObject(pType).get
     val uuid = Expr(java.util.UUID.randomUUID().toString)
     val exprs = 
@@ -151,8 +151,8 @@ object SchemaMetaMacro {
 
 
 object QueryMacro {
-  def apply[T: Type](given qctx: QuoteContext): Expr[EntityQuery[T]] = {
-    import qctx.tasty.{Type => TType, given, _}
+  def apply[T: Type](using qctx: QuoteContext): Expr[EntityQuery[T]] = {
+    import qctx.tasty.{Type => TType, given _, _}
     val tmc = new TastyMatchersContext
     import tmc._
     import scala.quoted.matching.summonExpr
@@ -160,7 +160,7 @@ object QueryMacro {
     import miniquill.quoter.QuotationLotExpr._
 
 
-    summonExpr(given '[SchemaMeta[T]]) match {
+    summonExpr(using '[SchemaMeta[T]]) match {
       case Some(meta) =>
         meta.reseal match {
           // If it is uprootable, unquote the meta and pass it on
@@ -187,8 +187,8 @@ object QueryMacro {
 
 
 object UnquoteMacro {
-  def apply[T: Type](quoted: Expr[Quoted[T]])(given qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty.{given, _}
+  def apply[T: Type](quoted: Expr[Quoted[T]])(using qctx: QuoteContext): Expr[T] = {
+    import qctx.tasty.{given _, _}
     '{
       Unquote[T](${quoted}, ${Expr(java.util.UUID.randomUUID().toString)}).unquote
     }
