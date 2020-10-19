@@ -58,7 +58,7 @@ object Parser {
     import Implicits._
 
     def root: Parser[Ast]
-    def rootDone = root.seal
+    def astParse = root.seal
     def reparent(root: Parser[Ast]): Clause[R]
   }
 
@@ -120,7 +120,7 @@ case class FunctionApplyParser(root: Parser[Ast] = Parser.empty)(override implic
 
   def delegate: PartialFunction[Expr[_], Ast] = {
     case Unseal(Apply(Select(term, "apply"), args)) =>
-      FunctionApply(rootDone(term.seal), args.map(arg => rootDone(arg.seal)))
+      FunctionApply(astParse(term.seal), args.map(arg => astParse(arg.seal)))
   }
 }
 
@@ -137,7 +137,7 @@ case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit va
 
   def delegate: PartialFunction[Expr[_], Ast] = {
     case Unseal(RawLambdaN(params, body)) =>
-      val subtree = Function(params.map(Idnt(_)), rootDone(body.seal))
+      val subtree = Function(params.map(Idnt(_)), astParse(body.seal))
       // If there are actions inside the subtree, we need to do some additional sanitizations
       // of the variables so that their content will not collide with code that we have generated.
 
@@ -230,18 +230,18 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       output
 
     // case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
-    //   Map(rootDone(q), Idnt("foo"), null)
+    //   Map(astParse(q), Idnt("foo"), null)
 
     //  case q"$query.map[$mt]((x) => y) }"
     case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
-      val a = this.root.seal(q)
-      val b = rootDone(body)
+      val a = astParse(q)
+      val b = astParse(body)
       Map(a, Idnt(ident), b)
 
     // Need to have map cases for both Query and EntityQuery since these matches are invariant
     case '{ ($q:EntityQuery[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
-      val a = this.root.seal(q)
-      val b = rootDone(body)
+      val a = astParse(q)
+      val b = astParse(body)
       Map(a, Idnt(ident), b)
   }
 
@@ -260,7 +260,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
 //     // case q"$query.onConflictIgnore" =>
 //     //  OnConflict(astParser(query), OnConflict.NoTarget, OnConflict.Ignore) 
 //     case '{ ($query:io.getquill.Insert[$qt]).onConflictIgnore } =>
-//       OnConflict(rootDone(query), OnConflict.NoTarget, OnConflict.Ignore) 
+//       OnConflict(astParse(query), OnConflict.NoTarget, OnConflict.Ignore) 
 //   }  
 // }
 
@@ -277,10 +277,10 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   def del: PartialFunction[Expr[_], Ast] = {
       // TODO Need to check if entity is a string
     case Unseal(Apply(Select(Seal(left), "+"), Seal(right) :: Nil)) =>
-      BinaryOperation(rootDone(left), StringOperator.+, rootDone(right))
+      BinaryOperation(astParse(left), StringOperator.+, astParse(right))
 
     case Unseal(Apply(Select(Seal(left), "*"), Seal(right) :: Nil)) =>
-      BinaryOperation(rootDone(left), NumericOperator.*, rootDone(right))
+      BinaryOperation(astParse(left), NumericOperator.*, astParse(right))
   }
 }
 
@@ -302,9 +302,9 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
 
     case Unseal(value @ Select(Seal(prefix), member)) =>
       if ((value.tpe <:< '[io.getquill.Embedded].unseal.tpe)) { 
-        Property.Opinionated(rootDone(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
+        Property.Opinionated(astParse(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
       } else {
-        Property(rootDone(prefix), member)
+        Property(astParse(prefix), member)
       }
 
     case Unseal(TreeIdent(x)) => 
@@ -312,11 +312,11 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
 
     // If at the end there's an inner tree that's typed, move inside and try to parse again
     case Unseal(Typed(innerTree, _)) =>
-      rootDone(innerTree.seal)
+      astParse(innerTree.seal)
 
     case Unseal(Inlined(_, _, v)) =>
       //println("Case Inlined")
       //root.parse(v.seal.cast[T]) // With method-apply can't rely on it always being T?
-      rootDone(v.seal)
+      astParse(v.seal)
   }
 }
