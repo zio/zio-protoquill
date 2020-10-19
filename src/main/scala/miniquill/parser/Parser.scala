@@ -12,6 +12,9 @@ import miniquill.quoter.Dsl
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
 import miniquill.quoter.QuotationLotExpr
+import io.getquill.EntityQuery
+import io.getquill.Query
+import io.getquill.Format
 
 type Parser[R] = PartialFunction[Expr[_], R]
 type SealedParser[R] = (Expr[_] => R)
@@ -20,6 +23,7 @@ object Parser {
   val empty: Parser[Ast] = PartialFunction.empty[Expr[_], Ast]
 
   object Implicits {
+
     implicit class ParserExtensions[R](parser: Parser[R])(implicit val qctx: QuoteContext, ct: ClassTag[R]) {
       import qctx.tasty.{given, _}
 
@@ -28,9 +32,10 @@ object Parser {
           // c.fail(s"Tree '$tree' can't be parsed to '${ct.runtimeClass.getSimpleName}'")
           qctx.throwError(
         s"""|s"==== Tree cannot be parsed to '${ct.runtimeClass.getSimpleName}' ===
-            |${expr.show.split("\n").map("  " + _).mkString("\n")}
-            |==== Raw ===
-            |  ${expr.unseal.showExtractors}
+            |  ${Format(expr.show)}
+            |==== Extractors ===
+            |  ${Format(expr.unseal.showExtractors)}
+            |==== Tree ===
             |  ${printer.str(expr.unseal)}
             |""".stripMargin, 
             expr)
@@ -215,6 +220,9 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       val name: String = t.unseal.tpe.classSymbol.get.name
       Entity(name, List())
 
+    // case class Person(name:String)
+    // querySchema[Person]("adventureland_people", _.name -> "personName", _.age -> "yrsOld")
+    // case q"$.querySchema[$t](${ name: String }, ..$properties)" =>
     case '{ Dsl.querySchema[$t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
       println("Props are: " + properties.map(_.show))
       val output = Entity.Opinionated(name, properties.toList.map(propertyAliasParser(_)), Renameable.Fixed)
@@ -230,13 +238,31 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       val b = rootDone(body)
       Map(a, Idnt(ident), b)
 
-    case '{ ($q:Query[$qt]).foobar($v) } => 
-      printer.lnf(v.unseal)
-      Constant("foobar")
+    // Need to have map cases for both Query and EntityQuery since these matches are invariant
+    case '{ ($q:EntityQuery[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
+      val a = this.root.seal(q)
+      val b = rootDone(body)
+      Map(a, Idnt(ident), b)
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
+
+// case class ConflictParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
+//   import qctx.tasty.{Constant => TConstant, given,  _}
+//   import Parser.Implicits._
+//   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+//   //  case q"$query.map[$mt]((x) => y) }"
+//   //case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
+
+//   def delegate: PartialFunction[Expr[_], Ast] = {
+//     // case q"$query.onConflictIgnore" =>
+//     //  OnConflict(astParser(query), OnConflict.NoTarget, OnConflict.Ignore) 
+//     case '{ ($query:io.getquill.Insert[$qt]).onConflictIgnore } =>
+//       OnConflict(rootDone(query), OnConflict.NoTarget, OnConflict.Ignore) 
+//   }  
+// }
 
 case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{given, _}

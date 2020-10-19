@@ -7,7 +7,7 @@ import scala.deriving._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 import io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}
 import scala.compiletime.erasedValue
-
+import io.getquill.Query
 
 // TODO If want to have Index by a type, need some way to add to it
 trait Dsl extends EncodingDsl

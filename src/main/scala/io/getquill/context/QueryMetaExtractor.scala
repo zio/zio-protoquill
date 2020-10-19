@@ -8,7 +8,6 @@ import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
 import io.getquill.{ ReturnAction }
-import miniquill.quoter.Query
 import miniquill.dsl.EncodingDsl
 import miniquill.quoter.Quoted
 import miniquill.quoter.QueryMeta

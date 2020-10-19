@@ -14,6 +14,8 @@ import miniquill.parser.Parser.Implicits._
 import io.getquill.quotation.NonQuotedException
 import scala.annotation.compileTimeOnly
 import scala.compiletime.summonFrom
+import io.getquill.EntityQuery
+import io.getquill.Query
 
 // trait Quoter {
 //   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???

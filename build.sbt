@@ -17,6 +17,8 @@ lazy val root = project
       ("com.lihaoyi" %% "pprint" % "0.5.6").withDottyCompat(scalaVersion.value),
       ("io.getquill" %% "quill-core-portable" % "3.5.2").withDottyCompat(scalaVersion.value),
       ("io.getquill" %% "quill-sql-portable" % "3.5.2").withDottyCompat(scalaVersion.value),
+      ("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
+      ("org.scalameta" %% "scalafmt-cli" % "2.7.4").withDottyCompat(scalaVersion.value),
       "ch.epfl.lamp" % "dotty_0.22" % (scalaVersion.value),
       "org.scalatest" % "scalatest_0.22" % "3.1.1" % "test"
     )

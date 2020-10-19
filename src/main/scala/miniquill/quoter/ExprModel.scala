@@ -176,13 +176,24 @@ sealed trait QuotationLotExpr
 object QuotationLotExpr {
 
   protected object `(QuotationLot).unquote` {
-    def unapply(expr: Expr[Any])(given qctx: QuoteContext) = expr match {
-      // When a QuotationLot is embedded into an ast
-      case '{ (${quotationLot}: QuotationLot[$tt]).unquote } => Some(quotationLot)
-      // There are situations e.g. SchemaMeta where there's an additional type ascription needed
-      // there it needs to be specified in the AST manually. Maybe this is a bug?
-      case '{ type $tt; ((${quotationLot}: QuotationLot[`$tt`]).unquote: `$tt`) } => Some(quotationLot)
-      case _ => None
+    def unapply(expr: Expr[Any])(given qctx: QuoteContext) = {
+      import qctx.tasty.{given, _}
+      val tm = new TastyMatchersContext
+      import tm._
+      UntypeExpr(expr) match {
+        // When a QuotationLot is embedded into an ast
+        case '{ (${quotationLot}: QuotationLot[$tt]).unquote } => 
+          Some(quotationLot)
+        
+        // TODO Now since we have UntypeExpr this below might not be needed
+        // There are situations e.g. SchemaMeta where there's an additional type ascription needed
+        // there it needs to be specified in the AST manually. Maybe this is a bug?
+        case '{ type $tt; ((${quotationLot}: QuotationLot[`$tt`]).unquote: `$tt`) } => 
+          Some(quotationLot)
+
+        case other => 
+          None
+      }
     }
   }
 
@@ -224,9 +235,15 @@ object QuotationLotExpr {
 
   object Unquoted {
     def unapply(expr: Expr[Any])(given qctx: QuoteContext): Option[QuotationLotExpr] = 
+      //println("=================== Unapplying Unquote ===================")
+      //println(io.getquill.Format(expr.show))
       expr match {
-        case `(QuotationLot).unquote`(QuotationLotExpr(vaseExpr)) => Some(vaseExpr)
-        case _ => None
+        case `(QuotationLot).unquote`(QuotationLotExpr(vaseExpr)) => 
+          //println("=============== MATCHED ===============")
+          Some(vaseExpr)
+        case _ => 
+          //println("=============== NOT MATCHED ===============")
+          None
       }
   }
 

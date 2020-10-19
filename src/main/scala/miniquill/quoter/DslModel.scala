@@ -1,6 +1,5 @@
 package miniquill.quoter
 
-import io.getquill.ast.Ast
 import miniquill.parser._
 import scala.quoted._
 import scala.annotation.StaticAnnotation
@@ -11,21 +10,11 @@ import scala.quoted.matching.Const
 import miniquill.dsl.GenericEncoder
 import io.getquill.quotation.NonQuotedException
 import scala.annotation.compileTimeOnly
-
-class Query[+T] {
-  
-  def map[R](f: T => R): Query[R] = new Query[R]
-
-  def foobar(str: String): String = ""
-
-  
-  
-}
-
-class EntityQuery[T] extends Query[T] // TODO can have a list of column renames?
+import io.getquill.Query
+import io.getquill.EntityQuery
 
 // TODO lifts needs to be List of Planter to allow QueryLifts
-case class Quoted[+T](val ast: Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuotes: List[QuotationVase])
+case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuotes: List[QuotationVase])
   //override def toString = ast.toString
   // make a function that uses a stateless transformer to walk through the tuple,
   // gather the lifted quoted blocks, splice their qutations into the ast, and then
@@ -62,6 +51,6 @@ trait QuotationLot[+T](quoted: Quoted[T], uid: String) {
 case class Unquote[+T](quoted: Quoted[T], uid: String) extends QuotationLot[T](quoted, uid)
 
 // TODO Does this need to be covariant? It is in current quill. Need to look up what use cases they are for covariant schemas.
-case class SchemaMeta[T](val entity: Quoted[EntityQuery[T]], uid: String) extends QuotationLot[EntityQuery[T]](entity, uid)
+case class SchemaMeta[T](val entity: Quoted[io.getquill.EntityQuery[T]], uid: String) extends QuotationLot[EntityQuery[T]](entity, uid)
 
 case class QueryMeta[T, R](val entity: Quoted[Query[T] => Query[R]], uid: String, extract: R => T) extends QuotationLot[Query[T] => Query[R]](entity, uid)
