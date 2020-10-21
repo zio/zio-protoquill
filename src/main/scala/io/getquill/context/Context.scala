@@ -62,7 +62,7 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
   
       val expandedAst = spliceQuotations(ast)
         
-      val (outputAst, stmt) = idiom.translate(expandedAst)(given naming)
+      val (outputAst, stmt) = idiom.translate(expandedAst)(using naming)
   
       val (string, externals) =
         ReifyStatement(

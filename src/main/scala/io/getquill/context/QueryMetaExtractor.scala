@@ -49,8 +49,7 @@ import io.getquill._
 */
 object QueryMetaExtractor {
   import miniquill.parser._
-  import scala.quoted._ // summonExpr is actually from here
-  import scala.quoted.matching._ // ... or from here
+  import scala.quoted._ // Expr.summon is actually from here
   import miniquill.quoter.ScalarPlanter
   import miniquill.quoter._
   import io.getquill.ast.FunctionApply
@@ -62,8 +61,8 @@ object QueryMetaExtractor {
     ${ applyImpl[T, R, D, N]('quotedRaw, 'ctx) }
 
 
-  def summonQueryMeta[T: Type, R: Type](given qctx:QuoteContext): Option[Expr[QueryMeta[T, R]]] =
-    summonExpr(given '[QueryMeta[T, R]])
+  def summonQueryMeta[T: Type, R: Type](using qctx:QuoteContext): Option[Expr[QueryMeta[T, R]]] =
+    Expr.summon(using '[QueryMeta[T, R]])
 
   case class StaticRequip[T, R](requip: Expr[Quoted[Query[R]]], baq: Expr[R => T])
 
@@ -71,11 +70,11 @@ object QueryMetaExtractor {
     queryLot: QuotedExpr, 
     queryLifts: List[ScalarPlanterExpr[_, _]], 
     quip: Expr[QueryMeta[T, R]]
-  )(given qctx: QuoteContext): Option[StaticRequip[T, R]] = {
+  )(using qctx: QuoteContext): Option[StaticRequip[T, R]] = {
     
     val quipLotExpr = quip match {
       case QuotationLotExpr(qbin) => qbin
-      case _ => qctx.throwError("QueryMeta expression is not in a valid form: " + quip)
+      case _ => Reporting.throwError("QueryMeta expression is not in a valid form: " + quip)
     }
     
     quipLotExpr match {
@@ -113,10 +112,10 @@ object QueryMetaExtractor {
   def applyImpl[T: Type, R: Type, D <: io.getquill.idiom.Idiom: Type, N <: io.getquill.NamingStrategy: Type](
     quotedRaw: Expr[Quoted[Query[T]]],
     ctx: Expr[Context[D, N]]
-  )(given qctx:QuoteContext): Expr[(Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_,_]])])] = {
-    import qctx.tasty.{Try => TTry, _, given _}
+  )(using qctx:QuoteContext): Expr[(Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_,_]])])] = {
+    import qctx.tasty.{Try => TTry, _}
     val quotedArg = quotedRaw.unseal.underlyingArgument.seal.cast[Quoted[Query[T]]]
-    val summonedMeta = summonExpr(given '[QueryMeta[T, R]]).map(_.unseal.underlyingArgument.seal.cast[QueryMeta[T, R]])
+    val summonedMeta = Expr.summon(using '[QueryMeta[T, R]]).map(_.unseal.underlyingArgument.seal.cast[QueryMeta[T, R]])
     summonedMeta match {
       case Some(quip) =>
         val possiblyUprootableQuery = QuotedExpr.uprootableWithLiftsOpt(quotedArg)
@@ -151,9 +150,9 @@ object QueryMetaExtractor {
             '{ ($requip, $quip.extract, None) }
         }
         
-        //qctx.throwError("Quote Meta Identified but not found!")
+        //Reporting.throwError("Quote Meta Identified but not found!")
       case None => 
-        qctx.throwError("Quote Meta needed but not found!")
+        Reporting.throwError("Quote Meta needed but not found!")
     }
   }
 }

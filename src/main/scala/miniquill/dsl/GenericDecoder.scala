@@ -33,7 +33,7 @@ object GenericDecoder {
         (decodedHead *: decodeChildern[tail, ResultRow](index + air, resultRow)) 
       case b: (head *: tail) =>
         (summonAndDecode[head, ResultRow](index, resultRow) *: decodeChildern[tail, ResultRow](index + 1, resultRow))
-      case _ => ()
+      case _ => EmptyTuple
     }
 
   inline def derived[T, ResultRow]: GenericDecoder[ResultRow, T] = 

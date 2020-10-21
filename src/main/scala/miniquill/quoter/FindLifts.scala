@@ -1,7 +1,7 @@
 // package miniquill.quoter
 
 // import scala.quoted._
-// import scala.quoted.matching._
+// 
 // import scala.collection.mutable.ArrayBuffer
 // import scala.quoted.util.ExprMap
 // import miniquill.dsl.GenericEncoder
@@ -10,7 +10,7 @@
 
 // // InlineEncodeable should be a ScalarPlanterExpr
 // case class InlineEncodeable(uid: String, value: Expr[Any], encoder: Expr[GenericEncoder[Any, Any]], vase: Expr[ScalarPlanter[_, _]]) {
-//   def prepare(given qctx: QuoteContext): Expr[Encodeable] = {
+//   def prepare(using qctx: QuoteContext): Expr[Encodeable] = {
 //     '{ Encodeable(${Expr(uid)}, $value, $encoder) }
 //   }
 // }
@@ -23,19 +23,19 @@
 //   // otherwise it's invalid and an exception should be thrown?)
 
 //   // Remove the unapply pattern here. InlineEncodeables should be 
-//   def unapply(input: Expr[Any])(given qctx: QuoteContext): Option[List[InlineEncodeable]] = {
-//     import qctx.tasty.{given, _}
+//   def unapply(input: Expr[Any])(using qctx: QuoteContext): Option[List[InlineEncodeable]] = {
+//     import qctx.tasty._
 
 //     val matchedEncodeables =
 //       ExprAccumulate(input) {
 
 //         // TODO Check that $prep is an instance of GenericEncoder[Any, PrepareRow], otherwise the cast shouldn't work and user should be warned
-//         case vase @ '{ ScalarPlanter.apply[$tpe, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) }  =>
+//         case vase @ '{ ScalarPlanter.apply[$tpe, $prep]($liftValue, $encoder, ${scala.quoted.Const(uid: String)}) }  =>
 //           Some(InlineEncodeable(uid, liftValue, encoder.asInstanceOf[Expr[GenericEncoder[Any, Any]]], vase))
 
 //         // If it's a reference but not inline
 //         case '{ ($sv: ScalarPlanter[$tpe, $prep]) } =>
-//           qctx.throwError("Invalid Lift found. A lift must be directly inlined and cannot be a previously computed runtime value.", input)
+//           Reporting.throwError("Invalid Lift found. A lift must be directly inlined and cannot be a previously computed runtime value.", input)
 //       }
 
 //     matchedEncodeables.forall(_.isDefined) match {
@@ -50,8 +50,8 @@
 
 // object FindRuntimeQuotationLots {
 
-//   def apply[T](input: Expr[Any])(given qctx: QuoteContext, tpe: quoted.Type[T]): List[(String, Expr[QuotationLot[Any]])] = {
-//     import qctx.tasty.{given, _}
+//   def apply[T](input: Expr[Any])(using qctx: QuoteContext, tpe: quoted.Type[T]): List[(String, Expr[QuotationLot[Any]])] = {
+//     import qctx.tasty._
 //     val quotationParser = new miniquill.parser.QuotationParser
 //     import quotationParser._
 

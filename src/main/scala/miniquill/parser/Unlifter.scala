@@ -1,7 +1,7 @@
 package miniquill.parser
 
 import scala.quoted._
-import scala.quoted.matching._
+
 import io.getquill.ast.{Ident => Idnt, Query => Qry, _}
 
 object Unlifter {
@@ -9,8 +9,10 @@ object Unlifter {
 }
 
 // TODO Rewrite this the way Parser is written (i.e. with ability to compose???)
-class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] {
+class Unlifter(using qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] {
   import Unlifter._
+  val matchers = new TastyMatchersContext
+  import matchers._
 
   def apply(astExpr: Expr[Ast]): Ast = unliftAst(astExpr)
   def isDefinedAt(astExpr: Expr[Ast]): Boolean = unliftAst.isDefinedAt(astExpr)
@@ -29,7 +31,7 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
 
   implicit def unliftList[T](implicit u: Unlift[T]): Unlift[List[T]] = {
     case '{ Nil } => Nil
-    case '{ List.apply[$t](${ExprSeq(props)}: _*) } => 
+    case '{ List.apply[$t](${Varargs(props)}: _*) } => 
       props.toList.map(p => u.apply(p.asInstanceOf[Expr[T]])) // Can we get the type into here so we don't have to cast?
   }
 
@@ -56,21 +58,21 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
   }
 
   implicit def unliftPropertyAlias: Unlift[PropertyAlias] = {
-    case '{ PropertyAlias($a, $b) } => PropertyAlias(a.unlift, b.unlift)
+    case '{ PropertyAlias($paths, $b) } => PropertyAlias(paths.unliftExpr, b.unliftExpr)
   }
 
   implicit class UnliftExt[T](expr: Expr[T])(implicit u: Unlift[T]) {
-    def unlift: T = u.apply(expr)
+    def unliftExpr: T = u.apply(expr)
   }
 
   def unliftBase: Unlift[Ast] = {
     // TODO have a typeclass like Splicer to translate constant to strings
     case '{ Constant(${b}) } =>
       Constant(fixedString(b))
-    case '{ Entity(${b}, ${l})  } =>
-      Entity(fixedString(b), l.unlift)
-    case '{ Function($params, $body) } => Function(params.unlift, unliftAst(body))
-    case '{ FunctionApply($function, $values) } => FunctionApply(function.unlift, values.unlift)
+    case '{ Entity.apply(${Const(b: String)}, ${elems})  } =>
+      Entity(b, elems.unliftExpr)
+    case '{ Function($params, $body) } => Function(params.unliftExpr, unliftAst(body))
+    case '{ FunctionApply($function, $values) } => FunctionApply(function.unliftExpr, values.unliftExpr)
     case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(unliftAst(query), unliftAst(alias).asInstanceOf[Idnt], unliftAst(body))
     case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(unliftAst(a), unliftOperator(operator).asInstanceOf[BinaryOperator], unliftAst(b))
     case '{ Property(${ast}, ${name}) } =>
@@ -98,6 +100,8 @@ class Unlifter(given qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
       case unliftPropertyActual(ast) => ast
       case unliftIdentActual(ast) => ast
       case unliftBaseActual(ast) => ast
+      case other =>
+        Reporting.throwError("========= Cannot Unlift: =========\n" + io.getquill.Format(other.show))
     }
     unliftActual
   }

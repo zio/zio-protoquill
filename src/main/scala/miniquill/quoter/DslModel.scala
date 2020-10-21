@@ -6,7 +6,7 @@ import scala.annotation.StaticAnnotation
 import printer.AstPrinter
 import derivation._
 import scala.deriving._
-import scala.quoted.matching.Const
+import scala.quoted.Const
 import miniquill.dsl.GenericEncoder
 import io.getquill.quotation.NonQuotedException
 import scala.annotation.compileTimeOnly

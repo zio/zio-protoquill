@@ -30,15 +30,14 @@ import io.getquill._
 
 object SummonDecoderMacro {
   import miniquill.parser._
-  import scala.quoted._ // summonExpr is actually from here
-  import scala.quoted.matching._ // ... or from here
+  import scala.quoted._ // Expr.summon is actually from here
   import miniquill.quoter.ScalarPlanter
 
-  def apply[T: Type, ResultRow: Type](given qctx: QuoteContext): Expr[GenericDecoder[ResultRow, T]] = {
-    import qctx.tasty.{Type => TType, given, _}
-    summonExpr(given '[GenericDecoder[ResultRow, T]]) match {
+  def apply[T: Type, ResultRow: Type](using qctx: QuoteContext): Expr[GenericDecoder[ResultRow, T]] = {
+    import qctx.tasty.{Type => TType, _}
+    Expr.summon(using '[GenericDecoder[ResultRow, T]]) match {
       case Some(decoder) => decoder
-      case None => qctx.throwError(s"Cannot Find decoder for ${summon[Type[T]].show}")
+      case None => Reporting.throwError(s"Cannot Find decoder for ${summon[Type[T]].show}")
     }
   }  
 }

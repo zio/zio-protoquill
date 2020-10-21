@@ -1,19 +1,19 @@
 package miniquill.parser
 
 import scala.quoted._
-import scala.quoted.matching.Const
+import scala.quoted.Const
 import io.getquill.ast.{Ident => Idnt, Query => Qry, _}
 
 object Lifter {
   type Lift[T] = PartialFunction[T, Expr[T]]
 
   def apply(qctx: QuoteContext): PartialFunction[Ast, Expr[Ast]] =
-    new Lifter(given qctx)
+    new Lifter(using qctx)
 }
 
 // TODO Rewrite this the way Parser is written (i.e. with ability to compose???)
-class Lifter(given qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
-  import qctx.tasty.{Constant => TConstant, _, given _}
+class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
+  import qctx.tasty.{Constant => TConstant, _}
   import Lifter._
 
   def apply(ast: Ast): Expr[Ast] = liftAst(ast)

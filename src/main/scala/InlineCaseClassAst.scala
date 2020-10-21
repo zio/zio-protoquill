@@ -1,6 +1,6 @@
 import scala.quoted._
 import scala.annotation.StaticAnnotation
-import scala.quoted.matching.Const
+import scala.quoted.Const
 
 object InlineCaseClassAst {
 
@@ -12,17 +12,17 @@ object InlineCaseClassAst {
   case class Baz(compileId: String = "started") extends Ast
 
   inline def inspect(ast: => Ast) = ${ inspectImpl('ast) }
-  def inspectImpl(given qctx: QuoteContext)(ast: Expr[Ast]): Expr[Ast] = {
-    import qctx.tasty.{Type => _, _, given}
+  def inspectImpl(using qctx: QuoteContext)(ast: Expr[Ast]): Expr[Ast] = {
+    import qctx.tasty.{Type => _, _}
     counter += 1
 
     def compileVal = s"compile-${counter}"
 
-    // given fooLiftable(given i: Liftable[Int], s: Liftable[String]): Liftable[Foo] {
+    // using fooLiftable(using i: Liftable[Int], s: Liftable[String]): Liftable[Foo] {
     //   def toExpr(foo: Foo): Expr[Foo] = null
     // }
 
-    // given fooUnliftable(given i: Unliftable[Int], s: Unliftable[String]): Unliftable[Foo] {
+    // using fooUnliftable(using i: Unliftable[Int], s: Unliftable[String]): Unliftable[Foo] {
 
     // }
 

@@ -21,7 +21,7 @@ object Eq {
       case _: (elem *: elems1) =>
         tryEql[elem](productElement[elem](x, n), productElement[elem](y, n)) &&
         eqlElems[elems1](n + 1)(x, y)
-      case _: Unit =>
+      case _: EmptyTuple =>
         true
     }
 
@@ -33,7 +33,7 @@ object Eq {
             case m: Mirror.ProductOf[`alt`] => eqlElems[m.MirroredElemTypes](0)(x, y)
           }
         else eqlCases[alts1](n + 1)(x, y, ord)
-      case _: Unit =>
+      case _: EmptyTuple =>
         false
     }
 

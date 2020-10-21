@@ -19,11 +19,18 @@ object LoadObject {
       field.get(cls).asInstanceOf[T]
     }
 
-  def apply[T](tpe: TType[T])(given qctx: QuoteContext): Try[T] = {
-    import qctx.tasty.{Try => _, given, _}
+  def apply[T](tpe: TType[T])(using qctx: QuoteContext): Try[T] = {
+    import qctx.tasty.{Try => _, _}
     Try {
+      
+      if ('[$tpe].unseal.tpe.classSymbol.isEmpty) {
+        println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${'[$tpe].unseal.tpe} *** ~~~~~~~~~~~~~~~~~")  
+      }
       val className = '[$tpe].unseal.tpe.classSymbol.get.fullName
-      val cls = Class.forName(`endWith$`(className))
+      println(s"~~~~~~~~~~~~~~~~~ Class Is: ${className} ~~~~~~~~~~~~~~~~~")
+      val clsFull = `endWith$`(className)
+      val cls = Class.forName(clsFull)
+      println(s"~~~~~~~~~~~~~~~~~ Class Load Succeeded: ${clsFull} ~~~~~~~~~~~~~~~~~")
       val field = cls.getField("MODULE$")
       field.get(cls).asInstanceOf[T]
     }
@@ -32,7 +39,7 @@ object LoadObject {
 
 // TODO Move this to a test
 inline def loadMac[T]: String = ${ loadMacImpl[T] }
-def loadMacImpl[T](given qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
+def loadMacImpl[T](using qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
   val loaded = LoadObject(tpe)
   println( loaded )
   Expr(loaded.toString)

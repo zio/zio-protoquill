@@ -1,7 +1,7 @@
 package simple
 
 import scala.quoted._
-import scala.quoted.matching.{Const => ConstExpr, _} // Including ExprSeq?
+import scala.quoted.{Const => ConstExpr, _}
 import miniquill.quoter.Dsl
 import miniquill.parser.TastyMatchersContext
 
@@ -9,8 +9,8 @@ object MacroExperiment {
   
 
   inline def printTree(tree: Any): Any = ${ printTreeImpl('tree) }
-  def printTreeImpl(tree: Expr[Any])(given qctx: QuoteContext): Expr[Any] = {
-    import qctx.tasty.{given _, _}
+  def printTreeImpl(tree: Expr[Any])(using qctx: QuoteContext): Expr[Any] = {
+    import qctx.tasty._
     val tctx = new TastyMatchersContext
     import tctx._
 

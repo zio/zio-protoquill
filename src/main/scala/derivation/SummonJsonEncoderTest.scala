@@ -2,9 +2,8 @@ package derivation
 
 import scala.deriving._
 import scala.quoted._
-import scala.quoted.matching._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
-import JsonEncoder.{given, _}
+import JsonEncoder._
 import scala.reflect.ClassTag
 
 object SummonJsonEncoderTest {
@@ -18,8 +17,8 @@ object SummonJsonEncoderTest {
   inline def usingSummonFrom[T](value: =>T): String = 
     ${ usingSummonFromImpl('value, summonMirror[T]) }
 
-  def usingSummonFromImpl[T: Type](value: Expr[T], m: Option[Mirror.Of[T]])(given qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty.{_, given}
+  def usingSummonFromImpl[T: Type](value: Expr[T], m: Option[Mirror.Of[T]])(using qctx: QuoteContext): Expr[String] = {
+    import qctx.tasty.{_}
 
     val theMirror = m match { case Some(mirror) => mirror}
 
@@ -43,10 +42,10 @@ object SummonJsonEncoderTest {
 
   inline def usingSummonExpr[T](value: =>T): String = ${ usingSummonExprImpl('value) }
 
-  def usingSummonExprImpl[T: Type](value: Expr[T])(given qctx: QuoteContext): Expr[String] = {
+  def usingSummonExprImpl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
 
-    val mirrorExpr = summonExpr[Mirror.Of[T]] match {
+    val mirrorExpr = Expr.summon[Mirror.Of[T]] match {
       case Some(mirror) => mirror
     }
 

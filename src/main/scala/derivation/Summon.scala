@@ -17,7 +17,7 @@ object SummonCsvEncoderTest {
 object SummonCsvEncoderManualTest {
   //import scala.compiletime.summonFrom
   import scala.quoted._
-  import scala.quoted.matching._
+  
   import scala.compiletime.{erasedValue, summonFrom}
 
   inline def encodeElem[T](elem: T): String = summonFrom {
@@ -56,15 +56,15 @@ object SummonCsvEncoderManualTest {
   // }
 
   // inline def summonTest[T](value: =>T): String = ${ summonTestImpl[T]('value) }
-  // def summonTestImpl[T: Type](body: Expr[T])(given qctx: QuoteContext): Expr[String] = {
-  //   import qctx.tasty.{_, given _}
+  // def summonTestImpl[T: Type](body: Expr[T])(using qctx: QuoteContext): Expr[String] = {
+  //   import qctx.tasty.{_}
 
-  //   val from = summonExpr {
+  //   val from = Expr.summon {
   //     case m :Mirror.Of[T] => Some(m)
   //     case _ => None
   //   }
 
-  //   val mirror = summonExpr(given '[Mirror.Of[T]]) match {
+  //   val mirror = Expr.summon(using '[Mirror.Of[T]]) match {
   //     case Some(mirror) => println("mirror: " + new AstPrinter().apply(mirror.unseal))
   //     case None =>
   //   }
@@ -80,7 +80,7 @@ object SummonCsvEncoderManualTest {
 object SummonJsonEncoderManualTest {
   //import scala.compiletime.summonFrom
   import scala.quoted._
-  import scala.quoted.matching._
+  
   import scala.compiletime.{erasedValue, summonFrom}
 
   inline def encodeElem[T](elem: T): String = summonFrom {

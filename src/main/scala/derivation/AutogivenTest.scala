@@ -1,12 +1,12 @@
 package derivation
 
 import scala.deriving._
-import Autogiven._
+import Autousing._
 import Eq._
 
 
 
-object AutogivenTest {
+object AutousingTest {
   val stuff = ThePerson("Joe", 123, List(TheAddress("123 Street")))
 
   def main(args: Array[String]):Unit = {
@@ -20,8 +20,8 @@ object AutogivenTest {
     // Why can't I get the mirror of an int?
     //val intMirror = summon[Mirror.Of[Int]
 
-    // given JsonEncoder[ThePerson] = JsonEncoder.derived
-    // given JsonEncoder[TheAddress] = JsonEncoder.derived
+    // using JsonEncoder[ThePerson] = JsonEncoder.derived
+    // using JsonEncoder[TheAddress] = JsonEncoder.derived
     // println( summon[JsonEncoder[ThePerson]].encode(stuff) )
   }
 }

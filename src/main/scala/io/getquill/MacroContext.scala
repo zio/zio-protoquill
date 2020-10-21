@@ -7,7 +7,7 @@ import io.getquill.derived._
 
 object MacroContext {
   import scala.quoted._
-  import scala.quoted.matching._
+  
 
   // inline def runQuery[T, D <: Idiom, N <: NamingStrategy, RQR[_]](ctx: Context[D, N]{ type RunQueryResult[T] = RQR[T] }): RQR[T] = 
   //   ${ runQueryImpl[T, D, N, RQR]('ctx) }
@@ -25,8 +25,8 @@ object MacroContext {
   // def runQueryImpl[T, D <: Idiom, N <: NamingStrategy, Result](
   //   quoted: Expr[Quoted[Query[T]]],
   //   ctx: Expr[Context[D, N]]
-  // )(given qctx: QuoteContext): Expr[Result] = {
-  //   import qctx.tasty.{given _, _}
+  // )(using qctx: QuoteContext): Expr[Result] = {
+  //   import qctx.tasty._
 
   //   val (ast, lifts) =
   //     quoted match {

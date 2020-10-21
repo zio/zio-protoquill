@@ -20,9 +20,9 @@ import PulloutExperiment._
 //   //val results = parseTuple(value)
 //   //println(results)
 
-//   println( summonExpressers(value) )
+//   println( Expr.summonessers(value) )
 
-//   //println( summonExpressers((lookInside("foo"), lookInside(3))) )
+//   //println( Expr.summonessers((lookInside("foo"), lookInside(3))) )
 
 //   //val output = parseTuple(value)
 

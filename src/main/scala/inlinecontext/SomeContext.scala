@@ -1,7 +1,7 @@
 package inlinecontext
 
 import scala.quoted._
-import scala.quoted.matching._
+
 
 trait Stuff[T] { def doStuff: String }
 given Stuff[Int] = new Stuff[Int] { def doStuff: String = "IntStuff" }
@@ -19,14 +19,14 @@ class MyContext[T] extends MyContextTrait[T] {
 }
 
 object MyContext {
-  //type Contextable[T] = (given qctx: QuoteContext, t: Type[T]) => Expr[String]
+  //type Contextable[T] = (using qctx: QuoteContext, t: Type[T]) => Expr[String]
   //def summonAndReturnImpl[T](mc: Expr[MyContextTrait[T]]): Contextable[T] = {
 
-  def summonAndReturnImpl[T](mc: Expr[MyContextTrait[T]])(given qctx: QuoteContext, t: Type[T]): Expr[String] = {
+  def summonAndReturnImpl[T](mc: Expr[MyContextTrait[T]])(using qctx: QuoteContext, t: Type[T]): Expr[String] = {
     val qctx = summon[QuoteContext]
     val t = summon[Type[T]]
-    import qctx.tasty.{given _, _}
-    val stuff = summonExpr[Stuff[T]] match {
+    import qctx.tasty._
+    val stuff = Expr.summon[Stuff[T]] match {
       case Some(value) => value
     }
     '{

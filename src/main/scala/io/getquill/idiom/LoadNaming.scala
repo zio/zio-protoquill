@@ -3,7 +3,7 @@ package io.getquill.idiom
 import scala.util.Try
 
 import scala.quoted.{Type => TType, _}
-import scala.quoted.matching._
+
 import io.getquill.NamingStrategy
 import io.getquill.util.CollectTry
 import io.getquill.util.LoadObject
@@ -11,8 +11,8 @@ import io.getquill.CompositeNamingStrategy
 
 object LoadNaming {
 
-  def static[T](tpe: TType[T])(given qctx: QuoteContext): Try[NamingStrategy] = {
-    import qctx.tasty.{Try => _, _, given}
+  def static[T](tpe: TType[T])(using qctx: QuoteContext): Try[NamingStrategy] = {
+    import qctx.tasty.{Try => _, _}
 
     def `endWith$`(str: String) =
       if (str.endsWith("$")) str else str + "$"
@@ -30,8 +30,8 @@ object LoadNaming {
     }.map(NamingStrategy(_))
   }
 
-  private def strategies[T](tpe: TType[T])(given qctx: QuoteContext) = {
-    import qctx.tasty.{_, given}
+  private def strategies[T](tpe: TType[T])(using qctx: QuoteContext) = {
+    import qctx.tasty.{_}
     val treeTpe = '[$tpe].unseal.tpe
     treeTpe <:< '[CompositeNamingStrategy].unseal.tpe match {
       case true =>
@@ -48,8 +48,8 @@ object LoadNaming {
   }
 
   inline def mac[T](t: T): String = ${ macImpl[T]('t) }
-  def macImpl[T](t: Expr[T])(given qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
-    import qctx.tasty.{_, given}
+  def macImpl[T](t: Expr[T])(using qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
+    import qctx.tasty.{_}
     val loadedStrategies = strategies(tpe)
     println( loadedStrategies )
     Expr(loadedStrategies.toString) // maybe list of string?
@@ -58,8 +58,8 @@ object LoadNaming {
 
 
 inline def macLoadNamingStrategy[T](t: T): String = ${ macLoadNamingStrategyImpl[T]('t) }
-def macLoadNamingStrategyImpl[T](t: Expr[T])(given qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
-  import qctx.tasty.{_, given}
+def macLoadNamingStrategyImpl[T](t: Expr[T])(using qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
+  import qctx.tasty.{_}
   val loadedStrategies = LoadNaming.static(tpe)
   println( loadedStrategies )
   Expr(loadedStrategies.toString) // maybe list of string?

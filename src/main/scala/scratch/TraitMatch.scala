@@ -1,7 +1,7 @@
 package scratch
 
 import scala.quoted._
-import scala.quoted.matching._
+
 
 trait Foo(i: Int, j: String)
 case class Impl(i: Int, j: String) extends Foo(i, j)
@@ -11,7 +11,7 @@ object TraitMatch {
 
   inline def traitMatch[T](inline t: T): T = ${ traitMatchImpl[T]('t) }
   def traitMatchImpl[T: Type](t: Expr[T])(using qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty.{given, _}
+    import qctx.tasty._
     val tm = new TastyMatchersContext
     import tm._
 

@@ -5,7 +5,7 @@ import scala.annotation.StaticAnnotation
 import printer.AstPrinter._
 import printer.ContextAstPrinter._
 import scala.deriving._
-import scala.quoted.matching._
+
 import scala.compiletime.{erasedValue, summonFrom}
 
 case class Person(name: String, age:Int)
@@ -51,22 +51,22 @@ object SimpleMacro {
         case m: Mirror.ProductOf[T] => m
       }
 
-    given sumDer:Introspector[T] = Introspector.derived(mirror)
+    implicit val sumDer:Introspector[T] = Introspector.derived(mirror)
     sumDer.introspect
   }
 
 
 
-  trait Fooify[T] with
+  trait Fooify[T]:
     def fooify:String
   
-  // given Fooify[Long] = new Fooify[Long] with
+  // using Fooify[Long] = new Fooify[Long]:
   //     def fooify: String = "LongFoo"
 
-  given Fooify[Int] = new Fooify[Int] with
+  given Fooify[Int] = new Fooify[Int]:
     def fooify: String = "IntFoo"
 
-  given Fooify[String] = new Fooify[String] with
+  given Fooify[String] = new Fooify[String]:
     def fooify: String = "StringFoo"
 
   inline def processType[Elems <: Tuple]: List[String] =
@@ -140,13 +140,13 @@ object SimpleMacro {
   }
 
   inline def typeInfo[T](stuff: =>T): T = ${ typeInfoImpl('stuff) }
-  def typeInfoImpl[T](stuff: Expr[T])(given qctx: QuoteContext, t: Type[T]): Expr[T] = {
-    import qctx.tasty.{Type => TType, _, given}
+  def typeInfoImpl[T](stuff: Expr[T])(using qctx: QuoteContext, t: Type[T]): Expr[T] = {
+    import qctx.tasty.{Type => TType, _}
     
     //  summon[scala.quoted.Type[T]].unseal.tpe
     //def getExprType[T <: Mirror.Of[_]](expr: Expr[T])(t: Type[T]) = 
      
-    summonExpr[Mirror.Of[T]] match {
+    Expr.summon[Mirror.Of[T]] match {
       case Some(expr) => println(expr.unseal.tpe.show)
       case None => println("Mirror not found")
     }
@@ -160,8 +160,8 @@ object SimpleMacro {
 
 
   // inline def printThenRun[T](print: String, thenRun: => T): T = ${ printThenRunImpl('print, 'thenRun) }
-  // def printThenRunImpl[T](print: Expr[String], thenRun: Expr[T])(given qctx: QuoteContext) = {
-  //   import qctx.tasty.{_, given _} //Type => _,
+  // def printThenRunImpl[T](print: Expr[String], thenRun: Expr[T])(using qctx: QuoteContext) = {
+  //   import qctx.tasty.{_} //Type => _,
     
   //   print.unseal.underlyingArgument match {
   //     case Literal(Constant(value)) => println(value)
@@ -179,8 +179,8 @@ object SimpleMacro {
   // import dotty.tools.dotc.core.tasty.TastyPrinter
 
   // inline def betaReduceMethod(f: Int => Int ):Unit = ${betaReduceMethodImpl('f)}
-  // def betaReduceMethodImpl(f: Expr[Int => Int])(given qctx: QuoteContext): Expr[Int] = {
-  //   import qctx.tasty.{_, given _}
+  // def betaReduceMethodImpl(f: Expr[Int => Int])(using qctx: QuoteContext): Expr[Int] = {
+  //   import qctx.tasty.{_}
 
   //   val reduced = Expr.betaReduce(f)('{123}) //hello
   //   println(astprint(reduced.unseal.underlyingArgument))
@@ -193,8 +193,8 @@ object SimpleMacro {
   // // }
 
   // inline def stuff[T](str: T):T = ${ stuffImpl('str) }
-  // def stuffImpl[T](str: Expr[T])(given qctx: QuoteContext): Expr[T] = {
-  //   import qctx.tasty.{_, given _} //Type => _, 
+  // def stuffImpl[T](str: Expr[T])(using qctx: QuoteContext): Expr[T] = {
+  //   import qctx.tasty.{_} //Type => _, 
   //   val und = str.unseal.underlyingArgument
 
 

@@ -3,13 +3,13 @@
 // import io.getquill.ast.{ Ident => Idnt, Constant => Const, Query => Qry, _}
 // import miniquill.quoter._
 // import scala.quoted._
-// import scala.quoted.matching._
+// 
 // import scala.annotation.StaticAnnotation
 // import scala.deriving._
 // import io.getquill.Embedable
 
-// class MatroshkaHelper(given val qctx: QuoteContext) {
-//   import qctx.tasty.{Term => QTerm, given, _}
+// class MatroshkaHelper(using val qctx: QuoteContext) {
+//   import qctx.tasty.{Term => QTerm, _}
 
 //   object TypedMatroshka {
 //     // need to define a case where it won't go into matcher otherwise recursion is infinite
@@ -26,8 +26,8 @@
 //   }
 // }
 
-// class QuotationParser(given val qctx: QuoteContext) {
-//   import qctx.tasty.{_, given _}
+// class QuotationParser(using val qctx: QuoteContext) {
+//   import qctx.tasty.{_}
   
 //   def unInline(expr: Expr[Any]): Expr[Any] = 
 //     expr match {
@@ -43,8 +43,8 @@
 //     }
 //   }
 
-//   import qctx.tasty.{_, given _}
-//   import scala.quoted.matching.{Const => Constant} //hello
+//   import qctx.tasty.{_}
+//   import scala.quoted.{Const => Constant} //hello
 
 //   object TypedMatroshka {
 //     // need to define a case where it won't go into matcher otherwise recursion is infinite
@@ -76,7 +76,7 @@
 
 //   protected object `QuotationLot.apply` {
 //     def unapply(expr: Expr[Any]) = expr match {
-//       case vase @ '{ QuotationLot.apply[$qt]($quotation, ${scala.quoted.matching.Const(uid: String)}) } => 
+//       case vase @ '{ QuotationLot.apply[$qt]($quotation, ${scala.quoted.Const(uid: String)}) } => 
 //         //println("********************** MATCHED VASE APPLY **********************")
 //         //printer.lnf(expr.unseal)
 //         Some((quotation, uid, vase))
@@ -86,7 +86,7 @@
 
 //   object `ScalarVase.apply` {
 //     def unapply(expr: Expr[Any]) = expr match {
-//       case vase @ '{ ScalarVase.apply[$qt, $prep]($liftValue, $encoder, ${scala.quoted.matching.Const(uid: String)}) } =>
+//       case vase @ '{ ScalarVase.apply[$qt, $prep]($liftValue, $encoder, ${scala.quoted.Const(uid: String)}) } =>
 //         Some((liftValue, uid, vase, qt))
 //       case _ => None
 //     }

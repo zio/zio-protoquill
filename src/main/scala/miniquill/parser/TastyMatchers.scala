@@ -1,13 +1,13 @@
 package miniquill.parser
 
 import scala.quoted._
-import scala.quoted.matching._
+import scala.quoted.Varargs
 
-class TastyMatchersContext(given val qctx: QuoteContext) extends TastyMatchers
+class TastyMatchersContext(using val qctx: QuoteContext) extends TastyMatchers
 
 trait TastyMatchers {
   implicit val qctx: QuoteContext
-  import qctx.tasty.{Type => TType, given, _}
+  import qctx.tasty.{Type => TType, _}
 
   implicit class ExprOps[T: Type](expr: Expr[T]) {
     def reseal: Expr[T] = expr.unseal.underlyingArgument.seal.cast[T]
@@ -21,17 +21,20 @@ trait TastyMatchers {
     }
   }
 
-  // Designed to be a more generic version the ExprSeq which does not handle all cases.
+  // Designed to be a more generic version the Varargs which does not handle all cases.
   // Particularily when a varargs parameter is passed from one inline function into another.
   object GenericSeq {
     def unapply(term: Expr[_]): Option[List[Expr[_]]] = {
       term match {
-        case ExprSeq(props) => Some(props.toList)
+        case Varargs(props) => Some(props.toList)
+        case '{ List(${Varargs(props)}) } => Some(props.toList)
+        case '{ Nil } => Some(List())
+        case '{ Seq(${Varargs(props)}) } => Some(props.toList)
         case Unseal(Untype(Repeated(props, _))) => Some(props.map(_.seal))
         case other =>
           //println("Could not parse sequence expression:")
           //printer.lnf(term.unseal)
-          qctx.throwError("Could not parse sequence expression:\n" + printer.str(term.unseal))
+          Reporting.throwError("Could not parse sequence expression:\n" + printer.str(term.unseal))
       }
     }
   }

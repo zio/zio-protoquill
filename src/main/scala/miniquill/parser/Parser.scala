@@ -4,7 +4,7 @@ package miniquill.parser
 import io.getquill.ast.{Ident => Idnt, Query => Qry, _}
 import miniquill.quoter._
 import scala.quoted._
-import scala.quoted.matching.{Const => ConstExpr, _}
+import scala.quoted.{Const => ConstExpr, _}
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
@@ -16,8 +16,8 @@ import io.getquill.EntityQuery
 import io.getquill.Query
 import io.getquill.Format
 
-type Parser[R] = PartialFunction[Expr[_], R]
-type SealedParser[R] = (Expr[_] => R)
+type Parser[R] = PartialFunction[quoted.Expr[_], R]
+type SealedParser[R] = (quoted.Expr[_] => R)
 
 object Parser {
   val empty: Parser[Ast] = PartialFunction.empty[Expr[_], Ast]
@@ -25,12 +25,12 @@ object Parser {
   object Implicits {
 
     implicit class ParserExtensions[R](parser: Parser[R])(implicit val qctx: QuoteContext, ct: ClassTag[R]) {
-      import qctx.tasty.{given, _}
+      import qctx.tasty._
 
       def seal: SealedParser[R] = 
         (expr: Expr[_]) => parser.lift(expr).getOrElse { //hello
           // c.fail(s"Tree '$tree' can't be parsed to '${ct.runtimeClass.getSimpleName}'")
-          qctx.throwError(
+          report.throwError(
         s"""|s"==== Tree cannot be parsed to '${ct.runtimeClass.getSimpleName}' ===
             |  ${Format(expr.show)}
             |==== Extractors ===
@@ -79,24 +79,24 @@ object Parser {
 }
 
 trait ParserFactory {
-  def apply(given qctx: QuoteContext): Parser[Ast]
+  def apply(using qctx: QuoteContext): Parser[Ast]
 }
 trait ParserLibrary extends ParserFactory {
   import Parser._
 
-  def quotationParser(given qctx: QuoteContext)  =         Series.single(new QuotationParser)
-  def queryParser(given qctx: QuoteContext)      =         Series.single(new QueryParser)
-  def functionParser(given qctx: QuoteContext)   =         Series.single(new FunctionParser)
-  def functionApplyParser(given qctx: QuoteContext) =      Series.single(new FunctionApplyParser)
-  def operationsParser(given qctx: QuoteContext) =         Series.single(new OperationsParser)
-  def genericExpressionsParser(given qctx: QuoteContext) = Series.single(new GenericExpressionsParser)
+  def quotationParser(using qctx: QuoteContext)  =         Series.single(new QuotationParser)
+  def queryParser(using qctx: QuoteContext)      =         Series.single(new QueryParser)
+  def functionParser(using qctx: QuoteContext)   =         Series.single(new FunctionParser)
+  def functionApplyParser(using qctx: QuoteContext) =      Series.single(new FunctionApplyParser)
+  def operationsParser(using qctx: QuoteContext) =         Series.single(new OperationsParser)
+  def genericExpressionsParser(using qctx: QuoteContext) = Series.single(new GenericExpressionsParser)
 
-  // def userDefined(given qctxInput: QuoteContext) = Series(new Glosser[Ast] {
+  // def userDefined(using qctxInput: QuoteContext) = Series(new Glosser[Ast] {
   //   val qctx = qctxInput
   //   def apply(root: Parser[Ast]) = PartialFunction.empty[Expr[_], Ast]
   // })
 
-  def apply(given qctx: QuoteContext): Parser[Ast] = {
+  def apply(using qctx: QuoteContext): Parser[Ast] = {
     quotationParser
         .combine(queryParser)
         .combine(functionParser) // decided to have it be it's own parser unlike Quill3
@@ -109,7 +109,7 @@ trait ParserLibrary extends ParserFactory {
 object ParserLibrary extends ParserLibrary
 
 case class FunctionApplyParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Type => TType, _, given}
+  import qctx.tasty.{Type => TType, _}
   import Parser.Implicits._
   import io.getquill.norm.capture.AvoidAliasConflict
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -126,7 +126,7 @@ case class FunctionApplyParser(root: Parser[Ast] = Parser.empty)(override implic
 
 
 case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Type => TType, _, given}
+  import qctx.tasty.{Type => TType, _}
   import Parser.Implicits._
   import io.getquill.norm.capture.AvoidAliasConflict
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -152,7 +152,7 @@ case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit va
 
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
 case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Type => TType, _, given}
+  import qctx.tasty.{Type => TType, _}
   import Parser.Implicits._
 
   // TODO Need to inject this somehow?
@@ -166,7 +166,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
       quotationLot match {
         case Uprootable(uid, astTree, _, _, _, _) => unlift(astTree)
         case Pluckable(uid, astTree, _) => QuotationTag(uid)
-        case Pointable(quote) => qctx.throwError(s"Quotation is invalid for compile-time or processing: ${quote.show}", quote)
+        case Pointable(quote) => Reporting.throwError(s"Quotation is invalid for compile-time or processing: ${quote.show}", quote)
       }
 
     case ScalarPlanterExpr.UprootableUnquote(expr) =>
@@ -182,7 +182,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 }
 
 case class PropertyAliasParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[PropertyAlias] {
-  import qctx.tasty.{Constant => TConstant, given, _}
+  import qctx.tasty.{Constant => TConstant, _}
   
   def delegate: PartialFunction[Expr[_], PropertyAlias] = {
       case Lambda1(_, '{ ArrowAssoc[$tpa]($prop).->[$v](${ConstExpr(alias: String)}) } ) =>
@@ -203,7 +203,7 @@ case class PropertyAliasParser(root: Parser[Ast] = Parser.empty)(implicit qctx: 
 }
 
 case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Constant => TConstant, given,  _}
+  import qctx.tasty.{Constant => TConstant, _}
   import Parser.Implicits._
 
   // TODO If this was copied would 'root' inside of this thing update correctly?
@@ -249,7 +249,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
 }
 
 // case class ConflictParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
-//   import qctx.tasty.{Constant => TConstant, given,  _}
+//   import qctx.tasty.{Constant => TConstant, using,  _}
 //   import Parser.Implicits._
 //   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -265,7 +265,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
 // }
 
 case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{given, _}
+  import qctx.tasty._
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -285,7 +285,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 }
 
 case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Constant => TreeConst, Ident => TreeIdent, given, _}
+  import qctx.tasty.{Constant => TreeConst, Ident => TreeIdent, _}
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
