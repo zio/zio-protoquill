@@ -23,10 +23,27 @@ object LoadObject {
     import qctx.tasty.{Try => _, _}
     Try {
       
-      if ('[$tpe].unseal.tpe.classSymbol.isEmpty) {
-        println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${'[$tpe].unseal.tpe} *** ~~~~~~~~~~~~~~~~~")  
-      }
-      val className = '[$tpe].unseal.tpe.classSymbol.get.fullName
+      // if ('[$tpe].unseal.tpe.classSymbol.isEmpty) {
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${'[$tpe].unseal.tpe} *** ~~~~~~~~~~~~~~~~~")  
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${'[$tpe].unseal.tpe.termSymbol} *** ~~~~~~~~~~~~~~~~~")  
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${'[$tpe].unseal.tpe.termSymbol.moduleClass.fullName} *** ~~~~~~~~~~~~~~~~~")  
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${'[$tpe].unseal.tpe.termSymbol.companionClass.fullName} *** ~~~~~~~~~~~~~~~~~")  
+      // }
+      val loadClassType = '[$tpe].unseal.tpe
+      val optClassSymbol = loadClassType.classSymbol
+      val className = 
+        optClassSymbol match {
+          case Some(value) => value.fullName
+          case None =>
+            println(s"${'[$tpe].show} is not a class type. Attempting to load it as a module.")
+            if (!loadClassType.termSymbol.moduleClass.isNoSymbol) {
+              loadClassType.termSymbol.moduleClass.fullName
+            } else {
+              println(s"The class ${'[$tpe].show} cannot be loaded because it is either a scala class or module")
+              Reporting.throwError(s"The class ${'[$tpe].show} cannot be loaded because it is either a scala class or module")
+            }
+        }
+
       println(s"~~~~~~~~~~~~~~~~~ Class Is: ${className} ~~~~~~~~~~~~~~~~~")
       val clsFull = `endWith$`(className)
       val cls = Class.forName(clsFull)

@@ -118,6 +118,12 @@ object StaticTranslationMacro {
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.unseal.underlyingArgument.seal
 
+    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& APPLY FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& APPLY FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& APPLY FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& APPLY FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& APPLY FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+
     import scala.util.{Success, Failure}
     idiomAndNamingStatic match {
       case Success(v) =>
@@ -126,29 +132,30 @@ object StaticTranslationMacro {
 
     val tryStatic =
       for {
-        _ <- Some {println("================== Started Cycle ===============")}
         (idiom, naming)          <- idiomAndNamingStatic.toOption
-        _ <- Some {println("================== GOT IDIOM AND NAMING ===============")}
-        quotedExpr               <- QuotedExpr.uprootableOpt(quoted)
-        _ <- Some {println("================== Quoted Expr ===============")}
+        quotedExpr               <- QuotedExpr.uprootableOpt(quotedRaw)
         (queryString, externals) <- processAst[T](quotedExpr.ast, idiom, naming)
-        _ <- Some {println("================== Got Externals ===============")}
         encodedLifts             <- processLifts(quotedExpr.lifts, externals)
-        _ <- Some {println("================== Got Enocded Lifts ===============")}
       } yield {
         println("Compile Time Query Is: " + queryString)
 
         // What about a missing decoder?
         // need to make sure that that kind of error happens during compile time
         // (also need to propagate the line number, talk to Li Houyi about that)
-        '{ (${Expr(queryString)}, ${Expr.ofList(encodedLifts)}) }
+        '{ ("", List()) } //${Expr(queryString)}, ${Expr.ofList(encodedLifts)}
       }
 
     if (tryStatic.isEmpty)
       println("WARNING: Dynamic Query Detected: ")
 
     tryStatic match {
-      case Some(value) => '{ Option($value) }
+      case Some(value) => 
+        println("&&&&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+        println("&&&&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+        println("&&&&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+        println("&&&&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+        println("&&&&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+        '{ Option($value) }
       case None        => '{ None }
     }
   }

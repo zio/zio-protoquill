@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 import miniquill.quoter.Dsl._
 
 object AdvTest {
-  def runAdvTest(): Unit = {
+  def main(args: Array[String]): Unit = {
 
     //hello
     import io.getquill._

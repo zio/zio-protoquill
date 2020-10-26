@@ -107,6 +107,7 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
       val extractor = (r: ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[ResultRow, RawT]].apply(1, r))
       val prepare = (row: PrepareRow) => staticExtractor(lifts, row)
   
+      println("==================<<<<<<<<<<< GOT TO HERE >>>>>>>>>>>>>>>>================")
       this.executeQuery(queryString, prepare, extractor, ExecutionType.Static)
     }
 
@@ -124,23 +125,28 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
         //   }
         val decoder = summonDecoder[R]
         runStatic[R, T](query, lifts, decoder, converter)
+        //null.asInstanceOf[Result[RunQueryResult[T]]]
 
       case None =>
-        val decoder = summonDecoder[R]
-        runDynamic[R, T](quoted, decoder, converter)
+        //val decoder = summonDecoder[R]
+        //runDynamic[R, T](quoted, decoder, converter)
+        //null.asInstanceOf[Result[RunQueryResult[T]]]
+        throw new IllegalArgumentException("(((((((((((((( NO STATIC CONTEXT ))))))))))))))))))")
     }
   }
   
 
   inline def runQuery[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
-    summonFrom {
-      case qm: QueryMeta[T, someR] =>
-        val (reappliedQuery, converter, staticState) = QueryMetaExtractor[T, someR, Dialect, Naming](quoted, this)
-        encodeAndExecute[T, someR](staticState, reappliedQuery, converter)
-      case _ => 
-        val staticState = translateStatic[T](quoted)
-        encodeAndExecute[T, T](staticState, quoted, t => t)
-    }
+    val staticState = translateStatic[T](quoted)
+    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& WAS FROM FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& WAS FROM FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& WAS FROM FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& WAS FROM FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& WAS FROM FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
+    // KNOW I GO HERE. WOW, SUMMONFROM IS ODD!!!!
+
+    val r = encodeAndExecute[T, T](staticState, quoted, t => t)
+    r
   }
 }
 

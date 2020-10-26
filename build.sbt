@@ -14,11 +14,12 @@ lazy val root = project
     ),
 
     libraryDependencies ++= Seq(
+      // .excludeAll(ExclusionRule(organization="com.trueaccord.scalapb")
       ("com.lihaoyi" %% "pprint" % "0.5.6").withDottyCompat(scalaVersion.value),
       ("io.getquill" %% "quill-core-portable" % "3.5.2").withDottyCompat(scalaVersion.value),
       ("io.getquill" %% "quill-sql-portable" % "3.5.2").withDottyCompat(scalaVersion.value),
-      ("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
-      ("org.scalameta" %% "scalafmt-cli" % "2.7.4").withDottyCompat(scalaVersion.value),
+      //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
+      //("org.scalameta" %% "scalafmt-cli" % "2.7.4").withDottyCompat(scalaVersion.value),
       "ch.epfl.lamp" % "dotty_0.26" % (scalaVersion.value),
       "org.scalatest" % "scalatest_0.26" % "3.2.2" % "test"
     )

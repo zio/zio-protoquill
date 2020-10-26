@@ -114,6 +114,9 @@ object QueryMetaExtractor {
     ctx: Expr[Context[D, N]]
   )(using qctx:QuoteContext): Expr[(Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_,_]])])] = {
     import qctx.tasty.{Try => TTry, _}
+    println("------------------------------- META EXTRACT -------------------------------")
+    println("------------------------------- META EXTRACT -------------------------------")
+    println("------------------------------- META EXTRACT -------------------------------")
     val quotedArg = quotedRaw.unseal.underlyingArgument.seal.cast[Quoted[Query[T]]]
     val summonedMeta = Expr.summon(using '[QueryMeta[T, R]]).map(_.unseal.underlyingArgument.seal.cast[QueryMeta[T, R]])
     summonedMeta match {
@@ -125,7 +128,9 @@ object QueryMetaExtractor {
             attemptStaticRequip[T, R](queryLot, queryLifts, quip) match {
               
               case Some(StaticRequip(requip, baq)) =>
+                println("------------------------------- PRE-TRYING TO REQUIP -------------------------------")
                 val staticTranslation = StaticTranslationMacro[R, D, N](requip)
+                println("------------------------------- TRYING TO REQUIP -------------------------------")
                 '{ ($requip, $baq, $staticTranslation) }
 
               case None =>
