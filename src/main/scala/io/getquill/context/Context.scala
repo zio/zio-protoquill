@@ -128,9 +128,12 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
         //null.asInstanceOf[Result[RunQueryResult[T]]]
 
       case None =>
-        //val decoder = summonDecoder[R]
-        //runDynamic[R, T](quoted, decoder, converter)
-        //null.asInstanceOf[Result[RunQueryResult[T]]]
+        
+        // NOTE The second these are commented out, the compilation and run seems to work
+        // it seems like something in the runDynamic is causing the failure
+        val decoder = summonDecoder[R]
+        runDynamic[R, T](quoted, decoder, converter)
+        
         throw new IllegalArgumentException("(((((((((((((( NO STATIC CONTEXT ))))))))))))))))))")
     }
   }
