@@ -99,14 +99,15 @@ object QuoteMacro {
     // TODO Add an error if the lifting cannot be found
     val reifiedAst = Lifter(qctx)(ast)
 
-    val pluckedUnquotes = extractRuntimeUnquotes(body)
+    val pluckedUnquotes = extractRuntimeUnquotes(bodyRaw)
 
     // Extract new lifts
-    val lifts = extractLifts(body)
+    val lifts = extractLifts(bodyRaw)
 
     // TODO Extract ScalarPlanter which are lifts that have been transformed already
     // TODO Extract plucked quotations, transform into QuotationVase statements and insert into runtimeQuotations slot
 
+    // ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}
     '{       
       Quoted[T](${reifiedAst}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)})
     }

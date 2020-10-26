@@ -44,8 +44,9 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
   
     inline def runDynamic[RawT, T](inline quoted: Quoted[Query[RawT]], inline decoder: GenericDecoder[_, RawT], inline converter: RawT => T): Result[RunQueryResult[T]] = {
       val ast = Expander.runtime[RawT](quoted.ast)
-      val lifts = quoted.lifts
-      val quotationVases = quoted.runtimeQuotes
+      // VERY VERY ODD that this seems to fix issues with position errors originally found in Miniquill test
+      val lifts = GetLifts(quoted) // quoted.lifts causes position exception
+      val quotationVases = GetRuntimeQuotes(quoted) // quoted.runtimeQuotes causes position exception
   
       def spliceQuotations(ast: Ast): Ast =
         Transform(ast) {
@@ -135,8 +136,8 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
         // this chunk of the code because it's a static query (doing the compilation
         // does not cause throwing of the exception so the problem here is happening purely
         // inside the scala compiler)
-        //val decoder = summonDecoder[R]
-        //runDynamic[R, T](quoted, decoder, converter)
+        val decoder = summonDecoder[R]
+        runDynamic[R, T](quoted, decoder, converter)
         
         throw new IllegalArgumentException("(((((((((((((( NO STATIC CONTEXT ))))))))))))))))))")
     }
@@ -144,16 +145,14 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
   
 
   inline def runQuery[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
-    val staticState = translateStatic[T](quoted)
-    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& WAS FROM FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& WAS FROM FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& WAS FROM FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& WAS FROM FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& WAS FROM FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-    // KNOW I GO HERE. WOW, SUMMONFROM IS ODD!!!!
-
-    val r = encodeAndExecute[T, T](staticState, quoted, t => t)
-    r
+    summonFrom {
+      case qm: QueryMeta[T, someR] =>
+        val (reappliedQuery, converter, staticState) = QueryMetaExtractor[T, someR, Dialect, Naming](quoted, this)
+        encodeAndExecute[T, someR](staticState, reappliedQuery, converter)
+      case _ =>
+        val staticState = translateStatic[T](quoted)
+        encodeAndExecute[T, T](staticState, quoted, t => t)
+    }
   }
 }
 

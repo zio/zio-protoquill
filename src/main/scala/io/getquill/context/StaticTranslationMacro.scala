@@ -25,6 +25,37 @@ import io.getquill.idiom.ReifyStatement
 
 import io.getquill._
 
+object GetLifts {
+  import miniquill.parser._
+  import scala.quoted._ // Expr.summon is actually from here
+  import miniquill.quoter.ScalarPlanter
+  import io.getquill.idiom.LoadNaming
+  import io.getquill.util.LoadObject
+  import miniquill.dsl.GenericEncoder
+  import io.getquill.ast.External
+
+  inline def apply[T](inline quoted: Quoted[Query[T]]): List[miniquill.quoter.ScalarPlanter[_, _]] = ${ applyImpl('quoted) }
+  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(implicit qctx: QuoteContext): Expr[List[miniquill.quoter.ScalarPlanter[_, _]]] = {
+    import qctx.tasty.{Try => TTry,Type => TType, _}
+    '{ $quoted.lifts }
+  }
+}
+
+object GetRuntimeQuotes {
+  import miniquill.parser._
+  import scala.quoted._ // Expr.summon is actually from here
+  import miniquill.quoter.ScalarPlanter
+  import io.getquill.idiom.LoadNaming
+  import io.getquill.util.LoadObject
+  import miniquill.dsl.GenericEncoder
+  import io.getquill.ast.External
+
+  inline def apply[T](inline quoted: Quoted[Query[T]]): List[miniquill.quoter.QuotationVase] = ${ applyImpl('quoted) }
+  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(implicit qctx: QuoteContext): Expr[List[miniquill.quoter.QuotationVase]] = {
+    import qctx.tasty.{Try => TTry,Type => TType, _}
+    '{ $quoted.runtimeQuotes }
+  }
+}
 
 object StaticTranslationMacro {
   import miniquill.parser._
@@ -103,11 +134,8 @@ object StaticTranslationMacro {
 
   def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using qctx: QuoteContext, dialectTpe:Type[D], namingType:Type[N]): Try[(Idiom, NamingStrategy)] =
     for {
-      _ <- Try(println("====================== Try Idiom Load ========================"))
       idiom <- LoadObject(dialectTpe)
-      _ <- Try(println("====================== Try Naming Load ========================"))
       namingStrategy <- LoadNaming.static(namingType)
-      _ <- Try(println("====================== Succeed Idiom and Naming Load ========================"))
     } yield (idiom, namingStrategy)
 
 
@@ -117,12 +145,6 @@ object StaticTranslationMacro {
     import qctx.tasty.{Try => TTry,Type => TType, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.unseal.underlyingArgument.seal
-
-    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& APPLY FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& APPLY FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& APPLY FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& APPLY FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-    println("&&&&&&&&&&&&&&&&&&&&&&&&&&& APPLY FROM HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
 
     import scala.util.{Success, Failure}
     idiomAndNamingStatic match {
@@ -150,13 +172,9 @@ object StaticTranslationMacro {
 
     tryStatic match {
       case Some(value) => 
-        println("&&&&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-        println("&&&&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-        println("&&&&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-        println("&&&&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
-        println("&&&&&&&&&&&&&&&&&&&&&&&&&&& GOT HERE &&&&&&&&&&&&&&&&&&&&&&&&&")
         '{ Option($value) }
-      case None        => '{ None }
+      case None => 
+        '{ None }
     }
   }
 }

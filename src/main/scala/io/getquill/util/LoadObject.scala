@@ -44,10 +44,8 @@ object LoadObject {
             }
         }
 
-      println(s"~~~~~~~~~~~~~~~~~ Class Is: ${className} ~~~~~~~~~~~~~~~~~")
       val clsFull = `endWith$`(className)
       val cls = Class.forName(clsFull)
-      println(s"~~~~~~~~~~~~~~~~~ Class Load Succeeded: ${clsFull} ~~~~~~~~~~~~~~~~~")
       val field = cls.getField("MODULE$")
       field.get(cls).asInstanceOf[T]
     }

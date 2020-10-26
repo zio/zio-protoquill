@@ -2,12 +2,12 @@ package io.getquill
 
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.MustMatchers
+import org.scalatest.matchers.must.Matchers
 
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.Duration
 
-abstract class Spec extends AnyFreeSpec with MustMatchers /* with BeforeAndAfterAll */ {
+abstract class Spec extends AnyFreeSpec with Matchers /* with BeforeAndAfterAll */ {
 
   // =============== Not technically needed but otherwise vscode+dotty gives too many false errors ===============
   implicit def convertToFreeSpecStringWrapperNoImplicit(s: String): FreeSpecStringWrapper = 
