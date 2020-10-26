@@ -40,7 +40,7 @@ object LoadObject {
               loadClassType.termSymbol.moduleClass.fullName
             } else {
               println(s"The class ${'[$tpe].show} cannot be loaded because it is either a scala class or module")
-              Reporting.throwError(s"The class ${'[$tpe].show} cannot be loaded because it is either a scala class or module")
+              report.throwError(s"The class ${'[$tpe].show} cannot be loaded because it is either a scala class or module")
             }
         }
 

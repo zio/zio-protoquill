@@ -43,7 +43,8 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
       ${ StaticTranslationMacro[T, Dialect, Naming]('quoted) }
   
     inline def runDynamic[RawT, T](inline quoted: Quoted[Query[RawT]], inline decoder: GenericDecoder[_, RawT], inline converter: RawT => T): Result[RunQueryResult[T]] = {
-      val ast = Expander.runtime[RawT](quoted.ast)
+      val origAst = GetAst(quoted)
+      val ast = Expander.runtime[RawT](origAst)
       // VERY VERY ODD that this seems to fix issues with position errors originally found in Miniquill test
       val lifts = GetLifts(quoted) // quoted.lifts causes position exception
       val quotationVases = GetRuntimeQuotes(quoted) // quoted.runtimeQuotes causes position exception
@@ -138,8 +139,6 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
         // inside the scala compiler)
         val decoder = summonDecoder[R]
         runDynamic[R, T](quoted, decoder, converter)
-        
-        throw new IllegalArgumentException("(((((((((((((( NO STATIC CONTEXT ))))))))))))))))))")
     }
   }
   

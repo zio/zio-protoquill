@@ -125,7 +125,7 @@ object QuoteMacro {
       .collect {
         case expr: Pluckable => expr
         case Pointable(expr) =>
-          Reporting.throwError(s"Invalid runtime Quotation: ${expr.show}. Cannot extract a unique identifier.", expr)
+          report.throwError(s"Invalid runtime Quotation: ${expr.show}. Cannot extract a unique identifier.", expr)
       }
       .distinctBy(_.uid)
       .map(_.pluck)
@@ -180,7 +180,7 @@ object QueryMacro {
           case QuotationLotExpr(Pointable(_)) => //hello
             UnquoteMacro('{$meta.entity})
 
-          case _ => Reporting.throwError("Invalid Quotation:\n" + meta.show, meta)
+          case _ => report.throwError("Invalid Quotation:\n" + meta.show, meta)
         }
 
       case None => 

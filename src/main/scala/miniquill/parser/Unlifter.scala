@@ -101,7 +101,7 @@ class Unlifter(using qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
       case unliftIdentActual(ast) => ast
       case unliftBaseActual(ast) => ast
       case other =>
-        Reporting.throwError("========= Cannot Unlift: =========\n" + io.getquill.Format(other.show))
+        report.throwError("========= Cannot Unlift: =========\n" + io.getquill.Format(other.show))
     }
     unliftActual
   }

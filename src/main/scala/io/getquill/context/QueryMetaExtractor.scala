@@ -74,7 +74,7 @@ object QueryMetaExtractor {
     
     val quipLotExpr = quip match {
       case QuotationLotExpr(qbin) => qbin
-      case _ => Reporting.throwError("QueryMeta expression is not in a valid form: " + quip)
+      case _ => report.throwError("QueryMeta expression is not in a valid form: " + quip)
     }
     
     quipLotExpr match {
@@ -114,9 +114,6 @@ object QueryMetaExtractor {
     ctx: Expr[Context[D, N]]
   )(using qctx:QuoteContext): Expr[(Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_,_]])])] = {
     import qctx.tasty.{Try => TTry, _}
-    println("------------------------------- META EXTRACT -------------------------------")
-    println("------------------------------- META EXTRACT -------------------------------")
-    println("------------------------------- META EXTRACT -------------------------------")
     val quotedArg = quotedRaw.unseal.underlyingArgument.seal.cast[Quoted[Query[T]]]
     val summonedMeta = Expr.summon(using '[QueryMeta[T, R]]).map(_.unseal.underlyingArgument.seal.cast[QueryMeta[T, R]])
     summonedMeta match {
@@ -128,9 +125,7 @@ object QueryMetaExtractor {
             attemptStaticRequip[T, R](queryLot, queryLifts, quip) match {
               
               case Some(StaticRequip(requip, baq)) =>
-                println("------------------------------- PRE-TRYING TO REQUIP -------------------------------")
                 val staticTranslation = StaticTranslationMacro[R, D, N](requip)
-                println("------------------------------- TRYING TO REQUIP -------------------------------")
                 '{ ($requip, $baq, $staticTranslation) }
 
               case None =>
@@ -155,9 +150,9 @@ object QueryMetaExtractor {
             '{ ($requip, $quip.extract, None) }
         }
         
-        //Reporting.throwError("Quote Meta Identified but not found!")
+        //report.throwError("Quote Meta Identified but not found!")
       case None => 
-        Reporting.throwError("Quote Meta needed but not found!")
+        report.throwError("Quote Meta needed but not found!")
     }
   }
 }

@@ -77,7 +77,7 @@ object ScalarPlanterExpr {
           case _ => 
             // All lifts re-inserted as ScalarPlanters must be inlined values containing
             // their UID as well as a corresponding tree. An error should be thrown if this is not the case.
-            Reporting.throwError("Format of ScalarLift holder must be fully inline.", expr)
+            report.throwError("Format of ScalarLift holder must be fully inline.", expr)
         }
       case _ => None
     }

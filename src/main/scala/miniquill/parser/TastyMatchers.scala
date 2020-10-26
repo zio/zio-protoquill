@@ -34,7 +34,7 @@ trait TastyMatchers {
         case other =>
           //println("Could not parse sequence expression:")
           //printer.lnf(term.unseal)
-          Reporting.throwError("Could not parse sequence expression:\n" + printer.str(term.unseal))
+          report.throwError("Could not parse sequence expression:\n" + printer.str(term.unseal))
       }
     }
   }

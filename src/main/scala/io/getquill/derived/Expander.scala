@@ -127,9 +127,9 @@ object Expander {
         val childTerm = Term(field.constValue, Leaf)
         childTerm :: flatten(node, fields, types)
 
-      case (_, '[Unit]) => Nil
+      case (_, '[EmptyTuple]) => Nil
 
-      case _ => Reporting.throwError("Cannot Types In Expression Expression:\n" + (fieldsTup, typesTup))
+      case _ => report.throwError("Cannot Types In Expression Expression:\n" + (fieldsTup, typesTup))
     } 
   }
 
@@ -147,14 +147,14 @@ object Expander {
           case _ =>
             Expr.summon(using '[GenericDecoder[_, T]]) match {
               case Some(decoder) => term
-              case _ => Reporting.throwError("Cannot Find Decoder or Expand a Product of the Type:\n" + ev.show)
+              case _ => report.throwError("Cannot Find Decoder or Expand a Product of the Type:\n" + ev.show)
             }
         }
       }
       case None => 
         Expr.summon(using '[GenericDecoder[_, T]]) match {
           case Some(decoder) => term
-          case None => Reporting.throwError(s"Cannot find derive or summon a decoder for ${tpe.show}")
+          case None => report.throwError(s"Cannot find derive or summon a decoder for ${tpe.show}")
         }
     }
   }

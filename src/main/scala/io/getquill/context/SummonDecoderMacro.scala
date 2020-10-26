@@ -37,7 +37,7 @@ object SummonDecoderMacro {
     import qctx.tasty.{Type => TType, _}
     Expr.summon(using '[GenericDecoder[ResultRow, T]]) match {
       case Some(decoder) => decoder
-      case None => Reporting.throwError(s"Cannot Find decoder for ${summon[Type[T]].show}")
+      case None => report.throwError(s"Cannot Find decoder for ${summon[Type[T]].show}")
     }
   }  
 }

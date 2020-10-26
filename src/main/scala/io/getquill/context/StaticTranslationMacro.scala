@@ -25,6 +25,22 @@ import io.getquill.idiom.ReifyStatement
 
 import io.getquill._
 
+object GetAst {
+  import miniquill.parser._
+  import scala.quoted._ // Expr.summon is actually from here
+  import miniquill.quoter.ScalarPlanter
+  import io.getquill.idiom.LoadNaming
+  import io.getquill.util.LoadObject
+  import miniquill.dsl.GenericEncoder
+  import io.getquill.ast.External
+
+  inline def apply[T](inline quoted: Quoted[Query[T]]): io.getquill.ast.Ast = ${ applyImpl('quoted) }
+  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(implicit qctx: QuoteContext): Expr[io.getquill.ast.Ast] = {
+    import qctx.tasty.{Try => TTry,Type => TType, _}
+    '{ $quoted.ast }
+  }
+}
+
 object GetLifts {
   import miniquill.parser._
   import scala.quoted._ // Expr.summon is actually from here
@@ -118,7 +134,7 @@ object StaticTranslationMacro {
           encodeables.get(tag.uid) match {
             case Some(encodeable) => encodeable
             case None =>
-              Reporting.throwError(s"Invalid Transformations Encountered. Cannot find lift with ID: ${tag.uid}.")
+              report.throwError(s"Invalid Transformations Encountered. Cannot find lift with ID: ${tag.uid}.")
               // TODO Throw an error here or attempt to resolve encoders during runtime?
               // maybe the user has hand-modified a quoted block and only the
               // lifts are modified with some runtime values?
@@ -155,16 +171,20 @@ object StaticTranslationMacro {
     val tryStatic =
       for {
         (idiom, naming)          <- idiomAndNamingStatic.toOption
-        quotedExpr               <- QuotedExpr.uprootableOpt(quotedRaw)
+//        _ <- Option(println("========= GOT IDIOM AND NAMING ======"))
+        quotedExpr               <- QuotedExpr.uprootableOpt(quoted) // TODO Technically should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
+//        _ <- Option(println("========= GOT QUOTED EXPR ======"))
         (queryString, externals) <- processAst[T](quotedExpr.ast, idiom, naming)
+//        _ <- Option(println("========= GOT STRING AND EXTERNALS ======"))
         encodedLifts             <- processLifts(quotedExpr.lifts, externals)
+//        _ <- Option(println("========= GOT LIFTS ======"))
       } yield {
         println("Compile Time Query Is: " + queryString)
 
         // What about a missing decoder?
         // need to make sure that that kind of error happens during compile time
         // (also need to propagate the line number, talk to Li Houyi about that)
-        '{ ("", List()) } //${Expr(queryString)}, ${Expr.ofList(encodedLifts)}
+        '{ (${Expr(queryString)}, ${Expr.ofList(encodedLifts)}) }
       }
 
     if (tryStatic.isEmpty)

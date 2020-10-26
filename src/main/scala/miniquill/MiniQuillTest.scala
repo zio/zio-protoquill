@@ -17,16 +17,19 @@ object AdvTest {
     // Strike(price: )
     //inline def personToField(inline p: Person) = p.name
 
+
+    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    import ctx._
+    
     inline def people = quote {
       query[Person]
     }
     inline def names = quote {
-      //people.map(p => personToField(p))
-      people.map(p => p.name)
+      //people.map(p => p.name)
+      people.map(p => lift("blah"))
     }
 
-    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-    import ctx._
+    
     val output = run(names) //hellooooooooooooooooooooo
     println(output)
   }

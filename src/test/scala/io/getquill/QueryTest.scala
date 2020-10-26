@@ -78,7 +78,6 @@ class QueryTest extends Spec with Inside { //hellooooooo
     }
   }
 
-  // @Test
   ("simple query mapping") - {
     ("should work with MirrorContext") in {
       import ctx._

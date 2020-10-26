@@ -30,7 +30,7 @@ object LoadNaming {
                 loadClassType.termSymbol.moduleClass.fullName
               } else {
                 println(s"The class ${loadClassType.show} cannot be loaded because it is either a scala class or module")
-                Reporting.throwError(s"The class ${loadClassType.show} cannot be loaded because it is either a scala class or module")
+                report.throwError(s"The class ${loadClassType.show} cannot be loaded because it is either a scala class or module")
               }
           }
         val clsFull = `endWith$`(className)

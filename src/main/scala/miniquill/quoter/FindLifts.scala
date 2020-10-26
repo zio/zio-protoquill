@@ -35,7 +35,7 @@
 
 //         // If it's a reference but not inline
 //         case '{ ($sv: ScalarPlanter[$tpe, $prep]) } =>
-//           Reporting.throwError("Invalid Lift found. A lift must be directly inlined and cannot be a previously computed runtime value.", input)
+//           report.throwError("Invalid Lift found. A lift must be directly inlined and cannot be a previously computed runtime value.", input)
 //       }
 
 //     matchedEncodeables.forall(_.isDefined) match {

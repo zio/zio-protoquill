@@ -36,7 +36,7 @@ object LiftMacro {
     val encoder = 
       Expr.summon(using '[GenericEncoder[$tType, $prepareRowType]]) match {
         case Some(enc) => enc
-        case None => Reporting.throwError(s"Cannot Find encode for ${tType.unseal}", vvv)
+        case None => report.throwError(s"Cannot Find encode for ${tType.unseal}", vvv)
       }
     '{ ScalarPlanter($vvv, $encoder, ${Expr(uuid)}).unquote } //[$tType, $prepareRowType] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
