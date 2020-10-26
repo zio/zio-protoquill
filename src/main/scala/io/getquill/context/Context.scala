@@ -131,8 +131,12 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
         
         // NOTE The second these are commented out, the compilation and run seems to work
         // it seems like something in the runDynamic is causing the failure
-        val decoder = summonDecoder[R]
-        runDynamic[R, T](quoted, decoder, converter)
+        // Also interesting to note that the test in miniquill.AdvTest doesn't even run
+        // this chunk of the code because it's a static query (doing the compilation
+        // does not cause throwing of the exception so the problem here is happening purely
+        // inside the scala compiler)
+        //val decoder = summonDecoder[R]
+        //runDynamic[R, T](quoted, decoder, converter)
         
         throw new IllegalArgumentException("(((((((((((((( NO STATIC CONTEXT ))))))))))))))))))")
     }
