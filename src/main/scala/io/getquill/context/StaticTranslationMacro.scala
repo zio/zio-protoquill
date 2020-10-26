@@ -171,13 +171,10 @@ object StaticTranslationMacro {
     val tryStatic =
       for {
         (idiom, naming)          <- idiomAndNamingStatic.toOption
-//        _ <- Option(println("========= GOT IDIOM AND NAMING ======"))
-        quotedExpr               <- QuotedExpr.uprootableOpt(quoted) // TODO Technically should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
-//        _ <- Option(println("========= GOT QUOTED EXPR ======"))
+        // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
+        quotedExpr               <- QuotedExpr.uprootableOpt(quoted) 
         (queryString, externals) <- processAst[T](quotedExpr.ast, idiom, naming)
-//        _ <- Option(println("========= GOT STRING AND EXTERNALS ======"))
         encodedLifts             <- processLifts(quotedExpr.lifts, externals)
-//        _ <- Option(println("========= GOT LIFTS ======"))
       } yield {
         println("Compile Time Query Is: " + queryString)
 
