@@ -74,6 +74,7 @@ class Unlifter(using qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
     case '{ Function($params, $body) } => Function(params.unliftExpr, unliftAst(body))
     case '{ FunctionApply($function, $values) } => FunctionApply(function.unliftExpr, values.unliftExpr)
     case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(unliftAst(query), unliftAst(alias).asInstanceOf[Idnt], unliftAst(body))
+    case '{ Filter(${query}, ${alias}, ${body}: Ast) } => Filter(unliftAst(query), unliftAst(alias).asInstanceOf[Idnt], unliftAst(body))
     case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(unliftAst(a), unliftOperator(operator).asInstanceOf[BinaryOperator], unliftAst(b))
     case '{ Property(${ast}, ${name}) } =>
       Property(unliftAst(ast), fixedString(name))
@@ -81,6 +82,7 @@ class Unlifter(using qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
       ScalarTag(fixedString(uid))
     case '{ QuotationTag($uid) } =>
       QuotationTag(fixedString(uid))
+    case '{ Union($a, $b) } => Union(unliftAst(a), unliftAst(b))
   }
 
   implicit def unliftOperator: Unlift[Operator] = {

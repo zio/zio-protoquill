@@ -84,9 +84,11 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.liftable}, ${values.liftable}) }
     case Entity(name: String, list) => '{ Entity(${name.liftable}, ${list.liftable})  }
     case Map(query: Ast, alias: Idnt, body: Ast) => '{ Map(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }
+    case Filter(query: Ast, alias: Idnt, body: Ast) => '{ Filter(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }
     case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${liftAst(a)}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${liftAst(b)})  }
     case ScalarTag(uid: String) => '{ScalarTag(${Expr(uid)})}
     case QuotationTag(uid: String) => '{QuotationTag(${Expr(uid)})}
+    case Union(a, b) => '{ Union(${liftAst(a)}, ${liftAst(b)}) }
   }
 
   implicit def liftOperator: PartialFunction[Operator, Expr[Operator]] = {
