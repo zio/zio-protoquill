@@ -220,9 +220,10 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       val name: String = t.unseal.tpe.classSymbol.get.name
       Entity(name, List())
 
-    // case class Person(name:String)
-    // querySchema[Person]("adventureland_people", _.name -> "personName", _.age -> "yrsOld")
-    // case q"$.querySchema[$t](${ name: String }, ..$properties)" =>
+    // case '{ Dsl.querySchema[$t](${ConstExpr(name: String)}) } =>
+    //   println("====================== MATCHING Dsl.querySchema[$t]($value: String) ======================")
+    //   Entity.Opinionated(name, List(), Renameable.Fixed)
+
     case '{ Dsl.querySchema[$t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
       println("Props are: " + properties.map(_.show))
       val output = Entity.Opinionated(name, properties.toList.map(propertyAliasParser(_)), Renameable.Fixed)
@@ -243,6 +244,25 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       val a = astParse(q)
       val b = astParse(body)
       Map(a, Idnt(ident), b)
+
+    case '{ ($q:Query[$qt]).filter(${Lambda1(ident, body)}) } => 
+      val a = astParse(q)
+      val b = astParse(body)
+      Filter(a, Idnt(ident), b)
+
+    // Need to have map cases for both Query and EntityQuery since these matches are invariant
+    case '{ ($q:EntityQuery[$qt]).filter(${Lambda1(ident, body)}) } => 
+      val a = astParse(q)
+      val b = astParse(body)
+      Filter(a, Idnt(ident), b)
+
+    case '{ ($a: Query[$t]).union($b) } =>
+      println("============= YAYAYAYAY IT WORKS ===========")
+      Union(astParse(a), astParse(b))
+
+    case '{ ($a: EntityQuery[$t]).union($b) } =>
+      println("============= YAYAYAYAY IT WORKS ===========")
+      Union(astParse(a), astParse(b))
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -290,6 +310,8 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
+
+    //case Unseal(ValDef(name, Inferred(), ) =>
 
     // TODO Need to figure how how to do with other datatypes
     case Unseal(Literal(TreeConst(v: Double))) => 
