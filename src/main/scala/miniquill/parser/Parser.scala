@@ -296,6 +296,12 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
   def del: PartialFunction[Expr[_], Ast] = {
       // TODO Need to check if entity is a string
+    case Unseal(Apply(Select(Seal(left), "=="), Seal(right) :: Nil)) =>
+      BinaryOperation(astParse(left), EqualityOperator.==, astParse(right))
+
+    case Unseal(Apply(Select(Seal(left), "||"), Seal(right) :: Nil)) =>
+      BinaryOperation(astParse(left), BooleanOperator.||, astParse(right))
+      
     case Unseal(Apply(Select(Seal(left), "+"), Seal(right) :: Nil)) =>
       BinaryOperation(astParse(left), StringOperator.+, astParse(right))
 
@@ -319,6 +325,10 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
       Constant(v)
 
     case Unseal(Literal(TreeConst(v: String))) => 
+      //println("Case Literal Constant")
+      Constant(v)
+
+    case Unseal(Literal(TreeConst(v: Boolean))) => 
       //println("Case Literal Constant")
       Constant(v)
 

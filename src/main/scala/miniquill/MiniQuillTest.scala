@@ -52,25 +52,25 @@ object AdvTest {
     import io.getquill._
     case class Address(street: String, zip: Int) extends Embedded //helloooo
     given Embedable[Address] //hello
-    case class Person(id: Int, name: String, age: Int, addr: Address)
+    case class Person(id: Int, name: String, age: Int, addr: Address, middleName: String, lastName: String)
 
     // PriceIncrement()
     // Strike(price: )
     //inline def personToField(inline p: Person) = p.name
 
-    inline def q = quote {
+    inline def q = quote { //hello
       // pattern is too complex
       //query[Person].filter(p => nootOf(Node("foo", Node("bar", Tip)), p.name))
       //query[Person].filter(p => oneOf[String *: EmptyTuple.type, String *: EmptyTuple.type](("foo" *: EmptyTuple), "blah", 0))
       // This works!!!
-      //query[Person].filter(p => oneOf(List("foo","bar","baz"), p.name))
-      query[Person]
+      query[Person].filter(p => oneOf(List(p.middleName,p.lastName), p.name))
+      //query[Person]
     }
 
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
     
-    //inline def q = quote { query[Person].union(query[Person]) } //hello
+    //inline def q = quote { query[Person].union(query[Person]) } //helloooooooo
 
     
     val output = run(q)

@@ -4,15 +4,13 @@ import scala.quoted._
 
 import io.getquill.ast.{Ident => Idnt, Query => Qry, _}
 
-object Unlifter {
+object UnlifterType {
   type Unlift[T] = PartialFunction[Expr[T], T]
 }
 
 // TODO Rewrite this the way Parser is written (i.e. with ability to compose???)
-class Unlifter(using qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] {
-  import Unlifter._
-  val matchers = new TastyMatchersContext
-  import matchers._
+class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] with TastyMatchers {
+  import UnlifterType._
 
   def apply(astExpr: Expr[Ast]): Ast = unliftAst(astExpr)
   def isDefinedAt(astExpr: Expr[Ast]): Boolean = unliftAst.isDefinedAt(astExpr)
@@ -67,8 +65,9 @@ class Unlifter(using qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
 
   def unliftBase: Unlift[Ast] = {
     // TODO have a typeclass like Splicer to translate constant to strings
-    case '{ Constant(${b}) } =>
-      Constant(fixedString(b))
+    case '{ Constant(${Const(b)}: Double) } => Constant(b)
+    case '{ Constant(${Const(b)}: Boolean) } => Constant(b)
+    case '{ Constant(${Const(b)}: String) } => Constant(b)
     case '{ Entity.apply(${Const(b: String)}, ${elems})  } =>
       Entity(b, elems.unliftExpr)
     case '{ Function($params, $body) } => Function(params.unliftExpr, unliftAst(body))
@@ -88,6 +87,8 @@ class Unlifter(using qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] 
   implicit def unliftOperator: Unlift[Operator] = {
     case '{ NumericOperator.* } =>  NumericOperator.*
     case '{ StringOperator.+ } =>  StringOperator.+
+    case '{ EqualityOperator.== } =>  EqualityOperator.==
+    case '{ BooleanOperator.|| } =>  BooleanOperator.||
   }
 
   implicit def unliftAst: Unlift[Ast] = {

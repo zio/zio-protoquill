@@ -80,6 +80,7 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     // TODO cover primitive cases? Have something that splices certain things to a string?
     case Constant(v: String) => '{ Constant(${Expr(v)}) }
     case Constant(v: Double) => '{ Constant(${Expr(v)}) }
+    case Constant(v: Boolean) => '{ Constant(${Expr(v)}) }
     case Function(params: List[Idnt], body: Ast) => '{ Function(${params.liftable}, ${liftAst(body)}) }
     case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.liftable}, ${values.liftable}) }
     case Entity(name: String, list) => '{ Entity(${name.liftable}, ${list.liftable})  }
@@ -91,8 +92,12 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case Union(a, b) => '{ Union(${liftAst(a)}, ${liftAst(b)}) }
   }
 
+  import EqualityOperator.{ == => ee }
+
   implicit def liftOperator: PartialFunction[Operator, Expr[Operator]] = {
     case NumericOperator.* => '{ NumericOperator.* }
     case StringOperator.+ => '{ StringOperator.+ }
+    case _: ee.type => '{ EqualityOperator.== } // if you don't do it this way, complains about 'stable identifier error'
+    case BooleanOperator.|| => '{ BooleanOperator.|| }
   }
 }
