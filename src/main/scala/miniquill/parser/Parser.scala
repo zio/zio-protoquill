@@ -220,10 +220,6 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       val name: String = t.unseal.tpe.classSymbol.get.name
       Entity(name, List())
 
-    // case '{ Dsl.querySchema[$t](${ConstExpr(name: String)}) } =>
-    //   println("====================== MATCHING Dsl.querySchema[$t]($value: String) ======================")
-    //   Entity.Opinionated(name, List(), Renameable.Fixed)
-
     case '{ Dsl.querySchema[$t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
       println("Props are: " + properties.map(_.show))
       val output = Entity.Opinionated(name, properties.toList.map(propertyAliasParser(_)), Renameable.Fixed)
