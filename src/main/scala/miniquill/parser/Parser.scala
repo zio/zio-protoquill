@@ -289,6 +289,14 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
       del
   }
 
+  object TypedOperator {
+    def unapply(expr: Expr[Any]) =
+      expr match {
+        case Unseal(Apply(Select(left, "=="), right :: Nil)) if (left.tpe <:< '[String].unseal.tpe) =>
+          "foo"
+      }
+  }
+
 
   def del: PartialFunction[Expr[_], Ast] = {
       // TODO Need to check if entity is a string
