@@ -5,7 +5,7 @@ import scala.quoted._
 object MyParser {
   inline def myOperationParser(inline any: Any): Unit = ${ myOperationParserImpl('any) }
   def myOperationParserImpl(anyRaw: Expr[Any])(using qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.reflect._
     val tm = new TastyMatchersContext
     import tm._
 

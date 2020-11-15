@@ -13,7 +13,7 @@ object Lifter {
 
 // TODO Rewrite this the way Parser is written (i.e. with ability to compose???)
 class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
-  import qctx.tasty.{Constant => TConstant, _}
+  import qctx.reflect.{Constant => TConstant, _}
   import Lifter._
 
   def apply(ast: Ast): Expr[Ast] = liftAst(ast)
@@ -78,10 +78,10 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
   def liftBase: Lift[Ast] = {
     // TODO Need some type info to be able to lift a const
     // TODO cover primitive cases? Have something that splices certain things to a string?
-    case Constant(v: String) => '{ Constant(${Expr(v)}) }
-    case Constant(v: Double) => '{ Constant(${Expr(v)}) }
-    case Constant(v: Boolean) => '{ Constant(${Expr(v)}) }
-    case Constant(v: Int) => '{ Constant(${Expr(v)}) }
+    case Constant.String(v: String) => '{ Constant.String(${Expr(v)}) }
+    case Constant.Double(v: Double) => '{ Constant.Double(${Expr(v)}) }
+    case Constant.Boolean(v: Boolean) => '{ Constant.Boolean(${Expr(v)}) }
+    case Constant.Int(v: Int) => '{ Constant.Int(${Expr(v)}) }
     case Function(params: List[Idnt], body: Ast) => '{ Function(${params.liftable}, ${liftAst(body)}) }
     case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.liftable}, ${values.liftable}) }
     case Entity(name: String, list) => '{ Entity(${name.liftable}, ${list.liftable})  }

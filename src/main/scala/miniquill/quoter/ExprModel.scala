@@ -103,7 +103,7 @@ object ScalarPlanterExpr {
               case ScalarPlanterExpr.Uprootable(vaseExpr) => vaseExpr
             }
 
-          import qctx.tasty._
+          import qctx.reflect._
           println("****************** GOT HERE **************")
           println(s"Scalar values: ${scalarValues.mkString("(", ",", ")")}")
           println(s"Elems: ${elems.map(_.show).mkString("(", ",", ")")}")
@@ -125,7 +125,7 @@ object QuotedExpr {
   // Note, the quotation is not considered to be inline if there are any runtime lifts
   object Uprootable {
     def unapply(expr: Expr[Any])(using qctx: QuoteContext): Option[QuotedExpr] = {
-      import qctx.tasty.{Term => QTerm, _}
+      import qctx.reflect.{Term => QTerm, _}
       val tmc = new TastyMatchersContext
       import tmc._
 
@@ -177,7 +177,7 @@ object QuotationLotExpr {
 
   protected object `(QuotationLot).unquote` {
     def unapply(expr: Expr[Any])(using qctx: QuoteContext) = {
-      import qctx.tasty._
+      import qctx.reflect._
       val tm = new TastyMatchersContext
       import tm._
       UntypeExpr(expr) match {
@@ -203,7 +203,7 @@ object QuotationLotExpr {
   protected object `QuotationLot.apply` {
     
     def unapply(expr: Expr[Any])(using qctx: QuoteContext): Option[(Expr[Quoted[Any]], String, List[Expr[_]])] = {
-      import qctx.tasty._
+      import qctx.reflect._
       val tm = new TastyMatchersContext
       import tm._
       UntypeExpr(expr) match {
@@ -250,7 +250,7 @@ object QuotationLotExpr {
   // Verify that a quotation is inline. It is inline if all the lifts are inline. There is no need
   // to search the AST since it has been parsed already
   def unapply(expr: Expr[Any])(using qctx: QuoteContext): Option[QuotationLotExpr] = {
-    import qctx.tasty._
+    import qctx.reflect._
 
     
     expr match {

@@ -12,12 +12,12 @@ import io.getquill.CompositeNamingStrategy
 object LoadNaming {
 
   def static[T](tpe: TType[T])(using qctx: QuoteContext): Try[NamingStrategy] = {
-    import qctx.tasty.{Try => _, _}
+    import qctx.reflect.{Try => _, _}
 
     def `endWith$`(str: String) =
       if (str.endsWith("$")) str else str + "$"
     
-    def loadFromTastyType[T](tpe: Type): Try[T] =
+    def loadFromTastyType[T](tpe: qctx.reflect.TypeRepr): Try[T] =
       Try {
         val loadClassType = tpe
         val optClassSymbol = loadClassType.classSymbol
@@ -45,14 +45,14 @@ object LoadNaming {
   }
 
   private def strategies[T](tpe: TType[T])(using qctx: QuoteContext) = {
-    import qctx.tasty.{_}
+    import qctx.reflect.{_}
     val treeTpe = '[$tpe].unseal.tpe
     treeTpe <:< '[CompositeNamingStrategy].unseal.tpe match {
       case true =>
         treeTpe match {
           case AppliedType(_, types) => 
             types
-              .filter(_.isInstanceOf[Type]).map(_.asInstanceOf[Type])
+              .filter(_.isInstanceOf[TypeRepr]).map(_.asInstanceOf[TypeRepr])
               .filterNot(_ =:= '[NamingStrategy].unseal.tpe)
               .filterNot(_ =:= '[Nothing].unseal.tpe)
         }
@@ -63,7 +63,7 @@ object LoadNaming {
 
   inline def mac[T](t: T): String = ${ macImpl[T]('t) }
   def macImpl[T](t: Expr[T])(using qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
-    import qctx.tasty.{_}
+    import qctx.reflect.{_}
     val loadedStrategies = strategies(tpe)
     println( loadedStrategies )
     Expr(loadedStrategies.toString) // maybe list of string?
@@ -73,7 +73,7 @@ object LoadNaming {
 
 inline def macLoadNamingStrategy[T](t: T): String = ${ macLoadNamingStrategyImpl[T]('t) }
 def macLoadNamingStrategyImpl[T](t: Expr[T])(using qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
-  import qctx.tasty.{_}
+  import qctx.reflect.{_}
   val loadedStrategies = LoadNaming.static(tpe)
   println( loadedStrategies )
   Expr(loadedStrategies.toString) // maybe list of string?

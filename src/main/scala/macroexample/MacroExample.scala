@@ -16,7 +16,7 @@ object MacroExample {
 
   inline def getMethods(inline expr: Any): Any = ${ geteMethodsImpl('expr) }
   def geteMethodsImpl(exprRaw: Expr[Any])(using qctx: QuoteContext): Expr[Any] = {
-    import qctx.tasty._
+    import qctx.reflect._
     import scala.collection.JavaConverters._
     // Note is a TypeRef and a TypeTree
     
@@ -46,7 +46,7 @@ object MacroExample {
 
   inline def showTreeMatchLambda(inline expr: (String, String) => Int): Unit = ${ showTreeMatchLambdaImpl('expr) }
   def showTreeMatchLambdaImpl(expr: Expr[(String, String) => Int])(using qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.reflect._
     printer.lnf(expr.unseal.underlyingArgument)
     expr.unseal.underlyingArgument match {
       case Lambda(List(ValDef(argName, _, _), ValDef(argName1, _, _)), body) =>
@@ -59,7 +59,7 @@ object MacroExample {
 
   inline def showTree(inline expr: Any): Unit = ${ showTreeImpl('expr) }
   def showTreeImpl(expr: Expr[Any])(using qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+    import qctx.reflect._
     //println(expr.unseal.underlyingArgument.showExtractors)
     printer.lnf(expr.unseal.underlyingArgument)
     '{ () }
@@ -67,7 +67,7 @@ object MacroExample {
 
   inline def detectPlus(inline expr: Int): (Int, String) = ${ detectPlusImpl('expr) }
   def detectPlusImpl(expr: Expr[Int])(using qctx: QuoteContext): Expr[(Int, String)] = {
-    import qctx.tasty._
+    import qctx.reflect._
     println(expr.unseal.underlyingArgument.showExtractors)
 
     val message = 
@@ -94,7 +94,7 @@ object MacroExample {
     ${ macroTestImpl('somethingMakingStringBoolRaw) }
 
   def macroTestImpl(somethingMakingStringBoolRaw: Expr[Boolean])(using qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty._
+    import qctx.reflect._
     val somethingMakingBool = somethingMakingStringBoolRaw.unseal.underlyingArgument.seal
 
     val theExpressionAst = somethingMakingBool.unseal.showExtractors

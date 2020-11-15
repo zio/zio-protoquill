@@ -25,7 +25,7 @@ object Parser {
   object Implicits {
 
     implicit class ParserExtensions[R](parser: Parser[R])(implicit val qctx: QuoteContext, ct: ClassTag[R]) {
-      import qctx.tasty._
+      import qctx.reflect._
 
       def seal: SealedParser[R] = 
         (expr: Expr[_]) => parser.lift(expr).getOrElse { //hello
@@ -109,7 +109,7 @@ trait ParserLibrary extends ParserFactory {
 object ParserLibrary extends ParserLibrary
 
 case class FunctionApplyParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Type => TType, _}
+  import qctx.reflect.{Type => TType, _}
   import Parser.Implicits._
   import io.getquill.norm.capture.AvoidAliasConflict
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -126,7 +126,7 @@ case class FunctionApplyParser(root: Parser[Ast] = Parser.empty)(override implic
 
 
 case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Type => TType, _}
+  import qctx.reflect.{Type => TType, _}
   import Parser.Implicits._
   import io.getquill.norm.capture.AvoidAliasConflict
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -152,7 +152,7 @@ case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit va
 
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
 case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Type => TType, _}
+  import qctx.reflect.{Type => TType, _}
   import Parser.Implicits._
 
   // TODO Need to inject this somehow?
@@ -182,7 +182,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 }
 
 case class PropertyAliasParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[PropertyAlias] {
-  import qctx.tasty.{Constant => TConstant, _}
+  import qctx.reflect.{Constant => TConstant, _}
   
   def delegate: PartialFunction[Expr[_], PropertyAlias] = {
       case Lambda1(_, '{ ArrowAssoc[$tpa]($prop).->[$v](${ConstExpr(alias: String)}) } ) =>
@@ -203,7 +203,7 @@ case class PropertyAliasParser(root: Parser[Ast] = Parser.empty)(implicit qctx: 
 }
 
 case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Constant => TConstant, _}
+  import qctx.reflect.{Constant => TConstant, _}
   import Parser.Implicits._
 
   // TODO If this was copied would 'root' inside of this thing update correctly?
@@ -265,7 +265,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
 }
 
 // case class ConflictParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
-//   import qctx.tasty.{Constant => TConstant, using,  _}
+//   import qctx.reflect.{Constant => TConstant, using,  _}
 //   import Parser.Implicits._
 //   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -281,7 +281,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
 // }
 
 case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty._
+  import qctx.reflect._
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -323,7 +323,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 }
 
 case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Constant => TreeConst, Ident => TreeIdent, _}
+  import qctx.reflect.{Constant => TreeConst, Ident => TreeIdent, _}
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 

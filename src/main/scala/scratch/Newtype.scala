@@ -111,7 +111,7 @@
 // trait NewTypePoly[A] {
 //   type Type <: A
 //   def apply(a: A): Type
-//   def toF[F[_]](fa: F[A]): F[Type]
+//   def toF[F[_]](fa: F[A]): F[TypeRepr]
 //   def fromF[F[_]](fa: F[Type]): F[A]
 // }
 

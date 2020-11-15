@@ -24,7 +24,7 @@
 
 //   // Remove the unapply pattern here. InlineEncodeables should be 
 //   def unapply(input: Expr[Any])(using qctx: QuoteContext): Option[List[InlineEncodeable]] = {
-//     import qctx.tasty._
+//     import qctx.reflect._
 
 //     val matchedEncodeables =
 //       ExprAccumulate(input) {
@@ -51,7 +51,7 @@
 // object FindRuntimeQuotationLots {
 
 //   def apply[T](input: Expr[Any])(using qctx: QuoteContext, tpe: quoted.Type[T]): List[(String, Expr[QuotationLot[Any]])] = {
-//     import qctx.tasty._
+//     import qctx.reflect._
 //     val quotationParser = new miniquill.parser.QuotationParser
 //     import quotationParser._
 

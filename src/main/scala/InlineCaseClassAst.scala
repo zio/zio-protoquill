@@ -13,7 +13,7 @@ object InlineCaseClassAst {
 
   inline def inspect(ast: => Ast) = ${ inspectImpl('ast) }
   def inspectImpl(using qctx: QuoteContext)(ast: Expr[Ast]): Expr[Ast] = {
-    import qctx.tasty.{Type => _, _}
+    import qctx.reflect.{Type => _, _}
     counter += 1
 
     def compileVal = s"compile-${counter}"

@@ -34,8 +34,9 @@ object Eq {
     // TODO Make a PR proposing this change
     t match {
       case '[$tpe *: $tpes] => 
-        Expr.summon(using '[Eq[$tpe]]) match {
-          case Some(value) => value :: summonAll(tpes)
+        val vv = Type[tpes]
+        Expr.summon(using Type[Eq[tpe]]) match {
+          case Some(value) => value :: summonAll(vv)
         }
       case '[EmptyTuple] => Nil
     }
@@ -43,13 +44,13 @@ object Eq {
 
 
   implicit def derived[T: Type](using qctx: QuoteContext): Expr[Eq[T]] = {
-    import qctx.tasty.{_}
+    import qctx.reflect.{_}
 
-    val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[T]]).get
+    val ev: Expr[Mirror.Of[T]] = Expr.summon(using Type[Mirror.Of[T]]).get
 
     ev match {
       case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $elementTypes }} =>
-        val elemInstances = summonAll(elementTypes)
+        val elemInstances = summonAll(Type[elementTypes])
         val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
           elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
             case (acc, (elem, index)) =>
@@ -64,7 +65,7 @@ object Eq {
         }
 
       case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = $elementTypes }} =>
-        val elemInstances = summonAll(elementTypes)
+        val elemInstances = summonAll(Type[elementTypes])
         val eqSumBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
           val ordx = '{ $m.ordinal($x) }
           val ordy = '{ $m.ordinal($y) }
@@ -83,7 +84,9 @@ object Eq {
 }
 
 object EqMacro {
-  inline def [T](x: =>T) === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
+  extension [T](x: =>T) {
+    inline def === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
+  }
 
   implicit inline def eqGen[T]: Eq[T] = ${ Eq.derived[T] }
 }

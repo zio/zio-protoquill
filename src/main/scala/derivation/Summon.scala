@@ -57,7 +57,7 @@ object SummonCsvEncoderManualTest {
 
   // inline def summonTest[T](value: =>T): String = ${ summonTestImpl[T]('value) }
   // def summonTestImpl[T: Type](body: Expr[T])(using qctx: QuoteContext): Expr[String] = {
-  //   import qctx.tasty.{_}
+  //   import qctx.reflect.{_}
 
   //   val from = Expr.summon {
   //     case m :Mirror.Of[T] => Some(m)

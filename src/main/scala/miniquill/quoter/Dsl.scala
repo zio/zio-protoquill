@@ -82,7 +82,7 @@ object QuoteMacro {
   import io.getquill.norm.BetaReduction 
 
   def apply[T, Parser <: ParserFactory](bodyRaw: Expr[T])(using qctx: QuoteContext, tType: Type[T], pType: Type[Parser]): Expr[Quoted[T]] = {
-    import qctx.tasty.{_}
+    import qctx.reflect.{_}
     // NOTE Can disable if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val body = bodyRaw.unseal.underlyingArgument.seal
 
@@ -156,7 +156,7 @@ object SchemaMetaMacro {
 
 object QueryMacro {
   def apply[T: Type](using qctx: QuoteContext): Expr[EntityQuery[T]] = {
-    import qctx.tasty.{Type => TType, _}
+    import qctx.reflect.{Type => TType, _}
     val tmc = new TastyMatchersContext
     import tmc._
     import scala.quoted.Expr.summon
@@ -192,7 +192,7 @@ object QueryMacro {
 
 object UnquoteMacro {
   def apply[T: Type](quoted: Expr[Quoted[T]])(using qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty._
+    import qctx.reflect._
     '{
       Unquote[T](${quoted}, ${Expr(java.util.UUID.randomUUID().toString)}).unquote
     }

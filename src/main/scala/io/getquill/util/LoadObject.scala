@@ -20,7 +20,7 @@ object LoadObject {
     }
 
   def apply[T](tpe: TType[T])(using qctx: QuoteContext): Try[T] = {
-    import qctx.tasty.{Try => _, _}
+    import qctx.reflect.{Try => _, _}
     Try {
       
       // if ('[$tpe].unseal.tpe.classSymbol.isEmpty) {

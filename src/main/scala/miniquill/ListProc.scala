@@ -27,27 +27,27 @@ object ListProc {
 
   transparent inline def isNil[T](inline list: List[T]): Boolean = ${ isNillImpl('list) }
   def isNillImpl[T: Type](list: Expr[List[T]])(implicit qctx: QuoteContext): Expr[Boolean] = {
-    import qctx.tasty._
+    import qctx.reflect._
     val output =
       list match { 
         case '{ scala.List.apply[T](${Varargs(args)}: _*) } if (args.length == 0) => true
         case '{ scala.Nil } => true
         case _ => false
       }
-    '{ ${Literal(Constant(output)).seal.asExprOf[Boolean]} }
+    '{ ${Literal(Constant.Boolean(output)).seal.asExprOf[Boolean]} }
     //Expr(output)
   }
 
   transparent inline def isTrue: Boolean = ${ isTrueImpl }
   def isTrueImpl(using qctx: QuoteContext) = {
-    import qctx.tasty._
-    Literal(Constant(true)).seal.asExprOf[Boolean]
+    import qctx.reflect._
+    Literal(Constant.Boolean(true)).seal.asExprOf[Boolean]
   }
 
 
   transparent inline def length[T](inline list: List[T]): Int = ${ lengthImpl('list) }
   def lengthImpl[T: Type](list: Expr[List[T]])(implicit qctx: QuoteContext): Expr[Int] = {
-    import qctx.tasty._
+    import qctx.reflect._
     val output =
       list match { 
         case '{ scala.List.apply[T](${Varargs(args)}: _*) } => args.length

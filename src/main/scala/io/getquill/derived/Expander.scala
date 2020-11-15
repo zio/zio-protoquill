@@ -83,7 +83,7 @@ object Expander {
   }
 
   class TypeExtensions(using qctx: QuoteContext) { self =>
-    import qctx.tasty.{Type => QType, _}
+    import qctx.reflect.{Type => QType, _}
     
     implicit class TypeExt(tpe: Type[_]) {
       def constValue = self.constValue(tpe)
@@ -92,7 +92,7 @@ object Expander {
 
     def constValue(tpe: Type[_]): String =
       tpe.unseal.tpe match {
-        case ConstantType(Constant(value)) => value.toString
+        case ConstantType(value) => value.toString
         // Macro error
       }
     def isProduct(tpe: Type[_]): Boolean =
@@ -100,32 +100,32 @@ object Expander {
   }
 
   def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(using qctx: QuoteContext): List[Term] = {
-    import qctx.tasty.{Type => QType, Term => QTerm, _}
+    import qctx.reflect.{Type => QType, Term => QTerm, _}
     val ext = new TypeExtensions
     import ext._
 
     def constValue[T](tpe: Type[T]): String =
       tpe.unseal.tpe match {
-        case ConstantType(Constant(value)) => value.toString
+        case ConstantType(value) => value.toString
         // Macro error
       }
 
     (fieldsTup, typesTup) match {
-      case ('[$field *: $fields], '[Option[$tpe] *: $types]) if (tpe.isProduct) =>
-        val childTerm = Term(field.constValue, Branch, optional = true)
-        base(childTerm)(using tpe) :: flatten(node, fields, types)
+      case ('[$field *: $fields], '[Option[$tpe] *: $types]) if (Type[tpe].isProduct) =>
+        val childTerm = Term(Type[field].constValue, Branch, optional = true)
+        base(childTerm)(using Type[tpe]) :: flatten(node, Type[fields], Type[types])
 
-      case ('[$field *: $fields], '[$tpe *: $types]) if (tpe.isProduct) =>
-        val childTerm = Term(field.constValue, Branch)
-        base(childTerm)(using tpe) :: flatten(node, fields, types)
+      case ('[$field *: $fields], '[$tpe *: $types]) if (Type[tpe].isProduct) =>
+        val childTerm = Term(Type[field].constValue, Branch)
+        base(childTerm)(using Type[tpe]) :: flatten(node, Type[fields], Type[types])
 
       case ('[$field *: $fields], '[Option[$tpe] *: $types]) =>
-        val childTerm = Term(field.constValue, Leaf, optional = true)
-        childTerm :: flatten(node, fields, types)
+        val childTerm = Term(Type[field].constValue, Leaf, optional = true)
+        childTerm :: flatten(node, Type[fields], Type[types])
 
       case ('[$field *: $fields], '[$tpe *: $types]) =>
-        val childTerm = Term(field.constValue, Leaf)
-        childTerm :: flatten(node, fields, types)
+        val childTerm = Term(Type[field].constValue, Leaf)
+        childTerm :: flatten(node, Type[fields], Type[types])
 
       case (_, '[EmptyTuple]) => Nil
 
@@ -134,7 +134,7 @@ object Expander {
   }
 
   def base[T](term: Term)(using tpe: Type[T])(using qctx: QuoteContext): Term = {
-    import qctx.tasty.{Type => QType, Term => QTerm, _}
+    import qctx.reflect.{Type => QType, Term => QTerm, _}
 
     // if there is a decoder for the term, just return the term
     Expr.summon(using '[Mirror.Of[$tpe]]) match {
@@ -142,7 +142,7 @@ object Expander {
         // Otherwise, recursively summon fields
         ev match {
           case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = $elementLabels; type MirroredElemTypes = $elementTypes }} =>
-            val children = flatten(term, elementLabels, elementTypes)
+            val children = flatten(term, Type[elementLabels], Type[elementTypes])
             term.withChildren(children)
           case _ =>
             Expr.summon(using '[GenericDecoder[_, T]]) match {

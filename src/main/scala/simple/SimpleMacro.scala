@@ -141,7 +141,7 @@ object SimpleMacro {
 
   inline def typeInfo[T](stuff: =>T): T = ${ typeInfoImpl('stuff) }
   def typeInfoImpl[T](stuff: Expr[T])(using qctx: QuoteContext, t: Type[T]): Expr[T] = {
-    import qctx.tasty.{Type => TType, _}
+    import qctx.reflect.{Type => TType, _}
     
     //  summon[scala.quoted.Type[T]].unseal.tpe
     //def getExprType[T <: Mirror.Of[_]](expr: Expr[T])(t: Type[T]) = 
@@ -161,7 +161,7 @@ object SimpleMacro {
 
   // inline def printThenRun[T](print: String, thenRun: => T): T = ${ printThenRunImpl('print, 'thenRun) }
   // def printThenRunImpl[T](print: Expr[String], thenRun: Expr[T])(using qctx: QuoteContext) = {
-  //   import qctx.tasty.{_} //Type => _,
+  //   import qctx.reflect.{_} //Type => _,
     
   //   print.unseal.underlyingArgument match {
   //     case Literal(Constant(value)) => println(value)
@@ -180,7 +180,7 @@ object SimpleMacro {
 
   // inline def betaReduceMethod(f: Int => Int ):Unit = ${betaReduceMethodImpl('f)}
   // def betaReduceMethodImpl(f: Expr[Int => Int])(using qctx: QuoteContext): Expr[Int] = {
-  //   import qctx.tasty.{_}
+  //   import qctx.reflect.{_}
 
   //   val reduced = Expr.betaReduce(f)('{123}) //hello
   //   println(astprint(reduced.unseal.underlyingArgument))
@@ -194,7 +194,7 @@ object SimpleMacro {
 
   // inline def stuff[T](str: T):T = ${ stuffImpl('str) }
   // def stuffImpl[T](str: Expr[T])(using qctx: QuoteContext): Expr[T] = {
-  //   import qctx.tasty.{_} //Type => _, 
+  //   import qctx.reflect.{_} //Type => _, 
   //   val und = str.unseal.underlyingArgument
 
 

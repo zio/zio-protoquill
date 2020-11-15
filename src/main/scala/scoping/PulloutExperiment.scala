@@ -11,7 +11,7 @@ object PulloutExperiment {
 
   inline def printTree[T](value: T):T = ${ printTreeImpl('value) }
   def printTreeImpl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty._
+    import qctx.reflect._
     //printer.ln(value.unseal.underlyingArgument)
     printer.ln("===================== printTree ================\n")
     printer.ln(value.unseal.underlyingArgument)
@@ -32,7 +32,7 @@ object PulloutExperiment {
 
   inline def parseTuple(input: Tuple): List[LookInside[_]] = ${parseTupleImpl('input)}
   def parseTupleImpl(input: Expr[Tuple])(using qctx: QuoteContext): Expr[List[LookInside[_]]] = {
-    import qctx.tasty._
+    import qctx.reflect._
     import scala.collection.mutable.ArrayBuffer
 
     // Can also expore using TreeAccumulator to find LookInside instances
@@ -58,7 +58,7 @@ object PulloutExperiment {
 
   inline def summonExprUsers(input: Tuple): List[(String, String)] = ${summonExprUsersImpl('input)}
   def summonExprUsersImpl(input: Expr[Tuple])(using qctx: QuoteContext): Expr[List[(String, String)]] = {
-    import qctx.tasty._
+    import qctx.reflect._
     import scala.collection.mutable.ArrayBuffer
 
     println("===================== Summon Expressers Value =====================")
@@ -109,13 +109,13 @@ object PulloutExperiment {
 
   inline def addElementToTuple[T](tup: Tuple, elem: T): Tuple = ${addElementToTupleImpl('tup, 'elem)}
   def addElementToTupleImpl[T: Type](tup: Expr[Tuple], elem: Expr[T])(using qctx: QuoteContext): Expr[Tuple] = {
-    import qctx.tasty._
+    import qctx.reflect._
     '{ (${elem} *: ${tup}) }
   }
 
   inline def matchList(list: List[Any]): List[Any] = ${ matchListImpl('list) }
   def matchListImpl(list: Expr[List[Any]])(using qctx: QuoteContext): Expr[List[Any]] = {
-    import qctx.tasty._
+    import qctx.reflect._
     println(list.unseal.underlyingArgument.seal.show)
     val elems = 
       list match {
@@ -128,8 +128,8 @@ object PulloutExperiment {
 
   inline def pullout(input: Any): Tuple = ${pulloutImpl('input)}
   def pulloutImpl(input: Expr[Any])(using qctx: QuoteContext): Expr[Tuple] = {
-    import qctx.tasty._
-    //import qctx.tasty.using_IsInstanceOf_Term
+    import qctx.reflect._
+    //import qctx.reflect.using_IsInstanceOf_Term
     import scala.collection.mutable.ArrayBuffer
 
     println(input.unseal.underlyingArgument.show)

@@ -8,7 +8,7 @@ import scala.quoted._
 import printer.AstPrinter
 
 class ContextAstPrinter(using qctx: QuoteContext) extends AstPrinter {
-  import qctx.tasty.{Ident, Tree => TTree, _}
+  import qctx.reflect.{Ident, Tree => TTree, _}
   //import scala.tasty.Reflection
 
   //new Reflection()

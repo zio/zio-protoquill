@@ -31,7 +31,7 @@ object LiftMacro {
   import miniquill.dsl.GenericEncoder
 
   def apply[T, PrepareRow](vvv: Expr[T])(using qctx: QuoteContext, tType: Type[T], prepareRowType: Type[PrepareRow]): Expr[T] = {
-    import qctx.tasty._
+    import qctx.reflect._
     val uuid = java.util.UUID.randomUUID().toString
     val encoder = 
       Expr.summon(using '[GenericEncoder[$tType, $prepareRowType]]) match {

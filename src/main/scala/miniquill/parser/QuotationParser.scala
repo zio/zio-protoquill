@@ -9,7 +9,7 @@
 // import io.getquill.Embedable
 
 // class MatroshkaHelper(using val qctx: QuoteContext) {
-//   import qctx.tasty.{Term => QTerm, _}
+//   import qctx.reflect.{Term => QTerm, _}
 
 //   object TypedMatroshka {
 //     // need to define a case where it won't go into matcher otherwise recursion is infinite
@@ -27,7 +27,7 @@
 // }
 
 // class QuotationParser(using val qctx: QuoteContext) {
-//   import qctx.tasty.{_}
+//   import qctx.reflect.{_}
   
 //   def unInline(expr: Expr[Any]): Expr[Any] = 
 //     expr match {
@@ -43,7 +43,7 @@
 //     }
 //   }
 
-//   import qctx.tasty.{_}
+//   import qctx.reflect.{_}
 //   import scala.quoted.{Const => Constant} //hello
 
 //   object TypedMatroshka {

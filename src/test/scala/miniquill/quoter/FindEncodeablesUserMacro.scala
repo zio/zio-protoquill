@@ -17,7 +17,7 @@
 //   // Note, existential typing here is better. Otherwise everything is forced to cast to Any and the encoder lookup does not work
 //   inline def apply[PrepareRow](inline encodeables: List[LazyPlanter[_]], inline prep: PrepareRow): List[(Any, PrepareRow)] = ${ applyImpl[PrepareRow]('encodeables, 'prep) }
 //   def applyImpl[PrepareRow](encodeables: Expr[List[LazyPlanter[_]]], prep: Expr[PrepareRow])(using qctx: QuoteContext, pType: Type[PrepareRow]): Expr[List[(Any, PrepareRow)]] = {
-//     import qctx.tasty._
+//     import qctx.reflect._
 
 //     object InlinePlanter {
 //       def unapply(expr: Expr[LazyPlanter[_]]): Option[ScalarPlanterExpr[_, PrepareRow]] = expr match {

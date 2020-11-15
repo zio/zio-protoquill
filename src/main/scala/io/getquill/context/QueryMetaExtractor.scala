@@ -113,7 +113,7 @@ object QueryMetaExtractor {
     quotedRaw: Expr[Quoted[Query[T]]],
     ctx: Expr[Context[D, N]]
   )(using qctx:QuoteContext): Expr[(Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_,_]])])] = {
-    import qctx.tasty.{Try => TTry, _}
+    import qctx.reflect.{Try => TTry, _}
     val quotedArg = quotedRaw.unseal.underlyingArgument.seal.cast[Quoted[Query[T]]]
     val summonedMeta = Expr.summon(using '[QueryMeta[T, R]]).map(_.unseal.underlyingArgument.seal.cast[QueryMeta[T, R]])
     summonedMeta match {
