@@ -4,3 +4,8 @@ target
 .dotty-ide*
 nohup.out
 .vscode
+.bloop/
+.metals/
+project/.bloop/
+project/metals.sbt
+project/project/
