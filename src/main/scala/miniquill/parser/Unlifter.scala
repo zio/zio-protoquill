@@ -68,6 +68,7 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
     case '{ Constant(${Const(b)}: Double) } => Constant(b)
     case '{ Constant(${Const(b)}: Boolean) } => Constant(b)
     case '{ Constant(${Const(b)}: String) } => Constant(b)
+    case '{ Constant(${Const(b)}: Int) } => Constant(b)
     case '{ Entity.apply(${Const(b: String)}, ${elems})  } =>
       Entity(b, elems.unliftExpr)
     case '{ Function($params, $body) } => Function(params.unliftExpr, unliftAst(body))
@@ -86,6 +87,7 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
 
   implicit def unliftOperator: Unlift[Operator] = {
     case '{ NumericOperator.* } =>  NumericOperator.*
+    case '{ NumericOperator.+ } =>  NumericOperator.+
     case '{ StringOperator.+ } =>  StringOperator.+
     case '{ EqualityOperator.== } =>  EqualityOperator.==
     case '{ BooleanOperator.|| } =>  BooleanOperator.||

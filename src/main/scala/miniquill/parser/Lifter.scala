@@ -81,6 +81,7 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case Constant(v: String) => '{ Constant(${Expr(v)}) }
     case Constant(v: Double) => '{ Constant(${Expr(v)}) }
     case Constant(v: Boolean) => '{ Constant(${Expr(v)}) }
+    case Constant(v: Int) => '{ Constant(${Expr(v)}) }
     case Function(params: List[Idnt], body: Ast) => '{ Function(${params.liftable}, ${liftAst(body)}) }
     case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.liftable}, ${values.liftable}) }
     case Entity(name: String, list) => '{ Entity(${name.liftable}, ${list.liftable})  }
@@ -96,6 +97,7 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
 
   implicit def liftOperator: PartialFunction[Operator, Expr[Operator]] = {
     case NumericOperator.* => '{ NumericOperator.* }
+    case NumericOperator.+ => '{ NumericOperator.+ }
     case StringOperator.+ => '{ StringOperator.+ }
     case _: ee.type => '{ EqualityOperator.== } // if you don't do it this way, complains about 'stable identifier error'
     case BooleanOperator.|| => '{ BooleanOperator.|| }

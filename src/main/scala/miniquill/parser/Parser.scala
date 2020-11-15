@@ -289,25 +289,33 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
       del
   }
 
-  object TypedOperator {
+  object NamedOp {
     def unapply(expr: Expr[Any]) =
       expr match {
-        case Unseal(Apply(Select(left, "=="), right :: Nil)) if (left.tpe <:< '[String].unseal.tpe) =>
-          "foo"
+        case Unseal(Apply(Select(left, op: String), right :: Nil)) =>
+          Some((left.seal, op, right.seal))
+        case _ => 
+          None
       }
   }
 
+  def is[T](exprs: Expr[Any]*)(implicit t: scala.quoted.Type[T]) = {
+    exprs.forall(_.unseal.tpe <:< t.unseal.tpe)
+  }
 
   def del: PartialFunction[Expr[_], Ast] = {
       // TODO Need to check if entity is a string
-    case Unseal(Apply(Select(Seal(left), "=="), Seal(right) :: Nil)) =>
+    case NamedOp(left, "==", right) =>
       BinaryOperation(astParse(left), EqualityOperator.==, astParse(right))
 
     case Unseal(Apply(Select(Seal(left), "||"), Seal(right) :: Nil)) =>
       BinaryOperation(astParse(left), BooleanOperator.||, astParse(right))
       
-    case Unseal(Apply(Select(Seal(left), "+"), Seal(right) :: Nil)) =>
+    case NamedOp(left, "+", right) if is[String](left, right) =>
       BinaryOperation(astParse(left), StringOperator.+, astParse(right))
+
+    case NamedOp(left, "+", right) if is[Int](left, right) =>
+      BinaryOperation(astParse(left), NumericOperator.+, astParse(right))
 
     case Unseal(Apply(Select(Seal(left), "*"), Seal(right) :: Nil)) =>
       BinaryOperation(astParse(left), NumericOperator.*, astParse(right))
@@ -329,6 +337,10 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
       Constant(v)
 
     case Unseal(Literal(TreeConst(v: String))) => 
+      //println("Case Literal Constant")
+      Constant(v)
+
+    case Unseal(Literal(TreeConst(v: Int))) => 
       //println("Case Literal Constant")
       Constant(v)
 
