@@ -86,8 +86,11 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
   }
 
   implicit def unliftOperator: Unlift[Operator] = {
-    case '{ NumericOperator.* } =>  NumericOperator.*
     case '{ NumericOperator.+ } =>  NumericOperator.+
+    case '{ NumericOperator.- } =>  NumericOperator.-
+    case '{ NumericOperator.* } =>  NumericOperator.*
+    case '{ NumericOperator./ } =>  NumericOperator./
+    case '{ NumericOperator.% } =>  NumericOperator.%
     case '{ StringOperator.+ } =>  StringOperator.+
     case '{ EqualityOperator.== } =>  EqualityOperator.==
     case '{ BooleanOperator.|| } =>  BooleanOperator.||

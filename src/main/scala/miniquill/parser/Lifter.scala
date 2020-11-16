@@ -96,8 +96,12 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
   import EqualityOperator.{ == => ee }
 
   implicit def liftOperator: PartialFunction[Operator, Expr[Operator]] = {
-    case NumericOperator.* => '{ NumericOperator.* }
     case NumericOperator.+ => '{ NumericOperator.+ }
+    case NumericOperator.- => '{ NumericOperator.- }
+    case NumericOperator.* => '{ NumericOperator.* }
+    case NumericOperator./ => '{ NumericOperator./ }
+    case NumericOperator.% => '{ NumericOperator.% }
+    
     case StringOperator.+ => '{ StringOperator.+ }
     case _: ee.type => '{ EqualityOperator.== } // if you don't do it this way, complains about 'stable identifier error'
     case BooleanOperator.|| => '{ BooleanOperator.|| }

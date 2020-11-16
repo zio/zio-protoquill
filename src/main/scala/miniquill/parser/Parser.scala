@@ -283,44 +283,80 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
 // }
 
 case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty._
+  import qctx.tasty.{Type => TType, _}
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-      del
+    del.compose(PartialFunction.fromFunction(
+      (expr: Expr[_]) => {
+        println(
+          "==================== Your Expression is: ====================\n" + expr.show
+        )
+        expr match {
+          case Unseal(Apply(Select(Seal(left), "=="), Seal(right) :: Nil)) =>
+            println("YAYAYAYAYA WE MATCHED")
+          case _ =>
+            println("NOPE DID NOT MATCH")
+        }
+
+        expr
+      }
+    ))
   }
 
-  object NamedOp {
-    def unapply(expr: Expr[Any]) =
+  object NamedOp1 {
+    def unapply(expr: Expr[_]): Option[(Expr[_], String, Expr[_])] =
       expr match {
-        case Unseal(Apply(Select(left, op: String), right :: Nil)) =>
-          Some((left.seal, op, right.seal))
+        case Unseal(Apply(Select(Seal(left), op: String), Seal(right) :: Nil)) => 
+          Some(left, op, right)
         case _ => 
           None
       }
   }
 
-  def is[T](exprs: Expr[Any]*)(implicit t: scala.quoted.Type[T]) = {
-    exprs.forall(_.unseal.tpe <:< t.unseal.tpe)
-  }
+  def isType[T](input: Expr[_], test: Type[T]) =
+    input.unseal.tpe <:< test.unseal.tpe
 
+  def is[T](inputs: Expr[_]*)(implicit test: Type[T]): Boolean =
+    inputs.forall(input => input.unseal.tpe <:< test.unseal.tpe)
+
+  // Function[Expr, Ast]
   def del: PartialFunction[Expr[_], Ast] = {
       // TODO Need to check if entity is a string
-    case NamedOp(left, "==", right) =>
+    case NamedOp1(left, "==", right) =>
       BinaryOperation(astParse(left), EqualityOperator.==, astParse(right))
 
-    case Unseal(Apply(Select(Seal(left), "||"), Seal(right) :: Nil)) =>
+    case NamedOp1(left, "||", right) =>
       BinaryOperation(astParse(left), BooleanOperator.||, astParse(right))
-      
-    case NamedOp(left, "+", right) if is[String](left, right) =>
-      BinaryOperation(astParse(left), StringOperator.+, astParse(right))
+    
+    // 1 + 1
+    // Apply(Select(Lit(1), +), Lit(1))
+    // Expr[_] => BinaryOperation
+    case NumericOperation(binaryOperation) =>
+      binaryOperation
+  }
 
-    case NamedOp(left, "+", right) if is[Int](left, right) =>
-      BinaryOperation(astParse(left), NumericOperator.+, astParse(right))
+  object NumericOperation {
+    def unapply(expr: Expr[_]): Option[BinaryOperation] = {
+      expr match {
+        case NamedOp1(left, NumericOpLabel(binaryOp), right) if (is[Int](left, right)) =>
+          Some(BinaryOperation(astParse(left), binaryOp, astParse(right)))
+        case _ => None
+      }
+    }
+  }
 
-    case Unseal(Apply(Select(Seal(left), "*"), Seal(right) :: Nil)) =>
-      BinaryOperation(astParse(left), NumericOperator.*, astParse(right))
+  object NumericOpLabel {
+    def unapply(str: String): Option[BinaryOperator] = 
+      str match {
+        case "+" => Some(NumericOperator.+)
+        case "-" => Some(NumericOperator.-)
+        case "*" => Some(NumericOperator.*)
+        //case "/" => Some(NumericOperator./)
+        case "%" => Some(NumericOperator.%)
+        case _ => None
+      }
   }
 }
 
