@@ -6,19 +6,22 @@ import miniquill.quoter.Dsl._
 
 object InlineMacroTest4 {
 
-  // trait Foofy[T] {
-  //   inline def foof(inline t: T): T
-  // }
+  trait Foofy[T] {
+    inline def foof(inline t: T): T
+  }
 
-  // implicit def stringFoofy: Foofy[String] = new Foofy[String]() {
-  //   inline def foof(inline t: String): String = t + "-foo"
-  // }
+  class StringFoofy extends Foofy[String] {
+    inline def foof(inline t: String): String = t + "-foo"
+  }
+  class IntFoofy extends Foofy[Int] {
+    inline def foof(inline t: Int): Int = t + 1
+  }
 
-  implicit inline def foofyString: String => String = (str: String) => str + "-foofoo";
-  implicit inline def foofyInt: Int => Int = (i: Int) => i + 1;
+  implicit inline def foofyString: StringFoofy = new StringFoofy
+  implicit inline def foofyInt: IntFoofy = new IntFoofy
 
-  inline def foofy[T](inline element: T)(implicit inline foofer: T => T): T = {
-    foofer(element)
+  inline def foofy[T](inline element: T)(implicit inline foofer: Foofy[T]): T = {
+    foofer.foof(element)
   }
 
   def main(args: Array[String]): Unit = { //hello

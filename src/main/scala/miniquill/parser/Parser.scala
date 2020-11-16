@@ -246,6 +246,8 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       val b = astParse(body)
       Filter(a, Idnt(ident), b)
 
+    // case Fun(Query(q), "filter", Lambda1(ident, body))
+
     // Need to have map cases for both Query and EntityQuery since these matches are invariant
     case '{ ($q:EntityQuery[$qt]).filter(${Lambda1(ident, body)}) } => 
       val a = astParse(q)
