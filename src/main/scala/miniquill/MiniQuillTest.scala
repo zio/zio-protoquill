@@ -3,6 +3,9 @@ package miniquill
 import simple.SimpleMacro._
 import scala.language.implicitConversions
 import miniquill.quoter.Dsl._
+import miniquill.parser.PrintMac
+import miniquill.parser.MatchMac
+import miniquill.parser.MatchLambdaMac
 
 object AdvTest {
 
@@ -46,6 +49,8 @@ object AdvTest {
       ListProc.index(list, 0) == column || oneOf(ListProc.tail(list), column)
   }
 
+  def takeLambda(f: String => Int): Unit = ()
+
   def main(args: Array[String]): Unit = {
 
     //hello
@@ -58,15 +63,25 @@ object AdvTest {
     // Strike(price: )
     //inline def personToField(inline p: Person) = p.name
 
-    inline def q = quote {
-      //query[Person].map(p => p.age / 4) //helloooooooooooooooooooooooooooooooooooooooooooooooooooo
-      query[Person].insert(_.name -> "Joe")
-    }
-
-    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-    import ctx._
+    inline def q = query[Person].insert(p => p.name -> "Joe")
     
-    val output = run(q)
-    println(output)
+    PrintMac(q)
+    MatchMac(q)
+
+    inline def lambdaExample = (p: String) => p.length
+    PrintMac(lambdaExample)
+    MatchLambdaMac(lambdaExample)
+    
+
+    // inline def q = quote {
+    //   //query[Person].map(p => p.age / 4) //helloooooooooooooooooooooooooooooooooooooooooooooooooooo
+    //   query[Person].insert(_.name -> "Joe")
+    // }
+
+    // val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    // import ctx._
+    
+    // val output = run(q)
+    // println(output)
   }
 }

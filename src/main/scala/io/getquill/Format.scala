@@ -1,7 +1,7 @@
 package io.getquill
 
 object Format {
-  //import org.scalafmt.interfaces.Scalafmt
+  // import org.scalafmt.interfaces.Scalafmt
   // import org.scalafmt.cli.Scalafmt210
 
   def apply(code: String) = {
@@ -11,7 +11,8 @@ object Format {
         //       |  ${code}
         //       |}""".stripMargin, 
         //   "Main.scala")
-      formatted
+        formatted
+      
         //.replaceFirst("object Foo {","")
         //.replaceAll("}$","")
     }

@@ -22,24 +22,27 @@ type SealedParser[R] = (quoted.Expr[_] => R)
 object Parser {
   val empty: Parser[Ast] = PartialFunction.empty[Expr[_], Ast]
 
+  def throwExpressionError(expr: Expr[_], astClass: Class[_])(implicit qctx: QuoteContext) =
+    report.throwError(s"""|
+      |s"==== Tree cannot be parsed to '${astClass.getSimpleName}' ===
+      |  ${Format(expr.show)}
+      |==== Extractors ===
+      |  ${Format(expr.unseal.showExtractors)}
+      |==== Tree ===
+      |  ${printer.str(expr.unseal)}
+      |""".stripMargin, 
+      expr)
+  
+
   object Implicits {
 
     implicit class ParserExtensions[R](parser: Parser[R])(implicit val qctx: QuoteContext, ct: ClassTag[R]) {
       import qctx.tasty._
 
       def seal: SealedParser[R] = 
-        (expr: Expr[_]) => parser.lift(expr).getOrElse { //hello
-          // c.fail(s"Tree '$tree' can't be parsed to '${ct.runtimeClass.getSimpleName}'")
-          report.throwError(
-        s"""|s"==== Tree cannot be parsed to '${ct.runtimeClass.getSimpleName}' ===
-            |  ${Format(expr.show)}
-            |==== Extractors ===
-            |  ${Format(expr.unseal.showExtractors)}
-            |==== Tree ===
-            |  ${printer.str(expr.unseal)}
-            |""".stripMargin, 
-            expr)
-        }
+        (expr: Expr[_]) => parser.lift(expr).getOrElse {
+          throwExpressionError(expr, ct.runtimeClass)
+        }        
     }
   }
 
@@ -90,6 +93,7 @@ trait ParserLibrary extends ParserFactory {
   def functionApplyParser(using qctx: QuoteContext) =      Series.single(new FunctionApplyParser)
   def operationsParser(using qctx: QuoteContext) =         Series.single(new OperationsParser)
   def genericExpressionsParser(using qctx: QuoteContext) = Series.single(new GenericExpressionsParser)
+  def actionParser(using qctx: QuoteContext)             = Series.single(new ActionParser)
 
   // def userDefined(using qctxInput: QuoteContext) = Series(new Glosser[Ast] {
   //   val qctx = qctxInput
@@ -99,6 +103,7 @@ trait ParserLibrary extends ParserFactory {
   def apply(using qctx: QuoteContext): Parser[Ast] = {
     quotationParser
         .combine(queryParser)
+        .combine(actionParser)
         .combine(functionParser) // decided to have it be it's own parser unlike Quill3
         .combine(operationsParser)
         .combine(functionApplyParser) // must go before genericExpressionsParser otherwise that will consume the 'apply' clauses
@@ -202,6 +207,49 @@ case class PropertyAliasParser(root: Parser[Ast] = Parser.empty)(implicit qctx: 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
 
+case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
+  import qctx.tasty.{Constant => TConstant, _}
+  import Parser.Implicits._
+
+  // TODO If this was copied would 'root' inside of this thing update correctly?
+  protected def propertyAliasParser: SealedParser[PropertyAlias] = PropertyAliasParser(root).seal
+  
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    del
+  }
+
+  def del: PartialFunction[Expr[_], Ast] = {
+    // case '{ ($q: EntityQuery[$i]).insert(${GenericSeq(assignments)}: _*) } =>
+    //   println("==================== GOT HERE ========================")
+    //   Insert(astParser(query), assignments.map(a => assignmentParser(a)))
+
+    case Unseal(Apply(Select(query, "insert"), insertAssignments)) =>
+      insertAssignments.foreach(a => println(assignmentParser(a)))
+      report.throwError("================== ERRORING OUT ==============")
+
+    // case Unseal(Apply(Select(query, "insert"), Seal(GenericSeq(assignments)))) =>
+    //   //println("==================== GOT HERE ========================")
+    //   //Insert(astParse(query.seal), assignments.map(a => assignmentParser(a)))
+  }
+
+  private def assignmentParser(term: Term): Assignment = {
+    Untype(term) match {
+      
+
+      // Apply(Select(Apply(Ident("ArrowAssoc"), List(prop)), "->"), List(value))
+      case Lambda1(ident,stuff) =>
+        println("================= GOT HERE ===============")
+        Parser.throwExpressionError(stuff, classOf[Assignment])
+
+        //Assignment(Idnt(ident), astParse(prop.seal), astParse(value.seal))
+      case _ => Parser.throwExpressionError(term.seal, classOf[Assignment])
+    }
+    // TODO Make a good exception that throws the broken tree here
+  }
+
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+}
+
 case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Constant => TConstant, _}
   import Parser.Implicits._
@@ -255,11 +303,9 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       Filter(a, Idnt(ident), b)
 
     case '{ ($a: Query[$t]).union($b) } =>
-      println("============= YAYAYAYAY IT WORKS ===========")
       Union(astParse(a), astParse(b))
 
     case '{ ($a: EntityQuery[$t]).union($b) } =>
-      println("============= YAYAYAYAY IT WORKS ===========")
       Union(astParse(a), astParse(b))
   }
 
@@ -290,15 +336,15 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   def delegate: PartialFunction[Expr[_], Ast] = {
     del.compose(PartialFunction.fromFunction(
       (expr: Expr[_]) => {
-        println(
-          "==================== Your Expression is: ====================\n" + expr.show
-        )
-        expr match {
-          case Unseal(Apply(Select(Seal(left), "=="), Seal(right) :: Nil)) =>
-            println("YAYAYAYAYA WE MATCHED")
-          case _ =>
-            println("NOPE DID NOT MATCH")
-        }
+        // println(
+        //   "==================== Your Expression is: ====================\n" + expr.show
+        // )
+        // expr match {
+        //   case Unseal(Apply(Select(Seal(left), "=="), Seal(right) :: Nil)) =>
+        //     println("YAYAYAYAYA WE MATCHED")
+        //   case _ =>
+        //     println("NOPE DID NOT MATCH")
+        // }
 
         expr
       }

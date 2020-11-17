@@ -57,6 +57,8 @@ trait TastyMatchers {
       case TypedMatroshkaTerm(t) => Some(t)
       case other => Some(other)
     }
+
+    def apply(term: Term) = Untype.unapply(term).get
   }
 
   object TypedMatroshkaTerm {
@@ -98,14 +100,14 @@ trait TastyMatchers {
   }
 
   object Lambda1 {
+    def unapply(expr: Expr[_]): Option[(String, quoted.Expr[_])] =
+      unapplyTerm(expr.unseal).map((str, expr) => (str, expr.seal))
+
     def unapplyTerm(term: Term): Option[(String, Term)] = term match {
-      case Lambda(List(ValDef(ident, Inferred(), None)), methodBody) => Some((ident, methodBody))
+      case Lambda(List(ValDef(ident, _, _)), methodBody) => Some((ident, methodBody))
       case Block(List(), expr) => unapplyTerm(expr)
       case _ => None
     }
-
-    def unapply(term: Expr[_]): Option[(String, quoted.Expr[_])] =
-      unapplyTerm(term.unseal).map((str, term) => (str, term.seal))
   }
 
   object RawLambdaN {
