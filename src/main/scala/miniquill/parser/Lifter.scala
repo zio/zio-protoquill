@@ -61,6 +61,10 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case list: List[T] => Expr.ofList(list.map(liftElement(_)))
   }
 
+  implicit def liftableAssignment: Lift[Assignment] = {
+    case Assignment(ident, property, value) => '{ Assignment(${ident.liftable}, ${property.liftable}, ${value.liftable}) }
+  }
+
   implicit def liftAst: Lift[Ast] = {
     val liftBaseActual = liftBase
     val liftPropertyActual = liftProperty
@@ -91,6 +95,7 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case ScalarTag(uid: String) => '{ScalarTag(${Expr(uid)})}
     case QuotationTag(uid: String) => '{QuotationTag(${Expr(uid)})}
     case Union(a, b) => '{ Union(${liftAst(a)}, ${liftAst(b)}) }
+    case Insert(query: Ast, assignments: List[Assignment]) => '{ Insert(${liftAst(query)}, ${assignments.liftable}) }
   }
 
   import EqualityOperator.{ == => ee }

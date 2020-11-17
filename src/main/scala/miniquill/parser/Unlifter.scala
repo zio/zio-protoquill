@@ -55,6 +55,10 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
       Property.Opinionated(unliftAst(ast), fixedString(name), unliftRenameable(renameable), unliftVisibility(visibility))
   }
 
+  implicit def unliftAssignment: Unlift[Assignment] = {
+    case '{ Assignment($alias, $property, $value) } => Assignment(alias.unliftExpr, property.unliftExpr, value.unliftExpr)
+  }
+
   implicit def unliftPropertyAlias: Unlift[PropertyAlias] = {
     case '{ PropertyAlias($paths, $b) } => PropertyAlias(paths.unliftExpr, b.unliftExpr)
   }
@@ -83,6 +87,7 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
     case '{ QuotationTag($uid) } =>
       QuotationTag(fixedString(uid))
     case '{ Union($a, $b) } => Union(unliftAst(a), unliftAst(b))
+    case '{ Insert($query, $assignments) } => Insert(query.unliftExpr, assignments.unliftExpr)
   }
 
   implicit def unliftOperator: Unlift[Operator] = {

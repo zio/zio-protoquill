@@ -219,32 +219,36 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   }
 
   def del: PartialFunction[Expr[_], Ast] = {
-    // case '{ ($q: EntityQuery[$i]).insert(${GenericSeq(assignments)}: _*) } =>
-    //   println("==================== GOT HERE ========================")
-    //   Insert(astParser(query), assignments.map(a => assignmentParser(a)))
-
     case Unseal(Apply(Select(query, "insert"), insertAssignments)) =>
-      insertAssignments.foreach(a => println(assignmentParser(a)))
-      report.throwError("================== ERRORING OUT ==============")
-
-    // case Unseal(Apply(Select(query, "insert"), Seal(GenericSeq(assignments)))) =>
-    //   //println("==================== GOT HERE ========================")
-    //   //Insert(astParse(query.seal), assignments.map(a => assignmentParser(a)))
+      val assignments = insertAssignments.filterNot(isNil(_)).map(a => assignmentParser(a))
+      Insert(astParse(query.seal), assignments)
   }
 
-  private def assignmentParser(term: Term): Assignment = {
+  private def isNil(term: Term): Boolean =
     Untype(term) match {
-      
+      case Repeated(Nil, any) => true
+      case _ => false
+    }
 
-      // Apply(Select(Apply(Ident("ArrowAssoc"), List(prop)), "->"), List(value))
-      case Lambda1(ident,stuff) =>
-        println("================= GOT HERE ===============")
-        Parser.throwExpressionError(stuff, classOf[Assignment])
+  private def assignmentParser(term: Term): Assignment = {
+    UntypeExpr(term.seal) match {
+      case 
+        Lambda1(
+          ident,
+            Unseal(Apply(TypeApply(
+              Select(Apply(
+                TypeApply(Ident("ArrowAssoc"), List(Inferred())), 
+                List(prop)
+              ), "->"), 
+              List(Inferred())
+            ), List(value))
+            )
+        ) =>
 
-        //Assignment(Idnt(ident), astParse(prop.seal), astParse(value.seal))
+        Assignment(Idnt(ident), astParse(prop.seal), astParse(value.seal))
+
       case _ => Parser.throwExpressionError(term.seal, classOf[Assignment])
     }
-    // TODO Make a good exception that throws the broken tree here
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)

@@ -142,6 +142,9 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
     }
   }
   
+  inline def runQuery[T](inline quoted: Quoted[Insert[T]]): Result[RunQueryResult[T]] = {
+    
+  }
 
   inline def runQuery[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     summonFrom {
