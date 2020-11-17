@@ -357,9 +357,9 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
   object NamedOp1 {
     def unapply(expr: Expr[_]): Option[(Expr[_], String, Expr[_])] =
-      expr match {
-        case Unseal(Apply(Select(Seal(left), op: String), Seal(right) :: Nil)) => 
-          Some(left, op, right)
+      UntypeExpr(expr) match {
+        case Unseal(Apply(Select(Untype(left), op: String), Untype(right) :: Nil)) => 
+          Some(left.seal, op, right.seal)
         case _ => 
           None
       }
@@ -379,6 +379,9 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
     case NamedOp1(left, "||", right) =>
       BinaryOperation(astParse(left), BooleanOperator.||, astParse(right))
+
+    case NamedOp1(left, "+", right) if is[String](left) || is[String](right) =>
+      BinaryOperation(astParse(left), StringOperator.+, astParse(right))
     
     // 1 + 1
     // Apply(Select(Lit(1), +), Lit(1))
@@ -389,7 +392,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
   object NumericOperation {
     def unapply(expr: Expr[_]): Option[BinaryOperation] = {
-      expr match {
+      UntypeExpr(expr) match {
         case NamedOp1(left, NumericOpLabel(binaryOp), right) if (is[Int](left, right)) =>
           Some(BinaryOperation(astParse(left), binaryOp, astParse(right)))
         case _ => None
