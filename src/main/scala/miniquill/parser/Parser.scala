@@ -403,7 +403,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
         case "+" => Some(NumericOperator.+)
         case "-" => Some(NumericOperator.-)
         case "*" => Some(NumericOperator.*)
-        //case "/" => Some(NumericOperator./)
+        case "/" => Some(NumericOperator./)
         case "%" => Some(NumericOperator.%)
         case _ => None
       }
