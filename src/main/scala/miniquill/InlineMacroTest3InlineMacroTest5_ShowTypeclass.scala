@@ -19,8 +19,8 @@ object InlineMacroTest5 {
     inline def show(inline t: Int): String = "num"
   }
 
-  implicit inline def showString: ShowString = new ShowString
-  implicit inline def showInt: ShowInt = new ShowInt
+  inline given showString as ShowString = new ShowString
+  inline given showInt as ShowInt = new ShowInt
 
   // TODO Try returning T, says can't parse the tree not sure why not
   inline def show[T](inline element: T)(implicit inline shower: Show[T]): String = {
