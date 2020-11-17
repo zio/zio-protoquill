@@ -74,14 +74,14 @@ object AdvTest {
     
 
     inline def q = quote {
-      query[Person].map(p => p.age / 4)
-      //query[Person].insert(p => p.name -> "Joe")
+      //query[Person].map(p => p.age / 4)
+      query[Person].insert(p => p.name -> "Joe")
     }
 
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
     
-    val output = run(q)
+    val output = runInsertDef(q)
     println(output)
   }
 }

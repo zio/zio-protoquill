@@ -39,6 +39,48 @@ object ExecutionType {
 trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] { 
   context: Context[Dialect, Naming] =>
 
+
+
+    inline def translateStaticInsert[T](inline quoted: Quoted[Insert[T]]): Option[(String, List[ScalarPlanter[_, _]])] =
+      ${ StaticTranslationMacro.applyInsert[T, Dialect, Naming]('quoted) }
+  
+    inline def runDynamicInsert[T](inline quoted: Quoted[Insert[T]]): Result[RunActionResult] = {
+      val origAst = GetAst.applyInsert(quoted)
+      val    = Expander.runtime[T](origAst)
+      val lifts = GetLifts.applyInsert(quoted)
+      val quotationVases = GetRuntimeQuotes.applyInsert(quoted)
+  
+      def spliceQuotations(ast: Ast): Ast =
+        Transform(ast) {
+          case v @ QuotationTag(uid) => 
+            // When a quotation to splice has been found, retrieve it and continue
+            // splicing inside since there could be nested sections that need to be spliced
+            quotationVases.find(_.uid == uid) match {
+              case Some(vase) => 
+                spliceQuotations(vase.quoted.ast)
+              case None =>
+                throw new IllegalArgumentException(s"Quotation vase with UID ${uid} could not be found!")
+            }
+        }
+  
+      val expandedAst = spliceQuotations(ast)
+        
+      val (outputAst, stmt) = idiom.translate(expandedAst)(using naming)
+  
+      val (string, externals) =
+        ReifyStatement(
+          idiom.liftingPlaceholder,
+          idiom.emptySetContainsToken,
+          stmt,
+          forProbing = false
+        )
+  
+      this.executeAction(string, null)
+    }
+
+
+
+
     inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[ScalarPlanter[_, _]])] =
       ${ StaticTranslationMacro[T, Dialect, Naming]('quoted) }
   
@@ -46,6 +88,7 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
       val origAst = GetAst(quoted)
       val ast = Expander.runtime[RawT](origAst)
       // VERY VERY ODD that this seems to fix issues with position errors originally found in Miniquill test
+      // What do I do with the lifts???
       val lifts = GetLifts(quoted) // quoted.lifts causes position exception
       val quotationVases = GetRuntimeQuotes(quoted) // quoted.runtimeQuotes causes position exception
   
@@ -74,6 +117,7 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
           forProbing = false
         )
   
+      // tried to summon decoders and expanders here but didn't work
       // summon a decoder and a expander (as well as an encoder) all three should be provided by the context
         // summonFrom {
         //   // TODO Implicit summoning error
@@ -108,9 +152,12 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
     inline def runStatic[RawT,T](queryString: String, lifts: List[ScalarPlanter[_, _]], decoder: GenericDecoder[_, RawT], converter: RawT => T) = {
       val extractor = (r: ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[ResultRow, RawT]].apply(1, r))
       val prepare = (row: PrepareRow) => staticExtractor(lifts, row)
-  
-      println("==================<<<<<<<<<<< GOT TO HERE >>>>>>>>>>>>>>>>================")
       this.executeQuery(queryString, prepare, extractor, ExecutionType.Static)
+    }
+
+    inline def runStaticAction[T](queryString: String, lifts: List[ScalarPlanter[_, _]]) = {
+      val prepare = (row: PrepareRow) => staticExtractor(lifts, row)
+      this.executeAction(queryString, prepare)
     }
 
   inline def encodeAndExecute[T, R](
@@ -141,10 +188,20 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
         runDynamic[R, T](quoted, decoder, converter)
     }
   }
-  
-  inline def runQuery[T](inline quoted: Quoted[Insert[T]]): Result[RunQueryResult[T]] = {
-    
+
+
+  inline def encodeAndExecuteInsert[T](
+    inline staticState: Option[(String, List[ScalarPlanter[_, _]])], 
+    inline quoted: Quoted[Insert[T]]): Result[RunActionResult] = 
+  {
+    staticState match {
+      case Some((query, lifts)) => // use FindLifts as part of this match?
+        runStaticAction[T](query, lifts)
+      case None =>
+        runDynamicInsert[T](quoted)
+    }
   }
+  
 
   inline def runQuery[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     summonFrom {
@@ -155,6 +212,12 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
         val staticState = translateStatic[T](quoted)
         encodeAndExecute[T, T](staticState, quoted, t => t)
     }
+  }
+
+  inline def runInsert[T](inline quoted: Quoted[Insert[T]]): Result[RunActionResult] = {
+    // TODO Summoing a insert-meta here
+    val staticState = translateStaticInsert[T](quoted)
+    encodeAndExecuteInsert[T](staticState, quoted)
   }
 }
 
@@ -193,6 +256,7 @@ with EncodingDsl
 
   // todo add 'prepare' i.e. encoders here
   def executeQuery[T](sql: String, prepare: Prepare, extractor: Extractor[T], executionType: ExecutionType): Result[RunQueryResult[T]]
+  def executeAction[T](sql: String, prepare: Prepare = identityPrepare): Result[RunActionResult]
 
   val identityPrepare: Prepare = (Nil, _)
   val identityExtractor = identity[ResultRow] _
@@ -201,6 +265,9 @@ with EncodingDsl
 
   inline def lift[T](inline vv: T): T = 
     ${ LiftMacro[T, PrepareRow]('vv) }
+
+  inline def runInsertDef[T](inline quoted: Quoted[Insert[T]]): Result[RunActionResult] = 
+    runInsert[T](quoted)
 
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = 
     runQuery[T](quoted)

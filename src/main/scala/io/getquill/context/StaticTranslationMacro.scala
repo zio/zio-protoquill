@@ -39,6 +39,12 @@ object GetAst {
     import qctx.tasty.{Try => TTry,Type => TType, _}
     '{ $quoted.ast }
   }
+
+  inline def applyInsert[T](inline quoted: Quoted[Insert[T]]): io.getquill.ast.Ast = ${ applyImplInsert('quoted) }
+  def applyImplInsert[T: Type](quoted: Expr[Quoted[Insert[T]]])(implicit qctx: QuoteContext): Expr[io.getquill.ast.Ast] = {
+    import qctx.tasty.{Try => TTry,Type => TType, _}
+    '{ $quoted.ast }
+  }
 }
 
 object GetLifts {
@@ -55,6 +61,12 @@ object GetLifts {
     import qctx.tasty.{Try => TTry,Type => TType, _}
     '{ $quoted.lifts }
   }
+
+  inline def applyInsert[T](inline quoted: Quoted[Insert[T]]): List[miniquill.quoter.ScalarPlanter[_, _]] = ${ applyImplInsert('quoted) }
+  def applyImplInsert[T: Type](quoted: Expr[Quoted[Insert[T]]])(implicit qctx: QuoteContext): Expr[List[miniquill.quoter.ScalarPlanter[_, _]]] = {
+    import qctx.tasty.{Try => TTry,Type => TType, _}
+    '{ $quoted.lifts }
+  }
 }
 
 object GetRuntimeQuotes {
@@ -68,6 +80,12 @@ object GetRuntimeQuotes {
 
   inline def apply[T](inline quoted: Quoted[Query[T]]): List[miniquill.quoter.QuotationVase] = ${ applyImpl('quoted) }
   def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(implicit qctx: QuoteContext): Expr[List[miniquill.quoter.QuotationVase]] = {
+    import qctx.tasty.{Try => TTry,Type => TType, _}
+    '{ $quoted.runtimeQuotes }
+  }
+
+  inline def applyInsert[T](inline quoted: Quoted[Insert[T]]): List[miniquill.quoter.QuotationVase] = ${ applyImplInsert('quoted) }
+  def applyImplInsert[T: Type](quoted: Expr[Quoted[Insert[T]]])(implicit qctx: QuoteContext): Expr[List[miniquill.quoter.QuotationVase]] = {
     import qctx.tasty.{Try => TTry,Type => TType, _}
     '{ $quoted.runtimeQuotes }
   }
@@ -157,6 +175,47 @@ object StaticTranslationMacro {
 
   def apply[T: Type, D <: Idiom, N <: NamingStrategy](
     quotedRaw: Expr[Quoted[Query[T]]]
+  )(using qctx:QuoteContext, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
+    import qctx.tasty.{Try => TTry,Type => TType, _}
+    // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
+    val quoted = quotedRaw.unseal.underlyingArgument.seal
+
+    import scala.util.{Success, Failure}
+    idiomAndNamingStatic match {
+      case Success(v) =>
+      case Failure(f) => f.printStackTrace()
+    }
+
+    val tryStatic =
+      for {
+        (idiom, naming)          <- idiomAndNamingStatic.toOption
+        // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
+        quotedExpr               <- QuotedExpr.uprootableOpt(quoted) 
+        (queryString, externals) <- processAst[T](quotedExpr.ast, idiom, naming)
+        encodedLifts             <- processLifts(quotedExpr.lifts, externals)
+      } yield {
+        println("Compile Time Query Is: " + queryString)
+
+        // What about a missing decoder?
+        // need to make sure that that kind of error happens during compile time
+        // (also need to propagate the line number, talk to Li Houyi about that)
+        '{ (${Expr(queryString)}, ${Expr.ofList(encodedLifts)}) }
+      }
+
+    if (tryStatic.isEmpty)
+      println("WARNING: Dynamic Query Detected: ")
+
+    tryStatic match {
+      case Some(value) => 
+        '{ Option($value) }
+      case None => 
+        '{ None }
+    }
+  }
+
+
+  def applyInsert[T: Type, D <: Idiom, N <: NamingStrategy](
+    quotedRaw: Expr[Quoted[Insert[T]]]
   )(using qctx:QuoteContext, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
     import qctx.tasty.{Try => TTry,Type => TType, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
