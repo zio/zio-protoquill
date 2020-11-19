@@ -63,9 +63,18 @@ object AdvTest {
       //query[Person].filter(p => nootOf(Node("foo", Node("bar", Tip)), p.name))
       //query[Person].filter(p => oneOf[String *: EmptyTuple.type, String *: EmptyTuple.type](("foo" *: EmptyTuple), "blah", 0))
       // This works!!!
-      query[Person].filter(p => oneOf(List(p.middleName,p.lastName), p.name))
-      //query[Person]
+      //query[Person].filter(p => oneOf(List(p.middleName,p.lastName), p.name))
+      query[Person]
     }
+
+/*
+[error] ## Exception when compiling 94 sources to /home/alexander/git/dotty/dotty_test_metals/target/scala-3.0.0-M1/classes
+[error] java.lang.AssertionError: assertion failed: position not set for {
+[error]   io.getquill.ast.Entity.apply("Person", Nil)
+[error]   Nil
+[error] } # -1 of class dotty.tools.dotc.ast.Trees$Block in /home/alexander/git/dotty/dotty_test_metals/src/main/scala/miniquill/MiniQuillTest
+.scala
+*/
 
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._

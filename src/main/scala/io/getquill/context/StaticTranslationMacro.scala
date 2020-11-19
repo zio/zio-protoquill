@@ -36,7 +36,7 @@ object GetAst {
 
   inline def apply[T](inline quoted: Quoted[Query[T]]): io.getquill.ast.Ast = ${ applyImpl('quoted) }
   def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(implicit qctx: QuoteContext): Expr[io.getquill.ast.Ast] = {
-    import qctx.reflect.{Try => TTry,Type => TType, _}
+    import qctx.reflect.{Try => TTry,TypeRepr => TType, _}
     '{ $quoted.ast }
   }
 }
@@ -52,7 +52,7 @@ object GetLifts {
 
   inline def apply[T](inline quoted: Quoted[Query[T]]): List[miniquill.quoter.ScalarPlanter[_, _]] = ${ applyImpl('quoted) }
   def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(implicit qctx: QuoteContext): Expr[List[miniquill.quoter.ScalarPlanter[_, _]]] = {
-    import qctx.reflect.{Try => TTry,Type => TType, _}
+    import qctx.reflect.{Try => TTry,TypeRepr => TType, _}
     '{ $quoted.lifts }
   }
 }
@@ -68,7 +68,7 @@ object GetRuntimeQuotes {
 
   inline def apply[T](inline quoted: Quoted[Query[T]]): List[miniquill.quoter.QuotationVase] = ${ applyImpl('quoted) }
   def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(implicit qctx: QuoteContext): Expr[List[miniquill.quoter.QuotationVase]] = {
-    import qctx.reflect.{Try => TTry,Type => TType, _}
+    import qctx.reflect.{Try => TTry,TypeRepr => TType, _}
     '{ $quoted.runtimeQuotes }
   }
 }
@@ -158,7 +158,7 @@ object StaticTranslationMacro {
   def apply[T: Type, D <: Idiom, N <: NamingStrategy](
     quotedRaw: Expr[Quoted[Query[T]]]
   )(using qctx:QuoteContext, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
-    import qctx.reflect.{Try => TTry,Type => TType, _}
+    import qctx.reflect.{Try => TTry,TypeRepr => TType, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.unseal.underlyingArgument.seal
 

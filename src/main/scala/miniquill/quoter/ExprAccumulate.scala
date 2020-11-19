@@ -7,7 +7,7 @@ import scala.quoted.util.ExprMap
 
 object ExprAccumulate {
   def apply[T](input: Expr[Any])(matcher: PartialFunction[Expr[Any], T])(using qctx: QuoteContext): List[T] = {
-    import qctx.reflect.{Type => QType, _}
+    import qctx.reflect.{TypeRepr => QType, _}
 
     val buff: ArrayBuffer[T] = new ArrayBuffer[T]()
     val accum = new ExprMap {

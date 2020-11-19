@@ -66,7 +66,7 @@ object PulloutExperiment {
   
     val accum = new TreeAccumulator[ArrayBuffer[Term]] {
       def foldTree(terms: ArrayBuffer[Term], tree: Tree)(implicit ctx: Context) = tree match {
-        case arg @ Apply(TypeApply(Select(Ident("LookInside"), "apply"), _), List(transportValue, Literal(Constant(uid)))) => 
+        case arg @ Apply(TypeApply(Select(Ident("LookInside"), "apply"), _), List(transportValue, Literal(Constant.String(uid)))) => 
           printer.ln("Found: " + arg)
           terms += arg
         case _ => 
@@ -93,7 +93,7 @@ object PulloutExperiment {
         val encoded = 
           v match {
             case '{ LookInside[$tpe]($value, $uid) } => // find unique uids?
-              val expressType =  '[Expresser[$tpe]]
+              val expressType = Type[Expresser[tpe]]
               Expr.summon(using expressType) match {
                 case Some(expresserExpr) => '{ $expresserExpr.express($value) }
                 case None => throw new RuntimeException(s"Could not find expresser for ${expressType.unseal.show}")
@@ -137,7 +137,7 @@ object PulloutExperiment {
     
     val accum = new TreeAccumulator[ArrayBuffer[Term]] {
       def foldTree(terms: ArrayBuffer[Term], tree: Tree)(implicit ctx: Context) = tree match {
-        case arg @ Apply(TypeApply(Select(Ident("LookInside"), "apply"), _), List(transportValue, Literal(Constant(uid)))) => 
+        case arg @ Apply(TypeApply(Select(Ident("LookInside"), "apply"), _), List(transportValue, Literal(Constant.String(uid)))) => 
           printer.ln("Found: " + arg)
           terms += arg
         case _ => 

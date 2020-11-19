@@ -83,7 +83,7 @@ object Expander {
   }
 
   class TypeExtensions(using qctx: QuoteContext) { self =>
-    import qctx.reflect.{Type => QType, _}
+    import qctx.reflect.{TypeRepr => QType, _}
     
     implicit class TypeExt(tpe: Type[_]) {
       def constValue = self.constValue(tpe)
@@ -100,7 +100,7 @@ object Expander {
   }
 
   def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(using qctx: QuoteContext): List[Term] = {
-    import qctx.reflect.{Type => QType, Term => QTerm, _}
+    import qctx.reflect.{TypeRepr => QType, Term => QTerm, _}
     val ext = new TypeExtensions
     import ext._
 
@@ -134,7 +134,7 @@ object Expander {
   }
 
   def base[T](term: Term)(using tpe: Type[T])(using qctx: QuoteContext): Term = {
-    import qctx.reflect.{Type => QType, Term => QTerm, _}
+    import qctx.reflect.{TypeRepr => QType, Term => QTerm, _}
 
     // if there is a decoder for the term, just return the term
     Expr.summon(using '[Mirror.Of[$tpe]]) match {

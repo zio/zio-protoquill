@@ -109,7 +109,7 @@ trait ParserLibrary extends ParserFactory {
 object ParserLibrary extends ParserLibrary
 
 case class FunctionApplyParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.reflect.{Type => TType, _}
+  import qctx.reflect.{TypeRepr => TType, _}
   import Parser.Implicits._
   import io.getquill.norm.capture.AvoidAliasConflict
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -126,7 +126,7 @@ case class FunctionApplyParser(root: Parser[Ast] = Parser.empty)(override implic
 
 
 case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.reflect.{Type => TType, _}
+  import qctx.reflect.{TypeRepr => TType, _}
   import Parser.Implicits._
   import io.getquill.norm.capture.AvoidAliasConflict
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -152,7 +152,7 @@ case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit va
 
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
 case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.reflect.{Type => TType, _}
+  import qctx.reflect.{TypeRepr => TType, _}
   import Parser.Implicits._
 
   // TODO Need to inject this somehow?
@@ -216,8 +216,8 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
   def del: PartialFunction[Expr[_], Ast] = {
 
   // This seems to work?
-    case '{ type $t; (new EntityQuery[`$t`]()) } => //: EntityQuery[`$t`]
-      val name: String = t.unseal.tpe.classSymbol.get.name
+    case '{ new EntityQuery[$tpe]() } => //: EntityQuery[`$t`]
+      val name: String = Type[tpe].unseal.tpe.classSymbol.get.name
       Entity(name, List())
 
     case '{ Dsl.querySchema[$t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
@@ -332,19 +332,19 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
     //case Unseal(ValDef(name, Inferred(), ) =>
 
     // TODO Need to figure how how to do with other datatypes
-    case Unseal(Literal(TreeConst(v: Double))) => 
+    case Unseal(Literal(TreeConst.Double(v: Double))) => 
       //println("Case Literal Constant")
       Constant(v)
 
-    case Unseal(Literal(TreeConst(v: String))) => 
+    case Unseal(Literal(TreeConst.String(v: String))) => 
       //println("Case Literal Constant")
       Constant(v)
 
-    case Unseal(Literal(TreeConst(v: Int))) => 
+    case Unseal(Literal(TreeConst.Int(v: Int))) => 
       //println("Case Literal Constant")
       Constant(v)
 
-    case Unseal(Literal(TreeConst(v: Boolean))) => 
+    case Unseal(Literal(TreeConst.Boolean(v: Boolean))) => 
       //println("Case Literal Constant")
       Constant(v)
 

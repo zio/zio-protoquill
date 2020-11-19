@@ -34,9 +34,9 @@ object Eq {
     // TODO Make a PR proposing this change
     t match {
       case '[$tpe *: $tpes] => 
-        val vv = Type[tpes]
+        //Expr.summon[Eq[tpe]] match {
         Expr.summon(using Type[Eq[tpe]]) match {
-          case Some(value) => value :: summonAll(vv)
+          case Some(value) => value :: summonAll(Type[tpes])
         }
       case '[EmptyTuple] => Nil
     }

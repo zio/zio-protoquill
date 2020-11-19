@@ -34,7 +34,7 @@ object SummonDecoderMacro {
   import miniquill.quoter.ScalarPlanter
 
   def apply[T: Type, ResultRow: Type](using qctx: QuoteContext): Expr[GenericDecoder[ResultRow, T]] = {
-    import qctx.reflect.{Type => TType, _}
+    import qctx.reflect.{TypeRepr => TType, _}
     Expr.summon(using '[GenericDecoder[ResultRow, T]]) match {
       case Some(decoder) => decoder
       case None => report.throwError(s"Cannot Find decoder for ${summon[Type[T]].show}")

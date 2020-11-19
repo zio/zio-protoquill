@@ -7,7 +7,7 @@ class TastyMatchersContext(using val qctx: QuoteContext) extends TastyMatchers
 
 trait TastyMatchers {
   implicit val qctx: QuoteContext
-  import qctx.reflect.{Type => TType, _}
+  import qctx.reflect.{TypeRepr => TType, _}
 
   implicit class ExprOps[T: Type](expr: Expr[T]) {
     def reseal: Expr[T] = expr.unseal.underlyingArgument.seal.cast[T]

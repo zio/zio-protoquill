@@ -11,7 +11,7 @@ trait Labeled[T] {
 
 object Labeled {
   def labels[Fields, Types](fieldsTpe: Type[Fields], typesTpe: Type[Types])(using qctx: QuoteContext): List[String] = {
-    import qctx.reflect.{Type => TType, _}
+    import qctx.reflect.{TypeRepr => TType, _}
 
     def typeIsConst[T](tpe: Type[T]) = // Don't need to check if label type is const, label types always must be const
       tpe.unseal.tpe match {

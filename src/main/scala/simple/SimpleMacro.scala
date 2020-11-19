@@ -141,7 +141,7 @@ object SimpleMacro {
 
   inline def typeInfo[T](stuff: =>T): T = ${ typeInfoImpl('stuff) }
   def typeInfoImpl[T](stuff: Expr[T])(using qctx: QuoteContext, t: Type[T]): Expr[T] = {
-    import qctx.reflect.{Type => TType, _}
+    import qctx.reflect.{TypeRepr => TType, _}
     
     //  summon[scala.quoted.Type[T]].unseal.tpe
     //def getExprType[T <: Mirror.Of[_]](expr: Expr[T])(t: Type[T]) = 

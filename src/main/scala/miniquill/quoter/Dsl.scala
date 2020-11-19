@@ -156,7 +156,7 @@ object SchemaMetaMacro {
 
 object QueryMacro {
   def apply[T: Type](using qctx: QuoteContext): Expr[EntityQuery[T]] = {
-    import qctx.reflect.{Type => TType, _}
+    import qctx.reflect.{TypeRepr => TType, _}
     val tmc = new TastyMatchersContext
     import tmc._
     import scala.quoted.Expr.summon
