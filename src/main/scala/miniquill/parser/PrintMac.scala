@@ -1,110 +1,61 @@
-// package miniquill.parser
+package miniquill.parser
 
-// import scala.quoted._
-
-// object MatchLambdaMac {
-//     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
-
-//     def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
-//       class Operations(implicit val qctx: QuoteContext) extends TastyMatchers {
-
-//         import qctx.tasty._
-//         val any = anyRaw.unseal.underlyingArgument.seal
-
-//         UntypeExpr(any) match {
-//           case Lambda1(arg, body) =>
-//             println("***************** MATCHED LAMBDA ONE ***************")
-//             println("Arg: " + arg)
-//             println("Body: " + body.unseal.showExtractors)
-
-//         // Untype(any.unseal) match {
-//         //   //case Lambda(arg, body) =>
-//         //   case Lambda(List(ValDef(arg,_,_)), body) =>
-//         //   //case Lambda(List(ValDef(arg, Inferred(), any1)), body) =>
-//         //     println("***************** MATCHED LAMBDA ONE ***************")
-//         //     println("Arg: " + arg)
-//         //     println("Body: " + body.showExtractors)
-
-//           /*
-//           Lambda(
-//             List(ValDef(ident, Inferred(), None)), 
-//             methodBody
-//           )
-//           Lambda(
-//             List(ValDef(p,Ident(String),EmptyTree))), 
-//             Apply(Select(Ident("p"), "length"), Nil
-//           )
-//           */
-
-//           case _ => 
-//             println("***************** DID NOT MATCH LAMBDA ONE ***************")
-//         }
-
-//       }
-//       new Operations
-//       '{ () }
-//     }
-// }
+import scala.quoted._
 
 
-// object MatchMac {
-//     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
+object MatchMac {
+    inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
 
-//     def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
-//       class Operations(implicit val qctx: QuoteContext) extends TastyMatchers {
+    def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
+      class Operations(implicit val qctx: QuoteContext) extends TastyMatchers {
+        import qctx.tasty._
+        val any = anyRaw.unseal.underlyingArgument.seal
+        
+        object TupleName {
+          def unapply(str: String): Boolean = str.matches("Tuple[0-9]+")
+        }
+        object TupleIdent {
+          def unapply(term: Term): Boolean =
+            term match {
+              case Ident(TupleName()) => true
+              case _ => false
+            }
+        }
 
-//         import qctx.tasty._
-//         val any = anyRaw.unseal.underlyingArgument.seal
-//         Untype(any.unseal) match {
-//           case Apply(Select(query, "insert"), assignments) =>
+        Untype(any.unseal) match {
+          case Apply(TypeApply(Select(TupleIdent(), "apply"), types), values) =>
+            println(s"============= Matched! ${values} ${types} =============")
+          case other =>
+            println(s"=============== Not Matched! =============")
+            println(other.showExtractors)
 
-//             println("=========== Trying to Match First Term =============")
-//             assignment match {
-//               case
-//                 Seal(Lambda1(lamvar, content)) => //helloooo
-//                 println("^^^^^^^^^^^^^^^^^^^^ LAMBDA MATCHES ^^^^^^^^^^^^^^^^^")
-//                 println(content.unseal.showExtractors)
+            println("================= Pretty Tree =================")
+            println(pprint.apply(other))
+        }
+      }
+          
 
-//                 content.unseal match {
-//                   case
-//                     Apply(TypeApply(
-//                       Select(Apply(
-//                         TypeApply(Ident("ArrowAssoc"), List(Inferred())), 
-//                         List(Select(Ident("p"), "name"))
-//                       ), "->"), 
-//                       List(Inferred())
-//                     ), List(Literal(Constant("Joe")))) => println("******* INNER MATCH *****")
-//                   case _ => println("***** NO INNER MATCH *****")
-//                 }
-
-
-//           case _ =>
-//             println("Nope, we did not match")
-//         }
-
-//       }
-
-//       new Operations
-//       '{ () }
-//     }
-// }
+      new Operations
+      '{ () }
+    }
+}
 
 
-// object PrintMac {
-//     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
-//     def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
-//       import qctx.tasty._
-//       val any = anyRaw.unseal.underlyingArgument.seal
+object PrintMac {
+    inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
+    def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
+      import qctx.tasty._
+      val any = anyRaw.unseal.underlyingArgument.seal
 
-//       println("================= Tree =================")
-//       println(any.show)
+      println("================= Tree =================")
+      println(any.show)
 
-//       println("================= Matchers =================")
-//       println(any.unseal.showExtractors)
+      println("================= Matchers =================")
+      println(any.unseal.showExtractors)
 
-//       println("================= Pretty Tree =================")
-//       println(pprint.apply(any.unseal))
+      println("================= Pretty Tree =================")
+      println(pprint.apply(any.unseal))
 
-//       '{ () }
-//     }
-// }
+      '{ () }
+    }
+}

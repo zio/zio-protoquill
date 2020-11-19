@@ -380,6 +380,10 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     case NamedOp1(left, "||", right) =>
       BinaryOperation(astParse(left), BooleanOperator.||, astParse(right))
 
+    case '{ ($i: Int).toString } => astParse(i)
+    case '{ ($str: String).toInt } => Infix(List("CAST(", " AS Int)"), List(astParse(str)), true)
+    case '{ ($str: String).length } => Infix(List("Len(",")"), List(astParse(str)), true)
+
     case NamedOp1(left, "+", right) if is[String](left) || is[String](right) =>
       BinaryOperation(astParse(left), StringOperator.+, astParse(right))
     
@@ -413,12 +417,29 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   }
 }
 
+
+
 case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Constant => TreeConst, Ident => TreeIdent, _}
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
+  private object TupleName {
+    def unapply(str: String): Boolean = str.matches("Tuple[0-9]+")
+  }
+  private object TupleIdent {
+    def unapply(term: Term): Boolean =
+      term match {
+        case TreeIdent(TupleName()) => true
+        case _ => false
+      }
+  }
+
   def delegate: PartialFunction[Expr[_], Ast] = {
+
+    // Parse tuples
+    case Apply(TypeApply(Select(TupleIdent(), "apply"), types), values) =>
+      Tuple(values.map(v => astParse(v.seal)))
 
     //case Unseal(ValDef(name, Inferred(), ) =>
 

@@ -88,6 +88,8 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
       QuotationTag(fixedString(uid))
     case '{ Union($a, $b) } => Union(unliftAst(a), unliftAst(b))
     case '{ Insert($query, $assignments) } => Insert(query.unliftExpr, assignments.unliftExpr)
+    case '{ Infix($parts, $params, $pure) } => Infix(parts.unliftExpr, params.unliftExpr, pure.unliftExpr)
+    case '{ Tuple($values) } => Tuple(values.unliftExpr)
   }
 
   implicit def unliftOperator: Unlift[Operator] = {

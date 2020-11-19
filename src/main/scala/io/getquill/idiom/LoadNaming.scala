@@ -25,11 +25,11 @@ object LoadNaming {
           optClassSymbol match {
             case Some(value) => value.fullName
             case None =>
-              println(s"${loadClassType.show} is not a class type. Attempting to load it as a module.")
+              //println(s"${loadClassType.show} is not a class type. Attempting to load it as a module.")
               if (!loadClassType.termSymbol.moduleClass.isNoSymbol) {
                 loadClassType.termSymbol.moduleClass.fullName
               } else {
-                println(s"The class ${loadClassType.show} cannot be loaded because it is either a scala class or module")
+                //println(s"The class ${loadClassType.show} cannot be loaded because it is either a scala class or module")
                 report.throwError(s"The class ${loadClassType.show} cannot be loaded because it is either a scala class or module")
               }
           }

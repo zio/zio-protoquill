@@ -94,7 +94,7 @@ object QuoteMacro {
     val rawAst = parserFactory.apply(using qctx).seal.apply(body)
     val ast = BetaReduction(rawAst)
 
-    println("Ast Is: " + ast)
+    //println("Ast Is: " + ast)
 
     // TODO Add an error if the lifting cannot be found
     val reifiedAst = Lifter(qctx)(ast)

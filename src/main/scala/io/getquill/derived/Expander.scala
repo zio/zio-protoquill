@@ -163,7 +163,7 @@ object Expander {
   def static[T](ast: Ast)(using qctx: QuoteContext, tpe: Type[T]): AMap = {
     val expanded = base[T](Term("x", Branch))(using tpe)
     val lifted = expanded.toAst
-    println("Expanded to: " + expanded)
+    //println("Expanded to: " + expanded)
     val insert =
       if (lifted.length == 1)
         lifted.head

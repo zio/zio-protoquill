@@ -96,6 +96,8 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case QuotationTag(uid: String) => '{QuotationTag(${Expr(uid)})}
     case Union(a, b) => '{ Union(${liftAst(a)}, ${liftAst(b)}) }
     case Insert(query: Ast, assignments: List[Assignment]) => '{ Insert(${liftAst(query)}, ${assignments.liftable}) }
+    case Infix(parts, params, pure) => '{ Infix(${parts.liftable}, ${params.liftable}, ${pure.liftable}) }
+    case Tuple(values) => '{ Tuple(${values.liftable}) }
   }
 
   import EqualityOperator.{ == => ee }
