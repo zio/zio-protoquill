@@ -11,10 +11,10 @@ object MatchMac {
         import qctx.tasty._
         val any = anyRaw.unseal.underlyingArgument.seal
         
-        object TupleName {
+        object TupleNameA {
           def unapply(str: String): Boolean = str.matches("Tuple[0-9]+")
         }
-        object TupleIdent {
+        object TupleIdentA {
           def unapply(term: Term): Boolean =
             term match {
               case Ident(TupleName()) => true

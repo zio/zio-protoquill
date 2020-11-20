@@ -47,6 +47,13 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
     case '{ Idnt(${Const(name: String)}) } => Idnt(name)
   }
 
+  implicit def unliftJoinType: Unlift[JoinType] = {
+    case '{ InnerJoin } => InnerJoin
+    case '{ LeftJoin } => LeftJoin
+    case '{ RightJoin } => RightJoin
+    case '{ FullJoin } => FullJoin
+  }
+
   implicit def unliftProperty: Unlift[Property] = {
     // Unlike in liftProperty, we need both variants here since we are matching the scala AST expressions
     case '{ Property(${ast}, ${name}) } =>
@@ -78,6 +85,7 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
     case '{ Function($params, $body) } => Function(params.unliftExpr, unliftAst(body))
     case '{ FunctionApply($function, $values) } => FunctionApply(function.unliftExpr, values.unliftExpr)
     case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(unliftAst(query), unliftAst(alias).asInstanceOf[Idnt], unliftAst(body))
+    case '{ FlatMap(${query}, ${alias}, ${body}: Ast) } => FlatMap(unliftAst(query), unliftAst(alias).asInstanceOf[Idnt], unliftAst(body))
     case '{ Filter(${query}, ${alias}, ${body}: Ast) } => Filter(unliftAst(query), unliftAst(alias).asInstanceOf[Idnt], unliftAst(body))
     case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(unliftAst(a), unliftOperator(operator).asInstanceOf[BinaryOperator], unliftAst(b))
     case '{ Property(${ast}, ${name}) } =>
@@ -90,6 +98,8 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
     case '{ Insert($query, $assignments) } => Insert(query.unliftExpr, assignments.unliftExpr)
     case '{ Infix($parts, $params, $pure) } => Infix(parts.unliftExpr, params.unliftExpr, pure.unliftExpr)
     case '{ Tuple($values) } => Tuple(values.unliftExpr)
+    case '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } => Join(typ.unliftExpr, a.unliftExpr, b.unliftExpr, aliasA.unliftExpr, aliasB.unliftExpr, on.unliftExpr)
+    case '{ FlatJoin($typ, $a, $aliasA, $on) } => FlatJoin(typ.unliftExpr, a.unliftExpr, aliasA.unliftExpr, on.unliftExpr)
   }
 
   implicit def unliftOperator: Unlift[Operator] = {

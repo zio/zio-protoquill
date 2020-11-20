@@ -133,8 +133,8 @@ object QuotedExpr {
         /* No runtime lifts allowed for inline quotes so quotationPouches.length must be 0 */
         case exprr @  '{ Quoted.apply[$qt]($ast, $v, Nil) } =>  //List.apply[$ttt](${GenericSeq(args)}: _*) if (args.length == 0)
           Some(QuotedExpr(ast, v, '{ Nil }))
-        case 
-          TypedMatroshka(tree) => Uprootable.unapply(tree)
+        case TypedMatroshka(tree) => 
+          Uprootable.unapply(tree)
         case _ => 
           None
       }

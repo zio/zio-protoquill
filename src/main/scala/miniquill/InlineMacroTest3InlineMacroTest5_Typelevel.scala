@@ -31,11 +31,14 @@ object InlineMacroTest5_Typelevel {
   inline def conv[T](inline element: T)(using inline conv: Conv[T]): conv.Out =
     conv.get(element)
   
-  inline def q1 = quote { query[Person].map(p => conv(p.name) + 66) }
-  println(run(q1))
+  inline def q1 = quote { query[Person].map(p => (conv(p.name) + 66, conv(p.age) + "suffix2")) }
+  println( run(q1) )
 
-  inline def q2 = quote { query[Person].map(p => conv(p.age) + "suffix2") }
-  println(run(q2))
+  // inline def q1 = quote { query[Person].map(p => conv(p.name) + 66) }
+  // println(run(q1))
+
+  // inline def q2 = quote { query[Person].map(p => conv(p.age) + "suffix2") }
+  // println(run(q2))
 
 
 

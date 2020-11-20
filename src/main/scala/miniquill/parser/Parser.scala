@@ -157,7 +157,7 @@ case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit va
 
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
 case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Type => TType, _}
+  import qctx.tasty.{Type => TType, Ident => TreeIdent, _}
   import Parser.Implicits._
 
   // TODO Need to inject this somehow?
@@ -166,6 +166,9 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
+
+    case Apply(TypeApply(Select(TreeIdent("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Select(TreeIdent("p"), "name"), Select(TreeIdent("p"), "age"))) =>
+      report.throwError("Matched here!")
     
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
@@ -283,20 +286,20 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
 
     //  case q"$query.map[$mt]((x) => y) }"
     case '{ ($q:Query[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
-      val a = astParse(q)
-      val b = astParse(body)
-      Map(a, Idnt(ident), b)
+      Map(astParse(q), Idnt(ident), astParse(body))
 
     // Need to have map cases for both Query and EntityQuery since these matches are invariant
     case '{ ($q:EntityQuery[$qt]).map[$mt](${Lambda1(ident, body)}) } => 
-      val a = astParse(q)
-      val b = astParse(body)
-      Map(a, Idnt(ident), b)
+      Map(astParse(q), Idnt(ident), astParse(body))
+
+    case '{ ($q:EntityQuery[$qt]).flatMap[$mt](${Lambda1(ident, body)}) } => 
+      FlatMap(astParse(q), Idnt(ident), astParse(body))
+
+    case '{ ($q:Query[$qt]).flatMap[$mt](${Lambda1(ident, body)}) } => 
+      FlatMap(astParse(q), Idnt(ident), astParse(body))
 
     case '{ ($q:Query[$qt]).filter(${Lambda1(ident, body)}) } => 
-      val a = astParse(q)
-      val b = astParse(body)
-      Filter(a, Idnt(ident), b)
+      Filter(astParse(q), Idnt(ident), astParse(body))
 
     // case Fun(Query(q), "filter", Lambda1(ident, body))
 
@@ -311,6 +314,21 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
 
     case '{ ($a: EntityQuery[$t]).union($b) } =>
       Union(astParse(a), astParse(b))
+
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).join[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } =>
+      Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).leftJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } =>
+      Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).rightJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } =>
+      Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).fullJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } =>
+      Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+
+    case '{ type $t1; ($q1: EntityQuery[`$t1`]).join[`$t1`](${Lambda1(ident1, on)}) } =>
+      FlatJoin(InnerJoin, astParse(q1), Idnt(ident1), astParse(on))
+
+    case '{ type $t1; ($q1: Query[`$t1`]).join[`$t1`](${Lambda1(ident1, on)}) } =>
+      FlatJoin(InnerJoin, astParse(q1), Idnt(ident1), astParse(on))
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -424,21 +442,10 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
-  private object TupleName {
-    def unapply(str: String): Boolean = str.matches("Tuple[0-9]+")
-  }
-  private object TupleIdent {
-    def unapply(term: Term): Boolean =
-      term match {
-        case TreeIdent(TupleName()) => true
-        case _ => false
-      }
-  }
-
   def delegate: PartialFunction[Expr[_], Ast] = {
 
     // Parse tuples
-    case Apply(TypeApply(Select(TupleIdent(), "apply"), types), values) =>
+    case Unseal(Apply(TypeApply(Select(TupleIdent(), "apply"), types), values)) =>
       Tuple(values.map(v => astParse(v.seal)))
 
     //case Unseal(ValDef(name, Inferred(), ) =>

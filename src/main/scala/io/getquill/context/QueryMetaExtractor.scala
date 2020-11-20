@@ -79,7 +79,13 @@ object QueryMetaExtractor {
     
     quipLotExpr match {
       // todo try astMappingFunc rename to `Ast(T => r)` or $r
-      case Uprootable(uid, quipperAst, _, quotation, lifts, List(baq)) => 
+      case Uprootable(uid, quipperAst, _, quotation, lifts, baqArg) => 
+        val baq =
+          baqArg match {
+            case List(baq) => baq
+            case _ => report.throwError("Invalid Query Meta Form. ContraMap 'baq' function not defined.")
+          }
+
         // Don't need to unlift the ASTs and re-lift them. Just put them into a FunctionApply
         val astApply = 
           '{FunctionApply($quipperAst, List(${queryLot.ast}))}

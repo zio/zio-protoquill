@@ -55,7 +55,7 @@ object AdvTest {
 
     //hello
     import io.getquill._
-    case class Address(street: String, zip: Int) extends Embedded //helloooo
+    case class Address(street: String, zip: Int, fk:Int) extends Embedded //helloooo
     given Embedable[Address] //hello
     case class Person(id: Int, name: String, age: Int, addr: Address, middleName: String, lastName: String)
 
@@ -74,8 +74,14 @@ object AdvTest {
     
 
     inline def q = quote {
-      query[Person].map(p => p.age / 4)
+      //query[Person].map(p => p.age / 4)
       //query[Person].insert(p => p.name -> "Joe")
+      //query[Person].join(query[Address]).on((p,a) => p.id == a.fk)
+
+      for {
+        p <- query[Person]
+        a <- query[Address].join(a => a.fk == p.id)
+      } yield (p, a)
     }
 
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)

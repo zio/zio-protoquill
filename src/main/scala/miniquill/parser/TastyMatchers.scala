@@ -110,6 +110,17 @@ trait TastyMatchers {
     }
   }
 
+  object Lambda2 {
+    def unapply(expr: Expr[_]): Option[(String, String, quoted.Expr[_])] =
+      unapplyTerm(expr.unseal).map((str1, str2, expr) => (str1, str2, expr.seal))
+
+    def unapplyTerm(term: Term): Option[(String, String, Term)] = term match {
+      case Lambda(List(ValDef(ident1, _, _), ValDef(ident2, _, _)), methodBody) => Some((ident1, ident2, methodBody))
+      case Block(List(), expr) => unapplyTerm(expr)
+      case _ => None
+    }
+  }
+
   object RawLambdaN {
     def unapply(term: Term): Option[(List[String], Term)] = term match {
         case Lambda(valDefs, methodBody) => 
@@ -129,12 +140,12 @@ trait TastyMatchers {
       RawLambdaN.unapply(term.unseal).map((str, term) => (str, term.seal))
   }
 
-  object Lambda2 {
-    def unapply(term: Expr[_]): Option[(String, String, quoted.Expr[_])] = term match {
-      case Unseal(Lambda(List(ValDef(ident, _, _), ValDef(ident2, _, _)), Seal(methodBody))) => Some((ident, ident2, methodBody))
-      case _ => None
-    }
-  }
+  // object Lambda2 {
+  //   def unapply(term: Expr[_]): Option[(String, String, quoted.Expr[_])] = term match {
+  //     case Unseal(Lambda(List(ValDef(ident, _, _), ValDef(ident2, _, _)), Seal(methodBody))) => Some((ident, ident2, methodBody))
+  //     case _ => None
+  //   }
+  // }
 
   object Unseal {
     def unapply(t: Expr[Any]): Option[Term] = Some(t.unseal)
@@ -144,5 +155,16 @@ trait TastyMatchers {
       implicit val ttpe: quoted.Type[T] = e.tpe.seal.asInstanceOf[quoted.Type[T]]
       Some(e.seal.cast[T])
     }
+  }
+
+  object TupleName {
+    def unapply(str: String): Boolean = str.matches("Tuple[0-9]+")
+  }
+  object TupleIdent {
+    def unapply(term: Term): Boolean =
+      term match {
+        case Ident(TupleName()) => true
+        case _ => false
+      }
   }
 }

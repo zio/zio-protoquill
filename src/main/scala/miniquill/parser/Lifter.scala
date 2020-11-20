@@ -65,6 +65,13 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case Assignment(ident, property, value) => '{ Assignment(${ident.liftable}, ${property.liftable}, ${value.liftable}) }
   }
 
+  implicit def liftableJoinType: Lift[JoinType] = {
+    case InnerJoin => '{ InnerJoin }
+    case LeftJoin => '{ LeftJoin }
+    case RightJoin => '{ RightJoin }
+    case FullJoin => '{ FullJoin }
+  }
+
   implicit def liftAst: Lift[Ast] = {
     val liftBaseActual = liftBase
     val liftPropertyActual = liftProperty
@@ -90,6 +97,7 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.liftable}, ${values.liftable}) }
     case Entity(name: String, list) => '{ Entity(${name.liftable}, ${list.liftable})  }
     case Map(query: Ast, alias: Idnt, body: Ast) => '{ Map(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }
+    case FlatMap(query: Ast, alias: Idnt, body: Ast) => '{ FlatMap(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }
     case Filter(query: Ast, alias: Idnt, body: Ast) => '{ Filter(${liftAst(query)}, ${liftAst(alias).asInstanceOf[Expr[Idnt]]}, ${liftAst(body)})  }
     case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${liftAst(a)}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${liftAst(b)})  }
     case ScalarTag(uid: String) => '{ScalarTag(${Expr(uid)})}
@@ -98,6 +106,8 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case Insert(query: Ast, assignments: List[Assignment]) => '{ Insert(${liftAst(query)}, ${assignments.liftable}) }
     case Infix(parts, params, pure) => '{ Infix(${parts.liftable}, ${params.liftable}, ${pure.liftable}) }
     case Tuple(values) => '{ Tuple(${values.liftable}) }
+    case Join(typ, a, b, identA, identB, body) => '{ Join(${typ.liftable}, ${a.liftable}, ${b.liftable}, ${identA.liftable}, ${identB.liftable}, ${body.liftable}) }
+    case FlatJoin(typ, a, identA, on) => '{ FlatJoin(${typ.liftable}, ${a.liftable}, ${identA.liftable}, ${on.liftable}) }
   }
 
   import EqualityOperator.{ == => ee }
