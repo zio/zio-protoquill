@@ -176,7 +176,11 @@ object StaticTranslationMacro {
         (queryString, externals) <- processAst[T](quotedExpr.ast, idiom, naming)
         encodedLifts             <- processLifts(quotedExpr.lifts, externals)
       } yield {
-        println("Compile Time Query Is: " + queryString)
+        println(
+          "Compile Time Query Is: " + 
+            (if (System.getProperty("quill.macro.log.pretty", "true") == "true") idiom.format(queryString)
+            else queryString)
+        )
 
         // What about a missing decoder?
         // need to make sure that that kind of error happens during compile time

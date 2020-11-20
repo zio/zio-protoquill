@@ -13,46 +13,51 @@ object InlineMacroTest5_TypelevelAdv {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
-  case class Stock(id: Int, symbol: String)
-  case class Option(id: Int, stockFk: Int, symbol: String)
-  case class Series(id: Int, optionFk: Int, effective: Int, expiration: Int)
+  case class User(id: Int, name: String)
+  case class UserToRole(userId: Int, roleId: Int)
+  case class Role(id: Int, name: String)
+  case class RoleToPermission(roleId: Int, permissionId: Int)
+  case class Permission(id: Int, name: Int)
 
   trait Path[From, To]:
     type Out
     inline def get: Out
   
-  class PathFromStockToOption extends Path[Stock, Option]:
-    type Out = Query[(Stock, Option)]
-    inline def get: Query[(Stock, Option)] =
+  class PathFromUserToRole extends Path[User, Role]:
+    type Out = Query[(User, Role)]
+    inline def get: Query[(User, Role)] =
       for {
-        s <- query[Stock]
-        o <- query[Option].join(o => o.stockFk == s.id)
-      } yield (s, o)
+        s <- query[User]
+        sr <- query[UserToRole].join(sr => sr.userId == s.id)
+        r <- query[Role].join(r => r.id == sr.roleId)
+      } yield (s, r)
   
-  class PathFromStockToSeries extends Path[Stock, Series]:
-    type Out = Query[(Stock, Option, Series)]
-    inline def get: Query[(Stock, Option, Series)] =
+  class PathFromUserToPermission extends Path[User, Permission]:
+    type Out = Query[(User, Role, Permission)]
+    inline def get: Query[(User, Role, Permission)] =
       for {
-        s <- query[Stock]
-        o <- query[Option].join(o => o.stockFk == s.id)
-        r <- query[Series].join(r => r.optionFk == o.id)
-      } yield (s, o, r)
+        s <- query[User]
+        so <- query[UserToRole].join(so => so.userId == s.id)
+        r <- query[Role].join(r => r.id == so.roleId)
+        rp <- query[RoleToPermission].join(rp => rp.roleId == r.id)
+        p <- query[Permission].join(p => p.id == rp.roleId)
+      } yield (s, r, p)
   
-  inline given pathFromStockToOption as PathFromStockToOption = new PathFromStockToOption
-  inline given pathFromStockToSeries as PathFromStockToSeries = new PathFromStockToSeries
+  inline given pathFromUserToRole as PathFromUserToRole = new PathFromUserToRole
+  inline given pathFromUserToPermission as PathFromUserToPermission = new PathFromUserToPermission
 
   inline def path[F, T](using inline path: Path[F, T]): path.Out = path.get
   
-  // inline def q1 = quote { path[Stock, Option].filter(so => so._1.symbol == "MSFT") }
+  // inline def q1 = quote { path[User, Role].filter(so => so._1.symbol == "MSFT") }
   // println( run(q1) )
 
-  inline def q1 = quote { path[Stock, Series].filter(so => so._1.symbol == "MSFT") }
-  println( run(q1) )
+  inline def q1 = quote { path[User, Permission].filter(urp => urp._2.name == "GuiUser" && urp._1.name == "Joe") }
+  println( run(q1).string(true) )
 
 
 
 
-  def main(args: Array[String]): Unit = { //hellooooooo
+  def main(args: Array[String]): Unit = { //hellooooooooooooooooooooo
 
 
   }

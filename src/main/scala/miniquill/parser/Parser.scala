@@ -398,6 +398,9 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     case NamedOp1(left, "||", right) =>
       BinaryOperation(astParse(left), BooleanOperator.||, astParse(right))
 
+    case NamedOp1(left, "&&", right) =>
+      BinaryOperation(astParse(left), BooleanOperator.&&, astParse(right))
+
     case '{ ($i: Int).toString } => astParse(i)
     case '{ ($str: String).toInt } => Infix(List("CAST(", " AS Int)"), List(astParse(str)), true)
     case '{ ($str: String).length } => Infix(List("Len(",")"), List(astParse(str)), true)
