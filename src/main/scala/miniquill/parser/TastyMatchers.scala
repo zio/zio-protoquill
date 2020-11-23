@@ -167,4 +167,33 @@ trait TastyMatchers {
         case _ => false
       }
   }
+
+    object UntypeApply {
+    private def recurse(term: Term): Term = {
+      println("============== Recursing UntypeApply =============")
+      term match {
+        case TypeApply(content, args) => recurse(content)
+        case other => other
+      }
+    }
+    def unapply(term: Term) = Some(recurse(term))
+  }
+
+  object Method0 {
+    def unapply(term: Term): Option[(Term, String)] =
+      term match {
+        case UntypeApply(Select(source, methodName)) => Some((source, methodName))
+        case _ => None
+      }
+  }
+
+  object UntypeTree {
+    def recurse(innerTerm: Tree): Tree = innerTerm match {
+      case Typed(innerTree, _) => recurse(innerTree)
+      case other => other
+    }
+
+    def unapply(term: Tree): Option[Tree] = Some(recurse(term))
+    def apply(term: Tree) = UntypeTree.unapply(term).get
+  }
 }
