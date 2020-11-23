@@ -4,7 +4,7 @@ package miniquill.parser
 import io.getquill.ast.{Ident => Idnt, Query => Qry, _}
 import miniquill.quoter._
 import scala.quoted._
-import scala.quoted.{Const => ConstExpr, _}
+import scala.quoted.{Const => ConstExpr}
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
@@ -92,6 +92,8 @@ trait ParserLibrary extends ParserFactory {
   def patMatchParser(using qctx: QuoteContext)      =      Series.single(new CasePatMatchParser)
   def functionParser(using qctx: QuoteContext)   =         Series.single(new FunctionParser)
   def functionApplyParser(using qctx: QuoteContext) =      Series.single(new FunctionApplyParser)
+  def valParser(using qctx: QuoteContext)      =           Series.single(new ValParser)
+  def blockParser(using qctx: QuoteContext)      =         Series.single(new BlockParser)
   def operationsParser(using qctx: QuoteContext) =         Series.single(new OperationsParser)
   def genericExpressionsParser(using qctx: QuoteContext) = Series.single(new GenericExpressionsParser)
   def actionParser(using qctx: QuoteContext)             = Series.single(new ActionParser)
@@ -107,6 +109,8 @@ trait ParserLibrary extends ParserFactory {
         .combine(actionParser)
         .combine(functionParser) // decided to have it be it's own parser unlike Quill3
         .combine(patMatchParser)
+        .combine(valParser)
+        .combine(blockParser)
         .combine(operationsParser)
         .combine(functionApplyParser) // must go before genericExpressionsParser otherwise that will consume the 'apply' clauses
         .combine(genericExpressionsParser)
@@ -156,31 +160,109 @@ case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit va
   }
 }
 
-case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] with PatMatchExt {
+case class ValParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] with PatMatchDefExt {
   import qctx.tasty.{Type => TType, _}
   import Parser.Implicits._
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-    case Unseal(Match(expr, List(CaseDef(fields, guard, body)))) =>
-      guard match {
-        case Some(guardTerm) => report.throwError("Guards in case- match are not supported", guardTerm.seal)
-        case None =>
-      }
-      patMatchParser(expr, fields, body)
+    case Unseal(ValDefTerm(ast)) => ast
   }
 }
 
-trait PatMatchExt(implicit val qctx:QuoteContext) extends TastyMatchers {
-  import qctx.tasty.{Type => TType, Ident => TIdent, _}
+case class BlockParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] with PatMatchDefExt {
+  import qctx.tasty.{Type => TType, Block => TBlock, _}
+  import Parser.Implicits._
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case block @ Unseal(TBlock(parts, lastPart)) if (parts.length > 0) =>
+      val partsAsts =
+        parts.map {
+          case term: Term => astParse(term.seal)
+          case ValDefTerm(ast) => ast
+          case other => 
+            // TODO Better site-description in error (does other.show work?)
+            report.throwError(s"Illegal statement ${other.show} in block ${block.show}")
+        }
+      val lastPartAst = astParse(lastPart.seal)
+      Block((partsAsts :+ lastPartAst))
+  }
+}
+
+case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] with PatMatchDefExt {
+  import qctx.tasty.{Type => TType, _}
+  import Parser.Implicits._
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case Unseal(PatMatchTerm(ast)) => ast
+  }
+}
+
+trait PatMatchDefExt(implicit val qctx:QuoteContext) extends TastyMatchers {
+  import qctx.tasty.{Type => TType, Ident => TIdent, ValDef => TValDef, _}
   import Parser.Implicits._
   import io.getquill.util.Interpolator
   import io.getquill.util.Messages.TraceType
   import io.getquill.norm.BetaReduction
 
   def astParse: SealedParser[Ast]
+
+  // don't change to ValDef or might override the real valdef in qctx.tasty
+  object ValDefTerm {
+    def unapply(tree: Tree): Option[Ast] =
+      tree match {
+        case TValDef(name, Inferred(), Some(PatMatchTerm(ast))) =>
+          Some(Val(Idnt(name), ast))
+
+        // In case a user does a 'def' instead of a 'val' with no paras and no types then treat it as a val def
+        // this is useful for things like (TODO Get name) where you'll have something like:
+        // query[Person].map(p => (p.name, p.age)).filter(tup => tup._1.name == "Joe")
+        // But in Scala3 you can do:
+        // query[Person].map(p => (p.name, p.age)).filter((name, age) => name == "Joe")
+        // Then in the AST it will look something like:
+        // query[Person].map(p => (p.name, p.age)).filter(x$1 => { val name=x$1._1; val age=x$1._2; name == "Joe" })
+        // and you need to resolve the val defs thare are created automatically
+        case DefDef(name, _, paramss, _, rhsOpt) if (paramss.length == 0) =>
+          val body =
+            rhsOpt match {
+              // TODO Better site-description in error
+              case None => report.throwError(s"Cannot parse 'val' clause with no '= rhs' (i.e. equals and right hand side) of ${tree.showExtractors}")
+              case Some(rhs) => rhs
+            }
+          val bodyAst = astParse(body.seal)
+          Some(Val(Idnt(name), bodyAst))
+
+        case TValDef(name, Inferred(), rhsOpt) =>
+          val body =
+            rhsOpt match {
+              // TODO Better site-description in error
+              case None => report.throwError(s"Cannot parse 'val' clause with no '= rhs' (i.e. equals and right hand side) of ${tree.showExtractors}")
+              case Some(rhs) => rhs
+            }
+          val bodyAst = astParse(body.seal)
+          Some(Val(Idnt(name), bodyAst))
+
+        case _ => None
+      }
+  }
+
+  object PatMatchTerm {
+    def unapply(term: Term): Option[Ast] =
+      term match {
+        case Match(expr, List(CaseDef(fields, guard, body))) =>
+          guard match {
+            case Some(guardTerm) => report.throwError("Guards in case- match are not supported", guardTerm.seal)
+            case None =>
+          }
+          Some(patMatchParser(expr, fields, body))
+
+        case other => None
+      }
+  }
   
-  protected def patMatchParser(tupleTree: Term, fieldsTree: Tree, bodyTree: Term) = {
+  protected def patMatchParser(tupleTree: Term, fieldsTree: Tree, bodyTree: Term): Ast = {
     val tuple = astParse(tupleTree.seal)
     val body = astParse(bodyTree.seal)
 
@@ -190,7 +272,6 @@ trait PatMatchExt(implicit val qctx:QuoteContext) extends TastyMatchers {
     List((a,List(_1, _1)), (b,List(_1, _2)), (c,List(_2)))
     */
     def tupleBindsPath(field: Tree, path: List[String] = List()): List[(Idnt, List[String])] = {
-      println("============== Recurse Tuple binds ==================")
       UntypeTree(field) match {
         case Bind(name, TIdent(_)) => List(Idnt(name) -> path)
         case Unapply(Method0(TupleIdent(), "unapply"), something, binds) => 

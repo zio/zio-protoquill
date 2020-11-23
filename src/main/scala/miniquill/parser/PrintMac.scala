@@ -12,29 +12,12 @@ object MatchMac {
         val any = anyRaw.unseal.underlyingArgument.seal
 
         UntypeExpr(any) match {
-          case Unseal(Match(expr, List(CaseDef(field, guard, body)))) =>
-            guard match {
-              case Some(guardTerm) =>
-                report.throwError("Guards in case- match are not supported", guardTerm.seal)
-              case None =>
-            }
+          case Unseal(Block(parts, lastPart)) =>
+            parts(0)
+            
+            parts.map(p => println("==== Matched! Exprs: " + p.showExtractors + " ===="))
 
-            // def propertyAt(path: List[String]) =
-            //   path.foldLeft(tuple) {
-            //     case (tup, elem) => Property(tup, elem)
-            //   }
-
-            def tupleBindsPath(field: Tree, path: List[String] = List()): List[(Idnt, List[String])] =
-              UntypeTree(field) match {
-                case Bind(name, TIdent(_)) => List(Idnt(name) -> path)
-                case Unapply(Method0(TupleIdent(), "unapply"), something, binds) => 
-                  binds.zipWithIndex.flatMap { case (bind, idx) =>
-                    tupleBindsPath(bind, path :+ s"_${idx + 1}")
-                  }
-                case other => report.throwError(s"Invalid Pattern Matching Term: ${other.showExtractors}")
-              }
-
-            println(s"============= Matched! Expr: ${expr.showExtractors} Fields: ${tupleBindsPath(field)} Body: ${body.showExtractors} =============")
+            println(s"============= Matched! Expr: ${lastPart.showExtractors} =============")
           case other =>
             println(s"=============== Not Matched! =============")
             println(other.unseal.showExtractors)
