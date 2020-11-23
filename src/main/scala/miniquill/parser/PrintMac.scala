@@ -1,61 +1,73 @@
-package miniquill.parser
+// package miniquill.parser
 
-import scala.quoted._
+// import scala.quoted._
+// import io.getquill.ast.{Ident => Idnt}
 
+// object MatchMac {
+//     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
 
-object MatchMac {
-    inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
+//     def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
+//       class Operations(implicit val qctx: QuoteContext) extends TastyMatchers {
+//         import qctx.tasty.{Type => TType, Ident => TIdent, Constant => TConstant, _}
+//         val any = anyRaw.unseal.underlyingArgument.seal
 
-    def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
-      class Operations(implicit val qctx: QuoteContext) extends TastyMatchers {
-        import qctx.tasty._
-        val any = anyRaw.unseal.underlyingArgument.seal
-        
-        object TupleNameA {
-          def unapply(str: String): Boolean = str.matches("Tuple[0-9]+")
-        }
-        object TupleIdentA {
-          def unapply(term: Term): Boolean =
-            term match {
-              case Ident(TupleName()) => true
-              case _ => false
-            }
-        }
+//         UntypeExpr(any) match {
+//           case Unseal(Match(expr, List(CaseDef(field, guard, body)))) =>
+//             guard match {
+//               case Some(guardTerm) =>
+//                 report.throwError("Guards in case- match are not supported", guardTerm.seal)
+//               case None =>
+//             }
 
-        Untype(any.unseal) match {
-          case Apply(TypeApply(Select(TupleIdent(), "apply"), types), values) =>
-            println(s"============= Matched! ${values} ${types} =============")
-          case other =>
-            println(s"=============== Not Matched! =============")
-            println(other.showExtractors)
+//             // def propertyAt(path: List[String]) =
+//             //   path.foldLeft(tuple) {
+//             //     case (tup, elem) => Property(tup, elem)
+//             //   }
 
-            println("================= Pretty Tree =================")
-            println(pprint.apply(other))
-        }
-      }
+//             def tupleBindsPath(field: Tree, path: List[String] = List()): List[(Idnt, List[String])] =
+//               UntypeTree(field) match {
+//                 case Bind(name, TIdent(_)) => List(Idnt(name) -> path)
+//                 case Unapply(Method0(TupleIdent(), "unapply"), something, binds) => 
+//                   binds.zipWithIndex.flatMap { case (bind, idx) =>
+//                     tupleBindsPath(bind, path :+ s"_${idx + 1}")
+//                   }
+//                 case other => report.throwError(s"Invalid Pattern Matching Term: ${other.showExtractors}")
+//               }
+
+//             println(s"============= Matched! Expr: ${expr.showExtractors} Fields: ${tupleBindsPath(field)} Body: ${body.showExtractors} =============")
+//           case other =>
+//             println(s"=============== Not Matched! =============")
+//             println(other.unseal.showExtractors)
+
+//             println("================= Pretty Tree =================")
+//             println(pprint.apply(other.unseal))
+//         }
+//       }
           
 
-      new Operations
-      '{ () }
-    }
-}
+//       new Operations
+//       '{ () }
+//     }
+// }
 
 
-object PrintMac {
-    inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
-    def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
-      import qctx.tasty._
-      val any = anyRaw.unseal.underlyingArgument.seal
+// object PrintMac {
+//     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
+//     def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
+//       import qctx.tasty._
+//       val any = anyRaw.unseal.underlyingArgument.seal
+//       class Operations(implicit val qctx: QuoteContext) extends TastyMatchers {
+//         println("================= Tree =================")
+//         println(any.show)
 
-      println("================= Tree =================")
-      println(any.show)
+//         println("================= Matchers =================")
+//         println(Untype(any.unseal).showExtractors)
 
-      println("================= Matchers =================")
-      println(any.unseal.showExtractors)
+//         println("================= Pretty Tree =================")
+//         println(pprint.apply(Untype(any.unseal)))
+//       }
 
-      println("================= Pretty Tree =================")
-      println(pprint.apply(any.unseal))
-
-      '{ () }
-    }
-}
+//       new Operations()
+//       '{ () }
+//     }
+// }
