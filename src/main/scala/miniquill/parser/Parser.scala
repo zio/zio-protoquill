@@ -89,7 +89,7 @@ trait ParserLibrary extends ParserFactory {
 
   def quotationParser(using qctx: QuoteContext)  =         Series.single(new QuotationParser)
   def queryParser(using qctx: QuoteContext)      =         Series.single(new QueryParser)
-  //def patMatchParser(using qctx: QuoteContext)      =      Series.single(new CasePatMatchParser)
+  def patMatchParser(using qctx: QuoteContext)      =      Series.single(new CasePatMatchParser)
   def functionParser(using qctx: QuoteContext)   =         Series.single(new FunctionParser)
   def functionApplyParser(using qctx: QuoteContext) =      Series.single(new FunctionApplyParser)
   def operationsParser(using qctx: QuoteContext) =         Series.single(new OperationsParser)
@@ -106,7 +106,7 @@ trait ParserLibrary extends ParserFactory {
         .combine(queryParser)
         .combine(actionParser)
         .combine(functionParser) // decided to have it be it's own parser unlike Quill3
-        // .combine(patMatchParser)
+        .combine(patMatchParser)
         .combine(operationsParser)
         .combine(functionApplyParser) // must go before genericExpressionsParser otherwise that will consume the 'apply' clauses
         .combine(genericExpressionsParser)
@@ -156,73 +156,73 @@ case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit va
   }
 }
 
-// case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] with PatMatchExt {
-//   import qctx.tasty.{Type => TType, _}
-//   import Parser.Implicits._
-//   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx:QuoteContext) extends Parser.Clause[Ast] with PatMatchExt {
+  import qctx.tasty.{Type => TType, _}
+  import Parser.Implicits._
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
-//   def delegate: PartialFunction[Expr[_], Ast] = {
-//     case Unseal(Match(expr, List(CaseDef(fields, guard, body)))) =>
-//       guard match {
-//         case Some(guardTerm) => report.throwError("Guards in case- match are not supported", guardTerm.seal)
-//         case None =>
-//       }
-//       patMatchParser(expr, fields, body)
-//   }
-// }
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case Unseal(Match(expr, List(CaseDef(fields, guard, body)))) =>
+      guard match {
+        case Some(guardTerm) => report.throwError("Guards in case- match are not supported", guardTerm.seal)
+        case None =>
+      }
+      patMatchParser(expr, fields, body)
+  }
+}
 
-// trait PatMatchExt(implicit val qctx:QuoteContext) extends TastyMatchers {
-//   import qctx.tasty.{Type => TType, Ident => TIdent, _}
-//   import Parser.Implicits._
-//   import io.getquill.util.Interpolator
-//   import io.getquill.util.Messages.TraceType
-//   import io.getquill.norm.BetaReduction
+trait PatMatchExt(implicit val qctx:QuoteContext) extends TastyMatchers {
+  import qctx.tasty.{Type => TType, Ident => TIdent, _}
+  import Parser.Implicits._
+  import io.getquill.util.Interpolator
+  import io.getquill.util.Messages.TraceType
+  import io.getquill.norm.BetaReduction
 
-//   def astParse: SealedParser[Ast]
+  def astParse: SealedParser[Ast]
   
-//   protected def patMatchParser(tupleTree: Term, fieldsTree: Tree, bodyTree: Term) = {
-//     val tuple = astParse(tupleTree.seal)
-//     val body = astParse(bodyTree.seal)
+  protected def patMatchParser(tupleTree: Term, fieldsTree: Tree, bodyTree: Term) = {
+    val tuple = astParse(tupleTree.seal)
+    val body = astParse(bodyTree.seal)
 
-//     /* 
-//     Get a list of all the paths of all the identifiers inside the tuple. E.g:
-//     foo match { case ((a,b),c) => bar } would yield something like:
-//     List((a,List(_1, _1)), (b,List(_1, _2)), (c,List(_2)))
-//     */
-//     def tupleBindsPath(field: Tree, path: List[String] = List()): List[(Idnt, List[String])] = {
-//       println("============== Recurse Tuple binds ==================")
-//       UntypeTree(field) match {
-//         case Bind(name, TIdent(_)) => List(Idnt(name) -> path)
-//         case Unapply(Method0(TupleIdent(), "unapply"), something, binds) => 
-//           binds.zipWithIndex.flatMap { case (bind, idx) =>
-//             tupleBindsPath(bind, path :+ s"_${idx + 1}")
-//           }
-//         case other => report.throwError(s"Invalid Pattern Matching Term: ${other.showExtractors}")
-//       }
-//     }
+    /* 
+    Get a list of all the paths of all the identifiers inside the tuple. E.g:
+    foo match { case ((a,b),c) => bar } would yield something like:
+    List((a,List(_1, _1)), (b,List(_1, _2)), (c,List(_2)))
+    */
+    def tupleBindsPath(field: Tree, path: List[String] = List()): List[(Idnt, List[String])] = {
+      println("============== Recurse Tuple binds ==================")
+      UntypeTree(field) match {
+        case Bind(name, TIdent(_)) => List(Idnt(name) -> path)
+        case Unapply(Method0(TupleIdent(), "unapply"), something, binds) => 
+          binds.zipWithIndex.flatMap { case (bind, idx) =>
+            tupleBindsPath(bind, path :+ s"_${idx + 1}")
+          }
+        case other => report.throwError(s"Invalid Pattern Matching Term: ${other.showExtractors}")
+      }
+    }
 
-//     /* Take the list found in the tupleBindsPath method above and match up each match-tuple element 
-//     from the original tuple we found. For example, if we had: foo match { case ((a,b),c) => bar }
-//     we get something like List((a,List(_1, _1)), (b,List(_1, _2)), (c,List(_2))). If 'foo'
-//     is ((f,b),z) then we want to get: List(((f,b),z)._1._1, ((f,b),z)._1._2, ((f,b),z)._2)
-//     */
-//     def propertyAt(path: List[String]) =
-//       path.foldLeft(tuple) {
-//         case (tup, elem) => Property(tup, elem)
-//       }
+    /* Take the list found in the tupleBindsPath method above and match up each match-tuple element 
+    from the original tuple we found. For example, if we had: foo match { case ((a,b),c) => bar }
+    we get something like List((a,List(_1, _1)), (b,List(_1, _2)), (c,List(_2))). If 'foo'
+    is ((f,b),z) then we want to get: List(((f,b),z)._1._1, ((f,b),z)._1._2, ((f,b),z)._2)
+    */
+    def propertyAt(path: List[String]) =
+      path.foldLeft(tuple) {
+        case (tup, elem) => Property(tup, elem)
+      }
 
-//     val fieldPaths = tupleBindsPath(fieldsTree)
-//     val reductionTuples = fieldPaths.map((id, path) => (id, propertyAt(path)))
+    val fieldPaths = tupleBindsPath(fieldsTree)
+    val reductionTuples = fieldPaths.map((id, path) => (id, propertyAt(path)))
 
-//     val interp = new Interpolator(TraceType.Standard, 1)
-//     import interp._
+    val interp = new Interpolator(TraceType.Standard, 1)
+    import interp._
 
-//     trace"Pat Match Parsing: ${body}".andLog()
-//     trace"Reductions: ${reductionTuples}".andLog()
-//     // Do not care about types here because pat-match body does not necessarily have correct typing in the Parsing phase
-//     BetaReduction(body, reductionTuples: _*)
-//   }
-// }
+    trace"Pat Match Parsing: ${body}".andLog()
+    trace"Reductions: ${reductionTuples}".andLog()
+    // Do not care about types here because pat-match body does not necessarily have correct typing in the Parsing phase
+    BetaReduction(body, reductionTuples: _*)
+  }
+}
 
 
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?

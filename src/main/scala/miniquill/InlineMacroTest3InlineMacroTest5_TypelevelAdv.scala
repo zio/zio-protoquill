@@ -51,15 +51,15 @@ object InlineMacroTest5_TypelevelAdv {
   // inline def q1 = quote { path[User, Role].filter(so => so._1.symbol == "MSFT") }
   // println( run(q1) )
 
-  inline def q1 = quote { path[User, Permission].filter(urp => urp._2.name == "GuiUser" && urp._1.name == "Joe") }
+  //inline def q1 = quote { path[User, Permission].filter(urp => urp._2.name == "GuiUser" && urp._1.name == "Joe") }
 
-  //inline def q1 = quote { path[User, Permission].filter { case (u,r,p) => u.name == "GuiUser" && r.name == "Joe" } }
+  inline def q1 = quote { path[User, Permission].filter { case (u,r,p) => u.name == "GuiUser" && r.name == "Joe" } }
   println( run(q1).string(true) )
 
 
 
 
-  def main(args: Array[String]): Unit = { //hellooooooooooooooooooooo
+  def main(args: Array[String]): Unit = { //helloooooooooooooooooooooooo
 
 
   }
