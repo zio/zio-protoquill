@@ -36,14 +36,14 @@ object ListProc {
         case '{ scala.Nil } => true
         case _ => false
       }
-    Literal(Constant(output)).asExprOf[Boolean]
+    Literal(Constant.Boolean(output)).asExprOf[Boolean]
     //Expr(output)
   }
 
   transparent inline def isTrue: Boolean = ${ isTrueImpl }
   def isTrueImpl(using Quotes) = {
     import quotes.reflect._
-    Literal(Constant(true)).asExprOf[Boolean]
+    Literal(Constant.Boolean(true)).asExprOf[Boolean]
   }
 
 

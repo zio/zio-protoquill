@@ -151,6 +151,11 @@ trait TastyMatchers {
     def unapply(t: Expr[Any]): Option[Term] = Some(Term.of(t))
   }
   object Seal {
+    def apply[T](e: Term) = {
+      implicit val ttpe: quoted.Type[T] = e.tpe.asType.asInstanceOf[quoted.Type[T]]
+      e.asExprOf[T]
+    }
+
     def unapply[T](e: Term) = {
       implicit val ttpe: quoted.Type[T] = e.tpe.asType.asInstanceOf[quoted.Type[T]]
       Some(e.asExprOf[T])

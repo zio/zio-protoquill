@@ -9,3 +9,4 @@ nohup.out
 project/.bloop/
 project/metals.sbt
 project/project/
+.bsp/

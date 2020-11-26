@@ -319,8 +319,9 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 
   def delegate: PartialFunction[Expr[_], Ast] = {
 
-    case Apply(TypeApply(Select(TreeIdent("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Select(TreeIdent("p"), "name"), Select(TreeIdent("p"), "age"))) =>
-      report.throwError("Matched here!")
+    // // TODO Document this?
+    // case Apply(TypeApply(Select(TreeIdent("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Select(TreeIdent("p"), "name"), Select(TreeIdent("p"), "age"))) =>
+    //   report.throwError("Matched here!")
     
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
@@ -341,7 +342,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
   }
 }
 
-case class PropertyAliasParser(root: Parser[Ast] = Parser.empty)(using Quotes) extends Parser.Clause[PropertyAlias] {
+case class PropertyAliasParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[PropertyAlias] {
   import quotes.reflect.{Constant => TConstant, _}
   
   def delegate: PartialFunction[Expr[_], PropertyAlias] = {
@@ -409,7 +410,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
 
-case class QueryParser(root: Parser[Ast] = Parser.empty)(using Quotes) extends Parser.Clause[Ast] {
+case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
   import quotes.reflect.{Constant => TConstant, _}
   import Parser.Implicits._
 
@@ -537,7 +538,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
   def isType[T: Type](input: Expr[_]) =
     import quotes.reflect.Term
-    Term.of(input).tpe <:< TypeRepr.of[T]
+    Term.of(input).tpe <:< TypeRepr.of[T] // (implicit Type[T])
 
   def is[T: Type](inputs: Expr[_]*): Boolean =
     import quotes.reflect.Term
@@ -594,7 +595,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
 
 
-case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(using q: Quotes) extends Parser.Clause[Ast] {
+case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
   import quotes.reflect.{Constant => TreeConst, Ident => TreeIdent, _}
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -608,24 +609,22 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(using q: Q
     //case Unseal(ValDef(name, Inferred(), ) =>
 
     // TODO Need to figure how how to do with other datatypes
-    case Unseal(Literal(TreeConst(v: Double))) => 
-      //println("Case Literal Constant")
-      Constant(v)
-
-    case Unseal(Literal(TreeConst(v: String))) => 
-      //println("Case Literal Constant")
-      Constant(v)
-
-    case Unseal(Literal(TreeConst(v: Int))) => 
-      //println("Case Literal Constant")
-      Constant(v)
-
-    case Unseal(Literal(TreeConst(v: Boolean))) => 
-      //println("Case Literal Constant")
-      Constant(v)
+    case Unseal(Literal(TreeConst.Double(v: Double))) => Constant(v)
+    case Unseal(Literal(TreeConst.String(v: String))) => Constant(v)
+    case Unseal(Literal(TreeConst.Int(v: Int))) => Constant(v)
+    case Unseal(Literal(TreeConst.Boolean(v: Boolean))) => Constant(v)
 
     case Unseal(value @ Select(Seal(prefix), member)) =>
-      if ((value.tpe <:< TypeRepr.of[io.getquill.Embedded])) { 
+      import quotes.reflect.Term
+      val valueExpr = Seal[Any](value)
+      val valueTerm = Term.of(valueExpr)
+
+      // value.tpe quotes.reflect.TypeRepr
+      // valueTerm.tpe quotes.TypeRepr
+      // evidence: scala.quoted.Type 
+
+
+      if ((valueTerm.tpe <:< TypeRepr.of[io.getquill.Embedded])) { 
         Property.Opinionated(astParse(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
       } else {
         Property(astParse(prefix), member)

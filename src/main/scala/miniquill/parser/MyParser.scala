@@ -3,9 +3,24 @@ package miniquill.parser
 import scala.quoted._
 
 object MyParser {
+
+  
+  // // type Macro[T] = Quotes ?=> Expr[T]
+  // // type Macro[T] = (using qctx: Quotes) => Expr[Unit]
+  // type Macro[T] = (q: Quotes) ?=> Expr[T]
+
+  // inline def example(inline any: Any): Unit = ${ myOperationParserImpl('any) }
+  // def myOperationParserImpl(anyRaw: Expr[Any]): Macro[Unit] = {
+  //   // 
+  //   import quotes.reflect._
+
+  //   val qctx = quotes // summon the current instance of 'quotes'
+  //   import qctx.reflect._
+  // }
+
   inline def myOperationParser(inline any: Any): Unit = ${ myOperationParserImpl('any) }
-  def myOperationParserImpl(anyRaw: Expr[Any])(using Quotes): Expr[Unit] = {
-    import quotes.reflect._
+  def myOperationParserImpl(anyRaw: Expr[Any])(using qctx: Quotes): Expr[Unit] = {
+    import qctx.reflect._
     val tm = new TastyMatchersContext
     import tm._
 
