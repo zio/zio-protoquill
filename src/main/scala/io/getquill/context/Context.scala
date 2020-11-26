@@ -153,7 +153,7 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
         ???
       case _ =>
         val staticState = translateStatic[T](quoted)
-        //encodeAndExecute[T, T](staticState, quoted, t => t)
+        //encodeAndExecute[T, T](staticState, quoted, t => t) // <- UNCOMMENT THIS
         ???
     }
   }
