@@ -1,44 +1,36 @@
-package miniquill.parser
+// package miniquill.parser
 
-object InlineVariables_Flat {
-  def main(args: Array[String]): Unit = {
-    inline def greeting = "hello"
-    inline def suffix = " world"
-    inline def suffix2 = " today!"
-    inline def combo = greeting + suffix + suffix2
-    Mac.enter(combo)
-  }
-}
+// import io.getquill._
 
-object InlineVariables0{
-  def main(args: Array[String]):Unit = {
-    inline def hello = Mac.passThrough("hello")
-    PrintMac(hello)
-    println(hello)
-  }
-}
+// object MyParserUse {
+//   import io.getquill.context.ExecutionType
 
-object InlineVariables2 {
-  def main(args: Array[String]):Unit = {
-    class Space {
-      inline def world = Mac.passThrough("hello")
-    }
-    inline def helloWorld = Mac.passThrough(new Space().world + " world")
-    PrintMac(helloWorld)
-    println(helloWorld)
-  }
-}
+//   def main(args: Array[String]):Unit = {
+//     inline def hello = Mac.passThrough("hello")
+//     PrintMac(hello)
+//     println(hello)
+//   }
+// }
 
-object InlineVariables3 {
-  def main(args: Array[String]):Unit = {
-    class Space {
-      class InnerSpace {
-        inline def hello = Mac.passThrough("hello")
-      }
-      inline def helloWorld = Mac.passThrough(new InnerSpace().hello + " world")
-    }
-    inline def helloWorldToday = Mac.passThrough(new Space().helloWorld + " today")
-    PrintMac(helloWorldToday)
-    println(helloWorldToday)
-  }
-}
+//     // Something like this should be possible in quill, looks like a proxy-val is generated
+//     // could the regular val-parser do that?
+//     // val i: Any = ("foo", "bar")
+//     // inline def fun = i match {
+//     //   case ((a,b), c) => "blah"
+//     // }
+//     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+//     PrintMac( ctx.executeQuery("foo", null, null, ExecutionType.Static) )
+
+// object InlineVariables3 {
+//   def main(args: Array[String]):Unit = {
+//     class Space {
+//       class InnerSpace {
+//         inline def hello = Mac.passThrough("hello")
+//       }
+//       inline def helloWorld = Mac.passThrough(new InnerSpace().hello + " world")
+//     }
+//     inline def helloWorldToday = Mac.passThrough(new Space().helloWorld + " today")
+//     PrintMac(helloWorldToday)
+//     println(helloWorldToday)
+//   }
+// }

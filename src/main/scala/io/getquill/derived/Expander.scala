@@ -118,6 +118,9 @@ object Expander {
       }
 
     (fieldsTup, typesTup) match {
+      // TODO These calls are expensive
+      // do this first '[field *: fields], then do '[Option[tpe] *: types] internally
+
       case ('[field *: fields], '[Option[tpe] *: types]) if Type.of[tpe].isProduct =>
         val childTerm = Term(Type.of[field].constValue, Branch, optional = true)
         base[tpe](childTerm) :: flatten(node, Type.of[fields], Type.of[types])

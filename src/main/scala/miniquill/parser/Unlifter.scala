@@ -8,8 +8,9 @@ object UnlifterType {
   type Unlift[T] = PartialFunction[Expr[T], T]
 }
 
-// TODO Rewrite this the way Parser is written (i.e. with ability to compose???)
-class Unlifter(using val qctx: Quotes) extends PartialFunction[Expr[Ast], Ast] with TastyMatchers {
+// TODO not sure why "using val q: Quotes" does not work here
+//class Unlifter(using val q: Quotes) extends PartialFunction[Expr[Ast], Ast] with TastyMatchers {
+class Unlifter(override implicit val qctx: Quotes) extends PartialFunction[Expr[Ast], Ast] with TastyMatchers {
   import UnlifterType._
 
   def apply(astExpr: Expr[Ast]): Ast = unliftAst(astExpr)

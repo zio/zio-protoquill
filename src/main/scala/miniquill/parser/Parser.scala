@@ -322,8 +322,9 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 
   def delegate: PartialFunction[Expr[_], Ast] = {
 
-    //case Apply(TypeApply(Select(TreeIdent("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Select(TreeIdent("p"), "name"), Select(TreeIdent("p"), "age"))) =>
-   //   report.throwError("Matched here!")
+    // // TODO Document this?
+    // case Apply(TypeApply(Select(TreeIdent("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Select(TreeIdent("p"), "name"), Select(TreeIdent("p"), "age"))) =>
+    //   report.throwError("Matched here!")
     
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
@@ -345,7 +346,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 }
 
 case class PropertyAliasParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[PropertyAlias] {
-  import qctx.reflect.{Constant => TConstant, _}
+  import quotes.reflect.{Constant => TConstant, _}
   
   def delegate: PartialFunction[Expr[_], PropertyAlias] = {
       case Lambda1(_, '{ ArrowAssoc[tpa]($prop).->[v](${ConstExpr(alias: String)}) } ) =>
@@ -577,7 +578,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
   def isType[T: Type](input: Expr[_]) =
     import quotes.reflect.Term
-    Term.of(input).tpe <:< TypeRepr.of[T]
+    Term.of(input).tpe <:< TypeRepr.of[T] // (implicit Type[T])
 
   def is[T: Type](inputs: Expr[_]*): Boolean =
     import quotes.reflect.Term

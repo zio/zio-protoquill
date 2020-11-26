@@ -54,11 +54,11 @@ object QueryMetaExtractor {
   import miniquill.quoter._
   import io.getquill.ast.FunctionApply
 
-  inline def apply[T, R, D <: io.getquill.idiom.Idiom, N <: io.getquill.NamingStrategy](
-    inline quotedRaw: Quoted[Query[T]],
-    inline ctx: Context[D, N]
-  ): (Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_, _]])]) = 
-    ${ applyImpl[T, R, D, N]('quotedRaw, 'ctx) }
+  // inline def apply[T, R, D <: io.getquill.idiom.Idiom, N <: io.getquill.NamingStrategy](
+  //   inline quotedRaw: Quoted[Query[T]],
+  //   inline ctx: Context[D, N]
+  // ): (Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_, _]])]) = 
+  //   ${ applyImpl[T, R, D, N]('quotedRaw, 'ctx) }
 
 
   def summonQueryMeta[T: Type, R: Type](using Quotes): Option[Expr[QueryMeta[T, R]]] =
@@ -118,7 +118,8 @@ object QueryMetaExtractor {
   def applyImpl[T: Type, R: Type, D <: io.getquill.idiom.Idiom: Type, N <: io.getquill.NamingStrategy: Type](
     quotedRaw: Expr[Quoted[Query[T]]],
     ctx: Expr[Context[D, N]]
-  )(using Quotes): Expr[(Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_,_]])])] = {
+  )(using Quotes): ( Expr[Quoted[Query[R]]], Expr[R => T], Option[StaticState] ) = 
+  {
     import quotes.reflect.{Try => TTry, _}
     val quotedArg = Term.of(quotedRaw).underlyingArgument.asExprOf[Quoted[Query[T]]]
     val summonedMeta = Expr.summon[QueryMeta[T, R]].map(x => Term.of(x).underlyingArgument.asExprOf[QueryMeta[T, R]])
@@ -131,8 +132,8 @@ object QueryMetaExtractor {
             attemptStaticRequip[T, R](queryLot, queryLifts, quip) match {
               
               case Some(StaticRequip(requip, baq)) =>
-                val staticTranslation = StaticTranslationMacro[R, D, N](requip)
-                '{ ($requip, $baq, $staticTranslation) }
+                val staticTranslation = StaticTranslationMacro.applyInner[R, D, N](requip)
+                (requip, baq, staticTranslation)
 
               case None =>
                 println("WARNING: Query Was Static but Dynamic Meta was found which forced the query to become dynamic!")
@@ -143,7 +144,7 @@ object QueryMetaExtractor {
                 val requip =
                   '{ Quoted[Query[R]]($reappliedAst, $quip.entity.lifts ++ $quotedArg.lifts, $quip.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes) }
     
-                '{ ($requip, $quip.extract, None) }
+                (requip, '{ $quip.extract }, None)
             }
 
           case None =>
@@ -153,7 +154,7 @@ object QueryMetaExtractor {
             val requip =
               '{ Quoted[Query[R]]($reappliedAst, $quip.entity.lifts ++ $quotedArg.lifts, $quip.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes) }
 
-            '{ ($requip, $quip.extract, None) }
+            (requip, '{ $quip.extract }, None)
         }
         
         //report.throwError("Quote Meta Identified but not found!")
