@@ -8,10 +8,10 @@ import scala.compiletime.{erasedValue, summonFrom}
 
 object Retuplify {
   inline def retuplify[T](tuple: Tuple, newValue: T): Tuple = ${ retuplifyImpl('tuple, 'newValue) }
-  def retuplifyImpl[T:Type](tuple: Expr[Tuple], newValue: Expr[T])(using qctx: QuoteContext): Expr[Tuple] = {
-    import qctx.tasty.{_}
+  def retuplifyImpl[T:Type](tuple: Expr[Tuple], newValue: Expr[T])(using Quotes): Expr[Tuple] = {
+    import quotes.reflect._
   
-    printer.ln(tuple.unseal.underlyingArgument)
+    printer.ln(Term.of(tuple).underlyingArgument)
 
     // tuple match {
     //   case '{ ($elem *: ($elems1: $tpe)) } => println(s"ELEM: $elem ELEMS: $elems1")
@@ -23,24 +23,24 @@ object Retuplify {
 
 object ChangeFoosToBars {
   inline def changeFoos(block: =>String): String = ${ changeFoosImpl('block) }
-  def changeFoosImpl(block: Expr[String])(using qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty.{_}
-    //printer.ln(block.unseal)
+  def changeFoosImpl(block: Expr[String])(using Quotes): Expr[String] = {
+    import quotes.reflect._
+    //printer.ln(Term.of(block))
 
     object Unseal {
-      def unapply(t: Expr[Any])(using qctx: QuoteContext) = {
-        Some(t.unseal)
+      def unapply(t: Expr[Any])(using Quotes) = {
+        Some(Term.of(t))
       }
     }
     object Seal {
-      def unapply[T](e: Term)(using qctx: QuoteContext) = {
-        implicit val ttpe: quoted.Type[T] = e.tpe.seal.asInstanceOf[quoted.Type[T]]
-        Some(e.seal.cast[T])
+      def unapply[T](e: Term)(using Quotes) = { // TODO: This cast is unsound. Use `e match { case '{ $e: t } => ... }`
+        implicit val ttpe: quoted.Type[T] = e.tpe.asType.asInstanceOf[quoted.Type[T]]
+        Some(e.asExprOf[T])
       }
     }
 
-    object rewriter extends util.ExprMap {
-      def transform[T](e: Expr[T])(using QuoteContext, quoted.Type[T]): Expr[T] = e match {
+    object rewriter extends ExprMap {
+      def transform[T](e: Expr[T])(using Quotes, Type[T]): Expr[T] = e match {
         //case '{ (${Unseal(Ident("foo"))}: String) } => 
         //  '{ "blahblah" }.cast[T]
         case _ => transformChildren(e)

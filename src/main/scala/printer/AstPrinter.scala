@@ -68,9 +68,9 @@ class Unapplier(message: String) {
 }
 
 
-def xunapplier(message: String)(using qctx: QuoteContext) = new XUnapplier(message)
-class XUnapplier(message: String)(using qctx: QuoteContext) {
-  import qctx.tasty._
+def xunapplier(message: String)(using Quotes) = new XUnapplier(message)
+class XUnapplier(message: String)(using Quotes) {
+  import quotes.reflect._
   def unapply[T](t: T): Option[T] = 
     println(s"***************** [[[[[${message}]]]]]] *****************")
     def tString = 
@@ -83,8 +83,8 @@ class XUnapplier(message: String)(using qctx: QuoteContext) {
 
     def tStringAst = 
       t match {
-        case e: Expr[_] => printer.str(e.unseal)
-        case Some(e: Expr[_]) => printer.str(e.unseal)
+        case e: Expr[_] => printer.str(Term.of(e))
+        case Some(e: Expr[_]) => printer.str(Term.of(e))
         case t: Term => printer.str(t)
         case other => other.toString
       }

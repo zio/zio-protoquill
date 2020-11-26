@@ -30,29 +30,30 @@ object Eq {
       def eqv(x: T, y: T): Boolean = body(x, y)
     }
 
-  def summonAll[T](t: Type[T])(using qctx: QuoteContext): List[Expr[Eq[_]]] = 
+  def summonAll[T: Type](using Quotes): List[Expr[Eq[_]]] = 
     // TODO Make a PR proposing this change
-    t match {
-      case '[$tpe *: $tpes] => 
-        Expr.summon(using '[Eq[$tpe]]) match {
-          case Some(value) => value :: summonAll(tpes)
+    Type.of[T] match {
+      case '[tpe *: tpes] => 
+        Expr.summon[Eq[tpe]] match {
+          case Some(value) => value :: summonAll[tpes]
         }
       case '[EmptyTuple] => Nil
     }
 
 
 
-  implicit def derived[T: Type](using qctx: QuoteContext): Expr[Eq[T]] = {
-    import qctx.tasty.{_}
+  implicit def derived[T: Type](using Quotes): Expr[Eq[T]] = {
+    import quotes.reflect._
 
-    val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[T]]).get
+    val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
 
     ev match {
-      case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = $elementTypes }} =>
-        val elemInstances = summonAll(elementTypes)
+      case '{ $m: Mirror.ProductOf[T] { type MirroredElemTypes = elementTypes }} =>
+        val elemInstances = summonAll[elementTypes]
         val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
           elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
             case (acc, (elem, index)) =>
+              import miniquill.quoter.Dsl.autoQuote
               val e1 = '{$x.asInstanceOf[Product].productElement(${Expr(index)})}
               val e2 = '{$y.asInstanceOf[Product].productElement(${Expr(index)})}
 
@@ -63,8 +64,8 @@ object Eq {
           eqProduct((x: T, y: T) => ${eqProductBody('x, 'y)})
         }
 
-      case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = $elementTypes }} =>
-        val elemInstances = summonAll(elementTypes)
+      case '{ $m: Mirror.SumOf[T] { type MirroredElemTypes = elementTypes }} =>
+        val elemInstances = summonAll[elementTypes]
         val eqSumBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
           val ordx = '{ $m.ordinal($x) }
           val ordy = '{ $m.ordinal($y) }
@@ -83,7 +84,8 @@ object Eq {
 }
 
 object EqMacro {
-  inline def [T](x: =>T) === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
+  extension [T](x: =>T):
+    inline def ===(y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
 
   implicit inline def eqGen[T]: Eq[T] = ${ Eq.derived[T] }
 }

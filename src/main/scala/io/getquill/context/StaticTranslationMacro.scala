@@ -35,8 +35,8 @@ object GetAst {
   import io.getquill.ast.External
 
   inline def apply[T](inline quoted: Quoted[Query[T]]): io.getquill.ast.Ast = ${ applyImpl('quoted) }
-  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(implicit qctx: QuoteContext): Expr[io.getquill.ast.Ast] = {
-    import qctx.tasty.{Try => TTry,Type => TType, _}
+  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(using Quotes): Expr[io.getquill.ast.Ast] = {
+    import quotes.reflect.{Try => TTry, _}
     '{ $quoted.ast }
   }
 }
@@ -51,8 +51,8 @@ object GetLifts {
   import io.getquill.ast.External
 
   inline def apply[T](inline quoted: Quoted[Query[T]]): List[miniquill.quoter.ScalarPlanter[_, _]] = ${ applyImpl('quoted) }
-  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(implicit qctx: QuoteContext): Expr[List[miniquill.quoter.ScalarPlanter[_, _]]] = {
-    import qctx.tasty.{Try => TTry,Type => TType, _}
+  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(using Quotes): Expr[List[miniquill.quoter.ScalarPlanter[_, _]]] = {
+    import quotes.reflect.{Try => TTry, _}
     '{ $quoted.lifts }
   }
 }
@@ -67,8 +67,8 @@ object GetRuntimeQuotes {
   import io.getquill.ast.External
 
   inline def apply[T](inline quoted: Quoted[Query[T]]): List[miniquill.quoter.QuotationVase] = ${ applyImpl('quoted) }
-  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(implicit qctx: QuoteContext): Expr[List[miniquill.quoter.QuotationVase]] = {
-    import qctx.tasty.{Try => TTry,Type => TType, _}
+  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(using Quotes): Expr[List[miniquill.quoter.QuotationVase]] = {
+    import quotes.reflect.{Try => TTry, _}
     '{ $quoted.runtimeQuotes }
   }
 }
@@ -83,16 +83,16 @@ object StaticTranslationMacro {
   import io.getquill.ast.External
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(using qctx: QuoteContext):Option[(String, List[External])] = {
+  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(String, List[External])] = {
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
       CollectAst.byType[QuotationTag](ast).isEmpty
 
     // val queryMeta = 
-    //   Expr.summon(using '[QueryMeta])
+    //   Expr.summon[QueryMeta]
 
-    val unliftedAst = new Unlifter(using qctx).apply(astExpr)
+    val unliftedAst = (new Unlifter).apply(astExpr)
     if (noRuntimeQuotations(unliftedAst)) {
       val expandedAst = Expander.static[T](unliftedAst) 
       val (ast, stmt) = idiom.translate(expandedAst)(using naming)
@@ -115,7 +115,7 @@ object StaticTranslationMacro {
   // matchingExternals = the matching placeholders (i.e 'lift tags') in the AST 
   // that contains the UUIDs of lifted elements. We check against list to make
   // sure that that only needed lifts are used and in the right order.
-  private[getquill] def processLifts(liftExprs: Expr[List[ScalarPlanter[_, _]]], matchingExternals: List[External])(using qctx: QuoteContext): Option[List[Expr[ScalarPlanter[_, _]]]] = {
+  private[getquill] def processLifts(liftExprs: Expr[List[ScalarPlanter[_, _]]], matchingExternals: List[External])(using Quotes): Option[List[Expr[ScalarPlanter[_, _]]]] = {
     val extractedEncodeables =
       liftExprs match {
         case ScalarPlanterExpr.UprootableList(lifts) =>
@@ -148,19 +148,19 @@ object StaticTranslationMacro {
     }
   }
 
-  def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using qctx: QuoteContext, dialectTpe:Type[D], namingType:Type[N]): Try[(Idiom, NamingStrategy)] =
+  def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using Quotes, Type[D], Type[N]): Try[(Idiom, NamingStrategy)] =
     for {
-      idiom <- LoadObject(dialectTpe)
-      namingStrategy <- LoadNaming.static(namingType)
+      idiom <- LoadObject[D]
+      namingStrategy <- LoadNaming.static[N]
     } yield (idiom, namingStrategy)
 
 
   def apply[T: Type, D <: Idiom, N <: NamingStrategy](
     quotedRaw: Expr[Quoted[Query[T]]]
-  )(using qctx:QuoteContext, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
-    import qctx.tasty.{Try => TTry,Type => TType, _}
+  )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
+    import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
-    val quoted = quotedRaw.unseal.underlyingArgument.seal
+    val quoted = Term.of(quotedRaw).underlyingArgument.asExpr
 
     import scala.util.{Success, Failure}
     idiomAndNamingStatic match {

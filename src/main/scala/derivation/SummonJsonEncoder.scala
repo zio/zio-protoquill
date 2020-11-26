@@ -19,13 +19,13 @@ object SummonJsonEncoder {
 
   // ************ Just Attempting to mess around and see if I can get back the type tree ********
   inline def encodeAndMessAroundTerm[T](value: =>T): String = ${ encodeAndMessAroundTermImpl('value) }
-  def encodeAndMessAroundTermImpl[T: Type](value: Expr[T])(using qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty.{_}
+  def encodeAndMessAroundTermImpl[T: Type](value: Expr[T])(using Quotes): Expr[String] = {
+    import quotes.reflect._
     val expr = '{
       given Mirror.Of[T] = null
       given JsonEncoder[T] = JsonEncoder.derived
     }
-    //println( AstPrinter.astprint(expr.unseal.showExtractors) )
+    //println( AstPrinter.astprint(Term.of(expr).showExtractors) )
     println(expr.show)
 
     '{"Hello"}
@@ -33,8 +33,8 @@ object SummonJsonEncoder {
 
   // https://github.com/lampepfl/dotty/issues/7853
   // inline def encodeAndMessAroundType[T](value: =>T): String = ${ encodeAndMessAroundTypeImpl('value) }
-  // def encodeAndMessAroundTypeImpl[T](value: Expr[T])(using qctx: QuoteContext, t: Type[T]): Expr[String] = {
-  //   import qctx.tasty.{_}
+  // def encodeAndMessAroundTypeImpl[T](value: Expr[T])(using Quotes, t: Type[T]): Expr[String] = {
+  //   import quotes.reflect._
   //   val mirrorExpr = Expr.summon[Mirror.Of[T]] match {
   //     case Some(mirror) => mirror
   //   }
@@ -48,7 +48,7 @@ object SummonJsonEncoder {
   // }
 
   inline def encodeAndMessAround(value: =>ThePerson): String = ${ quoteAndMessAroundImpl('value) }
-  def quoteAndMessAroundImpl(value: Expr[ThePerson])(using qctx: QuoteContext): Expr[String] = {
+  def quoteAndMessAroundImpl(value: Expr[ThePerson])(using Quotes): Expr[String] = {
     '{
       given JsonEncoder[ThePerson] = JsonEncoder.derived
       given JsonEncoder[TheAddress] = JsonEncoder.derived

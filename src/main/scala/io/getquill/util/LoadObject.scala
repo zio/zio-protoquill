@@ -2,7 +2,7 @@ package io.getquill.util
 
 import scala.reflect.ClassTag
 import scala.util.Try
-import scala.quoted.{Type => TType, _}
+import scala.quoted._
 
 // TODO Note that this does not seem to work when .type is used directly.
 // For example, in Dsl.scala, I tried using BaseParserFactory.type
@@ -19,17 +19,17 @@ object LoadObject {
       field.get(cls).asInstanceOf[T]
     }
 
-  def apply[T](tpe: TType[T])(using qctx: QuoteContext): Try[T] = {
-    import qctx.tasty.{Try => _, _}
+  def apply[T: Type](using Quotes): Try[T] = {
+    import quotes.reflect.{Try => _, _}
     Try {
       
-      // if ('[$tpe].unseal.tpe.classSymbol.isEmpty) {
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${'[$tpe].unseal.tpe} *** ~~~~~~~~~~~~~~~~~")  
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${'[$tpe].unseal.tpe.termSymbol} *** ~~~~~~~~~~~~~~~~~")  
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${'[$tpe].unseal.tpe.termSymbol.moduleClass.fullName} *** ~~~~~~~~~~~~~~~~~")  
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${'[$tpe].unseal.tpe.termSymbol.companionClass.fullName} *** ~~~~~~~~~~~~~~~~~")  
+      // if (TypeRepr.of[T].classSymbol.isEmpty) {
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T]} *** ~~~~~~~~~~~~~~~~~")  
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol} *** ~~~~~~~~~~~~~~~~~")  
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol.moduleClass.fullName} *** ~~~~~~~~~~~~~~~~~")  
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol.companionClass.fullName} *** ~~~~~~~~~~~~~~~~~")  
       // }
-      val loadClassType = '[$tpe].unseal.tpe
+      val loadClassType = TypeRepr.of[T]
       val optClassSymbol = loadClassType.classSymbol
       val className = 
         optClassSymbol match {
@@ -40,7 +40,7 @@ object LoadObject {
               loadClassType.termSymbol.moduleClass.fullName
             } else {
               //println(s"The class ${'[$tpe].show} cannot be loaded because it is either a scala class or module")
-              report.throwError(s"The class ${'[$tpe].show} cannot be loaded because it is either a scala class or module")
+              report.throwError(s"The class ${Type.show[T]} cannot be loaded because it is either a scala class or module")
             }
         }
 
@@ -54,8 +54,8 @@ object LoadObject {
 
 // TODO Move this to a test
 inline def loadMac[T]: String = ${ loadMacImpl[T] }
-def loadMacImpl[T](using qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
-  val loaded = LoadObject(tpe)
+def loadMacImpl[T: Type](using Quotes): Expr[String] = {
+  val loaded = LoadObject[T]
   println( loaded )
   Expr(loaded.toString)
 }

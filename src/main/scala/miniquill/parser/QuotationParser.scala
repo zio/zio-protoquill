@@ -8,8 +8,8 @@
 // import scala.deriving._
 // import io.getquill.Embedable
 
-// class MatroshkaHelper(using val qctx: QuoteContext) {
-//   import qctx.tasty.{Term => QTerm, _}
+// class MatroshkaHelper(using val qctx: Quotes) {
+//   import quotes.reflect.{Term => QTerm, _}
 
 //   object TypedMatroshka {
 //     // need to define a case where it won't go into matcher otherwise recursion is infinite
@@ -26,24 +26,24 @@
 //   }
 // }
 
-// class QuotationParser(using val qctx: QuoteContext) {
-//   import qctx.tasty.{_}
+// class QuotationParser(using val qctx: Quotes) {
+//   import quotes.reflect._
   
 //   def unInline(expr: Expr[Any]): Expr[Any] = 
 //     expr match {
 //       // Need to traverse through this case if we want to be able to use inline parameter value
-//       // without having to do quoted.unseal.underlyingArgument.seal
-//       case Unseal(Inlined(_, _, v)) => unInline(v.seal)
+//       // without having to do Term.of(quoted).underlyingArgument.asExpr
+//       case Unseal(Inlined(_, _, v)) => unInline(v.asExpr)
 //       case other => other
 //     }
 
 //   object Unseal {
 //     def unapply(t: Expr[Any]) = {
-//       Some(t.unseal)
+//       Some(Term.of(t))
 //     }
 //   }
 
-//   import qctx.tasty.{_}
+//   import quotes.reflect._
 //   import scala.quoted.{Const => Constant} //hello
 
 //   object TypedMatroshka {
@@ -64,12 +64,12 @@
 //     def unapply(expr: Expr[Any]): Option[(Expr[Ast], Expr[List[Vase]], Expr[List[QuotationPouch]])] = expr match {
 //       case '{ Quoted.apply[$qt]($ast, $v, $rq) } => 
 //         //println("********************** MATCHED VASE INNER TREE **********************")
-//         //printer.lnf(expr.unseal)
+//         //printer.lnf(Term.of(expr))
 //         Some((ast, v, rq))
-//       case Unseal(TypedMatroshka(tree)) => unapply(tree.seal)
+//       case Unseal(TypedMatroshka(tree)) => unapply(tree.asExpr)
 //       case _ => 
 //         //println("********************** NOT MATCHED VASE INNER TREE **********************")
-//         //printer.lnf(expr.unseal)
+//         //printer.lnf(Term.of(expr))
 //         None
 //     }
 //   }
@@ -78,7 +78,7 @@
 //     def unapply(expr: Expr[Any]) = expr match {
 //       case vase @ '{ QuotationLot.apply[$qt]($quotation, ${scala.quoted.Const(uid: String)}) } => 
 //         //println("********************** MATCHED VASE APPLY **********************")
-//         //printer.lnf(expr.unseal)
+//         //printer.lnf(Term.of(expr))
 //         Some((quotation, uid, vase))
 //       case _ => None
 //     }
@@ -115,11 +115,11 @@
 //       expr match {
 //         // case MatchQuotationRef(tree, uuid) => 
 //         //   println("******************** Runtime: Match Quotation Ref ********************")
-//         //   printer.lnf((tree.unseal, uuid))
+//         //   printer.lnf((Term.of(tree), uuid))
 //         //   Some((tree, uuid))
 //         case `QuotationLot.unquote`(innards) =>
 //           //println("******************** Runtime: Match Unquote ********************")
-//           //printer.lnf(innards.unseal)
+//           //printer.lnf(Term.of(innards))
 //           unapply(innards)
 //         // sometimes there are multiple levels of vases when references are spliced,
 //         // we should only care about the innermost one

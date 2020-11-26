@@ -13,8 +13,9 @@ object Misc {
   implicit val intDummy: IntDummy = new IntDummy {}
 
   inline def foo(inline a: List[String])(implicit s: StringDummy): Unit = ${ fooImpl('a) }
-  def fooImpl(a: Expr[List[String]])(implicit qctx: QuoteContext): Expr[Unit] = {
-    println(pprint.apply(a.unseal))
+  def fooImpl(a: Expr[List[String]])(using Quotes): Expr[Unit] = {
+    import quotes.reflect.Term
+    println(pprint.apply(Term.of(a)))
     '{ () }
   }
 

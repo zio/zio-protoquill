@@ -10,61 +10,60 @@ trait Labeled[T] {
 }
 
 object Labeled {
-  def labels[Fields, Types](fieldsTpe: Type[Fields], typesTpe: Type[Types])(using qctx: QuoteContext): List[String] = {
-    import qctx.tasty.{Type => TType, _}
+  def labels[Fields: Type, Types: Type](using Quotes): List[String] = {
+    import quotes.reflect._
 
-    def typeIsConst[T](tpe: Type[T]) = // Don't need to check if label type is const, label types always must be const
-      tpe.unseal.tpe match {
+    def typeIsConst[T: Type] = // Don't need to check if label type is const, label types always must be const
+      TypeRepr.of[T] match {
         case ConstantType(Constant(value)) => true
         case _ => false
       }
 
-    def typeConstValue[T](tpe: Type[T]): String =
-      tpe.unseal.tpe match {
+    def typeConstValue[T: Type]: String =
+      TypeRepr.of[T] match {
         case ConstantType(Constant(value)) => value.toString
         // Macro error
       }
 
-    def typeIsProduct[T](tpe: Type[T]): Boolean =
-      tpe.unseal.tpe <:< '[Product].unseal.tpe
+    def typeIsProduct[T: Type]: Boolean =
+      TypeRepr.of[T] <:< TypeRepr.of[Product]
 
-    (fieldsTpe, typesTpe) match {
-      case ('[$field *: $fields], '[$tpe *: $types]) if typeIsProduct(tpe) =>
-        val constValue: String = typeConstValue(field)
-        println(s"Compile time label of product ${tpe.unseal} is ${constValue} - recursing")
-        val insideFields = base(using tpe)
-        insideFields.map(constValue + "." + _) ++ labels(fields, types)
+    (Type.of[Fields], Type.of[Types]) match {
+      case ('[field *: fields], '[tpe *: types]) if typeIsProduct[tpe] =>
+        val constValue: String = typeConstValue[field]
+        println(s"Compile time label of product ${TypeRepr.of[tpe]} is ${constValue} - recursing")
+        val insideFields = base[tpe]
+        insideFields.map(constValue + "." + _) ++ labels[fields, types]
         // One possiblity, if labelled can be summoned, continue the search?
-        // Expr.summon(using '[Labeled[$tpe]]) match {
+        // Expr.summon[Labeled[tpe]] match {
         //   case Some(value) => base(using tpe)
         // }
-      case ('[$field *: $fields], '[$tpe *: $types]) =>
-        val constValue: String = typeConstValue(field)
+      case ('[field *: fields], '[tpe *: types]) =>
+        val constValue: String = typeConstValue[field]
         println("Compile time label: " + constValue)
-        constValue :: labels(fields, types)
+        constValue :: labels[fields, types]
       case (_, '[EmptyTuple]) => Nil
     }
   }
 
-  def base[T](using tpe: Type[T])(using qctx: QuoteContext): List[String] = {
-    import qctx.tasty.{_}
-    val ev: Expr[Mirror.Of[T]] = Expr.summon(using '[Mirror.Of[$tpe]]).get
+  def base[T: Type](using Quotes): List[String] = {
+    val ev: Expr[Mirror.Of[T]] = Expr.summon[Mirror.Of[T]].get
 
     ev match {
-      case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = $elementLabels; type MirroredElemTypes = $elementTypes }} =>
-        labels(elementLabels, elementTypes)
+      case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+        labels[elementLabels, elementTypes]
       
     }
   }
 
-  def apply[T](using qctx: QuoteContext, tpe: Type[T]): List[String] = {
-    base(using tpe)
+  def apply[T: Type](using Quotes): List[String] = {
+    base[T]
   }
 }
 
 object LabeledMacro {
   inline def label[T]: List[String] = ${ labelImpl[T] }
-  def labelImpl[T: Type](using qctx: QuoteContext): Expr[List[String]] = {
+  def labelImpl[T: Type](using Quotes): Expr[List[String]] = {
     Expr(Labeled[T])
   }
 }

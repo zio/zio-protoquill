@@ -140,14 +140,14 @@ object SimpleMacro {
   }
 
   inline def typeInfo[T](stuff: =>T): T = ${ typeInfoImpl('stuff) }
-  def typeInfoImpl[T](stuff: Expr[T])(using qctx: QuoteContext, t: Type[T]): Expr[T] = {
-    import qctx.tasty.{Type => TType, _}
+  def typeInfoImpl[T](stuff: Expr[T])(using Quotes, Type[T]): Expr[T] = {
+    import quotes.reflect._
     
     //  summon[scala.quoted.Type[T]].unseal.tpe
     //def getExprType[T <: Mirror.Of[_]](expr: Expr[T])(t: Type[T]) = 
      
     Expr.summon[Mirror.Of[T]] match {
-      case Some(expr) => println(expr.unseal.tpe.show)
+      case Some(expr) => println(Term.of(expr).tpe.show)
       case None => println("Mirror not found")
     }
     
@@ -160,10 +160,10 @@ object SimpleMacro {
 
 
   // inline def printThenRun[T](print: String, thenRun: => T): T = ${ printThenRunImpl('print, 'thenRun) }
-  // def printThenRunImpl[T](print: Expr[String], thenRun: Expr[T])(using qctx: QuoteContext) = {
-  //   import qctx.tasty.{_} //Type => _,
+  // def printThenRunImpl[T](print: Expr[String], thenRun: Expr[T])(using Quotes) = {
+  //   import quotes.reflect._ //Type => _,
     
-  //   print.unseal.underlyingArgument match {
+  //   Term.of(print).underlyingArgument match {
   //     case Literal(Constant(value)) => println(value)
   //     case _ => throw new RuntimeException("Needs a literal to be passed to the print method")
   //   }
@@ -179,11 +179,11 @@ object SimpleMacro {
   // import dotty.tools.dotc.core.tasty.TastyPrinter
 
   // inline def betaReduceMethod(f: Int => Int ):Unit = ${betaReduceMethodImpl('f)}
-  // def betaReduceMethodImpl(f: Expr[Int => Int])(using qctx: QuoteContext): Expr[Int] = {
-  //   import qctx.tasty.{_}
+  // def betaReduceMethodImpl(f: Expr[Int => Int])(using Quotes): Expr[Int] = {
+  //   import quotes.reflect._
 
   //   val reduced = Expr.betaReduce(f)('{123}) //hello
-  //   println(astprint(reduced.unseal.underlyingArgument))
+  //   println(astprint(Term.of(reduced).underlyingArgument))
   //   println(reduced.show)
   //   reduced
   // }
@@ -193,9 +193,9 @@ object SimpleMacro {
   // // }
 
   // inline def stuff[T](str: T):T = ${ stuffImpl('str) }
-  // def stuffImpl[T](str: Expr[T])(using qctx: QuoteContext): Expr[T] = {
-  //   import qctx.tasty.{_} //Type => _, 
-  //   val und = str.unseal.underlyingArgument
+  // def stuffImpl[T](str: Expr[T])(using Quotes): Expr[T] = {
+  //   import quotes.reflect._ //Type => _, 
+  //   val und = Term.of(str).underlyingArgument
 
 
   //   def splitPrint(str: String) = {
@@ -207,7 +207,7 @@ object SimpleMacro {
   //   }
 
   //   splitPrint(contextAstPrinter.apply(und).render)  //.showExtractors
-  //   println(str.unseal.underlyingArgument.show)
+  //   println(Term.of(str).underlyingArgument.show)
   //   //TastyPrinter()
     
   //   str

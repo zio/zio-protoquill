@@ -15,18 +15,18 @@ object MacroExample {
   // detectPlus(numberOne + numberInt)
 
   inline def getMethods(inline expr: Any): Any = ${ geteMethodsImpl('expr) }
-  def geteMethodsImpl(exprRaw: Expr[Any])(using qctx: QuoteContext): Expr[Any] = {
-    import qctx.tasty._
+  def geteMethodsImpl(exprRaw: Expr[Any])(using Quotes): Expr[Any] = {
+    import quotes.reflect._
     import scala.collection.JavaConverters._
     // Note is a TypeRef and a TypeTree
     
-    val expr = exprRaw.unseal.underlyingArgument.seal
-    printer.lnf(expr.unseal.tpe.widen.classSymbol)
-    val sym = expr.unseal.tpe.widen.classSymbol // To Go from TermRef(p) to TypeRef(Person)
+    val expr = Term.of(exprRaw).underlyingArgument.asExpr
+    printer.lnf(Term.of(expr).tpe.widen.classSymbol)
+    val sym = Term.of(expr).tpe.widen.classSymbol // To Go from TermRef(p) to TypeRef(Person)
     
     val namesAndApplys =
       sym.get.caseFields.map(field => {
-        (field.name, Select(expr.unseal, field).seal.cast[Any])
+        (field.name, Select(Term.of(expr), field).asExprOf[Any])
       })
 
     val mapFields = namesAndApplys.map { case (name, applyField) =>
@@ -34,7 +34,7 @@ object MacroExample {
     }
     '{ Map[String, Any](${Expr.ofList(mapFields)}:_*) }
 
-    //val sym = expr.unseal.tpe.asInstanceOf[TypeRef].symbol
+    //val sym = Term.of(expr).tpe.asInstanceOf[TypeRef].symbol
     //sym.get.caseFields.foreach(println(_))
     //printer.lnf(field.tree)
 
@@ -45,10 +45,10 @@ object MacroExample {
   }
 
   inline def showTreeMatchLambda(inline expr: (String, String) => Int): Unit = ${ showTreeMatchLambdaImpl('expr) }
-  def showTreeMatchLambdaImpl(expr: Expr[(String, String) => Int])(using qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
-    printer.lnf(expr.unseal.underlyingArgument)
-    expr.unseal.underlyingArgument match {
+  def showTreeMatchLambdaImpl(expr: Expr[(String, String) => Int])(using Quotes): Expr[Unit] = {
+    import quotes.reflect._
+    printer.lnf(Term.of(expr).underlyingArgument)
+    Term.of(expr).underlyingArgument match {
       case Lambda(List(ValDef(argName, _, _), ValDef(argName1, _, _)), body) =>
         println("Arg is: " + argName + " and " + argName1)
         println("Body is: " + body.showExtractors)
@@ -58,23 +58,23 @@ object MacroExample {
   }
 
   inline def showTree(inline expr: Any): Unit = ${ showTreeImpl('expr) }
-  def showTreeImpl(expr: Expr[Any])(using qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
-    //println(expr.unseal.underlyingArgument.showExtractors)
-    printer.lnf(expr.unseal.underlyingArgument)
+  def showTreeImpl(expr: Expr[Any])(using Quotes): Expr[Unit] = {
+    import quotes.reflect._
+    //println(Term.of(expr).underlyingArgument.showExtractors)
+    printer.lnf(Term.of(expr).underlyingArgument)
     '{ () }
   }
 
   inline def detectPlus(inline expr: Int): (Int, String) = ${ detectPlusImpl('expr) }
-  def detectPlusImpl(expr: Expr[Int])(using qctx: QuoteContext): Expr[(Int, String)] = {
-    import qctx.tasty._
-    println(expr.unseal.underlyingArgument.showExtractors)
+  def detectPlusImpl(expr: Expr[Int])(using Quotes): Expr[(Int, String)] = {
+    import quotes.reflect._
+    println(Term.of(expr).underlyingArgument.showExtractors)
 
     val message = 
-      expr.unseal.underlyingArgument.seal match {
+      Term.of(expr).underlyingArgument.asExpr match {
         case '{ ($one: Int).+(($two: Int)) } => 
-          val oneInner = one.unseal match { case Ident(value) => value }
-          val twoInner = two.unseal match { case Ident(value) => value }
+          val oneInner = Term.of(one) match { case Ident(value) => value }
+          val twoInner = Term.of(two) match { case Ident(value) => value }
 
           s"(${oneInner}, ${twoInner}, +)"
        
@@ -93,12 +93,12 @@ object MacroExample {
   inline def macroTest(inline somethingMakingStringBoolRaw: Boolean): String = 
     ${ macroTestImpl('somethingMakingStringBoolRaw) }
 
-  def macroTestImpl(somethingMakingStringBoolRaw: Expr[Boolean])(using qctx: QuoteContext): Expr[String] = {
-    import qctx.tasty._
-    val somethingMakingBool = somethingMakingStringBoolRaw.unseal.underlyingArgument.seal
+  def macroTestImpl(somethingMakingStringBoolRaw: Expr[Boolean])(using Quotes): Expr[String] = {
+    import quotes.reflect._
+    val somethingMakingBool = Term.of(somethingMakingStringBoolRaw).underlyingArgument.asExpr
 
-    val theExpressionAst = somethingMakingBool.unseal.showExtractors
-    val theExpressionCode = somethingMakingBool.unseal.show
+    val theExpressionAst = Term.of(somethingMakingBool).showExtractors
+    val theExpressionCode = Term.of(somethingMakingBool).show
     '{
       if ($somethingMakingStringBoolRaw) 
         "Yay, we passed!... " + ${Expr(theExpressionCode)} + "\nOtherwise Known as: " + ${Expr(theExpressionAst)}

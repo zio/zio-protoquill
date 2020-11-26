@@ -10,7 +10,7 @@
 
 // // InlineEncodeable should be a ScalarPlanterExpr
 // case class InlineEncodeable(uid: String, value: Expr[Any], encoder: Expr[GenericEncoder[Any, Any]], vase: Expr[ScalarPlanter[_, _]]) {
-//   def prepare(using qctx: QuoteContext): Expr[Encodeable] = {
+//   def prepare(using Quotes): Expr[Encodeable] = {
 //     '{ Encodeable(${Expr(uid)}, $value, $encoder) }
 //   }
 // }
@@ -23,8 +23,8 @@
 //   // otherwise it's invalid and an exception should be thrown?)
 
 //   // Remove the unapply pattern here. InlineEncodeables should be 
-//   def unapply(input: Expr[Any])(using qctx: QuoteContext): Option[List[InlineEncodeable]] = {
-//     import qctx.tasty._
+//   def unapply(input: Expr[Any])(using Quotes): Option[List[InlineEncodeable]] = {
+//     import quotes.reflect._
 
 //     val matchedEncodeables =
 //       ExprAccumulate(input) {
@@ -50,8 +50,8 @@
 
 // object FindRuntimeQuotationLots {
 
-//   def apply[T](input: Expr[Any])(using qctx: QuoteContext, tpe: quoted.Type[T]): List[(String, Expr[QuotationLot[Any]])] = {
-//     import qctx.tasty._
+//   def apply[T](input: Expr[Any])(using Quotes, tpe: quoted.Type[T]): List[(String, Expr[QuotationLot[Any]])] = {
+//     import quotes.reflect._
 //     val quotationParser = new miniquill.parser.QuotationParser
 //     import quotationParser._
 

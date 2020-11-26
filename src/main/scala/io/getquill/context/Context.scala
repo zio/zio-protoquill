@@ -18,7 +18,7 @@ import miniquill.dsl.GenericDecoder
 import miniquill.quoter.ScalarPlanter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
-import scala.quoted.{Type => TType, _}
+import scala.quoted._
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
 import miniquill.quoter.QuotationLot

@@ -7,7 +7,7 @@ import printer.AstPrinter
 
 object Autousing {
   // inline def autogiveEq[T](a: T, b: T)(using ev: deriving.Mirror.Of[T]): Boolean = ${ autogiveEqImpl('a, 'b)('ev) }
-  // def autogiveEqImpl[T](a: Expr[T], b: Expr[T])(using ev: Expr[deriving.Mirror.Of[T]])(using qctx: QuoteContext): Expr[Boolean] = {
+  // def autogiveEqImpl[T](a: Expr[T], b: Expr[T])(using ev: Expr[deriving.Mirror.Of[T]])(using Quotes): Expr[Boolean] = {
   //   '{
   //     using Eq[T] = Eq.derived
   //     val eqf = summon[Eq[T]]

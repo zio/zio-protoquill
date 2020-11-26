@@ -27,25 +27,25 @@ object FieldCollector {
 
   inline def isSum[T] =
     summonFrom {
-      case given m: Mirror.SumOf[T] => true
+      case m as given Mirror.SumOf[T] => true
       case _ => false
     }
 
   inline def isProduct[T] =
     summonFrom {
-      case given m: Mirror.ProductOf[T] => true
+      case m as given Mirror.ProductOf[T] => true
       case _ => false
     }
 
   inline def className[T] =
     summonFrom {
-      case given ct: ClassTag[T] => ct.toString
+      case ct as given ClassTag[T] => ct.toString
       case _ => "<UNKNOWN>"
     }
 
   inline def classTag[T] =
     summonFrom {
-      case given ct: ClassTag[T] => ct
+      case ct as given ClassTag[T] => ct
     }
 
   type ProductType[T <: Product] = T

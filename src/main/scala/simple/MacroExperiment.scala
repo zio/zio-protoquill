@@ -9,16 +9,16 @@ object MacroExperiment {
   
 
   inline def printTree(tree: Any): Any = ${ printTreeImpl('tree) }
-  def printTreeImpl(tree: Expr[Any])(using qctx: QuoteContext): Expr[Any] = {
-    import qctx.tasty._
+  def printTreeImpl(tree: Expr[Any])(using Quotes): Expr[Any] = {
+    import quotes.reflect._
     val tctx = new TastyMatchersContext
     import tctx._
 
-    val resealed = tree.unseal.underlyingArgument.seal
+    val resealed = Term.of(tree).underlyingArgument.asExpr
 
-    printer.lnf(resealed.unseal)
+    printer.lnf(Term.of(resealed))
 
-    resealed.unseal match {
+    Term.of(resealed) match {
       case Apply(Select(RawLambdaN(idents, body), "apply"), args) =>
         println("Matched!")
         println(idents)
@@ -31,8 +31,8 @@ object MacroExperiment {
         println("Not Matched")
     }
 
-    //println(tree.unseal.underlyingArgument.seal.show)
-    //printer.lnf(tree.unseal.underlyingArgument)
+    //println(Term.of(tree).underlyingArgument.asExpr.show)
+    //printer.lnf(Term.of(tree).underlyingArgument)
     tree
   }
 

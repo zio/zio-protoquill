@@ -6,10 +6,10 @@ import io.getquill.ast.{Ident => Idnt}
 object MatchMac {
     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
 
-    def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
-      class Operations(implicit val qctx: QuoteContext) extends TastyMatchers {
-        import qctx.tasty.{Type => TType, Ident => TIdent, Constant => TConstant, _}
-        val any = anyRaw.unseal.underlyingArgument.seal
+    def printMacImpl(anyRaw: Expr[Any])(using Quotes): Expr[Unit] = {
+      class Operations(implicit val qctx: Quotes) extends TastyMatchers {
+        import quotes.reflect.{Ident => TIdent, Constant => TConstant, _}
+        val any = Term.of(anyRaw).underlyingArgument.asExpr
 
         UntypeExpr(any) match {
           case Unseal(Block(parts, lastPart)) =>
@@ -20,10 +20,10 @@ object MatchMac {
             println(s"============= Matched! Expr: ${lastPart.showExtractors} =============")
           case other =>
             println(s"=============== Not Matched! =============")
-            println(other.unseal.showExtractors)
+            println(Term.of(other).showExtractors)
 
             println("================= Pretty Tree =================")
-            println(pprint.apply(other.unseal))
+            println(pprint.apply(Term.of(other)))
         }
       }
           
@@ -36,18 +36,19 @@ object MatchMac {
 
 object PrintMac {
     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
-    def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
-      import qctx.tasty._
-      val any = anyRaw.unseal.underlyingArgument.seal
-      class Operations(implicit val qctx: QuoteContext) extends TastyMatchers {
+    def printMacImpl(anyRaw: Expr[Any])(using Quotes): Expr[Unit] = {
+      import quotes.reflect._
+      val any = Term.of(anyRaw).underlyingArgument.asExpr
+      class Operations(implicit val qctx: Quotes) extends TastyMatchers {
+        import quotes.reflect._
         println("================= Tree =================")
         println(any.show)
 
         println("================= Matchers =================")
-        println(Untype(any.unseal).showExtractors)
+        println(Untype(Term.of(any)).showExtractors)
 
         println("================= Pretty Tree =================")
-        println(pprint.apply(Untype(any.unseal)))
+        println(pprint.apply(Untype(Term.of(any))))
       }
 
       new Operations()

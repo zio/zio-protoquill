@@ -14,13 +14,13 @@ class OuterScoped extends InnerScoped {
 }
 
 object OuterScoped {
-  def outerCallerInfoImpl(i: Expr[Any])(using qctx: QuoteContext): Expr[Any] = {
-    import qctx.tasty.{_}
+  def outerCallerInfoImpl(i: Expr[Any])(using Quotes): Expr[Any] = {
+    import quotes.reflect._
     printer.lnf(i.show)
     i
   }
 }
 
 object InnerScoped {
-  def getValueImpl(i: Expr[Any])(using qctx: QuoteContext): Expr[Any] = '{$i}
+  def getValueImpl(i: Expr[Any])(using Quotes): Expr[Any] = '{$i}
 }

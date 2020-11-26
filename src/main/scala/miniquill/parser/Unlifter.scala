@@ -9,7 +9,7 @@ object UnlifterType {
 }
 
 // TODO Rewrite this the way Parser is written (i.e. with ability to compose???)
-class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], Ast] with TastyMatchers {
+class Unlifter(using val q: Quotes) extends PartialFunction[Expr[Ast], Ast] with TastyMatchers {
   import UnlifterType._
 
   def apply(astExpr: Expr[Ast]): Ast = unliftAst(astExpr)
@@ -29,7 +29,7 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
 
   implicit def unliftList[T](implicit u: Unlift[T]): Unlift[List[T]] = {
     case '{ Nil } => Nil
-    case '{ List.apply[$t](${Varargs(props)}: _*) } => 
+    case '{ List.apply[t](${Varargs(props)}: _*) } => 
       props.toList.map(p => u.apply(p.asInstanceOf[Expr[T]])) // Can we get the type into here so we don't have to cast?
   }
 

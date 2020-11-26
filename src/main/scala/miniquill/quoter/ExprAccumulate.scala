@@ -3,11 +3,10 @@ package miniquill.quoter
 import scala.quoted._
 
 import scala.collection.mutable.ArrayBuffer
-import scala.quoted.util.ExprMap
 
 object ExprAccumulate {
-  def apply[T](input: Expr[Any])(matcher: PartialFunction[Expr[Any], T])(using qctx: QuoteContext): List[T] = {
-    import qctx.tasty.{Type => QType, _}
+  def apply[T](input: Expr[Any])(matcher: PartialFunction[Expr[Any], T])(using Quotes): List[T] = {
+    import quotes.reflect._
 
     val buff: ArrayBuffer[T] = new ArrayBuffer[T]()
     val accum = new ExprMap {
@@ -17,19 +16,19 @@ object ExprAccumulate {
       //   ============== Could not transform over expression ===========
       //   scala.tasty.reflect.ExprCastError: Expr: ["name" : String]
       //   did not conform to type: String*
-      override def transformChildren[TF](expr: Expr[TF])(using qctx: QuoteContext, tpe: Type[TF]): Expr[TF] = {
+      override def transformChildren[TF](expr: Expr[TF])(using Quotes, Type[TF]): Expr[TF] = {
         try {
           super.transformChildren(expr)
         } catch {
-          case e: scala.tasty.reflect.ExprCastError => //hello
+          case e if e.getMessage.startsWith("Expr cast exception:") => //hello
             //println("============== Could not transform over expression ===========")
             //e.printStackTrace
-            //printer.lnf(expr.unseal)
+            //printer.lnf(Term.of(expr))
             expr
         }
       }
 
-      def transform[TF](expr: Expr[TF])(using qctx: QuoteContext, tpe: Type[TF]): Expr[TF] = {
+      def transform[TF](expr: Expr[TF])(using Quotes, Type[TF]): Expr[TF] = {
         matcher.lift(expr) match {
           case Some(result) => 
             buff += result
@@ -38,7 +37,7 @@ object ExprAccumulate {
             expr
         }
 
-        expr.unseal match {
+        Term.of(expr) match {
           // Not including this causes execption "scala.tasty.reflect.ExprCastError: Expr: [ : Nothing]" in certain situations
           case Repeated(Nil, Inferred()) => expr 
           case _ => transformChildren[TF](expr)

@@ -56,16 +56,16 @@ object SummonCsvEncoderManualTest {
   // }
 
   // inline def summonTest[T](value: =>T): String = ${ summonTestImpl[T]('value) }
-  // def summonTestImpl[T: Type](body: Expr[T])(using qctx: QuoteContext): Expr[String] = {
-  //   import qctx.tasty.{_}
+  // def summonTestImpl[T: Type](body: Expr[T])(using Quotes): Expr[String] = {
+  //   import quotes.reflect._
 
   //   val from = Expr.summon {
   //     case m :Mirror.Of[T] => Some(m)
   //     case _ => None
   //   }
 
-  //   val mirror = Expr.summon(using '[Mirror.Of[T]]) match {
-  //     case Some(mirror) => println("mirror: " + new AstPrinter().apply(mirror.unseal))
+  //   val mirror = Expr.summon[Mirror.Of[T]] match {
+  //     case Some(mirror) => println("mirror: " + new AstPrinter().apply(Term.of(mirror)))
   //     case None =>
   //   }
 
