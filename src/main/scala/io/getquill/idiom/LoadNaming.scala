@@ -11,13 +11,13 @@ import io.getquill.CompositeNamingStrategy
 
 object LoadNaming {
 
-  def static[T](tpe: TType[T])(using qctx: QuoteContext): Try[NamingStrategy] = {
-    import qctx.tasty.{Try => _, _}
+  def static[T: TType](using Quotes): Try[NamingStrategy] = {
+    import quotes.reflect.{Try => _, _}
 
     def `endWith$`(str: String) =
       if (str.endsWith("$")) str else str + "$"
     
-    def loadFromTastyType[T](tpe: Type): Try[T] =
+    def loadFromTastyType[T](tpe: TypeRepr): Try[T] =
       Try {
         val loadClassType = tpe
         val optClassSymbol = loadClassType.classSymbol
@@ -40,21 +40,21 @@ object LoadNaming {
       }
 
     CollectTry {
-      strategies(tpe).map(loadFromTastyType[NamingStrategy](_))
+      strategies[T].map(loadFromTastyType[NamingStrategy](_))
     }.map(NamingStrategy(_))
   }
 
-  private def strategies[T](tpe: TType[T])(using qctx: QuoteContext) = {
-    import qctx.tasty.{_}
-    val treeTpe = '[$tpe].unseal.tpe
-    treeTpe <:< '[CompositeNamingStrategy].unseal.tpe match {
+  private def strategies[T: TType](using Quotes) = {
+    import quotes.reflect._
+    val treeTpe = TypeRepr.of[T]
+    treeTpe <:< TypeRepr.of[CompositeNamingStrategy] match {
       case true =>
         treeTpe match {
           case AppliedType(_, types) => 
             types
-              .filter(_.isInstanceOf[Type]).map(_.asInstanceOf[Type])
-              .filterNot(_ =:= '[NamingStrategy].unseal.tpe)
-              .filterNot(_ =:= '[Nothing].unseal.tpe)
+              .filter(_.isInstanceOf[TypeRepr]).map(_.asInstanceOf[TypeRepr])
+              .filterNot(_ =:= TypeRepr.of[NamingStrategy])
+              .filterNot(_ =:= TypeRepr.of[Nothing])
         }
       case false =>
         List(treeTpe)
@@ -62,9 +62,9 @@ object LoadNaming {
   }
 
   inline def mac[T](t: T): String = ${ macImpl[T]('t) }
-  def macImpl[T](t: Expr[T])(using qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
-    import qctx.tasty.{_}
-    val loadedStrategies = strategies(tpe)
+  def macImpl[T: TType](t: Expr[T])(using Quotes): Expr[String] = {
+    import quotes.reflect._
+    val loadedStrategies = strategies[T]
     println( loadedStrategies )
     Expr(loadedStrategies.toString) // maybe list of string?
   }
@@ -72,9 +72,9 @@ object LoadNaming {
 
 
 inline def macLoadNamingStrategy[T](t: T): String = ${ macLoadNamingStrategyImpl[T]('t) }
-def macLoadNamingStrategyImpl[T](t: Expr[T])(using qctx: QuoteContext, tpe: TType[T]): Expr[String] = {
-  import qctx.tasty.{_}
-  val loadedStrategies = LoadNaming.static(tpe)
+def macLoadNamingStrategyImpl[T: TType](t: Expr[T])(using Quotes): Expr[String] = {
+  import quotes.reflect._
+  val loadedStrategies = LoadNaming.static[T]
   println( loadedStrategies )
   Expr(loadedStrategies.toString) // maybe list of string?
 }

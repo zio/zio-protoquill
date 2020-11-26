@@ -10,8 +10,8 @@ object TraitMatch {
   import miniquill.parser.TastyMatchersContext
 
   inline def traitMatch[T](inline t: T): T = ${ traitMatchImpl[T]('t) }
-  def traitMatchImpl[T: Type](t: Expr[T])(using qctx: QuoteContext): Expr[T] = {
-    import qctx.tasty._
+  def traitMatchImpl[T: Type](t: Expr[T])(using Quotes): Expr[T] = {
+    import quotes.reflect._
     val tm = new TastyMatchersContext
     import tm._
 
@@ -20,7 +20,7 @@ object TraitMatch {
       
       // case  '{ ($f: Foo) } =>
       //   println("getting")
-      //   println(f.unseal.showExtractors)
+      //   println(Term.of(f).showExtractors)
 
       // Select(Ident(_), "apply"), List(Seal(one), Seal(two))
       case '{ (${Unseal(Apply(Select(Ident(id), "apply"), List(one, two)))}: Foo) } => 

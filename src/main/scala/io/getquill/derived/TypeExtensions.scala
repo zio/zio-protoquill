@@ -9,8 +9,8 @@ import io.getquill.ast.Visibility.{ Hidden, Visible }
 import scala.deriving._
 import scala.quoted._
 
-class TypeExtensions(using qctx: QuoteContext) { self =>
-  import qctx.tasty.{Type => QType, _}
+class TypeExtensions(using qctx: Quotes) { self =>
+  import qctx.reflect._
   
   implicit class TypeExt(tpe: Type[_]) {
     def constValue = self.constValue(tpe)
@@ -18,10 +18,11 @@ class TypeExtensions(using qctx: QuoteContext) { self =>
   }
 
   def constValue(tpe: Type[_]): String =
-    tpe.unseal.tpe match {
-      case ConstantType(Constant(value)) => value.toString
+    TypeRepr.of(using tpe) match {
+      case ConstantType(Constant.Int(value)) => value.toString
+      case ConstantType(Constant.String(value)) => value.toString
       // Macro error
     }
   def isProduct(tpe: Type[_]): Boolean =
-    tpe.unseal.tpe <:< '[Product].unseal.tpe
+    TypeRepr.of(using tpe) <:< TypeRepr.of[Product]
 }

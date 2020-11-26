@@ -1,14 +1,14 @@
-package derivation.eqm
+// package derivation.eqm
 
-import Eq._
-import EqMacro.{_}
+// import Eq._
+// import EqMacro.{_}
 
-@main def testEqm() = {
-  case class Foo(value: String)
-  case class Inner(blah: String)
-  case class Outer(i: Int, inner: Inner)
+// @main def testEqm() = {
+//   case class Foo(value: String)
+//   case class Inner(blah: String)
+//   case class Outer(i: Int, inner: Inner)
 
-  println( Foo("one") === Foo("one") )
-  println( Outer(1, Inner("blah")) === Outer(1, Inner("blah")) )
-  println("one" == "one")
-}
+//   println( Foo("one") === Foo("one") )
+//   println( Outer(1, Inner("blah")) === Outer(1, Inner("blah")) )
+//   println("one" == "one")
+// }

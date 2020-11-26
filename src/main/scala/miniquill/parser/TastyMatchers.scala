@@ -3,11 +3,11 @@ package miniquill.parser
 import scala.quoted._
 import scala.quoted.Varargs
 
-class TastyMatchersContext(using val qctx: QuoteContext) extends TastyMatchers
+class TastyMatchersContext(using val qctx: Quotes) extends TastyMatchers
 
 trait TastyMatchers {
-  implicit val qctx: QuoteContext
-  import qctx.tasty.{Type => TType, _}
+  implicit val qctx: Quotes
+  import qctx.reflect._
 
   def printExpr(expr: Expr[_], label: String = "") = {
     if (label != "")
@@ -17,20 +17,20 @@ trait TastyMatchers {
     println(expr.show)
 
     println("================= Matchers =================")
-    println(Untype(expr.unseal).showExtractors)
+    println(Untype(Term.of(expr)).showExtractors)
 
     println("================= Pretty Tree =================")
-    println(pprint.apply(Untype(expr.unseal)))
+    println(pprint.apply(Untype(Term.of(expr))))
   }
 
   implicit class ExprOps[T: Type](expr: Expr[T]) {
-    def reseal: Expr[T] = expr.unseal.underlyingArgument.seal.cast[T]
+    def reseal: Expr[T] = Term.of(expr).underlyingArgument.asExprOf[T]
   }
 
   object SelectApply1 {
     def unapply(term: Expr[_]): Option[(Expr[_], String, Expr[_])] = term match {
-      case Unseal(Apply(Select(body, method), List(arg))) => Some((body.seal, method, arg.seal))
-      case Unseal(Apply(TypeApply(Select(body, method), _), List(arg))) => Some((body.seal, method, arg.seal))
+      case Unseal(Apply(Select(body, method), List(arg))) => Some((body.asExpr, method, arg.asExpr))
+      case Unseal(Apply(TypeApply(Select(body, method), _), List(arg))) => Some((body.asExpr, method, arg.asExpr))
       case _ => None
     }
   }
@@ -44,11 +44,11 @@ trait TastyMatchers {
         case '{ List(${Varargs(props)}) } => Some(props.toList)
         case '{ Nil } => Some(List())
         case '{ Seq(${Varargs(props)}) } => Some(props.toList)
-        case Unseal(Untype(Repeated(props, _))) => Some(props.map(_.seal))
+        case Unseal(Untype(Repeated(props, _))) => Some(props.map(_.asExpr))
         case other =>
           //println("Could not parse sequence expression:")
-          //printer.lnf(term.unseal)
-          report.throwError("Could not parse sequence expression:\n" + printer.str(term.unseal))
+          //printer.lnf(Term.of(term))
+          report.throwError("Could not parse sequence expression:\n" + printer.str(Term.of(term)))
       }
     }
   }
@@ -60,9 +60,9 @@ trait TastyMatchers {
   // The unapply allows it to be done inside of a matcher.
   object UntypeExpr {
     def unapply(expr: Expr[_]): Option[Expr[_]] = 
-      Untype.unapply(expr.unseal).map(_.seal)
+      Untype.unapply(Term.of(expr)).map(_.asExpr)
 
-    def apply(expr: Expr[_]): Expr[_] = Untype.unapply(expr.unseal).map(_.seal).get
+    def apply(expr: Expr[_]): Expr[_] = Untype.unapply(Term.of(expr)).map(_.asExpr).get
   }
 
   // Always match (whether ast starts with Typed or not). If it does, strip the Typed node.
@@ -89,7 +89,7 @@ trait TastyMatchers {
 
   object TypedMatroshka {
     def unapply(term: Expr[Any]): Option[Expr[Any]] = 
-      TypedMatroshkaTerm.unapply(term.unseal).map(_.seal)
+      TypedMatroshkaTerm.unapply(Term.of(term)).map(_.asExpr)
   }
 
   object SelectExpr {
@@ -108,14 +108,14 @@ trait TastyMatchers {
 
   object SelectExprOpt {
     def unapply(term: Expr[_]): Option[(Expr[Option[_]], String)] = term match {
-      case Unseal(Select(prefix, memberName)) => Some((prefix.seal.cast[Option[Any]], memberName))
+      case Unseal(Select(prefix, memberName)) => Some((prefix.asExprOf[Option[Any]], memberName))
       case _ => None
     }
   }
 
   object Lambda1 {
     def unapply(expr: Expr[_]): Option[(String, quoted.Expr[_])] =
-      unapplyTerm(expr.unseal).map((str, expr) => (str, expr.seal))
+      unapplyTerm(Term.of(expr)).map((str, expr) => (str, expr.asExpr))
 
     def unapplyTerm(term: Term): Option[(String, Term)] = Untype(term) match {
       case Lambda(List(ValDef(ident, _, _)), methodBody) => Some((ident, methodBody))
@@ -126,7 +126,7 @@ trait TastyMatchers {
 
   object Lambda2 {
     def unapply(expr: Expr[_]): Option[(String, String, quoted.Expr[_])] =
-      unapplyTerm(expr.unseal).map((str1, str2, expr) => (str1, str2, expr.seal))
+      unapplyTerm(Term.of(expr)).map((str1, str2, expr) => (str1, str2, expr.asExpr))
 
     def unapplyTerm(term: Term): Option[(String, String, Term)] = Untype(term) match {
       case Lambda(List(ValDef(ident1, _, _), ValDef(ident2, _, _)), methodBody) => Some((ident1, ident2, methodBody))
@@ -151,7 +151,7 @@ trait TastyMatchers {
 
   object LambdaN {
     def unapply(term: Expr[_]): Option[(List[String], quoted.Expr[_])] =
-      RawLambdaN.unapply(term.unseal).map((str, term) => (str, term.seal))
+      RawLambdaN.unapply(Term.of(term)).map((str, term) => (str, term.asExpr))
   }
 
   // object Lambda2 {
@@ -162,12 +162,12 @@ trait TastyMatchers {
   // }
 
   object Unseal {
-    def unapply(t: Expr[Any]): Option[Term] = Some(t.unseal)
+    def unapply(t: Expr[Any]): Option[Term] = Some(Term.of(t))
   }
   object Seal {
     def unapply[T](e: Term) = {
-      implicit val ttpe: quoted.Type[T] = e.tpe.seal.asInstanceOf[quoted.Type[T]]
-      Some(e.seal.cast[T])
+      implicit val ttpe: quoted.Type[T] = e.tpe.asType.asInstanceOf[quoted.Type[T]]
+      Some(e.asExprOf[T])
     }
   }
 

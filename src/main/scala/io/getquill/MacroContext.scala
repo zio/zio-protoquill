@@ -25,8 +25,8 @@ object MacroContext {
   // def runQueryImpl[T, D <: Idiom, N <: NamingStrategy, Result](
   //   quoted: Expr[Quoted[Query[T]]],
   //   ctx: Expr[Context[D, N]]
-  // )(using qctx: QuoteContext): Expr[Result] = {
-  //   import qctx.tasty._
+  // )(using Quotes): Expr[Result] = {
+  //   import quotes.reflect._
 
   //   val (ast, lifts) =
   //     quoted match {

@@ -4,16 +4,16 @@ import scala.quoted._
 
 object MyParser {
   inline def myOperationParser(inline any: Any): Unit = ${ myOperationParserImpl('any) }
-  def myOperationParserImpl(anyRaw: Expr[Any])(using qctx: QuoteContext): Expr[Unit] = {
-    import qctx.tasty._
+  def myOperationParserImpl(anyRaw: Expr[Any])(using Quotes): Expr[Unit] = {
+    import quotes.reflect._
     val tm = new TastyMatchersContext
     import tm._
 
     object Unseal {
-      def unapply(any: Expr[Any]): Option[Term] = Some(any.unseal)
+      def unapply(any: Expr[Any]): Option[Term] = Some(Term.of(any))
     }
     object Seal {
-      def unapply(any: Term): Option[Expr[Any]] = Some(any.seal)
+      def unapply(any: Term): Option[Expr[Any]] = Some(any.asExpr)
     }
 
     // Extractor:
@@ -21,10 +21,10 @@ object MyParser {
     // Comes Out: 
 
     /*Goes In Expr[Any]*/ 
-    val any = anyRaw.unseal.underlyingArgument.seal
+    val any = Term.of(anyRaw).underlyingArgument.asExpr
 
     def isLongOrInt(term: Term) = {
-      term.tpe.widen <:< '[Int].unseal.tpe || term.tpe.widen <:< '[Long].unseal.tpe
+      term.tpe.widen <:< TypeRepr.of[Int] || term.tpe.widen <:< TypeRepr.of[Long]
     }
 
 
@@ -42,12 +42,12 @@ object MyParser {
         case Unseal(Apply(Select(left /*Term*/, "=="), right :: Nil)) =>
           println(s"Left Is: ${left}, Right Is: ${right}")
           println(s"Type of Left Is: ${left.tpe.widen}")
-          if (left.tpe.widen <:< '[Int].unseal.tpe)
+          if (left.tpe.widen <:< TypeRepr.of[Int])
             println("YAY We matched")
           else
             println("Nope, we did not match")
         case _ =>
-          println("Nope, did not match: " + any.unseal.showExtractors)
+          println("Nope, did not match: " + Term.of(any).showExtractors)
       }
 
     

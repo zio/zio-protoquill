@@ -12,8 +12,8 @@ object InlineCaseClassAst {
   case class Baz(compileId: String = "started") extends Ast
 
   inline def inspect(ast: => Ast) = ${ inspectImpl('ast) }
-  def inspectImpl(using qctx: QuoteContext)(ast: Expr[Ast]): Expr[Ast] = {
-    import qctx.tasty.{Type => _, _}
+  def inspectImpl(using Quotes)(ast: Expr[Ast]): Expr[Ast] = {
+    import quotes.reflect._
     counter += 1
 
     def compileVal = s"compile-${counter}"
@@ -30,7 +30,7 @@ object InlineCaseClassAst {
     //   case '{ Foo(${c}, _) } => Foo(unlift(c), compileVal)
     //   case '{ Bar(${c}, _) } => Bar(unlift(c), compileVal)
     //   case '{ Baz(_) } => Baz(compileVal)
-    //   case _ => Baz("something else: " + ast.unseal.showExtractors)
+    //   case _ => Baz("something else: " + Term.of(ast).showExtractors)
     // }
 
     // def lift(ast: Ast): Expr[Ast] = ast match {
@@ -40,8 +40,8 @@ object InlineCaseClassAst {
     // }
 
     // def parse(ast: Expr[Ast]): Ast = {
-    //   ast.unseal.underlyingArgument match {
-    //     case Inlined(_, _, v) => parse(v.seal.cast[Ast])
+    //   Term.of(ast).underlyingArgument match {
+    //     case Inlined(_, _, v) => parse(v.asExprOf[Ast])
     //   }
     // }
 

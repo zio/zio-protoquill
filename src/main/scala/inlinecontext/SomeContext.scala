@@ -19,18 +19,11 @@ class MyContext[T] extends MyContextTrait[T] {
 }
 
 object MyContext {
-  //type Contextable[T] = (using qctx: QuoteContext, t: Type[T]) => Expr[String]
+  //type Contextable[T] = (using Quotes, t: Type[T]) => Expr[String]
   //def summonAndReturnImpl[T](mc: Expr[MyContextTrait[T]]): Contextable[T] = {
 
-  def summonAndReturnImpl[T](mc: Expr[MyContextTrait[T]])(using qctx: QuoteContext, t: Type[T]): Expr[String] = {
-    val qctx = summon[QuoteContext]
-    val t = summon[Type[T]]
-    import qctx.tasty._
-    val stuff = Expr.summon[Stuff[T]] match {
-      case Some(value) => value
-    }
-    '{
-      $stuff.doStuff + "-" + $mc.someLocalMethod
-    }
+  def summonAndReturnImpl[T](mc: Expr[MyContextTrait[T]])(using Quotes, Type[T]): Expr[String] = {
+    val stuff = Expr.summon[Stuff[T]].get
+    '{ $stuff.doStuff + "-" + $mc.someLocalMethod }
   }
 }

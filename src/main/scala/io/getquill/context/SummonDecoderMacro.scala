@@ -18,7 +18,7 @@ import miniquill.dsl.GenericDecoder
 import miniquill.quoter.ScalarPlanter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
-import scala.quoted.{Type => TType, _}
+import scala.quoted._
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
 import miniquill.quoter.QuotationLot
@@ -33,11 +33,11 @@ object SummonDecoderMacro {
   import scala.quoted._ // Expr.summon is actually from here
   import miniquill.quoter.ScalarPlanter
 
-  def apply[T: Type, ResultRow: Type](using qctx: QuoteContext): Expr[GenericDecoder[ResultRow, T]] = {
-    import qctx.tasty.{Type => TType, _}
-    Expr.summon(using '[GenericDecoder[ResultRow, T]]) match {
+  def apply[T: Type, ResultRow: Type](using Quotes): Expr[GenericDecoder[ResultRow, T]] = {
+    import quotes.reflect._
+    Expr.summon[GenericDecoder[ResultRow, T]] match {
       case Some(decoder) => decoder
-      case None => report.throwError(s"Cannot Find decoder for ${summon[Type[T]].show}")
+      case None => report.throwError(s"Cannot Find decoder for ${Type.show[T]}")
     }
   }  
 }

@@ -58,5 +58,6 @@ object Eq {
 
 object AutomaticEq {
   inline implicit def autoEq[T]: Eq[T] = Eq.derived
-  inline def [T](a: T) === (b: T) = autoEq[T].eqv(a, b)
+  extension [T](a: T):
+    inline def ===(b: T) = autoEq[T].eqv(a, b)
 }

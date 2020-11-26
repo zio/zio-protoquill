@@ -30,14 +30,14 @@ object LiftMacro {
   import miniquill.quoter.ScalarPlanter
   import miniquill.dsl.GenericEncoder
 
-  def apply[T, PrepareRow](vvv: Expr[T])(using qctx: QuoteContext, tType: Type[T], prepareRowType: Type[PrepareRow]): Expr[T] = {
-    import qctx.tasty._
+  def apply[T, PrepareRow](vvv: Expr[T])(using Quotes, Type[T], Type[PrepareRow]): Expr[T] = {
+    import quotes.reflect._
     val uuid = java.util.UUID.randomUUID().toString
     val encoder = 
-      Expr.summon(using '[GenericEncoder[$tType, $prepareRowType]]) match {
+      Expr.summon[GenericEncoder[T, PrepareRow]] match {
         case Some(enc) => enc
-        case None => report.throwError(s"Cannot Find encode for ${tType.unseal}", vvv)
+        case None => report.throwError(s"Cannot Find encode for ${TypeRepr.of[T]}", vvv)
       }
-    '{ ScalarPlanter($vvv, $encoder, ${Expr(uuid)}).unquote } //[$tType, $prepareRowType] // adding these causes assertion failed: unresolved symbols: value Context_this
+    '{ ScalarPlanter($vvv, $encoder, ${Expr(uuid)}).unquote } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 }

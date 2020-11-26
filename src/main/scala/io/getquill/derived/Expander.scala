@@ -87,33 +87,52 @@ object Expander {
     }
   }
 
-  def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(using qctx: QuoteContext): List[Term] = {
-    import qctx.tasty.{Type => QType, Term => QTerm, _}
+  class TypeExtensions(using Quotes) { self =>
+    import quotes.reflect._
+    
+    implicit class TypeExt(tpe: Type[_]) {
+      def constValue = self.constValue(tpe)
+      def isProduct = self.isProduct(tpe)
+    }
+
+    def constValue(tpe: Type[_]): String =
+      TypeRepr.of(using tpe) match {
+        case ConstantType(Constant.Int(value)) => value.toString
+        case ConstantType(Constant.String(value)) => value.toString
+        // Macro error
+      }
+    def isProduct(tpe: Type[_]): Boolean =
+      TypeRepr.of(using tpe) <:< TypeRepr.of[Product]
+  }
+
+  def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(using Quotes): List[Term] = {
+    import quotes.reflect.{Term => QTerm, _}
     val ext = new TypeExtensions
     import ext._
 
-    def constValue[T](tpe: Type[T]): String =
-      tpe.unseal.tpe match {
-        case ConstantType(Constant(value)) => value.toString
+    def constValue[T: Type]: String =
+      TypeRepr.of[T] match {
+        case ConstantType(Constant.Int(value)) => value.toString
+        case ConstantType(Constant.String(value)) => value.toString
         // Macro error
       }
 
     (fieldsTup, typesTup) match {
-      case ('[$field *: $fields], '[Option[$tpe] *: $types]) if (tpe.isProduct) =>
-        val childTerm = Term(field.constValue, Branch, optional = true)
-        base(childTerm)(using tpe) :: flatten(node, fields, types)
+      case ('[field *: fields], '[Option[tpe] *: types]) if Type.of[tpe].isProduct =>
+        val childTerm = Term(Type.of[field].constValue, Branch, optional = true)
+        base[tpe](childTerm) :: flatten(node, Type.of[fields], Type.of[types])
 
-      case ('[$field *: $fields], '[Option[$tpe] *: $types]) if (!tpe.isProduct) =>
-        val childTerm = Term(field.constValue, Leaf, optional = true)
-        childTerm :: flatten(node, fields, types)
+      case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct =>
+        val childTerm = Term(Type.of[field].constValue, Branch)
+        base[tpe](childTerm) :: flatten(node, Type.of[fields], Type.of[types])
 
-      case ('[$field *: $fields], '[$tpe *: $types]) if (tpe.isProduct) =>
-        val childTerm = Term(field.constValue, Branch)
-        base(childTerm)(using tpe) :: flatten(node, fields, types)
+      case ('[field *: fields], '[Option[tpe] *: types]) =>
+        val childTerm = Term(Type.of[field].constValue, Leaf, optional = true)
+        childTerm :: flatten(node, Type.of[fields], Type.of[types])
 
-      case ('[$field *: $fields], '[$tpe *: $types]) if (!tpe.isProduct) =>
-        val childTerm = Term(field.constValue, Leaf)
-        childTerm :: flatten(node, fields, types)
+      case ('[field *: fields], '[tpe *: types]) =>
+        val childTerm = Term(Type.of[field].constValue, Leaf)
+        childTerm :: flatten(node, Type.of[fields], Type.of[types])
 
       case (_, '[EmptyTuple]) => Nil
 
@@ -121,35 +140,35 @@ object Expander {
     } 
   }
 
-  def base[T](term: Term)(using tpe: Type[T])(using qctx: QuoteContext): Term = {
-    import qctx.tasty.{Type => QType, Term => QTerm, _}
+  def base[T: Type](term: Term)(using Quotes): Term = {
+    import quotes.reflect.{Term => QTerm, _}
 
     // if there is a decoder for the term, just return the term
-    Expr.summon(using '[Mirror.Of[$tpe]]) match {
+    Expr.summon[Mirror.Of[T]] match {
       case Some(ev) => {
         // Otherwise, recursively summon fields
         ev match {
-          case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = $elementLabels; type MirroredElemTypes = $elementTypes }} =>
-            val children = flatten(term, elementLabels, elementTypes)
+          case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+            val children = flatten(term, Type.of[elementLabels], Type.of[elementTypes])
             term.withChildren(children)
           case _ =>
-            Expr.summon(using '[GenericDecoder[_, T]]) match {
+            Expr.summon[GenericDecoder[_, T]] match {
               case Some(decoder) => term
               case _ => report.throwError("Cannot Find Decoder or Expand a Product of the Type:\n" + ev.show)
             }
         }
       }
       case None => 
-        Expr.summon(using '[GenericDecoder[_, T]]) match {
+        Expr.summon[GenericDecoder[_, T]] match {
           case Some(decoder) => term
-          case None => report.throwError(s"Cannot find derive or summon a decoder for ${tpe.show}")
+          case None => report.throwError(s"Cannot find derive or summon a decoder for ${Type.show[T]}")
         }
     }
   }
 
   import io.getquill.ast.{Map => AMap, _}
-  def static[T](ast: Ast)(using qctx: QuoteContext, tpe: Type[T]): AMap = {
-    val expanded = base[T](Term("x", Branch))(using tpe)
+  def static[T](ast: Ast)(using Quotes, Type[T]): AMap = {
+    val expanded = base[T](Term("x", Branch))
     val lifted = expanded.toAst
     //println("Expanded to: " + expanded)
     val insert =
@@ -163,13 +182,13 @@ object Expander {
 
   import miniquill.parser.Lifter
   // TODO Load from implicit context?
-  def lifterFactory: (QuoteContext) => PartialFunction[Ast, Expr[Ast]] =
-    (qctx: QuoteContext) => new Lifter(using qctx)  
+  def lifterFactory: (Quotes) => PartialFunction[Ast, Expr[Ast]] =
+    (qctx: Quotes) => new Lifter(using qctx)  
 
   inline def runtime[T](ast: Ast): AMap = ${ runtimeImpl[T]('ast) }
-  def runtimeImpl[T](ast: Expr[Ast])(using qctx: QuoteContext, tpe: Type[T]): Expr[AMap] = {
-    val expanded = base[T](Term("x", Branch))(using tpe)
-    val lifted = expanded.toAst.map(ast => lifterFactory(qctx).apply(ast))
+  def runtimeImpl[T](ast: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
+    val expanded = base[T](Term("x", Branch))
+    val lifted = expanded.toAst.map(ast => lifterFactory(quotes).apply(ast))
     val insert = 
       if (lifted.length == 1) 
         lifted.head 

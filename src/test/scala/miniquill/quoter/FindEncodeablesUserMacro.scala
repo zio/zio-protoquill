@@ -16,17 +16,17 @@
 // object FindEncodeablesUserMacro {
 //   // Note, existential typing here is better. Otherwise everything is forced to cast to Any and the encoder lookup does not work
 //   inline def apply[PrepareRow](inline encodeables: List[LazyPlanter[_]], inline prep: PrepareRow): List[(Any, PrepareRow)] = ${ applyImpl[PrepareRow]('encodeables, 'prep) }
-//   def applyImpl[PrepareRow](encodeables: Expr[List[LazyPlanter[_]]], prep: Expr[PrepareRow])(using qctx: QuoteContext, pType: Type[PrepareRow]): Expr[List[(Any, PrepareRow)]] = {
-//     import qctx.tasty._
+//   def applyImpl[PrepareRow](encodeables: Expr[List[LazyPlanter[_]]], prep: Expr[PrepareRow])(using qctx: Quotes, pType: Type[PrepareRow]): Expr[List[(Any, PrepareRow)]] = {
+//     import quotes.reflect._
 
 //     object InlinePlanter {
 //       def unapply(expr: Expr[LazyPlanter[_]]): Option[ScalarPlanterExpr[_, PrepareRow]] = expr match {
 //         case vvv @ '{ LazyPlanter[$tt](${Const(uid: String)}, $value) } =>
 //           val planterType = tt
 //           val encoder = 
-//             Expr.summon(using '[GenericEncoder[$tt, $pType]]) match {
+//             Expr.summon[GenericEncoder[tt, pType]] match {
 //               case Some(enc) => Option(ScalarPlanterExpr(uid, value, enc)(planterType, pType))
-//               case None => report.throwError(s"Cannot Find encode for ${tt.unseal}", vvv)
+//               case None => report.throwError(s"Cannot Find encode for ${Term.of(tt)}", vvv)
 //               // TODO return summoning error if not correct
 //             }
 //           encoder
