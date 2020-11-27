@@ -178,7 +178,7 @@ object StaticTranslationMacro {
       } yield {
         println(
           "Compile Time Query Is: " + 
-            (if (System.getProperty("quill.macro.log.pretty", "true") == "true") idiom.format(queryString)
+            (if (System.getProperty("quill.macro.log.pretty", "false") == "true") idiom.format(queryString)
             else queryString)
         )
 

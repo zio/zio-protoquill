@@ -10,8 +10,22 @@ object MyParserUse {
     inline def fun = (a: Int, b: String) => a.toString + b
     inline def pass(tup: (Int, String) => String): String = tup(1, "blah")
 
-    println(pass(fun))
+    class Space {
+      class InnerSpace {
+        def hello = Mac.passThrough("hello")
+      }
+      def world = Mac.passThrough(new InnerSpace().hello + " world")
+    }
+    def today = Mac.passThrough(new Space().world + " today")
+    PrintMac(today)
+    println(today)
 
-    PrintMac(pass(fun))
+    //Mac.enter(today)
+
+    // inline def suffix = " world"
+    // inline def suffix2 = " today!"
+    // inline def combo = greeting + suffix + suffix2
+    // Mac.enter(combo)
+
   }
 }

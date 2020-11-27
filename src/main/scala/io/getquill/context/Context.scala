@@ -109,7 +109,7 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
       val extractor = (r: ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[ResultRow, RawT]].apply(1, r))
       val prepare = (row: PrepareRow) => staticExtractor(lifts, row)
   
-      println("==================<<<<<<<<<<< GOT TO HERE >>>>>>>>>>>>>>>>================")
+      //println("==================<<<<<<<<<<< GOT TO HERE >>>>>>>>>>>>>>>>================")
       this.executeQuery(queryString, prepare, extractor, ExecutionType.Static)
     }
 

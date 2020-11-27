@@ -51,13 +51,11 @@ object InlineMacroTest5_TypelevelAdvRow {
       or <- path[Stock, Series](p)
     } yield (p, or)
   }
-  println( run(q1) )
+  println( run(q1))
 
 
 
 
-  def main(args: Array[String]): Unit = { //hellooooooooo
-
-
+  def main(args: Array[String]): Unit = { //helloooooooooooooooooooooooooooooooo
   }
 }
