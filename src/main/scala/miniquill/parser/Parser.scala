@@ -96,6 +96,7 @@ trait ParserLibrary extends ParserFactory {
   def operationsParser(using qctx: QuoteContext) =         Series.single(new OperationsParser)
   def genericExpressionsParser(using qctx: QuoteContext) = Series.single(new GenericExpressionsParser)
   def actionParser(using qctx: QuoteContext)             = Series.single(new ActionParser)
+  def optionParser(using qctx: QuoteContext)             = Series.single(new OptionParser)
 
   // def userDefined(using qctxInput: QuoteContext) = Series(new Glosser[Ast] {
   //   val qctx = qctxInput
@@ -105,6 +106,7 @@ trait ParserLibrary extends ParserFactory {
   def apply(using qctx: QuoteContext): Parser[Ast] = {
     quotationParser
         .combine(queryParser)
+        .combine(optionParser)
         .combine(actionParser)
         .combine(functionParser) // decided to have it be it's own parser unlike Quill3
         .combine(patMatchParser)
@@ -212,7 +214,8 @@ trait PatMatchDefExt(implicit val qctx:QuoteContext) extends TastyMatchers {
   object ValDefTerm {
     def unapply(tree: Tree): Option[Ast] =
       tree match {
-        case TValDef(name, Inferred(), Some(PatMatchTerm(ast))) =>
+        case TValDef(name, Inferred(), Some(t @ PatMatchTerm(ast))) =>
+          println(s"====== Parsing Val Def ${name} = ${t.show}")
           Some(Val(Idnt(name), ast))
 
         // In case a user does a 'def' instead of a 'val' with no paras and no types then treat it as a val def
@@ -224,6 +227,7 @@ trait PatMatchDefExt(implicit val qctx:QuoteContext) extends TastyMatchers {
         // query[Person].map(p => (p.name, p.age)).filter(x$1 => { val name=x$1._1; val age=x$1._2; name == "Joe" })
         // and you need to resolve the val defs thare are created automatically
         case DefDef(name, _, paramss, _, rhsOpt) if (paramss.length == 0) =>
+          println(s"====== Parsing Def Def ${name} = ${rhsOpt.map(_.show)}")
           val body =
             rhsOpt match {
               // TODO Better site-description in error
@@ -407,6 +411,23 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
 
+case class OptionParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
+  import qctx.tasty.{Constant => TConstant, Type => TType, _}
+  import Parser.Implicits._
+
+  // TODO Move out into TastyMatchers
+  def is[T](inputs: Expr[_]*)(implicit test: Type[T]): Boolean =
+    inputs.forall(input => input.unseal.tpe <:< test.unseal.tpe)
+
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case '{ ($o: Option[$t]).isEmpty } => OptionIsEmpty(astParse(o))
+    case '{ ($o: Option[$t]).map(${Lambda1(id, body)}) } if (is[Product](o)) => OptionTableMap(astParse(o), Idnt(id), astParse(body))
+    case '{ ($o: Option[$t]).map(${Lambda1(id, body)}) } => OptionMap(astParse(o), Idnt(id), astParse(body))
+  }
+}
+
 case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Constant => TConstant, _}
   import Parser.Implicits._
@@ -468,26 +489,39 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
       val b = astParse(body)
       Filter(a, Idnt(ident), b)
 
-    case '{ ($a: Query[$t]).union($b) } =>
-      Union(astParse(a), astParse(b))
+    // TODO Remove duplication once https://github.com/lampepfl/dotty/issues/10464 is fixed
+    case '{ ($a: Query[$t]).union($b) } => Union(astParse(a), astParse(b))
+    case '{ ($a: EntityQuery[$t]).union($b) } => Union(astParse(a), astParse(b))
 
-    case '{ ($a: EntityQuery[$t]).union($b) } =>
-      Union(astParse(a), astParse(b))
+    // TODO Remove duplication once https://github.com/lampepfl/dotty/issues/10464 is fixed
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).join[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).leftJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).rightJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).fullJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: Query[`$t1`]).join[`$t1`, `$t2`](($q2: Query[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: Query[`$t1`]).leftJoin[`$t1`, `$t2`](($q2: Query[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: Query[`$t1`]).rightJoin[`$t1`, `$t2`](($q2: Query[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: Query[`$t1`]).fullJoin[`$t1`, `$t2`](($q2: Query[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).join[`$t1`, `$t2`](($q2: Query[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).leftJoin[`$t1`, `$t2`](($q2: Query[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).rightJoin[`$t1`, `$t2`](($q2: Query[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).fullJoin[`$t1`, `$t2`](($q2: Query[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: Query[`$t1`]).join[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: Query[`$t1`]).leftJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: Query[`$t1`]).rightJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type $t1; type $t2; ($q1: Query[`$t1`]).fullJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
 
-    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).join[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } =>
-      Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).leftJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } =>
-      Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).rightJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } =>
-      Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type $t1; type $t2; ($q1: EntityQuery[`$t1`]).fullJoin[`$t1`, `$t2`](($q2: EntityQuery[`$t2`])).on(${Lambda2(ident1, ident2, on)}) } =>
-      Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-
-    case '{ type $t1; ($q1: EntityQuery[`$t1`]).join[`$t1`](${Lambda1(ident1, on)}) } =>
+    // TODO Remove duplication once https://github.com/lampepfl/dotty/issues/10464 is fixed
+    case '{ type $t1; ($q1: EntityQuery[`$t1`]).join[`$t1`](${Lambda1(ident1, on)}) } => 
       FlatJoin(InnerJoin, astParse(q1), Idnt(ident1), astParse(on))
-
-    case '{ type $t1; ($q1: Query[`$t1`]).join[`$t1`](${Lambda1(ident1, on)}) } =>
+    case '{ type $t1; ($q1: Query[`$t1`]).join[`$t1`](${Lambda1(ident1, on)}) } => 
       FlatJoin(InnerJoin, astParse(q1), Idnt(ident1), astParse(on))
+    case '{ type $t1; ($q1: EntityQuery[`$t1`]).leftJoin[`$t1`](${Lambda1(ident1, on)}) } => 
+      println(s"========= Parsing Lambda as: ${ident1} => ${on.show} (${astParse(on)}) =========")
+      FlatJoin(LeftJoin, astParse(q1), Idnt(ident1), astParse(on))
+    case '{ type $t1; ($q1: Query[`$t1`]).leftJoin[`$t1`](${Lambda1(ident1, on)}) } => 
+    println(s"========= Parsing Lambda as: ${ident1} => ${on.show} (${astParse(on)}) =========")
+      FlatJoin(LeftJoin, astParse(q1), Idnt(ident1), astParse(on))
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -510,7 +544,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
 // }
 
 case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
-  import qctx.tasty.{Type => TType, _}
+  import qctx.tasty.{Type => TType, Ident => TIdent, _}
   import QueryDsl._
   import io.getquill.ast.Infix
 
@@ -550,14 +584,37 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   def is[T](inputs: Expr[_]*)(implicit test: Type[T]): Boolean =
     inputs.forall(input => input.unseal.tpe <:< test.unseal.tpe)
 
+  // TODO Is there any way to check if Numeric[T] exists if you don't know the type T
+  // but know the type of the term?
+  // def isNumeric(expr: Expr[Any]) = {
+  //   val tpe = expr.unseal.tpe.seal
+  //   Expr.summon(using tpe) match {
+  //     case Some(_) => true
+  //     case _ => false
+  //   }
+  // }
+
   // Function[Expr, Ast]
   def del: PartialFunction[Expr[_], Ast] = {
 
     case '{ ($str:String).like($other) } => Infix(List(""," like ",""), List(astParse(str), astParse(other)), true)
 
       // TODO Need to check if entity is a string
-    case NamedOp1(left, "==", right) =>
-      BinaryOperation(astParse(left), EqualityOperator.==, astParse(right))
+    case expr @ NamedOp1(left, "==", right) =>
+      val leftAst = astParse(left)
+      // left match {
+      //   case Unseal(Select(rid @ TIdent(v), prop)) => 
+      //   println(s"******* MATCHES ${v} *******")
+      //   println(s"Symbol: ${rid.symbol.name}")  
+      //   case _ => 
+      //     println("********* DOES NOT MATCH *******")
+      //     println(left.unseal.showExtractors)
+      // }
+
+      val rightAst = astParse(right)
+      val res = BinaryOperation(leftAst, EqualityOperator.==, rightAst)
+      //println(s"=========== Parsing Equality: ${expr.show} as ${res} ==== WHICH IS: ${leftAst} / ${rightAst} =========")
+      res
 
     case NamedOp1(left, "||", right) =>
       BinaryOperation(astParse(left), BooleanOperator.||, astParse(right))
@@ -592,11 +649,13 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   object NumericOpLabel {
     def unapply(str: String): Option[BinaryOperator] = 
       str match {
-        case "+" => Some(NumericOperator.+)
+        case "+" => Some(NumericOperator.`+`)
         case "-" => Some(NumericOperator.-)
         case "*" => Some(NumericOperator.*)
         case "/" => Some(NumericOperator./)
         case "%" => Some(NumericOperator.%)
+        case ">" => Some(NumericOperator.`>`)
+        case "<" => Some(NumericOperator.`<`)
         case _ => None
       }
   }
@@ -638,11 +697,14 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(implicit q
       if ((value.tpe <:< '[io.getquill.Embedded].unseal.tpe)) { 
         Property.Opinionated(astParse(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
       } else {
+        //println(s"========= Parsing Property ${prefix.show}.${member} =========")
         Property(astParse(prefix), member)
       }
 
-    case Unseal(TreeIdent(x)) => 
-      Idnt(x)
+    case id @ Unseal(i @ TreeIdent(x)) => 
+      val ret = Idnt(i.symbol.name) // TODO How to get decodedName?
+      //println(s"====== Parsing Ident ${id.show} as ${ret} ======")
+      ret
 
     // If at the end there's an inner tree that's typed, move inside and try to parse again
     case Unseal(Typed(innerTree, _)) =>

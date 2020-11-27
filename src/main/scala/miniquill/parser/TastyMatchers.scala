@@ -170,7 +170,7 @@ trait TastyMatchers {
 
     object UntypeApply {
     private def recurse(term: Term): Term = {
-      println("============== Recursing UntypeApply =============")
+      //println("============== Recursing UntypeApply =============")
       term match {
         case TypeApply(content, args) => recurse(content)
         case other => other

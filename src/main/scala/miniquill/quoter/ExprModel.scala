@@ -104,9 +104,9 @@ object ScalarPlanterExpr {
             }
 
           import qctx.tasty._
-          println("****************** GOT HERE **************")
-          println(s"Scalar values: ${scalarValues.mkString("(", ",", ")")}")
-          println(s"Elems: ${elems.map(_.show).mkString("(", ",", ")")}")
+          //println("****************** GOT HERE **************")
+          //println(s"Scalar values: ${scalarValues.mkString("(", ",", ")")}")
+          //println(s"Elems: ${elems.map(_.show).mkString("(", ",", ")")}")
 
           // if all the elements match SingleValueVase then return them, otherwise don't
           if (scalarValues.length == elems.length) Some(scalarValues.toList)

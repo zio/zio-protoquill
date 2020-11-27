@@ -45,14 +45,19 @@ object Expander {
           list.flatMap(elem => 
             toAst(elem, property(parent, name, tt)))
           
-        case Term(name, tt, list, true) =>
+        case Term(name, Leaf, list, true) =>
           val idV = Ident("v")
           for {
             elem <- list
             newAst <- toAst(elem, idV)
-          } yield Map(
-            property(parent, name, tt), idV, newAst
-          )
+          } yield OptionMap(property(parent, name, Leaf), idV, newAst)
+
+        case Term(name, Branch, list, true) =>
+          val idV = Ident("v")
+          for {
+            elem <- list
+            newAst <- toAst(elem, idV)
+          } yield OptionTableMap(property(parent, name, Branch), idV, newAst)
       }
 
     def toAst(node: Term): List[Ast] = {
@@ -115,13 +120,13 @@ object Expander {
         val childTerm = Term(field.constValue, Branch, optional = true)
         base(childTerm)(using tpe) :: flatten(node, fields, types)
 
-      case ('[$field *: $fields], '[$tpe *: $types]) if (tpe.isProduct) =>
-        val childTerm = Term(field.constValue, Branch)
-        base(childTerm)(using tpe) :: flatten(node, fields, types)
-
       case ('[$field *: $fields], '[Option[$tpe] *: $types]) if (!tpe.isProduct) =>
         val childTerm = Term(field.constValue, Leaf, optional = true)
         childTerm :: flatten(node, fields, types)
+
+      case ('[$field *: $fields], '[$tpe *: $types]) if (tpe.isProduct) =>
+        val childTerm = Term(field.constValue, Branch)
+        base(childTerm)(using tpe) :: flatten(node, fields, types)
 
       case ('[$field *: $fields], '[$tpe *: $types]) if (!tpe.isProduct) =>
         val childTerm = Term(field.constValue, Leaf)

@@ -72,14 +72,22 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case FullJoin => '{ FullJoin }
   }
 
+  implicit def liftOptionOperation: Lift[OptionOperation] = {
+    case OptionIsEmpty(a) => '{ OptionIsEmpty(${a.liftable}) }
+    case OptionMap(a, b, c) => '{ OptionMap(${a.liftable}, ${b.liftable}, ${c.liftable}) }
+    case OptionTableMap(a, b, c) => '{ OptionTableMap(${a.liftable}, ${b.liftable}, ${c.liftable}) }
+  }
+
   implicit def liftAst: Lift[Ast] = {
     val liftBaseActual = liftBase
     val liftPropertyActual = liftProperty
     val liftIdentActual = liftIdent
+    val liftOptionOperationActual = liftOptionOperation
     def liftActual: Lift[Ast] = {
       case liftPropertyActual(ast) => ast
       case liftIdentActual(ast) => ast
       case liftBaseActual(ast) => ast
+      case liftOptionOperationActual(ast) => ast
     }
     liftActual
   }
@@ -118,6 +126,8 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case NumericOperator.* => '{ NumericOperator.* }
     case NumericOperator./ => '{ NumericOperator./ }
     case NumericOperator.% => '{ NumericOperator.% }
+    case NumericOperator.> => '{ NumericOperator.> }
+    case NumericOperator.< => '{ NumericOperator.< }
     case StringOperator.+ => '{ StringOperator.+ }
     case _: ee.type => '{ EqualityOperator.== } // if you don't do it this way, complains about 'stable identifier error'
     case BooleanOperator.|| => '{ BooleanOperator.|| }

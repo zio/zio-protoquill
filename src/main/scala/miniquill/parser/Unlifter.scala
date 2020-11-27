@@ -74,6 +74,12 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
     def unliftExpr: T = u.apply(expr)
   }
 
+  implicit def unliftOptionOperation: Unlift[OptionOperation] = {
+    case '{ OptionIsEmpty.apply($a) } => OptionIsEmpty(a.unliftExpr)
+    case '{ OptionMap.apply($a, $b, $c) } => OptionMap(a.unliftExpr, b.unliftExpr, c.unliftExpr)
+    case '{ OptionTableMap.apply($a, $b, $c) } => OptionTableMap(a.unliftExpr, b.unliftExpr, c.unliftExpr)
+  }
+
   def unliftBase: Unlift[Ast] = {
     // TODO have a typeclass like Splicer to translate constant to strings
     case '{ Constant(${Const(b)}: Double) } => Constant(b)
@@ -108,6 +114,8 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
     case '{ NumericOperator.* } =>  NumericOperator.*
     case '{ NumericOperator./ } =>  NumericOperator./
     case '{ NumericOperator.% } =>  NumericOperator.%
+    case '{ NumericOperator.> } =>  NumericOperator.>
+    case '{ NumericOperator.< } =>  NumericOperator.<
     case '{ StringOperator.+ } =>  StringOperator.+
     case '{ EqualityOperator.== } =>  EqualityOperator.==
     case '{ BooleanOperator.|| } =>  BooleanOperator.||
@@ -121,11 +129,13 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
     val unliftPropertyActual = unliftProperty
     val unliftIdentActual = unliftIdent
     val unliftRenableableActual = unliftRenameable
+    val unliftOptionOperationActual = unliftOptionOperation
     
     def unliftActual: Unlift[Ast] = {
       case unliftPropertyActual(ast) => ast
       case unliftIdentActual(ast) => ast
       case unliftBaseActual(ast) => ast
+      case unliftOptionOperationActual(ast) => ast
       case other =>
         report.throwError("========= Cannot Unlift: =========\n" + io.getquill.Format(other.show))
     }

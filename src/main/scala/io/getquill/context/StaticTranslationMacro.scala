@@ -95,6 +95,7 @@ object StaticTranslationMacro {
     val unliftedAst = new Unlifter(using qctx).apply(astExpr)
     if (noRuntimeQuotations(unliftedAst)) {
       val expandedAst = Expander.static[T](unliftedAst) 
+      println("Expanded Ast Is: " + expandedAst)
       val (ast, stmt) = idiom.translate(expandedAst)(using naming)
       val output =
         ReifyStatement(
