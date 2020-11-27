@@ -1,38 +1,36 @@
 package miniquill.parser
 
 import scala.quoted._
-import io.getquill.ast.{Ident => Idnt}
+
+object Mac {
+  inline def enter(inline str: String): Unit = ${ enterImpl('str) }
+  def enterImpl(str: Expr[String])(using qctx: QuoteContext): Expr[Unit] = {
+    import qctx.tasty._
+    println(pprint(str.unseal.underlyingArgument))
+    '{ () }
+  }
+
+  inline def passThrough(inline str: String): String = ${ passThroughImpl('str) }
+  def passThroughImpl(str: Expr[String])(using qctx: QuoteContext): Expr[String] = {
+    import qctx.tasty._
+    println(pprint(str.unseal))
+    str
+  }
+
+  
+}
 
 object MatchMac {
+    import miniquill.quoter.QueryDsl._
     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
-
     def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
-      class Operations(implicit val qctx: QuoteContext) extends TastyMatchers {
-        import qctx.tasty.{Type => TType, Ident => TIdent, Constant => TConstant, _}
-        val any = anyRaw.unseal.underlyingArgument.seal
-
-        UntypeExpr(any) match {
-          case Unseal(Block(parts, lastPart)) =>
-            parts(0)
-            
-            parts.map(p => println("==== Matched! Exprs: " + p.showExtractors + " ===="))
-
-            println(s"============= Matched! Expr: ${lastPart.showExtractors} =============")
-          case other =>
-            println(s"=============== Not Matched! =============")
-            println(other.unseal.showExtractors)
-
-            println("================= Pretty Tree =================")
-            println(pprint.apply(other.unseal))
-        }
+      anyRaw match {
+        case '{ ($str: String).like($other) } => println("Matched!")
+        case _ => println("Not Matched!")
       }
-          
-
-      new Operations
       '{ () }
     }
 }
-
 
 object PrintMac {
     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }

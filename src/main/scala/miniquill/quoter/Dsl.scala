@@ -24,6 +24,7 @@ import io.getquill.Query
 
 object Dsl extends Dsl[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
+
 trait Dsl[Parser <: ParserFactory] 
 extends QuoteDsl[Parser] 
 with QueryDsl[Parser] 
@@ -57,6 +58,12 @@ object QueryMetaMacro {
   //     ``
   //   }
   // }
+}
+
+object QueryDsl {
+  implicit class StringExt(str: String) {
+    def like(str: String) = ???
+  }
 }
 
 trait QueryDsl[Parser <: ParserFactory] {

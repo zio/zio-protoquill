@@ -13,8 +13,22 @@ object MyParserUse {
     // }
     MatchMac({val v = "hello"; val vv = "hello"; v + vv})
 
-    // val list = List(1,2,3)
-    // inline def fun = list.filter { case 1 => true } //hellooooooo
-    // PrintMac(fun)
+    class Space {
+      class InnerSpace {
+        def hello = Mac.passThrough("hello")
+      }
+      def world = Mac.passThrough(new InnerSpace().hello + " world")
+    }
+    def today = Mac.passThrough(new Space().world + " today")
+    PrintMac(today)
+    println(today)
+
+    //Mac.enter(today)
+
+    // inline def suffix = " world"
+    // inline def suffix2 = " today!"
+    // inline def combo = greeting + suffix + suffix2
+    // Mac.enter(combo)
+
   }
 }

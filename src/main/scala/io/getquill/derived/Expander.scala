@@ -119,11 +119,11 @@ object Expander {
         val childTerm = Term(field.constValue, Branch)
         base(childTerm)(using tpe) :: flatten(node, fields, types)
 
-      case ('[$field *: $fields], '[Option[$tpe] *: $types]) =>
+      case ('[$field *: $fields], '[Option[$tpe] *: $types]) if (!tpe.isProduct) =>
         val childTerm = Term(field.constValue, Leaf, optional = true)
         childTerm :: flatten(node, fields, types)
 
-      case ('[$field *: $fields], '[$tpe *: $types]) =>
+      case ('[$field *: $fields], '[$tpe *: $types]) if (!tpe.isProduct) =>
         val childTerm = Term(field.constValue, Leaf)
         childTerm :: flatten(node, fields, types)
 

@@ -49,6 +49,7 @@ object AdvTest {
       ListProc.index(list, 0) == column || oneOf(ListProc.tail(list), column)
   }
 
+
   def takeLambda(f: String => Int): Unit = ()
 
   def main(args: Array[String]): Unit = {
@@ -57,7 +58,8 @@ object AdvTest {
     import io.getquill._
     case class Address(street: String, zip: Int, fk:Int) extends Embedded //helloooo
     given Embedable[Address] //hello
-    case class Person(id: Int, name: String, age: Int, addr: Address, middleName: String, lastName: String)
+    //case class Person(id: Int, name: String, age: Int, addr: Address, middleName: String, lastName: String)
+    case class Person(name: String, age: Int)
 
     // PriceIncrement()
     // Strike(price: )
@@ -71,23 +73,48 @@ object AdvTest {
     // inline def lambdaExample = (p: String) => p.length
     // PrintMac(lambdaExample)
     // MatchLambdaMac(lambdaExample)
+
+    import miniquill.quoter.QueryDsl._
     
+    inline def joes(inline q: Query[Person], inline filter: Boolean) =
+      inline if (filter)
+        q.filter(p => p.name == "Joe")
+      else
+        q
 
-    inline def q = quote {
-      //query[Person].map(p => p.age / 4)
-      //query[Person].insert(p => p.name -> "Joe")
-      //query[Person].join(query[Address]).on((p,a) => p.id == a.fk)
-
-      for {
-        p <- query[Person]
-        a <- query[Address].join(a => a.fk == p.id)
-      } yield (p, a)
-    }
-
+    // TODO If we don't include this, 'run' just returns nothing, it should return an error
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
+
+    inline def liftOrAny(inline field: String, inline filter: Option[String]) =
+      field.like(lift(filter.getOrElse("%")))
+
+    val runtimeValue = Some("Joe")
+    inline def q = quote {
+      query[Person].filter(p => liftOrAny(p.name, runtimeValue))
+    }
+
+    println( run(q) )
+
+    // {
+    // inline def q = quote {
+    //   //query[Person].map(p => p.age / 4)
+    //   //query[Person].insert(p => p.name -> "Joe")
+    //   //query[Person].join(query[Address]).on((p,a) => p.id == a.fk)
+
+    //   for {
+    //     p <- query[Person]
+    //     a <- query[Address].join(a => a.fk == p.id)
+    //   } yield (p, a)
+    // }
+
+    // val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    // import ctx._
+
     
-    val output = run(q)
-    println(output)
+    
+    // val output = run(q)
+    // println(output)
+    // }
   }
 }

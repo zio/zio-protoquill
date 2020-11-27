@@ -1,4 +1,3 @@
-
 package miniquill.parser
 
 import io.getquill.ast.{Ident => Idnt, Query => Qry, _}
@@ -452,6 +451,15 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
     case '{ ($q:Query[$qt]).filter(${Lambda1(ident, body)}) } => 
       Filter(astParse(q), Idnt(ident), astParse(body))
 
+    case '{ ($q:EntityQuery[$qt]).filter(${Lambda1(ident, body)}) } => 
+      Filter(astParse(q), Idnt(ident), astParse(body))
+
+    case '{ ($q:Query[$qt]).withFilter(${Lambda1(ident, body)}) } => 
+      Filter(astParse(q), Idnt(ident), astParse(body))
+
+    case '{ ($q:EntityQuery[$qt]).withFilter(${Lambda1(ident, body)}) } => 
+      Filter(astParse(q), Idnt(ident), astParse(body))
+
     // case Fun(Query(q), "filter", Lambda1(ident, body))
 
     // Need to have map cases for both Query and EntityQuery since these matches are invariant
@@ -503,6 +511,8 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
 
 case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: QuoteContext) extends Parser.Clause[Ast] {
   import qctx.tasty.{Type => TType, _}
+  import QueryDsl._
+  import io.getquill.ast.Infix
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -542,6 +552,9 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
   // Function[Expr, Ast]
   def del: PartialFunction[Expr[_], Ast] = {
+
+    case '{ ($str:String).like($other) } => Infix(List(""," like ",""), List(astParse(str), astParse(other)), true)
+
       // TODO Need to check if entity is a string
     case NamedOp1(left, "==", right) =>
       BinaryOperation(astParse(left), EqualityOperator.==, astParse(right))
