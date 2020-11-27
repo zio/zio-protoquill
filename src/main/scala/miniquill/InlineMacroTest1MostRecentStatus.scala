@@ -62,20 +62,20 @@ object InlineMacroTest1MostRecentStatus {
     // Should add this to tests since it tested ident parser .name property
     // (i.e. since we passed 'n' to it it Ident(value) => value returned 'n' nead of b)
     // which we had to get by doing id @ Ident and then id.symbol.name
-inline def latestStatus[T, G](
-  inline q: Query[T])( 
-  inline groupKey: T => G, 
-  inline earlierThan: (T, T) => Boolean
-) =
-  (for {
-    a <- q
-    b <- q.leftJoin(b => 
-      groupKey(b) == groupKey(a) &&
-      earlierThan(b, a)
-    )
-  } yield (a, b))
-  .filter((a, b) => b.map(b => groupKey(b)).isEmpty)
-  .map((a, b) => a)
+    inline def latestStatus[T, G](
+      inline q: Query[T])( 
+      inline groupKey: T => G, 
+      inline earlierThan: (T, T) => Boolean
+    ) =
+      (for {
+        a <- q
+        b <- q.leftJoin(b => 
+          groupKey(b) == groupKey(a) &&
+          earlierThan(b, a)
+        )
+      } yield (a, b))
+      .filter((a, b) => b.map(b => groupKey(b)).isEmpty)
+      .map((a, b) => a)
 
     inline def nodesLatest = quote {
       latestStatus(query[Node])(
@@ -102,4 +102,4 @@ inline def latestStatus[T, G](
     // println( run(workers).string )
   }
 }
-// helloooooooooooooooo
+// hellooooooooooooooooooo
