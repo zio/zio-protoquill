@@ -227,7 +227,7 @@ trait PatMatchDefExt(implicit val qctx:QuoteContext) extends TastyMatchers {
         // query[Person].map(p => (p.name, p.age)).filter(x$1 => { val name=x$1._1; val age=x$1._2; name == "Joe" })
         // and you need to resolve the val defs thare are created automatically
         case DefDef(name, _, paramss, _, rhsOpt) if (paramss.length == 0) =>
-          println(s"====== Parsing Def Def ${name} = ${rhsOpt.map(_.show)}")
+          //println(s"====== Parsing Def Def ${name} = ${rhsOpt.map(_.show)}")
           val body =
             rhsOpt match {
               // TODO Better site-description in error
@@ -517,10 +517,10 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCon
     case '{ type $t1; ($q1: Query[`$t1`]).join[`$t1`](${Lambda1(ident1, on)}) } => 
       FlatJoin(InnerJoin, astParse(q1), Idnt(ident1), astParse(on))
     case '{ type $t1; ($q1: EntityQuery[`$t1`]).leftJoin[`$t1`](${Lambda1(ident1, on)}) } => 
-      println(s"========= Parsing Lambda as: ${ident1} => ${on.show} (${astParse(on)}) =========")
+      //println(s"========= Parsing Lambda as: ${ident1} => ${on.show} (${astParse(on)}) =========")
       FlatJoin(LeftJoin, astParse(q1), Idnt(ident1), astParse(on))
     case '{ type $t1; ($q1: Query[`$t1`]).leftJoin[`$t1`](${Lambda1(ident1, on)}) } => 
-    println(s"========= Parsing Lambda as: ${ident1} => ${on.show} (${astParse(on)}) =========")
+    //println(s"========= Parsing Lambda as: ${ident1} => ${on.show} (${astParse(on)}) =========")
       FlatJoin(LeftJoin, astParse(q1), Idnt(ident1), astParse(on))
   }
 

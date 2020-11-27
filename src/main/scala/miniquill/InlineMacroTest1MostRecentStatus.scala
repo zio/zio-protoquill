@@ -16,6 +16,8 @@ object InlineMacroTest1MostRecentStatus {
   case class Master(key: Int, lastCheck: Int, state: String)
   case class Worker(shard: Int, lastTime: Int, reply: String)
 
+  
+
   def main(args: Array[String]): Unit = {
 
     // TODO Add this arrangement as a use-case for the testing of the expander
@@ -43,38 +45,56 @@ object InlineMacroTest1MostRecentStatus {
     //   .map((a, b) => a)
     // }
 
-    inline def workers = quote {
-      (for {
-        a <- query[Worker]
-        b <- query[Worker].leftJoin(b => 
-          b.shard == a.shard && 
-          b.lastTime > a.lastTime
-        )
-      } yield (a, b))
-      .filter((a, b) => b.map(_.shard).isEmpty)
-      .map((a, b) => a)
-    }
+    // inline def workers = quote {
+    //   (for {
+    //     a <- query[Worker]
+    //     b <- query[Worker].leftJoin(b => 
+    //       b.shard == a.shard && 
+    //       b.lastTime > a.lastTime
+    //     )
+    //   } yield (a, b))
+    //   .filter((a, b) => b.map(_.shard).isEmpty)
+    //   .map((a, b) => a)
+    // }
+
+    
     
     // Should add this to tests since it tested ident parser .name property
     // (i.e. since we passed 'n' to it it Ident(value) => value returned 'n' nead of b)
     // which we had to get by doing id @ Ident and then id.symbol.name
-    inline def latestStatus[T, G](
-      inline q: Query[T])( 
-      inline groupKey: T => G, 
-      inline earlierThan: (T, T) => Boolean
-    ) =
-      (for {
-        a <- q
-        b <- q.leftJoin(b => 
-          groupKey(b) == groupKey(a)// &&
-          //earlierThan(b, a)
-        )
-      } yield (a, b))//.filter((a, b) => b.map(b => groupKey(b)).isEmpty).map((a, b) => a)
+inline def latestStatus[T, G](
+  inline q: Query[T])( 
+  inline groupKey: T => G, 
+  inline earlierThan: (T, T) => Boolean
+) =
+  (for {
+    a <- q
+    b <- q.leftJoin(b => 
+      groupKey(b) == groupKey(a) &&
+      earlierThan(b, a)
+    )
+  } yield (a, b))
+  .filter((a, b) => b.map(b => groupKey(b)).isEmpty)
+  .map((a, b) => a)
 
-    inline def nodesK = quote {
-      latestStatus(query[Node])(n => n.id, (a, b) => a.timestamp < b.timestamp)
+    inline def nodesLatest = quote {
+      latestStatus(query[Node])(
+        n => n.id, 
+        (a, b) => a.timestamp < b.timestamp)
     }
-    println( run(nodesK).string )
+    inline def mastersLatest = quote {
+      latestStatus(query[Master])(
+        m => m.key, 
+        (a, b) => a.lastCheck < b.lastCheck)
+    }
+    inline def workersLatest = quote {
+      latestStatus(query[Worker])(
+        w => w.shard, 
+        (a, b) => a.lastTime < b.lastTime)
+    }
+    println( run(nodesLatest).string )
+    println( run(mastersLatest).string )
+    println( run(workersLatest).string )
 
 
     // println( run(nodes).string )
@@ -82,4 +102,4 @@ object InlineMacroTest1MostRecentStatus {
     // println( run(workers).string )
   }
 }
-// hellooooooooooooo
+// helloooooooooooooooo
