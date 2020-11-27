@@ -86,11 +86,10 @@ object InlineMacroTest1FunctionalTypeclassIdiomatic {
   object UseCase {
     extension [F[_]](inline people: F[Person])(using inline fun: For[F]) {
       inline def joesAddresses(inline addresses: F[Address]) =
-        people.flatMap(p => addresses.withFilter(a => (p.id == a.fk)))
-        // for {
-        //   p <- people //if (p.name == "Joe")
-        //   a <- addresses if (p.id == a.fk)
-        // } yield (p, a)
+        for {
+          p <- people //if (p.name == "Joe")
+          a <- addresses if (p.id == a.fk)
+        } yield (p, a)
     }
   }
 
@@ -108,9 +107,11 @@ object InlineMacroTest1FunctionalTypeclassIdiomatic {
     val peopleL = List(Person(1, "Joe", 22), Person(2, "Jack", 33), Person(3, "James", 44))
     val addressesL = List(Address(1, "123 St.", 111), Address(2, "456 St.", 222), Address(3, "789 St.", 333))
 
-    // import UseCase._
-    // inline def q = quote { people.joesAddresses(addresses) }
-    // run(q)
+    import UseCase._
+
+    println(peopleL.joesAddresses(addressesL))
+    inline def q = quote { people.joesAddresses(addresses) }
+    println( run(q) )
 
 
   }
