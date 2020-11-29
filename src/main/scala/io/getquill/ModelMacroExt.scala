@@ -2,7 +2,7 @@ package io.getquill
 
 import io.getquill.quotation.NonQuotedException
 
-sealed trait EntityQuery[T] extends EntityQueryModel[T] {
+final class EntityQuery[T] extends EntityQueryModel[T] {
   // Members declared in io.getquill.EntityQueryModel
   // def delete: io.getquill.Delete[T] = NonQuotedException()
   // override def filter(f: T => Boolean): io.getquill.EntityQueryModel[T] = NonQuotedException()

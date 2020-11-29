@@ -50,6 +50,13 @@ object InlineMacroTest1MostRecentStatusTypeclassesDual {
       inline def filter(inline f: A => Boolean): F[A]
       inline def leftJoin(inline ys: F[B])(inline f: (A, B) => Boolean): F[(A, Option[B])]
 
+  class QueryJoiningFunctor extends JoiningFunctor[Query]:
+    extension [A, B](inline xs: Query[A])
+      inline def map(inline f: A => B): Query[B] = xs.map(f)
+      inline def filter(inline f: A => Boolean): Query[A] = xs.filter(f)
+      inline def leftJoin(inline ys: Query[B])(inline f: (A, B) => Boolean): Query[(A, Option[B])] = 
+        xs.leftJoin(ys).on(f)
+
   class ListJoiningFunctor extends JoiningFunctor[List]:
     extension [A, B](inline xs: List[A])
       inline def map(inline f: A => B): List[B] = xs.map(f)
@@ -60,19 +67,8 @@ object InlineMacroTest1MostRecentStatusTypeclassesDual {
           if (matching.length == 0) List((x, None)) else matching
         }
 
-  inline given listJoiningFunctor as ListJoiningFunctor = new ListJoiningFunctor
-
-  type QueryType[T] = Query[T] | EntityQuery[T]
-
-  class QueryJoiningFunctor extends JoiningFunctor[Query]:
-    extension [A, B](inline xs: Query[A])
-      inline def map(inline f: A => B): Query[B] = xs.map(f)
-      inline def filter(inline f: A => Boolean): Query[A] = xs.filter(f)
-      inline def leftJoin(inline ys: Query[B])(inline f: (A, B) => Boolean): Query[(A, Option[B])] = 
-        xs.leftJoin(ys).on(f)
-
-
   inline given queryJoiningFunctor as QueryJoiningFunctor = new QueryJoiningFunctor
+  inline given listJoiningFunctor as ListJoiningFunctor = new ListJoiningFunctor
 
   inline def latestStatus[F[_], T, G](inline q: F[T])(using inline fun: JoiningFunctor[F], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): F[T] =
       q.leftJoin(q)((a, b) => 
@@ -83,17 +79,15 @@ object InlineMacroTest1MostRecentStatusTypeclassesDual {
         b.map(b => groupKey(b)).isEmpty)
       .map((a, b) => a)
 
+  // Need this specialization so you can run latestStatus on a query[T] since that's an EntityQuery
   inline def latestStatus[T, G](inline q: EntityQuery[T])(using inline fun: JoiningFunctor[Query], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): Query[T] =
     latestStatus[Query, T, G](q: Query[T])
 
   def main(args: Array[String]): Unit = {
-    inline def nodes: EntityQuery[Node] = query[Node]
-    inline def masters: Query[Master] = query[Master]
-    inline def workers: Query[Worker] = query[Worker]
 
-    inline def nodesLatest = quote { latestStatus(nodes) }
-    inline def mastersLatest = quote { latestStatus(masters) }
-    inline def workersLatest = quote { latestStatus(workers) }
+    inline def nodesLatest = quote { latestStatus(select[Node]) }
+    inline def mastersLatest = quote { latestStatus(select[Master]) }
+    inline def workersLatest = quote { latestStatus(select[Worker]) }
 
     println( run(nodesLatest).string )
     println( run(mastersLatest).string )
@@ -117,4 +111,4 @@ object InlineMacroTest1MostRecentStatusTypeclassesDual {
     // println( run(workers).string )
   }
 }
-// hellooooooooooooo
+// helloooooooooooooooo

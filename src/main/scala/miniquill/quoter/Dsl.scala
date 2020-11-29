@@ -68,6 +68,7 @@ object QueryDsl {
 
 trait QueryDsl[Parser <: ParserFactory] {
   inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
+  inline def select[T]: Query[T] = ${ QueryMacro[T] }
 }
 
 trait QuoteDsl[Parser <: ParserFactory] {
