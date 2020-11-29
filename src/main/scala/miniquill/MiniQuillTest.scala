@@ -3,118 +3,31 @@ package miniquill
 import simple.SimpleMacro._
 import scala.language.implicitConversions
 import miniquill.quoter.Dsl._
-// import miniquill.parser.PrintMac
-// import miniquill.parser.MatchMac
-// import miniquill.parser.MatchLambdaMac
+import miniquill.quoter.QueryDsl._
 
 object AdvTest {
+  import io.getquill._
 
-  // Can't do it like this because list is a runtime value
-  // inline def isOneOf(inline list: List[String], inline column:String): Boolean =
-  //   inline list match {
-  //     case leaf :: Nil => column == leaf
-  //     case head :: tail => column == head || isOneOf(tail, column)
-  //   }
+  case class Country(id: Int, name: String, population: Int)
+  case class Company(id: Int, name: String, countryId: Int)
+  case class Person(id: Int, name: String, age: Int, companyId: Int)
+  case class ClientAffiliation(host: Int, of: Int)
 
-  trait Noot
-  case object Tip extends Noot
-  case class Node[N <: Noot](v: String, tail:N) extends Noot
-
-  // inline def nootOf[T <: Noot](inline noot: T, inline curr:String, inline column:String): Boolean =
-  //    inline noot match {
-  //      case n: Node[sub] => column == curr || nootOf(n.tail, n.v, column)
-  //      case Tip => false
-  //    }
-
-  // import scala.compiletime.erasedValue
-  // transparent inline def nootOf[T <: Noot](inline noot: T, inline column:String): Boolean =
-  //   inline erasedValue[T] match {
-  //     case Node(str, tail) => column == str || nootOf(tail, column)
-  //     case Tip => false
-  //   }
-
-  // import scala.deriving._
-  // import scala.compiletime.{erasedValue, constValue}
-  // inline def oneOf[T <: Tuple, Orig <: NonEmptyTuple](inline tup: Orig, inline column:String, inline index:Int): Boolean =
-  //   inline erasedValue[T] match {
-  //     case _:(head *: tail) => column == "brrr" || oneOf[tail, Orig](tup, column, index + 1)
-  //     case _:EmptyTuple => column == "barrrr"
-  //   }
-
-
-  inline def oneOf(inline list: List[String], inline column:String): Boolean = {
-    inline if (ListProc.isNil(list))
-      false
-    else
-      ListProc.index(list, 0) == column || oneOf(ListProc.tail(list), column)
+  inline def q = quote {
+    for {
+      o1 <- query[Country]
+      c1 <- query[Company].join(c1 => c1.countryId == o1.id)
+      p1 <- query[Person].join(p1 => p1.companyId == c1.id)
+      af <- query[ClientAffiliation].leftJoin(af => af.of == p1.id)
+      p2 <- query[Person].leftJoin(p2 => af.map(_.host).exists(v => v == p2.id))
+    } yield (o1, c1, p1, af, p2)
   }
 
-
-  def takeLambda(f: String => Int): Unit = ()
-
   def main(args: Array[String]): Unit = {
-
-    //hello
-    import io.getquill._
-    case class Address(street: String, zip: Int, fk:Int) extends Embedded //helloooo
-    given Embedable[Address] //hello
-    //case class Person(id: Int, name: String, age: Int, addr: Address, middleName: String, lastName: String)
-    case class Person(name: String, age: Int)
-
-    // PriceIncrement()
-    // Strike(price: )
-    //inline def personToField(inline p: Person) = p.name
-
-    // inline def q = query[Person].insert(p => p.name -> "Joe")
-    
-    // PrintMac(q)
-    // MatchMac(q)
-
-    // inline def lambdaExample = (p: String) => p.length
-    // PrintMac(lambdaExample)
-    // MatchLambdaMac(lambdaExample)
-
-    import miniquill.quoter.QueryDsl._
-    
-    inline def joes(inline q: Query[Person], inline filter: Boolean) =
-      inline if (filter)
-        q.filter(p => p.name == "Joe")
-      else
-        q
-
-    // TODO If we don't include this, 'run' just returns nothing, it should return an error
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
-
-    inline def liftOrAny(inline field: String, inline filter: Option[String]) =
-      field.like(lift(filter.getOrElse("%")))
-
-    val runtimeValue = Some("Joe")
-    inline def q = quote {
-      query[Person].filter(p => liftOrAny(p.name, runtimeValue))
-    }
-
     println( run(q) )
 
-    // {
-    // inline def q = quote {
-    //   //query[Person].map(p => p.age / 4)
-    //   //query[Person].insert(p => p.name -> "Joe")
-    //   //query[Person].join(query[Address]).on((p,a) => p.id == a.fk)
 
-    //   for {
-    //     p <- query[Person]
-    //     a <- query[Address].join(a => a.fk == p.id)
-    //   } yield (p, a)
-    // }
-
-    // val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-    // import ctx._
-
-    
-    
-    // val output = run(q)
-    // println(output)
-    // }
   }
 }

@@ -423,8 +423,14 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(implicit qctx: QuoteCo
 
   def delegate: PartialFunction[Expr[_], Ast] = {
     case '{ ($o: Option[$t]).isEmpty } => OptionIsEmpty(astParse(o))
-    case '{ ($o: Option[$t]).map(${Lambda1(id, body)}) } if (is[Product](o)) => OptionTableMap(astParse(o), Idnt(id), astParse(body))
-    case '{ ($o: Option[$t]).map(${Lambda1(id, body)}) } => OptionMap(astParse(o), Idnt(id), astParse(body))
+
+    case '{ ($o: Option[$t]).map(${Lambda1(id, body)}) } => 
+      if (is[Product](o)) OptionTableMap(astParse(o), Idnt(id), astParse(body))
+      else OptionMap(astParse(o), Idnt(id), astParse(body))
+    
+    case '{ ($o: Option[$t]).exists(${Lambda1(id, body)}) } =>
+      if (is[Product](o)) OptionTableExists(astParse(o), Idnt(id), astParse(body))
+      else OptionExists(astParse(o), Idnt(id), astParse(body))
   }
 }
 
@@ -553,16 +559,6 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   def delegate: PartialFunction[Expr[_], Ast] = {
     del.compose(PartialFunction.fromFunction(
       (expr: Expr[_]) => {
-        // println(
-        //   "==================== Your Expression is: ====================\n" + expr.show
-        // )
-        // expr match {
-        //   case Unseal(Apply(Select(Seal(left), "=="), Seal(right) :: Nil)) =>
-        //     println("YAYAYAYAYA WE MATCHED")
-        //   case _ =>
-        //     println("NOPE DID NOT MATCH")
-        // }
-
         expr
       }
     ))
@@ -594,31 +590,16 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   //   }
   // }
 
-  // Function[Expr, Ast]
   def del: PartialFunction[Expr[_], Ast] = {
-
-    case '{ ($str:String).like($other) } => Infix(List(""," like ",""), List(astParse(str), astParse(other)), true)
-
-      // TODO Need to check if entity is a string
+    case '{ ($str:String).like($other) } => 
+      Infix(List(""," like ",""), List(astParse(str), astParse(other)), true)
     case expr @ NamedOp1(left, "==", right) =>
       val leftAst = astParse(left)
-      // left match {
-      //   case Unseal(Select(rid @ TIdent(v), prop)) => 
-      //   println(s"******* MATCHES ${v} *******")
-      //   println(s"Symbol: ${rid.symbol.name}")  
-      //   case _ => 
-      //     println("********* DOES NOT MATCH *******")
-      //     println(left.unseal.showExtractors)
-      // }
-
       val rightAst = astParse(right)
       val res = BinaryOperation(leftAst, EqualityOperator.==, rightAst)
-      //println(s"=========== Parsing Equality: ${expr.show} as ${res} ==== WHICH IS: ${leftAst} / ${rightAst} =========")
       res
-
     case NamedOp1(left, "||", right) =>
       BinaryOperation(astParse(left), BooleanOperator.||, astParse(right))
-
     case NamedOp1(left, "&&", right) =>
       BinaryOperation(astParse(left), BooleanOperator.&&, astParse(right))
 

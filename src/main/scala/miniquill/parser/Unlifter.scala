@@ -78,6 +78,8 @@ class Unlifter(using val qctx:QuoteContext) extends PartialFunction[Expr[Ast], A
     case '{ OptionIsEmpty.apply($a) } => OptionIsEmpty(a.unliftExpr)
     case '{ OptionMap.apply($a, $b, $c) } => OptionMap(a.unliftExpr, b.unliftExpr, c.unliftExpr)
     case '{ OptionTableMap.apply($a, $b, $c) } => OptionTableMap(a.unliftExpr, b.unliftExpr, c.unliftExpr)
+    case '{ OptionExists.apply($a, $b, $c) } => OptionExists(a.unliftExpr, b.unliftExpr, c.unliftExpr)
+    case '{ OptionTableExists.apply($a, $b, $c) } => OptionTableExists(a.unliftExpr, b.unliftExpr, c.unliftExpr)
   }
 
   def unliftBase: Unlift[Ast] = {

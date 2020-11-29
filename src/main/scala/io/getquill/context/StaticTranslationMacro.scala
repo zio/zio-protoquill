@@ -125,7 +125,7 @@ object StaticTranslationMacro {
         case _ => 
           // TODO Maybe do ctx.error here to show the lifts to the user, if 'verbose mode' is enabled.
           // Try it out to see how it looks
-          println("Lifts do meet compiletime criteria:\n"+liftExprs.show); 
+          println("Lifts could not be extracted during compile-time: '" + liftExprs.show + "' are they 'inline def'?"); 
           None
       }
 

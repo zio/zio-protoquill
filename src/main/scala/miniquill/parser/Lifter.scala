@@ -76,6 +76,8 @@ class Lifter(using qctx:QuoteContext) extends PartialFunction[Ast, Expr[Ast]] {
     case OptionIsEmpty(a) => '{ OptionIsEmpty(${a.liftable}) }
     case OptionMap(a, b, c) => '{ OptionMap(${a.liftable}, ${b.liftable}, ${c.liftable}) }
     case OptionTableMap(a, b, c) => '{ OptionTableMap(${a.liftable}, ${b.liftable}, ${c.liftable}) }
+    case OptionExists(a, b, c) => '{ OptionExists(${a.liftable}, ${b.liftable}, ${c.liftable}) }
+    case OptionTableExists(a, b, c) => '{ OptionTableExists(${a.liftable}, ${b.liftable}, ${c.liftable}) }
   }
 
   implicit def liftAst: Lift[Ast] = {
