@@ -83,15 +83,13 @@ object InlineMacroTest1FunctionalTypeclassIdiomatic {
   //   inline def flatMapM(inline f: A => F[B]) = from.flatMap(f)
   // }
 
-  object UseCase {
-    extension [F[_]](inline people: F[Person])(using inline fun: For[F]) {
+  object UseCase:
+    extension [F[_]](inline people: F[Person])(using inline fun: For[F]):
       inline def joesAddresses(inline addresses: F[Address]) =
         for {
-          p <- people //if (p.name == "Joe")
+          p <- people if (p.name == "Joe")
           a <- addresses if (p.id == a.fk)
         } yield (p, a)
-    }
-  }
 
   def main(args: Array[String]): Unit = {
     inline def people: Query[Person] = query[Person]

@@ -155,7 +155,7 @@ object QuotedExpr {
     quoted match {
       case QuotedExpr.UprootableWithLifts(quotedExpr) => Some(quotedExpr)
       case _ => 
-        println("Quotations do meet compiletime criteria\n" + quoted.show); 
+        println("Quotations do meet compiletime criteria: " + quoted.show); 
         None
     }
 
@@ -165,7 +165,7 @@ object QuotedExpr {
     quoted match {
       case QuotedExpr.Uprootable(quotedExpr) => Some(quotedExpr)
       case _ => 
-        println("Quotations do meet compiletime criteria\n" + quoted.show); 
+        println("Quotations do meet compiletime criteria: " + quoted.show); 
         None
     }
 }

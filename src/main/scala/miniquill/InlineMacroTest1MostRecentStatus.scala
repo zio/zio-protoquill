@@ -67,14 +67,13 @@ object InlineMacroTest1MostRecentStatus {
       inline groupKey: T => G, 
       inline earlierThan: (T, T) => Boolean
     ) =
-      (for {
-        a <- q
-        b <- q.leftJoin(b => 
+      q.leftJoin(q)
+      .on((a, b) => 
           groupKey(b) == groupKey(a) &&
           earlierThan(b, a)
-        )
-      } yield (a, b))
-      .filter((a, b) => b.map(b => groupKey(b)).isEmpty)
+      )
+      .filter((a, b) => 
+        b.map(b => groupKey(b)).isEmpty)
       .map((a, b) => a)
 
     inline def nodesLatest = quote {
