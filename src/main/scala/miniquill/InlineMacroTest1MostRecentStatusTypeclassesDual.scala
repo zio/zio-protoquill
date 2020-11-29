@@ -61,33 +61,20 @@ object InlineMacroTest1MostRecentStatusTypeclassesDual {
         }
 
   inline given listJoiningFunctor as ListJoiningFunctor = new ListJoiningFunctor
-  
-  type QueryType[T] = Query[T] // EntityQuery[T] | EntityQueryModel[T] | 
 
-  class EntityQueryJoiningFunctor extends JoiningFunctor[EntityQuery]:
+  type QueryType[T] = Query[T] | EntityQuery[T]
+
+  class QueryJoiningFunctor extends JoiningFunctor[Query]:
     extension [A, B](inline xs: Query[A])
       inline def map(inline f: A => B): Query[B] = xs.map(f)
       inline def filter(inline f: A => Boolean): Query[A] = xs.filter(f)
       inline def leftJoin(inline ys: Query[B])(inline f: (A, B) => Boolean): Query[(A, Option[B])] = 
         xs.leftJoin(ys).on(f)
 
-  class QueryJoiningFunctor extends JoiningFunctor[QueryType]:
-    extension [A, B](inline xs: QueryType[A])
-      inline def map(inline f: A => B): QueryType[B] = xs.map(f)
-      inline def filter(inline f: A => Boolean): QueryType[A] = xs.filter(f)
-      inline def leftJoin(inline ys: QueryType[B])(inline f: (A, B) => Boolean): QueryType[(A, Option[B])] = 
-        xs.leftJoin(ys).on(f)
-
-  // class QueryJoiningFunctor extends QJoiningFunctor[Query]
-  // class EntityQueryJoiningFunctor extends QJoiningFunctor[EntityQuery]
-
 
   inline given queryJoiningFunctor as QueryJoiningFunctor = new QueryJoiningFunctor
-  inline given entityQueryJoiningFunctor as EntityQueryJoiningFunctor = new EntityQueryJoiningFunctor
 
-  def main(args: Array[String]): Unit = {
-      
-    inline def latestStatus[F[_], T, G](inline q: F[T])(using inline fun: JoiningFunctor[F], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): F[T] =
+  inline def latestStatus[F[_], T, G](inline q: F[T])(using inline fun: JoiningFunctor[F], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): F[T] =
       q.leftJoin(q)((a, b) => 
           groupKey(b) == groupKey(a) &&
           earlierThan(b, a)
@@ -96,6 +83,10 @@ object InlineMacroTest1MostRecentStatusTypeclassesDual {
         b.map(b => groupKey(b)).isEmpty)
       .map((a, b) => a)
 
+  inline def latestStatus[T, G](inline q: EntityQuery[T])(using inline fun: JoiningFunctor[Query], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): Query[T] =
+    latestStatus[Query, T, G](q: Query[T])
+
+  def main(args: Array[String]): Unit = {
     inline def nodes: EntityQuery[Node] = query[Node]
     inline def masters: Query[Master] = query[Master]
     inline def workers: Query[Worker] = query[Worker]
