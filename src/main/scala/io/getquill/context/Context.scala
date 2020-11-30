@@ -79,13 +79,20 @@ object RunDsl {
     val executeQuery = ctxClass.methods.filter(f => f.name == "executeQuery").head
 
     // Asking Stucki how to summon the query meta
-    // Expr.summon[QueryMeta[T, someR]] match {
-    //   case Some(expr) =>
-    //   case None => "bar"
-    // }
+    val tmc = new miniquill.parser.TastyMatchersContext
+    import tmc._
 
+    Expr.summon[QueryMeta[T, _]] match {
+      case Some(expr) =>
+        println("Summoned! " + expr.show)
+        UntypeExpr(expr) match {
+          case '{ QueryMeta.apply[k, n]($one, $two, $uid) } => println(s"GOT TYPE: ${TypeRepr.of[n].show}") 
+          case _ => println("DID NOT GET TYPE")
+        }
 
-    
+      case None => "bar"
+    }
+
     val staticStateOpt = StaticTranslationMacro.applyInner[T, D, N](quoted)
 
     val output =
