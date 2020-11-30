@@ -7,8 +7,6 @@ import scala.compiletime.{erasedValue, summonFrom, constValue}
 
 object InlineMacroTest1FunctionalTypeclass {
   import io.getquill._
-  case class Address(street: String, zip: Int) extends Embedded
-  given Embedable[Address]
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 

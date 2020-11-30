@@ -13,7 +13,10 @@ object Mac {
   inline def passThrough(inline str: String): String = ${ passThroughImpl('str) }
   def passThroughImpl(str: Expr[String])(using qctx: QuoteContext): Expr[String] = {
     import qctx.tasty._
-    println(pprint(str.unseal))
+    class Operations(implicit val qctx: QuoteContext) extends TastyMatchers {
+      //printExpr(str)
+    }
+    new Operations()
     str
   }
 
@@ -36,7 +39,7 @@ object PrintMac {
     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
     def printMacImpl(anyRaw: Expr[Any])(implicit qctx: QuoteContext): Expr[Unit] = {
       import qctx.tasty._
-      val any = anyRaw.unseal.underlyingArgument.seal
+      val any = anyRaw //.unseal.underlyingArgument.seal
       class Operations(implicit val qctx: QuoteContext) extends TastyMatchers {
         println("================= Tree =================")
         println(any.show)

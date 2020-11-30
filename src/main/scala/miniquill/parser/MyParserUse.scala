@@ -1,34 +1,44 @@
 package miniquill.parser
 
-object MyParserUse {
+object InlineVariables_Flat {
+  def main(args: Array[String]): Unit = {
+    inline def greeting = "hello"
+    inline def suffix = " world"
+    inline def suffix2 = " today!"
+    inline def combo = greeting + suffix + suffix2
+    Mac.enter(combo)
+  }
+}
+
+object InlineVariables0{
   def main(args: Array[String]):Unit = {
-    //inline def tup = ("foo", "bar")
-    //PrintMac(tup)
+    inline def hello = Mac.passThrough("hello")
+    PrintMac(hello)
+    println(hello)
+  }
+}
 
-    // Something like this should be possible in quill, looks like a proxy-val is generated
-    // could the regular val-parser do that?
-    // val i: Any = ("foo", "bar")
-    // inline def fun = i match {
-    //   case ((a,b), c) => "blah"
-    // }
-    MatchMac({val v = "hello"; val vv = "hello"; v + vv})
+object InlineVariables2 {
+  def main(args: Array[String]):Unit = {
+    class Space {
+      inline def world = Mac.passThrough("hello")
+    }
+    inline def helloWorld = Mac.passThrough(new Space().world + " world")
+    PrintMac(helloWorld)
+    println(helloWorld)
+  }
+}
 
+object InlineVariables3 {
+  def main(args: Array[String]):Unit = {
     class Space {
       class InnerSpace {
-        def hello = Mac.passThrough("hello")
+        inline def hello = Mac.passThrough("hello")
       }
-      def world = Mac.passThrough(new InnerSpace().hello + " world")
+      inline def helloWorld = Mac.passThrough(new InnerSpace().hello + " world")
     }
-    def today = Mac.passThrough(new Space().world + " today")
-    PrintMac(today)
-    println(today)
-
-    //Mac.enter(today)
-
-    // inline def suffix = " world"
-    // inline def suffix2 = " today!"
-    // inline def combo = greeting + suffix + suffix2
-    // Mac.enter(combo)
-
+    inline def helloWorldToday = Mac.passThrough(new Space().helloWorld + " today")
+    PrintMac(helloWorldToday)
+    println(helloWorldToday)
   }
 }

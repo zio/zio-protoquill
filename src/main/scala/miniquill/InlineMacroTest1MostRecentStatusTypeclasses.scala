@@ -56,16 +56,13 @@ object InlineMacroTest1MostRecentStatusTypeclasses {
         b.map(b => groupKey(b)).isEmpty)
       .map((a, b) => a)
 
-  inline def nodesLatest = quote { latestStatus(query[Node]) }
-  inline def mastersLatest = quote { latestStatus(query[Master]) }
-  inline def workersLatest = quote { latestStatus(query[Worker]) }
+    inline def nodesLatest = quote { latestStatus(query[Node]) }
+    inline def mastersLatest = quote { latestStatus(query[Master]) }
+    inline def workersLatest = quote { latestStatus(query[Worker]) }
 
-  println( run(nodesLatest).string )
-  println( run(mastersLatest).string )
-  println( run(workersLatest).string )
-
-
-
+    println( run(nodesLatest).string )
+    println( run(mastersLatest).string )
+    println( run(workersLatest).string )
 
     // println( run(nodes).string )
     // println( run(masters).string )

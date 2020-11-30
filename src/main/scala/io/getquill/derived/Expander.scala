@@ -87,23 +87,6 @@ object Expander {
     }
   }
 
-  class TypeExtensions(using qctx: QuoteContext) { self =>
-    import qctx.tasty.{Type => QType, _}
-    
-    implicit class TypeExt(tpe: Type[_]) {
-      def constValue = self.constValue(tpe)
-      def isProduct = self.isProduct(tpe)
-    }
-
-    def constValue(tpe: Type[_]): String =
-      tpe.unseal.tpe match {
-        case ConstantType(Constant(value)) => value.toString
-        // Macro error
-      }
-    def isProduct(tpe: Type[_]): Boolean =
-      tpe.unseal.tpe <:< '[Product].unseal.tpe
-  }
-
   def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(using qctx: QuoteContext): List[Term] = {
     import qctx.tasty.{Type => QType, Term => QTerm, _}
     val ext = new TypeExtensions

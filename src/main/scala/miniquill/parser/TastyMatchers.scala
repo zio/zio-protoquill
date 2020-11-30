@@ -9,6 +9,20 @@ trait TastyMatchers {
   implicit val qctx: QuoteContext
   import qctx.tasty.{Type => TType, _}
 
+  def printExpr(expr: Expr[_], label: String = "") = {
+    if (label != "")
+      println(s"--------------------------------- ${label} ---------------------------------")
+
+    println("================= Tree =================")
+    println(expr.show)
+
+    println("================= Matchers =================")
+    println(Untype(expr.unseal).showExtractors)
+
+    println("================= Pretty Tree =================")
+    println(pprint.apply(Untype(expr.unseal)))
+  }
+
   implicit class ExprOps[T: Type](expr: Expr[T]) {
     def reseal: Expr[T] = expr.unseal.underlyingArgument.seal.cast[T]
   }
