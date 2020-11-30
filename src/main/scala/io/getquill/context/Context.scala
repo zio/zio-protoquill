@@ -111,6 +111,8 @@ object RunDynamic {
       //   // TODO Implicit summoning error
       //   case decoder: Decoder[T] => decoder
       // }
+
+    // TODO Finish dynamic prepareRow
     val extractor = (r: context.ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[context.ResultRow, RawT]].apply(1, r))
     context.executeQuery(string, null, extractor, ExecutionType.Dynamic)
   }
@@ -171,7 +173,7 @@ object RunDsl {
     val applyExecuteQuery =
       Apply(
         TypeApply(Select(ctxTerm, executeQuery), List(TypeTree.of[T])),
-        List(Term.of(Expr(query)), Term.of('{null}), Term.of(extractor), Term.of('{ExecutionType.Static}))
+        List(Term.of(Expr(query)), Term.of(prepare), Term.of(extractor), Term.of('{ExecutionType.Static}))
       )
     val res = applyExecuteQuery.asExprOf[Res]
     res

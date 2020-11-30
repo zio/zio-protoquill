@@ -8,12 +8,13 @@ import scala.compiletime.erasedValue
 import io.getquill.ast.Visibility.{ Hidden, Visible }
 import scala.deriving._
 import scala.quoted._
+import io.getquill.context.LiftMacro
 
 object MapProc {
-  inline def apply[T](inline entity: T, inline eachField: (String, String) => Boolean): Boolean = ${ applyImpl('entity, 'eachField) }
-  def applyImpl[T: Type](entity: Expr[T], eachField: Expr[(String, String) => Boolean])(using qctx: Quotes): Expr[Boolean] = {
+  inline def apply[T, PrepareRow](inline entity: T, inline map: Map[String, String], inline default:String, inline eachField: (String, String) => Boolean): Boolean = ${ applyImpl[T, PrepareRow]('entity, 'map, 'default, 'eachField) }
+  def applyImpl[T: Type, PrepareRow: Type](entity: Expr[T], map: Expr[Map[String, String]], default: Expr[String], eachField: Expr[(String, String) => Boolean])(using qctx: Quotes): Expr[Boolean] = {
     val mp = new MapProcMacro
-    val ret = mp.base(entity, eachField)
+    val ret = mp.base[T, PrepareRow](entity, map, default, eachField)
     ret
   }
 }
@@ -27,7 +28,7 @@ class MapProcMacro(using qctx: Quotes) {
   def isProduct(tpe: Type[_]): Boolean =
       TType.of(using tpe) <:< TType.of[Product]
 
-  private def recurse[T, Fields, Types](id: TTerm, fieldsTup: Type[Fields], typesTup: Type[Types])(eachField: Expr[(String, String) => Boolean])(using baseType: Type[T]): Expr[Boolean] = {
+  private def recurse[T, PrepareRow, Fields, Types](id: TTerm, fieldsTup: Type[Fields], typesTup: Type[Types])(eachField: Expr[(String, String) => Boolean], map: Expr[Map[String, String]], default: Expr[String])(using baseType: Type[T], pr: Type[PrepareRow]): Expr[Boolean] = {
     (fieldsTup, typesTup) match {
       case ('[field *: fields], '[tpe *: types]) =>
         val unsealedClassSymbol = TType.of(using baseType).widen.classSymbol
@@ -36,8 +37,13 @@ class MapProcMacro(using qctx: Quotes) {
         val fieldString = Type.of[field].constValue
         val fieldMethod = unsealedClassSymbol.get.caseFields.filter(field => field.name == fieldString).head
         val childTTerm = '{ (${ Select(id, fieldMethod).asExprOf[Any] }).toString }
-        val expr = '{ $eachField(${childTTerm}, ${Expr[String](fieldString)}) }
-        '{ ${expr} && ${recurse(id, Type.of[fields], Type.of[types])(eachField)(using baseType)} }
+
+        val mapSplice = '{ $map.getOrElse(${Expr[String](fieldString)}, $default) }
+
+        val expr = '{ 
+          $eachField( $childTTerm, ${LiftMacro.apply[String, PrepareRow]( mapSplice )} )
+        }
+        '{ ${expr} && ${recurse[T, PrepareRow, fields, types](id, Type.of[fields], Type.of[types])(eachField, map, default)(using baseType)} }
 
       case (_, '[EmptyTuple]) => '{ true }
 
@@ -45,13 +51,13 @@ class MapProcMacro(using qctx: Quotes) {
     }
   }
 
-  def base[T](expr: Expr[T], eachField: Expr[(String, String) => Boolean])(using tpe: Type[T]): Expr[Boolean] = {
+  def base[T, PrepareRow](expr: Expr[T], map: Expr[Map[String, String]], default: Expr[String], eachField: Expr[(String, String) => Boolean])(using tpe: Type[T], pr: Type[PrepareRow]): Expr[Boolean] = {
     Expr.summon[Mirror.Of[T]] match {
       case Some(ev) => {
         // Otherwise, recursively summon fields
         ev match {
           case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-            val result = recurse(TTerm.of(expr), Type.of[elementLabels], Type.of[elementTypes])(eachField)(using tpe)
+            val result = recurse[T, PrepareRow, elementLabels, elementTypes](TTerm.of(expr), Type.of[elementLabels], Type.of[elementTypes])(eachField, map, default)(using tpe)
             result
           case _ =>
             report.throwError(s"Mirror for ${Type.of[T]} is not a product")

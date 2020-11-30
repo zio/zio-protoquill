@@ -10,7 +10,7 @@ object MiniExample2_LiftOrAny {
   case class Person(name: String, age: Int)
 
 
-  def main(args: Array[String]): Unit = {
+  def main(args: Array[String]): Unit = { //hello
 
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
