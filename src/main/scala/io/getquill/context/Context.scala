@@ -135,13 +135,15 @@ object RunDsl {
           executeQueryStatic[T, RawT, ResultRow, PrepareRow, D, N, Res](ctx, staticState, converter)
 
         case None => 
-          // println("========== Expanding Dynamically ===========")
-          // val decoder = summonDecoderOrThrow[ResultRow, RawT]
-          // '{ 
-          //   val expandedAst = Expander.runtime[T]($quoted.ast)
-          //   RunDynamic.apply[RawT, T, D, N]($queryRawT, $decoder, $converter, $ctx, expandedAst).asInstanceOf[Res]
-          // }
-          report.throwError("Cannot expand dynamic")
+          println("========== Expanding Dynamically ===========")
+          val decoder = summonDecoderOrThrow[ResultRow, RawT]
+          val quotedAst = '{ $quoted.ast }
+          // Is the expansion on T or RawT, need to investigate
+          val expandedAst = Expander.runtimeImpl[T](quotedAst)
+          println(s"Expanded Ast: " + pprint.apply(Term.of(expandedAst)))
+          '{ 
+            RunDynamic.apply[RawT, T, D, N]($queryRawT, $decoder, $converter, $ctx, $expandedAst).asInstanceOf[Res]
+          }
       }
 
     output
@@ -220,9 +222,10 @@ object RunDsl {
             case None => 
               println("========== Expanding Dynamically ===========")
               val decoder = summonDecoderOrThrow[ResultRow, T]
+              val quotedAst = '{ $quoted.ast }
+              val expandedAst = Expander.runtimeImpl[T](quotedAst)
               '{ 
-                val expandedAst = Expander.runtime[T]($quoted.ast)
-                RunDynamic.apply[T, T, D, N]($quoted, $decoder, (t: T) => t, $ctx, expandedAst).asInstanceOf[Res]
+                RunDynamic.apply[T, T, D, N]($quoted, $decoder, (t: T) => t, $ctx, $expandedAst).asInstanceOf[Res]
               }
               
           }
