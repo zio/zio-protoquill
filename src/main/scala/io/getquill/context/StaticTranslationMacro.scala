@@ -25,54 +25,6 @@ import io.getquill.idiom.ReifyStatement
 
 import io.getquill._
 
-object GetAst {
-  import miniquill.parser._
-  import scala.quoted._ // Expr.summon is actually from here
-  import miniquill.quoter.ScalarPlanter
-  import io.getquill.idiom.LoadNaming
-  import io.getquill.util.LoadObject
-  import miniquill.dsl.GenericEncoder
-  import io.getquill.ast.External
-
-  inline def apply[T](inline quoted: Quoted[Query[T]]): io.getquill.ast.Ast = ${ applyImpl('quoted) }
-  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(using Quotes): Expr[io.getquill.ast.Ast] = {
-    import quotes.reflect.{Try => TTry, _}
-    '{ $quoted.ast }
-  }
-}
-
-object GetLifts {
-  import miniquill.parser._
-  import scala.quoted._ // Expr.summon is actually from here
-  import miniquill.quoter.ScalarPlanter
-  import io.getquill.idiom.LoadNaming
-  import io.getquill.util.LoadObject
-  import miniquill.dsl.GenericEncoder
-  import io.getquill.ast.External
-
-  inline def apply[T](inline quoted: Quoted[Query[T]]): List[miniquill.quoter.ScalarPlanter[_, _]] = ${ applyImpl('quoted) }
-  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(using Quotes): Expr[List[miniquill.quoter.ScalarPlanter[_, _]]] = {
-    import quotes.reflect.{Try => TTry, _}
-    '{ $quoted.lifts }
-  }
-}
-
-object GetRuntimeQuotes {
-  import miniquill.parser._
-  import scala.quoted._ // Expr.summon is actually from here
-  import miniquill.quoter.ScalarPlanter
-  import io.getquill.idiom.LoadNaming
-  import io.getquill.util.LoadObject
-  import miniquill.dsl.GenericEncoder
-  import io.getquill.ast.External
-
-  inline def apply[T](inline quoted: Quoted[Query[T]]): List[miniquill.quoter.QuotationVase] = ${ applyImpl('quoted) }
-  def applyImpl[T: Type](quoted: Expr[Quoted[Query[T]]])(using Quotes): Expr[List[miniquill.quoter.QuotationVase]] = {
-    import quotes.reflect.{Try => TTry, _}
-    '{ $quoted.runtimeQuotes }
-  }
-}
-
 object StaticTranslationMacro {
   import miniquill.parser._
   import scala.quoted._ // Expr.summon is actually from here
@@ -155,18 +107,19 @@ object StaticTranslationMacro {
     } yield (idiom, namingStrategy)
 
   
-  def apply[T: Type, D <: Idiom, N <: NamingStrategy](
-    quotedRaw: Expr[Quoted[Query[T]]]
-  )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[( String, List[ScalarPlanter[_, _]] )]] = {
-    applyInner(quotedRaw) match {
-      case Some((query, lifts)) => '{ Some(${Expr(query)}, ${lifts}) }
-      case None => '{ None }
-    }
-  }
+  // def apply[T: Type, D <: Idiom, N <: NamingStrategy](
+  //   quotedRaw: Expr[Quoted[Query[T]]]
+  // )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[( String, List[ScalarPlanter[_, _]] )]] = {
+  //   applyInner(quotedRaw) match {
+  //     case Some((query, lifts)) => '{ Some(${Expr(query)}, ${lifts}) }
+  //     case None => '{ None }
+  //   }
+  // }
 
   def applyInner[T: Type, D <: Idiom, N <: NamingStrategy](
     quotedRaw: Expr[Quoted[Query[T]]]
-  )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[( String, Expr[List[ScalarPlanter[_, _]]] )] = {
+  )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[StaticState] = 
+  {
     import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = Term.of(quotedRaw).underlyingArgument.asExpr
@@ -194,7 +147,7 @@ object StaticTranslationMacro {
         // What about a missing decoder?
         // need to make sure that that kind of error happens during compile time
         // (also need to propagate the line number, talk to Li Houyi about that)
-        (queryString, Expr.ofList(encodedLifts))
+        StaticState(queryString, Expr.ofList(encodedLifts))
       }
 
     if (tryStatic.isEmpty)

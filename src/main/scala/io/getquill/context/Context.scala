@@ -59,85 +59,103 @@ object StaticExtractor {
 }
 
 
+case class StaticState(query: String, lifts: Expr[List[miniquill.quoter.ScalarPlanter[?, ?]]])
 
 object RunDsl {
 
   import io.getquill.idiom.{ Idiom => Id }
   import io.getquill.{ NamingStrategy => Na }
 
-  // =========================== Trying This Approach Instead ========================
-  def runQueryImpl[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
+  def runWithMeta[T: Type, RawT: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
     quoted: Expr[Quoted[Query[T]]],
     ctx: Expr[Context[D, N]]
+  )(using qctx: Quotes): Expr[Res] = 
+  {
+    import qctx.reflect._
+    val (query, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted, ctx)
+
+    val output =
+      staticStateOpt match {
+        case Some(staticState) =>
+          executeQueryStatic[T, RawT, ResultRow, PrepareRow, D, N, Res](ctx, staticState, converter)
+
+        case None => 
+          report.throwError("Could not summon static context")
+      }
+
+    output
+  }
+
+  def executeQueryStatic[T: Type, RawT: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
+    ctx: Expr[Context[D, N]],
+    staticState: StaticState,
+    converter: Expr[RawT => T]
   )(using qctx: Quotes): Expr[Res] = 
   {
     import qctx.reflect._
 
     val ctxTerm = Term.of(ctx)
     val ctxClass = ctxTerm.tpe.widen.classSymbol.get
-    //println("================= Found Fields: =============\n" + ctxClass.methods.map(_.name).mkString("\n"))
     val executeQuery = ctxClass.methods.filter(f => f.name == "executeQuery").head
 
-    // Asking Stucki how to summon the query meta
+    val (query, lifts) = (staticState.query, staticState.lifts)
+    // TODO if there's  a type that gets summoned the T here is is that someR
+    Expr.summon[GenericDecoder[ResultRow, RawT]] match {
+      case Some(decoder) =>
+        val extractor = '{ (r: ResultRow) => $converter.apply($decoder.apply(1, r)) }
+        val prepare = '{ (row: PrepareRow) => StaticExtractor.apply[PrepareRow]($lifts, row) }
+
+        val applyExecuteQuery =
+          Apply(
+            TypeApply(Select(ctxTerm, executeQuery), List(TypeTree.of[T])),
+            List(Term.of(Expr(query)), Term.of('{null}), Term.of(extractor), Term.of('{ExecutionType.Static}))
+          )
+        val res = applyExecuteQuery.asExprOf[Res]
+        res
+
+        // =================== This Doesn't work ==================
+        //val output = '{ $ctx.executeQuery(${Expr(query)}, null, $extractor, ExecutionType.Static) }
+
+      case None =>
+        report.throwError("Decoder could not be summoned")
+    }
+  }
+  
+  def runQueryImpl[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
+    quoted: Expr[Quoted[Query[T]]],
+    ctx: Expr[Context[D, N]]
+  )(using qctx: Quotes): Expr[Res] = 
+  {
+    import qctx.reflect._
     val tmc = new miniquill.parser.TastyMatchersContext
     import tmc._
 
-    Expr.summon[QueryMeta[T, _]] match {
-      case Some(expr) =>
-        println("Summoned! " + expr.show)
-        UntypeExpr(expr) match {
-          case '{ QueryMeta.apply[k, n]($one, $two, $uid) } => println(s"GOT TYPE: ${TypeRepr.of[n].show}") 
-          case _ => println("DID NOT GET TYPE")
-        }
-
-      case None => "bar"
-    }
-
-    val staticStateOpt = StaticTranslationMacro.applyInner[T, D, N](quoted)
+    val rowType =
+      Expr.summon[QueryMeta[T, _]] match {
+        case Some(expr) =>
+          // println("Summoned! " + expr.show)
+          UntypeExpr(expr) match {
+            case '{ QueryMeta.apply[k, n]($one, $two, $uid) } => Some('[n])
+            case _ => report.throwError("Summoned Query Meta But Could Not Get Type")
+          }
+        case None => None
+      }
 
     val output =
-    staticStateOpt match {
-      case Some((query, lifts)) =>
+      rowType match {
+        case Some(rowRepr) =>
+          rowRepr match {
+            case '[rawT] => runWithMeta[T, rawT, ResultRow, PrepareRow, D, N, Res](quoted, ctx)
+          }
+        case None =>
+          StaticTranslationMacro.applyInner[T, D, N](quoted) match {
+            case Some(staticState) =>
+              executeQueryStatic[T, T, ResultRow, PrepareRow, D, N, Res](ctx, staticState, '{ (t:T) => t })
 
-
-        // TODO if there's  a type that gets summoned the T here is is that someR
-        Expr.summon[GenericDecoder[ResultRow, T]] match {
-          case Some(decoder) =>
-            val extractor = '{ (r: ResultRow) => $decoder.apply(1, r) }
-            val prepare = '{ (row: PrepareRow) => StaticExtractor.apply[PrepareRow]($lifts, row) }
-
-            val applyExecuteQuery =
-              Apply(
-                TypeApply(
-                  Select(ctxTerm, executeQuery),
-                  List(TypeTree.of[T])
-                ),
-                List(Term.of(Expr(query)), Term.of('{null}), Term.of(extractor), Term.of('{ExecutionType.Static}))
-              )
-            val res = applyExecuteQuery.asExprOf[Res]
-            res
-
-            // =================== This Doesn't work ==================
-            //val output = '{ $ctx.executeQuery(${Expr(query)}, null, $extractor, ExecutionType.Static) }
-
-          case None =>
-            report.throwError("Decoder could not be summoned")
-        }
-
-  //       // val decoder =
-  //       //   summonFrom {
-  //       //     case decoder: GenericDecoder[ResultRow, R] => decoder
-  //       //     // TODO Extract into meta function, have a good error if decoder not found
-  //       //   }
-  //       val decoder = summonDecoder[R]
-  //       runStatic[R, T](query, lifts, decoder, converter)
-  //       //null.asInstanceOf[Result[RunQueryResult[T]]]
-
-
-      case None => 
-        report.throwError("Could not summon static context")
-    }
-
+            case None => 
+              report.throwError("Could not summon static context")
+          }
+      }
     output
   }
 }
