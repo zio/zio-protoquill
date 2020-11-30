@@ -1,6 +1,10 @@
 package miniquill.parser
 
+import io.getquill._
+
 object MyParserUse {
+  import io.getquill.context.ExecutionType
+
   def main(args: Array[String]):Unit = {
     //inline def tup = ("foo", "bar")
     //PrintMac(tup)
@@ -11,7 +15,8 @@ object MyParserUse {
     // inline def fun = i match {
     //   case ((a,b), c) => "blah"
     // }
-    MatchMac({val v = "hello"; val vv = "hello"; v + vv})
+    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    PrintMac( ctx.executeQuery("foo", null, null, ExecutionType.Static) )
 
     // val list = List(1,2,3)
     // inline def fun = list.filter { case 1 => true } //hellooooooo

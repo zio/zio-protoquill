@@ -39,18 +39,8 @@ object ExecutionType {
 trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] { 
   context: Context[Dialect, Naming] =>
 
-  inline def runQuery[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
-    summonFrom {
-      // case qm: QueryMeta[T, someR] =>
-      //   val (reappliedQuery, converter, staticState) = QueryMetaExtractor[T, someR, Dialect, Naming](quoted, this)
-      //   //encodeAndExecute[T, someR](staticState, reappliedQuery, converter)
-      //   ???
-      case _ =>
-        //val staticState = translateStatic[T](quoted)
-        //encodeAndExecute[T, T](staticState, quoted, t => t) // <- UNCOMMENT THIS
-        ???
-    }
-  }
+  inline def runQuery[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = 
+    ${ RunDsl.runQueryImpl[T, ResultRow, PrepareRow, Dialect, Naming, Result[RunQueryResult[T]]]('quoted, 'this) }
 }
 
 object StaticExtractor {
@@ -76,20 +66,29 @@ object RunDsl {
   import io.getquill.{ NamingStrategy => Na }
 
   // =========================== Trying This Approach Instead ========================
-  def runQueryImpl[T: Type, ResultRow: Type, PrepareRow: Type, Res: Type, D <: Id: Type, N <: Na: Type](
+  def runQueryImpl[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
     quoted: Expr[Quoted[Query[T]]],
     ctx: Expr[Context[D, N]]
   )(using qctx: Quotes): Expr[Res] = 
   {
     import qctx.reflect._
 
+    val ctxTerm = Term.of(ctx)
+    val ctxClass = ctxTerm.tpe.widen.classSymbol.get
+    //println("================= Found Fields: =============\n" + ctxClass.methods.map(_.name).mkString("\n"))
+    val executeQuery = ctxClass.methods.filter(f => f.name == "executeQuery").head
+
     // Asking Stucki how to summon the query meta
     // Expr.summon[QueryMeta[T, someR]] match {
     //   case Some(expr) =>
     //   case None => "bar"
     // }
+
+
     
     val staticStateOpt = StaticTranslationMacro.applyInner[T, D, N](quoted)
+
+    val output =
     staticStateOpt match {
       case Some((query, lifts)) =>
 
@@ -100,8 +99,19 @@ object RunDsl {
             val extractor = '{ (r: ResultRow) => $decoder.apply(1, r) }
             val prepare = '{ (row: PrepareRow) => StaticExtractor.apply[PrepareRow]($lifts, row) }
 
+            val applyExecuteQuery =
+              Apply(
+                TypeApply(
+                  Select(ctxTerm, executeQuery),
+                  List(TypeTree.of[T])
+                ),
+                List(Term.of(Expr(query)), Term.of('{null}), Term.of(extractor), Term.of('{ExecutionType.Static}))
+              )
+            val res = applyExecuteQuery.asExprOf[Res]
+            res
+
             // =================== This Doesn't work ==================
-            val output = '{ $ctx.executeQuery(${Expr(query)}, null, $extractor, ExecutionType.Static) }
+            //val output = '{ $ctx.executeQuery(${Expr(query)}, null, $extractor, ExecutionType.Static) }
 
           case None =>
             report.throwError("Decoder could not be summoned")
@@ -121,11 +131,7 @@ object RunDsl {
         report.throwError("Could not summon static context")
     }
 
-    null
-  }
-
-  def encodeAndExecuteImpl[T, R, Res](staticState: Expr[Option[(String, List[ScalarPlanter[_, _]])]], quoted: Expr[Quoted[Query[R]]], converter: Expr[R => T]): Expr[Res] = {
-    null
+    output
   }
 }
 
