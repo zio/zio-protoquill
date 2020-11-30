@@ -18,17 +18,20 @@ object InlineMacroTest1FunctionalDerivation {
 
   inline def q = quote {
     query[Person].filter(p => 
-      MapProc[Person, PrepareRow](p, values, "%", (a, b) => a.like(b) )
+      MapProc[Person, PrepareRow](p, values, null, (a, b) => (a == b) || (b == (null) ) )
+
     )
   }
   /* 
    SELECT p.firstName, p.lastName, p.age FROM Person p 
    WHERE 
-     p.firstName like [values.getOrElse("firstName","%")] AND 
-     p.lastName like [values.getOrElse("lastName","%")] AND 
-     p.age like [values.getOrElse("age","%")] AND true
+     ( p.firstName = [ values.getOrElse("firstName",null) ] OR [ values.getOrElse("firstName",null) ] == null ) AND 
+     ( p.lastName = [ values.getOrElse("lastName",null) ] OR [ values.getOrElse("lastName",null) ] == null ) AND
+     ( p.age = [ values.getOrElse("age",null) ] OR [ values.getOrElse("age",null) == null ] ) AND true
   */
 
+
+  //       //MapProc[Person, PrepareRow](p, values, "%", (a, b) => a.like(b) )
   //MapProc[Person, PrepareRow](p, values, null, (a, b) => (a == b) || (b == (null: String) ) )
   
 

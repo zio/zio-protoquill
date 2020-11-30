@@ -109,6 +109,7 @@ class Unlifter(override implicit val qctx: Quotes) extends PartialFunction[Expr[
     case '{ Tuple($values) } => Tuple(values.unliftExpr)
     case '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } => Join(typ.unliftExpr, a.unliftExpr, b.unliftExpr, aliasA.unliftExpr, aliasB.unliftExpr, on.unliftExpr)
     case '{ FlatJoin($typ, $a, $aliasA, $on) } => FlatJoin(typ.unliftExpr, a.unliftExpr, aliasA.unliftExpr, on.unliftExpr)
+    case '{ NullValue } => NullValue
   }
 
   implicit def unliftOperator: Unlift[Operator] = {

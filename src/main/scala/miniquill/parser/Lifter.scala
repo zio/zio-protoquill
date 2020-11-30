@@ -118,6 +118,7 @@ class Lifter(using quotes: Quotes) extends PartialFunction[Ast, Expr[Ast]] {
     case Tuple(values) => '{ Tuple(${values.liftable}) }
     case Join(typ, a, b, identA, identB, body) => '{ Join(${typ.liftable}, ${a.liftable}, ${b.liftable}, ${identA.liftable}, ${identB.liftable}, ${body.liftable}) }
     case FlatJoin(typ, a, identA, on) => '{ FlatJoin(${typ.liftable}, ${a.liftable}, ${identA.liftable}, ${on.liftable}) }
+    case NullValue => '{ NullValue }
   }
 
   import EqualityOperator.{ == => ee }

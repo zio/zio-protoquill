@@ -656,6 +656,9 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
 
   def delegate: PartialFunction[Expr[_], Ast] = {
 
+    case Unseal(Literal(TreeConst.Null())) =>
+      NullValue
+
     // Parse tuples
     case Unseal(Apply(TypeApply(Select(TupleIdent(), "apply"), types), values)) =>
       Tuple(values.map(v => astParse(v.asExpr)))
