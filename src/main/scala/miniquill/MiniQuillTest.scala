@@ -17,16 +17,20 @@ object AdvTest {
     case class Person(id: Int, name: String, age: Int)
     case class PersonName(name: String)
 
-    implicit inline def qm: QueryMeta[PersonName, String] = {
-        queryMeta[PersonName, String](
-          quote { 
-            (q: Query[PersonName]) => q.map(p => p.name)
-          }
-        )((name: String) => PersonName(name))
-      }
+    // implicit inline def qm: QueryMeta[PersonName, String] = {
+    //     queryMeta[PersonName, String](
+    //       quote { 
+    //         (q: Query[PersonName]) => q.map(p => p.name)
+    //       }
+    //     )((name: String) => PersonName(name))
+    //   }
 
-    inline def q = quote {
-      query[PersonName]
+    // val q = quote {
+    //   query[PersonName]
+    // }
+
+    val q = quote {
+      query[Person]
     }
 
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)

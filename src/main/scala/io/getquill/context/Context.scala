@@ -61,6 +61,61 @@ object StaticExtractor {
 
 case class StaticState(query: String, lifts: Expr[List[miniquill.quoter.ScalarPlanter[?, ?]]])
 
+object RunDynamic {
+
+  import io.getquill.idiom.{ Idiom => Id }
+  import io.getquill.{ NamingStrategy => Na }
+
+  def apply[RawT, T, D <: Id, N <: Na](
+    quoted: Quoted[Query[RawT]], 
+    decoder: GenericDecoder[_, RawT], 
+    converter: RawT => T,
+    context: Context[D, N],
+    ast: Ast // Expander.runtime[RawT](quoted.ast)
+  ): context.Result[context.RunQueryResult[T]] = 
+  {
+    val idiom: D = context.idiom
+    val naming: N = context.naming
+
+    // println("Runtime Expanded Ast Is: " + ast)
+    val lifts = quoted.lifts // quoted.lifts causes position exception
+    val quotationVases = quoted.runtimeQuotes // quoted.runtimeQuotes causes position exception
+
+    def spliceQuotations(ast: Ast): Ast =
+      Transform(ast) {
+        case v @ QuotationTag(uid) => 
+          // When a quotation to splice has been found, retrieve it and continue
+          // splicing inside since there could be nested sections that need to be spliced
+          quotationVases.find(_.uid == uid) match {
+            case Some(vase) => 
+              spliceQuotations(vase.quoted.ast)
+            case None =>
+              throw new IllegalArgumentException(s"Quotation vase with UID ${uid} could not be found!")
+          }
+      }
+
+    val expandedAst = spliceQuotations(ast)
+      
+    val (outputAst, stmt) = idiom.translate(expandedAst)(using naming)
+
+    val (string, externals) =
+      ReifyStatement(
+        idiom.liftingPlaceholder,
+        idiom.emptySetContainsToken,
+        stmt,
+        forProbing = false
+      )
+
+    // summon a decoder and a expander (as well as an encoder) all three should be provided by the context
+      // summonFrom {
+      //   // TODO Implicit summoning error
+      //   case decoder: Decoder[T] => decoder
+      // }
+    val extractor = (r: context.ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[context.ResultRow, RawT]].apply(1, r))
+    context.executeQuery(string, null, extractor, ExecutionType.Dynamic)
+  }
+}
+
 object RunDsl {
 
   import io.getquill.idiom.{ Idiom => Id }
@@ -72,7 +127,7 @@ object RunDsl {
   )(using qctx: Quotes): Expr[Res] = 
   {
     import qctx.reflect._
-    val (query, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted, ctx)
+    val (queryRawT, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted, ctx)
 
     val output =
       staticStateOpt match {
@@ -80,7 +135,13 @@ object RunDsl {
           executeQueryStatic[T, RawT, ResultRow, PrepareRow, D, N, Res](ctx, staticState, converter)
 
         case None => 
-          report.throwError("Could not summon static context")
+          // println("========== Expanding Dynamically ===========")
+          // val decoder = summonDecoderOrThrow[ResultRow, RawT]
+          // '{ 
+          //   val expandedAst = Expander.runtime[T]($quoted.ast)
+          //   RunDynamic.apply[RawT, T, D, N]($queryRawT, $decoder, $converter, $ctx, expandedAst).asInstanceOf[Res]
+          // }
+          report.throwError("Cannot expand dynamic")
       }
 
     output
@@ -100,24 +161,28 @@ object RunDsl {
 
     val (query, lifts) = (staticState.query, staticState.lifts)
     // TODO if there's  a type that gets summoned the T here is is that someR
-    Expr.summon[GenericDecoder[ResultRow, RawT]] match {
-      case Some(decoder) =>
-        val extractor = '{ (r: ResultRow) => $converter.apply($decoder.apply(1, r)) }
-        val prepare = '{ (row: PrepareRow) => StaticExtractor.apply[PrepareRow]($lifts, row) }
+    val decoder = summonDecoderOrThrow[ResultRow, RawT]
 
-        val applyExecuteQuery =
-          Apply(
-            TypeApply(Select(ctxTerm, executeQuery), List(TypeTree.of[T])),
-            List(Term.of(Expr(query)), Term.of('{null}), Term.of(extractor), Term.of('{ExecutionType.Static}))
-          )
-        val res = applyExecuteQuery.asExprOf[Res]
-        res
+    val extractor = '{ (r: ResultRow) => $converter.apply($decoder.apply(1, r)) }
+    val prepare = '{ (row: PrepareRow) => StaticExtractor.apply[PrepareRow]($lifts, row) }
 
-        // =================== This Doesn't work ==================
-        //val output = '{ $ctx.executeQuery(${Expr(query)}, null, $extractor, ExecutionType.Static) }
+    val applyExecuteQuery =
+      Apply(
+        TypeApply(Select(ctxTerm, executeQuery), List(TypeTree.of[T])),
+        List(Term.of(Expr(query)), Term.of('{null}), Term.of(extractor), Term.of('{ExecutionType.Static}))
+      )
+    val res = applyExecuteQuery.asExprOf[Res]
+    res
 
-      case None =>
-        report.throwError("Decoder could not be summoned")
+    // =================== This Doesn't work ==================
+    //val output = '{ $ctx.executeQuery(${Expr(query)}, null, $extractor, ExecutionType.Static) }
+  }
+
+  def summonDecoderOrThrow[ResultRow: Type, T: Type](using qctx: Quotes): Expr[GenericDecoder[ResultRow, T]] = {
+    import qctx.reflect._
+    Expr.summon[GenericDecoder[ResultRow, T]] match {
+      case Some(decoder) => decoder
+      case None => report.throwError("Decoder could not be summoned")
     }
   }
   
@@ -153,7 +218,13 @@ object RunDsl {
               executeQueryStatic[T, T, ResultRow, PrepareRow, D, N, Res](ctx, staticState, '{ (t:T) => t })
 
             case None => 
-              report.throwError("Could not summon static context")
+              println("========== Expanding Dynamically ===========")
+              val decoder = summonDecoderOrThrow[ResultRow, T]
+              '{ 
+                val expandedAst = Expander.runtime[T]($quoted.ast)
+                RunDynamic.apply[T, T, D, N]($quoted, $decoder, (t: T) => t, $ctx, expandedAst).asInstanceOf[Res]
+              }
+              
           }
       }
     output
