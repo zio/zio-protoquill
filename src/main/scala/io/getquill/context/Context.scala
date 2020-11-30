@@ -100,8 +100,8 @@ object RunDsl {
             val extractor = '{ (r: ResultRow) => $decoder.apply(1, r) }
             val prepare = '{ (row: PrepareRow) => StaticExtractor.apply[PrepareRow]($lifts, row) }
 
-            // Doesn't work
-            //val output = '{ $ctx.executeQuery(${Expr(query)}, null, $extractor, ExecutionType.Static) }
+            // =================== This Doesn't work ==================
+            val output = '{ $ctx.executeQuery(${Expr(query)}, null, $extractor, ExecutionType.Static) }
 
           case None =>
             report.throwError("Decoder could not be summoned")
