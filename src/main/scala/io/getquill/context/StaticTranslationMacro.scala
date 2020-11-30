@@ -154,10 +154,19 @@ object StaticTranslationMacro {
       namingStrategy <- LoadNaming.static[N]
     } yield (idiom, namingStrategy)
 
-
+  
   def apply[T: Type, D <: Idiom, N <: NamingStrategy](
     quotedRaw: Expr[Quoted[Query[T]]]
-  )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[(String, List[ScalarPlanter[_, _]])]] = {
+  )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[( String, List[ScalarPlanter[_, _]] )]] = {
+    applyInner(quotedRaw) match {
+      case Some((query, lifts)) => '{ Some(${Expr(query)}, ${lifts}) }
+      case None => '{ None }
+    }
+  }
+
+  def applyInner[T: Type, D <: Idiom, N <: NamingStrategy](
+    quotedRaw: Expr[Quoted[Query[T]]]
+  )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[( String, Expr[List[ScalarPlanter[_, _]]] )] = {
     import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = Term.of(quotedRaw).underlyingArgument.asExpr
@@ -185,17 +194,12 @@ object StaticTranslationMacro {
         // What about a missing decoder?
         // need to make sure that that kind of error happens during compile time
         // (also need to propagate the line number, talk to Li Houyi about that)
-        '{ (${Expr(queryString)}, ${Expr.ofList(encodedLifts)}) }
+        (queryString, Expr.ofList(encodedLifts))
       }
 
     if (tryStatic.isEmpty)
       println("WARNING: Dynamic Query Detected: ")
 
-    tryStatic match {
-      case Some(value) => 
-        '{ Option($value) }
-      case None => 
-        '{ None }
-    }
+    tryStatic
   }
 }

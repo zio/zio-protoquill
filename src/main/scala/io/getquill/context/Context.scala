@@ -39,8 +39,8 @@ object ExecutionType {
 trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] { 
   context: Context[Dialect, Naming] =>
 
-    inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[ScalarPlanter[_, _]])] =
-      ${ StaticTranslationMacro[T, Dialect, Naming]('quoted) }
+    // inline def translateStatic[T](inline quoted: Quoted[Query[T]]): Option[(String, List[ScalarPlanter[_, _]])] =
+    //   ${ StaticTranslationMacro[T, Dialect, Naming]('quoted) }
   
 
   // ==================================== START COMMENT HERE ===============================
@@ -118,6 +118,13 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
   // inline def encodeAndExecute[T, R](
   //   inline staticState: Option[(String, List[ScalarPlanter[_, _]])], 
   //   inline quoted: Quoted[Query[R]],
+  //   inline converter: R => T): Result[RunQueryResult[T]] =
+  //     ${ RunDsl.encodeAndExecuteImpl[T, R, Result[RunQueryResult[T]]]('staticState, 'quoted, 'converter) }
+    
+
+  // inline def encodeAndExecute[T, R](
+  //   inline staticState: Option[(String, List[ScalarPlanter[_, _]])], 
+  //   inline quoted: Quoted[Query[R]],
   //   inline converter: R => T): Result[RunQueryResult[T]] = 
   // {
   //   staticState match {
@@ -147,15 +154,88 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
 
   inline def runQuery[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     summonFrom {
-      case qm: QueryMeta[T, someR] =>
-        val (reappliedQuery, converter, staticState) = QueryMetaExtractor[T, someR, Dialect, Naming](quoted, this)
-        //encodeAndExecute[T, someR](staticState, reappliedQuery, converter)
-        ???
+      // case qm: QueryMeta[T, someR] =>
+      //   val (reappliedQuery, converter, staticState) = QueryMetaExtractor[T, someR, Dialect, Naming](quoted, this)
+      //   //encodeAndExecute[T, someR](staticState, reappliedQuery, converter)
+      //   ???
       case _ =>
-        val staticState = translateStatic[T](quoted)
+        //val staticState = translateStatic[T](quoted)
         //encodeAndExecute[T, T](staticState, quoted, t => t) // <- UNCOMMENT THIS
         ???
     }
+  }
+}
+
+object StaticExtractor {
+  def apply[PrepareRowTemp](lifts: List[ScalarPlanter[_, _]], row: PrepareRowTemp) = {
+    val (_, values, prepare) =
+      lifts.foldLeft((0, List.empty[Any], row)) {
+        case ((idx, values, row), lift) =>
+          val newRow = 
+            lift
+            .asInstanceOf[ScalarPlanter[Any, PrepareRowTemp]]
+            .encoder(idx, lift.value, row).asInstanceOf[PrepareRowTemp] // TODO since summoned encoders are casted
+          (idx + 1, lift.value :: values, newRow)
+      }
+    (values, prepare)
+  }
+}
+
+
+
+object RunDsl {
+
+  import io.getquill.idiom.{ Idiom => Id }
+  import io.getquill.{ NamingStrategy => Na }
+
+  def runQueryImpl[T: Type, ResultRow: Type, PrepareRow: Type, Res: Type, D <: Id: Type, N <: Na: Type](
+    quoted: Expr[Quoted[Query[T]]],
+    ctx: Expr[Context[D, N]]
+  )(using qctx: Quotes): Expr[Res] = 
+  {
+    import qctx.reflect._
+
+    // Asking Stucki how to summon the query meta
+    // Expr.summon[QueryMeta[T, someR]] match {
+    //   case Some(expr) =>
+    //   case None => "bar"
+    // }
+    
+    val staticStateOpt = StaticTranslationMacro.applyInner[T, D, N](quoted)
+    staticStateOpt match {
+      case Some((query, lifts)) =>
+
+
+        // TODO if there's  a type that gets summoned the T here is is that someR
+        Expr.summon[GenericDecoder[ResultRow, T]] match {
+          case Some(decoder) =>
+            val extractor = '{ (r: ResultRow) => $decoder.apply(1, r) }
+            //val prepare = '{ (row: PrepareRow) => StaticExtractor.apply[PrepareRow]($lifts, row) }
+            val output = '{ $ctx.executeQuery(${Expr(query)}, null, $extractor, ExecutionType.Static) }
+
+          case None =>
+            report.throwError("Decoder could not be summoned")
+        }
+
+  //       // val decoder =
+  //       //   summonFrom {
+  //       //     case decoder: GenericDecoder[ResultRow, R] => decoder
+  //       //     // TODO Extract into meta function, have a good error if decoder not found
+  //       //   }
+  //       val decoder = summonDecoder[R]
+  //       runStatic[R, T](query, lifts, decoder, converter)
+  //       //null.asInstanceOf[Result[RunQueryResult[T]]]
+
+
+      case None => 
+        report.throwError("Could not summon static context")
+    }
+
+    null
+  }
+
+  def encodeAndExecuteImpl[T, R, Res](staticState: Expr[Option[(String, List[ScalarPlanter[_, _]])]], quoted: Expr[Quoted[Query[R]]], converter: Expr[R => T]): Expr[Res] = {
+    null
   }
 }
 
