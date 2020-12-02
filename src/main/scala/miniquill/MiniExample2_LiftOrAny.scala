@@ -26,7 +26,7 @@ object MiniExample2_LiftOrAny {
 
   def usingEqual() = {
     inline def liftOrAny(inline field: String, inline filter: Option[String]) =
-      field == lift(filter.getOrElse(null)) || lift(filter.getOrElse(null)) == null
+      lift(filter.getOrElse(null)) == field || lift(filter.getOrElse(null)) == null
 
     val runtimeValue = Some("Joe")
     inline def q = quote {
@@ -36,11 +36,8 @@ object MiniExample2_LiftOrAny {
     println( run(q) )
   }
 
-  def main(args: Array[String]): Unit = { //hello
-
-    
-    
-
-
+  def main(args: Array[String]): Unit = {
+    usingLike()
+    usingEqual() //hello
   }
 }

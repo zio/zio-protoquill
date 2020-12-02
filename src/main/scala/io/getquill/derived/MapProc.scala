@@ -37,16 +37,13 @@ class MapProcMacro(using qctx: Quotes) {
         val fieldString = Type.of[field].constValue
         val fieldMethod = unsealedClassSymbol.get.caseFields.filter(field => field.name == fieldString).head
         val childTTerm = '{ (${ Select(id, fieldMethod).asExprOf[Any] }).toString }
-
         val mapSplice = '{ $map.getOrElse(${Expr[String](fieldString)}, $default) }
-
         val expr = '{ 
           $eachField( $childTTerm, ${LiftMacro.apply[String, PrepareRow]( mapSplice )} )
         }
         '{ ${expr} && ${recurse[T, PrepareRow, fields, types](id, Type.of[fields], Type.of[types])(eachField, map, default)(using baseType)} }
 
       case (_, '[EmptyTuple]) => '{ true }
-
       case _ => report.throwError("Cannot Types In Expression Expression:\n" + (fieldsTup, typesTup))
     }
   }

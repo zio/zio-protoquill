@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 import miniquill.quoter.Dsl._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 
-object InlineMacroTest1FunctionalTypeclass {
+object TypeclassExample_FunctorOldStyle {
   import io.getquill._
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
@@ -37,4 +37,3 @@ object InlineMacroTest1FunctionalTypeclass {
     println( run(q).string )
   }
 }
-// hellooooooo

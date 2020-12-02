@@ -115,4 +115,3 @@ object InlineMacroTest1MostRecentStatusTypeclassesDual_Converted {
     // println( run(workers).string )
   }
 }
-// helloooooooooooooooo

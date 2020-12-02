@@ -6,7 +6,7 @@ import miniquill.quoter.Dsl._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 import miniquill.quoter.QueryDsl._
 
-object InlineMacroTest1FunctionalDerivation {
+object MiniExample_LiftByKeys {
   import io.getquill._
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
@@ -14,13 +14,33 @@ object InlineMacroTest1FunctionalDerivation {
 
   case class Person(firstName: String, lastName: String, age: Int)
 
-  val values: Map[String, String] = Map("firstName" -> "Joe", "age" -> "22")  
+  val values: Map[String, String] = Map("firstName" -> "Joe", "age" -> "22")
 
-  inline def q = quote {
-    query[Person].filter(p => 
-      MapProc[Person, PrepareRow](p, values, null, (a, b) => (a == b) || (b == (null) ) )
-    )
+  def regularMapProc() = {
+    inline def q = quote {
+      query[Person].filter(p => 
+        MapProc[Person, PrepareRow](p, values, null, (a, b) => (a == b) || (b == (null) ) )
+      )
+    }
+    val r = run(q)
+    println( r.string )
+    println( r.prepareRow.data.toList) 
   }
+
+  extension [T](inline q: EntityQuery[T]) {
+    inline def filterByKeys(inline map: Map[String, String]) =
+      q.filter(p => MapProc[T, PrepareRow](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
+  }
+
+  def extensionMapProc() = {
+    inline def q = quote {
+      query[Person].filterByKeys(values)
+    }
+    val r = run(q)
+    println( r.string )
+    println( r.prepareRow.data.toList) 
+  }
+
   /* 
    ============= The following expasion happens ===========
    SELECT p.firstName, p.lastName, p.age FROM Person p 
@@ -30,36 +50,9 @@ object InlineMacroTest1FunctionalDerivation {
      ( p.age = [ values.getOrElse("age",null) ] OR [ values.getOrElse("age",null) == null ] ) AND true
   */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  //       //MapProc[Person, PrepareRow](p, values, "%", (a, b) => a.like(b) )
-  //MapProc[Person, PrepareRow](p, values, null, (a, b) => (a == b) || (b == (null: String) ) )
-  
-
   def main(args: Array[String]): Unit = {
-    val r = run(q) 
-    println(r.string)
-    println(r.prepareRow.data.toList)
+    regularMapProc()
+    extensionMapProc()
   }
   
 }

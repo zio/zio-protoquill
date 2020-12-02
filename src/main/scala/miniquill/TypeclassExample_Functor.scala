@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 import miniquill.quoter.Dsl._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 
-object InlineMacroTest1FunctionalTypeclassIdiomatic {
+object TypeclassExample_Functor {
   import io.getquill._
   case class Address(fk: Int, street: String, zip: Int) extends Embedded
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
@@ -77,12 +77,7 @@ object InlineMacroTest1FunctionalTypeclassIdiomatic {
     inline def mapM(inline f: A => B) = from.map(f)
     inline def flatMapM(inline f: A => F[B]) = from.flatMap(f)
   }
-
-  // extension [F[_], A, B](inline from: F[A])(using inline fun: For[F]) {
-  //   inline def mapM(inline f: A => B) = from.map(f)
-  //   inline def flatMapM(inline f: A => F[B]) = from.flatMap(f)
-  // }
-
+  
   object UseCase:
     extension [F[_]](inline people: F[Person])(using inline fun: For[F]):
       inline def joesAddresses(inline addresses: F[Address]) =

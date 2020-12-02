@@ -4,7 +4,7 @@ import simple.SimpleMacro._
 import scala.language.implicitConversions
 import miniquill.quoter.Dsl._
 
-object InlineMacroTest1 {
+object MiniExample_OneOf {
 
   import io.getquill._
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
