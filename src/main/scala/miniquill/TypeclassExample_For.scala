@@ -109,4 +109,3 @@ object TypeclassExample_For {
 
   }
 }
-// hellooooooooooo

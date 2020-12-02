@@ -7,8 +7,6 @@
 
 // object InlineMacroTest2 {
 
-  
-
 //   inline def fold[R](inline curr: R, inline list: List[R], inline op: (R, R) => R): R = {
 //     inline if (ListProc.isNil(list))
 //       curr

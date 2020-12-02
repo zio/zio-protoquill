@@ -4,7 +4,7 @@ import simple.SimpleMacro._
 import scala.language.implicitConversions
 import miniquill.quoter.Dsl._
 
-object InlineMacroTest5_TypelevelAdv {
+object TypelevelUsecase {
 
   import io.getquill._
   case class Address(street: String, zip: Int, fk: Int) extends Embedded //helloooo
@@ -57,8 +57,6 @@ object InlineMacroTest5_TypelevelAdv {
   inline def q1 = quote { path[User, Permission].filter((u,r,p) => u.name == "GuiUser" && r.name == "Joe") }
   println( run(q1).string(true) )
 
-  def main(args: Array[String]): Unit = { //hellooooooooooooooooooooooooooooooooooooooooooooooo
-
-
+  def main(args: Array[String]): Unit = {
   }
 }
