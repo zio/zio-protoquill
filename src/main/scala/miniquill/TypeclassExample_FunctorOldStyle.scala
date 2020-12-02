@@ -10,7 +10,6 @@ object TypeclassExample_FunctorOldStyle {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
-
   case class Person(name: String, age: Int)
 
   trait Functor[F[_]]:
