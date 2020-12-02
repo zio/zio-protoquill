@@ -47,18 +47,18 @@ object TypelevelUsecase_WithPassin {
   inline def path[F, T](inline from: F)(using inline path: Path[F, T]): path.Out = path.get(from)
   
   inline def joes = query[User].filter(u => u.name == "Joe")
-  inline def q1 = quote { joes.flatMap(j => path[User, Role](j)).filter(so => so._1.name == "Drinker") }
+  inline def q1 = quote { joes.flatMap(j => path[User, Role](j)).filter(so => so._2.name == "Drinker") }
   
 
   //inline def q1 = quote { path[User, Permission].filter(urp => urp._2.name == "GuiUser" && urp._1.name == "Drinker") }
   //inline def q1 = quote { path[User, Permission].filter { case (u,r,p) => u.name == "GuiUser" && r.name == "Drinker" } }
 
-  inline def q2 = quote { joes.flatMap(j => path[User, Permission](j)).filter((u,r,p) => u.name == "GuiUser" && r.name == "Drinker") }
+  // inline def q2 = quote { joes.flatMap(j => path[User, Permission](j)).filter((u,r,p) => u.name == "GuiUser" && r.name == "Drinker") }
   
   def main(args: Array[String]): Unit = {
     // Need to have queries printing in 'main' or some method that actually gets invoked
     // otherwise compiler seems to not initialize them somehow
     println( run(q1) )
-    println( run(q2).string(true) )
+    // println( run(q2).string(true) )
   }
 }
