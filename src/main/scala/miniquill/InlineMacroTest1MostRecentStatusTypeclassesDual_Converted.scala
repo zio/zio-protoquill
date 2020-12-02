@@ -89,29 +89,23 @@ object InlineMacroTest1MostRecentStatusTypeclassesDual_Converted {
 
   def main(args: Array[String]): Unit = {
 
-    inline def nodesLatest: Query[Node] = quote { latestStatus(query[Node]) }
-    inline def mastersLatest: Query[Master] = quote { latestStatus(select[Master]) }
-    inline def workersLatest: Query[Worker] = quote { latestStatus(select[Worker]) }
+    inline def nodesQuery: Query[Node] = quote { latestStatus(query[Node]) }
+    inline def mastersQuery: Query[Master] = quote { latestStatus(select[Master]) }
+    inline def workersQuery: Query[Worker] = quote { latestStatus(select[Worker]) }
 
-    println( run(nodesLatest).string )
-    println( run(mastersLatest).string )
-    println( run(workersLatest).string )
+    println( run(nodesQuery).string )
+    println( run(mastersQuery).string )
+    println( run(workersQuery).string )
+
+    inline def nodesEntityQuery: Query[Node] = quote { latestStatus(query[Node]) }
+    inline def mastersEntityQuery: Query[Master] = quote { latestStatus(select[Master]) }
+    inline def workersEntityQuery: Query[Worker] = quote { latestStatus(select[Worker]) }
+
+    println( run(nodesEntityQuery).string )
+    println( run(mastersEntityQuery).string )
+    println( run(workersEntityQuery).string )
 
     val nodesList = List(Node(1, 1, "UP"), Node(1, 2, "DOWN"), Node(2, 3, "WAITING"))
     println( latestStatus(nodesList) )
-
-
-    // inline def doBlah[T](inline q: Query[T] | EntityQuery[T])(inline f: T => Boolean) =
-    //   q.filter(f)
-
-    // case class Person(name: String, age:Int)
-    // inline def qq = quote { doBlah(query[Person])(p => p.name == "Joe") }
-    // println( run(qq) )
-
-
-
-    // println( run(nodes).string )
-    // println( run(masters).string )
-    // println( run(workers).string )
   }
 }
