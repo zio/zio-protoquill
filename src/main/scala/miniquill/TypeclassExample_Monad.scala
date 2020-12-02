@@ -19,18 +19,15 @@ object TypeclassExample_Monad {
       inline def map(inline f: A => B): F[B]
       inline def flatMap(inline f: A => F[B]): F[B]
 
-  class ListMonad extends Monad[List]:
+  inline given Monad[List]:
     extension [A, B](inline xs: List[A])
       inline def map(inline f: A => B): List[B] = xs.map(f)
       inline def flatMap(inline f: A => List[B]): List[B] = xs.flatMap(f)
 
-  class QueryMonad extends Monad[Query]:
+  inline given Monad[Query]:
     extension [A, B](inline xs: Query[A])
       inline def map(inline f: A => B): Query[B] = xs.map(f)
       inline def flatMap(inline f: A => Query[B]): Query[B] = xs.flatMap(f)
-
-  inline given listMonad as ListMonad = new ListMonad
-  inline given queryMonad as QueryMonad = new QueryMonad
 
   extension [F[_], A, B](inline from: F[A])(using inline fun: Monad[F]) {
     inline def mapM(inline f: A => B) = from.map(f)

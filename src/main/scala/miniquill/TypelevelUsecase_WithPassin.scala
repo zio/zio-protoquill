@@ -23,7 +23,7 @@ object TypelevelUsecase_WithPassin {
     type Out
     inline def get(inline from: From): Out
   
-  class PathFromUserToRole extends Path[User, Role]:
+  inline given Path[User, Role]:
     type Out = Query[(User, Role)]
     inline def get(inline s: User): Query[(User, Role)] =
       for {
@@ -31,7 +31,7 @@ object TypelevelUsecase_WithPassin {
         r <- query[Role].join(r => r.id == sr.roleId)
       } yield (s, r)
   
-  class PathFromUserToPermission extends Path[User, Permission]:
+  inline given Path[User, Permission]:
     type Out = Query[(User, Role, Permission)]
     inline def get(inline s: User): Query[(User, Role, Permission)] =
       for {
@@ -40,9 +40,6 @@ object TypelevelUsecase_WithPassin {
         rp <- query[RoleToPermission].join(rp => rp.roleId == r.id)
         p <- query[Permission].join(p => p.id == rp.roleId)
       } yield (s, r, p)
-  
-  inline given pathFromUserToRole as PathFromUserToRole = new PathFromUserToRole
-  inline given pathFromUserToPermission as PathFromUserToPermission = new PathFromUserToPermission
 
   inline def path[F, T](inline from: F)(using inline path: Path[F, T]): path.Out = path.get(from)
   

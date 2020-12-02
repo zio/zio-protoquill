@@ -22,27 +22,19 @@ object TypeclassUsecase_Typeclass {
   trait EarlierThan[T]:
     inline def apply(inline a: T, inline b: T): Boolean
   
-  class NodeGroupKey extends GroupKey[Node, Int]:
+  inline given GroupKey[Node, Int]:
     inline def apply(inline t: Node): Int = t.id
-  class MasterGroupKey extends GroupKey[Master, Int]:
+  inline given GroupKey[Master, Int]:
     inline def apply(inline t: Master): Int = t.key
-  class WorkerGroupKey extends GroupKey[Worker, Int]: 
+  inline given GroupKey[Worker, Int]: 
     inline def apply(inline t: Worker): Int = t.shard
 
-  inline given nodeGroupKey as NodeGroupKey = new NodeGroupKey
-  inline given workerGroupKey as WorkerGroupKey = new WorkerGroupKey
-  inline given masterGroupKey as MasterGroupKey = new MasterGroupKey
-
-  class NodeEarlierThan extends EarlierThan[Node]: 
+  inline given EarlierThan[Node]: 
     inline def apply(inline a: Node, inline b: Node) = a.timestamp < b.timestamp
-  class MasterEarlierThan extends EarlierThan[Master]: 
+  inline given EarlierThan[Master]: 
     inline def apply(inline a: Master, inline b: Master) = a.lastCheck < b.lastCheck
-  class WorkerEarlierThan extends EarlierThan[Worker]: 
+  inline given EarlierThan[Worker]: 
     inline def apply(inline a: Worker, inline b: Worker) = a.lastTime < b.lastTime
-
-  inline given nodeEarlierThan as NodeEarlierThan = new NodeEarlierThan
-  inline given workerEarlierThan as WorkerEarlierThan = new WorkerEarlierThan
-  inline given masterEarlierThan as MasterEarlierThan = new MasterEarlierThan
 
   def main(args: Array[String]): Unit = {
         
