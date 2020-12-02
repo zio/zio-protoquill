@@ -5,7 +5,7 @@ import scala.language.implicitConversions
 import miniquill.quoter.Dsl._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 
-object InlineMacroTest1MostRecentStatusTypeclassesDual {
+object TypeclassUsecase_TypeclassWithList {
   import io.getquill._
   case class Address(street: String, zip: Int) extends Embedded
   given Embedable[Address]
