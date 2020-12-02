@@ -95,20 +95,5 @@ object InlineMacroTest1MostRecentStatusTypeclassesDual {
 
     val nodesList = List(Node(1, 1, "UP"), Node(1, 2, "DOWN"), Node(2, 3, "WAITING"))
     println( latestStatus(nodesList) )
-
-
-    // inline def doBlah[T](inline q: Query[T] | EntityQuery[T])(inline f: T => Boolean) =
-    //   q.filter(f)
-
-    // case class Person(name: String, age:Int)
-    // inline def qq = quote { doBlah(query[Person])(p => p.name == "Joe") }
-    // println( run(qq) )
-
-
-
-    // println( run(nodes).string )
-    // println( run(masters).string )
-    // println( run(workers).string )
   }
 }
-// helloooooooooooooooo

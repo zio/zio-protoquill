@@ -63,10 +63,5 @@ object InlineMacroTest1MostRecentStatusTypeclasses {
     println( run(nodesLatest).string )
     println( run(mastersLatest).string )
     println( run(workersLatest).string )
-
-    // println( run(nodes).string )
-    // println( run(masters).string )
-    // println( run(workers).string )
   }
 }
-// hellooooooooooooo
