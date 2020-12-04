@@ -58,9 +58,10 @@ object StaticExtractor {
   }
 }
 
-
+/** Wrapper for components needed in order to execute a query during compile-time */
 case class StaticState(query: String, lifts: Expr[List[miniquill.quoter.ScalarPlanter[?, ?]]])
 
+/** Execute a query during runtime */
 object RunDynamic {
 
   import io.getquill.idiom.{ Idiom => Id }
@@ -94,6 +95,8 @@ object RunDynamic {
           }
       }
 
+    // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
+    // which means that the compiler has not done the splicing for us. We need to do this ourselves. 
     val expandedAst = spliceQuotations(ast)
       
     val (outputAst, stmt) = idiom.translate(expandedAst)(using naming)
@@ -122,84 +125,74 @@ object RunDsl {
 
   import io.getquill.idiom.{ Idiom => Id }
   import io.getquill.{ NamingStrategy => Na }
+  import miniquill.parser.TastyMatchers
 
-  def runWithMeta[T: Type, RawT: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
+  class RunQuery[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
     quoted: Expr[Quoted[Query[T]]],
     ctx: Expr[Context[D, N]]
-  )(using qctx: Quotes): Expr[Res] = 
-  {
+  )(using val qctx: Quotes) extends TastyMatchers {
     import qctx.reflect._
-    val (queryRawT, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted, ctx)
 
-    val output =
+    /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to T */
+    def runWithMeta[RawT: Type]: Expr[Res] = {
+      val (queryRawT, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted, ctx)
       staticStateOpt match {
         case Some(staticState) =>
-          executeQueryStatic[T, RawT, ResultRow, PrepareRow, D, N, Res](ctx, staticState, converter)
-
+          executeQueryStatic[RawT](staticState, converter)
         case None => 
-          println("========== Expanding Dynamically ===========")
-          val decoder = summonDecoderOrThrow[ResultRow, RawT]
-          val quotedAst = '{ $quoted.ast }
-          // Is the expansion on T or RawT, need to investigate
-          val expandedAst = Expander.runtimeImpl[T](quotedAst)
-          println(s"Expanded Ast: " + pprint.apply(Term.of(expandedAst)))
-          '{ 
-            RunDynamic.apply[RawT, T, D, N]($queryRawT, $decoder, $converter, $ctx, $expandedAst).asInstanceOf[Res]
-          }
+          executeQueryDynamic[RawT](queryRawT, converter)
       }
-
-    output
-  }
-
-  def executeQueryStatic[T: Type, RawT: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
-    ctx: Expr[Context[D, N]],
-    staticState: StaticState,
-    converter: Expr[RawT => T]
-  )(using qctx: Quotes): Expr[Res] = 
-  {
-    import qctx.reflect._
-
-    val ctxTerm = Term.of(ctx)
-    val ctxClass = ctxTerm.tpe.widen.classSymbol.get
-    val executeQuery = ctxClass.methods.filter(f => f.name == "executeQuery").head
-
-    val (query, lifts) = (staticState.query, staticState.lifts)
-    // TODO if there's  a type that gets summoned the T here is is that someR
-    val decoder = summonDecoderOrThrow[ResultRow, RawT]
-
-    val extractor = '{ (r: ResultRow) => $converter.apply($decoder.apply(1, r)) }
-    val prepare = '{ (row: PrepareRow) => StaticExtractor.apply[PrepareRow]($lifts, row) }
-
-    val applyExecuteQuery =
-      Apply(
-        TypeApply(Select(ctxTerm, executeQuery), List(TypeTree.of[T])),
-        List(Term.of(Expr(query)), Term.of(prepare), Term.of(extractor), Term.of('{ExecutionType.Static}))
-      )
-    val res = applyExecuteQuery.asExprOf[Res]
-    res
-
-    // =================== This Doesn't work ==================
-    //val output = '{ $ctx.executeQuery(${Expr(query)}, null, $extractor, ExecutionType.Static) }
-  }
-
-  def summonDecoderOrThrow[ResultRow: Type, T: Type](using qctx: Quotes): Expr[GenericDecoder[ResultRow, T]] = {
-    import qctx.reflect._
-    Expr.summon[GenericDecoder[ResultRow, T]] match {
-      case Some(decoder) => decoder
-      case None => report.throwError("Decoder could not be summoned")
     }
-  }
-  
-  def runQueryImpl[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
-    quoted: Expr[Quoted[Query[T]]],
-    ctx: Expr[Context[D, N]]
-  )(using qctx: Quotes): Expr[Res] = 
-  {
-    import qctx.reflect._
-    val tmc = new miniquill.parser.TastyMatchersContext
-    import tmc._
 
-    val rowType =
+    def executeQueryDynamic[RawT: Type](query: Expr[Quoted[Query[RawT]]], converter: Expr[RawT => T]) = {
+      val decoder = summonDecoderOrThrow[RawT]
+      val quotedAst = '{ $quoted.ast }
+      // Is the expansion on T or RawT, need to investigate
+      val expandedAst = Expander.runtimeImpl[T](quotedAst)
+      //println(s"Expanded Ast: " + pprint.apply(Term.of(expandedAst)))
+      '{  RunDynamic.apply[RawT, T, D, N]($query, $decoder, $converter, $ctx, $expandedAst).asInstanceOf[Res] }
+    }
+
+    /** Summon a named method from the context Context[D, N] */
+    private def summonContextMethod(name: String) = {
+      val ctxTerm = Term.of(ctx)
+      val ctxClass = ctxTerm.tpe.widen.classSymbol.get
+      ctxClass.methods.filter(f => f.name == name).headOption.getOrElse {
+        throw new IllegalArgumentException(s"Cannot find method '${name}' from context ${Term.of(ctx).tpe.widen}")
+      }
+    }
+
+    /** 
+     * Execute static query via ctx.executeQuery method given we have the ability to do so 
+     * i.e. have a staticState 
+     */
+    def executeQueryStatic[RawT: Type](staticState: StaticState, converter: Expr[RawT => T]): Expr[Res] = {      
+      val executeQuery = summonContextMethod("executeQuery")
+      val StaticState(query, lifts) = staticState
+      val decoder = summonDecoderOrThrow[RawT]
+
+      val extractor = '{ (r: ResultRow) => $converter.apply($decoder.apply(1, r)) }
+      val prepare = '{ (row: PrepareRow) => StaticExtractor.apply[PrepareRow]($lifts, row) }
+
+      // executeQuery(query, prepare, extractor)
+      val applyExecuteQuery =
+        Apply(
+          TypeApply(Select(Term.of(ctx), executeQuery), List(TypeTree.of[T])),
+          List(Term.of(Expr(query)), Term.of(prepare), Term.of(extractor), Term.of('{ExecutionType.Static}))
+        )
+      applyExecuteQuery.asExprOf[Res]
+    }
+
+    /** Summon decoder for a given Type and Row type (ResultRow) */
+    def summonDecoderOrThrow[DecoderT: Type]: Expr[GenericDecoder[ResultRow, DecoderT]] = {
+      Expr.summon[GenericDecoder[ResultRow, DecoderT]] match {
+        case Some(decoder) => decoder
+        case None => report.throwError("Decoder could not be summoned")
+      }
+    }
+
+    // See if there there is a QueryMeta mapping T to some other type RawT
+    def summonMetaIfExists =
       Expr.summon[QueryMeta[T, _]] match {
         case Some(expr) =>
           // println("Summoned! " + expr.show)
@@ -210,29 +203,28 @@ object RunDsl {
         case None => None
       }
 
-    val output =
-      rowType match {
+    /** Summon all needed components and run executeQuery method */
+    def apply(): Expr[Res] = {
+      summonMetaIfExists match {
         case Some(rowRepr) =>
-          rowRepr match {
-            case '[rawT] => runWithMeta[T, rawT, ResultRow, PrepareRow, D, N, Res](quoted, ctx)
-          }
+          rowRepr match { case '[rawT] => runWithMeta[rawT] }
         case None =>
           StaticTranslationMacro.applyInner[T, D, N](quoted) match {
             case Some(staticState) =>
-              executeQueryStatic[T, T, ResultRow, PrepareRow, D, N, Res](ctx, staticState, '{ (t:T) => t })
+              executeQueryStatic[T](staticState, '{ (t:T) => t })
 
             case None => 
-              println("========== Expanding Dynamically ===========")
-              val decoder = summonDecoderOrThrow[ResultRow, T]
-              val quotedAst = '{ $quoted.ast }
-              val expandedAst = Expander.runtimeImpl[T](quotedAst)
-              '{ 
-                RunDynamic.apply[T, T, D, N]($quoted, $decoder, (t: T) => t, $ctx, $expandedAst).asInstanceOf[Res]
-              }
-              
+              executeQueryDynamic(quoted, '{ (t: T) => t })
           }
       }
-    output
+    }
+  }
+  
+  def runQueryImpl[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
+    quoted: Expr[Quoted[Query[T]]],
+    ctx: Expr[Context[D, N]]
+  )(using qctx: Quotes): Expr[Res] = {
+    new RunQuery[T, ResultRow, PrepareRow, D, N, Res](quoted, ctx).apply()
   }
 }
 
