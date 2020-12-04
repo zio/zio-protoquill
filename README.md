@@ -1,9 +1,11 @@
-## sbt project compiled with Dotty
+## Testing Area for Future Dotty-Based Quill
 
-### Usage
+To run, use `sbt compile`. Tests are currently not available
+since scalatest has not been moved to 3.0.0-M2 yet.
 
-This is a normal sbt project, you can compile code with `sbt compile` and run it
-with `sbt run`, `sbt console` will start a Dotty REPL.
+This project should work with metals. To import, go to the
+project directory and type `code .` to open VS Code
+(note that it will have to be configured beforehand).
 
-For more information on the sbt-dotty plugin, see the
-[dotty-example-project](https://github.com/lampepfl/dotty-example-project/blob/master/README.md).
+For further information, watch my playlist:
+[ScQuilL Sessions - Quill, Dotty, and Macros](https://www.youtube.com/watch?v=0PSg__PPjY8&list=PLqky8QybCVQYNZY_MNJpkjFKT-dAdHQDX)
