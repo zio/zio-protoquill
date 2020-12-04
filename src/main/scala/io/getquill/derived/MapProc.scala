@@ -34,10 +34,15 @@ class MapProcMacro(using qctx: Quotes) {
         val unsealedClassSymbol = TType.of(using baseType).widen.classSymbol
         //println(s"Symbol: ${unsealedClassSymbol.get.show}")
         //println(s"Fields: ${unsealedClassSymbol.get.caseFields.map(_.show).toList}")
+        // String representing the field being summoned e.g. "firstName" of Person
         val fieldString = Type.of[field].constValue
+        // method of the summoned field
         val fieldMethod = unsealedClassSymbol.get.caseFields.filter(field => field.name == fieldString).head
+        // 'invocation' of the found method
         val childTTerm = '{ (${ Select(id, fieldMethod).asExprOf[Any] }).toString }
         val mapSplice = '{ $map.getOrElse(${Expr[String](fieldString)}, $default) }
+        // construction of the comparison term:
+        // firstName == func(Map[String, String].getOrElse("firstName",null))
         val expr = '{ 
           $eachField( $childTTerm, ${LiftMacro.apply[String, PrepareRow]( mapSplice )} )
         }
