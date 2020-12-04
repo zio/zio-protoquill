@@ -61,8 +61,11 @@ object QueryMetaMacro {
 }
 
 object QueryDsl {
-  implicit class StringExt(str: String) {
-    def like(str: String): Boolean = ???
+  // implicit class StringExt(str: String) {
+  //   def like(str: String): Boolean = ???
+  // }
+  extension (str: String) {
+    def like(other: String): Boolean = ???
   }
 }
 
