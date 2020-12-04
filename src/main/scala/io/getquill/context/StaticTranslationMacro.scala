@@ -131,13 +131,21 @@ object StaticTranslationMacro {
       case Failure(f) => f.printStackTrace()
     }
 
+    extension [T](opt: Option[T]) {
+      def errPrint(str: String) = 
+        opt match {
+          case s: Some[T] => s
+          case None => println(str); None
+        }
+    }
+
     val tryStatic =
       for {
-        (idiom, naming)          <- idiomAndNamingStatic.toOption
+        (idiom, naming)          <- idiomAndNamingStatic.toOption.errPrint("Could not parse Idiom/Naming")
         // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
-        quotedExpr               <- QuotedExpr.uprootableOpt(quoted) 
-        (queryString, externals) <- processAst[T](quotedExpr.ast, idiom, naming)
-        encodedLifts             <- processLifts(quotedExpr.lifts, externals)
+        quotedExpr               <- QuotedExpr.uprootableOpt(quoted).errPrint("Could not uproot the quote") 
+        (queryString, externals) <- processAst[T](quotedExpr.ast, idiom, naming).errPrint("Could not process the ASt")
+        encodedLifts             <- processLifts(quotedExpr.lifts, externals).errPrint("Could not process the lifts")
       } yield {
         println(
           "Compile Time Query Is: " + 
