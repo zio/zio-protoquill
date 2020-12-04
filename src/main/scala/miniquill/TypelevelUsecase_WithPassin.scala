@@ -44,6 +44,7 @@ object TypelevelUsecase_WithPassin {
   inline def path[F, T](inline from: F)(using inline path: Path[F, T]): path.Out = path.get(from)
   
   inline def joes = query[User].filter(u => u.name == "Joe")
+  // Change to 'symbol' and odd set of explosions happen
   inline def q1 = quote { joes.flatMap(j => path[User, Role](j)).filter(so => so._2.name == "Drinker") }
   
 
