@@ -115,9 +115,12 @@ object RunDynamic {
       //   case decoder: Decoder[T] => decoder
       // }
 
+    
+
     // TODO Finish dynamic prepareRow
     val extractor = (r: context.ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[context.ResultRow, RawT]].apply(1, r))
-    context.executeQuery(string, null, extractor, ExecutionType.Dynamic)
+    val prepare = (row: context.PrepareRow) => StaticExtractor.apply[context.PrepareRow](lifts, row)
+    context.executeQuery(string, prepare, extractor, ExecutionType.Dynamic)
   }
 }
 
