@@ -116,8 +116,7 @@ object QueryMetaExtractor {
   }
 
   def applyImpl[T: Type, R: Type, D <: io.getquill.idiom.Idiom: Type, N <: io.getquill.NamingStrategy: Type](
-    quotedRaw: Expr[Quoted[Query[T]]],
-    ctx: Expr[Context[D, N]]
+    quotedRaw: Expr[Quoted[Query[T]]]
   )(using Quotes): ( Expr[Quoted[Query[R]]], Expr[R => T], Option[StaticState] ) = 
   {
     import quotes.reflect.{Try => TTry, _}
@@ -132,7 +131,7 @@ object QueryMetaExtractor {
             attemptStaticRequip[T, R](queryLot, queryLifts, quip) match {
               
               case Some(StaticRequip(requip, baq)) =>
-                val staticTranslation = StaticTranslationMacro.applyInner[R, D, N](requip)
+                val staticTranslation = StaticTranslationMacro.applyInner[Query, R, D, N](requip)
                 (requip, baq, staticTranslation)
 
               case None =>

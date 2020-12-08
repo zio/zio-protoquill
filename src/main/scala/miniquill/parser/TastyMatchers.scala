@@ -215,4 +215,13 @@ trait TastyMatchers {
     def unapply(term: Tree): Option[Tree] = Some(recurse(term))
     def apply(term: Tree) = UntypeTree.unapply(term).get
   }
+
+  /** Summon a named method from the context Context[D, N] */
+  def summonContextMethod(name: String, ctx: Expr[_]) = {
+    val ctxTerm = Term.of(ctx)
+    val ctxClass = ctxTerm.tpe.widen.classSymbol.get
+    ctxClass.methods.filter(f => f.name == name).headOption.getOrElse {
+      throw new IllegalArgumentException(s"Cannot find method '${name}' from context ${Term.of(ctx).tpe.widen}")
+    }
+  }
 }

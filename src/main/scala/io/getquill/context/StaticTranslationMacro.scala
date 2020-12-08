@@ -117,8 +117,8 @@ object StaticTranslationMacro {
   //   }
   // }
 
-  def applyInner[T: Type, D <: Idiom, N <: NamingStrategy](
-    quotedRaw: Expr[Quoted[Query[T]]]
+  def applyInner[Q[_]: Type, T: Type, D <: Idiom, N <: NamingStrategy](
+    quotedRaw: Expr[Quoted[Q[T]]]
   )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[StaticState] = 
   {
     import quotes.reflect.{Try => TTry, _}
