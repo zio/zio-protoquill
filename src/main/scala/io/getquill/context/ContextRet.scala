@@ -38,45 +38,14 @@ object RunDynamicTest {
 
 object RunDslRet {
 
-    import miniquill.parser.TastyMatchers
-
-  trait SummonHelper[ResultRow: Type] {
-    implicit val qctx: Quotes
-    import qctx.reflect._
-
-    /** Summon decoder for a given Type and Row type (ResultRow) */
-    def summonDecoderOrThrow[DecoderT: Type]: Expr[GenericDecoder[ResultRow, DecoderT]] = {
-      Expr.summon[GenericDecoder[ResultRow, DecoderT]] match {
-        case Some(decoder) => decoder
-        case None => report.throwError("Decoder could not be summoned")
-      }
-    }
-  }
-
-  trait QueryMetaHelper[T: Type] extends TastyMatchers {
-    // See if there there is a QueryMeta mapping T to some other type RawT
-    def summonMetaIfExists =
-      Expr.summon[QueryMeta[T, _]] match {
-        case Some(expr) =>
-          // println("Summoned! " + expr.show)
-          UntypeExpr(expr) match {
-            case '{ QueryMeta.apply[k, n]($one, $two, $uid) } => Some('[n])
-            case _ => report.throwError("Summoned Query Meta But Could Not Get Type")
-          }
-        case None => None
-      }
-  }
-
 
   class RunTest[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
     quoted: Expr[Quoted[T]],
     ctx: Expr[Context[D, N]]
-  )(using val qctx: Quotes) extends SummonHelper[ResultRow] with QueryMetaHelper[T] with TastyMatchers {
+  )(using val qctx: Quotes) {
     import qctx.reflect._
 
-    def apply(): Expr[String] = executeQueryDynamic(quoted)
-
-    def executeQueryDynamic(quotedBlock: Expr[Quoted[T]]): Expr[String] = {
+    def apply(): Expr[String] = {
       val quotedAst = '{ $quoted.ast }
       '{  RunDynamicTest.apply($quotedAst).asInstanceOf[String] }
     }
