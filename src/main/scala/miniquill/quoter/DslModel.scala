@@ -13,14 +13,10 @@ import scala.annotation.compileTimeOnly
 import io.getquill.Query
 import io.getquill.EntityQuery
 
-// TODO lifts needs to be List of Planter to allow QueryLifts
 case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuotes: List[QuotationVase])
-  //override def toString = ast.toString
-  // make a function that uses a stateless transformer to walk through the tuple,
-  // gather the lifted quoted blocks, splice their qutations into the ast, and then
-  // add their lifted values into the parent tuple.... basically a runtime
-  // flattening of the tree. This is the mechanism that will be used by the 'run' function
-  // for dynamic queries
+
+
+case class MyQuoted(val ast: io.getquill.ast.Ast)
 
 
 

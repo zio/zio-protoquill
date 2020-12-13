@@ -88,14 +88,10 @@ trait QuoteDsl[Parser <: ParserFactory] {
 }
 
 object QuotingSimple {
-  inline def quote: Quoted[String] = ${ QuoteMacroSimple.apply }
-}
-
-object QuoteMacroSimple {
-  def apply(using Quotes): Expr[Quoted[String]] = {
+  inline def quote: Quoted[String] = ${ quoteImpl }
+  def quoteImpl(using Quotes): Expr[Quoted[String]] = {
     import quotes.reflect._
     import io.getquill.ast.{ Ident => AIdent, Map => AMap, _ }
-
     val astExpr = 
       '{ AMap(???, ???, ???) }
 
@@ -104,7 +100,6 @@ object QuoteMacroSimple {
     }
   }
 }
-
 
 object QuoteMacro {
   import io.getquill.util.LoadObject 
