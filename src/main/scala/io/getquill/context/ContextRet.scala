@@ -38,19 +38,8 @@ object RunDynamicTest {
 
 object RunDslRet {
 
-
-  class RunTest(quoted: Expr[Quoted[_]])(using val qctx: Quotes) {
-    import qctx.reflect._
-
-    def apply(): Expr[String] = {
-      val quotedAst = '{ $quoted.ast }
-      '{  RunDynamicTest.apply($quotedAst).asInstanceOf[String] }
-    }
-  }
-
-
-
   def runTestImpl(quoted: Expr[Quoted[_]])(using qctx: Quotes): Expr[String] = {
-    new RunTest(quoted).apply()
+    val quotedAst = '{ $quoted.ast }
+    '{  RunDynamicTest.apply($quotedAst).asInstanceOf[String] }
   }
 }
