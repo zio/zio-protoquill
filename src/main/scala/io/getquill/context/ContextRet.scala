@@ -38,9 +38,6 @@ object ContextRet {
     '{ $quoted.ast.toString }
   }
 
-  inline def runTest[T](inline quoted: MyQuoted[T]): String = 
-    ${ runTestImpl('quoted) }
-
   inline def runAndTest[T](inline quoted: MyQuoted[T]): String = 
-    runTest[T](quoted)
+    ${ runTestImpl('quoted) }
 }
