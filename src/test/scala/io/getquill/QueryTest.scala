@@ -19,9 +19,12 @@ class QueryTest {
   def peopleRuntime = quote {
     query[Person]
   }
+  inline def mapping = quote { // works if you turn this into a regular def!!!
+    peopleRuntime.map(p => p.name)
+  }
   
   def main(args: Array[String]): Unit = {
-    println( ctx.runAndTest(  peopleRuntime.map(p => p.name)) ) //helloooooooooooooooooooooooooooo
+    println( ctx.runAndTest( mapping ) ) //helloooooooooooooooooooooooooooo
   }
 
 }
