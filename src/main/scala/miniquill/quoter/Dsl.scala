@@ -98,7 +98,6 @@ object MyQuoteMacro {
     '{       
       MyQuoted[T](
         AIdent("p"), 
-        ${Expr.ofList(List[quoted.Expr[miniquill.quoter.ScalarPlanter[_, _]]]())}, 
         ${Expr.ofList(List( '{ QuotationVase(Quoted(AIdent("p"), List(), List()), "foo") } ))}
       )
     }

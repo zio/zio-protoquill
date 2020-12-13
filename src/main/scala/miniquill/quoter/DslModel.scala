@@ -16,7 +16,7 @@ import io.getquill.EntityQuery
 
 case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuotes: List[QuotationVase])
 
-case class MyQuoted[+T](val ast: io.getquill.ast.Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuotes: List[QuotationVase])
+case class MyQuoted[+T](val ast: io.getquill.ast.Ast, runtimeQuotes: List[QuotationVase])
 
 
 
