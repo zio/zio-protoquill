@@ -14,12 +14,12 @@ import org.scalatest._
 class QueryTest {
 
   case class Person(name: String, age: Int)
-  val ctx = new MirrorContext(MirrorIdiom, Literal)
-
-  inline def mapping = quote { // works if you turn this into a regular def!!!
+  
+  inline def mapping = QuotingSimple.quote { // works if you turn this into a regular def!!!
     "hello"
   }
   
+  val ctx = new MirrorContext(MirrorIdiom, Literal)
   def main(args: Array[String]): Unit = {
     println( ctx.runAndTest( mapping ) ) //helloooooooooooooooooooooooooooo
   }
