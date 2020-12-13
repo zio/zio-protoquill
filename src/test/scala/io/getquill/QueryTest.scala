@@ -48,7 +48,7 @@ class QueryTest extends Spec with Inside { //hellooooooo
 
   "shuold work correctly with lift" in {
     import ctx._
-    println( ctx.runAndTest(  peopleRuntime.map(p => p.name)) ) //hellooooooooooooooooooooooooo
+    println( ctx.runAndTest(  peopleRuntime.map(p => p.name)) ) //helloooooooooooooooooooooooooooo
   }
 
 }

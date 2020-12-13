@@ -27,19 +27,13 @@ import miniquill.quoter.ScalarPlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.Query
 import io.getquill.idiom.{ Idiom => Id }
-  import io.getquill.{ NamingStrategy => Na }
+import io.getquill.{ NamingStrategy => Na }
 
 import io.getquill._
-
-object RunDynamicTest {
-
-  def apply(ast: Ast): String = ???
-}
 
 object RunDslRet {
 
   def runTestImpl(quoted: Expr[Quoted[_]])(using qctx: Quotes): Expr[String] = {
-    val quotedAst = '{ $quoted.ast }
-    '{  RunDynamicTest.apply($quotedAst).asInstanceOf[String] }
+    '{ $quoted.ast.toString }
   }
 }
