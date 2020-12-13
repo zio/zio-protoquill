@@ -33,9 +33,7 @@ import io.getquill._
 
 object RunDynamicTest {
 
-  def apply[RawT, T, D <: Id, N <: Na](ast: Ast): String = {
-    ast.toString
-  }
+  def apply(ast: Ast): String = ???
 }
 
 object RunDslRet {
@@ -80,7 +78,7 @@ object RunDslRet {
 
     def executeQueryDynamic(quotedBlock: Expr[Quoted[T]]): Expr[String] = {
       val quotedAst = '{ $quoted.ast }
-      '{  RunDynamicTest.apply[T, T, D, N]($quotedAst).asInstanceOf[String] }
+      '{  RunDynamicTest.apply($quotedAst).asInstanceOf[String] }
     }
   }
 
