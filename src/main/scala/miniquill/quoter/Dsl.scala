@@ -81,7 +81,7 @@ trait QuoteDsl[Parser <: ParserFactory] {
 
   inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteMacro[T, Parser]('bodyExpr) }
 
-  inline def myquote[T](inline bodyExpr: T): Quoted[T] = ${ MyQuoteMacro[T, Parser]('bodyExpr) }
+  inline def myquote[T](inline bodyExpr: T): Quoted[T] = ${ MyQuoteMacro[T]('bodyExpr) }
 
   // TODO Should also probably name a method for this so don't need to enable explicit conversion
   inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ UnquoteMacro[T]('quoted) }
@@ -94,24 +94,12 @@ object MyQuoteMacro {
   import io.getquill.util.LoadObject 
   import io.getquill.norm.BetaReduction 
 
-  def apply[T, Parser <: ParserFactory](bodyRaw: Expr[T])(using Quotes, Type[T], Type[Parser]): Expr[Quoted[T]] = {
+  def apply[T](bodyRaw: Expr[T])(using Quotes, Type[T]): Expr[Quoted[T]] = {
     import quotes.reflect._
-    // NOTE Can disable if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val body = Term.of(bodyRaw).underlyingArgument.asExpr
-
-    val parserFactory = LoadObject[Parser].get
-
-    import Parser._
-
     val pluckedUnquotes = extractRuntimeUnquotes(bodyRaw)
-
-    // Extract new lifts
     val lifts = extractLifts(bodyRaw)
 
-    // TODO Extract ScalarPlanter which are lifts that have been transformed already
-    // TODO Extract plucked quotations, transform into QuotationVase statements and insert into runtimeQuotations slot
-
-    // ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}
     '{       
       Quoted[T](io.getquill.ast.Ident("p"), ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)})
     }
