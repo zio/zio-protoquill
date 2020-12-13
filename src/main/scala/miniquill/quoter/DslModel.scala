@@ -16,11 +16,7 @@ import io.getquill.EntityQuery
 case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuotes: List[QuotationVase])
 
 
-case class MyQuoted(val ast: String, lifts: MyScalarPlanter) //hello
-
-
-case class MyScalarPlanter(uid: String)
-
+case class MyQuoted(val ast: String, val lifts: String)
 
 // Planters contain trees that can be re-inserted into compile-time code.
 // For example, a ScalarPlaner is re-inserted into the PrepareRow sequence
