@@ -16,8 +16,8 @@ import io.getquill.EntityQuery
 
 case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuotes: List[QuotationVase])
 
-case class MyQuoted[+T](val ast: io.getquill.ast.Ast, runtimeQuotes: List[QuotationVase])
-
+case class MyQuoted[+T](val ast: io.getquill.ast.Ast, runtimeQuotes: List[MyQuotationVase])
+case class MyQuotationVase(quoted: Quoted[Any], uid: String)
 
 
 // Planters contain trees that can be re-inserted into compile-time code.
@@ -33,6 +33,8 @@ case class ScalarPlanter[T, PrepareRow](value: T, encoder: GenericEncoder[T, Pre
 // the ast (i.e. the ground... metaphorically speaking), therefore this holder is called Vase. The contents of the
 // QuotationVase are only inserted back in during runtime.
 case class QuotationVase(quoted: Quoted[Any], uid: String)
+
+
 
 // Quotations go from a QuotationLot directly inline into the tree or put into a QuotationVase
 // to be added into the runtime inlining later

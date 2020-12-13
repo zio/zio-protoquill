@@ -98,7 +98,7 @@ object MyQuoteMacro {
     '{       
       MyQuoted[T](
         AIdent("p"), 
-        ${Expr.ofList(List( '{ QuotationVase(Quoted(AIdent("p"), List(), List()), "foo") } ))}
+        ${Expr.ofList(List( '{ MyQuotationVase(Quoted(AIdent("p"), List(), List()), "foo") } ))}
       )
     }
   }
