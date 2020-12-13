@@ -50,10 +50,7 @@ object RunDslRet {
 
 
 
-  def runTestImpl[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
-    quoted: Expr[Quoted[T]],
-    ctx: Expr[Context[D, N]]
-  )(using qctx: Quotes): Expr[String] = {
+  def runTestImpl(quoted: Expr[Quoted[_]])(using qctx: Quotes): Expr[String] = {
     new RunTest(quoted).apply()
   }
 }

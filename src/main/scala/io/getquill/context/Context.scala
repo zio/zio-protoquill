@@ -43,7 +43,7 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
     ${ RunDsl.runQueryImpl[T, ResultRow, PrepareRow, Dialect, Naming, Result[RunQueryResult[T]]]('quoted, 'this) }
 
   inline def runTest[T](inline quoted: Quoted[T]): String = 
-    ${ RunDslRet.runTestImpl[T, ResultRow, PrepareRow, Dialect, Naming, Result[RunQueryResult[T]]]('quoted, 'this) }
+    ${ RunDslRet.runTestImpl('quoted) }
 }
 
 object LiftsExtractor {
