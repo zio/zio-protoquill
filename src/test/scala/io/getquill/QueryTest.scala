@@ -11,7 +11,7 @@ import miniquill.quoter.QuotationVase
 import io.getquill.context.ExecutionType
 import org.scalatest._
 
-class QueryTest extends Spec with Inside { //hellooooooo
+class QueryTest {
 
   case class Person(name: String, age: Int)
   val ctx = new MirrorContext(MirrorIdiom, Literal)
@@ -20,8 +20,8 @@ class QueryTest extends Spec with Inside { //hellooooooo
     query[Person]
   }
 
-  "shuold work correctly with lift" in {
+  def main(args: Array[String]): Unit = {
     import ctx._
-    println( ctx.runAndTest(  peopleRuntime.map(p => p.name)) ) //helloooooooooooooooooooooooooooo
+    println( ctx.runAndTest(  peopleRuntime.map(p => p.name)) ) //hello
   }
 }
