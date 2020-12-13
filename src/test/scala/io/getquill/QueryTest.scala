@@ -16,7 +16,7 @@ class QueryTest {
   case class Person(name: String, age: Int)
   val ctx = new MirrorContext(MirrorIdiom, Literal)
 
-  def peopleRuntime = quote {
+  def peopleRuntime = myquote {
     query[Person]
   }
 
