@@ -42,9 +42,6 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
 
   inline def runQuery[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = 
     ${ RunDsl.runQueryImpl[T, ResultRow, PrepareRow, Dialect, Naming, Result[RunQueryResult[T]]]('quoted, 'this) }
-
-  inline def runTest[T](inline quoted: MyQuoted[T]): String = 
-    ${ RunDslRet.runTestImpl('quoted) }
 }
 
 object LiftsExtractor {
@@ -235,7 +232,4 @@ with EncodingDsl
 
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = 
     runQuery[T](quoted)
-
-  inline def runAndTest[T](inline quoted: MyQuoted[T]): String = 
-    runTest[T](quoted)
 }

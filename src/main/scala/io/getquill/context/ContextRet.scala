@@ -32,9 +32,15 @@ import io.getquill.{ NamingStrategy => Na }
 
 import io.getquill._
 
-object RunDslRet {
+object ContextRet {
 
   def runTestImpl(quoted: Expr[MyQuoted[_]])(using qctx: Quotes): Expr[String] = {
     '{ $quoted.ast.toString }
   }
+
+  inline def runTest[T](inline quoted: MyQuoted[T]): String = 
+    ${ runTestImpl('quoted) }
+
+  inline def runAndTest[T](inline quoted: MyQuoted[T]): String = 
+    runTest[T](quoted)
 }

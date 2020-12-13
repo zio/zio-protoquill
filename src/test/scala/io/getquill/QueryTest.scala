@@ -10,6 +10,7 @@ import miniquill.quoter.QuotationLot
 import miniquill.quoter.QuotationVase
 import io.getquill.context.ExecutionType
 import org.scalatest._
+import io.getquill.context.ContextRet
 
 class QueryTest {
 
@@ -19,7 +20,6 @@ class QueryTest {
   inline def q2 = myquote
 
   def main(args: Array[String]): Unit = {
-    import ctx._
-    println( ctx.runAndTest( q2 ) ) //helloooo
+    println( ContextRet.runAndTest( q2 ) ) //helloooo
   }
 }
