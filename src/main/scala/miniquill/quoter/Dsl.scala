@@ -90,10 +90,8 @@ trait QuoteDsl[Parser <: ParserFactory] {
 
 object MyQuoteMacro {
   inline def myquote[T]: MyQuoted[T] = ${ MyQuoteMacro[T] }
-
   def apply[T](using Quotes, Type[T]): Expr[MyQuoted[T]] = {
     import quotes.reflect._
-    import io.getquill.ast.{ Ident => AIdent }
 
     '{       
       MyQuoted[T](
