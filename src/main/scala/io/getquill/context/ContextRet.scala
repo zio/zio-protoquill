@@ -39,10 +39,7 @@ object RunDynamicTest {
 object RunDslRet {
 
 
-  class RunTest[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
-    quoted: Expr[Quoted[T]],
-    ctx: Expr[Context[D, N]]
-  )(using val qctx: Quotes) {
+  class RunTest(quoted: Expr[Quoted[_]])(using val qctx: Quotes) {
     import qctx.reflect._
 
     def apply(): Expr[String] = {
@@ -57,6 +54,6 @@ object RunDslRet {
     quoted: Expr[Quoted[T]],
     ctx: Expr[Context[D, N]]
   )(using qctx: Quotes): Expr[String] = {
-    new RunTest[T, ResultRow, PrepareRow, D, N, Res](quoted, ctx).apply()
+    new RunTest(quoted).apply()
   }
 }
