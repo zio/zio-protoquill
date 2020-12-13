@@ -19,7 +19,7 @@ class QueryTest {
   def peopleRuntime = myquote {
     query[Person]
   }
-  inline def q2 = myquote {
+  inline def q2 = myquote { // changing this to a regular def seems to make problem go away
     peopleRuntime.map(p => p.name)
   }
 
