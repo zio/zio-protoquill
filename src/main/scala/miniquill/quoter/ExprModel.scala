@@ -185,11 +185,11 @@ object QuotationLotExpr {
         case '{ (${quotationLot}: QuotationLot[tt]).unquote } => 
           Some(quotationLot)
         
-        // TODO Now since we have UntypeExpr this below might not be needed
-        // There are situations e.g. SchemaMeta where there's an additional type ascription needed
-        // there it needs to be specified in the AST manually. Maybe this is a bug?
-        case '{ type tt; ((${quotationLot}: QuotationLot[`tt`]).unquote: `tt`) } => 
-          Some(quotationLot)
+        // // TODO Now since we have UntypeExpr this below might not be needed
+        // // There are situations e.g. SchemaMeta where there's an additional type ascription needed
+        // // there it needs to be specified in the AST manually. Maybe this is a bug?
+        // case '{ type tt; ((${quotationLot}: QuotationLot[`tt`]).unquote: `tt`) } => 
+        //   Some(quotationLot)
 
         case other => 
           None
@@ -257,8 +257,12 @@ object QuotationLotExpr {
       case vase @ `QuotationLot.apply`(quoted @ QuotedExpr.Uprootable(ast, ScalarPlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
         Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
 
-      case `QuotationLot.apply`(quotation, uid, rest) =>
-        Some(Pluckable(uid, quotation, rest))
+      case expr @ `QuotationLot.apply`(quotation, uid, rest) =>
+        println("((((((((((((((((((((((( Finding Pluckable ))))))))))))))))))))")
+        println(pprint.apply(Term.of(quotation)))
+        val qLot = expr.asInstanceOf[Expr[QuotationLot[Any]]]
+        val qLotQuoted = '{ $qLot.quoted }
+        Some(Pluckable(uid, qLotQuoted, rest))
 
       // If it's a QuotationLot but we can't extract it at all, need to throw an error
       case '{ ($qb: QuotationLot[t]) } =>

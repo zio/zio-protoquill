@@ -25,6 +25,6 @@ class QueryTest {
 
   def main(args: Array[String]): Unit = {
     import ctx._
-    println( ctx.runAndTest( q2 ) ) //hello
+    println( ctx.runAndTest( q2 ) ) //helloooo
   }
 }
