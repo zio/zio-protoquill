@@ -200,4 +200,8 @@ object Expander {
 
     '{ AMap($ast, Ident("x"), $insert) }
   }
+
+  def runtimeImplTest[T](ast: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
+    '{ AMap($ast, ???, ???) }
+  }
 }

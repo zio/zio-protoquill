@@ -78,44 +78,7 @@ object RunDynamic {
     ast: Ast
   ): context.Result[context.RunQueryResult[T]] = 
   {
-    val idiom: D = context.idiom
-    val naming: N = context.naming
-
-    // println("Runtime Expanded Ast Is: " + ast)
-    val lifts = quoted.lifts // quoted.lifts causes position exception
-    val quotationVases = quoted.runtimeQuotes // quoted.runtimeQuotes causes position exception
-
-    def spliceQuotations(ast: Ast): Ast =
-      Transform(ast) {
-        case v @ QuotationTag(uid) => 
-          // When a quotation to splice has been found, retrieve it and continue
-          // splicing inside since there could be nested sections that need to be spliced
-          quotationVases.find(_.uid == uid) match {
-            case Some(vase) => 
-              spliceQuotations(vase.quoted.ast)
-            case None =>
-              throw new IllegalArgumentException(s"Quotation vase with UID ${uid} could not be found!")
-          }
-      }
-
-    // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
-    // which means that the compiler has not done the splicing for us. We need to do this ourselves. 
-    val expandedAst = spliceQuotations(ast)
-      
-    val (outputAst, stmt) = idiom.translate(expandedAst)(using naming)
-
-    val (string, externals) =
-      ReifyStatement(
-        idiom.liftingPlaceholder,
-        idiom.emptySetContainsToken,
-        stmt,
-        forProbing = false
-      )
-
-    // TODO Finish dynamic prepareRow
-    val extractor = (r: context.ResultRow) => converter(decoder.asInstanceOf[GenericDecoder[context.ResultRow, RawT]].apply(1, r))
-    val prepare = (row: context.PrepareRow) => LiftsExtractor.apply[context.PrepareRow](lifts, row)
-    context.executeQuery(string, prepare, extractor, ExecutionType.Dynamic)
+    ???
   }
 }
 
@@ -175,10 +138,8 @@ object RunDsl {
     }
 
     def executeQueryDynamic[RawT: Type](query: Expr[Quoted[Query[RawT]]], converter: Expr[RawT => T]) = {
-      val decoder: Expr[miniquill.dsl.GenericDecoder[ResultRow, RawT]] = summonDecoderOrThrow[RawT]
       val quotedAst = '{ $quoted.ast }
-      val expandedAst = Expander.runtimeImpl[T](quotedAst)
-      '{  RunDynamic.apply[RawT, T, D, N]($query, $decoder, $converter, $ctx, $expandedAst).asInstanceOf[Res] }
+      '{  ($quotedAst).asInstanceOf[Res] } // in some cases happens with $converter and some others not $expandedAst?
     }
 
     /** 
