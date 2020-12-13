@@ -41,6 +41,9 @@ trait RunDsl[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStr
 
   inline def runQuery[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = 
     ${ RunDsl.runQueryImpl[T, ResultRow, PrepareRow, Dialect, Naming, Result[RunQueryResult[T]]]('quoted, 'this) }
+
+  inline def runTest[T](inline quoted: Quoted[T]): String = 
+    ${ RunDslRet.runTestImpl[T, ResultRow, PrepareRow, Dialect, Naming, Result[RunQueryResult[T]]]('quoted, 'this) }
 }
 
 object LiftsExtractor {
@@ -67,14 +70,12 @@ object RunDynamic {
   import io.getquill.idiom.{ Idiom => Id }
   import io.getquill.{ NamingStrategy => Na }
 
-  
-
   def apply[RawT, T, D <: Id, N <: Na](
     quoted: Quoted[Query[RawT]], 
     decoder: GenericDecoder[_, RawT], 
     converter: RawT => T,
     context: Context[D, N],
-    ast: Ast // Expander.runtime[RawT](quoted.ast)
+    ast: Ast
   ): context.Result[context.RunQueryResult[T]] = 
   {
     val idiom: D = context.idiom
@@ -121,6 +122,7 @@ object RunDynamic {
 
 
 
+
 object RunDsl {
 
   import io.getquill.idiom.{ Idiom => Id }
@@ -154,6 +156,7 @@ object RunDsl {
       }
   }
 
+
   class RunQuery[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
     quoted: Expr[Quoted[Query[T]]],
     ctx: Expr[Context[D, N]]
@@ -172,11 +175,9 @@ object RunDsl {
     }
 
     def executeQueryDynamic[RawT: Type](query: Expr[Quoted[Query[RawT]]], converter: Expr[RawT => T]) = {
-      val decoder = summonDecoderOrThrow[RawT]
+      val decoder: Expr[miniquill.dsl.GenericDecoder[ResultRow, RawT]] = summonDecoderOrThrow[RawT]
       val quotedAst = '{ $quoted.ast }
-      // Is the expansion on T or RawT, need to investigate
       val expandedAst = Expander.runtimeImpl[T](quotedAst)
-      //println(s"Expanded Ast: " + pprint.apply(Term.of(expandedAst)))
       '{  RunDynamic.apply[RawT, T, D, N]($query, $decoder, $converter, $ctx, $expandedAst).asInstanceOf[Res] }
     }
 
@@ -273,5 +274,6 @@ with EncodingDsl
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = 
     runQuery[T](quoted)
 
-
+  inline def runAndTest[T](inline quoted: Quoted[T]): String = 
+    runTest[T](quoted)
 }
