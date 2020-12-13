@@ -96,12 +96,10 @@ object MyQuoteMacro {
 
   def apply[T](bodyRaw: Expr[T])(using Quotes, Type[T]): Expr[Quoted[T]] = {
     import quotes.reflect._
-    val body = Term.of(bodyRaw).underlyingArgument.asExpr
     val pluckedUnquotes = extractRuntimeUnquotes(bodyRaw)
-    val lifts = extractLifts(bodyRaw)
 
     '{       
-      Quoted[T](io.getquill.ast.Ident("p"), ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)})
+      Quoted[T](io.getquill.ast.Ident("p"), ${Expr.ofList(List[quoted.Expr[miniquill.quoter.ScalarPlanter[_, _]]]())}, ${Expr.ofList(pluckedUnquotes)})
     }
   }
 
