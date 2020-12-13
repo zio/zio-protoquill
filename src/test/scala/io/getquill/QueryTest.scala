@@ -17,7 +17,7 @@ class QueryTest {
   case class Person(name: String, age: Int)
   val ctx = new MirrorContext(MirrorIdiom, Literal)
 
-  inline def q2 = myquote
+  inline def q2 = MyQuoteMacro.myquote
 
   def main(args: Array[String]): Unit = {
     println( ContextRet.runAndTest( q2 ) ) //helloooo
