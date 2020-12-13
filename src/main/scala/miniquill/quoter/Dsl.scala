@@ -81,7 +81,7 @@ trait QuoteDsl[Parser <: ParserFactory] {
 
   inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteMacro[T, Parser]('bodyExpr) }
 
-  inline def myquote[T](inline bodyExpr: T): Quoted[T] = ${ MyQuoteMacro[T]('bodyExpr) }
+  inline def myquote[T]: Quoted[T] = ${ MyQuoteMacro[T] }
 
   // TODO Should also probably name a method for this so don't need to enable explicit conversion
   inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ UnquoteMacro[T]('quoted) }
@@ -94,7 +94,7 @@ object MyQuoteMacro {
   import io.getquill.util.LoadObject 
   import io.getquill.norm.BetaReduction 
 
-  def apply[T](bodyRaw: Expr[T])(using Quotes, Type[T]): Expr[Quoted[T]] = {
+  def apply[T](using Quotes, Type[T]): Expr[Quoted[T]] = {
     import quotes.reflect._
     import io.getquill.ast.{ Ident => AIdent }
 
