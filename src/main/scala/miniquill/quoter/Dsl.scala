@@ -94,52 +94,14 @@ object QuoteMacro {
 
   def apply[T, Parser <: ParserFactory](bodyRaw: Expr[T])(using Quotes, Type[T], Type[Parser]): Expr[Quoted[T]] = {
     import quotes.reflect._
-    // NOTE Can disable if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
-    val body = Term.of(bodyRaw).underlyingArgument.asExpr
+    import io.getquill.ast.{ Ident => AIdent, Map => AMap, _ }
 
-    val parserFactory = LoadObject[Parser].get
+    val astExpr = 
+      '{ AMap(QuotationTag("548fc535-10d4-4225-ba30-9c7f506a7998"), AIdent("p"), Property(AIdent("p"), "name")) }
 
-    import Parser._
-
-    // TODo add an error if body cannot be parsed
-    val rawAst = parserFactory.apply.seal.apply(body)
-    val ast = BetaReduction(rawAst)
-
-    //println("Ast Is: " + ast)
-
-    // TODO Add an error if the lifting cannot be found
-    val reifiedAst = Lifter(ast)
-
-    val pluckedUnquotes = extractRuntimeUnquotes(bodyRaw)
-
-    // Extract new lifts
-    val lifts = extractLifts(bodyRaw)
-
-    // TODO Extract ScalarPlanter which are lifts that have been transformed already
-    // TODO Extract plucked quotations, transform into QuotationVase statements and insert into runtimeQuotations slot
-
-    // ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}
     '{       
-      Quoted[T](${reifiedAst}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)})
+      Quoted[T](${astExpr}, ???, ???)
     }
-  }
-
-  // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
-  // appearing in the AST in multiple places.
-  private def extractLifts(body: Expr[Any])(using Quotes) = {
-    ScalarPlanterExpr.findUnquotes(body).distinctBy(_.uid).map(_.plant)
-  }
-
-  private def extractRuntimeUnquotes(body: Expr[Any])(using Quotes) = {
-    val unquotes = QuotationLotExpr.findUnquotes(body)
-    unquotes
-      .collect {
-        case expr: Pluckable => expr
-        case Pointable(expr) =>
-          report.throwError(s"Invalid runtime Quotation: ${expr.show}. Cannot extract a unique identifier.", expr)
-      }
-      .distinctBy(_.uid)
-      .map(_.pluck)
   }
 }
 

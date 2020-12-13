@@ -16,11 +16,8 @@ class QueryTest {
   case class Person(name: String, age: Int)
   val ctx = new MirrorContext(MirrorIdiom, Literal)
 
-  def peopleRuntime = quote {
-    query[Person]
-  }
   inline def mapping = quote { // works if you turn this into a regular def!!!
-    peopleRuntime.map(p => p.name)
+    "hello"
   }
   
   def main(args: Array[String]): Unit = {
