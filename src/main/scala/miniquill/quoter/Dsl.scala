@@ -101,15 +101,6 @@ object QuoteMacro {
 
     import Parser._
 
-    // TODo add an error if body cannot be parsed
-    val rawAst = parserFactory.apply.seal.apply(body)
-    val ast = BetaReduction(rawAst)
-
-    //println("Ast Is: " + ast)
-
-    // TODO Add an error if the lifting cannot be found
-    val reifiedAst = Lifter(ast)
-
     val pluckedUnquotes = extractRuntimeUnquotes(bodyRaw)
 
     // Extract new lifts
@@ -120,7 +111,7 @@ object QuoteMacro {
 
     // ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}
     '{       
-      Quoted[T](${reifiedAst}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)})
+      Quoted[T](io.getquill.ast.Ident("p"), ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)})
     }
   }
 
