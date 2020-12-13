@@ -16,13 +16,11 @@ class QueryTest {
 
   case class Person(name: String, age: Int)
   
-  inline def mapping = QuotingSimple.quote { // works if you turn this into a regular def!!!
-    "hello"
-  }
+  inline def mapping = QuotingSimple.quote // works if you turn this into a regular def!!!
   
   //val ctx = new MirrorContext(MirrorIdiom, Literal)
   def main(args: Array[String]): Unit = {
-    println( ContextRet.runAndTest( mapping ) ) //helloooooooooooooooooooooooooooo
+    println( ContextRet.runAndTest( mapping ) ) //hellooooooooooooooooooooooooooooooo
   }
 
 }

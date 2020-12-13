@@ -88,14 +88,11 @@ trait QuoteDsl[Parser <: ParserFactory] {
 }
 
 object QuotingSimple {
-  inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteMacroSimple[T]('bodyExpr) }
+  inline def quote: Quoted[String] = ${ QuoteMacroSimple.apply }
 }
 
 object QuoteMacroSimple {
-  import io.getquill.util.LoadObject 
-  import io.getquill.norm.BetaReduction 
-
-  def apply[T](bodyRaw: Expr[T])(using Quotes, Type[T]): Expr[Quoted[T]] = {
+  def apply(using Quotes): Expr[Quoted[String]] = {
     import quotes.reflect._
     import io.getquill.ast.{ Ident => AIdent, Map => AMap, _ }
 
@@ -103,7 +100,7 @@ object QuoteMacroSimple {
       '{ AMap(QuotationTag("548fc535-10d4-4225-ba30-9c7f506a7998"), AIdent("p"), Property(AIdent("p"), "name")) }
 
     '{       
-      Quoted[T](${astExpr}, ???, ???)
+      Quoted[String](${astExpr}, ???, ???)
     }
   }
 }
