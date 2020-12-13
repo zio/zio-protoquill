@@ -20,7 +20,7 @@ class QueryTest {
   
   //val ctx = new MirrorContext(MirrorIdiom, Literal)
   def main(args: Array[String]): Unit = {
-    println( ContextRet.runAndTest( mapping ) ) //hellooooooooooooooooooooooooooooooooooooo
+    println( ContextRet.runAndTest( mapping ) ) //hellooooooooooooooooooooooooooooooooooooooooo
   }
 
 }

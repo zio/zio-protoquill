@@ -16,10 +16,10 @@ import io.getquill.EntityQuery
 case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[ScalarPlanter[_, _]], runtimeQuotes: List[QuotationVase])
 
 
-case class MyQuoted(val ast: String, lifts: MyScalarPlanter[_, _])
+case class MyQuoted(val ast: String, lifts: MyScalarPlanter) //hello
 
 
-case class MyScalarPlanter[T, PrepareRow](value: T, encoder: GenericEncoder[T, PrepareRow], uid: String)
+case class MyScalarPlanter(uid: String)
 
 
 // Planters contain trees that can be re-inserted into compile-time code.
