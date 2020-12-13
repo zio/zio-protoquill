@@ -96,7 +96,7 @@ object QuotingSimple {
       '{ AMap(???, ???, ???) }
 
     '{       
-      MyQuoted[String](${astExpr}, ???, ???)
+      MyQuoted[String](${astExpr}, ???)
     }
   }
 }
