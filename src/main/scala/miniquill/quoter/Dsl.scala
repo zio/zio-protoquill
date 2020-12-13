@@ -97,7 +97,7 @@ object QuoteMacroSimple {
     import io.getquill.ast.{ Ident => AIdent, Map => AMap, _ }
 
     val astExpr = 
-      '{ AMap(QuotationTag("548fc535-10d4-4225-ba30-9c7f506a7998"), AIdent("p"), Property(AIdent("p"), "name")) }
+      '{ AMap(???, ???, ???) }
 
     '{       
       Quoted[String](${astExpr}, ???, ???)
