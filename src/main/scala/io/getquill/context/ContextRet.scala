@@ -33,12 +33,12 @@ import io.getquill._
 
 object RunDslRet {
 
-  def runTestImpl(quoted: Expr[MyQuoted[_]])(using qctx: Quotes): Expr[String] = {
+  def runTestImpl(quoted: Expr[MyQuoted])(using qctx: Quotes): Expr[String] = {
     '{ $quoted.ast.toString }
   }
 }
 
 object ContextRet {
-  inline def runAndTest[T](inline quoted: MyQuoted[T]): String = 
+  inline def runAndTest(inline quoted: MyQuoted): String = 
     ${ RunDslRet.runTestImpl('quoted) }
 }
