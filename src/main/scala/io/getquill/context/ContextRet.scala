@@ -34,10 +34,10 @@ import io.getquill._
 
 object ContextRet {
 
-  def runTestImpl(quoted: Expr[MyQuoted[_]])(using qctx: Quotes): Expr[String] = {
+  def runTestImpl(quoted: Expr[MyQuoted])(using qctx: Quotes): Expr[String] = {
     '{ $quoted.ast.toString }
   }
 
-  inline def runAndTest[T](inline quoted: MyQuoted[T]): String = 
+  inline def runAndTest(inline quoted: MyQuoted): String = 
     ${ runTestImpl('quoted) }
 }

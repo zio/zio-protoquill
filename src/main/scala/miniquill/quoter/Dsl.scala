@@ -89,12 +89,12 @@ trait QuoteDsl[Parser <: ParserFactory] {
 
 
 object MyQuoteMacro {
-  inline def myquote[T]: MyQuoted[T] = ${ MyQuoteMacro[T] }
-  def apply[T](using Quotes, Type[T]): Expr[MyQuoted[T]] = {
+  inline def myquote: MyQuoted = ${ MyQuoteMacro.apply }
+  def apply(using Quotes): Expr[MyQuoted] = {
     import quotes.reflect._
 
     '{       
-      MyQuoted[T](
+      MyQuoted(
         "p", 
         ${Expr.ofList(List( '{ MyQuotationVase("foo") } ))}
       )
