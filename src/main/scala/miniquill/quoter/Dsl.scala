@@ -97,39 +97,14 @@ object MyQuoteMacro {
   def apply[T](bodyRaw: Expr[T])(using Quotes, Type[T]): Expr[Quoted[T]] = {
     import quotes.reflect._
     import io.getquill.ast.{ Ident => AIdent }
-    val pluckedUnquotes = extractRuntimeUnquotes(bodyRaw)
 
     '{       
       Quoted[T](
         AIdent("p"), 
         ${Expr.ofList(List[quoted.Expr[miniquill.quoter.ScalarPlanter[_, _]]]())}, 
-        //${Expr.ofList(pluckedUnquotes)}
         ${Expr.ofList(List( '{ QuotationVase(Quoted(AIdent("p"), List(), List()), "foo") } ))}
       )
     }
-  }
-
-  private def extractRuntimeUnquotes(body: Expr[Any])(using qctx: Quotes) = {
-    import qctx.reflect._
-
-    println("********************** Searching Body ****************")
-    println(pprint(Term.of(body)))
-
-    val unquotes = QuotationLotExpr.findUnquotes(body)
-    unquotes.foreach { unquote =>
-      println("********************** Found Runtime Unquote ****************")
-      unquote match {
-        case pl: Pluckable => println(pprint(Term.of(pl.expr)))
-      }
-    }
-    unquotes
-      .collect {
-        case expr: Pluckable => expr
-        case Pointable(expr) =>
-          report.throwError(s"Invalid runtime Quotation: ${expr.show}. Cannot extract a unique identifier.", expr)
-      }
-      .distinctBy(_.uid)
-      .map(_.pluck)
   }
 }
 
