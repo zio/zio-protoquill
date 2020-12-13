@@ -143,12 +143,8 @@ object QuoteMacro {
     // Extract new lifts
     val lifts = extractLifts(bodyRaw)
 
-    // TODO Extract ScalarPlanter which are lifts that have been transformed already
-    // TODO Extract plucked quotations, transform into QuotationVase statements and insert into runtimeQuotations slot
-
-    // ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}
     '{       
-      Quoted[T](io.getquill.ast.Ident("p"), ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)})
+      Quoted[T](io.getquill.ast.Ident("p"), ${Expr.ofList(List[quoted.Expr[miniquill.quoter.ScalarPlanter[_, _]]]())}, ${Expr.ofList(pluckedUnquotes)})
     }
   }
 
