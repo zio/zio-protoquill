@@ -19,9 +19,12 @@ class QueryTest {
   def peopleRuntime = myquote {
     query[Person]
   }
+  inline def q2 = myquote {
+    peopleRuntime.map(p => p.name)
+  }
 
   def main(args: Array[String]): Unit = {
     import ctx._
-    println( ctx.runAndTest(  peopleRuntime.map(p => p.name)) ) //hello
+    println( ctx.runAndTest( q2 ) ) //hello
   }
 }
