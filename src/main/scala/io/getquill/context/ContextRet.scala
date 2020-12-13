@@ -9,7 +9,7 @@ import scala.compiletime.summonFrom
 import scala.util.Try
 import io.getquill.{ ReturnAction }
 import miniquill.dsl.EncodingDsl
-import miniquill.quoter.Quoted
+import miniquill.quoter.MyQuoted
 import miniquill.quoter.QueryMeta
 import io.getquill.derived._
 import miniquill.context.mirror.MirrorDecoders
@@ -33,12 +33,12 @@ import io.getquill._
 
 object RunDslRet {
 
-  def runTestImpl(quoted: Expr[Quoted[_]])(using qctx: Quotes): Expr[String] = {
+  def runTestImpl(quoted: Expr[MyQuoted[_]])(using qctx: Quotes): Expr[String] = {
     '{ $quoted.ast.toString }
   }
 }
 
 object ContextRet {
-  inline def runAndTest[T](inline quoted: Quoted[T]): String = 
+  inline def runAndTest[T](inline quoted: MyQuoted[T]): String = 
     ${ RunDslRet.runTestImpl('quoted) }
 }
