@@ -103,12 +103,6 @@ object MyQuoteMacro {
     }
   }
 
-  // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
-  // appearing in the AST in multiple places.
-  private def extractLifts(body: Expr[Any])(using Quotes) = {
-    ScalarPlanterExpr.findUnquotes(body).distinctBy(_.uid).map(_.plant)
-  }
-
   private def extractRuntimeUnquotes(body: Expr[Any])(using Quotes) = {
     val unquotes = QuotationLotExpr.findUnquotes(body)
     unquotes
