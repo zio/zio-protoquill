@@ -37,3 +37,8 @@ object RunDslRet {
     '{ $quoted.ast.toString }
   }
 }
+
+object ContextRet {
+  inline def runAndTest[T](inline quoted: Quoted[T]): String = 
+    ${ RunDslRet.runTestImpl('quoted) }
+}

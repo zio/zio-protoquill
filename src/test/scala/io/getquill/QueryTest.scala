@@ -12,6 +12,7 @@ import io.getquill.context.ExecutionType
 import org.scalatest._
 
 class QueryTest {
+  import io.getquill.context.ContextRet
 
   case class Person(name: String, age: Int)
   
@@ -19,9 +20,9 @@ class QueryTest {
     "hello"
   }
   
-  val ctx = new MirrorContext(MirrorIdiom, Literal)
+  //val ctx = new MirrorContext(MirrorIdiom, Literal)
   def main(args: Array[String]): Unit = {
-    println( ctx.runAndTest( mapping ) ) //helloooooooooooooooooooooooooooo
+    println( ContextRet.runAndTest( mapping ) ) //helloooooooooooooooooooooooooooo
   }
 
 }
