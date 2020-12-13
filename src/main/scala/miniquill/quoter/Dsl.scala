@@ -93,7 +93,7 @@ object QuotingSimple {
     import quotes.reflect._
     import io.getquill.ast.{ Ident => AIdent, Map => AMap, _ }
     val astExpr = 
-      '{ AMap(???, ???, ???) }
+      '{ "Hello" }
 
     '{       
       MyQuoted(${astExpr}, ???)
