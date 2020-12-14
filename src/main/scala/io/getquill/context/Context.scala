@@ -270,8 +270,16 @@ with EncodingDsl
   inline def lift[T](inline vv: T): T = 
     ${ LiftMacro[T, PrepareRow]('vv) }
 
-  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = 
-    runQuery[T](quoted)
+  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
+    val ca = new ContextAction[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]] {
+      def idiom = self.idiom
+      def naming = self.naming
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: ResultRow => T, executionType: ExecutionType) =
+        self.executeQuery(sql, prepare, extractor, executionType)
+    }
+    //runQuery[T](quoted)
+    QueryExecution.runQuery(quoted, ca)
+  }
 
 
 }

@@ -39,9 +39,10 @@ object RunDynamicExecution {
 
   def apply[RawT, T, Q[_], D <: Id, N <: Na, PrepareRow, ResultRow, Res](
     quoted: Quoted[Q[RawT]], 
-    ctx: ContextAction[D, N, PrepareRow, ResultRow, Res],
+    ctx: ContextAction[T, D, N, PrepareRow, ResultRow, Res],
     prepare: PrepareRow => (List[Any], PrepareRow),
-    extractor: ResultRow => T
+    extractor: ResultRow => T,
+    expandedAst: Ast
   ): Res = 
   {
     // println("Runtime Expanded Ast Is: " + ast)
@@ -63,9 +64,10 @@ object RunDynamicExecution {
 
     // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
     // which means that the compiler has not done the splicing for us. We need to do this ourselves. 
-    val expandedAst = spliceQuotations(quoted.ast)
+    //val expandedAst = Expander.runtime[T](quoted.ast) // cannot derive a decoder for T
+    val splicedAst = spliceQuotations(expandedAst)
       
-    val (outputAst, stmt) = ctx.idiom.translate(expandedAst)(using ctx.naming)
+    val (outputAst, stmt) = ctx.idiom.translate(splicedAst)(using ctx.naming)
 
     val (string, externals) =
       ReifyStatement(
@@ -112,7 +114,7 @@ object QueryExecution {
 
   class RunQuery[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
     quoted: Expr[Quoted[Query[T]]],
-    contextAction: Expr[ContextAction[D, N, PrepareRow, ResultRow, Res]]
+    contextAction: Expr[ContextAction[T, D, N, PrepareRow, ResultRow, Res]]
   )(using val qctx: Quotes) extends SummonHelper[ResultRow] with QueryMetaHelper[T] with TastyMatchers {
     import qctx.reflect._
 
@@ -136,7 +138,7 @@ object QueryExecution {
       val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($query.lifts, row) }
 
       // TODO What about when an extractor is not neededX
-      '{  RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($query, $contextAction, $prepare, $extractor) }
+      '{  RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($query, $contextAction, $prepare, $extractor, $expandedAst) }
     }
 
     /** 
@@ -152,7 +154,7 @@ object QueryExecution {
 
       // TODO What about when an extractor is not neededX
       // executeAction(query, prepare, extractor)
-      '{ $contextAction.execute[T](${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
+      '{ $contextAction.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
     }
 
     /** Summon all needed components and run executeQuery method */
@@ -171,17 +173,22 @@ object QueryExecution {
       }
     }
   }
+
+  inline def runQuery[T, ResultRow, PrepareRow, D <: Id, N <: Na, Res](
+    quoted: Quoted[Query[T]],
+    ctx: ContextAction[T, D, N, PrepareRow, ResultRow, Res]
+  ) = ${ runQueryImpl('quoted, 'ctx) }
   
   def runQueryImpl[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
     quoted: Expr[Quoted[Query[T]]],
-    ctx: Expr[ContextAction[D, N, PrepareRow, ResultRow, Res]]
+    ctx: Expr[ContextAction[T, D, N, PrepareRow, ResultRow, Res]]
   )(using qctx: Quotes): Expr[Res] = {
     new RunQuery[T, ResultRow, PrepareRow, D, N, Res](quoted, ctx).apply()
   }
 }
 
-class ContextAction[D <: Id, N <: Na, PrepareRow, ResultRow, Res] {
-  def idiom: D = ???
-  def naming: N = ???
-  def execute[T](sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: ResultRow => T, executionType: ExecutionType): Res = ???
+trait ContextAction[T, D <: Id, N <: Na, PrepareRow, ResultRow, Res] {
+  def idiom: D
+  def naming: N
+  def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: ResultRow => T, executionType: ExecutionType): Res
 }
