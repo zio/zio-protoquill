@@ -30,60 +30,16 @@ import io.getquill.idiom.{ Idiom => Id }
 import io.getquill.{ NamingStrategy => Na }
 import miniquill.parser.TastyMatchers
 
-object RunDynamicExecution {
-
-  import io.getquill.idiom.{ Idiom => Id }
-  import io.getquill.{ NamingStrategy => Na }
-
-  
-
-  def apply[RawT, T, Q[_], D <: Id, N <: Na, PrepareRow, ResultRow, Res](
-    quoted: Quoted[Q[RawT]], 
-    ctx: ContextAction[T, D, N, PrepareRow, ResultRow, Res],
-    prepare: PrepareRow => (List[Any], PrepareRow),
-    extractor: ResultRow => T,
-    expandedAst: Ast
-  ): Res = 
-  {
-    // println("Runtime Expanded Ast Is: " + ast)
-    val lifts = quoted.lifts // quoted.lifts causes position exception
-    val quotationVases = quoted.runtimeQuotes // quoted.runtimeQuotes causes position exception
-
-    def spliceQuotations(ast: Ast): Ast =
-      Transform(ast) {
-        case v @ QuotationTag(uid) => 
-          // When a quotation to splice has been found, retrieve it and continue
-          // splicing inside since there could be nested sections that need to be spliced
-          quotationVases.find(_.uid == uid) match {
-            case Some(vase) => 
-              spliceQuotations(vase.quoted.ast)
-            case None =>
-              throw new IllegalArgumentException(s"Quotation vase with UID ${uid} could not be found!")
-          }
-      }
-
-    // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
-    // which means that the compiler has not done the splicing for us. We need to do this ourselves. 
-    //val expandedAst = Expander.runtime[T](quoted.ast) // cannot derive a decoder for T
-    val splicedAst = spliceQuotations(expandedAst)
-      
-    val (outputAst, stmt) = ctx.idiom.translate(splicedAst)(using ctx.naming)
-
-    val (string, externals) =
-      ReifyStatement(
-        ctx.idiom.liftingPlaceholder,
-        ctx.idiom.emptySetContainsToken,
-        stmt,
-        forProbing = false
-      )
-
-    ctx.execute(string, prepare, extractor, ExecutionType.Dynamic)
-  }
+trait ContextAction[T, D <: Id, N <: Na, PrepareRow, ResultRow, Res] {
+  def idiom: D
+  def naming: N
+  def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: ResultRow => T, executionType: ExecutionType): Res
 }
 
-
+/**
+ * Drives execution of Quoted blocks i.e. Queries etc... from the context.
+ */
 object QueryExecution {
-
 
   trait SummonHelper[ResultRow: Type] {
     implicit val qctx: Quotes
@@ -187,8 +143,54 @@ object QueryExecution {
   }
 }
 
-trait ContextAction[T, D <: Id, N <: Na, PrepareRow, ResultRow, Res] {
-  def idiom: D
-  def naming: N
-  def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: ResultRow => T, executionType: ExecutionType): Res
+/**
+ * Drives dynamic execution from the Context
+ */
+object RunDynamicExecution {
+
+  import io.getquill.idiom.{ Idiom => Id }
+  import io.getquill.{ NamingStrategy => Na }
+
+  def apply[RawT, T, Q[_], D <: Id, N <: Na, PrepareRow, ResultRow, Res](
+    quoted: Quoted[Q[RawT]], 
+    ctx: ContextAction[T, D, N, PrepareRow, ResultRow, Res],
+    prepare: PrepareRow => (List[Any], PrepareRow),
+    extractor: ResultRow => T,
+    expandedAst: Ast
+  ): Res = 
+  {
+    // println("Runtime Expanded Ast Is: " + ast)
+    val lifts = quoted.lifts // quoted.lifts causes position exception
+    val quotationVases = quoted.runtimeQuotes // quoted.runtimeQuotes causes position exception
+
+    def spliceQuotations(ast: Ast): Ast =
+      Transform(ast) {
+        case v @ QuotationTag(uid) => 
+          // When a quotation to splice has been found, retrieve it and continue
+          // splicing inside since there could be nested sections that need to be spliced
+          quotationVases.find(_.uid == uid) match {
+            case Some(vase) => 
+              spliceQuotations(vase.quoted.ast)
+            case None =>
+              throw new IllegalArgumentException(s"Quotation vase with UID ${uid} could not be found!")
+          }
+      }
+
+    // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
+    // which means that the compiler has not done the splicing for us. We need to do this ourselves. 
+    //val expandedAst = Expander.runtime[T](quoted.ast) // cannot derive a decoder for T
+    val splicedAst = spliceQuotations(expandedAst)
+      
+    val (outputAst, stmt) = ctx.idiom.translate(splicedAst)(using ctx.naming)
+
+    val (string, externals) =
+      ReifyStatement(
+        ctx.idiom.liftingPlaceholder,
+        ctx.idiom.emptySetContainsToken,
+        stmt,
+        forProbing = false
+      )
+
+    ctx.execute(string, prepare, extractor, ExecutionType.Dynamic)
+  }
 }
