@@ -5,17 +5,22 @@ import scala.quoted.Const
 import scala.quoted
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import miniquill.parser.TastyMatchers._
+import scala.reflect.ClassTag;
+import scala.reflect.classTag;
 
+/**
+ * Convert constructs of Quill Ast into Expr[Ast]. This allows them to be passed
+ * back an fourth between inline Quotation blocks during compile-time which should eventually
+ * be bassed into a run-call-site where they will be evaluated into SQL.
+ * 
+ * Note that liftable List is already taken care of by the Dotty implicits
+ */
 object Lifter {
 
   def apply(ast: Ast): Quotes ?=> Expr[Ast] = liftableAst.apply(ast) // can also do ast.lift but this makes some error messages simpler
 
   extension [T](t: T)(using Liftable[T], Quotes):
     def expr: Expr[T] = Expr(t)
-
-
-  import scala.reflect.ClassTag;
-  import scala.reflect.classTag;
 
   trait NiceLiftable[T: ClassTag] extends Liftable[T]:
     def toExpr(t: T): Quotes ?=> Expr[T] = apply(t)

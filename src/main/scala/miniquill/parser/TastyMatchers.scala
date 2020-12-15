@@ -5,6 +5,17 @@ import scala.quoted.Varargs
 
 final class TastyMatchersContext(using val qctx: Quotes) extends TastyMatchers
 
+/**
+ * Allows tmporting TastyMatchers._ in order to be able to use
+ * TastyMatchersContext as a matcher without having to declare it. You can just use 
+ * it e.g:
+ * <code>
+ * import TastyMatchers._
+ * foo match {
+ *   case tmc.ConstantExpr(expr) => expr
+ * }
+ * </code>
+ */
 object TastyMatchers {
   inline def tmc(using Quotes) = new TastyMatchersContext
 }
