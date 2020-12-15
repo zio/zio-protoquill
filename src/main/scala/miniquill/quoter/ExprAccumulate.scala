@@ -23,7 +23,7 @@ object ExprAccumulate {
           case e if e.getMessage.startsWith("Expr cast exception:") => //hello
             //println("============== Could not transform over expression ===========")
             //e.printStackTrace
-            //printer.lnf(Term.of(expr))
+            //printer.lnf(expr.asTerm)
             expr
         }
       }
@@ -37,7 +37,7 @@ object ExprAccumulate {
             expr
         }
 
-        Term.of(expr) match {
+        expr.asTerm match {
           // Not including this causes execption "scala.tasty.reflect.ExprCastError: Expr: [ : Nothing]" in certain situations
           case Repeated(Nil, Inferred()) => expr 
           case _ => transformChildren[TF](expr)

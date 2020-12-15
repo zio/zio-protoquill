@@ -14,11 +14,11 @@ object MacroExperiment {
     val tctx = new TastyMatchersContext
     import tctx._
 
-    val resealed = Term.of(tree).underlyingArgument.asExpr
+    val resealed = tree.asTerm.underlyingArgument.asExpr
 
-    printer.lnf(Term.of(resealed))
+    printer.lnf(resealed.asTerm)
 
-    Term.of(resealed) match {
+    resealed.asTerm match {
       case Apply(Select(RawLambdaN(idents, body), "apply"), args) =>
         println("Matched!")
         println(idents)
@@ -31,8 +31,8 @@ object MacroExperiment {
         println("Not Matched")
     }
 
-    //println(Term.of(tree).underlyingArgument.asExpr.show)
-    //printer.lnf(Term.of(tree).underlyingArgument)
+    //println(tree.asTerm.underlyingArgument.asExpr.show)
+    //printer.lnf(tree.asTerm.underlyingArgument)
     tree
   }
 

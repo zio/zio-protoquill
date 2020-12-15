@@ -11,7 +11,7 @@
 //   def retuplifyImpl[T:Type](tuple: Expr[Tuple], newValue: Expr[T])(using Quotes): Expr[Tuple] = {
 //     import quotes.reflect._
   
-//     printer.ln(Term.of(tuple).underlyingArgument)
+//     printer.ln(tuple.asTerm.underlyingArgument)
 
 //     // tuple match {
 //     //   case '{ ($elem *: ($elems1: $tpe)) } => println(s"ELEM: $elem ELEMS: $elems1")
@@ -25,11 +25,11 @@
 //   inline def changeFoos(block: =>String): String = ${ changeFoosImpl('block) }
 //   def changeFoosImpl(block: Expr[String])(using Quotes): Expr[String] = {
 //     import quotes.reflect._
-//     //printer.ln(Term.of(block))
+//     //printer.ln(block.asTerm)
 
 //     object Unseal {
 //       def unapply(t: Expr[Any])(using Quotes) = {
-//         Some(Term.of(t))
+//         Some(t.asTerm)
 //       }
 //     }
 //     object Seal {

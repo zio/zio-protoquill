@@ -59,7 +59,7 @@ class MapProcMacro(using qctx: Quotes) {
         // Otherwise, recursively summon fields
         ev match {
           case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-            val result = recurse[T, PrepareRow, elementLabels, elementTypes](TTerm.of(expr), Type.of[elementLabels], Type.of[elementTypes])(eachField, map, default)(using tpe)
+            val result = recurse[T, PrepareRow, elementLabels, elementTypes](expr.asTerm, Type.of[elementLabels], Type.of[elementTypes])(eachField, map, default)(using tpe)
             result
           case _ =>
             report.throwError(s"Mirror for ${Type.of[T]} is not a product")

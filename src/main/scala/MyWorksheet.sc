@@ -34,7 +34,7 @@ inline def typeInfo(stuff: Any): Any = ${ typeInfoImpl('stuff) }
 def typeInfoImpl(stuff: Expr[Any])(using Quotes) = {
   import quotes.reflect._
   
-  val v = Term.of(stuff) match {
+  val v = stuff.asTerm match {
     case Literal(value) => println(value)
   }
   

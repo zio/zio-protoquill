@@ -20,13 +20,13 @@ object MacroExample {
     import scala.collection.JavaConverters._
     // Note is a TypeRef and a TypeTree
     
-    val expr = Term.of(exprRaw).underlyingArgument.asExpr
-    printer.lnf(Term.of(expr).tpe.widen.classSymbol)
-    val sym = Term.of(expr).tpe.widen.classSymbol // To Go from TermRef(p) to TypeRef(Person)
+    val expr = exprRaw.asTerm.underlyingArgument.asExpr
+    printer.lnf(expr.asTerm.tpe.widen.classSymbol)
+    val sym = expr.asTerm.tpe.widen.classSymbol // To Go from TermRef(p) to TypeRef(Person)
     
     val namesAndApplys =
       sym.get.caseFields.map(field => {
-        (field.name, Select(Term.of(expr), field).asExprOf[Any])
+        (field.name, Select(expr.asTerm, field).asExprOf[Any])
       })
 
     val mapFields = namesAndApplys.map { case (name, applyField) =>
@@ -34,7 +34,7 @@ object MacroExample {
     }
     '{ Map[String, Any](${Expr.ofList(mapFields)}:_*) }
 
-    //val sym = Term.of(expr).tpe.asInstanceOf[TypeRef].symbol
+    //val sym = expr.asTerm.tpe.asInstanceOf[TypeRef].symbol
     //sym.get.caseFields.foreach(println(_))
     //printer.lnf(field.tree)
 
@@ -47,8 +47,8 @@ object MacroExample {
   inline def showTreeMatchLambda(inline expr: (String, String) => Int): Unit = ${ showTreeMatchLambdaImpl('expr) }
   def showTreeMatchLambdaImpl(expr: Expr[(String, String) => Int])(using Quotes): Expr[Unit] = {
     import quotes.reflect._
-    printer.lnf(Term.of(expr).underlyingArgument)
-    Term.of(expr).underlyingArgument match {
+    printer.lnf(expr.asTerm.underlyingArgument)
+    expr.asTerm.underlyingArgument match {
       case Lambda(List(ValDef(argName, _, _), ValDef(argName1, _, _)), body) =>
         println("Arg is: " + argName + " and " + argName1)
         println("Body is: " + Printer.TreeStructure.show(body))
@@ -60,21 +60,21 @@ object MacroExample {
   inline def showTree(inline expr: Any): Unit = ${ showTreeImpl('expr) }
   def showTreeImpl(expr: Expr[Any])(using Quotes): Expr[Unit] = {
     import quotes.reflect._
-    //println(Term.of(expr).underlyingArgument.showExtractors)
-    printer.lnf(Term.of(expr).underlyingArgument)
+    //println(expr.asTerm.underlyingArgument.showExtractors)
+    printer.lnf(expr.asTerm.underlyingArgument)
     '{ () }
   }
 
   inline def detectPlus(inline expr: Int): (Int, String) = ${ detectPlusImpl('expr) }
   def detectPlusImpl(expr: Expr[Int])(using Quotes): Expr[(Int, String)] = {
     import quotes.reflect._
-    println(Printer.TreeStructure.show(Term.of(expr).underlyingArgument))
+    println(Printer.TreeStructure.show(expr.asTerm.underlyingArgument))
 
     val message = 
-      Term.of(expr).underlyingArgument.asExpr match {
+      expr.asTerm.underlyingArgument.asExpr match {
         case '{ ($one: Int).+(($two: Int)) } => 
-          val oneInner = Term.of(one) match { case Ident(value) => value }
-          val twoInner = Term.of(two) match { case Ident(value) => value }
+          val oneInner = one.asTerm match { case Ident(value) => value }
+          val twoInner = two.asTerm match { case Ident(value) => value }
 
           s"(${oneInner}, ${twoInner}, +)"
        
@@ -95,10 +95,10 @@ object MacroExample {
 
   def macroTestImpl(somethingMakingStringBoolRaw: Expr[Boolean])(using Quotes): Expr[String] = {
     import quotes.reflect._
-    val somethingMakingBool = Term.of(somethingMakingStringBoolRaw).underlyingArgument.asExpr
+    val somethingMakingBool = somethingMakingStringBoolRaw.asTerm.underlyingArgument.asExpr
 
-    val theExpressionAst = Printer.TreeStructure.show(Term.of(somethingMakingBool))
-    val theExpressionCode = Term.of(somethingMakingBool).show
+    val theExpressionAst = Printer.TreeStructure.show(somethingMakingBool.asTerm)
+    val theExpressionCode = somethingMakingBool.asTerm.show
     '{
       if ($somethingMakingStringBoolRaw) 
         "Yay, we passed!... " + ${Expr(theExpressionCode)} + "\nOtherwise Known as: " + ${Expr(theExpressionAst)}

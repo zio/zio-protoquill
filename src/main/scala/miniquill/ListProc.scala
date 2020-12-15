@@ -9,9 +9,9 @@ object ListProc {
     val tm = new miniquill.parser.TastyMatchersContext
     import tm._
     val indexValue = index match { case  Const(i: Int) => i }
-    val exprs = UntypeExpr(Term.of(list).underlyingArgument.asExpr) match { 
+    val exprs = UntypeExpr(list.asTerm.underlyingArgument.asExpr) match { 
       case '{ scala.List.apply[T](${Varargs(args)}: _*) } => args  
-      case _ => report.throwError("Does not match: " + Printer.TreeStructure.show(quotes.reflect.Term.of(list)))
+      case _ => report.throwError("Does not match: " + Printer.TreeStructure.show(list.asTerm))
     }
     exprs.apply(indexValue)
   }
@@ -21,7 +21,7 @@ object ListProc {
     import quotes.reflect._
     val tm = new miniquill.parser.TastyMatchersContext
     import tm._
-    val exprs = UntypeExpr(Term.of(list).underlyingArgument.asExpr) match { 
+    val exprs = UntypeExpr(list.asTerm.underlyingArgument.asExpr) match { 
       case '{ scala.List.apply[T](${Varargs(args)}: _*) } => args  
     }
     Expr.ofList(exprs.drop(1).toList)

@@ -26,7 +26,7 @@
 //           val encoder = 
 //             Expr.summon[GenericEncoder[tt, pType]] match {
 //               case Some(enc) => Option(ScalarPlanterExpr(uid, value, enc)(planterType, pType))
-//               case None => report.throwError(s"Cannot Find encode for ${Term.of(tt)}", vvv)
+//               case None => report.throwError(s"Cannot Find encode for ${tt.asTerm}", vvv)
 //               // TODO return summoning error if not correct
 //             }
 //           encoder

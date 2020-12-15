@@ -32,14 +32,14 @@ trait TastyMatchers {
     println(expr.show)
 
     println("================= Matchers =================")
-    println(Printer.TreeStructure.show(Untype(Term.of(expr))))
+    println(Printer.TreeStructure.show(Untype(expr.asTerm)))
 
     println("================= Pretty Tree =================")
-    println(pprint.apply(Untype(Term.of(expr))))
+    println(pprint.apply(Untype(expr.asTerm)))
   }
 
   implicit class ExprOps[T: Type](expr: Expr[T]) {
-    def reseal: Expr[T] = Term.of(expr).underlyingArgument.asExprOf[T]
+    def reseal: Expr[T] = expr.asTerm.underlyingArgument.asExprOf[T]
   }
 
   object SelectApply1 {
@@ -62,8 +62,8 @@ trait TastyMatchers {
         case Unseal(Untype(Repeated(props, _))) => Some(props.map(_.asExpr))
         case other =>
           //println("Could not parse sequence expression:")
-          //printer.lnf(Term.of(term))
-          report.throwError("Could not parse sequence expression:\n" + printer.str(Term.of(term)))
+          //printer.lnf(term.asTerm)
+          report.throwError("Could not parse sequence expression:\n" + printer.str(term.asTerm))
       }
     }
   }
@@ -75,9 +75,9 @@ trait TastyMatchers {
   // The unapply allows it to be done inside of a matcher.
   object UntypeExpr {
     def unapply(expr: Expr[_]): Option[Expr[_]] = 
-      Untype.unapply(Term.of(expr)).map(_.asExpr)
+      Untype.unapply(expr.asTerm).map(_.asExpr)
 
-    def apply(expr: Expr[_]): Expr[_] = Untype.unapply(Term.of(expr)).map(_.asExpr).get
+    def apply(expr: Expr[_]): Expr[_] = Untype.unapply(expr.asTerm).map(_.asExpr).get
   }
 
   // Always match (whether ast starts with Typed or not). If it does, strip the Typed node.
@@ -104,7 +104,7 @@ trait TastyMatchers {
 
   object TypedMatroshka {
     def unapply(term: Expr[Any]): Option[Expr[Any]] = 
-      TypedMatroshkaTerm.unapply(Term.of(term)).map(_.asExpr)
+      TypedMatroshkaTerm.unapply(term.asTerm).map(_.asExpr)
   }
 
   object SelectExpr {
@@ -130,7 +130,7 @@ trait TastyMatchers {
 
   object Lambda1 {
     def unapply(expr: Expr[_]): Option[(String, quoted.Expr[_])] =
-      unapplyTerm(Term.of(expr)).map((str, expr) => (str, expr.asExpr))
+      unapplyTerm(expr.asTerm).map((str, expr) => (str, expr.asExpr))
 
     def unapplyTerm(term: Term): Option[(String, Term)] = Untype(term) match {
       case Lambda(List(ValDef(ident, _, _)), methodBody) => Some((ident, methodBody))
@@ -141,7 +141,7 @@ trait TastyMatchers {
 
   object Lambda2 {
     def unapply(expr: Expr[_]): Option[(String, String, quoted.Expr[_])] =
-      unapplyTerm(Term.of(expr)).map((str1, str2, expr) => (str1, str2, expr.asExpr))
+      unapplyTerm(expr.asTerm).map((str1, str2, expr) => (str1, str2, expr.asExpr))
 
     def unapplyTerm(term: Term): Option[(String, String, Term)] = Untype(term) match {
       case Lambda(List(ValDef(ident1, _, _), ValDef(ident2, _, _)), methodBody) => Some((ident1, ident2, methodBody))
@@ -166,7 +166,7 @@ trait TastyMatchers {
 
   object LambdaN {
     def unapply(term: Expr[_]): Option[(List[String], quoted.Expr[_])] =
-      RawLambdaN.unapply(Term.of(term)).map((str, term) => (str, term.asExpr))
+      RawLambdaN.unapply(term.asTerm).map((str, term) => (str, term.asExpr))
   }
 
   // object Lambda2 {
@@ -177,7 +177,7 @@ trait TastyMatchers {
   // }
 
   object Unseal {
-    def unapply(t: Expr[Any]): Option[Term] = Some(Term.of(t))
+    def unapply(t: Expr[Any]): Option[Term] = Some(t.asTerm)
   }
   object Seal {
     def apply[T](e: Term) = {
@@ -233,10 +233,10 @@ trait TastyMatchers {
 
   /** Summon a named method from the context Context[D, N] */
   def summonContextMethod(name: String, ctx: Expr[_]) = {
-    val ctxTerm = Term.of(ctx)
+    val ctxTerm = ctx.asTerm
     val ctxClass = ctxTerm.tpe.widen.classSymbol.get
     ctxClass.declaredMethods.filter(f => f.name == name).headOption.getOrElse {
-      throw new IllegalArgumentException(s"Cannot find method '${name}' from context ${Term.of(ctx).tpe.widen}")
+      throw new IllegalArgumentException(s"Cannot find method '${name}' from context ${ctx.asTerm.tpe.widen}")
     }
   }
 

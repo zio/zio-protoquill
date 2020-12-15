@@ -121,8 +121,8 @@ object QueryMetaExtractor {
   )(using Quotes): ( Expr[Quoted[Query[R]]], Expr[R => T], Option[StaticState] ) = 
   {
     import quotes.reflect.{Try => TTry, _}
-    val quotedArg = Term.of(quotedRaw).underlyingArgument.asExprOf[Quoted[Query[T]]]
-    val summonedMeta = Expr.summon[QueryMeta[T, R]].map(x => Term.of(x).underlyingArgument.asExprOf[QueryMeta[T, R]])
+    val quotedArg = quotedRaw.asTerm.underlyingArgument.asExprOf[Quoted[Query[T]]]
+    val summonedMeta = Expr.summon[QueryMeta[T, R]].map(x => x.asTerm.underlyingArgument.asExprOf[QueryMeta[T, R]])
     summonedMeta match {
       case Some(quip) =>
         val possiblyUprootableQuery = QuotedExpr.uprootableWithLiftsOpt(quotedArg)

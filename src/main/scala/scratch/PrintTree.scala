@@ -7,8 +7,8 @@ object printTree {
   def printTreeImpl[T:Type](tree: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect._
     println(tree.show)
-    printer.lnf(Term.of(tree))
-    printer.lnf(Term.of(tree).underlyingArgument)
+    printer.lnf(tree.asTerm)
+    printer.lnf(tree.asTerm.underlyingArgument)
     tree
   }
 }

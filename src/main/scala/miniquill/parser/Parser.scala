@@ -27,9 +27,9 @@ object Parser {
       |s"==== Tree cannot be parsed to '${astClass.getSimpleName}' ===
       |  ${Format(expr.show)}
       |==== Extractors ===
-      |  ${Format(Printer.TreeStructure.show(Term.of(expr)))}
+      |  ${Format(Printer.TreeStructure.show(expr.asTerm))}
       |==== Tree ===
-      |  ${printer.str(Term.of(expr))}
+      |  ${printer.str(expr.asTerm)}
       |""".stripMargin, 
       expr)
   
@@ -419,7 +419,7 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(implicit val qctx: Quo
 
   // TODO Move out into TastyMatchers
   def is[T](inputs: Expr[_]*)(implicit test: Type[T]): Boolean =
-    inputs.forall(input => Term.of(input).tpe <:< TypeRepr.of[T])
+    inputs.forall(input => input.asTerm.tpe <:< TypeRepr.of[T])
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -578,11 +578,11 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
   def isType[T: Type](input: Expr[_]) =
     import quotes.reflect.Term
-    Term.of(input).tpe <:< TypeRepr.of[T] // (implicit Type[T])
+    input.asTerm.tpe <:< TypeRepr.of[T] // (implicit Type[T])
 
   def is[T: Type](inputs: Expr[_]*): Boolean =
     import quotes.reflect.Term
-    inputs.forall(input => Term.of(input).tpe <:< TypeRepr.of[T])
+    inputs.forall(input => input.asTerm.tpe <:< TypeRepr.of[T])
 
   // TODO Is there any way to check if Numeric[T] exists if you don't know the type T
   // but know the type of the term?

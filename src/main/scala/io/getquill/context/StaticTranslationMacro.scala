@@ -125,7 +125,7 @@ object StaticTranslationMacro {
   {
     import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
-    val quoted = Term.of(quotedRaw).underlyingArgument.asExpr
+    val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
 
     import scala.util.{Success, Failure}
     idiomAndNamingStatic match {

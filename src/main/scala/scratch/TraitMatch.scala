@@ -20,7 +20,7 @@ object TraitMatch {
       
       // case  '{ ($f: Foo) } =>
       //   println("getting")
-      //   println(Term.of(f).showExtractors)
+      //   println(f.asTerm.showExtractors)
 
       // Select(Ident(_), "apply"), List(Seal(one), Seal(two))
       case '{ (${Unseal(Apply(Select(Ident(id), "apply"), List(one, two)))}: Foo) } => 

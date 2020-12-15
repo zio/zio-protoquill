@@ -14,8 +14,8 @@ object Misc {
 
   inline def foo(inline a: List[String])(implicit s: StringDummy): Unit = ${ fooImpl('a) }
   def fooImpl(a: Expr[List[String]])(using Quotes): Expr[Unit] = {
-    import quotes.reflect.Term
-    println(pprint.apply(Term.of(a)))
+    import quotes.reflect._
+    println(pprint.apply(a.asTerm))
     '{ () }
   }
 

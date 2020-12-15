@@ -25,7 +25,7 @@ object SummonJsonEncoder {
       given Mirror.Of[T] = null
       given JsonEncoder[T] = JsonEncoder.derived
     }
-    //println( AstPrinter.astprint(Term.of(expr).showExtractors) )
+    //println( AstPrinter.astprint(expr.asTerm.showExtractors) )
     println(expr.show)
 
     '{"Hello"}

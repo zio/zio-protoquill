@@ -12,10 +12,10 @@ object PulloutExperiment {
   inline def printTree[T](value: T):T = ${ printTreeImpl('value) }
   def printTreeImpl[T: Type](value: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect._
-    //printer.ln(Term.of(value)e).underlyingArgument)
+    //printer.ln(value.asTerme).underlyingArgument)
     printer.ln("===================== printTree ================\n")
-    printer.ln(Term.of(value).underlyingArgument)
-    println(Printer.TreeStructure.show(Term.of(value).underlyingArgument))
+    printer.ln(value.asTerm.underlyingArgument)
+    println(Printer.TreeStructure.show(value.asTerm.underlyingArgument))
     value
   }
   
@@ -62,7 +62,7 @@ object PulloutExperiment {
     import scala.collection.mutable.ArrayBuffer
 
     println("===================== Summon Expressers Value =====================")
-    println(Term.of(input).underlyingArgument.show)
+    println(input.asTerm.underlyingArgument.show)
   
     val accum = new TreeAccumulator[ArrayBuffer[Term]] {
       def foldTree(terms: ArrayBuffer[Term], tree: Tree)(owner: Symbol) = tree match {
@@ -77,7 +77,7 @@ object PulloutExperiment {
 
     
 
-    val lifts = accum.foldTree(ArrayBuffer.empty, Term.of(input).underlyingArgument)(Symbol.spliceOwner).map(_.asExpr)
+    val lifts = accum.foldTree(ArrayBuffer.empty, input.asTerm.underlyingArgument)(Symbol.spliceOwner).map(_.asExpr)
     
     val identifiedLifts =
       lifts.map {
@@ -97,7 +97,7 @@ object PulloutExperiment {
                 case Some(expresserExpr) => '{ $expresserExpr.express($value) }
                 case None => throw new RuntimeException(s"Could not find expresser for ${Type.show[Expresser[tpe]]}")
               }
-            case other => throw new RuntimeException(s"The term ${Term.of(other).underlyingArgument.show} is not a LookInside")
+            case other => throw new RuntimeException(s"The term ${other.asTerm.underlyingArgument.show} is not a LookInside")
           }
         '{ (${Expr(k)}, $encoded) }
       }
@@ -115,13 +115,13 @@ object PulloutExperiment {
   inline def matchList(list: List[Any]): List[Any] = ${ matchListImpl('list) }
   def matchListImpl(list: Expr[List[Any]])(using Quotes): Expr[List[Any]] = {
     import quotes.reflect._
-    println(Term.of(list).underlyingArgument.asExpr.show)
+    println(list.asTerm.underlyingArgument.asExpr.show)
     val elems = 
       list match {
         case '{ List[t](${Varargs(elems)}: _*) } => elems.toList
         case _ => List()
       }
-    println(s"Found Elems: ${elems.map(Term.of(_).show)}")
+    println(s"Found Elems: ${elems.map(_.asTerm.show)}")
     Expr.ofList(elems)
   }
 
@@ -131,7 +131,7 @@ object PulloutExperiment {
     //import quotes.reflect.using_IsInstanceOf_Term
     import scala.collection.mutable.ArrayBuffer
 
-    println(Term.of(input).underlyingArgument.show)
+    println(input.asTerm.underlyingArgument.show)
     
     val accum = new TreeAccumulator[ArrayBuffer[Term]] {
       def foldTree(terms: ArrayBuffer[Term], tree: Tree)(owner: Symbol) = tree match {
@@ -144,17 +144,17 @@ object PulloutExperiment {
       }
     }
 
-    //printer.ln(Term.of(input).underlyingArgument)
-    //printer.ln(Term.of(input).underlyingArgument.showExtractors)
+    //printer.ln(input.asTerm.underlyingArgument)
+    //printer.ln(input.asTerm.underlyingArgument.showExtractors)
 
-    val instances = accum.foldTree(ArrayBuffer.empty, Term.of(input).underlyingArgument)(Symbol.spliceOwner)
+    val instances = accum.foldTree(ArrayBuffer.empty, input.asTerm.underlyingArgument)(Symbol.spliceOwner)
 
     instances.zipWithIndex.map { case (v, i) => printer.ln(s"Element: ($i) $v") }
 
     val ret =
      instances.foldRight('{ EmptyTuple: Tuple })((elem, term) => '{ ( ${elem.asExpr} *: ${term} ) })
 
-    printer.ln("=========== Pullout Value =========\n" + Term.of(ret).underlyingArgument.show)
+    printer.ln("=========== Pullout Value =========\n" + ret.asTerm.underlyingArgument.show)
 
     ret
   }

@@ -25,7 +25,7 @@ object MyParser {
     import tm._
 
     object Unseal {
-      def unapply(any: Expr[Any]): Option[Term] = Some(Term.of(any))
+      def unapply(any: Expr[Any]): Option[Term] = Some(any.asTerm)
     }
     object Seal {
       def unapply(any: Term): Option[Expr[Any]] = Some(any.asExpr)
@@ -36,7 +36,7 @@ object MyParser {
     // Comes Out: 
 
     /*Goes In Expr[Any]*/ 
-    val any = Term.of(anyRaw).underlyingArgument.asExpr
+    val any = anyRaw.asTerm.underlyingArgument.asExpr
 
     def isLongOrInt(term: Term) = {
       term.tpe.widen <:< TypeRepr.of[Int] || term.tpe.widen <:< TypeRepr.of[Long]
@@ -62,7 +62,7 @@ object MyParser {
           else
             println("Nope, we did not match")
         case _ =>
-          println("Nope, did not match: " + Printer.TreeStructure.show(Term.of(any)))
+          println("Nope, did not match: " + Printer.TreeStructure.show(any.asTerm))
       }
 
     

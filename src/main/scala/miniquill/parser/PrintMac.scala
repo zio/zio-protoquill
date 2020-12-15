@@ -6,7 +6,7 @@ object Mac {
   inline def enter(inline str: String): Unit = ${ enterImpl('str) }
   def enterImpl(str: Expr[String])(using qctx: Quotes): Expr[Unit] = {
     import qctx.reflect._
-    println(pprint(Term.of(str).underlyingArgument))
+    println(pprint(str.asTerm.underlyingArgument))
     '{ () }
   }
 
@@ -30,7 +30,7 @@ object MatchMac {
     def printMacImpl(anyRaw: Expr[Any])(using Quotes): Expr[Unit] = {
       class Operations(implicit val qctx: Quotes) extends TastyMatchers {
         import quotes.reflect.{Ident => TIdent, Constant => TConstant, _}
-        val any = Term.of(anyRaw).underlyingArgument.asExpr
+        val any = anyRaw.asTerm.underlyingArgument.asExpr
 
         UntypeExpr(any) match {
           case Unseal(Block(parts, lastPart)) =>
@@ -41,10 +41,10 @@ object MatchMac {
             println(s"============= Matched! Expr: ${Printer.TreeStructure.show(lastPart)} =============")
           case other =>
             println(s"=============== Not Matched! =============")
-            println(Printer.TreeStructure.show(Term.of(other)))
+            println(Printer.TreeStructure.show(other.asTerm))
 
             println("================= Pretty Tree =================")
-            println(pprint.apply(Term.of(other)))
+            println(pprint.apply(other.asTerm))
         }
       }
       '{ () }
@@ -55,17 +55,17 @@ object PrintMac {
     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
     def printMacImpl(anyRaw: Expr[Any])(using Quotes): Expr[Unit] = {
       import quotes.reflect._
-      val any = Term.of(anyRaw).underlyingArgument.asExpr
+      val any = anyRaw.asTerm.underlyingArgument.asExpr
       class Operations(implicit val qctx: Quotes) extends TastyMatchers {
         import quotes.reflect._
         println("================= Tree =================")
         println(any.show)
 
         println("================= Matchers =================")
-        println(Printer.TreeStructure.show(Untype(Term.of(any))))
+        println(Printer.TreeStructure.show(Untype(any.asTerm)))
 
         println("================= Pretty Tree =================")
-        println(pprint.apply(Untype(Term.of(any))))
+        println(pprint.apply(Untype(any.asTerm)))
       }
 
       new Operations()

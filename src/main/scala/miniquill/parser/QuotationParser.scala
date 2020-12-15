@@ -32,14 +32,14 @@
 //   def unInline(expr: Expr[Any]): Expr[Any] = 
 //     expr match {
 //       // Need to traverse through this case if we want to be able to use inline parameter value
-//       // without having to do Term.of(quoted).underlyingArgument.asExpr
+//       // without having to do quoted.asTerm.underlyingArgument.asExpr
 //       case Unseal(Inlined(_, _, v)) => unInline(v.asExpr)
 //       case other => other
 //     }
 
 //   object Unseal {
 //     def unapply(t: Expr[Any]) = {
-//       Some(Term.of(t))
+//       Some(t.asTerm)
 //     }
 //   }
 
@@ -64,12 +64,12 @@
 //     def unapply(expr: Expr[Any]): Option[(Expr[Ast], Expr[List[Vase]], Expr[List[QuotationPouch]])] = expr match {
 //       case '{ Quoted.apply[$qt]($ast, $v, $rq) } => 
 //         //println("********************** MATCHED VASE INNER TREE **********************")
-//         //printer.lnf(Term.of(expr))
+//         //printer.lnf(expr.asTerm)
 //         Some((ast, v, rq))
 //       case Unseal(TypedMatroshka(tree)) => unapply(tree.asExpr)
 //       case _ => 
 //         //println("********************** NOT MATCHED VASE INNER TREE **********************")
-//         //printer.lnf(Term.of(expr))
+//         //printer.lnf(expr.asTerm)
 //         None
 //     }
 //   }
@@ -78,7 +78,7 @@
 //     def unapply(expr: Expr[Any]) = expr match {
 //       case vase @ '{ QuotationLot.apply[$qt]($quotation, ${scala.quoted.Const(uid: String)}) } => 
 //         //println("********************** MATCHED VASE APPLY **********************")
-//         //printer.lnf(Term.of(expr))
+//         //printer.lnf(expr.asTerm)
 //         Some((quotation, uid, vase))
 //       case _ => None
 //     }
@@ -115,11 +115,11 @@
 //       expr match {
 //         // case MatchQuotationRef(tree, uuid) => 
 //         //   println("******************** Runtime: Match Quotation Ref ********************")
-//         //   printer.lnf((Term.of(tree), uuid))
+//         //   printer.lnf((tree.asTerm, uuid))
 //         //   Some((tree, uuid))
 //         case `QuotationLot.unquote`(innards) =>
 //           //println("******************** Runtime: Match Unquote ********************")
-//           //printer.lnf(Term.of(innards))
+//           //printer.lnf(innards.asTerm)
 //           unapply(innards)
 //         // sometimes there are multiple levels of vases when references are spliced,
 //         // we should only care about the innermost one

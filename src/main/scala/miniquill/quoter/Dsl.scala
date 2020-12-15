@@ -95,7 +95,7 @@ object QuoteMacro {
   def apply[T, Parser <: ParserFactory](bodyRaw: Expr[T])(using Quotes, Type[T], Type[Parser]): Expr[Quoted[T]] = {
     import quotes.reflect._
     // NOTE Can disable if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
-    val body = Term.of(bodyRaw).underlyingArgument.asExpr
+    val body = bodyRaw.asTerm.underlyingArgument.asExpr
 
     val parserFactory = LoadObject[Parser].get
 

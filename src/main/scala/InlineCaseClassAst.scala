@@ -30,7 +30,7 @@ object InlineCaseClassAst {
     //   case '{ Foo(${c}, _) } => Foo(unlift(c), compileVal)
     //   case '{ Bar(${c}, _) } => Bar(unlift(c), compileVal)
     //   case '{ Baz(_) } => Baz(compileVal)
-    //   case _ => Baz("something else: " + Term.of(ast).showExtractors)
+    //   case _ => Baz("something else: " + ast.asTerm.showExtractors)
     // }
 
     // def lift(ast: Ast): Expr[Ast] = ast match {
@@ -40,7 +40,7 @@ object InlineCaseClassAst {
     // }
 
     // def parse(ast: Expr[Ast]): Ast = {
-    //   Term.of(ast).underlyingArgument match {
+    //   ast.asTerm.underlyingArgument match {
     //     case Inlined(_, _, v) => parse(v.asExprOf[Ast])
     //   }
     // }

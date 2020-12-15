@@ -65,7 +65,7 @@ object SummonCsvEncoderManualTest {
   //   }
 
   //   val mirror = Expr.summon[Mirror.Of[T]] match {
-  //     case Some(mirror) => println("mirror: " + new AstPrinter().apply(Term.of(mirror)))
+  //     case Some(mirror) => println("mirror: " + new AstPrinter().apply(mirror.asTerm))
   //     case None =>
   //   }
 

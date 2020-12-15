@@ -83,8 +83,8 @@ class XUnapplier(message: String)(using Quotes) {
 
     def tStringAst = 
       t match {
-        case e: Expr[_] => printer.str(Term.of(e))
-        case Some(e: Expr[_]) => printer.str(Term.of(e))
+        case e: Expr[_] => printer.str(e.asTerm)
+        case Some(e: Expr[_]) => printer.str(e.asTerm)
         case t: Term => printer.str(t)
         case other => other.toString
       }

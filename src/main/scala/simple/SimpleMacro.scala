@@ -147,7 +147,7 @@ object SimpleMacro {
     //def getExprType[T <: Mirror.Of[_]](expr: Expr[T])(t: Type[T]) = 
      
     Expr.summon[Mirror.Of[T]] match {
-      case Some(expr) => println(Term.of(expr).tpe.show)
+      case Some(expr) => println(expr.asTerm.tpe.show)
       case None => println("Mirror not found")
     }
     
@@ -163,7 +163,7 @@ object SimpleMacro {
   // def printThenRunImpl[T](print: Expr[String], thenRun: Expr[T])(using Quotes) = {
   //   import quotes.reflect._ //Type => _,
     
-  //   Term.of(print).underlyingArgument match {
+  //   print.asTerm.underlyingArgument match {
   //     case Literal(Constant(value)) => println(value)
   //     case _ => throw new RuntimeException("Needs a literal to be passed to the print method")
   //   }
@@ -183,7 +183,7 @@ object SimpleMacro {
   //   import quotes.reflect._
 
   //   val reduced = Expr.betaReduce(f)('{123}) //hello
-  //   println(astprint(Term.of(reduced).underlyingArgument))
+  //   println(astprint(reduced.asTerm.underlyingArgument))
   //   println(reduced.show)
   //   reduced
   // }
@@ -195,7 +195,7 @@ object SimpleMacro {
   // inline def stuff[T](str: T):T = ${ stuffImpl('str) }
   // def stuffImpl[T](str: Expr[T])(using Quotes): Expr[T] = {
   //   import quotes.reflect._ //Type => _, 
-  //   val und = Term.of(str).underlyingArgument
+  //   val und = str.asTerm.underlyingArgument
 
 
   //   def splitPrint(str: String) = {
@@ -207,7 +207,7 @@ object SimpleMacro {
   //   }
 
   //   splitPrint(contextAstPrinter.apply(und).render)  //.showExtractors
-  //   println(Term.of(str).underlyingArgument.show)
+  //   println(str.asTerm.underlyingArgument.show)
   //   //TastyPrinter()
     
   //   str
