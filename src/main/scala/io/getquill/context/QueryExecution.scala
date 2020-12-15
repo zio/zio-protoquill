@@ -26,11 +26,11 @@ import miniquill.quoter.QuotedExpr
 import miniquill.quoter.ScalarPlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.Query
-import io.getquill.idiom.{ Idiom => Id }
-import io.getquill.{ NamingStrategy => Na }
+import io.getquill.idiom.Idiom
+import io.getquill.NamingStrategy
 import miniquill.parser.TastyMatchers
 
-trait ContextAction[T, D <: Id, N <: Na, PrepareRow, ResultRow, Res] {
+trait ContextAction[T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res] {
   def idiom: D
   def naming: N
   def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: ResultRow => T, executionType: ExecutionType): Res
@@ -39,7 +39,7 @@ trait ContextAction[T, D <: Id, N <: Na, PrepareRow, ResultRow, Res] {
 /**
  * Drives execution of Quoted blocks i.e. Queries etc... from the context.
  */
-object QueryExecution {
+object QueryExecution:
 
   trait SummonHelper[ResultRow: Type] {
     implicit val qctx: Quotes
@@ -68,14 +68,23 @@ object QueryExecution {
       }
   }
 
-  class RunQuery[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
-    quoted: Expr[Quoted[Query[T]]],
-    contextAction: Expr[ContextAction[T, D, N, PrepareRow, ResultRow, Res]]
-  )(using val qctx: Quotes) extends SummonHelper[ResultRow] with QueryMetaHelper[T] with TastyMatchers {
+  class RunQuery[
+    T: Type, 
+    ResultRow: Type, 
+    PrepareRow: Type, 
+    D <: Idiom: Type, 
+    N <: NamingStrategy: Type, 
+    Res: Type
+  ](quoted: Expr[Quoted[Query[T]]], 
+    contextAction: Expr[ContextAction[T, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes) 
+  extends SummonHelper[ResultRow] 
+    with QueryMetaHelper[T] 
+    with TastyMatchers:
+    
     import qctx.reflect._
 
     /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to T */
-    def runWithMeta[RawT: Type]: Expr[Res] = {
+    def runWithMeta[RawT: Type]: Expr[Res] =
       val (queryRawT, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted)
       staticStateOpt match {
         case Some(staticState) =>
@@ -83,9 +92,9 @@ object QueryExecution {
         case None => 
           executeDynamic[RawT, Query](queryRawT, converter)
       }
-    }
+    
 
-    def executeDynamic[RawT: Type, Q[_]: Type](query: Expr[Quoted[Q[RawT]]], converter: Expr[RawT => T]) = {
+    def executeDynamic[RawT: Type, Q[_]: Type](query: Expr[Quoted[Q[RawT]]], converter: Expr[RawT => T]) =
       val decoder = summonDecoderOrThrow[RawT]
       // Is the expansion on T or RawT, need to investigate
       val expandedAst = Expander.runtimeImpl[T]('{ $query.ast })
@@ -95,13 +104,13 @@ object QueryExecution {
 
       // TODO What about when an extractor is not neededX
       '{  RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($query, $contextAction, $prepare, $extractor, $expandedAst) }
-    }
+    
 
     /** 
      * Execute static query via ctx.executeQuery method given we have the ability to do so 
      * i.e. have a staticState 
      */
-    def executeStatic[RawT: Type](staticState: StaticState, converter: Expr[RawT => T]): Expr[Res] = {      
+    def executeStatic[RawT: Type](staticState: StaticState, converter: Expr[RawT => T]): Expr[Res] =    
       val StaticState(query, lifts) = staticState
       val decoder = summonDecoderOrThrow[RawT]
 
@@ -111,48 +120,64 @@ object QueryExecution {
       // TODO What about when an extractor is not neededX
       // executeAction(query, prepare, extractor)
       '{ $contextAction.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
-    }
+
 
     /** Summon all needed components and run executeQuery method */
-    def apply(): Expr[Res] = {
-      summonMetaIfExists match {
+    def apply(): Expr[Res] =
+      summonMetaIfExists match
         case Some(rowRepr) =>
           rowRepr match { case '[rawT] => runWithMeta[rawT] }
         case None =>
-          StaticTranslationMacro.applyInner[Query, T, D, N](quoted) match {
+          StaticTranslationMacro.applyInner[Query, T, D, N](quoted) match 
             case Some(staticState) =>
               executeStatic[T](staticState, '{ (t:T) => t })
-
             case None => 
               executeDynamic(quoted, '{ (t: T) => t })
-          }
-      }
-    }
-  }
 
-  inline def runQuery[T, ResultRow, PrepareRow, D <: Id, N <: Na, Res](
-    quoted: Quoted[Query[T]],
-    ctx: ContextAction[T, D, N, PrepareRow, ResultRow, Res]
-  ) = ${ runQueryImpl('quoted, 'ctx) }
+
+  end RunQuery
+
+  inline def runQuery[
+    T, 
+    ResultRow, 
+    PrepareRow, 
+    D <: Idiom, 
+    N <: NamingStrategy, 
+    Res
+  ](quoted: Quoted[Query[T]], ctx: ContextAction[T, D, N, PrepareRow, ResultRow, Res]) = 
+    ${ runQueryImpl('quoted, 'ctx) }
   
-  def runQueryImpl[T: Type, ResultRow: Type, PrepareRow: Type, D <: Id: Type, N <: Na: Type, Res: Type](
-    quoted: Expr[Quoted[Query[T]]],
-    ctx: Expr[ContextAction[T, D, N, PrepareRow, ResultRow, Res]]
-  )(using qctx: Quotes): Expr[Res] = {
+  def runQueryImpl[
+    T: Type, 
+    ResultRow: Type, 
+    PrepareRow: Type, 
+    D <: Idiom: Type, 
+    N <: NamingStrategy: Type, 
+    Res: Type
+  ](quoted: Expr[Quoted[Query[T]]], 
+    ctx: Expr[ContextAction[T, D, N, PrepareRow, ResultRow, Res]])(using qctx: Quotes): Expr[Res] =
     new RunQuery[T, ResultRow, PrepareRow, D, N, Res](quoted, ctx).apply()
-  }
-}
+
+end QueryExecution
 
 /**
  * Drives dynamic execution from the Context
  */
-object RunDynamicExecution {
+object RunDynamicExecution:
 
-  import io.getquill.idiom.{ Idiom => Id }
-  import io.getquill.{ NamingStrategy => Na }
+  import io.getquill.idiom.{ Idiom => Idiom }
+  import io.getquill.{ NamingStrategy => NamingStrategy }
 
-  def apply[RawT, T, Q[_], D <: Id, N <: Na, PrepareRow, ResultRow, Res](
-    quoted: Quoted[Q[RawT]], 
+  def apply[
+    RawT, 
+    T, 
+    Q[_], 
+    D <: Idiom, 
+    N <: NamingStrategy, 
+    PrepareRow, 
+    ResultRow, 
+    Res
+  ](quoted: Quoted[Q[RawT]], 
     ctx: ContextAction[T, D, N, PrepareRow, ResultRow, Res],
     prepare: PrepareRow => (List[Any], PrepareRow),
     extractor: ResultRow => T,
@@ -193,4 +218,5 @@ object RunDynamicExecution {
 
     ctx.execute(string, prepare, extractor, ExecutionType.Dynamic)
   }
-}
+
+end RunDynamicExecution

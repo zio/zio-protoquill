@@ -184,14 +184,11 @@ object Expander {
   }
 
   import miniquill.parser.Lifter
-  // TODO Load from implicit context?
-  def lifterFactory: (Quotes) => PartialFunction[Ast, Expr[Ast]] =
-    (qctx: Quotes) => new Lifter(using qctx)  
 
   inline def runtime[T](ast: Ast): AMap = ${ runtimeImpl[T]('ast) }
   def runtimeImpl[T](ast: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
     val expanded = base[T](Term("x", Branch))
-    val lifted = expanded.toAst.map(ast => lifterFactory(quotes).apply(ast))
+    val lifted = expanded.toAst.map(ast => Lifter(ast))
     val insert = 
       if (lifted.length == 1) 
         lifted.head 

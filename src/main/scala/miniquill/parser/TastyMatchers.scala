@@ -3,7 +3,11 @@ package miniquill.parser
 import scala.quoted._
 import scala.quoted.Varargs
 
-class TastyMatchersContext(using val qctx: Quotes) extends TastyMatchers
+final class TastyMatchersContext(using val qctx: Quotes) extends TastyMatchers
+
+object TastyMatchers {
+  inline def tmc(using Quotes) = new TastyMatchersContext
+}
 
 trait TastyMatchers {
   implicit val qctx: Quotes
@@ -224,4 +228,54 @@ trait TastyMatchers {
       throw new IllegalArgumentException(s"Cannot find method '${name}' from context ${Term.of(ctx).tpe.widen}")
     }
   }
+
+  object ConstantValue:
+    type Kind = String | Char | Int | Long | Boolean | Float | Double | Byte
+    def unapply(any: Any): Option[Kind] =
+      any match {
+        case _: String  => Some(any.asInstanceOf[Kind])
+        case _: Char  => Some(any.asInstanceOf[Kind])
+        case _: Int  => Some(any.asInstanceOf[Kind])
+        case _: Long  => Some(any.asInstanceOf[Kind])
+        case _: Boolean  => Some(any.asInstanceOf[Kind])
+        case _: Float  => Some(any.asInstanceOf[Kind])
+        case _: Double  => Some(any.asInstanceOf[Kind])
+        case _: Byte => Some(any.asInstanceOf[Kind])
+        case _ => None
+      }
+
+  object ConstantExpr:
+    // def Any(v: Any): Expr[Any] =
+    //   v match 
+    //     case cv: String | Char | Int | Long | Boolean | Float | Double | Byte => apply(cv)
+        // case _ => report.throwError(s"Cannot lift constant value: ${v}, it is not one of the allowed constant types: String | Int | Long | Boolean | Float | Double | Byte")
+
+    def apply[T <: ConstantValue.Kind](const: T): Expr[T]  =
+      const match
+        case v: String => Expr(v)
+        case v: Char => Expr(v)
+        case v: Int => Expr(v)
+        case v: Long => Expr(v)
+        case v: Boolean => Expr(v)
+        case v: Float => Expr(v)
+        case v: Double => Expr(v)
+        case v: Byte => Expr(v)
+
+    def unapply[T <: ConstantValue.Kind](t: Expr[T]) =
+      t match
+        case Const(v) => Some(v)
+        case _ => None
+        
+
+  object ConstantTerm:
+    def unapply(term: Term): Option[ConstantValue.Kind] =
+      term match
+        case Literal(Constant.String(v: String)) => Some(v)
+        case Literal(Constant.Int(v: Int)) => Some(v)
+        case Literal(Constant.Long(v: Long)) => Some(v)
+        case Literal(Constant.Boolean(v: Boolean)) => Some(v)
+        case Literal(Constant.Float(v: Float)) => Some(v)
+        case Literal(Constant.Double(v: Double)) => Some(v)
+        case Literal(Constant.Byte(v: Byte)) => Some(v)
+        case _ => None
 }

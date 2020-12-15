@@ -663,23 +663,7 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
     case Unseal(Apply(TypeApply(Select(TupleIdent(), "apply"), types), values)) =>
       Tuple(values.map(v => astParse(v.asExpr)))
 
-    //case Unseal(ValDef(name, Inferred(), ) =>
-
-    // TODO Need to figure how how to do with other datatypes
-    case Unseal(Literal(TreeConst.Double(v: Double))) => 
-      //println("Case Literal Constant")
-      Constant(v)
-
-    case Unseal(Literal(TreeConst.String(v: String))) => 
-      //println("Case Literal Constant")
-      Constant(v)
-
-    case Unseal(Literal(TreeConst.Int(v: Int))) => 
-      //println("Case Literal Constant")
-      Constant(v)
-
-    case Unseal(Literal(TreeConst.Boolean(v: Boolean))) => 
-      //println("Case Literal Constant")
+    case Unseal(ConstantTerm(v)) => 
       Constant(v)
 
     case Unseal(value @ Select(Seal(prefix), member)) =>
