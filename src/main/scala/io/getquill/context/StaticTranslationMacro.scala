@@ -69,6 +69,8 @@ object StaticTranslationMacro {
   // that contains the UUIDs of lifted elements. We check against list to make
   // sure that that only needed lifts are used and in the right order.
   private[getquill] def processLifts(liftExprs: Expr[List[ScalarPlanter[_, _]]], matchingExternals: List[External])(using Quotes): Option[List[Expr[ScalarPlanter[_, _]]]] = {
+    import quotes.reflect.report
+
     val extractedEncodeables =
       liftExprs match {
         case ScalarPlanterExpr.UprootableList(lifts) =>

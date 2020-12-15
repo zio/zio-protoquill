@@ -62,7 +62,7 @@ object MyParser {
           else
             println("Nope, we did not match")
         case _ =>
-          println("Nope, did not match: " + Term.of(any).showExtractors)
+          println("Nope, did not match: " + Printer.TreeStructure.show(Term.of(any)))
       }
 
     

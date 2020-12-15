@@ -14,10 +14,10 @@ object TypeclassExample_Show {
   trait Show[T]:
     inline def show(inline t: T): String
 
-  inline given Show[String]:
+  inline given Show[String] with
     inline def show(inline t: String): String = t + "-suffix"
 
-  inline given Show[Int]:
+  inline given Show[Int] with
     inline def show(inline t: Int): String = t.toString + "-suffix"
 
   inline def show[T](inline element: T)(using inline shower: Show[T]): String = {

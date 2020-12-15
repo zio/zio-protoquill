@@ -18,19 +18,19 @@ object TypeclassExample_FunctorOldStyle {
     inline def map[A, B](inline xs: F[A], inline f: A => B): F[B]
 
   // This doesn't work!
-  // inline given Functor[List] = new Functor[List]:
+  // inline given Functor[List] = new Functor[List] with
   //  inline def map[A, B](inline xs: List[A], inline f: A => B): List[B] = xs.map(f)
   // If you want to use = you have to define "class ListFunctor extends Functor[List]" first and then do:
   // inline given ListFunctor = new ListFunctor
   
-  inline given Functor[List]:
+  inline given Functor[List] with
     inline def map[A, B](inline xs: List[A], inline f: A => B): List[B] = xs.map(f)
 
   class QueryFunctor extends Functor[Query]:
     inline def map[A, B](inline xs: Query[A], inline f: A => B): Query[B] = xs.map(f)
 
-  //inline given listFunctor as ListFunctor = new ListFunctor
-  inline given queryFunctor as QueryFunctor = new QueryFunctor
+  //inline given listFunctor: ListFunctor = new ListFunctor
+  inline given queryFunctor: QueryFunctor = new QueryFunctor
 
   inline def doMap[F[_], A, B](inline from: F[A], inline f: A => B)(using inline fun: Functor[F]): F[B] =
     fun.map(from, f)

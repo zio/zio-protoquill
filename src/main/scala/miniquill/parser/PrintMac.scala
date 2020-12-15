@@ -36,12 +36,12 @@ object MatchMac {
           case Unseal(Block(parts, lastPart)) =>
             parts(0)
             
-            parts.map(p => println("==== Matched! Exprs: " + p.showExtractors + " ===="))
+            parts.map(p => println("==== Matched! Exprs: " + Printer.TreeStructure.show(p) + " ===="))
 
-            println(s"============= Matched! Expr: ${lastPart.showExtractors} =============")
+            println(s"============= Matched! Expr: ${Printer.TreeStructure.show(lastPart)} =============")
           case other =>
             println(s"=============== Not Matched! =============")
-            println(Term.of(other).showExtractors)
+            println(Printer.TreeStructure.show(Term.of(other)))
 
             println("================= Pretty Tree =================")
             println(pprint.apply(Term.of(other)))
@@ -62,7 +62,7 @@ object PrintMac {
         println(any.show)
 
         println("================= Matchers =================")
-        println(Untype(Term.of(any)).showExtractors)
+        println(Printer.TreeStructure.show(Untype(Term.of(any))))
 
         println("================= Pretty Tree =================")
         println(pprint.apply(Untype(Term.of(any))))

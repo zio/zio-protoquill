@@ -51,7 +51,7 @@ object MacroExample {
     Term.of(expr).underlyingArgument match {
       case Lambda(List(ValDef(argName, _, _), ValDef(argName1, _, _)), body) =>
         println("Arg is: " + argName + " and " + argName1)
-        println("Body is: " + body.showExtractors)
+        println("Body is: " + Printer.TreeStructure.show(body))
     }
 
     '{ () }
@@ -68,7 +68,7 @@ object MacroExample {
   inline def detectPlus(inline expr: Int): (Int, String) = ${ detectPlusImpl('expr) }
   def detectPlusImpl(expr: Expr[Int])(using Quotes): Expr[(Int, String)] = {
     import quotes.reflect._
-    println(Term.of(expr).underlyingArgument.showExtractors)
+    println(Printer.TreeStructure.show(Term.of(expr).underlyingArgument))
 
     val message = 
       Term.of(expr).underlyingArgument.asExpr match {
@@ -97,7 +97,7 @@ object MacroExample {
     import quotes.reflect._
     val somethingMakingBool = Term.of(somethingMakingStringBoolRaw).underlyingArgument.asExpr
 
-    val theExpressionAst = Term.of(somethingMakingBool).showExtractors
+    val theExpressionAst = Printer.TreeStructure.show(Term.of(somethingMakingBool))
     val theExpressionCode = Term.of(somethingMakingBool).show
     '{
       if ($somethingMakingStringBoolRaw) 

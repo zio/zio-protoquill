@@ -15,7 +15,7 @@ object PulloutExperiment {
     //printer.ln(Term.of(value)e).underlyingArgument)
     printer.ln("===================== printTree ================\n")
     printer.ln(Term.of(value).underlyingArgument)
-    println(Term.of(value).underlyingArgument.showExtractors)
+    println(Printer.TreeStructure.show(Term.of(value).underlyingArgument))
     value
   }
   
@@ -66,7 +66,7 @@ object PulloutExperiment {
   
     val accum = new TreeAccumulator[ArrayBuffer[Term]] {
       def foldTree(terms: ArrayBuffer[Term], tree: Tree)(owner: Symbol) = tree match {
-        case arg @ Apply(TypeApply(Select(Ident("LookInside"), "apply"), _), List(transportValue, Literal(Constant.String(uid)))) => 
+        case arg @ Apply(TypeApply(Select(Ident("LookInside"), "apply"), _), List(transportValue, Literal(StringConstant(uid)))) => 
           printer.ln("Found: " + arg)
           terms += arg
         case _ => 
@@ -135,7 +135,7 @@ object PulloutExperiment {
     
     val accum = new TreeAccumulator[ArrayBuffer[Term]] {
       def foldTree(terms: ArrayBuffer[Term], tree: Tree)(owner: Symbol) = tree match {
-        case arg @ Apply(TypeApply(Select(Ident("LookInside"), "apply"), _), List(transportValue, Literal(Constant.String(uid)))) => 
+        case arg @ Apply(TypeApply(Select(Ident("LookInside"), "apply"), _), List(transportValue, Literal(StringConstant(uid)))) => 
           printer.ln("Found: " + arg)
           terms += arg
         case _ => 

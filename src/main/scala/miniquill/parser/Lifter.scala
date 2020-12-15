@@ -19,28 +19,27 @@ object Lifter {
 
   def apply(ast: Ast): Quotes ?=> Expr[Ast] = liftableAst.apply(ast) // can also do ast.lift but this makes some error messages simpler
 
-  extension [T](t: T)(using Liftable[T], Quotes):
+  extension [T](t: T)(using ToExpr[T], Quotes)
     def expr: Expr[T] = Expr(t)
 
-  trait NiceLiftable[T: ClassTag] extends Liftable[T]:
-    def toExpr(t: T): Quotes ?=> Expr[T] = apply(t)
+  trait NiceLiftable[T: ClassTag] extends ToExpr[T]:
     def lift: Quotes ?=> PartialFunction[T, Expr[T]]
     def apply(t: T): Quotes ?=> Expr[T] = 
       lift.lift(t).getOrElse { throw new IllegalArgumentException(s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element ${pprint.apply(t)} into the Quill Abstract Syntax Tree") }
     def unapply(t: T)(using Quotes) = Some(apply(t))
 
-  given liftRenameable as NiceLiftable[Renameable]:
+  given liftRenameable : NiceLiftable[Renameable] with
     def lift =
       case Renameable.ByStrategy => '{ Renameable.ByStrategy }
       case Renameable.Fixed => '{ Renameable.Fixed }
 
-  given liftVisbility as NiceLiftable[Visibility] {
+  given liftVisbility : NiceLiftable[Visibility] with {
     def lift =
       case Visibility.Visible => '{ Visibility.Visible }
       case Visibility.Hidden => '{ Visibility.Hidden }
   }
 
-  given liftProperty as NiceLiftable[Property] {
+  given liftProperty : NiceLiftable[Property] with {
     def lift = {
       // Don't need the other case since Property.Opinionated will match the object
       // Note: don't declare variable called 'ast' since it is used internally
@@ -49,22 +48,22 @@ object Lifter {
     }
   }
 
-  given liftIdent as NiceLiftable[AIdent] {
+  given liftIdent : NiceLiftable[AIdent] with {
     def lift =
       case AIdent(name: String) => '{ AIdent(${name.expr})  }
   }
 
-  given liftPropertyAlias as NiceLiftable[PropertyAlias] {
+  given liftPropertyAlias : NiceLiftable[PropertyAlias] with {
     def lift =
       case PropertyAlias(a, b) => '{ PropertyAlias(${a.expr}, ${b.expr}) }
   }
 
-  given liftableAssignment as NiceLiftable[Assignment] {
+  given liftableAssignment : NiceLiftable[Assignment] with {
     def lift =
       case Assignment(ident, property, value) => '{ Assignment(${ident.expr}, ${property.expr}, ${value.expr}) }
   }
 
-  given liftableJoinType as NiceLiftable[JoinType] {
+  given liftableJoinType : NiceLiftable[JoinType] with {
     def lift =
       case InnerJoin => '{ InnerJoin }
       case LeftJoin => '{ LeftJoin }
@@ -72,7 +71,7 @@ object Lifter {
       case FullJoin => '{ FullJoin }
   }
 
-  given liftOptionOperation as NiceLiftable[OptionOperation] {
+  given liftOptionOperation : NiceLiftable[OptionOperation] with {
     def lift =
       case OptionIsEmpty(a) => '{ OptionIsEmpty(${a.expr}) }
       case OptionMap(a, b, c) => '{ OptionMap(${a.expr}, ${b.expr}, ${c.expr}) }
@@ -81,7 +80,7 @@ object Lifter {
       case OptionTableExists(a, b, c) => '{ OptionTableExists(${a.expr}, ${b.expr}, ${c.expr}) }
   }
 
-  given liftableAst as NiceLiftable[Ast] {
+  given liftableAst : NiceLiftable[Ast] with {
     def lift =
       case Constant(tmc.ConstantValue(v)) => '{ Constant(${tmc.ConstantExpr(v)}) }
       case Function(params: List[AIdent], body: Ast) => '{ Function(${params.expr}, ${body.expr}) }
@@ -107,7 +106,7 @@ object Lifter {
 
   import EqualityOperator.{ == => ee }
 
-  given liftOperator as NiceLiftable[Operator] {
+  given liftOperator : NiceLiftable[Operator] with {
     def lift =
       case NumericOperator.+ => '{ NumericOperator.+ }
       case NumericOperator.- => '{ NumericOperator.- }

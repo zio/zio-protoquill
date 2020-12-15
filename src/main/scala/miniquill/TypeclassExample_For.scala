@@ -15,17 +15,17 @@ object TypeclassExample_For {
   case class Person(id: Int, name: String, age: Int)
 
   trait Functor[F[_]]:
-    extension [A, B](inline x: F[A]):
+    extension [A, B](inline x: F[A])
       inline def map(inline f: A => B): F[B]
 
   trait Monad[F[_]] extends Functor[F]:
     //inline def pure[A](x: A): F[A]
-    extension [A, B](inline x: F[A]):
+    extension [A, B](inline x: F[A])
       inline def map(inline f: A => B): F[B]
       inline def flatMap(inline f: A => F[B]): F[B]
       
   trait For[F[_]]: //extends Monad[F]:
-    extension [A, B](inline x: F[A]):
+    extension [A, B](inline x: F[A])
       inline def map(inline f: A => B): F[B]
       inline def flatMap(inline f: A => F[B]): F[B]
       inline def withFilter(inline f: A => Boolean): F[A]
@@ -60,14 +60,14 @@ object TypeclassExample_For {
       inline def flatMap(inline f: A => Query[B]): Query[B] = xs.flatMap(f)
       inline def withFilter(inline f: A => Boolean): Query[A] = xs.withFilter(f)
 
-  inline given listFunctor as ListFunctor = new ListFunctor
-  inline given queryFunctor as QueryFunctor = new QueryFunctor
+  inline given listFunctor: ListFunctor = new ListFunctor
+  inline given queryFunctor: QueryFunctor = new QueryFunctor
 
-  inline given listMonad as ListMonad = new ListMonad
-  inline given queryMonad as QueryMonad = new QueryMonad
+  inline given listMonad: ListMonad = new ListMonad
+  inline given queryMonad: QueryMonad = new QueryMonad
 
-  inline given listFor as ListFor = new ListFor
-  inline given queryFor as QueryFor = new QueryFor
+  inline given listFor: ListFor = new ListFor
+  inline given queryFor: QueryFor = new QueryFor
 
   extension [F[_], A, B](inline from: F[A])(using inline fun: Functor[F]) {
     inline def mapF(inline f: A => B) = from.map(f)
@@ -79,7 +79,7 @@ object TypeclassExample_For {
   }
   
   object UseCase:
-    extension [F[_]](inline people: F[Person])(using inline fun: For[F]):
+    extension [F[_]](inline people: F[Person])(using inline fun: For[F])
       inline def joesAddresses(inline addresses: F[Address]) =
         for {
           p <- people if (p.name == "Joe")

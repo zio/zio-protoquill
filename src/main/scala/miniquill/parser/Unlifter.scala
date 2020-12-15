@@ -12,6 +12,7 @@ object UnlifterType {
 //class Unlifter(using val q: Quotes) extends PartialFunction[Expr[Ast], Ast] with TastyMatchers {
 class Unlifter(override implicit val qctx: Quotes) extends PartialFunction[Expr[Ast], Ast] with TastyMatchers {
   import UnlifterType._
+  import qctx.reflect.report
 
   def apply(astExpr: Expr[Ast]): Ast = unliftAst(astExpr)
   def isDefinedAt(astExpr: Expr[Ast]): Boolean = unliftAst.isDefinedAt(astExpr)

@@ -131,6 +131,7 @@ object QuoteMacro {
   }
 
   private def extractRuntimeUnquotes(body: Expr[Any])(using Quotes) = {
+    import quotes.reflect.report
     val unquotes = QuotationLotExpr.findUnquotes(body)
     unquotes
       .collect {

@@ -7,8 +7,6 @@ import scala.compiletime.{erasedValue, summonFrom, constValue}
 
 object TypeclassUsecase_TypeclassQueryAndEntityQuery {
   import io.getquill._
-  case class Address(street: String, zip: Int) extends Embedded
-  given Embedable[Address]
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
@@ -22,18 +20,18 @@ object TypeclassUsecase_TypeclassQueryAndEntityQuery {
   trait EarlierThan[T]:
     inline def apply(inline a: T, inline b: T): Boolean
   
-  inline given GroupKey[Node, Int]:
+  inline given GroupKey[Node, Int] with
     inline def apply(inline t: Node): Int = t.id
-  inline given GroupKey[Master, Int]:
+  inline given GroupKey[Master, Int] with
     inline def apply(inline t: Master): Int = t.key
-  inline given GroupKey[Worker, Int]: 
+  inline given GroupKey[Worker, Int] with 
     inline def apply(inline t: Worker): Int = t.shard
 
-  inline given EarlierThan[Node]: 
+  inline given EarlierThan[Node] with 
     inline def apply(inline a: Node, inline b: Node) = a.timestamp < b.timestamp
-  inline given EarlierThan[Master]: 
+  inline given EarlierThan[Master] with 
     inline def apply(inline a: Master, inline b: Master) = a.lastCheck < b.lastCheck
-  inline given EarlierThan[Worker]: 
+  inline given EarlierThan[Worker] with 
     inline def apply(inline a: Worker, inline b: Worker) = a.lastTime < b.lastTime
 
   trait JoiningFunctor[F[_]]:
@@ -59,12 +57,12 @@ object TypeclassUsecase_TypeclassQueryAndEntityQuery {
           if (matching.length == 0) List((x, None)) else matching
         }
 
-  inline given queryJoiningFunctor as QueryJoiningFunctor = new QueryJoiningFunctor
-  inline given listJoiningFunctor as ListJoiningFunctor = new ListJoiningFunctor
+  inline given queryJoiningFunctor: QueryJoiningFunctor = new QueryJoiningFunctor
+  inline given listJoiningFunctor: ListJoiningFunctor = new ListJoiningFunctor
 
-  inline given aconversion[T] as Conversion[EntityQuery[T], Query[T]] = (q: EntityQuery[T]) => q: Query[T]
-  inline given bconversion[T] as Conversion[Query[T], Query[T]] = (q: Query[T]) => q: Query[T]
-  inline given cconversion[T] as Conversion[List[T], List[T]] = (q: List[T]) => q: List[T]
+  inline given aconversion[T]: Conversion[EntityQuery[T], Query[T]] = (q: EntityQuery[T]) => q: Query[T]
+  inline given bconversion[T]: Conversion[Query[T], Query[T]] = (q: Query[T]) => q: Query[T]
+  inline given cconversion[T]: Conversion[List[T], List[T]] = (q: List[T]) => q: List[T]
 
   inline def latestStatus[O[_], F[_], T, G](inline q: O[T])(using inline conv: O[T] => F[T], inline fun: JoiningFunctor[F], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): F[T] =
       conv(q).leftJoin(conv(q))((a, b) => 

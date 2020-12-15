@@ -32,7 +32,7 @@ trait TastyMatchers {
     println(expr.show)
 
     println("================= Matchers =================")
-    println(Untype(Term.of(expr)).showExtractors)
+    println(Printer.TreeStructure.show(Untype(Term.of(expr))))
 
     println("================= Pretty Tree =================")
     println(pprint.apply(Untype(Term.of(expr))))
@@ -235,7 +235,7 @@ trait TastyMatchers {
   def summonContextMethod(name: String, ctx: Expr[_]) = {
     val ctxTerm = Term.of(ctx)
     val ctxClass = ctxTerm.tpe.widen.classSymbol.get
-    ctxClass.methods.filter(f => f.name == name).headOption.getOrElse {
+    ctxClass.declaredMethods.filter(f => f.name == name).headOption.getOrElse {
       throw new IllegalArgumentException(s"Cannot find method '${name}' from context ${Term.of(ctx).tpe.widen}")
     }
   }
@@ -281,12 +281,12 @@ trait TastyMatchers {
   object ConstantTerm:
     def unapply(term: Term): Option[ConstantValue.Kind] =
       term match
-        case Literal(Constant.String(v: String)) => Some(v)
-        case Literal(Constant.Int(v: Int)) => Some(v)
-        case Literal(Constant.Long(v: Long)) => Some(v)
-        case Literal(Constant.Boolean(v: Boolean)) => Some(v)
-        case Literal(Constant.Float(v: Float)) => Some(v)
-        case Literal(Constant.Double(v: Double)) => Some(v)
-        case Literal(Constant.Byte(v: Byte)) => Some(v)
+        case Literal(StringConstant(v: String)) => Some(v)
+        case Literal(IntConstant(v: Int)) => Some(v)
+        case Literal(LongConstant(v: Long)) => Some(v)
+        case Literal(BooleanConstant(v: Boolean)) => Some(v)
+        case Literal(FloatConstant(v: Float)) => Some(v)
+        case Literal(DoubleConstant(v: Double)) => Some(v)
+        case Literal(ByteConstant(v: Byte)) => Some(v)
         case _ => None
 }

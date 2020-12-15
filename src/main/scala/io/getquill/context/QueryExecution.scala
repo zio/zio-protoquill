@@ -55,6 +55,7 @@ object QueryExecution:
   }
 
   trait QueryMetaHelper[T: Type] extends TastyMatchers {
+    import qctx.reflect.report
     // See if there there is a QueryMeta mapping T to some other type RawT
     def summonMetaIfExists =
       Expr.summon[QueryMeta[T, _]] match {

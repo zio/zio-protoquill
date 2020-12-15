@@ -8,7 +8,6 @@ object TypelevelUsecase_WithPassin {
 
   import io.getquill._
   case class Address(street: String, zip: Int, fk: Int) extends Embedded //helloooo
-  given Embedable[Address] //hello
   case class Person(id: Int, name: String, age: Int, addr: Address, middleName: String, lastName: String)
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
@@ -23,7 +22,7 @@ object TypelevelUsecase_WithPassin {
     type Out
     inline def get(inline from: From): Out
   
-  inline given Path[User, Role]:
+  inline given Path[User, Role] with
     type Out = Query[(User, Role)]
     inline def get(inline s: User): Query[(User, Role)] =
       for {
@@ -31,7 +30,7 @@ object TypelevelUsecase_WithPassin {
         r <- query[Role].join(r => r.id == sr.roleId)
       } yield (s, r)
   
-  inline given Path[User, Permission]:
+  inline given Path[User, Permission] with
     type Out = Query[(User, Role, Permission)]
     inline def get(inline s: User): Query[(User, Role, Permission)] =
       for {

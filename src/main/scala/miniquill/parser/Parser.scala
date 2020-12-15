@@ -27,7 +27,7 @@ object Parser {
       |s"==== Tree cannot be parsed to '${astClass.getSimpleName}' ===
       |  ${Format(expr.show)}
       |==== Extractors ===
-      |  ${Format(Term.of(expr).showExtractors)}
+      |  ${Format(Printer.TreeStructure.show(Term.of(expr)))}
       |==== Tree ===
       |  ${printer.str(Term.of(expr))}
       |""".stripMargin, 
@@ -232,7 +232,7 @@ trait PatMatchDefExt(implicit val qctx: Quotes) extends TastyMatchers {
           val body =
             rhsOpt match {
               // TODO Better site-description in error
-              case None => report.throwError(s"Cannot parse 'val' clause with no '= rhs' (i.e. equals and right hand side) of ${tree.showExtractors}")
+              case None => report.throwError(s"Cannot parse 'val' clause with no '= rhs' (i.e. equals and right hand side) of ${Printer.TreeStructure.show(tree)}")
               case Some(rhs) => rhs
             }
           val bodyAst = astParse(body.asExpr)
@@ -242,7 +242,7 @@ trait PatMatchDefExt(implicit val qctx: Quotes) extends TastyMatchers {
           val body =
             rhsOpt match {
               // TODO Better site-description in error
-              case None => report.throwError(s"Cannot parse 'val' clause with no '= rhs' (i.e. equals and right hand side) of ${tree.showExtractors}")
+              case None => report.throwError(s"Cannot parse 'val' clause with no '= rhs' (i.e. equals and right hand side) of ${Printer.TreeStructure.show(tree)}")
               case Some(rhs) => rhs
             }
           val bodyAst = astParse(body.asExpr)
@@ -282,7 +282,7 @@ trait PatMatchDefExt(implicit val qctx: Quotes) extends TastyMatchers {
           binds.zipWithIndex.flatMap { case (bind, idx) =>
             tupleBindsPath(bind, path :+ s"_${idx + 1}")
           }
-        case other => report.throwError(s"Invalid Pattern Matching Term: ${other.showExtractors}")
+        case other => report.throwError(s"Invalid Pattern Matching Term: ${Printer.TreeStructure.show(other)}")
       }
     }
 
@@ -656,7 +656,7 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
 
   def delegate: PartialFunction[Expr[_], Ast] = {
 
-    case Unseal(Literal(TreeConst.Null())) =>
+    case Unseal(Literal(NullConstant())) =>
       NullValue
 
     // Parse tuples

@@ -69,17 +69,20 @@ object ScalarPlanterExpr {
   }
 
   object UprootableUnquote {
-    def unapply(expr: Expr[Any])(using Quotes): Option[ScalarPlanterExpr[_, _]] = expr match {
-      case `(ScalarPlanter).unquote`(planterUnquote) =>
-        planterUnquote match {
-          case Uprootable(planterExpr) => 
-            Some(planterExpr)
-          case _ => 
-            // All lifts re-inserted as ScalarPlanters must be inlined values containing
-            // their UID as well as a corresponding tree. An error should be thrown if this is not the case.
-            report.throwError("Format of ScalarLift holder must be fully inline.", expr)
-        }
-      case _ => None
+    def unapply(expr: Expr[Any])(using Quotes): Option[ScalarPlanterExpr[_, _]] = {
+      import quotes.reflect.report
+      expr match {
+        case `(ScalarPlanter).unquote`(planterUnquote) =>
+          planterUnquote match {
+            case Uprootable(planterExpr) => 
+              Some(planterExpr)
+            case _ => 
+              // All lifts re-inserted as ScalarPlanters must be inlined values containing
+              // their UID as well as a corresponding tree. An error should be thrown if this is not the case.
+              report.throwError("Format of ScalarLift holder must be fully inline.", expr)
+          }
+        case _ => None
+      }
     }
   }
 

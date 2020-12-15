@@ -31,6 +31,6 @@ object CsvEncoder {
       }
   }
 
-  given intEncoder as CsvEncoder[Int] { def encode(value: Int) = value + "" }
-  given stringEncoder as CsvEncoder[String] { def encode(value: String) = value }
+  given intEncoder: CsvEncoder[Int] with { def encode(value: Int) = value + "" }
+  given stringEncoder: CsvEncoder[String] with { def encode(value: String) = value }
 }

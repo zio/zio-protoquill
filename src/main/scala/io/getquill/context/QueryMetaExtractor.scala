@@ -71,6 +71,7 @@ object QueryMetaExtractor {
     queryLifts: List[ScalarPlanterExpr[_, _]], 
     quip: Expr[QueryMeta[T, R]]
   )(using Quotes): Option[StaticRequip[T, R]] = {
+    import quotes.reflect.report
     
     val quipLotExpr = quip match {
       case QuotationLotExpr(qbin) => qbin

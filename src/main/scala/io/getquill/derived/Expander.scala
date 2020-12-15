@@ -97,8 +97,8 @@ object Expander {
 
     def constValue(tpe: Type[_]): String =
       TypeRepr.of(using tpe) match {
-        case ConstantType(Constant.Int(value)) => value.toString
-        case ConstantType(Constant.String(value)) => value.toString
+        case ConstantType(IntConstant(value)) => value.toString
+        case ConstantType(StringConstant(value)) => value.toString
         // Macro error
       }
     def isProduct(tpe: Type[_]): Boolean =
@@ -112,8 +112,8 @@ object Expander {
 
     def constValue[T: Type]: String =
       TypeRepr.of[T] match {
-        case ConstantType(Constant.Int(value)) => value.toString
-        case ConstantType(Constant.String(value)) => value.toString
+        case ConstantType(IntConstant(value)) => value.toString
+        case ConstantType(StringConstant(value)) => value.toString
         // Macro error
       }
 

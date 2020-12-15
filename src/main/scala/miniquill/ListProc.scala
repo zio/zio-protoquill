@@ -11,9 +11,9 @@ object ListProc {
     val indexValue = index match { case  Const(i: Int) => i }
     val exprs = UntypeExpr(Term.of(list).underlyingArgument.asExpr) match { 
       case '{ scala.List.apply[T](${Varargs(args)}: _*) } => args  
-      case _ => report.throwError("Does not match: " + quotes.reflect.Term.of(list).showExtractors)
+      case _ => report.throwError("Does not match: " + Printer.TreeStructure.show(quotes.reflect.Term.of(list)))
     }
-    exprs(indexValue)
+    exprs.apply(indexValue)
   }
 
   inline def tail[T](inline list: List[T]): List[T] = ${ tailImpl('list) }
@@ -36,14 +36,14 @@ object ListProc {
         case '{ scala.Nil } => true
         case _ => false
       }
-    Literal(Constant.Boolean(output)).asExprOf[Boolean]
+    Literal(BooleanConstant(output)).asExprOf[Boolean]
     //Expr(output)
   }
 
   transparent inline def isTrue: Boolean = ${ isTrueImpl }
   def isTrueImpl(using Quotes) = {
     import quotes.reflect._
-    Literal(Constant.Boolean(true)).asExprOf[Boolean]
+    Literal(BooleanConstant(true)).asExprOf[Boolean]
   }
 
 

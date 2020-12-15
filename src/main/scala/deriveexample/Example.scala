@@ -18,7 +18,7 @@ trait Eq[T] {
 }
 
 object Eq {
-  given Eq[Int] {
+  given Eq[Int] with {
     def eqv(x: Int, y: Int) = x == y
   }
 
@@ -58,6 +58,6 @@ object Eq {
 
 object AutomaticEq {
   inline implicit def autoEq[T]: Eq[T] = Eq.derived
-  extension [T](a: T):
+  extension [T](a: T)
     inline def ===(b: T) = autoEq[T].eqv(a, b)
 }

@@ -13,14 +13,15 @@ object TypeclassExample_Functor {
   case class Person(id: Int, name: String, age: Int)
 
   trait Functor[F[_]]:
-    extension [A, B](inline x: F[A]):
+    extension [A, B](inline x: F[A])
       inline def map(inline f: A => B): F[B]
 
-  inline given Functor[List]:
+  inline given Functor[List] with
     extension [A, B](inline xs: List[A])
       inline def map(inline f: A => B): List[B] = xs.map(f)
+    
 
-  inline given Functor[Query]:
+  inline given Functor[Query] with
     extension [A, B](inline xs: Query[A])
       inline def map(inline f: A => B): Query[B] = xs.map(f)
 

@@ -15,15 +15,15 @@ object Labeled {
 
     def typeIsConst[T: Type] = // Don't need to check if label type is const, label types always must be const
       TypeRepr.of[T] match {
-        case ConstantType(Constant.String(value)) => true
-        case ConstantType(Constant.Int(value)) => true
+        case ConstantType(StringConstant(value)) => true
+        case ConstantType(IntConstant(value)) => true
         case _ => false
       }
 
     def typeConstValue[T: Type]: String =
       TypeRepr.of[T] match {
-        case ConstantType(Constant.String(value)) => value.toString
-        case ConstantType(Constant.Int(value)) => value.toString
+        case ConstantType(StringConstant(value)) => value.toString
+        case ConstantType(IntConstant(value)) => value.toString
         // Macro error
       }
 
