@@ -7,7 +7,7 @@ lazy val root = project
     version := "0.1.0",
     resolvers += Resolver.mavenLocal,
 
-    scalaVersion := "3.0.0-M3-bin-20201213-3c18f6b-NIGHTLY", // "0.21.0-RC1", //"0.22.0-bin-20200114-193f7de-NIGHTLY", //dottyLatestNightlyBuild.get,
+    scalaVersion := "3.0.0-M3-bin-20201214-1ec8041-NIGHTLY", // "0.21.0-RC1", //"0.22.0-bin-20200114-193f7de-NIGHTLY", //dottyLatestNightlyBuild.get,
 
     scalacOptions ++= Seq(
       "-language:implicitConversions"

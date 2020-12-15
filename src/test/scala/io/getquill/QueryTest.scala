@@ -142,12 +142,12 @@ class QueryTest extends Spec with Inside { //hellooooooo
       result.executionType mustEqual ExecutionType.Dynamic
     }
     // TODO Fix pending https://github.com/lampepfl/dotty/issues/10771
-    // "shuold work correctly with lift" in {
-    //   import ctx._
-    //   val result = ctx.run(peopleRuntime.map(p => p.name + lift("hello")))
-    //   result.string mustEqual """querySchema("Person").map(p => p.name + ?)"""
-    //   result.executionType mustEqual ExecutionType.Dynamic
-    // }
+    "shuold work correctly with lift" in {
+      import ctx._
+      val result = ctx.run(peopleRuntime.map(p => p.name + lift("hello")))
+      result.string mustEqual """querySchema("Person").map(p => p.name + ?)"""
+      result.executionType mustEqual ExecutionType.Dynamic
+    }
     "two-level shuold work correctly with lift" in {
       import ctx._
       def addressesRuntimeAndLift = quote {

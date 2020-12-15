@@ -11,30 +11,19 @@ import io.getquill.context.ExecutionType
 
 class QueryTestMain {
 
-  // TODO Need to test 3-level injection etc...
-  case class Address(street:String, zip:Int) extends Embedded
-  case class Person(name: String, age: Int, address: Address)
-  val sqlCtx = new MirrorContext(MirrorSqlDialect, Literal)
+  case class Person(name: String, age: Int)
   val ctx = new MirrorContext(MirrorIdiom, Literal)
 
   def peopleRuntime = quote {
     query[Person]
   }
-  def addressesRuntime = quote {
-    peopleRuntime.map(p => p.address)
-  }
-
-
-  // one level object query
-  // @Test
-  def oneLevelQuery(): Unit = {
-    
-  }
+  
 
   def main(args: Array[String]):Unit = {
     import ctx._
-    val q = quote { lift("hello") }
-    println( ctx.run(  peopleRuntime.map(p => p.name + lift("hello"))) )
+    val result = ctx.run(peopleRuntime.map(p => p.name + lift("hello")))
+    println( result.string == """querySchema("Person").map(p => p.name + ?)""" )
+    println( result.executionType == ExecutionType.Dynamic )
   }
 
 }
