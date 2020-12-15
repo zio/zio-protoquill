@@ -467,68 +467,25 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit val qctx: Quot
     case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, body)}) } => 
       Map(astParse(q), Idnt(ident), astParse(body))
 
-    // Need to have map cases for both Query and EntityQuery since these matches are invariant
-    case '{ ($q:EntityQuery[qt]).map[mt](${Lambda1(ident, body)}) } => 
-      Map(astParse(q), Idnt(ident), astParse(body))
-
-    case '{ ($q:EntityQuery[qt]).flatMap[mt](${Lambda1(ident, body)}) } => 
-      FlatMap(astParse(q), Idnt(ident), astParse(body))
-
     case '{ ($q:Query[qt]).flatMap[mt](${Lambda1(ident, body)}) } => 
       FlatMap(astParse(q), Idnt(ident), astParse(body))
 
     case '{ ($q:Query[qt]).filter(${Lambda1(ident, body)}) } => 
       Filter(astParse(q), Idnt(ident), astParse(body))
 
-    case '{ ($q:EntityQuery[qt]).filter(${Lambda1(ident, body)}) } => 
-      Filter(astParse(q), Idnt(ident), astParse(body))
-
     case '{ ($q:Query[qt]).withFilter(${Lambda1(ident, body)}) } => 
       Filter(astParse(q), Idnt(ident), astParse(body))
 
-    case '{ ($q:EntityQuery[qt]).withFilter(${Lambda1(ident, body)}) } => 
-      Filter(astParse(q), Idnt(ident), astParse(body))
-
-    // case Fun(Query(q), "filter", Lambda1(ident, body))
-
-    // Need to have map cases for both Query and EntityQuery since these matches are invariant
-    case '{ ($q:EntityQuery[qt]).filter(${Lambda1(ident, body)}) } => 
-      val a = astParse(q)
-      val b = astParse(body)
-      Filter(a, Idnt(ident), b)
-
-    // TODO Remove duplication once https://github.com/lampepfl/dotty/issues/10464 is fixed
     case '{ ($a: Query[t]).union($b) } => Union(astParse(a), astParse(b))
-    case '{ ($a: EntityQuery[t]).union($b) } => Union(astParse(a), astParse(b))
 
-    // TODO Remove duplication once https://github.com/lampepfl/dotty/issues/10464 is fixed
-    case '{ type t1; type t2; ($q1: EntityQuery[`t1`]).join[`t1`, `t2`](($q2: EntityQuery[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: EntityQuery[`t1`]).leftJoin[`t1`, `t2`](($q2: EntityQuery[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: EntityQuery[`t1`]).rightJoin[`t1`, `t2`](($q2: EntityQuery[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: EntityQuery[`t1`]).fullJoin[`t1`, `t2`](($q2: EntityQuery[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
     case '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
     case '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
     case '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
     case '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: EntityQuery[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: EntityQuery[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: EntityQuery[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: EntityQuery[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: EntityQuery[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: EntityQuery[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: EntityQuery[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: EntityQuery[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
 
-    // TODO Remove duplication once https://github.com/lampepfl/dotty/issues/10464 is fixed
-    case '{ type t1; ($q1: EntityQuery[`t1`]).join[`t1`](${Lambda1(ident1, on)}) } => 
-      FlatJoin(InnerJoin, astParse(q1), Idnt(ident1), astParse(on))
     case '{ type t1; ($q1: Query[`t1`]).join[`t1`](${Lambda1(ident1, on)}) } => 
       FlatJoin(InnerJoin, astParse(q1), Idnt(ident1), astParse(on))
-    case '{ type t1; ($q1: EntityQuery[`t1`]).leftJoin[`t1`](${Lambda1(ident1, on)}) } => 
-      //println(s"========= Parsing Lambda as: ${ident1} => ${on.show} (${astParse(on)}) =========")
-      FlatJoin(LeftJoin, astParse(q1), Idnt(ident1), astParse(on))
     case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, on)}) } => 
-    //println(s"========= Parsing Lambda as: ${ident1} => ${on.show} (${astParse(on)}) =========")
       FlatJoin(LeftJoin, astParse(q1), Idnt(ident1), astParse(on))
   }
 

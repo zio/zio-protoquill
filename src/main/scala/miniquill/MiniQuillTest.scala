@@ -13,6 +13,8 @@ object AdvTest {
     import miniquill.quoter.QueryMeta
 
     case class Person(id: Int, name: String, age: Int)
+    case class Address(street: String, zip: Int, personId: Int)
+
     // case class PersonName(name: String)
 
     // implicit inline def qm: QueryMeta[PersonName, String] = {
@@ -30,16 +32,19 @@ object AdvTest {
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
 
-    val q = quote {
+    inline def q = quote {
       query[Person].filter(p => p.name == lift("joe"))
     }
-
-
-    
-    val result = run(q)
+    inline def result = run(q)
     println( result.string(true) )
     println( result.prepareRow.data.toList )
 
+    inline def q1 = quote {
+      query[Person].join(query[Address]).on((p, a) => p.id == a.personId)
+    }
+    inline def result1 = run(q1)
+    println( result1.string(true) )
+    println( result1.prepareRow.data.toList )
 
   }
 }
