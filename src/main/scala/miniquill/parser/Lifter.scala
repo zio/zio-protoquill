@@ -24,7 +24,7 @@ object Lifter {
 
   trait NiceLiftable[T: ClassTag] extends ToExpr[T]:
     def lift: Quotes ?=> PartialFunction[T, Expr[T]]
-    def apply(t: T): Quotes ?=> Expr[T] = 
+    def apply(t: T)(using Quotes): Expr[T] = 
       lift.lift(t).getOrElse { throw new IllegalArgumentException(s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element ${pprint.apply(t)} into the Quill Abstract Syntax Tree") }
     def unapply(t: T)(using Quotes) = Some(apply(t))
 

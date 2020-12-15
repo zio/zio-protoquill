@@ -16,7 +16,7 @@ object ExprAccumulate {
       //   ============== Could not transform over expression ===========
       //   scala.tasty.reflect.ExprCastError: Expr: ["name" : String]
       //   did not conform to type: String*
-      override def transformChildren[TF](expr: Expr[TF])(using Quotes, Type[TF]): Expr[TF] = {
+      override def transformChildren[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] = {
         try {
           super.transformChildren(expr)
         } catch {
@@ -28,7 +28,7 @@ object ExprAccumulate {
         }
       }
 
-      def transform[TF](expr: Expr[TF])(using Quotes, Type[TF]): Expr[TF] = {
+      def transform[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] = {
         matcher.lift(expr) match {
           case Some(result) => 
             buff += result
