@@ -14,6 +14,7 @@ import miniquill.quoter.QuotationLotExpr
 import io.getquill.EntityQuery
 import io.getquill.Query
 import io.getquill.Format
+import miniquill.parser.ParserHelpers._
 
 type Parser[R] = PartialFunction[quoted.Expr[_], R]
 type SealedParser[R] = (quoted.Expr[_] => R)
@@ -162,7 +163,7 @@ case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit va
   }
 }
 
-case class ValParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PatMatchDefExt {
+case class ValParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PatternMatchingValues {
   import quotes.reflect._
   import Parser.Implicits._
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -172,7 +173,7 @@ case class ValParser(root: Parser[Ast] = Parser.empty)(override implicit val qct
   }
 }
 
-case class BlockParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PatMatchDefExt {
+case class BlockParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PatternMatchingValues {
   import quotes.reflect.{Block => TBlock, _}
   import Parser.Implicits._
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -192,7 +193,7 @@ case class BlockParser(root: Parser[Ast] = Parser.empty)(override implicit val q
   }
 }
 
-case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PatMatchDefExt {
+case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PatternMatchingValues {
   import quotes.reflect._
   import Parser.Implicits._
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -202,112 +203,6 @@ case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implici
   }
 }
 
-trait PatMatchDefExt(implicit val qctx: Quotes) extends TastyMatchers {
-  import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
-  import Parser.Implicits._
-  import io.getquill.util.Interpolator
-  import io.getquill.util.Messages.TraceType
-  import io.getquill.norm.BetaReduction
-
-  def astParse: SealedParser[Ast]
-
-  // don't change to ValDef or might override the real valdef in qctx.reflect
-  object ValDefTerm {
-    def unapply(tree: Tree): Option[Ast] =
-      tree match {
-        case TValDef(name, Inferred(), Some(t @ PatMatchTerm(ast))) =>
-          println(s"====== Parsing Val Def ${name} = ${t.show}")
-          Some(Val(Idnt(name), ast))
-
-        // In case a user does a 'def' instead of a 'val' with no paras and no types then treat it as a val def
-        // this is useful for things like (TODO Get name) where you'll have something like:
-        // query[Person].map(p => (p.name, p.age)).filter(tup => tup._1.name == "Joe")
-        // But in Scala3 you can do:
-        // query[Person].map(p => (p.name, p.age)).filter((name, age) => name == "Joe")
-        // Then in the AST it will look something like:
-        // query[Person].map(p => (p.name, p.age)).filter(x$1 => { val name=x$1._1; val age=x$1._2; name == "Joe" })
-        // and you need to resolve the val defs thare are created automatically
-        case DefDef(name, _, paramss, _, rhsOpt) if (paramss.length == 0) =>
-          //println(s"====== Parsing Def Def ${name} = ${rhsOpt.map(_.show)}")
-          val body =
-            rhsOpt match {
-              // TODO Better site-description in error
-              case None => report.throwError(s"Cannot parse 'val' clause with no '= rhs' (i.e. equals and right hand side) of ${Printer.TreeStructure.show(tree)}")
-              case Some(rhs) => rhs
-            }
-          val bodyAst = astParse(body.asExpr)
-          Some(Val(Idnt(name), bodyAst))
-
-        case TValDef(name, Inferred(), rhsOpt) =>
-          val body =
-            rhsOpt match {
-              // TODO Better site-description in error
-              case None => report.throwError(s"Cannot parse 'val' clause with no '= rhs' (i.e. equals and right hand side) of ${Printer.TreeStructure.show(tree)}")
-              case Some(rhs) => rhs
-            }
-          val bodyAst = astParse(body.asExpr)
-          Some(Val(Idnt(name), bodyAst))
-
-        case _ => None
-      }
-  }
-
-  object PatMatchTerm {
-    def unapply(term: Term): Option[Ast] =
-      term match {
-        case Match(expr, List(CaseDef(fields, guard, body))) =>
-          guard match {
-            case Some(guardTerm) => report.throwError("Guards in case- match are not supported", guardTerm.asExpr)
-            case None =>
-          }
-          Some(patMatchParser(expr, fields, body))
-
-        case other => None
-      }
-  }
-  
-  protected def patMatchParser(tupleTree: Term, fieldsTree: Tree, bodyTree: Term): Ast = {
-    val tuple = astParse(tupleTree.asExpr)
-    val body = astParse(bodyTree.asExpr)
-
-    /* 
-    Get a list of all the paths of all the identifiers inside the tuple. E.g:
-    foo match { case ((a,b),c) => bar } would yield something like:
-    List((a,List(_1, _1)), (b,List(_1, _2)), (c,List(_2)))
-    */
-    def tupleBindsPath(field: Tree, path: List[String] = List()): List[(Idnt, List[String])] = {
-      UntypeTree(field) match {
-        case Bind(name, TIdent(_)) => List(Idnt(name) -> path)
-        case Unapply(Method0(TupleIdent(), "unapply"), something, binds) => 
-          binds.zipWithIndex.flatMap { case (bind, idx) =>
-            tupleBindsPath(bind, path :+ s"_${idx + 1}")
-          }
-        case other => report.throwError(s"Invalid Pattern Matching Term: ${Printer.TreeStructure.show(other)}")
-      }
-    }
-
-    /* Take the list found in the tupleBindsPath method above and match up each match-tuple element 
-    from the original tuple we found. For example, if we had: foo match { case ((a,b),c) => bar }
-    we get something like List((a,List(_1, _1)), (b,List(_1, _2)), (c,List(_2))). If 'foo'
-    is ((f,b),z) then we want to get: List(((f,b),z)._1._1, ((f,b),z)._1._2, ((f,b),z)._2)
-    */
-    def propertyAt(path: List[String]) =
-      path.foldLeft(tuple) {
-        case (tup, elem) => Property(tup, elem)
-      }
-
-    val fieldPaths = tupleBindsPath(fieldsTree)
-    val reductionTuples = fieldPaths.map((id, path) => (id, propertyAt(path)))
-
-    val interp = new Interpolator(TraceType.Standard, 1)
-    import interp._
-
-    trace"Pat Match Parsing: ${body}".andLog()
-    trace"Reductions: ${reductionTuples}".andLog()
-    // Do not care about types here because pat-match body does not necessarily have correct typing in the Parsing phase
-    BetaReduction(body, reductionTuples: _*)
-  }
-}
 
 
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
@@ -345,33 +240,9 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
   }
 }
 
-case class PropertyAliasParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[PropertyAlias] {
-  import quotes.reflect.{Constant => TConstant, _}
-  
-  def delegate: PartialFunction[Expr[_], PropertyAlias] = {
-      case Lambda1(_, '{ ArrowAssoc[tpa]($prop).->[v](${ConstExpr(alias: String)}) } ) =>
-        def path(tree: Expr[_]): List[String] =
-          tree match {
-            case a`.`b => 
-              path(a) :+ b
-            case '{ (${a`.`b}: Option[t]).map[r](${Lambda1(arg, body)}) } =>
-              path(a) ++ (b :: path(body))
-            case _ => 
-              Nil
-          }
-
-        PropertyAlias(path(prop), alias)
-  }
-
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
-}
-
-case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with Assignments {
   import quotes.reflect.{Constant => TConstant, _}
   import Parser.Implicits._
-
-  // TODO If this was copied would 'root' inside of this thing update correctly?
-  protected def propertyAliasParser: SealedParser[PropertyAlias] = PropertyAliasParser(root).seal
   
   def delegate: PartialFunction[Expr[_], Ast] = {
     del
@@ -379,7 +250,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 
   def del: PartialFunction[Expr[_], Ast] = {
     case Unseal(Apply(Select(query, "insert"), insertAssignments)) =>
-      val assignments = insertAssignments.filterNot(isNil(_)).map(a => assignmentParser(a))
+      val assignments = insertAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
       Insert(astParse(query.asExpr), assignments)
   }
 
@@ -388,27 +259,6 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       case Repeated(Nil, any) => true
       case _ => false
     }
-
-  private def assignmentParser(term: Term): Assignment = {
-    UntypeExpr(term.asExpr) match {
-      case 
-        Lambda1(
-          ident,
-            Unseal(Apply(TypeApply(
-              Select(Apply(
-                TypeApply(Ident("ArrowAssoc"), List(Inferred())), 
-                List(prop)
-              ), "->"), 
-              List(Inferred())
-            ), List(value))
-            )
-        ) =>
-
-        Assignment(Idnt(ident), astParse(prop.asExpr), astParse(value.asExpr))
-
-      case _ => Parser.throwExpressionError(term.asExpr, classOf[Assignment])
-    }
-  }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
@@ -436,13 +286,10 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(implicit val qctx: Quo
   }
 }
 
-case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PropertyAliases {
   import qctx.reflect.{Constant => TConstant, _}
   import Parser.Implicits._
 
-  // TODO If this was copied would 'root' inside of this thing update correctly?
-  protected def propertyAliasParser: SealedParser[PropertyAlias] = PropertyAliasParser(root).seal
-  
   def delegate: PartialFunction[Expr[_], Ast] = {
     del
   }
@@ -450,20 +297,16 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(implicit val qctx: Quot
   def del: PartialFunction[Expr[_], Ast] = {
 
   // This seems to work?
-    case '{ type t; (new EntityQuery[`t`]()) } => //: EntityQuery[`$t`]
+    case '{ type t; EntityQuery.apply[`t`] } => //: EntityQuery[`$t`]
       val name: String = TypeRepr.of[t].classSymbol.get.name
       Entity(name, List())
 
     case '{ Dsl.querySchema[t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
       println("Props are: " + properties.map(_.show))
-      val output = Entity.Opinionated(name, properties.toList.map(propertyAliasParser(_)), Renameable.Fixed)
+      val output = Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), Renameable.Fixed)
       printer.lnf(output)
       output
 
-    // case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, body)}) } => 
-    //   Map(astParse(q), Idnt("foo"), null)
-
-    //  case q"$query.map[mt]((x) => y) }"
     case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, body)}) } => 
       Map(astParse(q), Idnt(ident), astParse(body))
 

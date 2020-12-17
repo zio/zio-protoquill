@@ -7,7 +7,7 @@ lazy val root = project
     version := "0.1.0",
     resolvers += Resolver.mavenLocal,
 
-    scalaVersion := "3.0.0-M3-bin-20201214-1ec8041-NIGHTLY", // "0.21.0-RC1", //"0.22.0-bin-20200114-193f7de-NIGHTLY", //dottyLatestNightlyBuild.get,
+    scalaVersion := "3.0.0-M3", // "0.21.0-RC1", //"0.22.0-bin-20200114-193f7de-NIGHTLY", //dottyLatestNightlyBuild.get,
 
     scalacOptions ++= Seq(
       "-language:implicitConversions"
@@ -20,7 +20,7 @@ lazy val root = project
       ("io.getquill" %% "quill-sql-portable" % "3.5.2").withDottyCompat(scalaVersion.value),
       //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
       //("org.scalameta" %% "scalafmt-cli" % "2.7.4").withDottyCompat(scalaVersion.value),
-      "org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
+      //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
 
       // "org.scalatest" % "scalatest_3.0.0-M2" % "3.2.3" % "test",
       // "org.scalatest" % "scalatest-mustmatchers_3.0.0-M2" % "3.2.3" % "test",
