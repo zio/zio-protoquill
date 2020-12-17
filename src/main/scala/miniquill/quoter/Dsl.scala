@@ -196,7 +196,7 @@ object QueryMacro {
         }
 
       case None => 
-        '{ EntityQuery.apply[T] }
+        '{ new EntityQuery[T]() }
     }
   }
 }

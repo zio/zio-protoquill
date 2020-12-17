@@ -297,7 +297,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
   def del: PartialFunction[Expr[_], Ast] = {
 
   // This seems to work?
-    case '{ type t; EntityQuery.apply[`t`] } => //: EntityQuery[`$t`]
+    case '{ type t; new EntityQuery[`t`]() } => //: EntityQuery[`$t`]
       val name: String = TypeRepr.of[t].classSymbol.get.name
       Entity(name, List())
 

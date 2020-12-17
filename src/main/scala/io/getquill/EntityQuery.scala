@@ -2,11 +2,12 @@ package io.getquill
 
 import io.getquill.quotation.NonQuotedException
 
-object EntityQuery {
-  def apply[T] = new EntityQuery[T]() { }
-}
+// NOTE: Putting this in seems to solve the issue
+// object EntityQuery {
+//   def apply[T] = new EntityQuery[T]()
+// }
 
-trait EntityQuery[T] extends EntityQueryModel[T] {
+class EntityQuery[T] extends EntityQueryModel[T] {
   // Members declared in io.getquill.EntityQueryModel
   // def delete: io.getquill.Delete[T] = NonQuotedException()
   // override def filter(f: T => Boolean): io.getquill.EntityQueryModel[T] = NonQuotedException()
