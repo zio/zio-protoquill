@@ -38,7 +38,12 @@ with MirrorDecoders with MirrorEncoders { self =>
   def executeAction[T](string: String, prepare: Prepare = identityPrepare)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionResult] =
     ActionMirror(string, prepare(Row())._2)
     
+  import scala.annotation.targetName
 
-  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = runBase[T](quoted, ())
+  @targetName("runQuery")
+  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = runQueryBase[T](quoted, ())
+
+  @targetName("runAction")
+  inline def run[T](inline quoted: Quoted[Action[T]]): Result[RunActionResult] = runActionBase[T](quoted, ())
 
 }

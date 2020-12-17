@@ -26,12 +26,13 @@ import miniquill.quoter.QuotedExpr
 import miniquill.quoter.ScalarPlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.Query
+import io.getquill.Action
 import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
 import miniquill.parser.TastyMatchers
 
-trait ContextAction[T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
-  def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: ResultRow => T, executionType: ExecutionType): Res
+trait ContextOperation[T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
+  def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: Option[ResultRow => T], executionType: ExecutionType): Res
 }
 
 /**
@@ -67,95 +68,134 @@ object QueryExecution:
       }
   }
 
+  // Doesn't need to be declared as inline here because case class arguments are automatically inlined that is very cool!
+  sealed trait QuotedOperation[T, Op[_]] {
+    def op: Quoted[Op[T]]
+  }
+
+  // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
+  object QuotedOperation {
+    case class QueryOp[T](op: Quoted[Query[T]]) extends QuotedOperation[T, Query]
+    case class ActionOp[T](op: Quoted[Action[T]]) extends QuotedOperation[T, Action]
+  }
+
+
   class RunQuery[
     T: Type, 
+    Q[_]: Type,
     ResultRow: Type, 
     PrepareRow: Type, 
     D <: Idiom: Type, 
     N <: NamingStrategy: Type, 
     Res: Type
-  ](quoted: Expr[Quoted[Query[T]]], 
-    contextAction: Expr[ContextAction[T, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes) 
+  ](quotedOp: Expr[QuotedOperation[T, Q]], 
+    ContextOperation: Expr[ContextOperation[T, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes) 
   extends SummonHelper[ResultRow] 
     with QueryMetaHelper[T] 
     with TastyMatchers:
     
     import qctx.reflect._
 
+    enum ExtractBehavior:
+      case Extract
+      case Skip
+
     /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to T */
-    def runWithMeta[RawT: Type]: Expr[Res] =
+    def runWithMeta[RawT: Type](quoted: Expr[Quoted[Query[T]]]): Expr[Res] =
       val (queryRawT, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted)
       staticStateOpt match {
         case Some(staticState) =>
-          executeStatic[RawT](staticState, converter)
+          executeStatic[RawT](staticState, converter, ExtractBehavior.Extract)
         case None => 
-          executeDynamic[RawT, Query](queryRawT, converter)
+          executeDynamic[RawT, Query](queryRawT, converter, ExtractBehavior.Extract)
       }
     
 
-    def executeDynamic[RawT: Type, Q[_]: Type](query: Expr[Quoted[Q[RawT]]], converter: Expr[RawT => T]) =
+    def executeDynamic[RawT: Type, Q[_]: Type](query: Expr[Quoted[Q[RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior) =
       val decoder = summonDecoderOrThrow[RawT]
       // Is the expansion on T or RawT, need to investigate
       val expandedAst = Expander.runtimeImpl[T]('{ $query.ast })
 
-      val extractor = '{ (r: ResultRow) => $converter.apply($decoder.apply(1, r)) }
       val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($query.lifts, row) }
+      val extractor = extract match
+        case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(1, r)) ) }
+        case ExtractBehavior.Skip =>    '{ None }
 
       // TODO What about when an extractor is not neededX
-      '{  RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($query, $contextAction, $prepare, $extractor, $expandedAst) }
+      '{  RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($query, $ContextOperation, $prepare, $extractor, $expandedAst) }
     
 
     /** 
      * Execute static query via ctx.executeQuery method given we have the ability to do so 
      * i.e. have a staticState 
      */
-    def executeStatic[RawT: Type](staticState: StaticState, converter: Expr[RawT => T]): Expr[Res] =    
+    def executeStatic[RawT: Type](staticState: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior): Expr[Res] =    
       val StaticState(query, lifts) = staticState
       val decoder = summonDecoderOrThrow[RawT]
 
-      val extractor = '{ (r: ResultRow) => $converter.apply($decoder.apply(1, r)) }
       val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($lifts, row) }
+      val extractor = extract match
+        case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(1, r)) ) }
+        case ExtractBehavior.Skip =>    '{ None }
 
       // TODO What about when an extractor is not neededX
       // executeAction(query, prepare, extractor)
-      '{ $contextAction.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
+      '{ $ContextOperation.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
 
+    private val idConvert = '{ (t:T) => t }
 
     /** Summon all needed components and run executeQuery method */
-    def apply(): Expr[Res] =
+    def applyQuery(quoted: Expr[Quoted[Query[T]]]): Expr[Res] =
       summonMetaIfExists match
         case Some(rowRepr) =>
-          rowRepr match { case '[rawT] => runWithMeta[rawT] }
+          rowRepr match { case '[rawT] => runWithMeta[rawT](quoted) }
         case None =>
           StaticTranslationMacro.applyInner[Query, T, D, N](quoted) match 
             case Some(staticState) =>
-              executeStatic[T](staticState, '{ (t:T) => t })
+              executeStatic[T](staticState, idConvert, ExtractBehavior.Extract)
             case None => 
-              executeDynamic(quoted, '{ (t: T) => t })
+              executeDynamic(quoted, idConvert, ExtractBehavior.Extract)
 
+    def applyAction(quoted: Expr[Quoted[Action[T]]]): Expr[Res] =
+      StaticTranslationMacro.applyInner[Action, T, D, N](quoted) match 
+        case Some(staticState) =>
+          executeStatic[T](staticState, idConvert, ExtractBehavior.Skip)
+        case None => 
+          executeDynamic(quoted, idConvert, ExtractBehavior.Skip)
+
+    def apply() =
+      quotedOp match
+        case '{ QuotedOperation.QueryOp.apply[T]($op) } => applyQuery(op)
+        case '{ QuotedOperation.ActionOp.apply[T]($op) } => applyAction(op)
+        case _ => report.throwError(s"Could not match the QuotedOperation clause: ${quotedOp.show}")
 
   end RunQuery
 
-  inline def runQuery[
+
+  inline def apply[
     T, 
+    Q[_],
     ResultRow, 
     PrepareRow, 
     D <: Idiom, 
     N <: NamingStrategy, 
     Res
-  ](quoted: Quoted[Query[T]], ctx: ContextAction[T, D, N, PrepareRow, ResultRow, Res]) = 
-    ${ runQueryImpl('quoted, 'ctx) }
+  ](inline quotedOp: QuotedOperation[T, Q], ctx: ContextOperation[T, D, N, PrepareRow, ResultRow, Res]) = 
+    ${ applyImpl('quotedOp, 'ctx) }
   
-  def runQueryImpl[
+  def applyImpl[
     T: Type, 
+    Q[_]: Type,
     ResultRow: Type, 
     PrepareRow: Type, 
     D <: Idiom: Type, 
     N <: NamingStrategy: Type, 
     Res: Type
-  ](quoted: Expr[Quoted[Query[T]]], 
-    ctx: Expr[ContextAction[T, D, N, PrepareRow, ResultRow, Res]])(using qctx: Quotes): Expr[Res] =
-    new RunQuery[T, ResultRow, PrepareRow, D, N, Res](quoted, ctx).apply()
+  ](quotedOp: Expr[QuotedOperation[T, Q]], 
+    ctx: Expr[ContextOperation[T, D, N, PrepareRow, ResultRow, Res]])(using qctx: Quotes): Expr[Res] =
+    new RunQuery[T, Q, ResultRow, PrepareRow, D, N, Res](quotedOp, ctx).apply()
+
+
 
 end QueryExecution
 
@@ -177,9 +217,9 @@ object RunDynamicExecution:
     ResultRow, 
     Res
   ](quoted: Quoted[Q[RawT]], 
-    ctx: ContextAction[T, D, N, PrepareRow, ResultRow, Res],
+    ctx: ContextOperation[T, D, N, PrepareRow, ResultRow, Res],
     prepare: PrepareRow => (List[Any], PrepareRow),
-    extractor: ResultRow => T,
+    extractor: Option[ResultRow => T],
     expandedAst: Ast
   ): Res = 
   {

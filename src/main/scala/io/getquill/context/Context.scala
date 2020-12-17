@@ -24,6 +24,7 @@ import miniquill.quoter.QuotedExpr
 import miniquill.quoter.ScalarPlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.Query
+import QueryExecution.QuotedOperation
 
 import io.getquill._
 
@@ -45,6 +46,7 @@ trait ProtoContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.Nam
   type RunBatchActionResult
   type RunBatchActionReturningResult[T]
   type Session
+  /** Future class to hold things like ExecutionContext for Cassandra etc... */
   type DatasourceContext
 
   type Prepare = PrepareRow => (List[Any], PrepareRow)
@@ -80,12 +82,26 @@ with EncodingDsl //  with Closeable
   inline def lift[T](inline vv: T): T = 
     ${ LiftMacro[T, PrepareRow]('vv) }
 
-  inline def runBase[T](inline quoted: Quoted[Query[T]], inline dc: DatasourceContext): Result[RunQueryResult[T]] = {
-    val ca = new ContextAction[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: ResultRow => T, executionType: ExecutionType) =
+  inline def runQueryBase[T](inline quoted: Quoted[Query[T]], inline dc: DatasourceContext): Result[RunQueryResult[T]] = {
+    val ca = new ContextOperation[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]](self.idiom, self.naming) {
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractorOpt: Option[ResultRow => T], executionType: ExecutionType) =
+        val extractor = 
+          extractorOpt match
+            case Some(e) => e
+            case None => throw new IllegalArgumentException("Extractor required")
+
         self.executeQuery(sql, prepare, extractor)(executionType, dc)
     }
-    QueryExecution.runQuery(quoted, ca)
+    // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
+    QueryExecution.apply(QuotedOperation.QueryOp(quoted), ca)
+  }
+
+  inline def runActionBase[T](inline quoted: Quoted[Action[T]], inline dc: DatasourceContext): Result[RunActionResult] = {
+    val ca = new ContextOperation[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunActionResult]](self.idiom, self.naming) {
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractorOpt: Option[ResultRow => T], executionType: ExecutionType) =
+        self.executeAction(sql, prepare)(executionType, dc)
+    }
+    QueryExecution.apply(QuotedOperation.ActionOp(quoted), ca)
   }
 
 
