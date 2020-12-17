@@ -33,14 +33,7 @@ object ExecutionType {
   case object Static extends ExecutionType
 }
 
-// TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
-trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy]
-extends EncodingDsl //  with Closeable
-{ self =>
-  
-
-  implicit inline def autoDecoder[T]:Decoder[T] = GenericDecoder.derived
-
+trait ProtoContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] {
   type PrepareRow
   type ResultRow
 
@@ -52,6 +45,7 @@ extends EncodingDsl //  with Closeable
   type RunBatchActionResult
   type RunBatchActionReturningResult[T]
   type Session
+  type DatasourceContext
 
   type Prepare = PrepareRow => (List[Any], PrepareRow)
   type Extractor[T] = ResultRow => T
@@ -59,30 +53,38 @@ extends EncodingDsl //  with Closeable
   case class BatchGroup(string: String, prepare: List[Prepare])
   case class BatchGroupReturning(string: String, returningBehavior: ReturnAction, prepare: List[Prepare])
 
-  //def probe(statement: String): Try[_]
-
   def idiom: Dialect
   def naming: Naming
-
-  // todo add 'prepare' i.e. encoders here
-  def executeQuery[T](sql: String, prepare: Prepare, extractor: Extractor[T], executionType: ExecutionType): Result[RunQueryResult[T]]
-
+  
   val identityPrepare: Prepare = (Nil, _)
   val identityExtractor = identity[ResultRow] _
 
-  
+  def executeQuery[T](sql: String, prepare: Prepare, extractor: Extractor[T])(executionType: ExecutionType, dc: DatasourceContext): Result[RunQueryResult[T]]
+  def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionResult]
+
+  // Cannot implement 'run' here because it's parameter needs to be inline, and we can't override a non-inline parameter with an inline one
+}
+
+// TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
+trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy]
+extends ProtoContext[Dialect, Naming]
+with EncodingDsl //  with Closeable
+{ self =>
+
+  implicit inline def autoDecoder[T]:Decoder[T] = GenericDecoder.derived
+
+  //def probe(statement: String): Try[_]
+  // todo add 'prepare' i.e. encoders here
+  //def executeAction[T](cql: String, prepare: Prepare = identityPrepare)(implicit executionContext: ExecutionContext): Result[RunActionResult]
 
   inline def lift[T](inline vv: T): T = 
     ${ LiftMacro[T, PrepareRow]('vv) }
 
-  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
-    val ca = new ContextAction[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]] {
-      def idiom = self.idiom
-      def naming = self.naming
+  inline def runBase[T](inline quoted: Quoted[Query[T]], inline dc: DatasourceContext): Result[RunQueryResult[T]] = {
+    val ca = new ContextAction[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: ResultRow => T, executionType: ExecutionType) =
-        self.executeQuery(sql, prepare, extractor, executionType)
+        self.executeQuery(sql, prepare, extractor)(executionType, dc)
     }
-    //runQuery[T](quoted)
     QueryExecution.runQuery(quoted, ca)
   }
 

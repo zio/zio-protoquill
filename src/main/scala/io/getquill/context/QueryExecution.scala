@@ -30,9 +30,7 @@ import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
 import miniquill.parser.TastyMatchers
 
-trait ContextAction[T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res] {
-  def idiom: D
-  def naming: N
+trait ContextAction[T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: ResultRow => T, executionType: ExecutionType): Res
 }
 

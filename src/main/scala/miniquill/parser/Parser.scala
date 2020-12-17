@@ -252,6 +252,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     case Unseal(Apply(Select(query, "insert"), insertAssignments)) =>
       val assignments = insertAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
       Insert(astParse(query.asExpr), assignments)
+    //case '{ ($eq: EntityQuery). } =>
   }
 
   private def isNil(term: Term): Boolean =
