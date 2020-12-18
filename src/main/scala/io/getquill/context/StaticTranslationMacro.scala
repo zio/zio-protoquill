@@ -17,11 +17,12 @@ import miniquill.quoter.ScalarPlanter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import io.getquill.idiom.Idiom
-import io.getquill.ast.{Transform, QuotationTag}
+import io.getquill.ast.{ Transform, QuotationTag }
 import miniquill.quoter.QuotationLot
 import miniquill.quoter.QuotedExpr
 import miniquill.quoter.ScalarPlanterExpr
 import io.getquill.idiom.ReifyStatement
+import io.getquill.ast.{ Query => AQuery, _ }
 
 import io.getquill._
 
@@ -45,9 +46,16 @@ object StaticTranslationMacro {
     //   Expr.summon[QueryMeta]
 
     val unliftedAst = (new Unlifter).apply(astExpr)
+
     if (noRuntimeQuotations(unliftedAst)) {
-      val expandedAst = Expander.static[T](unliftedAst) 
-      println("Expanded Ast Is: " + expandedAst)
+      
+    val expandedAst = unliftedAst match
+      case _: AQuery => Expander.static[T](unliftedAst)
+      case _ => unliftedAst
+
+      //println("Expanded Ast Is: " + expandedAst)
+
+      println("=========== Unlifted Ast =======\n" + io.getquill.util.Messages.qprint(expandedAst))
       val (ast, stmt) = idiom.translate(expandedAst)(using naming)
       val output =
         ReifyStatement(

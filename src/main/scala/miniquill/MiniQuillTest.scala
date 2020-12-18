@@ -47,9 +47,11 @@ object AdvTest {
     // println( result1.prepareRow.data.toList )
 
     inline def q = quote {
-      query[Person].insert(_.name -> "joe")
+      query[Person].insert(_.name -> "joe") //helloooo
     }
-    //println( run(q) )
+
+    println(q.ast) //hello
+    println( run(q) )
 
   }
 }

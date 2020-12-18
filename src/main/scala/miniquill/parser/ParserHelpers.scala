@@ -17,8 +17,14 @@ import io.getquill.Format
 import miniquill.parser.ParserHelpers._
 
 object ParserHelpers {
+
+  trait Idents(implicit val qctx: Quotes) extends TastyMatchers {
+    import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
+
+    def cleanIdent(name: String): Idnt = Idnt(name.replace("_$", "x"))
+  }
   
-  trait Assignments(implicit val qctx: Quotes) extends TastyMatchers {
+  trait Assignments(implicit override val qctx: Quotes) extends Idents with TastyMatchers {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import Parser.Implicits._
     import io.getquill.util.Interpolator
@@ -44,7 +50,7 @@ object ParserHelpers {
                   List(Inferred())
                 ), List(value))
                 )
-            ) => Some(Assignment(Idnt(ident), astParse(prop.asExpr), astParse(value.asExpr)))
+            ) => Some(Assignment(cleanIdent(ident), astParse(prop.asExpr), astParse(value.asExpr)))
           case _ => None
         }
     }

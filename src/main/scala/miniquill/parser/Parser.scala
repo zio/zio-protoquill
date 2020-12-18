@@ -48,7 +48,7 @@ object Parser {
   }
 
   trait Delegated[R] extends Parser[R] with TastyMatchers {
-    implicit val qctx: Quotes
+    override implicit val qctx: Quotes
     def delegate: PartialFunction[Expr[_], R]
     override def apply(expr: Expr[_]): R = {
       delegate.apply(expr)
@@ -58,7 +58,7 @@ object Parser {
     }
   }
 
-  trait Clause[R](using Quotes) extends Delegated[R] with TastyMatchers { base =>
+  trait Clause[R](using override val qctx: Quotes) extends Delegated[R] with TastyMatchers with Idents { base =>
     import Implicits._
 
     def root: Parser[Ast]
@@ -151,7 +151,7 @@ case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit va
 
   def delegate: PartialFunction[Expr[_], Ast] = {
     case Unseal(RawLambdaN(params, body)) =>
-      val subtree = Function(params.map(Idnt(_)), astParse(body.asExpr))
+      val subtree = Function(params.map(cleanIdent(_)), astParse(body.asExpr))
       // If there are actions inside the subtree, we need to do some additional sanitizations
       // of the variables so that their content will not collide with code that we have generated.
 
@@ -264,7 +264,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
 
-case class OptionParser(root: Parser[Ast] = Parser.empty)(implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
   import qctx.reflect.{Constant => TConstant, _}
   import Parser.Implicits._
 
@@ -278,12 +278,12 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(implicit val qctx: Quo
     case '{ ($o: Option[t]).isEmpty } => OptionIsEmpty(astParse(o))
 
     case '{ ($o: Option[t]).map(${Lambda1(id, body)}) } => 
-      if (is[Product](o)) OptionTableMap(astParse(o), Idnt(id), astParse(body))
-      else OptionMap(astParse(o), Idnt(id), astParse(body))
+      if (is[Product](o)) OptionTableMap(astParse(o), cleanIdent(id), astParse(body))
+      else OptionMap(astParse(o), cleanIdent(id), astParse(body))
     
     case '{ ($o: Option[t]).exists(${Lambda1(id, body)}) } =>
-      if (is[Product](o)) OptionTableExists(astParse(o), Idnt(id), astParse(body))
-      else OptionExists(astParse(o), Idnt(id), astParse(body))
+      if (is[Product](o)) OptionTableExists(astParse(o), cleanIdent(id), astParse(body))
+      else OptionExists(astParse(o), cleanIdent(id), astParse(body))
   }
 }
 
@@ -309,28 +309,28 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       output
 
     case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, body)}) } => 
-      Map(astParse(q), Idnt(ident), astParse(body))
+      Map(astParse(q), cleanIdent(ident), astParse(body))
 
     case '{ ($q:Query[qt]).flatMap[mt](${Lambda1(ident, body)}) } => 
-      FlatMap(astParse(q), Idnt(ident), astParse(body))
+      FlatMap(astParse(q), cleanIdent(ident), astParse(body))
 
     case '{ ($q:Query[qt]).filter(${Lambda1(ident, body)}) } => 
-      Filter(astParse(q), Idnt(ident), astParse(body))
+      Filter(astParse(q), cleanIdent(ident), astParse(body))
 
     case '{ ($q:Query[qt]).withFilter(${Lambda1(ident, body)}) } => 
-      Filter(astParse(q), Idnt(ident), astParse(body))
+      Filter(astParse(q), cleanIdent(ident), astParse(body))
 
     case '{ ($a: Query[t]).union($b) } => Union(astParse(a), astParse(b))
 
-    case '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), Idnt(ident1), Idnt(ident2), astParse(on))
+    case '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1), cleanIdent(ident2), astParse(on))
+    case '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1), cleanIdent(ident2), astParse(on))
+    case '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1), cleanIdent(ident2), astParse(on))
+    case '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1), cleanIdent(ident2), astParse(on))
 
     case '{ type t1; ($q1: Query[`t1`]).join[`t1`](${Lambda1(ident1, on)}) } => 
-      FlatJoin(InnerJoin, astParse(q1), Idnt(ident1), astParse(on))
+      FlatJoin(InnerJoin, astParse(q1), cleanIdent(ident1), astParse(on))
     case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, on)}) } => 
-      FlatJoin(LeftJoin, astParse(q1), Idnt(ident1), astParse(on))
+      FlatJoin(LeftJoin, astParse(q1), cleanIdent(ident1), astParse(on))
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -476,7 +476,7 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
       }
 
     case id @ Unseal(i @ TreeIdent(x)) => 
-      val ret = Idnt(i.symbol.name) // TODO How to get decodedName?
+      val ret = cleanIdent(i.symbol.name) // TODO How to get decodedName?
       //println(s"====== Parsing Ident ${id.show} as ${ret} ======")
       ret
 

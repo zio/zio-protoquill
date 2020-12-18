@@ -110,6 +110,8 @@ object QuoteMacro {
     // TODO Add an error if the lifting cannot be found
     val reifiedAst = Lifter(ast)
 
+    println("========= AST =========\n" + io.getquill.util.Messages.qprint(ast))
+
     val pluckedUnquotes = extractRuntimeUnquotes(bodyRaw)
 
     // Extract new lifts
