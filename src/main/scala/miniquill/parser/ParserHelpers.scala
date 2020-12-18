@@ -1,6 +1,6 @@
 package miniquill.parser
 
-import io.getquill.ast.{Ident => Idnt, Query => Qry, _}
+import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import miniquill.quoter._
 import scala.quoted._
 import scala.quoted.{Const => ConstExpr}
@@ -21,7 +21,7 @@ object ParserHelpers {
   trait Idents(implicit val qctx: Quotes) extends TastyMatchers {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
 
-    def cleanIdent(name: String): Idnt = Idnt(name.replace("_$", "x"))
+    def cleanIdent(name: String): AIdent = AIdent(name.replace("_$", "x"))
   }
   
   trait Assignments(implicit override val qctx: Quotes) extends Idents with TastyMatchers {
@@ -103,7 +103,7 @@ object ParserHelpers {
         tree match {
           case TValDef(name, Inferred(), Some(t @ PatMatchTerm(ast))) =>
             println(s"====== Parsing Val Def ${name} = ${t.show}")
-            Some(Val(Idnt(name), ast))
+            Some(Val(AIdent(name), ast))
 
           // In case a user does a 'def' instead of a 'val' with no paras and no types then treat it as a val def
           // this is useful for things like (TODO Get name) where you'll have something like:
@@ -122,7 +122,7 @@ object ParserHelpers {
                 case Some(rhs) => rhs
               }
             val bodyAst = astParse(body.asExpr)
-            Some(Val(Idnt(name), bodyAst))
+            Some(Val(AIdent(name), bodyAst))
 
           case TValDef(name, Inferred(), rhsOpt) =>
             val body =
@@ -132,7 +132,7 @@ object ParserHelpers {
                 case Some(rhs) => rhs
               }
             val bodyAst = astParse(body.asExpr)
-            Some(Val(Idnt(name), bodyAst))
+            Some(Val(AIdent(name), bodyAst))
 
           case _ => None
         }
@@ -161,9 +161,9 @@ object ParserHelpers {
       foo match { case ((a,b),c) => bar } would yield something like:
       List((a,List(_1, _1)), (b,List(_1, _2)), (c,List(_2)))
       */
-      def tupleBindsPath(field: Tree, path: List[String] = List()): List[(Idnt, List[String])] = {
+      def tupleBindsPath(field: Tree, path: List[String] = List()): List[(AIdent, List[String])] = {
         UntypeTree(field) match {
-          case Bind(name, TIdent(_)) => List(Idnt(name) -> path)
+          case Bind(name, TIdent(_)) => List(AIdent(name) -> path)
           case Unapply(Method0(TupleIdent(), "unapply"), something, binds) => 
             binds.zipWithIndex.flatMap { case (bind, idx) =>
               tupleBindsPath(bind, path :+ s"_${idx + 1}")

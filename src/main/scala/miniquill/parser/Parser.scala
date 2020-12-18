@@ -1,6 +1,6 @@
 package miniquill.parser
 
-import io.getquill.ast.{Ident => Idnt, Query => Qry, _}
+import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import miniquill.quoter._
 import scala.quoted._
 import scala.quoted.{Const => ConstExpr}
@@ -19,6 +19,13 @@ import miniquill.parser.ParserHelpers._
 type Parser[R] = PartialFunction[quoted.Expr[_], R]
 type SealedParser[R] = (quoted.Expr[_] => R)
 
+/**
+  * Parse Quill-DSL expressions into the Quill AST.
+  *
+  * Naming Legend:
+  *  - AIdent/AQuery/etc... means Quill Ast-Ident/Query...
+  *  - TIdent/TConstant/ec... means Tasty Ident/Constant/etc...
+  */
 object Parser {
   val empty: Parser[Ast] = PartialFunction.empty[Expr[_], Ast]
 
@@ -207,7 +214,7 @@ case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implici
 
 // TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
 case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-  import quotes.reflect.{ Ident => TreeIdent, _}
+  import quotes.reflect.{ Ident => TIdent, _}
   import Parser.Implicits._
 
   // TODO Need to inject this somehow?
@@ -218,7 +225,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
   def delegate: PartialFunction[Expr[_], Ast] = {
 
     // // TODO Document this?
-    // case Apply(TypeApply(Select(TreeIdent("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Select(TreeIdent("p"), "name"), Select(TreeIdent("p"), "age"))) =>
+    // case Apply(TypeApply(Select(TIdent("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Select(TIdent("p"), "name"), Select(TIdent("p"), "age"))) =>
     //   report.throwError("Matched here!")
     
     case QuotationLotExpr.Unquoted(quotationLot) =>
@@ -241,7 +248,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 }
 
 case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with Assignments {
-  import quotes.reflect.{Constant => TConstant, _}
+  import quotes.reflect.{Constant => TConstantant, _}
   import Parser.Implicits._
   
   def delegate: PartialFunction[Expr[_], Ast] = {
@@ -265,7 +272,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 }
 
 case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-  import qctx.reflect.{Constant => TConstant, _}
+  import qctx.reflect.{Constant => TConstantant, _}
   import Parser.Implicits._
 
   // TODO Move out into TastyMatchers
@@ -288,7 +295,7 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 }
 
 case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PropertyAliases {
-  import qctx.reflect.{Constant => TConstant, _}
+  import qctx.reflect.{Constant => TConstantant, _}
   import Parser.Implicits._
 
   def delegate: PartialFunction[Expr[_], Ast] = {
@@ -337,7 +344,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
 }
 
 // case class ConflictParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-//   import quotes.reflect.{Constant => TConstant, using,  _}
+//   import quotes.reflect.{Constant => TConstantant, using,  _}
 //   import Parser.Implicits._
 //   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -451,7 +458,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
 
 case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-  import quotes.reflect.{Constant => TreeConst, Ident => TreeIdent, _}
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -475,7 +482,7 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
         Property(astParse(prefix), member)
       }
 
-    case id @ Unseal(i @ TreeIdent(x)) => 
+    case id @ Unseal(i @ TIdent(x)) => 
       val ret = cleanIdent(i.symbol.name) // TODO How to get decodedName?
       //println(s"====== Parsing Ident ${id.show} as ${ret} ======")
       ret
