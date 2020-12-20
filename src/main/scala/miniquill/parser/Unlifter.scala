@@ -8,8 +8,7 @@ object UnlifterType {
   type Unlift[T] = PartialFunction[Expr[T], T]
 }
 
-// TODO not sure why "using val q: Quotes" does not work here
-//class Unlifter(using val q: Quotes) extends PartialFunction[Expr[Ast], Ast] with TastyMatchers {
+// TODO Change to same way of doing things as Lifter, then shuold be able to get rid of lift and tuple2 unlifter
 class Unlifter(override implicit val qctx: Quotes) extends PartialFunction[Expr[Ast], Ast] with TastyMatchers {
   import UnlifterType._
   import qctx.reflect.report
@@ -110,6 +109,7 @@ class Unlifter(override implicit val qctx: Quotes) extends PartialFunction[Expr[
     case '{ Tuple($values) } => Tuple(values.unliftExpr)
     case '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } => Join(typ.unliftExpr, a.unliftExpr, b.unliftExpr, aliasA.unliftExpr, aliasB.unliftExpr, on.unliftExpr)
     case '{ FlatJoin($typ, $a, $aliasA, $on) } => FlatJoin(typ.unliftExpr, a.unliftExpr, aliasA.unliftExpr, on.unliftExpr)
+    //case '{ CaseClass($values) } => CaseClass(values.unliftExpr)
     case '{ NullValue } => NullValue
   }
 

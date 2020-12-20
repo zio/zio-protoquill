@@ -289,4 +289,63 @@ trait TastyMatchers {
         case Literal(DoubleConstant(v: Double)) => Some(v)
         case Literal(ByteConstant(v: Byte)) => Some(v)
         case _ => None
+
+  object ClassSymbol:
+    def unapply(expr: Expr[Any]): Option[Symbol] =
+      expr.asTerm.tpe.classSymbol
+
+  object ClassSymbolAndUnseal:
+    def unapply(expr: Expr[Any]): Option[(Symbol, Term)] =
+      expr.asTerm.tpe.classSymbol.map(sym => (sym, expr.asTerm))
+
+  /**
+    * Matches `case class Person(first: String, last: String)` creation of the forms:
+    *   Person("Joe","Bloggs")
+    *   new Person("Joe","Bloggs")
+    */
+  object CaseClassCreation:
+    // For modules, the _ in Select coule be a couple of things (say the class is Person):
+    //   New(TypeIdent("Person$")), "<init>"), Nil) - When the case class is declared in a function body
+    //   Ident("Person")                            - When the case class is declared in an object or top-level
+    object ModuleCreation:
+      def unapply(term: Term) = term match
+        case Apply(Select(New(TypeIdent(moduleType)), "<init>"), list) if (list.length == 0) && moduleType.endsWith("$") => true
+        case Ident(name) => true
+
+    def unapply(expr: Expr[Any]): Option[(String, List[String], List[Expr[Any]])] =
+      // lazy val tpe = expr.asTerm.tpe
+      // lazy val companionClass = tpe.classSymbol.get.companionClass
+      // lazy val name = tpe.classSymbol.get.name
+      // lazy val fields = tpe.classSymbol.get.caseFields.map(_.name) // Don't actually evaluate them unless it matches
+
+      def companionIsProduct(classSymbol: Symbol) = expr.asTerm.tpe.select(classSymbol.companionClass) <:< TypeRepr.of[Product]
+      UntypeExpr(expr) match
+        // case Unseal(theExpr @ Apply(Select(foo, "apply"), list)) if (foo.show.contains("Contact")) =>
+          // println("**************** STOP HERE ****************")
+          // println(Printer.TreeStructure.show(theExpr))
+          // println("Type: " + tpe)
+          // println("Type Simple: " + tpe.simplified)
+          // println("Selected: " + tpe.select(tpe.classSymbol.get.companionClass))
+          // println("Is Product: " + isType[Product](expr))
+          // println("Module: " + tpe.classSymbol.get.moduleClass)
+          // println("Companion: " + tpe.classSymbol.get.companionClass)
+          // println("Companion is Product: " + (tpe.select(tpe.classSymbol.get.companionClass) <:< TypeRepr.of[Product]) )
+          // println("Is Module: " + ((tpe.classSymbol.get.flags & Flags.Artifact) == Flags.Artifact))
+          // println("Is Module2: " + (tpe.classSymbol.get.flags.is(Flags.Artifact)))
+          // println("Flags: " + (tpe.classSymbol.get.flags.show))
+          // report.throwError("**************** STOP HERE ****************")
+        case ClassSymbolAndUnseal(sym, Apply(Select(New(TypeIdent(_)), "<init>"), args)) if isType[Product](expr) =>
+          Some((sym.name, sym.caseFields.map(_.name), args.map(_.asExpr)))
+        case ClassSymbolAndUnseal(sym, Apply(Select(ModuleCreation(), "apply"), args)) if isType[Product](expr) && sym.flags.is(Flags.Case) =>
+          Some((sym.name, sym.caseFields.map(_.name), args.map(_.asExpr)))
+        case _ => 
+          None
+
+  // TODO Change to 'is'
+  def isType[T: Type](input: Expr[_]) =
+    input.asTerm.tpe <:< TypeRepr.of[T] // (implicit Type[T])
+
+  // TODO Change to 'are'
+  def is[T: Type](inputs: Expr[_]*): Boolean =
+    inputs.forall(input => input.asTerm.tpe <:< TypeRepr.of[T])
 }

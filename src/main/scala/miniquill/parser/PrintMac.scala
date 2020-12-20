@@ -32,13 +32,29 @@ object MatchMac {
         import quotes.reflect.{Ident => TIdent, Constant => TConstant, _}
         val any = anyRaw.asTerm.underlyingArgument.asExpr
 
-        UntypeExpr(any) match {
-          case Unseal(Block(parts, lastPart)) =>
-            parts(0)
+        any match {
+          case CaseClassCreation(ccName, fields, args) =>
+            if (fields.length != args.length) 
+              throw new IllegalArgumentException(s"In Case Class ${ccName}, does not have the same number of fields (${fields.length}) as it does arguments ${args.length} (fields: ${fields}, args: ${args.map(_.show)})")
+            println( fields.zip(args.map(_.show)) )
             
-            parts.map(p => println("==== Matched! Exprs: " + Printer.TreeStructure.show(p) + " ===="))
 
-            println(s"============= Matched! Expr: ${Printer.TreeStructure.show(lastPart)} =============")
+          // case ast if (ast.asTerm.tpe <:< TypeRepr.of[Product]) =>
+          //   println("~~~~~~~~~~~~~~~~~~~ MATCHING ~~~~~~~~~~~~~~~")
+          //   println(Printer.TreeStructure.show(ast.asTerm))
+          //   val fields = ast.asTerm.tpe.classSymbol.get.caseFields.map(_.name)
+
+          //   ast match {
+          //     case CaseClassCreation(ccName, args) =>
+          //       if (fields.length != args.length) 
+          //         throw new IllegalArgumentException(s"In Case Class ${ccName}, does not have the same number of fields (${fields.length}) as it does arguments ${args.length} (fields: ${fields}, args: ${args.map(_.show)})")
+          //       println( fields.zip(args.map(_.show)) )
+          //     case _ => 
+          //       println("~~~~~~~~~~ NOT MATCHED Matching Case Class Apply ~~~~~~~~~~~")
+          //   }
+
+          //   println( fields )
+
           case other =>
             println(s"=============== Not Matched! =============")
             println(Printer.TreeStructure.show(other.asTerm))
@@ -47,6 +63,7 @@ object MatchMac {
             println(pprint.apply(other.asTerm))
         }
       }
+      new Operations()
       '{ () }
     }
 }

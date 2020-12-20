@@ -95,24 +95,25 @@ trait ParserFactory {
 trait ParserLibrary extends ParserFactory {
   import Parser._
 
-  def quotationParser(using qctx: Quotes)  =         Series.single(new QuotationParser)
-  def queryParser(using qctx: Quotes)      =         Series.single(new QueryParser)
-  def patMatchParser(using qctx: Quotes)      =      Series.single(new CasePatMatchParser)
-  def functionParser(using qctx: Quotes)   =         Series.single(new FunctionParser)
-  def functionApplyParser(using qctx: Quotes) =      Series.single(new FunctionApplyParser)
-  def valParser(using qctx: Quotes)      =           Series.single(new ValParser)
-  def blockParser(using qctx: Quotes)      =         Series.single(new BlockParser)
-  def operationsParser(using qctx: Quotes) =         Series.single(new OperationsParser)
+  def quotationParser(using qctx: Quotes)          = Series.single(new QuotationParser)
+  def queryParser(using qctx: Quotes)              = Series.single(new QueryParser)
+  def patMatchParser(using qctx: Quotes)           = Series.single(new CasePatMatchParser)
+  def functionParser(using qctx: Quotes)           = Series.single(new FunctionParser)
+  def functionApplyParser(using qctx: Quotes)      = Series.single(new FunctionApplyParser)
+  def valParser(using qctx: Quotes)                = Series.single(new ValParser)
+  def blockParser(using qctx: Quotes)              = Series.single(new BlockParser)
+  def operationsParser(using qctx: Quotes)         = Series.single(new OperationsParser)
   def genericExpressionsParser(using qctx: Quotes) = Series.single(new GenericExpressionsParser)
   def actionParser(using qctx: Quotes)             = Series.single(new ActionParser)
   def optionParser(using qctx: Quotes)             = Series.single(new OptionParser)
+  def valueParser(using qctx: Quotes)              = Series.single(new ValueParser)
 
   // def userDefined(using qctxInput: Quotes) = Series(new Glosser[Ast] {
   //   val qctx = qctxInput
   //   def apply(root: Parser[Ast]) = PartialFunction.empty[Expr[_], Ast]
   // })
 
-  def apply(using Quotes): Parser[Ast] = {
+  def apply(using Quotes): Parser[Ast] =
     quotationParser
         .combine(queryParser)
         .combine(optionParser)
@@ -122,9 +123,9 @@ trait ParserLibrary extends ParserFactory {
         .combine(valParser)
         .combine(blockParser)
         .combine(operationsParser)
+        .combine(valueParser) // must go before functionApplyParser since valueParser parsers '.apply on case class' and the functionApply would take that
         .combine(functionApplyParser) // must go before genericExpressionsParser otherwise that will consume the 'apply' clauses
         .combine(genericExpressionsParser)
-        }
 }
 
 object ParserLibrary extends ParserLibrary
@@ -275,10 +276,6 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   import qctx.reflect.{Constant => TConstantant, _}
   import Parser.Implicits._
 
-  // TODO Move out into TastyMatchers
-  def is[T](inputs: Expr[_]*)(implicit test: Type[T]): Boolean =
-    inputs.forall(input => input.asTerm.tpe <:< TypeRepr.of[T])
-
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
@@ -384,14 +381,6 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
       }
   }
 
-  def isType[T: Type](input: Expr[_]) =
-    import quotes.reflect.Term
-    input.asTerm.tpe <:< TypeRepr.of[T] // (implicit Type[T])
-
-  def is[T: Type](inputs: Expr[_]*): Boolean =
-    import quotes.reflect.Term
-    inputs.forall(input => input.asTerm.tpe <:< TypeRepr.of[T])
-
   // TODO Is there any way to check if Numeric[T] exists if you don't know the type T
   // but know the type of the term?
   // def isNumeric(expr: Expr[Any]) = {
@@ -455,24 +444,37 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   }
 }
 
-
-
-case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
-
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-
-    case Unseal(Literal(NullConstant())) =>
-      NullValue
+    // Parse Null values
+    case Unseal(Literal(NullConstant())) => NullValue
+    case Unseal(ConstantTerm(v)) => Constant(v)
 
     // Parse tuples
-    case Unseal(Apply(TypeApply(Select(TupleIdent(), "apply"), types), values)) =>
+    case Unseal(Apply(TypeApply(Select(TupleIdent(), "apply"), types), values)) => 
       Tuple(values.map(v => astParse(v.asExpr)))
+    
+    case CaseClassCreation(ccName, fields, args) =>
+      if (fields.length != args.length) 
+        throw new IllegalArgumentException(s"In Case Class ${ccName}, does not have the same number of fields (${fields.length}) as it does arguments ${args.length} (fields: ${fields}, args: ${args.map(_.show)})")
+      val argsAst = args.map(astParse(_))
+      CaseClass(fields.zip(argsAst))
+      
+    case id @ Unseal(i @ TIdent(x)) => 
+      val ret = cleanIdent(i.symbol.name) // TODO How to get decodedName?
+      //println(s"====== Parsing Ident ${id.show} as ${ret} ======")
+      ret
+  }
+}
 
-    case Unseal(ConstantTerm(v)) => 
-      Constant(v)
+case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
 
     case Unseal(value @ Select(Seal(prefix), member)) =>
       if (value.tpe <:< TypeRepr.of[io.getquill.Embedded]) { 
@@ -481,11 +483,6 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
         //println(s"========= Parsing Property ${prefix.show}.${member} =========")
         Property(astParse(prefix), member)
       }
-
-    case id @ Unseal(i @ TIdent(x)) => 
-      val ret = cleanIdent(i.symbol.name) // TODO How to get decodedName?
-      //println(s"====== Parsing Ident ${id.show} as ${ret} ======")
-      ret
 
     // If at the end there's an inner tree that's typed, move inside and try to parse again
     case Unseal(Typed(innerTree, _)) =>

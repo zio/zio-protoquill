@@ -23,6 +23,7 @@ object Lifter {
     def expr: Expr[T] = Expr(t)
 
   trait NiceLiftable[T: ClassTag] extends ToExpr[T]:
+    // TODO Can we Change to 'using Quotes' without changing all the signitures? Would be simplier to extend
     def lift: Quotes ?=> PartialFunction[T, Expr[T]]
     def apply(t: T)(using Quotes): Expr[T] = 
       lift.lift(t).getOrElse { throw new IllegalArgumentException(s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element ${pprint.apply(t)} into the Quill Abstract Syntax Tree") }
@@ -99,6 +100,7 @@ object Lifter {
       case Join(typ, a, b, identA, identB, body) => '{ Join(${typ.expr}, ${a.expr}, ${b.expr}, ${identA.expr}, ${identB.expr}, ${body.expr}) }
       case FlatJoin(typ, a, identA, on) => '{ FlatJoin(${typ.expr}, ${a.expr}, ${identA.expr}, ${on.expr}) }
       case NullValue => '{ NullValue }
+      case CaseClass(lifts) => '{ CaseClass(${lifts.expr}) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
       case v: Property => liftProperty(v)
       case v: AIdent => liftIdent(v)
       case v: OptionOperation => liftOptionOperation(v)
