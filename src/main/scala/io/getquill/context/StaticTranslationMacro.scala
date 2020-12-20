@@ -45,7 +45,7 @@ object StaticTranslationMacro {
     // val queryMeta = 
     //   Expr.summon[QueryMeta]
 
-    val unliftedAst = (new Unlifter).apply(astExpr)
+    val unliftedAst = Unlifter.apply(astExpr)
 
     if (noRuntimeQuotations(unliftedAst)) {
       

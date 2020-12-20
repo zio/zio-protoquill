@@ -218,9 +218,6 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
   import quotes.reflect.{ Ident => TIdent, _}
   import Parser.Implicits._
 
-  // TODO Need to inject this somehow?
-  val unlift = new Unlifter()
-
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
@@ -231,7 +228,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
     
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
-        case Uprootable(uid, astTree, _, _, _, _) => unlift(astTree)
+        case Uprootable(uid, astTree, _, _, _, _) => Unlifter(astTree)
         case Pluckable(uid, astTree, _) => QuotationTag(uid)
         case Pointable(quote) => report.throwError(s"Quotation is invalid for compile-time or processing: ${quote.show}", quote)
       }
@@ -244,7 +241,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
     // since we would not know the UID since it is not inside of a bin. This situation
     // should only be encountered to a top-level quote passed to the 'run' function and similar situations.
     case QuotedExpr.Uprootable(quotedExpr) => // back here
-      unlift(quotedExpr.ast) 
+      Unlifter(quotedExpr.ast) 
   }
 }
 
