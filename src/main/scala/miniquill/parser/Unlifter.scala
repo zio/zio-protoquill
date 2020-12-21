@@ -87,6 +87,9 @@ object Unlifter {
 
   given unliftOptionOperation: NiceUnliftable[OptionOperation] with {
     def unlift =
+      case '{ OptionApply.apply($a) } => OptionApply(a.unexpr)
+      case '{ OptionSome.apply($a) } => OptionSome(a.unexpr)
+      case '{ OptionNone } => OptionNone
       case '{ OptionIsEmpty.apply($a) } => OptionIsEmpty(a.unexpr)
       case '{ OptionMap.apply($a, $b, $c) } => OptionMap(a.unexpr, b.unexpr, c.unexpr)
       case '{ OptionTableMap.apply($a, $b, $c) } => OptionTableMap(a.unexpr, b.unexpr, c.unexpr)

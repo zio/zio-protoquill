@@ -74,6 +74,9 @@ object Lifter {
 
   given liftOptionOperation : NiceLiftable[OptionOperation] with {
     def lift =
+      case OptionApply(a) => '{ OptionApply(${a.expr}) }
+      case OptionSome(a) => '{ OptionSome(${a.expr}) }
+      case OptionNone => '{ OptionNone }
       case OptionIsEmpty(a) => '{ OptionIsEmpty(${a.expr}) }
       case OptionMap(a, b, c) => '{ OptionMap(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionTableMap(a, b, c) => '{ OptionTableMap(${a.expr}, ${b.expr}, ${c.expr}) }

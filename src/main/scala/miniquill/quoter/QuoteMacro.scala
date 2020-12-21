@@ -8,6 +8,27 @@ import miniquill.parser.Parser
 import miniquill.parser.Parser.Implicits._
 import miniquill.parser.Lifter
 
+object LiftExtractHelper {
+  // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
+  // appearing in the AST in multiple places.
+  def extractLifts(body: Expr[Any])(using Quotes) = {
+    ScalarPlanterExpr.findUnquotes(body).distinctBy(_.uid).map(_.plant)
+  }
+
+  def extractRuntimeUnquotes(body: Expr[Any])(using Quotes) = {
+    import quotes.reflect.report
+    val unquotes = QuotationLotExpr.findUnquotes(body)
+    unquotes
+      .collect {
+        case expr: Pluckable => expr
+        case Pointable(expr) =>
+          report.throwError(s"Invalid runtime Quotation: ${expr.show}. Cannot extract a unique identifier.", expr)
+      }
+      .distinctBy(_.uid)
+      .map(_.pluck)
+  }
+}
+
 object QuoteMacro {
 
   def apply[T, Parser <: ParserFactory](bodyRaw: Expr[T])(using Quotes, Type[T], Type[Parser]): Expr[Quoted[T]] = {
@@ -30,36 +51,14 @@ object QuoteMacro {
 
     println("========= AST =========\n" + io.getquill.util.Messages.qprint(ast))
 
-    val pluckedUnquotes = extractRuntimeUnquotes(bodyRaw)
-
-    // Extract new lifts
-    val lifts = extractLifts(bodyRaw)
+    // Extract runtime quotes and lifts
+    val pluckedUnquotes = LiftExtractHelper.extractRuntimeUnquotes(bodyRaw)
+    val lifts = LiftExtractHelper.extractLifts(bodyRaw)
 
     // TODO Extract ScalarPlanter which are lifts that have been transformed already
     // TODO Extract plucked quotations, transform into QuotationVase statements and insert into runtimeQuotations slot
 
     // ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}
-    '{       
-      Quoted[T](${reifiedAst}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)})
-    }
-  }
-
-  // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
-  // appearing in the AST in multiple places.
-  private def extractLifts(body: Expr[Any])(using Quotes) = {
-    ScalarPlanterExpr.findUnquotes(body).distinctBy(_.uid).map(_.plant)
-  }
-
-  private def extractRuntimeUnquotes(body: Expr[Any])(using Quotes) = {
-    import quotes.reflect.report
-    val unquotes = QuotationLotExpr.findUnquotes(body)
-    unquotes
-      .collect {
-        case expr: Pluckable => expr
-        case Pointable(expr) =>
-          report.throwError(s"Invalid runtime Quotation: ${expr.show}. Cannot extract a unique identifier.", expr)
-      }
-      .distinctBy(_.uid)
-      .map(_.pluck)
+    '{ Quoted[T](${reifiedAst}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
   }
 }

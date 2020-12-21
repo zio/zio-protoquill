@@ -64,17 +64,30 @@ object AdvTest {
     // }
     // println( run(q) )
 
-    case class Age(value: Int) extends Embedded
-    //case class Person(name: String, age: Option[Age])
-    case class Person(name: String, age: Age)
-    
-    inline def q = quote {
-      //query[Person].insert(_.name -> "joe")
-      //query[Person].insertI(Person("Joe", Option(Age(123))))
-      query[Person].insertI(Person("Joe", Age(123)))
+    // {
+    //   case class Age(value: Int) extends Embedded  
+    //   case class Person(name: String, age: Age)
+    //   inline def q = quote {
+    //     query[Person].insertI(Person("Joe", Age(123)))
+    //   }
+    //   println(q.ast)
+    // }
+
+    {
+      case class Age(value: Int) extends Embedded
+      case class Person(name: String, age: Option[Age])
+      
+      inline def q = quote {
+        //query[Person].insert(_.name -> "joe")
+        query[Person].insertI(Person("Joe", Option(Age(123)))) //hello
+      }
+      println(q.ast)
+      run(q)
     }
 
-    println(q.ast)
+    
+
+    
 
     // println(q.ast)
     //println( run(q) )

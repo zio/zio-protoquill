@@ -448,7 +448,13 @@ case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val q
   def delegate: PartialFunction[Expr[_], Ast] = {
     // Parse Null values
     case Unseal(Literal(NullConstant())) => NullValue
+    // Parse Constants
     case Unseal(ConstantTerm(v)) => Constant(v)
+    // Parse Option constructors
+    case '{ Some.apply[t]($v) } => OptionSome(astParse(v))
+    case '{ Option.apply[t]($v) } => OptionApply(astParse(v))
+    case '{ None } => OptionNone
+    case '{ Option.empty[t] } => OptionNone
 
     // Parse tuples
     case Unseal(Apply(TypeApply(Select(TupleIdent(), "apply"), types), values)) => 
@@ -460,10 +466,7 @@ case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       val argsAst = args.map(astParse(_))
       CaseClass(fields.zip(argsAst))
       
-    case id @ Unseal(i @ TIdent(x)) => 
-      val ret = cleanIdent(i.symbol.name) // TODO How to get decodedName?
-      //println(s"====== Parsing Ident ${id.show} as ${ret} ======")
-      ret
+    case id @ Unseal(i @ TIdent(x)) => cleanIdent(i.symbol.name)
   }
 }
 
