@@ -55,7 +55,7 @@ object StaticTranslationMacro {
 
       //println("Expanded Ast Is: " + expandedAst)
 
-      println("=========== Unlifted Ast =======\n" + io.getquill.util.Messages.qprint(expandedAst))
+      //println("=========== Unlifted Ast =======\n" + io.getquill.util.Messages.qprint(expandedAst))
       val (ast, stmt) = idiom.translate(expandedAst)(using naming)
       val output =
         ReifyStatement(

@@ -1,3 +1,4 @@
+
 package io.getquill.context
 
 import io.getquill._
@@ -16,23 +17,46 @@ import miniquill.parser.Lifter
 import miniquill.quoter.UnquoteMacro
 
 /**
- * This macro transforms a insert query in the form query[Person].insert(Person("Joe", "Bloggs"))
- * into the form query[Person].insert(_.firstName -> "Joe", _.lastName -> "Bloggs").
- * There are various other important details such as if a field is optional e.g. 
+ * The function call that regularly drives query insertion is 
  * {code}
- *   case class Person(name: String, age: Option[Age]); Age(value: Int)
+ * query[T].insert(_.field1 -> value, _.field2 -> value, etc...)
  * {code}
- * The assignments are a bit more complex e.g.:
+ * Let's call this the field-insertion api.
+ * 
+ * This macro essentially takes an insert of the form `query[T].insert(T(...))` and converts into the former form.
+ * 
+ * Once we've parsed an insert e.g. `query[Person].insert(Person("Joe", "Bloggs"))` we then need to synthesize
+ * the insertions that this would represent e.g. `query[Person].insert(_.firstName -> "Joe", _.lastName -> "Bloggs")`
+ * 
+ * Each function of field-insertion API basically takes the form
+ * {code} (v) => vAssignmentProperty -> assignmentValue (on the AST) {code}
+ * 
+ * Let's take a look at a slighly more complex example
+ * Given:
  * {code}
- *   query[Person].insert("Joe", Some(Age(123))) // becomes
- *     query[Person].insert(_.name -> "Joe", _.age.map(v => v.value) -> Some(Age(123)).map(v => v.value))
+ *  case class Person(name: String, age: Option[Age]); Age(value: Int)
+ *  quote { query[Person].insert(Person("Joe", Age(345))) }
  * {code}
- * Note that we don't actually create the code for assignments but instead generate the corresponding
- * AST that it will have once it goes through the parser. This avoids the inefficiency of having
- * to generate code that we will then later parse.
- * The Expander actually does most of the effort of this conversion so most of the heavy lifting is already done.
+ * 
+ * This expands out into a series of statements which will be parsed to AST assignments
+ * This: `(v: Person) => v.name -> (v:Person).name`
+ * Will be parsed into this:
+ * {code} Assignment(Id(v), Prop(Id(v), name), Const("Joe")) {code}
+ * 
+ * This: `(v: Person) => v.age.map(v => v.value) -> Option(v:Age).map(v => v.value)`
+ * Will be parsed into this:
+ * {code}
+ *   Assignment(Id(v), 
+ *     OptionTableMap(Prop(Id(v), age), Id(v), Prop(Id(v), value))
+ *     OptionTableMap(OptionApply(CaseClass(value=345)), Id(v), Prop(Id(v), value))
+ *   )
+ * {code}
+ * 
+ * The end result of this synthesis is a series of assignments for an insert for the given entity
  */
 object InsertMacro {
+
+  
   def apply[T: Type, Parser <: ParserFactory: Type](bodyRaw: Expr[T])(using Quotes): Expr[Insert[T]] = {
     import quotes.reflect._
     val body = bodyRaw.asTerm.underlyingArgument.asExpr
@@ -43,42 +67,19 @@ object InsertMacro {
     val rawAst = parserFactory.apply.seal.apply(body)
     // This shuold be a CaseClass (TODO Should probably verify that)
     val insertCaseClassAst = BetaReduction(rawAst)
-    println("************ Parsed The Ast **********")
-    println(io.getquill.util.Messages.qprint(insertCaseClassAst))
 
     // Expand into a AST
     // T:Person(name:Str, age:Option[Age]) Age(value: Int) -> Ast: List(v.name, v.age.map(v => v.value))
-    println("************ Expanded The Ast **********")
     val expansionList = Expander.staticList[T]("v")
-    println(io.getquill.util.Messages.qprint(expansionList))
-
-    /*
-     * Now syntheize the function "(v) => vAssignmentProperty -> assignmentValue" (on the AST)
-     * Given 
-     *  case class Person(name: String, age: Option[Age]); Age(value: Int)
-     *  the User has done query[Person].insert(Person("Joe", Age(345)))
-     *
-     * e.g.   (v: Person) => v.name -> (v:Person).name
-     * a.k.a  Assignment(Id(v), Prop(Id(v), name), Const("Joe"))
-     * and    (v: Person) => v.age.map(v => v.value) -> Option(v:Age).map(v => v.value)
-     * a.k.a  Assignment(Id(v), 
-     *                   OptionTableMap(Prop(Id(v), age), Id(v), Prop(Id(v), value))
-     *                   OptionTableMap(OptionApply(CaseClass(value=345)), Id(v), Prop(Id(v), value))
-     *        )
-     * Note that these are represented as values on the AST as opposed to actual scala code
-     *   where (v) => foo -> bar is Assignment(v, foo, bar) // where foo = path to property, bar = path to property with case-class subtitution
-     * 
-     * The end result of this synthesis is a series of assignments for an insert for the given entity
-     */
     
+    // Now synthesize (v) => vAssignmentProperty -> assignmentValue
+    // e.g. (p:Person) => p.firstName -> "Joe"
     // TODO, Ast should always be a case class (maybe a tuple?) should verify that
     def mapping(path: Ast) =
       val reduction = BetaReduction(path, AIdent("v") -> insertCaseClassAst)
       Assignment(AIdent("v"), path, reduction)
 
     val assignmentsAst = expansionList.map(exp => mapping(exp))
-    println("************ Insertions **********")
-    println(io.getquill.util.Messages.qprint(assignmentsAst))
 
     val pluckedUnquotes = LiftExtractHelper.extractRuntimeUnquotes(bodyRaw)
     val lifts = LiftExtractHelper.extractLifts(bodyRaw)
@@ -88,11 +89,8 @@ object InsertMacro {
     // TODO if there is a schemaMeta need to use that to create the entity
     val entityName = TypeRepr.of[T].classSymbol.get.name
     val entity = Entity(entityName, List())
-
     val insert = AInsert(entity, assignmentsAst)
-   
-    println("************ OUTPUT **********")
-    println(io.getquill.util.Messages.qprint(insert))
+
 
     val reifiedInsert = Lifter(insert)
     val quotation = 

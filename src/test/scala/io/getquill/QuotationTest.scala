@@ -34,7 +34,7 @@ class QuotationTest extends Spec with Inside {
       inline def q = quote {
         query[Person].map(_.name)
       }
-      q.ast mustEqual Map(Entity("Person", List()), Ident("_$1"), Property(Ident("_$1"), "name"))
+      q.ast mustEqual Map(Entity("Person", List()), Ident("x1"), Property(Ident("x1"), "name"))
     }
     "unquoted splice into another quotation" in {
       inline def q = quote {
