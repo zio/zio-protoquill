@@ -1,18 +1,18 @@
-package miniquill.parser
+// package miniquill.parser
 
-object UseMac {
+// object UseMac {
   
 
-  def main(args: Array[String]):Unit = {
-    import miniquill.quoter.QueryDsl._
+//   def main(args: Array[String]):Unit = {
+//     import miniquill.quoter.QueryDsl._
     
-    //inline def p = Person(123, "Joe")
+//     //inline def p = Person(123, "Joe")
 
-    case class Person(id: Int, name: String)
-    inline def p = new Person(123, name = "Joe")
-    MatchMac(p)
+//     case class Person(id: Int, name: String)
+//     inline def p = new Person(123, name = "Joe")
+//     MatchMac(p)
 
-    PrintMac(p)
+//     PrintMac(p)
 
-  }
-}
+//   }
+// }

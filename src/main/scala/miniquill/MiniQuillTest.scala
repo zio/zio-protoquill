@@ -38,7 +38,7 @@ object AdvTest {
     import ctx._
 
     // inline def q = quote {
-    //   query[Person].filter(p => p.name == lift("joe"))
+    //   query[Person].filter(p => p.name == lift("joe")) //helooo
     // }
     // inline def result = run(q)
     // println( result.string(true) )
@@ -64,13 +64,20 @@ object AdvTest {
     // }
     // println( run(q) )
 
-    case class Person(name: String, age: Int)
+    case class Age(value: Int) extends Embedded
+    //case class Person(name: String, age: Option[Age])
+    case class Person(name: String, age: Age)
+    
     inline def q = quote {
-      query[Person].insert(_.name -> "joe") //helloooo
+      //query[Person].insert(_.name -> "joe")
+      //query[Person].insertI(Person("Joe", Option(Age(123))))
+      query[Person].insertI(Person("Joe", Age(123)))
     }
 
+    println(q.ast)
+
     // println(q.ast)
-    println( run(q) )
+    //println( run(q) )
 
   }
 }

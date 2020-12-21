@@ -170,9 +170,14 @@ object Expander {
   }
 
   import io.getquill.ast.{Map => AMap, _}
+
+  def staticList[T](baseName: String)(using Quotes, Type[T]): List[Ast] = {
+    val expanded = base[T](Term(baseName, Branch))
+    expanded.toAst
+  }
+
   def static[T](ast: Ast)(using Quotes, Type[T]): AMap = {
-    val expanded = base[T](Term("x", Branch))
-    val lifted = expanded.toAst
+    val lifted = staticList[T]("x")
     //println("Expanded to: " + expanded)
     val insert =
       if (lifted.length == 1)

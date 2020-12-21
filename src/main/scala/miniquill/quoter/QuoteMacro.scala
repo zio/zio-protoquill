@@ -3,7 +3,7 @@ package miniquill.quoter
 import scala.quoted._
 import miniquill.parser.ParserFactory
 import io.getquill.util.LoadObject 
-import io.getquill.norm.BetaReduction 
+import io.getquill.norm.BetaReduction
 import miniquill.parser.Parser
 import miniquill.parser.Parser.Implicits._
 import miniquill.parser.Lifter
