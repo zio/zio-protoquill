@@ -1,6 +1,7 @@
 package io.getquill
 
 import io.getquill.quotation.NonQuotedException
+import io.getquill.context.InsertMacro
 
 object EntityQuery {
   def apply[T] = new EntityQuery[T]() { }
@@ -16,7 +17,12 @@ trait EntityQuery[T] extends EntityQueryModel[T] {
   // override def withFilter(f: T => Boolean): io.getquill.EntityQueryModel[T] = NonQuotedException()
   
   def delete: Delete[T] = NonQuotedException()
+
+  // Variant of this where value is inline? insertI
+  override def insert(value: T): Insert[T] = NonQuotedException()
   def insert(f: (T => (Any, Any)), f2: (T => (Any, Any))*): Insert[T] = NonQuotedException()
+
+  override def update(value: T): Update[T] = NonQuotedException()
   def update(f: (T => (Any, Any)), f2: (T => (Any, Any))*): Update[T] = NonQuotedException()
   
   def map[R](f: T => R): EntityQuery[R] = NonQuotedException()

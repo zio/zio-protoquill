@@ -52,24 +52,25 @@ object AdvTest {
     // println( result1.prepareRow.data.toList )
 
     // Need to test them here as well as above the class def
-    case class Name(first: String, last: String) extends Embedded
-    case class Person(id: Int, name: Name)
-    case class Contact(f: String, l: String) //hello
+    // case class Name(first: String, last: String) extends Embedded
+    // case class Person(id: Int, name: Name)
+    // case class Contact(f: String, l: String) //hello
 
-    inline def qq = query[Person].map(p => Contact(p.name.first, p.name.last))
-    miniquill.parser.PrintMac(qq)
-
-    inline def q = quote {
-      qq
-    }
-    println( run(q) )
+    // inline def qq = query[Person].map(p => Contact(p.name.first, p.name.last))
+    // miniquill.parser.PrintMac(qq)
 
     // inline def q = quote {
-    //   query[Person].insert(_.name -> "joe") //helloooo
+    //   qq
     // }
-
-    // println(q.ast) //hello
     // println( run(q) )
+
+    case class Person(name: String, age: Int)
+    inline def q = quote {
+      query[Person].insert(_.name -> "joe") //helloooo
+    }
+
+    // println(q.ast)
+    println( run(q) )
 
   }
 }

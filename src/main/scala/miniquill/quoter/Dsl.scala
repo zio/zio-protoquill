@@ -25,11 +25,7 @@ import io.getquill.Query
 object Dsl extends Dsl[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
 
-trait Dsl[Parser <: ParserFactory] 
-extends QuoteDsl[Parser] 
-with QueryDsl[Parser] 
-with MetaDsl[Parser] {
-
+trait Dsl[Parser <: ParserFactory] extends QuoteDsl[Parser] with QueryDsl[Parser] with MetaDsl[Parser] {
   def run[T](query: Quoted[T]): String = {
     query.ast.toString
   }
@@ -46,24 +42,7 @@ trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
     ${ QueryMetaMacro.embed[T, R, Parser]('this, 'expand, 'extract) }
 }
 
-
-object QueryMetaMacro {
-  def embed[T: Type, R: Type, P <: ParserFactory: Type](qm: Expr[MetaDsl[P]], expand: Expr[Quoted[Query[T] => Query[R]]], extract: Expr[R => T])(using Quotes): Expr[QueryMeta[T, R]] = {
-    val uuid = Expr(java.util.UUID.randomUUID().toString)
-    '{ QueryMeta[T, R]($expand, $uuid, $extract) }
-  }
-
-  // def extractApply[T: Type, R: Type](qm: Expr[QueryMeta[T, R]], qry: Quoted[Query[T]])(using Quotes): Option[Expr[Quoted[Query[R]]]] = {
-  //   qm match {
-  //     ``
-  //   }
-  // }
-}
-
 object QueryDsl {
-  // implicit class StringExt(str: String) {
-  //   def like(str: String): Boolean = ???
-  // }
   extension (str: String) {
     def like(other: String): Boolean = ???
   }
@@ -85,131 +64,4 @@ trait QuoteDsl[Parser <: ParserFactory] {
   inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ UnquoteMacro[T]('quoted) }
 
   inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteMacro[T, Parser]('body) }
-}
-
-
-object QuoteMacro {
-  import io.getquill.util.LoadObject 
-  import io.getquill.norm.BetaReduction 
-
-  def apply[T, Parser <: ParserFactory](bodyRaw: Expr[T])(using Quotes, Type[T], Type[Parser]): Expr[Quoted[T]] = {
-    import quotes.reflect._
-    // NOTE Can disable if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
-    val body = bodyRaw.asTerm.underlyingArgument.asExpr
-
-    val parserFactory = LoadObject[Parser].get
-
-    import Parser._
-
-    // TODo add an error if body cannot be parsed
-    val rawAst = parserFactory.apply.seal.apply(body)
-    val ast = BetaReduction(rawAst)
-
-    //println("Ast Is: " + ast)
-
-    // TODO Add an error if the lifting cannot be found
-    val reifiedAst = Lifter(ast)
-
-    println("========= AST =========\n" + io.getquill.util.Messages.qprint(ast))
-
-    val pluckedUnquotes = extractRuntimeUnquotes(bodyRaw)
-
-    // Extract new lifts
-    val lifts = extractLifts(bodyRaw)
-
-    // TODO Extract ScalarPlanter which are lifts that have been transformed already
-    // TODO Extract plucked quotations, transform into QuotationVase statements and insert into runtimeQuotations slot
-
-    // ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}
-    '{       
-      Quoted[T](${reifiedAst}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)})
-    }
-  }
-
-  // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
-  // appearing in the AST in multiple places.
-  private def extractLifts(body: Expr[Any])(using Quotes) = {
-    ScalarPlanterExpr.findUnquotes(body).distinctBy(_.uid).map(_.plant)
-  }
-
-  private def extractRuntimeUnquotes(body: Expr[Any])(using Quotes) = {
-    import quotes.reflect.report
-    val unquotes = QuotationLotExpr.findUnquotes(body)
-    unquotes
-      .collect {
-        case expr: Pluckable => expr
-        case Pointable(expr) =>
-          report.throwError(s"Invalid runtime Quotation: ${expr.show}. Cannot extract a unique identifier.", expr)
-      }
-      .distinctBy(_.uid)
-      .map(_.pluck)
-  }
-}
-
-
-object SchemaMetaMacro {
-  import io.getquill.util.LoadObject
-
-  // inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
-  // SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.
-  def apply[T, P <: ParserFactory](qm: Expr[MetaDsl[P]], entity: Expr[String], columns: Expr[Seq[(T => (Any, String))]])(using Quotes, Type[T], Type[P]): Expr[SchemaMeta[T]] = {
-    val tmc = new TastyMatchersContext
-    import tmc._
-    val parserFactory = LoadObject[P].get
-    val uuid = Expr(java.util.UUID.randomUUID().toString)
-    val exprs = 
-      (columns match {
-        case GenericSeq(argsExprs) => argsExprs
-      }).toList
-    //val quote = quoteImpl('{ $qm.querySchema[T]($entity, ${Expr.ofList(exprs)}: _*) })
-    val quote = QuoteMacro('{ $qm.querySchema[T]($entity, $columns: _*) })
-    '{ SchemaMeta($quote, $uuid) }
-  }
-}
-
-
-object QueryMacro {
-  def apply[T: Type](using Quotes): Expr[EntityQuery[T]] = {
-    import quotes.reflect._
-    val tmc = new TastyMatchersContext
-    import tmc._
-    import scala.quoted.Expr.summon
-    import miniquill.quoter.QuotationLotExpr
-    import miniquill.quoter.QuotationLotExpr._
-
-
-    Expr.summon[SchemaMeta[T]] match {
-      case Some(meta) =>
-        meta.reseal match {
-          // If it is uprootable, unquote the meta and pass it on
-          case QuotationLotExpr(Uprootable(_, _, _, _, _, _)) =>
-            '{ $meta.unquote }
-
-          // If it's pluckabke can also return that because the parser/Expr accumulate in Context will find it.
-          // I am not sure this has use cases.
-          case QuotationLotExpr(Pluckable(_, _, _)) =>
-            '{ $meta.unquote }
-              
-          // In case it's only pointable, need to synthesize a new UID for the quotation
-          case QuotationLotExpr(Pointable(_)) => //hello
-            UnquoteMacro('{$meta.entity})
-
-          case _ => report.throwError("Invalid Quotation:\n" + meta.show, meta)
-        }
-
-      case None => 
-        '{ EntityQuery.apply[T] }
-    }
-  }
-}
-
-
-object UnquoteMacro {
-  def apply[T: Type](quoted: Expr[Quoted[T]])(using Quotes): Expr[T] = {
-    import quotes.reflect._
-    '{
-      Unquote[T](${quoted}, ${Expr(java.util.UUID.randomUUID().toString)}).unquote
-    }
-  }
-
 }

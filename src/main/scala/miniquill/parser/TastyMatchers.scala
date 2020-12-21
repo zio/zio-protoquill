@@ -311,6 +311,7 @@ trait TastyMatchers {
       def unapply(term: Term) = term match
         case Apply(Select(New(TypeIdent(moduleType)), "<init>"), list) if (list.length == 0) && moduleType.endsWith("$") => true
         case Ident(name) => true
+        case _ => false
 
     def unapply(expr: Expr[Any]): Option[(String, List[String], List[Expr[Any]])] =
       // lazy val tpe = expr.asTerm.tpe
