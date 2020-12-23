@@ -11,10 +11,15 @@ import miniquill.parser.Parser.Implicits._
 import miniquill.parser.ParserFactory
 import io.getquill.derived.Expander
 import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, _ }
-import miniquill.quoter.LiftExtractHelper
+import miniquill.quoter.ExtractLifts
 import miniquill.quoter.Quoted
 import miniquill.parser.Lifter
+import miniquill.parser.Unlifter
 import miniquill.quoter.UnquoteMacro
+import miniquill.quoter.QueryMacro
+import miniquill.quoter.QuotationLotExpr
+import miniquill.quoter.QuotationLotExpr._
+import miniquill.parser.TastyMatchers
 
 /**
  * The function call that regularly drives query insertion is 
@@ -56,56 +61,98 @@ import miniquill.quoter.UnquoteMacro
  */
 object InsertMacro {
 
-  
-  def apply[T: Type, Parser <: ParserFactory: Type](bodyRaw: Expr[T])(using Quotes): Expr[Insert[T]] = {
+  class Pipeline[T: Type, Parser <: ParserFactory: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using val qctx: Quotes) extends TastyMatchers:
     import quotes.reflect._
-    val body = bodyRaw.asTerm.underlyingArgument.asExpr
+    import io.getquill.util.Messages.qprint
 
-    val parserFactory = LoadObject[Parser].get
-    import Parser._
+    def plainEntity: Entity =
+      val entityName = TypeRepr.of[T].classSymbol.get.name
+      Entity(entityName, List())
 
-    val rawAst = parserFactory.apply.seal.apply(body)
-    // This shuold be a CaseClass (TODO Should probably verify that)
-    val insertCaseClassAst = BetaReduction(rawAst)
+    def processEntity: Entity =
+      val underlyingEntity = entityRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]
+      UntypeExpr(underlyingEntity) match 
+        // If it is a plain entity query (as returned from QueryMacro)
+        case '{ EntityQuery[t] } => 
+          //println("************** Plain Entity **********")
+          plainEntity
+        // If there are query schemas involved
+        case QuotationLotExpr.Unquoted(unquotation) => unquotation match
+          case Uprootable(_, ast, _, _, _, _) => 
+            //println("************** Unquote Involved **********")
+            Unlifter(ast) match
+              case ent: Entity => ent
+              case other => report.throwError(s"Unlifted insertion Entity '${qprint(other).plainText}' is not a Query.")
+          case _ =>
+            println("WARNING: Only inline schema-metas are supported for insertions so far. Falling back to a plain entity.")
+            plainEntity
+        
 
-    // Expand into a AST
-    // T:Person(name:Str, age:Option[Age]) Age(value: Int) -> Ast: List(v.name, v.age.map(v => v.value))
-    val expansionList = Expander.staticList[T]("v")
+    /** Parse the input to of query[Person].insert(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs") */
+    def parseAstCaseClass: CaseClass = {  
+      val body = bodyRaw.asTerm.underlyingArgument.asExpr
+      val parserFactory = LoadObject[Parser].get
+      val rawAst = parserFactory.apply.seal.apply(body)
+      val ast = BetaReduction(rawAst)
+      // TODO Implement dynamic pipeline for schema meta
+      ast match
+        case cc: CaseClass => cc
+        case _ => report.throwError(s"Parsed Insert Macro AST is not a Case Class: ${qprint(ast).plainText}")  
+    }
+
+    def synthesizeAssignments(insertCaseClassAst: CaseClass) = {
+      // Expand into a AST
+      // T:Person(name:Str, age:Option[Age]) Age(value: Int) -> Ast: List(v.name, v.age.map(v => v.value))
+      val expansionList = Expander.staticList[T]("v")
+
+      // Now synthesize (v) => vAssignmentProperty -> assignmentValue
+      // e.g. (p:Person) => p.firstName -> "Joe"
+      // TODO, Ast should always be a case class (maybe a tuple?) should verify that
+      def mapping(path: Ast) =
+        val reduction = BetaReduction(path, AIdent("v") -> insertCaseClassAst)
+        Assignment(AIdent("v"), path, reduction)
+
+      val assignmentsAst = expansionList.map(exp => mapping(exp))
+      assignmentsAst
+    }
+
+    def synthesizeAssignmentsFromBody =
+      val astCaseClass = parseAstCaseClass
+      synthesizeAssignments(astCaseClass)
+
+
+    def apply = {
+      val assignmentsAst = synthesizeAssignmentsFromBody
+
+      // Insertion could have lifts and quotes, need to extract those
+      val (lifts, pluckedUnquotes) = ExtractLifts(bodyRaw)    
+
+      // TODO If implicit insert meta, need to detect it and use it instead (i.e. with exclusions)
+      // TODO if there is a schemaMeta need to use that to create the entity
+      val entity = processEntity
+      val assignments = assignmentsAst.map(asi => Lifter.assignment(asi))
+      val insert = '{ AInsert(${Lifter.entity(entity)}, ${Expr.ofList(assignments)}) }
+
+      val quotation = 
+        '{ Quoted[Insert[T]](${insert}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
+
+      val unquotation = UnquoteMacro(quotation)
+      // use the quoation macro to parse the value into a class expression
+      // use that with (v) => (v) -> (class-value) to create a quoation
+      // incorporate that into a new quotation, use the generated quotation's lifts and runtime lifts
+      // the output value
+      // use the Unquote macro to take it back to an 'Insert[T]'
+
+      unquotation
+    }
+
+      
+  end Pipeline
     
-    // Now synthesize (v) => vAssignmentProperty -> assignmentValue
-    // e.g. (p:Person) => p.firstName -> "Joe"
-    // TODO, Ast should always be a case class (maybe a tuple?) should verify that
-    def mapping(path: Ast) =
-      val reduction = BetaReduction(path, AIdent("v") -> insertCaseClassAst)
-      Assignment(AIdent("v"), path, reduction)
+  
 
-    val assignmentsAst = expansionList.map(exp => mapping(exp))
-
-    val pluckedUnquotes = LiftExtractHelper.extractRuntimeUnquotes(bodyRaw)
-    val lifts = LiftExtractHelper.extractLifts(bodyRaw)
-
-    // TODO If implicit insert meta, need to detect it and use it instead (i.e. with exclusions)
-
-    // TODO if there is a schemaMeta need to use that to create the entity
-    val entityName = TypeRepr.of[T].classSymbol.get.name
-    val entity = Entity(entityName, List())
-    val insert = AInsert(entity, assignmentsAst)
-
-
-    val reifiedInsert = Lifter(insert)
-    val quotation = 
-      '{ Quoted[Insert[T]](${reifiedInsert}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
-
-    val unquotation = UnquoteMacro(quotation)
-    
-    
-    // use the quoation macro to parse the value into a class expression
-    // use that with (v) => (v) -> (class-value) to create a quoation
-    // incorporate that into a new quotation, use the generated quotation's lifts and runtime lifts
-    // the output value
-    // use the Unquote macro to take it back to an 'Insert[T]'
-
-    unquotation
-  }
+  
+  def apply[T: Type, Parser <: ParserFactory: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[Insert[T]] =
+    new Pipeline(entityRaw, bodyRaw).apply
 
 }

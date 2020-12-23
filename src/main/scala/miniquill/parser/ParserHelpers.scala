@@ -67,11 +67,12 @@ object ParserHelpers {
     def astParse: SealedParser[Ast]
 
     object PropertyAliasExpr {
-      def OrFail[T: Type](expr: Expr[Any]) =
-        unapply[T](expr).getOrElse { Parser.throwExpressionError(expr, classOf[PropertyAlias]) }
+      def OrFail[T: Type](expr: Expr[Any]) = expr match
+          case PropertyAliasExpr(propAlias) => propAlias
+          case _ => Parser.throwExpressionError(expr, classOf[PropertyAlias])
 
       def unapply[T: Type](expr: Expr[Any]): Option[PropertyAlias] = expr match
-        case Lambda1(_, '{ ($prop: T).->[v](${ConstExpr(alias: String)}) } ) =>
+        case Lambda1(_, '{ ($prop: Any).->[v](${ConstExpr(alias: String)}) } ) =>
           def path(tree: Expr[_]): List[String] =
             tree match
               case a`.`b => 
@@ -82,8 +83,8 @@ object ParserHelpers {
                 Nil
           end path
           Some(PropertyAlias(path(prop), alias))
-
-        
+        case _ => 
+          None
     }    
       
   }

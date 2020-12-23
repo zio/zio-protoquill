@@ -17,7 +17,9 @@ import scala.reflect.classTag;
  */
 object Lifter {
 
-  def apply(ast: Ast): Quotes ?=> Expr[Ast] = liftableAst.apply(ast) // can also do ast.lift but this makes some error messages simpler
+  def apply(ast: Ast): Quotes ?=> Expr[Ast] = liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
+  def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = liftableAssignment(ast)
+  def entity(ast: Entity): Quotes ?=> Expr[Entity] = liftableEntity(ast)
 
   extension [T](t: T)(using ToExpr[T], Quotes)
     def expr: Expr[T] = Expr(t)
@@ -84,12 +86,16 @@ object Lifter {
       case OptionTableExists(a, b, c) => '{ OptionTableExists(${a.expr}, ${b.expr}, ${c.expr}) }
   }
 
+  given liftableEntity : NiceLiftable[Entity] with
+    def lift = 
+      case Entity(name: String, list) => '{ Entity(${name.expr}, ${list.expr})  }
+
   given liftableAst : NiceLiftable[Ast] with {
     def lift =
       case Constant(tmc.ConstantValue(v)) => '{ Constant(${tmc.ConstantExpr(v)}) }
       case Function(params: List[AIdent], body: Ast) => '{ Function(${params.expr}, ${body.expr}) }
       case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.expr}, ${values.expr}) }
-      case Entity(name: String, list) => '{ Entity(${name.expr}, ${list.expr})  }
+      case v: Entity => liftableEntity(v)
       case Map(query: Ast, alias: AIdent, body: Ast) => '{ Map(${query.expr}, ${alias.expr}, ${body.expr})  }
       case FlatMap(query: Ast, alias: AIdent, body: Ast) => '{ FlatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
       case Filter(query: Ast, alias: AIdent, body: Ast) => '{ Filter(${query.expr}, ${alias.expr}, ${body.expr})  }

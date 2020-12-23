@@ -8,7 +8,7 @@ import miniquill.parser.Parser
 import miniquill.parser.Parser.Implicits._
 import miniquill.parser.Lifter
 
-object LiftExtractHelper {
+object ExtractLifts {
   // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
   // appearing in the AST in multiple places.
   def extractLifts(body: Expr[Any])(using Quotes) = {
@@ -27,6 +27,9 @@ object LiftExtractHelper {
       .distinctBy(_.uid)
       .map(_.pluck)
   }
+
+  def apply(body: Expr[Any])(using Quotes) =
+    (extractLifts(body), extractRuntimeUnquotes(body))
 }
 
 object QuoteMacro {
@@ -52,8 +55,7 @@ object QuoteMacro {
     //println("========= AST =========\n" + io.getquill.util.Messages.qprint(ast))
 
     // Extract runtime quotes and lifts
-    val pluckedUnquotes = LiftExtractHelper.extractRuntimeUnquotes(bodyRaw)
-    val lifts = LiftExtractHelper.extractLifts(bodyRaw)
+    val (lifts, pluckedUnquotes) = ExtractLifts(bodyRaw)
 
     // TODO Extract ScalarPlanter which are lifts that have been transformed already
     // TODO Extract plucked quotations, transform into QuotationVase statements and insert into runtimeQuotations slot

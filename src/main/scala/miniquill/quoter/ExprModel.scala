@@ -237,6 +237,9 @@ object QuotationLotExpr {
   }
 
   object Unquoted {
+    def apply(expr: Expr[Any])(using Quotes): QuotationLotExpr =
+      unapply(expr).getOrElse { quotes.reflect.report.throwError(s"The expression: ${expr.show} is not a valid Quoted Expression and cannot be unquoted.") }
+
     def unapply(expr: Expr[Any])(using Quotes): Option[QuotationLotExpr] = 
       //println("=================== Unapplying Unquote ===================")
       //println(io.getquill.Format(expr.show))
