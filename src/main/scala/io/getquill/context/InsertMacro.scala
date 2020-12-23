@@ -73,13 +73,10 @@ object InsertMacro {
       val underlyingEntity = entityRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]
       UntypeExpr(underlyingEntity) match 
         // If it is a plain entity query (as returned from QueryMacro)
-        case '{ EntityQuery[t] } => 
-          //println("************** Plain Entity **********")
-          plainEntity
+        case '{ EntityQuery[t] } => plainEntity
         // If there are query schemas involved
         case QuotationLotExpr.Unquoted(unquotation) => unquotation match
           case Uprootable(_, ast, _, _, _, _) => 
-            //println("************** Unquote Involved **********")
             Unlifter(ast) match
               case ent: Entity => ent
               case other => report.throwError(s"Unlifted insertion Entity '${qprint(other).plainText}' is not a Query.")

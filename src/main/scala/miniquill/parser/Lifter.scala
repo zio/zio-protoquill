@@ -20,6 +20,7 @@ object Lifter {
   def apply(ast: Ast): Quotes ?=> Expr[Ast] = liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
   def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = liftableAssignment(ast)
   def entity(ast: Entity): Quotes ?=> Expr[Entity] = liftableEntity(ast)
+  def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = liftableTuple(ast)
 
   extension [T](t: T)(using ToExpr[T], Quotes)
     def expr: Expr[T] = Expr(t)
@@ -90,12 +91,18 @@ object Lifter {
     def lift = 
       case Entity(name: String, list) => '{ Entity(${name.expr}, ${list.expr})  }
 
+  given liftableTuple: NiceLiftable[Tuple] with
+    def lift = 
+      case Tuple(values) => '{ Tuple(${values.expr}) }
+
+
   given liftableAst : NiceLiftable[Ast] with {
     def lift =
       case Constant(tmc.ConstantValue(v)) => '{ Constant(${tmc.ConstantExpr(v)}) }
       case Function(params: List[AIdent], body: Ast) => '{ Function(${params.expr}, ${body.expr}) }
       case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.expr}, ${values.expr}) }
       case v: Entity => liftableEntity(v)
+      case v: Tuple => liftableTuple(v)
       case Map(query: Ast, alias: AIdent, body: Ast) => '{ Map(${query.expr}, ${alias.expr}, ${body.expr})  }
       case FlatMap(query: Ast, alias: AIdent, body: Ast) => '{ FlatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
       case Filter(query: Ast, alias: AIdent, body: Ast) => '{ Filter(${query.expr}, ${alias.expr}, ${body.expr})  }
@@ -105,7 +112,6 @@ object Lifter {
       case Union(a, b) => '{ Union(${a.expr}, ${b.expr}) }
       case Insert(query: Ast, assignments: List[Assignment]) => '{ Insert(${query.expr}, ${assignments.expr}) }
       case Infix(parts, params, pure) => '{ Infix(${parts.expr}, ${params.expr}, ${pure.expr}) }
-      case Tuple(values) => '{ Tuple(${values.expr}) }
       case Join(typ, a, b, identA, identB, body) => '{ Join(${typ.expr}, ${a.expr}, ${b.expr}, ${identA.expr}, ${identB.expr}, ${body.expr}) }
       case FlatJoin(typ, a, identA, on) => '{ FlatJoin(${typ.expr}, ${a.expr}, ${identA.expr}, ${on.expr}) }
       case NullValue => '{ NullValue }

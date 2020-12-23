@@ -18,6 +18,7 @@ import io.getquill.EntityQuery
 import io.getquill.Query
 import io.getquill.Insert
 import io.getquill.context.InsertMacro
+import io.getquill.InsertMetaMacro
 
 // trait Quoter {
 //   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???
@@ -57,6 +58,8 @@ trait QueryDsl[Parser <: ParserFactory] {
 
 trait QuoteDsl[Parser <: ParserFactory] {
   import scala.language.implicitConversions
+
+  inline def insertMeta[T](inline exclude: (T => Any)*): InsertMeta[T] = ${ InsertMetaMacro[T, Parser]('exclude) }
 
   inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteMacro[T, Parser]('bodyExpr) }
 

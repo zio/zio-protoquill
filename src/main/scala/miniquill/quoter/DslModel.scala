@@ -53,4 +53,6 @@ case class Unquote[+T](quoted: Quoted[T], uid: String) extends QuotationLot[T](q
 // TODO Does this need to be covariant? It is in current quill. Need to look up what use cases they are for covariant schemas.
 case class SchemaMeta[T](val entity: Quoted[io.getquill.EntityQuery[T]], uid: String) extends QuotationLot[EntityQuery[T]](entity, uid)
 
+case class InsertMeta[T](val entity: Quoted[T], uid: String) extends QuotationLot[T](entity, uid)
+
 case class QueryMeta[T, R](val entity: Quoted[Query[T] => Query[R]], uid: String, extract: R => T) extends QuotationLot[Query[T] => Query[R]](entity, uid)
