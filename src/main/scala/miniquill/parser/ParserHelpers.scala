@@ -39,18 +39,8 @@ object ParserHelpers {
 
       def unapply(term: Term): Option[Assignment] =
         UntypeExpr(term.asExpr) match {
-          case 
-            Lambda1(
-              ident,
-                Unseal(Apply(TypeApply(
-                  Select(Apply(
-                    TypeApply(TIdent("ArrowAssoc"), List(Inferred())), 
-                    List(prop)
-                  ), "->"), 
-                  List(Inferred())
-                ), List(value))
-                )
-            ) => Some(Assignment(cleanIdent(ident), astParse(prop.asExpr), astParse(value.asExpr)))
+          case Lambda1(ident, '{ type v; ($prop: Any).->[`v`](($value: `v`)) }) => 
+            Some(Assignment(cleanIdent(ident), astParse(prop), astParse(value)))
           case _ => None
         }
     }

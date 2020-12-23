@@ -113,28 +113,28 @@ object AdvTest {
     // Test Insert with schema and entity and optionls
     
     // Test this
-    // {
-    //   case class Age(value: Int) extends Embedded
-    //   case class Person(name: String, age: Option[Age])
+    {
+      case class Age(value: Int) extends Embedded
+      case class Person(name: String, age: Option[Age])
 
-    //   // When using implicit val
-    //   // implicit val personSchema: EntityQuery[Person] = querySchema[Person]("tblPerson", _.name -> "colName")
-    //   inline given personSchema: SchemaMeta[Person] = 
-    //     schemaMeta[Person]("tblPerson", _.name -> "colName", _.age.map(_.value) -> "colValue")
-    //   PrintMac(personSchema)
+      // When using implicit val
+      // implicit val personSchema: EntityQuery[Person] = querySchema[Person]("tblPerson", _.name -> "colName")
+      inline given personSchema: SchemaMeta[Person] = 
+        schemaMeta[Person]("tblPerson", _.name -> "colName", _.age.map(_.value) -> "colValue")
+      PrintMac(personSchema)
       
-    //   inline def q = quote {
-    //     //query[Person].insert(_.name -> "joe")
-    //     query[Person].insertI(Person("Joe", Option(Age(123)))) //helloooooooooooooooooooooooooo
-    //   }
-    //   println(q.ast)
-    //   run(q)
-    // }
+      inline def q = quote {
+        //query[Person].insert(_.name -> "joe")
+        query[Person].insertI(Person("Joe", Option(Age(123)))) //helloooooooooooooooooooooooooo
+      }
+      println(q.ast)
+      run(q)
+    }
 
     {
       case class Person(name: String, age: Int)
       inline def q = quote { 
-        query[Person].insert(_.name -> "Joe", _.age -> 123)
+        query[Person].insert(_.name -> "Joe", _.age -> 123) //hello
       }
       println(run(q))
     }
