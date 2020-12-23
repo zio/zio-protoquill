@@ -112,6 +112,7 @@ class QuerySchemaTest extends Spec with Inside {
       implicit inline def meta: SchemaMeta[Entity] = schemaMeta[Entity]("test_entity", _.emb.map(_.i) -> "ii")
       inline def q = quote(query[Entity])
       q.ast.toString mustEqual """querySchema("test_entity", _.emb.i -> "ii")"""
+      // TODO What's the AST for this? Why are parens around v making (v)?
       ctx.run(q).strAndExec mustEqual ("""querySchema("test_entity", _.emb.i -> "ii").map(x => x.emb.map((v) => v.i))""", ExecutionType.Static)
     }
   }
