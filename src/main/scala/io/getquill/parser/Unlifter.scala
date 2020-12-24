@@ -127,15 +127,15 @@ object Unlifter {
       case '{ Insert($query, $assignments) } => Insert(query.unexpr, assignments.unexpr)
       case '{ Infix($parts, $params, $pure) } => Infix(parts.unexpr, params.unexpr, pure.unexpr)
       case '{ Tuple.apply($values) } => 
-        // println("((((((((((((((( ATTEMPTING TO EXTRACT TUPLE )))))))))))))))))))")
-        // import quotes.reflect._
-        // values match {
-        //   case '{ List.apply[Ast]($args) } =>
-        //     println(s"((((((((((((((( APPLY MATCH: ${Printer.TreeStructure.show(args.asTerm)} )))))))))))))))))))")
+        println("((((((((((((((( ATTEMPTING TO EXTRACT TUPLE )))))))))))))))))))")
+        import quotes.reflect._
+        values match {
+          case '{ List.apply[Ast]($args) } =>
+            println(s"((((((((((((((( APPLY MATCH: ${Printer.TreeStructure.show(args.asTerm)} )))))))))))))))))))")
             
-        //   case _ => 
-        //     println("((((((((((((((( NO APPLY MATCH )))))))))))))))))))")
-        // }
+          case _ => 
+            println("((((((((((((((( NO APPLY MATCH )))))))))))))))))))")
+        }
         Tuple(values.unexpr)
       case '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
       case '{ FlatJoin($typ, $a, $aliasA, $on) } => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
