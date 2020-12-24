@@ -1,4 +1,4 @@
-package io.getquill
+package io.getquill.context
 
 import io.getquill._
 import scala.quoted._

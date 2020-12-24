@@ -5,7 +5,6 @@ import io.getquill.parser._
 import scala.quoted._
 import scala.annotation.StaticAnnotation
 import printer.AstPrinter
-import derivation._
 import scala.deriving._
 import scala.quoted.Const
 import io.getquill.dsl.GenericEncoder
@@ -18,7 +17,7 @@ import io.getquill.EntityQuery
 import io.getquill.Query
 import io.getquill.Insert
 import io.getquill.context.InsertMacro
-import io.getquill.InsertMetaMacro
+import io.getquill.context.InsertMetaMacro
 import io.getquill.context.SchemaMetaMacro
 import io.getquill.context.QueryMetaMacro
 import io.getquill.context.QueryMacro

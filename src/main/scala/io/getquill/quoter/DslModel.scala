@@ -4,7 +4,6 @@ import io.getquill.parser._
 import scala.quoted._
 import scala.annotation.StaticAnnotation
 import printer.AstPrinter
-import derivation._
 import scala.deriving._
 import scala.quoted.Const
 import io.getquill.dsl.GenericEncoder
