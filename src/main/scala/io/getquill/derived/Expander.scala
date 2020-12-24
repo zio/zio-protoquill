@@ -1,6 +1,6 @@
 package io.getquill.derived
 
-import miniquill.quoter._
+import io.getquill.quoter._
 import scala.reflect.ClassTag
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 import io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}
@@ -11,7 +11,7 @@ import scala.quoted._
 
 
 object Expander {
-  import miniquill.dsl.GenericDecoder
+  import io.getquill.dsl.GenericDecoder
 
   sealed trait TermType
   case object Leaf extends TermType
@@ -188,7 +188,7 @@ object Expander {
     AMap(ast, Ident("x"), insert)
   }
 
-  import miniquill.parser.Lifter
+  import io.getquill.parser.Lifter
 
   inline def runtime[T](ast: Ast): AMap = ${ runtimeImpl[T]('ast) }
   def runtimeImpl[T](ast: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {

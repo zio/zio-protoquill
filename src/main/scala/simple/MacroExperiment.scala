@@ -2,8 +2,8 @@ package simple
 
 import scala.quoted._
 import scala.quoted.{Const => ConstExpr, _}
-import miniquill.quoter.Dsl
-import miniquill.parser.TastyMatchersContext
+import io.getquill.quoter.Dsl
+import io.getquill.parser.TastyMatchersContext
 
 object MacroExperiment {
   

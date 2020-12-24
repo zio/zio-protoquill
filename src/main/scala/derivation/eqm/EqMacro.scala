@@ -53,7 +53,7 @@
 //         val eqProductBody: (Expr[T], Expr[T]) => Expr[Boolean] = (x, y) => {
 //           elemInstances.zipWithIndex.foldLeft(Expr(true: Boolean)) {
 //             case (acc, (elem, index)) =>
-//               import miniquill.quoter.Dsl.autoQuote
+//               import io.getquill.quoter.Dsl.autoQuote
 //               val e1 = '{$x.asInstanceOf[Product].productElement(${Expr(index)})}
 //               val e2 = '{$y.asInstanceOf[Product].productElement(${Expr(index)})}
 

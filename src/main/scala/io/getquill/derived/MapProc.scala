@@ -1,6 +1,6 @@
 package io.getquill.derived
 
-import miniquill.quoter._
+import io.getquill.quoter._
 import scala.reflect.ClassTag
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 import io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}

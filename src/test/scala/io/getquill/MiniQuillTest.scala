@@ -1,13 +1,13 @@
-package miniquill
+package io.getquill
 
 import simple.SimpleMacro._
 import scala.language.implicitConversions
-import miniquill.quoter.Dsl._
-import miniquill.quoter.QueryDsl._
-import miniquill.quoter.SchemaMeta
-import miniquill.quoter.QueryMeta
-import miniquill.quoter.InsertMeta
-import miniquill.parser.PrintMac
+import io.getquill.quoter.Dsl._
+import io.getquill.quoter.QueryDsl._
+import io.getquill.quoter.SchemaMeta
+import io.getquill.quoter.QueryMeta
+import io.getquill.quoter.InsertMeta
+import io.getquill.parser.PrintMac
 
 object AdvTest {
   import io.getquill._
@@ -56,7 +56,7 @@ object AdvTest {
     // case class Contact(f: String, l: String) //hello
 
     // inline def qq = query[Person].map(p => Contact(p.name.first, p.name.last))
-    // miniquill.parser.PrintMac(qq)
+    // io.getquill.parser.PrintMac(qq)
 
     // inline def q = quote {
     //   qq

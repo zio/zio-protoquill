@@ -1,6 +1,6 @@
 import io.getquill._
 import scala.language.implicitConversions
-import miniquill.quoter.Dsl._
+import io.getquill.quoter.Dsl._
 
 val ctx = new MirrorContext(MirrorSqlDialect, Literal)
 import ctx._

@@ -2,7 +2,7 @@ package io.getquill
 
 import io.getquill.context.Context
 import io.getquill.idiom.Idiom
-import miniquill.quoter._
+import io.getquill.quoter._
 import io.getquill.derived._
 
 object MacroContext {

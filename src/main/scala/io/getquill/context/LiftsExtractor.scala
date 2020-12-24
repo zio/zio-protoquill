@@ -1,6 +1,6 @@
 package io.getquill.context
 
-import miniquill.quoter.ScalarPlanter
+import io.getquill.quoter.ScalarPlanter
 
 object LiftsExtractor {
   def apply[PrepareRowTemp](lifts: List[ScalarPlanter[_, _]], row: PrepareRowTemp) = {

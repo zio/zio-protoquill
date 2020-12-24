@@ -1,14 +1,14 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import miniquill.quoter.QuotationLot
-import miniquill.quoter.Dsl._
+import io.getquill.quoter.QuotationLot
+import io.getquill.quoter.Dsl._
 import io.getquill._
 import io.getquill.ast._
-import miniquill.quoter.Quoted
-import miniquill.quoter.ScalarPlanter
-import miniquill.quoter.QuotationVase
-import miniquill.quoter.QuotationLot
+import io.getquill.quoter.Quoted
+import io.getquill.quoter.ScalarPlanter
+import io.getquill.quoter.QuotationVase
+import io.getquill.quoter.QuotationLot
 import org.scalatest._
 
 class QuotationTest extends Spec with Inside {
@@ -97,7 +97,7 @@ class QuotationTest extends Spec with Inside {
       }
     }
     "query with a lift" in {
-      import miniquill.context.mirror.Row
+      import io.getquill.context.mirror.Row
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
       import ctx._
       inline def q = quote {
@@ -114,7 +114,7 @@ class QuotationTest extends Spec with Inside {
       Row("hello") mustEqual vase.encoder.apply(0, vase.value, new Row())
     }
     "two-level query with a lift" in {
-      import miniquill.context.mirror.Row
+      import io.getquill.context.mirror.Row
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
       import ctx._
       val q = quote {
@@ -187,7 +187,7 @@ class QuotationTest extends Spec with Inside {
 
 
 // @main def simpleLift = {
-//   import miniquill.context.mirror.Row
+//   import io.getquill.context.mirror.Row
 
 //   case class Person(name: String)
 
@@ -202,7 +202,7 @@ class QuotationTest extends Spec with Inside {
 // }
 
 // @main def runtimeEagerLift = {
-//   import miniquill.context.mirror.Row
+//   import io.getquill.context.mirror.Row
 
 //   case class Person(name: String)
 
@@ -219,7 +219,7 @@ class QuotationTest extends Spec with Inside {
 
 
 // @main def liftAndRun = {
-//   import miniquill.context.mirror.Row
+//   import io.getquill.context.mirror.Row
 
 //   case class Person(name: String)
 

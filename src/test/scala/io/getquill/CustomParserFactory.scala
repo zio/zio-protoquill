@@ -1,6 +1,6 @@
 // package io.getquill
 
-// import miniquill.parser._
+// import io.getquill.parser._
 // import scala.quoted._
 // 
 // import io.getquill.ast._

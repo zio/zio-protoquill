@@ -1,10 +1,10 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import miniquill.quoter.Dsl._
+import io.getquill.quoter.Dsl._
 import io.getquill._
 import io.getquill.ast._
-import miniquill.quoter.Quoted
+import io.getquill.quoter.Quoted
 
 class OneMapSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)

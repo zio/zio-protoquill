@@ -7,7 +7,7 @@ trait Foo(i: Int, j: String)
 case class Impl(i: Int, j: String) extends Foo(i, j)
 
 object TraitMatch {
-  import miniquill.parser.TastyMatchersContext
+  import io.getquill.parser.TastyMatchersContext
 
   inline def traitMatch[T](inline t: T): T = ${ traitMatchImpl[T]('t) }
   def traitMatchImpl[T: Type](t: Expr[T])(using Quotes): Expr[T] = {

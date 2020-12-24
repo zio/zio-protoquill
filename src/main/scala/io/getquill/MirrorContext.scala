@@ -1,8 +1,8 @@
 package io.getquill
 
-import miniquill.context.mirror._
+import io.getquill.context.mirror._
 import io.getquill.context._
-import miniquill.quoter.Quoted
+import io.getquill.quoter.Quoted
 
 sealed trait Dummy
 object DummyInst extends Dummy

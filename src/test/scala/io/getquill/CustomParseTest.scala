@@ -1,10 +1,10 @@
 // package io.getquill
 
 // import scala.language.implicitConversions
-// import miniquill.quoter._
+// import io.getquill.quoter._
 // import io.getquill._
 // import io.getquill.ast._
-// import miniquill.quoter.Quoted
+// import io.getquill.quoter.Quoted
 // import io.getquill._
 // import org.scalatest._
 

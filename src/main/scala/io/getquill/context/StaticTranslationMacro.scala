@@ -6,33 +6,33 @@ import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
 import io.getquill.{ ReturnAction }
-import miniquill.dsl.EncodingDsl
-import miniquill.quoter.Quoted
-import miniquill.quoter.QueryMeta
+import io.getquill.dsl.EncodingDsl
+import io.getquill.quoter.Quoted
+import io.getquill.quoter.QueryMeta
 import io.getquill.derived._
-import miniquill.context.mirror.MirrorDecoders
-import miniquill.context.mirror.Row
-import miniquill.dsl.GenericDecoder
-import miniquill.quoter.ScalarPlanter
+import io.getquill.context.mirror.MirrorDecoders
+import io.getquill.context.mirror.Row
+import io.getquill.dsl.GenericDecoder
+import io.getquill.quoter.ScalarPlanter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{ Transform, QuotationTag }
-import miniquill.quoter.QuotationLot
-import miniquill.quoter.QuotedExpr
-import miniquill.quoter.ScalarPlanterExpr
+import io.getquill.quoter.QuotationLot
+import io.getquill.quoter.QuotedExpr
+import io.getquill.quoter.ScalarPlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.ast.{ Query => AQuery, _ }
 
 import io.getquill._
 
 object StaticTranslationMacro {
-  import miniquill.parser._
+  import io.getquill.parser._
   import scala.quoted._ // Expr.summon is actually from here
-  import miniquill.quoter.ScalarPlanter
+  import io.getquill.quoter.ScalarPlanter
   import io.getquill.idiom.LoadNaming
   import io.getquill.util.LoadObject
-  import miniquill.dsl.GenericEncoder
+  import io.getquill.dsl.GenericEncoder
   import io.getquill.ast.External
 
   // Process the AST during compile-time. Return `None` if that can't be done.
