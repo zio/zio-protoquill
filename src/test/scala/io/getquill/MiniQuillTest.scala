@@ -147,7 +147,7 @@ object AdvTest {
         query[Person].insertI(Person(1, "Joe"))
       }
       PrintMac(q)
-      //println( run(q) ) //hello
+      println( run(q) ) // hello
     }
 
     // println(q.ast)

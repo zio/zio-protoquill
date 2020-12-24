@@ -92,7 +92,7 @@ object InsertMacro {
       def summon: List[Ast] =
         Expr.summon[InsertMeta[T]] match
           case Some(insertMeta) =>
-            QuotationLotExpr(insertMeta) match // Fixed when you do this: insertMeta.asTerm.underlyingArgument.asExpr
+            QuotationLotExpr(insertMeta.asTerm.underlyingArgument.asExpr) match
               case Uprootable(_, ast, _, _, _, _) =>
                 println(s"***************** Found an uprootable ast: ${ast.show} *****************")
                 Unlifter(ast) match
