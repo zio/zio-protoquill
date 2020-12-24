@@ -219,6 +219,9 @@ object QuotationLotExpr {
         case '{ SchemaMeta.apply[t]($quotation, ${ConstExpr(uid: String)}) } =>
           Some((quotation, uid, List()))
 
+        case '{ InsertMeta.apply[t]($quotation, ${ConstExpr(uid: String)}) } =>
+          Some((quotation, uid, List()))
+
         case '{ QueryMeta.apply[t, r]($quotation, ${ConstExpr(uid: String)}, $extractor) } =>
           Some((quotation, uid, List(extractor)))
 
@@ -238,7 +241,7 @@ object QuotationLotExpr {
 
   object Unquoted {
     def apply(expr: Expr[Any])(using Quotes): QuotationLotExpr =
-      unapply(expr).getOrElse { quotes.reflect.report.throwError(s"The expression: ${expr.show} is not a valid Quoted Expression and cannot be unquoted.") }
+      unapply(expr).getOrElse { quotes.reflect.report.throwError(s"The expression: ${expr.show} is not a valid unquotation of a Quoted Expression (i.e. a [quoted-expression].unqoute) and cannot be unquoted.") }
 
     def unapply(expr: Expr[Any])(using Quotes): Option[QuotationLotExpr] = 
       //println("=================== Unapplying Unquote ===================")
@@ -252,6 +255,9 @@ object QuotationLotExpr {
           None
       }
   }
+
+  def apply(expr: Expr[Any])(using Quotes): QuotationLotExpr =
+    unapply(expr).getOrElse { quotes.reflect.report.throwError(s"The expression: ${expr.show} is not a valid Quoted Expression and cannot be unquoted.") }
 
   // Verify that a quotation is inline. It is inline if all the lifts are inline. There is no need
   // to search the AST since it has been parsed already

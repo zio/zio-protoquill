@@ -126,12 +126,24 @@ object Unlifter {
       case '{ Union($a, $b) } => Union(a.unexpr, b.unexpr)
       case '{ Insert($query, $assignments) } => Insert(query.unexpr, assignments.unexpr)
       case '{ Infix($parts, $params, $pure) } => Infix(parts.unexpr, params.unexpr, pure.unexpr)
-      case '{ Tuple($values) } => Tuple(values.unexpr)
+      case '{ Tuple.apply($values) } => 
+        // println("((((((((((((((( ATTEMPTING TO EXTRACT TUPLE )))))))))))))))))))")
+        // import quotes.reflect._
+        // values match {
+        //   case '{ List.apply[Ast]($args) } =>
+        //     println(s"((((((((((((((( APPLY MATCH: ${Printer.TreeStructure.show(args.asTerm)} )))))))))))))))))))")
+            
+        //   case _ => 
+        //     println("((((((((((((((( NO APPLY MATCH )))))))))))))))))))")
+        // }
+        Tuple(values.unexpr)
       case '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
       case '{ FlatJoin($typ, $a, $aliasA, $on) } => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
       case '{ CaseClass($values) } => CaseClass(values.unexpr)
       case '{ NullValue } => NullValue
-      case '{ $p: Property } => unliftProperty(p)
+      case '{ $p: Property } => 
+        println("((((((((((((((( ATTEMPTING TO EXTRACT PROPERTY )))))))))))))))))))")
+        unliftProperty(p)
       case '{ $id: AIdent } => unliftIdent(id)
       // TODO Is the matching covariant? In that case can do "case '{ $oo: OptionOperation } and then strictly throw an error"
       case unliftOptionOperation(ast) => ast

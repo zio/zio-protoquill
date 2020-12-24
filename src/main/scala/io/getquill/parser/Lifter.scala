@@ -93,7 +93,9 @@ object Lifter {
 
   given liftableTuple: NiceLiftable[Tuple] with
     def lift = 
-      case Tuple(values) => '{ Tuple(${values.expr}) }
+      case Tuple(values) => 
+        val exprValues = values.map(e => '{ ${liftableAst(e)}: Ast })
+        '{ Tuple(${Expr.ofList(exprValues)}) }
 
 
   given liftableAst : NiceLiftable[Ast] with {

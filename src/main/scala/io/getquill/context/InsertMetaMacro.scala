@@ -39,8 +39,10 @@ object InsertMetaMacro:
       // Excract the 'Property' elements from there
     val excludeAstProps = 
       excludeAstMethods.map {
-        case Function(List(param), prop @ Property(_, _)) => prop
-        case other => quotes.reflect.report.throwError(s"Could not recognize insert exclusion AST: ${other} as a valid exclusion AST")
+        case Function(List(param), prop @ Property(_, _)) => 
+          BetaReduction(prop, param -> InsertMacro.VIdent)
+        case other => 
+          quotes.reflect.report.throwError(s"Could not recognize insert exclusion AST: ${other} as a valid exclusion AST")
       }
 
     //println(s"**************** Excludes Props: ${excludeAstProps} *************")

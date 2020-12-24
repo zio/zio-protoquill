@@ -16,6 +16,7 @@ import io.getquill.quoter.QuotationLotExpr
 import io.getquill.quoter.QuotationLotExpr._
 import io.getquill.parser.TastyMatchers
 import io.getquill.quoter.Quoted
+import io.getquill.quoter.InsertMeta
 
 /**
  * The function call that regularly drives query insertion is 
@@ -56,36 +57,64 @@ import io.getquill.quoter.Quoted
  * The end result of this synthesis is a series of assignments for an insert for the given entity
  */
 object InsertMacro {
+  private[getquill] val VIdent = AIdent("v")
 
-  class Pipeline[T: Type, Parser <: ParserFactory: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using val qctx: Quotes) extends TastyMatchers:
+  /** 
+   * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
+   * statement is based. The schema is based on the EntityQuery which could potentially be an unquoted SchemaMeta.
+   */
+  class Pipeline[T: Type, Parser <: ParserFactory: Type](schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T])(using val qctx: Quotes) extends TastyMatchers:
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
 
-    def plainEntity: Entity =
-      val entityName = TypeRepr.of[T].classSymbol.get.name
-      Entity(entityName, List())
+    object EntitySchema:
+      private def plainEntity: Entity =
+        val entityName = TypeRepr.of[T].classSymbol.get.name
+        Entity(entityName, List())
 
-    def processEntity: Entity =
-      val underlyingEntity = entityRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]
-      UntypeExpr(underlyingEntity) match 
-        // If it is a plain entity query (as returned from QueryMacro)
-        case '{ EntityQuery[t] } => plainEntity
-        // If there are query schemas involved
-        case QuotationLotExpr.Unquoted(unquotation) => unquotation match
-          case Uprootable(_, ast, _, _, _, _) => 
-            Unlifter(ast) match
-              case ent: Entity => ent
-              case other => report.throwError(s"Unlifted insertion Entity '${qprint(other).plainText}' is not a Query.")
-          case _ =>
-            println("WARNING: Only inline schema-metas are supported for insertions so far. Falling back to a plain entity.")
-            plainEntity
-        
+      def summon: Entity =
+        val schema = schemaRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]
+        UntypeExpr(schema) match 
+          // If it is a plain entity query (as returned from QueryMacro)
+          case '{ EntityQuery[t] } => plainEntity
+          // If there are query schemas involved
+          case QuotationLotExpr.Unquoted(unquotation) => unquotation match
+            case Uprootable(_, ast, _, _, _, _) => 
+              Unlifter(ast) match
+                case ent: Entity => ent
+                case other => report.throwError(s"Unlifted insertion Entity '${qprint(other).plainText}' is not a Query.")
+            case _ =>
+              println("WARNING: Only inline schema-metas are supported for insertions so far. Falling back to a plain entity.")
+              plainEntity
+
+    
+    object InsertExclusions:
+      def summon: List[Ast] =
+        Expr.summon[InsertMeta[T]] match
+          case Some(insertMeta) =>
+            QuotationLotExpr(insertMeta) match // Fixed when you do this: insertMeta.asTerm.underlyingArgument.asExpr
+              case Uprootable(_, ast, _, _, _, _) =>
+                println(s"***************** Found an uprootable ast: ${ast.show} *****************")
+                Unlifter(ast) match
+                  // It needs to be a tuple of values and the values all need to be properties
+                  case Tuple(values) if (values.forall(_.isInstanceOf[Property])) =>
+                    println(s"***************** Found Tuple of values: ${values} *****************")
+                    values
+                  case other => 
+                    report.throwError(s"Invalid values in InsertMeta: ${other}. An InsertMeta AST must be a tuple of Property elements.")
+              case _ =>
+                println("WARNING: Only inline insert-metas are supported for insertions so far. Falling back to a insertion of all fields.")
+                List()
+          case None =>
+            List()
+
+
 
     /** Parse the input to of query[Person].insert(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs") */
-    def parseAstCaseClass: CaseClass = {  
-      val body = bodyRaw.asTerm.underlyingArgument.asExpr
+    def parseInsertee: CaseClass = {  
+      val insertee = inserteeRaw.asTerm.underlyingArgument.asExpr
       val parserFactory = LoadObject[Parser].get
-      val rawAst = parserFactory.apply.seal.apply(body)
+      val rawAst = parserFactory.apply.seal.apply(insertee)
       val ast = BetaReduction(rawAst)
       // TODO Implement dynamic pipeline for schema meta
       ast match
@@ -93,36 +122,42 @@ object InsertMacro {
         case _ => report.throwError(s"Parsed Insert Macro AST is not a Case Class: ${qprint(ast).plainText}")  
     }
 
-    def synthesizeAssignments(insertCaseClassAst: CaseClass) = {
+    def deduceAssignmentsFrom(insertee: CaseClass) = {
       // Expand into a AST
       // T:Person(name:Str, age:Option[Age]) Age(value: Int) -> Ast: List(v.name, v.age.map(v => v.value))
-      val expansionList = Expander.staticList[T]("v")
+      val expansionList = Expander.staticList[T](VIdent.name)
 
       // Now synthesize (v) => vAssignmentProperty -> assignmentValue
       // e.g. (p:Person) => p.firstName -> "Joe"
       // TODO, Ast should always be a case class (maybe a tuple?) should verify that
       def mapping(path: Ast) =
-        val reduction = BetaReduction(path, AIdent("v") -> insertCaseClassAst)
-        Assignment(AIdent("v"), path, reduction)
+        val reduction = BetaReduction(path, VIdent -> insertee)
+        Assignment(VIdent, path, reduction)
 
       val assignmentsAst = expansionList.map(exp => mapping(exp))
       assignmentsAst
     }
 
-    def synthesizeAssignmentsFromBody =
-      val astCaseClass = parseAstCaseClass
-      synthesizeAssignments(astCaseClass)
+    def deduceAssignments =
+      val astCaseClass = parseInsertee
+      deduceAssignmentsFrom(astCaseClass)
+
+
+    def excludeExclusions(assignments: List[Assignment]) =
+      val exclusions = InsertExclusions.summon.toSet
+      println(s"***************** Doing Excludsions with: ${exclusions} *****************")
+      assignments.filterNot(asi => exclusions.contains(asi.property))
 
 
     def apply = {
-      val assignmentsAst = synthesizeAssignmentsFromBody
+      val assignmentsAst = excludeExclusions(deduceAssignments)
 
       // Insertion could have lifts and quotes, need to extract those
-      val (lifts, pluckedUnquotes) = ExtractLifts(bodyRaw)    
+      val (lifts, pluckedUnquotes) = ExtractLifts(inserteeRaw)    
 
       // TODO If implicit insert meta, need to detect it and use it instead (i.e. with exclusions)
       // TODO if there is a schemaMeta need to use that to create the entity
-      val entity = processEntity
+      val entity = EntitySchema.summon
       val assignments = assignmentsAst.map(asi => Lifter.assignment(asi))
       val insert = '{ AInsert(${Lifter.entity(entity)}, ${Expr.ofList(assignments)}) }
 

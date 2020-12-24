@@ -140,8 +140,14 @@ object AdvTest {
     // ============ With Insert Meta ============
     {
       case class Person(id: Int, name: String)
-      inline given personSchema: InsertMeta[Person] = insertMeta[Person](_.id) //hello
-      PrintMac(personSchema)
+      inline given personSchema: InsertMeta[Person] = insertMeta[Person](_.id)
+      //PrintMac(personSchema)
+      // TODO What if this is a val?
+      inline def q = quote {
+        query[Person].insertI(Person(1, "Joe"))
+      }
+      PrintMac(q)
+      //println( run(q) ) //hello
     }
 
     // println(q.ast)
