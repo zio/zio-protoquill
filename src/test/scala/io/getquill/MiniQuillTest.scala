@@ -149,6 +149,9 @@ object AdvTest {
       PrintMac(q)
       println( run(q) ) // hello
     }
+    // TODO Exclude from Optional object (i.e and multiple excludes)
+    // TODO Exclude from Insert meta with Insert Schema (i.e and multiple excludes)
+    // TODO Exclude from Optional object Insert meta with Insert Schema (i.e and multiple excludes)
 
     // println(q.ast)
     //println( run(q) )

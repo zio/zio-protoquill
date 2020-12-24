@@ -75,6 +75,7 @@ object InsertMacro {
       def summon: Entity =
         val schema = schemaRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]
         UntypeExpr(schema) match 
+          // TODO What if it is an qnuote container a querySchema? Will that just work normally? getting an Entity object
           // If it is a plain entity query (as returned from QueryMacro)
           case '{ EntityQuery[t] } => plainEntity
           // If there are query schemas involved
