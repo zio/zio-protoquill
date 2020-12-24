@@ -1,6 +1,5 @@
 package io.getquill
 
-import simple.SimpleMacro._
 import scala.language.implicitConversions
 import io.getquill.quoter.Dsl._
 import io.getquill.quoter.QueryDsl._

@@ -1,7 +1,7 @@
 // Creating an inline fold. Once val parser is implemented this shuold be possible
 // package io.getquill
 
-// import simple.SimpleMacro._
+// 
 // import scala.language.implicitConversions
 // import io.getquill.quoter.Dsl._
 
