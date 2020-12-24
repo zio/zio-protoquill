@@ -19,6 +19,11 @@ import io.getquill.Query
 import io.getquill.Insert
 import io.getquill.context.InsertMacro
 import io.getquill.InsertMetaMacro
+import io.getquill.context.SchemaMetaMacro
+import io.getquill.context.QueryMetaMacro
+import io.getquill.context.QueryMacro
+import io.getquill.context.QuoteMacro
+import io.getquill.context.UnquoteMacro
 
 // trait Quoter {
 //   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???

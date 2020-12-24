@@ -1,11 +1,14 @@
-package io.getquill.quoter
+package io.getquill.context
 
 import scala.quoted._
 import io.getquill.parser.ParserFactory
 import io.getquill.parser.TastyMatchersContext
+import io.getquill.quoter.MetaDsl
+import io.getquill.quoter.SchemaMeta
+import io.getquill.quoter.Unquote
+import io.getquill.util.LoadObject
 
 object SchemaMetaMacro {
-  import io.getquill.util.LoadObject
 
   // inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
   // SchemaMeta(quote { querySchema[T](entity, columns: _*) }, "1234") // TODO Don't need to generate a UID here.It can be static.

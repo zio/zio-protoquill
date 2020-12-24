@@ -3,7 +3,6 @@ package io.getquill.context
 
 import io.getquill._
 import scala.quoted._
-import io.getquill.quoter.UnquoteMacro
 import io.getquill.norm.BetaReduction
 import io.getquill.util.LoadObject 
 import io.getquill.parser.Parser
@@ -11,15 +10,12 @@ import io.getquill.parser.Parser.Implicits._
 import io.getquill.parser.ParserFactory
 import io.getquill.derived.Expander
 import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, _ }
-import io.getquill.quoter.ExtractLifts
-import io.getquill.quoter.Quoted
 import io.getquill.parser.Lifter
 import io.getquill.parser.Unlifter
-import io.getquill.quoter.UnquoteMacro
-import io.getquill.quoter.QueryMacro
 import io.getquill.quoter.QuotationLotExpr
 import io.getquill.quoter.QuotationLotExpr._
 import io.getquill.parser.TastyMatchers
+import io.getquill.quoter.Quoted
 
 /**
  * The function call that regularly drives query insertion is 

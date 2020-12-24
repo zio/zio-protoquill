@@ -1,4 +1,4 @@
-package io.getquill.quoter
+package io.getquill.context
 
 import scala.quoted._
 import io.getquill.parser.ParserFactory
@@ -7,6 +7,12 @@ import io.getquill.norm.BetaReduction
 import io.getquill.parser.Parser
 import io.getquill.parser.Parser.Implicits._
 import io.getquill.parser.Lifter
+import io.getquill.quoter.ScalarPlanterExpr
+import io.getquill.quoter.QuotationLotExpr
+import io.getquill.quoter.Pluckable
+import io.getquill.quoter.Pointable
+import io.getquill.quoter.Quoted
+
 
 object ExtractLifts {
   // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
