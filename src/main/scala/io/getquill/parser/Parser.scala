@@ -33,7 +33,7 @@ object Parser {
     import quotes.reflect._
     report.throwError(s"""|
       |s"==== Tree cannot be parsed to '${astClass.getSimpleName}' ===
-      |  ${Format(expr.show)}
+      |  ${Format(Printer.TreeShortCode.show(expr.asTerm)) /* Or Maybe just expr? */}
       |==== Extractors ===
       |  ${Format(Printer.TreeStructure.show(expr.asTerm))}
       |==== Tree ===
