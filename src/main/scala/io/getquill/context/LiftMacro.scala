@@ -23,6 +23,7 @@ import io.getquill.quoter.QuotedExpr
 import io.getquill.quoter.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.quoter.EagerPlanter
+import io.getquill.quoter.LazyPlanter
 import io.getquill.dsl.GenericEncoder
 
 import io.getquill._
@@ -39,5 +40,11 @@ object LiftMacro {
         case None => report.throwError(s"Cannot Find a ${TypeRepr.of[T]} Encoder of ${Printer.TreeShortCode.show(vvv.asTerm)}", vvv)
       }
     '{ EagerPlanter($vvv, $encoder, ${Expr(uuid)}).unquote } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
+  }
+
+  def applyLazy[T, PrepareRow](vvv: Expr[T])(using Quotes, Type[T], Type[PrepareRow]): Expr[T] = {
+    import quotes.reflect._
+    val uuid = java.util.UUID.randomUUID().toString
+    '{ LazyPlanter($vvv, ${Expr(uuid)}).unquote } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 }

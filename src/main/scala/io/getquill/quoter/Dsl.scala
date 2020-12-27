@@ -23,6 +23,7 @@ import io.getquill.context.QueryMetaMacro
 import io.getquill.context.QueryMacro
 import io.getquill.context.QuoteMacro
 import io.getquill.context.UnquoteMacro
+import io.getquill.context.LiftMacro
 
 // trait Quoter {
 //   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???
@@ -64,6 +65,8 @@ trait QuoteDsl[Parser <: ParserFactory] {
   import scala.language.implicitConversions
 
   inline def insertMeta[T](inline exclude: (T => Any)*): InsertMeta[T] = ${ InsertMetaMacro[T, Parser]('exclude) }
+
+  inline def lazyLift[T](inline vv: T): T = ${ LiftMacro.applyLazy[T, Nothing]('vv) }
 
   inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteMacro[T, Parser]('bodyExpr) }
 
