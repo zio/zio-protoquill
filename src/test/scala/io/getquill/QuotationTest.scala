@@ -6,7 +6,9 @@ import io.getquill.quoter.Dsl._
 import io.getquill._
 import io.getquill.ast._
 import io.getquill.quoter.Quoted
-import io.getquill.quoter.ScalarPlanter
+import io.getquill.quoter.Planter
+import io.getquill.quoter.EagerPlanter
+import io.getquill.quoter.LazyPlanter
 import io.getquill.quoter.QuotationVase
 import io.getquill.quoter.QuotationLot
 import org.scalatest._
@@ -104,11 +106,11 @@ class QuotationTest extends Spec with Inside {
         lift("hello")
       }
       inside(q) {
-        case Quoted(ScalarTag(tagUid), List(ScalarPlanter("hello", encoder, vaseUid)), List()) if (tagUid == vaseUid) =>
+        case Quoted(ScalarTag(tagUid), List(EagerPlanter("hello", encoder, vaseUid)), List()) if (tagUid == vaseUid) =>
       }
       val vase = 
         q.lifts match {
-          case head :: Nil => head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
+          case head :: Nil => head.asInstanceOf[EagerPlanter[String, ctx.PrepareRow /* or just Row */]]
         }
         
       Row("hello") mustEqual vase.encoder.apply(0, vase.value, new Row())
@@ -132,17 +134,17 @@ class QuotationTest extends Spec with Inside {
               QuotationVase(
                 Quoted(
                   ScalarTag(scalarTagId),
-                  List(ScalarPlanter("hello", _, scalarPlanterId)),
+                  List(EagerPlanter("hello", _, planterId)),
                   List()
                 ),
                 quotationVaseId
               )
             )
-          ) if (quotationTagId == quotationVaseId && scalarTagId == scalarPlanterId) =>
+          ) if (quotationTagId == quotationVaseId && scalarTagId == planterId) =>
       }
       val vase = 
         q.lifts match {
-          case head :: Nil => head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
+          case head :: Nil => head.asInstanceOf[EagerPlanter[String, ctx.PrepareRow /* or just Row */]]
         }
         
       Row("hello") mustEqual vase.encoder.apply(0, vase.value, new Row())
@@ -157,7 +159,7 @@ class QuotationTest extends Spec with Inside {
       inside(q) {
         case Quoted(
             Map(Entity("Person", List()), Ident("p"), BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid))),
-            List(ScalarPlanter("hello", _, planterUid)), // TODO Test what kind of encoder it is? Or try to run it and make sure it works?
+            List(EagerPlanter("hello", _, planterUid)), // TODO Test what kind of encoder it is? Or try to run it and make sure it works?
             List()
           ) if (tagUid == planterUid) => true
         case _ => false
@@ -197,7 +199,7 @@ class QuotationTest extends Spec with Inside {
 //     liftEager("hello")
 //   }
 //   println(q)
-//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
+//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[Planter[String, ctx.PrepareRow /* or just Row */]]
 //   println(vase.encoder.apply(0, vase.value, new Row()))
 // }
 
@@ -213,7 +215,7 @@ class QuotationTest extends Spec with Inside {
 //   }
 //   val qq = quote { q }
 //   println(qq)
-//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[ScalarPlanter[String, ctx.PrepareRow /* or just Row */]]
+//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[Planter[String, ctx.PrepareRow /* or just Row */]]
 //   println(vase.encoder.apply(0, vase.value, new Row()))
 // }
 

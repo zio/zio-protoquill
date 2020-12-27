@@ -15,7 +15,7 @@ import io.getquill.derived._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.dsl.GenericDecoder
-import io.getquill.quoter.ScalarPlanter
+import io.getquill.quoter.Planter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import scala.quoted._
@@ -23,7 +23,7 @@ import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
 import io.getquill.quoter.QuotationLot
 import io.getquill.quoter.QuotedExpr
-import io.getquill.quoter.ScalarPlanterExpr
+import io.getquill.quoter.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 
 import io.getquill._
@@ -50,14 +50,14 @@ import io.getquill._
 object QueryMetaExtractor {
   import io.getquill.parser._
   import scala.quoted._ // Expr.summon is actually from here
-  import io.getquill.quoter.ScalarPlanter
+  import io.getquill.quoter.Planter
   import io.getquill.quoter._
   import io.getquill.ast.FunctionApply
 
   // inline def apply[T, R, D <: io.getquill.idiom.Idiom, N <: io.getquill.NamingStrategy](
   //   inline quotedRaw: Quoted[Query[T]],
   //   inline ctx: Context[D, N]
-  // ): (Quoted[Query[R]], R => T, Option[(String, List[ScalarPlanter[_, _]])]) = 
+  // ): (Quoted[Query[R]], R => T, Option[(String, List[Planter[_, _]])]) = 
   //   ${ applyImpl[T, R, D, N]('quotedRaw, 'ctx) }
 
 
@@ -68,7 +68,7 @@ object QueryMetaExtractor {
 
   def attemptStaticRequip[T: Type, R: Type](
     queryLot: QuotedExpr, 
-    queryLifts: List[ScalarPlanterExpr[_, _]], 
+    queryLifts: List[PlanterExpr[_, _]], 
     quip: Expr[QueryMeta[T, R]]
   )(using Quotes): Option[StaticRequip[T, R]] = {
     import quotes.reflect.report

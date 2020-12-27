@@ -7,7 +7,7 @@ import io.getquill.quoter._
 import io.getquill._
 import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.quoter.Quoted
-import io.getquill.quoter.ScalarPlanter
+import io.getquill.quoter.Planter
 import io.getquill.quoter.QuotationVase
 import io.getquill.quoter.QuotationLot
 import org.scalatest._

@@ -19,7 +19,7 @@ lifts and quotations. This model is for the latter.
 The conceptual model for this context is the following. A Dotty (i.e. Tasty) tree
 is extracted from a quotation (a.k.a. "the ground") into either a Planter or a Vase.
 When the tree matches a couple of criteria, it is considered to be "uprootable"
-and can therefore be re-inserted into a planer for the next quotation (as are lifts)
+and can therefore be re-inserted into a Planter for the next quotation (as are lifts)
 or consumed immediately as are inline Quotations. Otherwise, the tree is *not* re-insertable and it 
 has to be "plucked" and inserted into a vase. The are still some conditions that this kind
 of tree has to match so we call it "pluckable." Until we ascertain whether to re-insert
@@ -27,7 +27,7 @@ or pluck, the Tree is held (temporarily) inside of a Bin.
 
 Different construcuts follow these rules in different ways. Scalar values for instances
 cannot contain contents making them non-re-insertable and therefore are always
-held inside of planters (i.e. the ScalarPlanter) and replanted back into the part
+held inside of planters (i.e. the Planter) and replanted back into the part
 of the tree constructing the PrepareRow in the 'run' method. 
 Quotations are held in a QuotationLot until it is determined 
 whether they are re-insertable. If they are, the Parser
@@ -38,46 +38,55 @@ class ExprModel {
 }
 
 
-// Holds and parses variations of the ScalarPlanter
-case class ScalarPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T], encoder: Expr[GenericEncoder[T, PrepareRow]]) {
-  // TODO Change to 'replant' ?
-  // Plant the ScalarPlanter back into the Scala AST
-  def plant(using Quotes) = {
-    '{ ScalarPlanter[T, PrepareRow]($expr, $encoder, ${Expr(uid)}) }
-  }
-}
-object ScalarPlanterExpr {
-  object Uprootable {
-    
+// TODO Change to 'replant' ?
+// Plant the Planter back into the Scala AST
+// Holds and parses variations of the Planter
+sealed trait PlanterExpr[T: Type, PrepareRow: Type]:
+  def uid: String
+  def expr: Expr[T]
+  def plant(using Quotes): Expr[Planter[T, PrepareRow]]
 
-    def unapply(expr: Expr[Any])(using Quotes): Option[ScalarPlanterExpr[_, _]] = 
+case class EagerPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T], encoder: Expr[GenericEncoder[T, PrepareRow]]) extends PlanterExpr[T, PrepareRow]:
+  def plant(using Quotes): Expr[EagerPlanter[T, PrepareRow]] =
+    '{ EagerPlanter[T, PrepareRow]($expr, $encoder, ${Expr(uid)}) }
+
+case class LazyPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T]) extends PlanterExpr[T, PrepareRow]:
+  def plant(using Quotes): Expr[LazyPlanter[T, PrepareRow]] =
+    '{ LazyPlanter[T, PrepareRow]($expr, ${Expr(uid)}) }
+
+object PlanterExpr {
+  object Uprootable {
+    def unapply(expr: Expr[Any])(using Quotes): Option[PlanterExpr[_, _]] = 
       expr match {
-        case '{ ScalarPlanter.apply[qt, prep]($liftValue, $encoder, ${scala.quoted.Const(uid: String)}) } =>
-          Some(ScalarPlanterExpr(uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */))
+        case '{ EagerPlanter.apply[qt, prep]($liftValue, $encoder, ${scala.quoted.Const(uid: String)}) } =>
+          Some(EagerPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
+        case '{ LazyPlanter.apply[qt, prep]($liftValue, ${scala.quoted.Const(uid: String)}) } =>
+          Some(LazyPlanterExpr[qt, prep](uid, liftValue).asInstanceOf[PlanterExpr[_, _]])
         case _ => 
           None
       }
   }
 
-  protected object `(ScalarPlanter).unquote` {
-    def unapply(expr: Expr[Any])(using Quotes): Option[Expr[ScalarPlanter[_, _]]] = expr match {
-      case '{ ($scalarPlanter: ScalarPlanter[tt, pr]).unquote } => 
-        Some(scalarPlanter/* .asInstanceOf[Expr[ScalarPlanter[A, A]]] */)
+  protected object `(Planter).unquote` {
+    def unapply(expr: Expr[Any])(using Quotes): Option[Expr[Planter[_, _]]] = expr match {
+      case '{ ($planter: Planter[tt, pr]).unquote } => 
+        Some(planter/* .asInstanceOf[Expr[Planter[A, A]]] */)
       case _ => 
         None
     }
   }
 
+
   object UprootableUnquote {
-    def unapply(expr: Expr[Any])(using Quotes): Option[ScalarPlanterExpr[_, _]] = {
+    def unapply(expr: Expr[Any])(using Quotes): Option[PlanterExpr[_, _]] = {
       import quotes.reflect.report
       expr match {
-        case `(ScalarPlanter).unquote`(planterUnquote) =>
+        case `(Planter).unquote`(planterUnquote) =>
           planterUnquote match {
             case Uprootable(planterExpr) => 
               Some(planterExpr)
             case _ => 
-              // All lifts re-inserted as ScalarPlanters must be inlined values containing
+              // All lifts re-inserted as Planters must be inlined values containing
               // their UID as well as a corresponding tree. An error should be thrown if this is not the case.
               report.throwError("Format of ScalarLift holder must be fully inline.", expr)
           }
@@ -87,15 +96,15 @@ object ScalarPlanterExpr {
   }
 
 
-  def findUnquotes(expr: Expr[Any])(using Quotes): List[ScalarPlanterExpr[_, _]] =
+  def findUnquotes(expr: Expr[Any])(using Quotes): List[PlanterExpr[_, _]] =
     ExprAccumulate(expr) {
-      case UprootableUnquote(scalarPlanter) => scalarPlanter
+      case UprootableUnquote(planter) => planter
     }
 
   // TODO Find a way to propogate PrepareRow into here
   // pull vases out of Quotation.lifts
   object UprootableList {
-    def unapply(expr: Expr[List[Any]])(using Quotes): Option[List[ScalarPlanterExpr[_, _]]] = {
+    def unapply(expr: Expr[List[Any]])(using Quotes): Option[List[PlanterExpr[_, _]]] = {
       expr match {
         case '{ Nil } =>
           Some(List())
@@ -103,13 +112,13 @@ object ScalarPlanterExpr {
         case '{ scala.List.apply[t](${Varargs(elems)}: _*) } => 
           val scalarValues = 
             elems.collect {
-              case ScalarPlanterExpr.Uprootable(vaseExpr) => vaseExpr
+              case PlanterExpr.Uprootable(vaseExpr) => vaseExpr
             }
 
           import quotes.reflect._
-          println("****************** GOT HERE **************")
-          println(s"Scalar values: ${scalarValues.mkString("(", ",", ")")}")
-          println(s"Elems: ${elems.map(_.show).mkString("(", ",", ")")}")
+          //println("****************** GOT HERE **************")
+          //println(s"Scalar values: ${scalarValues.mkString("(", ",", ")")}")
+          //println(s"Elems: ${elems.map(_.show).mkString("(", ",", ")")}")
 
           // if all the elements match SingleValueVase then return them, otherwise don't
           if (scalarValues.length == elems.length) Some(scalarValues.toList)
@@ -121,7 +130,7 @@ object ScalarPlanterExpr {
   }
 }
 
-case class QuotedExpr(ast: Expr[Ast], lifts: Expr[List[ScalarPlanter[_, _]]], runtimeQuotes: Expr[List[QuotationVase]])
+case class QuotedExpr(ast: Expr[Ast], lifts: Expr[List[Planter[_, _]]], runtimeQuotes: Expr[List[QuotationVase]])
 object QuotedExpr {
     //object `EmptyQuotationPouchList`
 
@@ -145,16 +154,16 @@ object QuotedExpr {
   }
 
   object UprootableWithLifts {
-    def unapply(expr: Expr[Any])(using Quotes): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] =
+    def unapply(expr: Expr[Any])(using Quotes): Option[(QuotedExpr, List[PlanterExpr[_, _]])] =
       expr match {
-        case QuotedExpr.Uprootable(quotedExpr @ QuotedExpr(ast, ScalarPlanterExpr.UprootableList(lifts), _)) => 
+        case QuotedExpr.Uprootable(quotedExpr @ QuotedExpr(ast, PlanterExpr.UprootableList(lifts), _)) => 
           Some((quotedExpr, lifts))
         case _ => 
           None
       }
   }
 
-  def uprootableWithLiftsOpt(quoted: Expr[Any])(using Quotes): Option[(QuotedExpr, List[ScalarPlanterExpr[_, _]])] = 
+  def uprootableWithLiftsOpt(quoted: Expr[Any])(using Quotes): Option[(QuotedExpr, List[PlanterExpr[_, _]])] = 
     quoted match {
       case QuotedExpr.UprootableWithLifts(quotedExpr) => Some(quotedExpr)
       case _ => 
@@ -266,7 +275,7 @@ object QuotationLotExpr {
 
     
     expr match {
-      case vase @ `QuotationLot.apply`(quoted @ QuotedExpr.Uprootable(ast, ScalarPlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
+      case vase @ `QuotationLot.apply`(quoted @ QuotedExpr.Uprootable(ast, PlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
         Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
 
       case `QuotationLot.apply`(quotation, uid, rest) =>
@@ -295,7 +304,7 @@ object QuotationLotExpr {
     ast: Expr[Ast],
     bin: Expr[QuotationLot[Any]], 
     quotation: Expr[Quoted[Any]],
-    inlineLifts: List[ScalarPlanterExpr[_, _]],
+    inlineLifts: List[PlanterExpr[_, _]],
     rest: List[Expr[_]]
   ) extends QuotationLotExpr
 }

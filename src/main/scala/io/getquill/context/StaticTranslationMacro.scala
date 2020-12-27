@@ -13,14 +13,14 @@ import io.getquill.derived._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.dsl.GenericDecoder
-import io.getquill.quoter.ScalarPlanter
+import io.getquill.quoter.Planter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{ Transform, QuotationTag }
 import io.getquill.quoter.QuotationLot
 import io.getquill.quoter.QuotedExpr
-import io.getquill.quoter.ScalarPlanterExpr
+import io.getquill.quoter.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.ast.{ Query => AQuery, _ }
 
@@ -29,7 +29,7 @@ import io.getquill._
 object StaticTranslationMacro {
   import io.getquill.parser._
   import scala.quoted._ // Expr.summon is actually from here
-  import io.getquill.quoter.ScalarPlanter
+  import io.getquill.quoter.Planter
   import io.getquill.idiom.LoadNaming
   import io.getquill.util.LoadObject
   import io.getquill.dsl.GenericEncoder
@@ -76,12 +76,12 @@ object StaticTranslationMacro {
   // matchingExternals = the matching placeholders (i.e 'lift tags') in the AST 
   // that contains the UUIDs of lifted elements. We check against list to make
   // sure that that only needed lifts are used and in the right order.
-  private[getquill] def processLifts(liftExprs: Expr[List[ScalarPlanter[_, _]]], matchingExternals: List[External])(using Quotes): Option[List[Expr[ScalarPlanter[_, _]]]] = {
+  private[getquill] def processLifts(liftExprs: Expr[List[Planter[_, _]]], matchingExternals: List[External])(using Quotes): Option[List[Expr[Planter[_, _]]]] = {
     import quotes.reflect.report
 
     val extractedEncodeables =
       liftExprs match {
-        case ScalarPlanterExpr.UprootableList(lifts) =>
+        case PlanterExpr.UprootableList(lifts) =>
           // get all existing expressions that can be encoded
           Some(lifts.map(e => (e.uid, e)).toMap)
         case _ => 
@@ -120,7 +120,7 @@ object StaticTranslationMacro {
   
   // def apply[T: Type, D <: Idiom, N <: NamingStrategy](
   //   quotedRaw: Expr[Quoted[Query[T]]]
-  // )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[( String, List[ScalarPlanter[_, _]] )]] = {
+  // )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[( String, List[Planter[_, _]] )]] = {
   //   applyInner(quotedRaw) match {
   //     case Some((query, lifts)) => '{ Some(${Expr(query)}, ${lifts}) }
   //     case None => '{ None }
@@ -166,7 +166,7 @@ object StaticTranslationMacro {
         // What about a missing decoder?
         // need to make sure that that kind of error happens during compile time
         // (also need to propagate the line number, talk to Li Houyi about that)
-        StaticState(queryString, Expr.ofList(encodedLifts))
+        StaticState(queryString, encodedLifts)
       }
 
     if (tryStatic.isEmpty)

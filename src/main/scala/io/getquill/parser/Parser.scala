@@ -233,7 +233,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
         case Pointable(quote) => report.throwError(s"Quotation is invalid for compile-time or processing: ${quote.show}", quote)
       }
 
-    case ScalarPlanterExpr.UprootableUnquote(expr) =>
+    case PlanterExpr.UprootableUnquote(expr) =>
       ScalarTag(expr.uid) // TODO Want special scalar tag for an encodeable scalar
 
     // A inline quotation can be parsed if it is directly inline. If it is not inline, a error

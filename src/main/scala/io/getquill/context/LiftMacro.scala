@@ -13,22 +13,22 @@ import io.getquill.derived._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.dsl.GenericDecoder
-import io.getquill.quoter.ScalarPlanter
+import io.getquill.quoter.Planter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
 import io.getquill.quoter.QuotationLot
 import io.getquill.quoter.QuotedExpr
-import io.getquill.quoter.ScalarPlanterExpr
+import io.getquill.quoter.PlanterExpr
 import io.getquill.idiom.ReifyStatement
+import io.getquill.quoter.EagerPlanter
+import io.getquill.dsl.GenericEncoder
 
 import io.getquill._
 
 object LiftMacro {
   import scala.quoted._ // Expr.summon is actually from here
-  import io.getquill.quoter.ScalarPlanter
-  import io.getquill.dsl.GenericEncoder
 
   def apply[T, PrepareRow](vvv: Expr[T])(using Quotes, Type[T], Type[PrepareRow]): Expr[T] = {
     import quotes.reflect._
@@ -36,8 +36,8 @@ object LiftMacro {
     val encoder = 
       Expr.summon[GenericEncoder[T, PrepareRow]] match {
         case Some(enc) => enc
-        case None => report.throwError(s"Cannot Find encode for ${TypeRepr.of[T]}", vvv)
+        case None => report.throwError(s"Cannot Find a ${TypeRepr.of[T]} Encoder of ${Printer.TreeShortCode.show(vvv.asTerm)}", vvv)
       }
-    '{ ScalarPlanter($vvv, $encoder, ${Expr(uuid)}).unquote } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
+    '{ EagerPlanter($vvv, $encoder, ${Expr(uuid)}).unquote } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 }

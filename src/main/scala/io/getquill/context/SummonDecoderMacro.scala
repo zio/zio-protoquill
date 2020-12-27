@@ -15,7 +15,7 @@ import io.getquill.derived._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.dsl.GenericDecoder
-import io.getquill.quoter.ScalarPlanter
+import io.getquill.quoter.Planter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import scala.quoted._
@@ -23,7 +23,7 @@ import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
 import io.getquill.quoter.QuotationLot
 import io.getquill.quoter.QuotedExpr
-import io.getquill.quoter.ScalarPlanterExpr
+import io.getquill.quoter.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 
 import io.getquill._
@@ -31,7 +31,7 @@ import io.getquill._
 object SummonDecoderMacro {
   import io.getquill.parser._
   import scala.quoted._ // Expr.summon is actually from here
-  import io.getquill.quoter.ScalarPlanter
+  import io.getquill.quoter.Planter
 
   def apply[T: Type, ResultRow: Type](using Quotes): Expr[GenericDecoder[ResultRow, T]] = {
     import quotes.reflect._
