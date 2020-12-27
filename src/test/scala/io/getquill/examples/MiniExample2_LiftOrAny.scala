@@ -1,4 +1,4 @@
-package io.getquill
+package io.getquill.examples
 
 import scala.language.implicitConversions
 import io.getquill.quoter.Dsl._
