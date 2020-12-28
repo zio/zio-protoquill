@@ -60,10 +60,10 @@ object PlanterExpr {
       import quotes.reflect._
       val tmc = new TastyMatchersContext
       import tmc._
-      val e = UntypeExpr(expr.asTerm.underlyingArgument.asExpr)
-      println("@@@@@@@@@@@ Trying to match: " + Printer.TreeStructure.show(e.asTerm))
+      val e = UntypeExpr(expr)
+      //println("@@@@@@@@@@@ Trying to match: " + Printer.TreeStructure.show(e.asTerm))
 
-      UntypeExpr(expr.asTerm.underlyingArgument.asExpr) match {
+      UntypeExpr(expr) match {
         case '{ EagerPlanter.apply[qt, prep]($liftValue, $encoder, ${scala.quoted.Const(uid: String)}) } =>
           Some(EagerPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
         case '{ LazyPlanter.apply[qt, prep]($liftValue, ${scala.quoted.Const(uid: String)}) } =>
@@ -130,9 +130,9 @@ object PlanterExpr {
             elems.collect {
               case PlanterExpr.Uprootable(vaseExpr) => vaseExpr
             }
-          println("****************** FIRST GOT HERE **************")
-          println(s"Scalar values (${scalarValues.length}): ${scalarValues.map(_.expr.show).mkString("(", ",", ")")}")
-          println(s"Elems (${elems.length}): ${elems.map(_.show).mkString("(", ",", ")")}")
+          //println("****************** FIRST GOT HERE **************")
+          //println(s"Scalar values (${scalarValues.length}): ${scalarValues.map(_.expr.show).mkString("(", ",", ")")}")
+          //println(s"Elems (${elems.length}): ${elems.map(_.show).mkString("(", ",", ")")}")
 
           // if all the elements match SingleValueVase then return them, otherwise don't
           if (scalarValues.length == elems.length) Some(scalarValues.toList)
@@ -141,16 +141,16 @@ object PlanterExpr {
         case Unseal(Apply(TypeApply(Select(Ident("List"), "apply"), _), args)) => 
           //elems
           val elems = args.map(_.asExpr)
-          println("*~*~*~* Here: " + elems.map(elem => Printer.TreeStructure.show(elem.asTerm.underlyingArgument)))
+          //println("*~*~*~* Here: " + elems.map(elem => Printer.TreeStructure.show(elem.asTerm.underlyingArgument)))
           
           val scalarValues = 
             elems.collect {
               case PlanterExpr.Uprootable(vaseExpr) => vaseExpr
             }
 
-          println("****************** GOT HERE **************")
-          println(s"Scalar values (${scalarValues.length}): ${scalarValues.map(_.expr.show).mkString("(", ",", ")")}")
-          println(s"Elems (${elems.length}): ${elems.map(_.show).mkString("(", ",", ")")}")
+          //println("****************** GOT HERE **************")
+          //println(s"Scalar values (${scalarValues.length}): ${scalarValues.map(_.expr.show).mkString("(", ",", ")")}")
+          //println(s"Elems (${elems.length}): ${elems.map(_.show).mkString("(", ",", ")")}")
 
           // if all the elements match SingleValueVase then return them, otherwise don't
           if (scalarValues.length == elems.length) Some(scalarValues.toList)
@@ -158,7 +158,7 @@ object PlanterExpr {
           
 
         case _ => 
-          println("~~~~~~~~ Tree is not Uprootable: " + Printer.TreeStructure.show(expr.asTerm))
+          //println("~~~~~~~~ Tree is not Uprootable: " + Printer.TreeStructure.show(expr.asTerm))
           None
       }
     }

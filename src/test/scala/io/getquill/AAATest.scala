@@ -33,32 +33,28 @@ object AAATest {
     // inline def qqq = quote { qq.map(s => s + lift("hello")) }
     // println(io.getquill.util.Messages.qprint(qqq.ast))
 
+
+
+
+
+    // Simple 2-lifts test
+    // case class Address(street:String, zip:Int) extends Embedded //helloooooooooooo
+    // case class Person(name: String, age: Int, address: Address)
+    // inline def q = quote { query[Person] }
+    // val ctx = new MirrorContext(PostgresDialect, Literal)
+    // import ctx._
+    // inline def qq = quote { q.map(p => p.name + lift("hello")) }
+    // inline def qqq = quote { qq.map(s => s + lift("how")) }
+    // println("============= PrepareRow ============= " + ctx.run(qqq).prepareRow.data.toList)
+
+    // Simple lazy/eager/lazy test
     case class Address(street:String, zip:Int) extends Embedded //helloooooooooooo
     case class Person(name: String, age: Int, address: Address)
     inline def q = quote { query[Person] }
+    inline def qq = quote { q.map(p => p.name + lazyLift("hello")) }
     val ctx = new MirrorContext(PostgresDialect, Literal)
     import ctx._
-    inline def qq = quote { q.map(p => p.name + lift("hello")) }
-    PrintMac(qq)
-    println("================ First ================")
-    println(io.getquill.util.Messages.qprint(qq)) //hellooooooooooooooooooooooooooooooooooo
-
-    // qq must matchPattern {
-    //   case Quoted(
-    //     Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name") `(+)` ScalarTag(uid)),
-    //     List(LazyPlanter("hello", planterUid)),
-    //     Nil
-    //   ) if (uid == planterUid) =>
-    // }
-
-    // We only need a context to do lifts
-    
-    println("================ Second ================")
-    inline def qqq = quote { qq.map(s => s + lift("how")) } //hellooooooooooooooooooooo
-    PrintMac(qqq)
-    println(io.getquill.util.Messages.qprint(qqq))
-
-    
-    println("============= PrepareRow ============= " + ctx.run(qqq).prepareRow.data.toList)
+    inline def qqq = quote { qq.map(s => s + lift("how") + lazyLift("are you")) }
+    println("============= PrepareRow ============= " + ctx.run(qqq).prepareRow.data.toList) //hello
   }
 }
