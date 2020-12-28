@@ -22,6 +22,17 @@ object ExtractLifts {
     // eager Planters before the 'run' function, need to look thorugh eager/lazy
     // (planters) with the same UID and choose the ones that are eager for the same UID
     // i.e. since they would be the resolved ones
+    //val m =
+
+    // order of the lifts shuold not matter
+    // PlanterExpr.findUnquotes(body).zipWithIndex           // preserve the original order
+    //   .groupBy((r, idx) => r.uid)                         // group by uids
+    //   .map((uid, planters) => planters.sortBy(_._2).head) // for each uid, pick first index
+    //   .toList.sortBy(_._2).map(_._1)                      // once that's done, sort by original index
+    //   .map(_.plant)                                       // then replant
+    
+    import quotes.reflect._
+    println("==== Printing Search Body =====\n" + body.show)
     PlanterExpr.findUnquotes(body).distinctBy(_.uid).map(_.plant)
   }
 

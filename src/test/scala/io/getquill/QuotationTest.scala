@@ -11,85 +11,71 @@ import io.getquill.quoter.EagerPlanter
 import io.getquill.quoter.LazyPlanter
 import io.getquill.quoter.QuotationVase
 import io.getquill.quoter.QuotationLot
+import io.getquill.dsl.GenericEncoder
 import org.scalatest._
 
 class QuotationTest extends Spec with Inside {
   case class Address(street:String, zip:Int) extends Embedded
   case class Person(name: String, age: Int, address: Address)
+  import ShortAst._
 
-  
-
-  ("compiletime quotation has correct ast for") - {
+  "compiletime quotation has correct ast for" - {
     "trivial whole-record select" in {
-      inline def q = quote {
-        query[Person]
-      }
+      inline def q = quote { query[Person] }
       q.ast mustEqual Entity("Person", List())
     }
     "single field mapping" in {
-      inline def q = quote {
-        query[Person].map(p => p.name) // also try _.name
-      }
+      inline def q = quote { query[Person].map(p => p.name) }
       q.ast mustEqual Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name"))
     }
     "anonymous single field mapping" in {
-      inline def q = quote {
-        query[Person].map(_.name)
-      }
+      inline def q = quote { query[Person].map(_.name) }
       q.ast mustEqual Map(Entity("Person", List()), Ident("x1"), Property(Ident("x1"), "name"))
     }
+    "splice into another quotation without quote" in {
+      inline def q = query[Person]
+      inline def qq = quote { q.map(p => p.name) }
+       qq.ast mustEqual Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name"))
+    }
     "unquoted splice into another quotation" in {
-      inline def q = quote {
-        query[Person] // also try _.name
-      }
-      inline def qq = quote {
-        q.map(p => p.name)
-      }
+      inline def q = quote { query[Person] }
+      inline def qq = quote { q.map(p => p.name) }
        qq.ast mustEqual Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name"))
     }
     "double unquoted splice into another quotation" in {
-      inline def q = quote {
-        query[Person] // also try _.name
-      }
-      inline def qq = quote {
-        q.map(p => p.name)
-      }
-      inline def qqq = quote {
-        qq.map(s => s)
-      }
+      inline def q = quote { query[Person] }
+      inline def qq = quote { q.map(p => p.name) }
+      inline def qqq = quote { qq.map(s => s) }
+      qq.ast mustEqual Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name"))
+      qqq.ast mustEqual Map(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), Ident("s"), Ident("s"))
+    }
+    "double splice into another quotation, middle not quoted" in {
+      inline def q = quote { query[Person] }
+      inline def qq = q.map(p => p.name)
+      inline def qqq = quote { qq.map(s => s) }
        qq.ast mustEqual Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name"))
+       qqq.ast mustEqual Map(Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name")), Ident("s"), Ident("s"))
     }
     "double unquoted splict with a lift" in {
-      inline def q = quote {
-        query[Person] // also try _.name
-      }
-      inline def qq = quote {
-        q.map(p => p.name)
-      }
-      // We only need a context to do lifts
-      val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+      inline def q = quote { query[Person] }
+      inline def qq = quote { q.map(p => p.name) }
+      qq.ast mustEqual Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name"))
+
+      val ctx = new MirrorContext(MirrorSqlDialect, Literal) // We only need a context to do lifts
       import ctx._
-      inline def qqq = quote {
-        qq.map(s => s + lift("hello")) // TODO Need to add tests with lift to QueryTest
-      }
-       qq.ast mustEqual Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name"))
+      inline def qqq = quote { qq.map(s => s + lift("hello")) }
+      //println(io.getquill.util.Messages.qprint(qqq.ast))
     }
   }
 
   "runtime quotation has correct ast for" - {
     "simple one-level query with map" in {
-      val q = quote {
-        query[Person].map(p => p.name) // also try _.name
-      }
+      val q = quote { query[Person].map(p => p.name) }
        q.ast mustEqual Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name"))
     }
     "two-level query with map" in {
-      val q = quote {
-        query[Person]
-      }
-      val qq = quote {
-        q.map(p => p.name)
-      }
+      val q = quote { query[Person] }
+      val qq = quote { q.map(p => p.name) }
       inside(qq) {
         case Quoted(
           Map(QuotationTag(tagId), Ident("p"), Property(Ident("p"), "name")),
@@ -115,31 +101,19 @@ class QuotationTest extends Spec with Inside {
         
       Row("hello") mustEqual vase.encoder.apply(0, vase.value, new Row())
     }
+    // TODO Fix here
     "two-level query with a lift" in {
       import io.getquill.context.mirror.Row
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
       import ctx._
-      val q = quote {
-        lift("hello")
-      }
-      val qq = quote {
-        q
-      }
+      val q = quote { lift("hello") }
+      val qq = quote { q }
       inside(qq) {
         case 
           Quoted(
-            QuotationTag(quotationTagId),
-            List(),
-            List(
-              QuotationVase(
-                Quoted(
-                  ScalarTag(scalarTagId),
-                  List(EagerPlanter("hello", _, planterId)),
-                  List()
-                ),
-                quotationVaseId
-              )
-            )
+            QuotationTag(quotationTagId), 
+            Nil,
+            List(QuotationVase(Quoted(ScalarTag(scalarTagId), List(EagerPlanter("hello", _, planterId)), Nil), quotationVaseId))
           ) if (quotationTagId == quotationVaseId && scalarTagId == planterId) =>
       }
       val vase = 
@@ -153,36 +127,64 @@ class QuotationTest extends Spec with Inside {
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
       import ctx._
   
-      inline def q = quote {
-        query[Person].map(p => p.name + lift("hello"))
-      }
-      inside(q) {
+      inline def q = quote { query[Person].map(p => p.name + lift("hello")) }
+      q must matchPattern {
         case Quoted(
-            Map(Entity("Person", List()), Ident("p"), BinaryOperation(Property(Ident("p"), "name"), StringOperator.+, ScalarTag(tagUid))),
-            List(EagerPlanter("hello", _, planterUid)), // TODO Test what kind of encoder it is? Or try to run it and make sure it works?
-            List()
-          ) if (tagUid == planterUid) => true
-        case _ => false
+            Map(Ent("Person"), Id("p"), Property(Id("p"), "name") `(+)` ScalarTag(tagUid)),
+            List(EagerPlanter("hello", encoder, planterUid)), // TODO Test what kind of encoder it is? Or try to run it and make sure it works?
+            Nil
+          ) if (tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
       }
     }
     "two level query with a lift and plus operator" in {
       case class Address(street:String, zip:Int) extends Embedded
       case class Person(name: String, age: Int, address: Address)
-    
-      inline def q = quote {
-        query[Person] // also try _.name
-      }
-      inline def qq = quote {
-        q.map(p => p.name)
-      }
-      // We only need a context to do lifts
-      val ctx = new MirrorContext(PostgresDialect, Literal) //hello
-      import ctx._
-      inline def qqq = quote {
-        qq.map(s => s + lift("hello"))
-      }
-      printer.lnf(qqq)
+      inline def q = quote { query[Person] }
+      inline def qq = quote { q.map(p => p.name) }
       qq.ast mustEqual Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name"))
+
+      // We only need a context to do lifts
+      val ctx = new MirrorContext(PostgresDialect, Literal)
+      import ctx._
+      inline def qqq = quote { qq.map(s => s + lift("hello")) }
+      qqq must matchPattern {
+        case Quoted(
+            Map(Map(Ent("Person"), Id("p"), Property(Id("p"), "name")), Id("s"), Id("s") `(+)` ScalarTag(tagUid)),
+            List(EagerPlanter("hello", encoder, planterUid)), // Compare encoders by ref since all mirror encoders are same case class
+            Nil
+          ) if (tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
+      }
+    }
+    "two level query with a lazy lift, eager lift, lazy lift, and plus operator" in {
+      case class Address(street:String, zip:Int) extends Embedded
+      case class Person(name: String, age: Int, address: Address)
+      inline def q = quote { query[Person] }
+      val ctx = new MirrorContext(PostgresDialect, Literal)
+      import ctx._
+      inline def qq = quote { q.map(p => p.name + lift("hello")) }
+      // qq must matchPattern {
+      //   case Quoted(
+      //     Map(Entity("Person", List()), Ident("p"), Property(Ident("p"), "name") `(+)` ScalarTag(uid)),
+      //     List(LazyPlanter("hello", planterUid)),
+      //     Nil
+      //   ) if (uid == planterUid) =>
+      // }
+
+      // We only need a context to do lifts
+      
+      inline def qqq = quote { qq.map(s => s + lift("how")) } //hellooooooo
+      //println(io.getquill.util.Messages.qprint(qqq))
+
+      
+      println("============= PrepareRow ============= " + ctx.run(qqq).prepareRow.data.toList)
+
+      // qqq must matchPattern {
+      //   case Quoted(
+      //       Map(Map(Ent("Person"), Id("p"), Property(Id("p"), "name") `(+)` ScalarTag(tuid1)), Id("s"), Id("s") `(+)` ScalarTag(tuid2) `(+)` ScalarTag(tuid3)),
+      //       List(_), //LazyPlanter("hello", puid1), EagerPlanter("how", encoder, puid2), LazyPlanter("hello", puid3)
+      //       Nil
+      //     ) /* if (tuid1 == puid1 && tuid2 == puid2 && tuid3 == puid3 && encoder.eq(summon[Encoder[String]])) */ =>
+      // }
     }
   }
 }

@@ -92,7 +92,7 @@ object QueryMetaExtractor {
           '{FunctionApply($quipperAst, List(${queryLot.ast}))}
 
         // TODO Dedupe?
-        val newLifts = (lifts ++ queryLifts).map(_.plant)
+        val newLifts = (queryLifts ++ lifts).map(_.plant)
 
         // In the compile-time case, we can synthesize the new quotation
         // much more easily since we can just combine the lifts and Apply the

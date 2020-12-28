@@ -57,7 +57,13 @@ case class LazyPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T]
 object PlanterExpr {
   object Uprootable {
     def unapply(expr: Expr[Any])(using Quotes): Option[PlanterExpr[_, _]] = 
-      expr match {
+      import quotes.reflect._
+      val tmc = new TastyMatchersContext
+      import tmc._
+      val e = UntypeExpr(expr.asTerm.underlyingArgument.asExpr)
+      println("@@@@@@@@@@@ Trying to match: " + Printer.TreeStructure.show(e.asTerm))
+
+      UntypeExpr(expr.asTerm.underlyingArgument.asExpr) match {
         case '{ EagerPlanter.apply[qt, prep]($liftValue, $encoder, ${scala.quoted.Const(uid: String)}) } =>
           Some(EagerPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
         case '{ LazyPlanter.apply[qt, prep]($liftValue, ${scala.quoted.Const(uid: String)}) } =>
@@ -97,34 +103,63 @@ object PlanterExpr {
 
 
   def findUnquotes(expr: Expr[Any])(using Quotes): List[PlanterExpr[_, _]] =
+    val res =
     ExprAccumulate(expr) {
-      case UprootableUnquote(planter) => planter
+      //case UprootableUnquote(planter) => planterx
+      // Since we are also searching expressions inside spliced quotatations (in the Lifts slot) those things are not unquoted 
+      // so we to search all planter expressions, not just the unquotes
+      case PlanterExpr.Uprootable(planter) => planter
     }
+    println("((((((((((((((((((((((((((((((( Found Uprootable Unquotes ))))))))))))))))))))))\n"+res.map(_.expr.show))
+    res
 
   // TODO Find a way to propogate PrepareRow into here
   // pull vases out of Quotation.lifts
   object UprootableList {
     def unapply(expr: Expr[List[Any]])(using Quotes): Option[List[PlanterExpr[_, _]]] = {
-      expr match {
+      import quotes.reflect._
+      val tmc = new TastyMatchersContext
+      import tmc._
+
+      UntypeExpr(expr.asTerm.underlyingArgument.asExpr) match {
         case '{ Nil } =>
           Some(List())
 
-        case '{ scala.List.apply[t](${Varargs(elems)}: _*) } => 
+        case '{ List.apply[t](${Varargs(elems)}: _*) } => 
           val scalarValues = 
             elems.collect {
               case PlanterExpr.Uprootable(vaseExpr) => vaseExpr
             }
-
-          import quotes.reflect._
-          //println("****************** GOT HERE **************")
-          //println(s"Scalar values: ${scalarValues.mkString("(", ",", ")")}")
-          //println(s"Elems: ${elems.map(_.show).mkString("(", ",", ")")}")
+          println("****************** FIRST GOT HERE **************")
+          println(s"Scalar values (${scalarValues.length}): ${scalarValues.map(_.expr.show).mkString("(", ",", ")")}")
+          println(s"Elems (${elems.length}): ${elems.map(_.show).mkString("(", ",", ")")}")
 
           // if all the elements match SingleValueVase then return them, otherwise don't
           if (scalarValues.length == elems.length) Some(scalarValues.toList)
           else None
 
-        case _ => None
+        case Unseal(Apply(TypeApply(Select(Ident("List"), "apply"), _), args)) => 
+          //elems
+          val elems = args.map(_.asExpr)
+          println("*~*~*~* Here: " + elems.map(elem => Printer.TreeStructure.show(elem.asTerm.underlyingArgument)))
+          
+          val scalarValues = 
+            elems.collect {
+              case PlanterExpr.Uprootable(vaseExpr) => vaseExpr
+            }
+
+          println("****************** GOT HERE **************")
+          println(s"Scalar values (${scalarValues.length}): ${scalarValues.map(_.expr.show).mkString("(", ",", ")")}")
+          println(s"Elems (${elems.length}): ${elems.map(_.show).mkString("(", ",", ")")}")
+
+          // if all the elements match SingleValueVase then return them, otherwise don't
+          if (scalarValues.length == elems.length) Some(scalarValues.toList)
+          else None
+          
+
+        case _ => 
+          println("~~~~~~~~ Tree is not Uprootable: " + Printer.TreeStructure.show(expr.asTerm))
+          None
       }
     }
   }
@@ -164,20 +199,22 @@ object QuotedExpr {
   }
 
   def uprootableWithLiftsOpt(quoted: Expr[Any])(using Quotes): Option[(QuotedExpr, List[PlanterExpr[_, _]])] = 
+    import quotes.reflect._
     quoted match {
       case QuotedExpr.UprootableWithLifts(quotedExpr) => Some(quotedExpr)
       case _ => 
-        println("Quotations do meet compiletime criteria: " + quoted.show); 
+        println("Quotations with Lifts do not meet compiletime criteria: " + Printer.TreeShortCode.show(quoted.asTerm)); 
         None
     }
 
   // Does the Quoted expression match the correct format needed for it to
   // be inlineable i.e. transpileable into a Query during Compile-Time.
   def uprootableOpt(quoted: Expr[Any])(using Quotes): Option[QuotedExpr] = 
+    import quotes.reflect._
     quoted match {
       case QuotedExpr.Uprootable(quotedExpr) => Some(quotedExpr)
       case _ => 
-        println("Quotations do meet compiletime criteria: " + quoted.show); 
+        println("Quotations do not meet compiletime criteria: " + Printer.TreeShortCode.show(quoted.asTerm)); 
         None
     }
 }
@@ -278,7 +315,8 @@ object QuotationLotExpr {
       case vase @ `QuotationLot.apply`(quoted @ QuotedExpr.Uprootable(ast, PlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
         Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
 
-      case `QuotationLot.apply`(quotation, uid, rest) =>
+      case ql @ `QuotationLot.apply`(quotation, uid, rest) =>
+        println("======= Only Pluckable: " + Printer.TreeShortCode.show(ql.asTerm))
         Some(Pluckable(uid, quotation, rest))
 
       // If it's a QuotationLot but we can't extract it at all, need to throw an error
