@@ -297,7 +297,7 @@ object QuotationLotExpr {
         Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
 
       case ql @ `QuotationLot.apply`(quotation, uid, rest) =>
-        println("======= Only Pluckable: " + Printer.TreeShortCode.show(ql.asTerm))
+        //println("======= Only Pluckable: " + Printer.TreeShortCode.show(ql.asTerm))
         Some(Pluckable(uid, quotation, rest))
 
       // If it's a QuotationLot but we can't extract it at all, need to throw an error
