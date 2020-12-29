@@ -28,16 +28,18 @@ case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _]], 
 // For example, a ScalarPlanter is re-inserted into the PrepareRow sequence
 //sealed trait Planter
 
-sealed trait Planter[T, PrepareRow](value: T, uid: String) {
+sealed trait Planter[T, PrepareRow] {
   def unquote: T
+  def value: T
+  def uid: String
 }
 
-case class EagerPlanter[T, PrepareRow](value: T, encoder: GenericEncoder[T, PrepareRow], uid: String) extends Planter[T, PrepareRow](value, uid) {
+case class EagerPlanter[T, PrepareRow](value: T, encoder: GenericEncoder[T, PrepareRow], uid: String) extends Planter[T, PrepareRow] {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
 
-case class LazyPlanter[T, PrepareRow](value: T, uid: String) extends Planter[T, PrepareRow](value, uid) {
+case class LazyPlanter[T, PrepareRow](value: T, uid: String) extends Planter[T, PrepareRow] {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }

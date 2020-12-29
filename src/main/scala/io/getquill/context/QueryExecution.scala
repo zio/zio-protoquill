@@ -115,21 +115,20 @@ object QueryExecution:
       }
     
 
-    def executeDynamic[RawT: Type, Q[_]: Type](query: Expr[Quoted[Q[RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior) =
+    def executeDynamic[RawT: Type, Q[_]: Type](quote: Expr[Quoted[Q[RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior) =
       val decoder = summonDecoderOrThrow[RawT]
+      // Expand the outermost quote using the macro and put it back into the quote
       // Is the expansion on T or RawT, need to investigate
-      val expandedAst = Expander.runtimeImpl[T]('{ $query.ast })
+      val expandedAst = Expander.runtimeImpl[T]('{ $quote.ast })
+      val expandedAstQuote = '{ $quote.copy(ast = $expandedAst) }
 
-      // TODO Need to sort lifts by scalar tags since they may not be sorted correct, for dynamic queries that was guarenteed by StaticSatate but not here
-      // Maybe use ReifyStatements for that? Already doing it in StaticTranslationMacrp
-      val prepare = '{ (row: PrepareRow) => LiftsExtractor.withLazy[PrepareRow]($query.lifts, row) }
       // Move this prepare down into RunDynamicExecution since need to use ReifyStatement to know what lifts to call when?
       val extractor = extract match
         case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(1, r)) ) }
         case ExtractBehavior.Skip =>    '{ None }
 
       // TODO What about when an extractor is not neededX
-      '{  RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($query, $ContextOperation, $prepare, $extractor, $expandedAst) }
+      '{  RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($expandedAstQuote, $ContextOperation, $extractor) }
     
 
     
@@ -252,32 +251,38 @@ object RunDynamicExecution:
     Res
   ](quoted: Quoted[Q[RawT]], 
     ctx: ContextOperation[T, D, N, PrepareRow, ResultRow, Res],
-    prepare: PrepareRow => (List[Any], PrepareRow),
-    extractor: Option[ResultRow => T],
-    expandedAst: Ast
+    extractor: Option[ResultRow => T]
   ): Res = 
   {
-    // println("Runtime Expanded Ast Is: " + ast)
-    val lifts = quoted.lifts // quoted.lifts causes position exception
-    val quotationVases = quoted.runtimeQuotes // quoted.runtimeQuotes causes position exception
+    println("********************* Started Dynamic With the Quotation *********************\n" + io.getquill.util.Messages.qprint(quoted))
 
-    def spliceQuotations(ast: Ast): Ast =
+    def gatherLifts(quoted: Quoted[_]): List[Planter[_, _]] =
+      quoted.lifts ++ quoted.runtimeQuotes.flatMap(vase => gatherLifts(vase.quoted))
+
+    def spliceQuotations(quoted: Quoted[_]): Ast = {
+      val quotationVases = quoted.runtimeQuotes
+      val ast = quoted.ast
+      // Get all the quotation tags
       Transform(ast) {
+        // Splice the corresponding vase for every tag, then recurse
         case v @ QuotationTag(uid) => 
           // When a quotation to splice has been found, retrieve it and continue
           // splicing inside since there could be nested sections that need to be spliced
           quotationVases.find(_.uid == uid) match {
             case Some(vase) => 
-              spliceQuotations(vase.quoted.ast)
+              println(s"======= Found match for ${uid}")
+              println(s"======= Recursing Into: ${io.getquill.util.Messages.qprint(vase.quoted)}")
+              spliceQuotations(vase.quoted)
             case None =>
               throw new IllegalArgumentException(s"Quotation vase with UID ${uid} could not be found!")
           }
       }
+    }
 
     // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
     // which means that the compiler has not done the splicing for us. We need to do this ourselves. 
-    //val expandedAst = Expander.runtime[T](quoted.ast) // cannot derive a decoder for T
-    val splicedAst = spliceQuotations(expandedAst)
+    val splicedAst = spliceQuotations(quoted)
+    println("************************* Spliced Ast *************************\n" + io.getquill.util.Messages.qprint(splicedAst))
       
     val (outputAst, stmt) = ctx.idiom.translate(splicedAst)(using ctx.naming)
 
@@ -288,6 +293,26 @@ object RunDynamicExecution:
         stmt,
         forProbing = false
       )
+    println(s"---------- Externals: ${externals.map(e => (e, e.getClass))}")
+
+    val liftTags = 
+      externals.map {
+        case ScalarTag(uid) => uid
+        case other => throw new IllegalArgumentException(s"Invalid Lift Tag: ${other}")
+      }
+    println(s"---------- Sorted Lift Tags: ${liftTags}")
+
+    val lifts = gatherLifts(quoted).map(lift => (lift.uid, lift)).toMap
+    println(s"---------- Lifts Map: ${lifts}")
+
+    val sortedLifts = liftTags.map { tag =>
+      lifts.get(tag) match
+        case Some(lift) => lift
+        case None => throw new IllegalArgumentException(s"Could not lookup value for the tag: ${tag}")
+    }
+    println(s"---------- Sorted Lifts: ${sortedLifts}")
+
+    val prepare = (row: PrepareRow) => LiftsExtractor.withLazy[PrepareRow](sortedLifts, row)
 
     ctx.execute(string, prepare, extractor, ExecutionType.Dynamic)
   }

@@ -231,7 +231,9 @@ class QuotationTest extends Spec with Inside {
             ))
           ) if (tid == pid && qid == vid && tid2 == pid2 && qid2 == vid2) =>
       }
-      ctx.run(qqq).prepareRow.data mustEqual List()
+      //println(pprint.apply(qqq))
+      println(io.getquill.util.Messages.qprint(qqq))
+      ctx.run(qqq).prepareRow.data.toList mustEqual List("how", "are you")
     }
   }
 }
