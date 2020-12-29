@@ -165,29 +165,32 @@ object QueryExecution:
       val lifts = Expr.ofList(resolveLazyLifts(allLifts))
       val decoder = summonDecoderOrThrow[RawT]
 
-      // TODO Maybe have LiftsExtractor take the Ast of the quotation and find scalar tags there?
+      // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
+      // and the extractor to read out the results (e.g. ResultSet)
       val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($lifts, row) }
       val extractor = extract match
         case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(1, r)) ) }
         case ExtractBehavior.Skip =>    '{ None }
-
-      // TODO What about when an extractor is not neededX
-      // executeAction(query, prepare, extractor)
+      // Plug in the components and execute
       '{ $ContextOperation.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
 
+    // Simple ID function that we use in a couple of places
     private val idConvert = '{ (t:T) => t }
 
     /** Summon all needed components and run executeQuery method */
     def applyQuery(quoted: Expr[Quoted[Query[T]]]): Expr[Res] =
       summonMetaIfExists match
+        // Can we get a QueryMeta? Run that pipeline if we can
         case Some(rowRepr) =>
-          rowRepr match { case '[rawT] => runWithMeta[rawT](quoted) }
+          rowRepr match { case '[rawT] => runWithMeta[rawT](quoted) } 
         case None =>
+          // Otherwise the regular pipeline
           StaticTranslationMacro.applyInner[Query, T, D, N](quoted) match 
+            // Can we re-create needed info to construct+tokenize the query statically?
             case Some(staticState) =>
-              executeStatic[T](staticState, idConvert, ExtractBehavior.Extract)
+              executeStatic[T](staticState, idConvert, ExtractBehavior.Extract) // Yes we can, do it!
             case None => 
-              executeDynamic(quoted, idConvert, ExtractBehavior.Extract)
+              executeDynamic(quoted, idConvert, ExtractBehavior.Extract)        // No we can't. Do dynamic
 
     def applyAction(quoted: Expr[Quoted[Action[T]]]): Expr[Res] =
       StaticTranslationMacro.applyInner[Action, T, D, N](quoted) match 
