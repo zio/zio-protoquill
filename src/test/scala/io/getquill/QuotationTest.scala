@@ -162,6 +162,7 @@ class QuotationTest extends Spec with Inside {
         ) if (vaseId == tagId) =>
       }
     }
+
     "query with a lift" in {
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
       import ctx._
@@ -169,8 +170,7 @@ class QuotationTest extends Spec with Inside {
       q must matchPattern {
         case Quoted(ScalarTag(tagUid), List(EagerPlanter("hello", encoder, vaseUid)), List()) if (tagUid == vaseUid) =>
       }
-      val vase = q.lifts match { case head :: Nil => head.asInstanceOf[EagerPlanter[String, ctx.PrepareRow]] }
-      Row("hello") mustEqual vase.encoder.apply(0, vase.value, new Row())
+      List(Row("hello")) mustEqual q.encodeEagerLifts(new Row())
     }
 
     "two-level query with a lift" in {
@@ -185,12 +185,7 @@ class QuotationTest extends Spec with Inside {
             List(QuotationVase(Quoted(ScalarTag(scalarTagId), List(EagerPlanter("hello", encoder, planterId)), Nil), quotationVaseId))
           ) if (quotationTagId == quotationVaseId && scalarTagId == planterId && encoder.eq(summon[Encoder[String]])) =>
       }
-      val vase = 
-        q.lifts match {
-          case head :: Nil => head.asInstanceOf[EagerPlanter[String, ctx.PrepareRow /* or just Row */]]
-        }
-        
-      Row("hello") mustEqual vase.encoder.apply(0, vase.value, new Row())
+      List(Row("hello")) mustEqual q.encodeEagerLifts(new Row())
     }
     "query with a lift and plus operator" in {
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
@@ -236,6 +231,7 @@ class QuotationTest extends Spec with Inside {
             ))
           ) if (tid == pid && qid == vid && tid2 == pid2 && qid2 == vid2) =>
       }
+      ctx.run(qqq).prepareRow.data mustEqual List()
     }
   }
 }

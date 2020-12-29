@@ -6,9 +6,18 @@ import org.scalatest.matchers.must.Matchers
 
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.Duration
+import io.getquill.quoter.Quoted
+import io.getquill.quoter.EagerPlanter
 import io.getquill.ast._
 
 abstract class Spec extends AnyFreeSpec with Matchers /* with BeforeAndAfterAll */ {
+
+  extension [T, PrepareRow](q: Quoted[T]) {
+    def encodeEagerLifts(row: PrepareRow) =
+      q.lifts.zipWithIndex.collect {
+        case (ep: EagerPlanter[String, PrepareRow], idx) => ep.encoder(idx, ep.value, row)
+      }
+  }
 
   object ShortAst {
     object Id {
