@@ -3,6 +3,7 @@ package io.getquill.context
 import io.getquill.quoter.EagerPlanter
 import io.getquill.quoter.LazyPlanter
 import io.getquill.quoter.Planter
+import io.getquill.ast.Ast
 
 object LiftsExtractor {
   def withLazy[PrepareRowTemp](allLifts: List[Planter[_, _]], row: PrepareRowTemp) =

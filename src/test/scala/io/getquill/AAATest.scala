@@ -55,6 +55,6 @@ object AAATest {
     val ctx = new MirrorContext(PostgresDialect, Literal)
     import ctx._
     inline def qqq = quote { qq.map(s => s + lift("how") + lazyLift("are you")) }
-    println("============= PrepareRow ============= " + ctx.run(qqq).prepareRow.data.toList) //hello
+    println("============= PrepareRow ============= " + ctx.run(qqq).prepareRow.data.toList) //helloooo
   }
 }

@@ -120,7 +120,10 @@ object QueryExecution:
       // Is the expansion on T or RawT, need to investigate
       val expandedAst = Expander.runtimeImpl[T]('{ $query.ast })
 
+      // TODO Need to sort lifts by scalar tags since they may not be sorted correct, for dynamic queries that was guarenteed by StaticSatate but not here
+      // Maybe use ReifyStatements for that? Already doing it in StaticTranslationMacrp
       val prepare = '{ (row: PrepareRow) => LiftsExtractor.withLazy[PrepareRow]($query.lifts, row) }
+      // Move this prepare down into RunDynamicExecution since need to use ReifyStatement to know what lifts to call when?
       val extractor = extract match
         case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(1, r)) ) }
         case ExtractBehavior.Skip =>    '{ None }
@@ -163,6 +166,7 @@ object QueryExecution:
       val lifts = Expr.ofList(resolveLazyLifts(allLifts))
       val decoder = summonDecoderOrThrow[RawT]
 
+      // TODO Maybe have LiftsExtractor take the Ast of the quotation and find scalar tags there?
       val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($lifts, row) }
       val extractor = extract match
         case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(1, r)) ) }

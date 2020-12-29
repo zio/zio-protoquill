@@ -32,7 +32,7 @@ object ExtractLifts {
     //   .map(_.plant)                                       // then replant
     
     import quotes.reflect._
-    println("==== Printing Search Body =====\n" + body.show)
+    //println("==== Printing Search Body =====\n" + body.show)
     PlanterExpr.findUnquotes(body).distinctBy(_.uid).map(_.plant)
   }
 

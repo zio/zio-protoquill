@@ -110,7 +110,7 @@ object PlanterExpr {
       // so we to search all planter expressions, not just the unquotes
       case PlanterExpr.Uprootable(planter) => planter
     }
-    println("((((((((((((((((((((((((((((((( Found Uprootable Unquotes ))))))))))))))))))))))\n"+res.map(_.expr.show))
+    //println("((((((((((((((((((((((((((((((( Found Uprootable Unquotes ))))))))))))))))))))))\n"+res.map(_.expr.show))
     res
 
   // TODO Find a way to propogate PrepareRow into here
@@ -137,25 +137,6 @@ object PlanterExpr {
           // if all the elements match SingleValueVase then return them, otherwise don't
           if (scalarValues.length == elems.length) Some(scalarValues.toList)
           else None
-
-        case Unseal(Apply(TypeApply(Select(Ident("List"), "apply"), _), args)) => 
-          //elems
-          val elems = args.map(_.asExpr)
-          //println("*~*~*~* Here: " + elems.map(elem => Printer.TreeStructure.show(elem.asTerm.underlyingArgument)))
-          
-          val scalarValues = 
-            elems.collect {
-              case PlanterExpr.Uprootable(vaseExpr) => vaseExpr
-            }
-
-          //println("****************** GOT HERE **************")
-          //println(s"Scalar values (${scalarValues.length}): ${scalarValues.map(_.expr.show).mkString("(", ",", ")")}")
-          //println(s"Elems (${elems.length}): ${elems.map(_.show).mkString("(", ",", ")")}")
-
-          // if all the elements match SingleValueVase then return them, otherwise don't
-          if (scalarValues.length == elems.length) Some(scalarValues.toList)
-          else None
-          
 
         case _ => 
           //println("~~~~~~~~ Tree is not Uprootable: " + Printer.TreeStructure.show(expr.asTerm))
