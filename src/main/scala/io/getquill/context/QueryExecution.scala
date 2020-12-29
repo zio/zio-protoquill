@@ -254,8 +254,6 @@ object RunDynamicExecution:
     extractor: Option[ResultRow => T]
   ): Res = 
   {
-    println("********************* Started Dynamic With the Quotation *********************\n" + io.getquill.util.Messages.qprint(quoted))
-
     def gatherLifts(quoted: Quoted[_]): List[Planter[_, _]] =
       quoted.lifts ++ quoted.runtimeQuotes.flatMap(vase => gatherLifts(vase.quoted))
 
@@ -270,8 +268,6 @@ object RunDynamicExecution:
           // splicing inside since there could be nested sections that need to be spliced
           quotationVases.find(_.uid == uid) match {
             case Some(vase) => 
-              println(s"======= Found match for ${uid}")
-              println(s"======= Recursing Into: ${io.getquill.util.Messages.qprint(vase.quoted)}")
               spliceQuotations(vase.quoted)
             case None =>
               throw new IllegalArgumentException(s"Quotation vase with UID ${uid} could not be found!")
@@ -281,11 +277,13 @@ object RunDynamicExecution:
 
     // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
     // which means that the compiler has not done the splicing for us. We need to do this ourselves. 
+    // So we need to go through all the QuotationTags in the AST and splice in the corresponding QuotationVase into it's place.
     val splicedAst = spliceQuotations(quoted)
-    println("************************* Spliced Ast *************************\n" + io.getquill.util.Messages.qprint(splicedAst))
       
+    // Tokenize the spliced AST
     val (outputAst, stmt) = ctx.idiom.translate(splicedAst)(using ctx.naming)
 
+    // Turn the Tokenized AST into an actual string and pull out the ScalarTags (i.e. the lifts)
     val (string, externals) =
       ReifyStatement(
         ctx.idiom.liftingPlaceholder,
@@ -293,27 +291,29 @@ object RunDynamicExecution:
         stmt,
         forProbing = false
       )
-    println(s"---------- Externals: ${externals.map(e => (e, e.getClass))}")
 
+    // Get the UIDs from the lifts, if they are something unexpected (e.g. Lift elements from Quill 2.x) throw an exception
     val liftTags = 
       externals.map {
         case ScalarTag(uid) => uid
         case other => throw new IllegalArgumentException(s"Invalid Lift Tag: ${other}")
       }
-    println(s"---------- Sorted Lift Tags: ${liftTags}")
 
+    // Pull out the all the Planter instances (for now they need to be EagerPlanters for Dynamic Queries)
     val lifts = gatherLifts(quoted).map(lift => (lift.uid, lift)).toMap
-    println(s"---------- Lifts Map: ${lifts}")
 
+    // Match the ScalarTags we pulled out earlier (in ReifyStatement) with corresponding Planters because
+    // the Planters can be out of order (I.e. in a different order then the ?s in the SQL query that they need to be spliced into). 
+    // The ScalarTags are comming directly from the tokenized AST however and their order should be correct.
     val sortedLifts = liftTags.map { tag =>
       lifts.get(tag) match
         case Some(lift) => lift
         case None => throw new IllegalArgumentException(s"Could not lookup value for the tag: ${tag}")
     }
-    println(s"---------- Sorted Lifts: ${sortedLifts}")
-
+    // Use the sortedLifts to prepare the method that will prepare the SQL statement
     val prepare = (row: PrepareRow) => LiftsExtractor.withLazy[PrepareRow](sortedLifts, row)
 
+    // Exclute the SQL Statement
     ctx.execute(string, prepare, extractor, ExecutionType.Dynamic)
   }
 
