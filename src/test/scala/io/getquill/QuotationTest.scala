@@ -384,6 +384,23 @@ class QuotationTest extends Spec with Inside {
       assertThrows[IllegalArgumentException] { ctx.run(q) }
     }
 
+    "pull quote from unavailable context - only inlines" in {
+      val ctx = new MirrorContext(PostgresDialect, Literal)
+      import ctx._
+
+      class Outer {
+        inline def qqq = new Inner().qq.map(s => s + lift("are you"))
+        class Inner {
+          inline def qq = new Core().q.map(p => p.name + lift("how"))
+          class Core {
+            inline def q = query[Person]
+          }
+        }
+      }
+      inline def q = quote { new Outer().qqq }
+      println(ctx.run(q))
+    }
+
     "pull quote from unavailable context" in {
       val ctx = new MirrorContext(PostgresDialect, Literal)
       import ctx._
@@ -397,8 +414,8 @@ class QuotationTest extends Spec with Inside {
           }
         }
       }
-      inline def q = new Outer().qqq
-      println(ctx.run(q))
+      inline def qry = quote { new Outer().qqq }
+      println(ctx.run(qry))
     }
   }
 }
