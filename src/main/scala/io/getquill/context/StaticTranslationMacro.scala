@@ -50,7 +50,7 @@ object StaticTranslationMacro {
     if (noRuntimeQuotations(unliftedAst)) {
       
     val expandedAst = unliftedAst match
-      case _: AQuery => Expander.static[T](unliftedAst)
+      case _: AQuery => Elaborate.static[T](unliftedAst)
       case _ => unliftedAst
 
       //println("Expanded Ast Is: " + expandedAst)

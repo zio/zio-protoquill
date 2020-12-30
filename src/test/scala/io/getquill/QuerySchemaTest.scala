@@ -91,15 +91,14 @@ class QuerySchemaTest extends Spec with Inside {
       //q.ast.toString mustEqual """querySchema("test_entity", _.i -> "ii")"""
       ctx.run(q).strAndExec mustEqual ("""querySchema("test_entity", _.i -> "ii").map(x => (x.s, x.i, x.l, x.o))""", ExecutionType.Dynamic)
     }
-    // TODO Need to enhance parser to do this
-    // "custom dynamic and composition" in {
-    //   implicit val meta: SchemaMeta[TestEntity] = schemaMeta[TestEntity]("test_entity", _.i -> "ii")
-    //   inline def q = quote(query[TestEntity].filter(e => e.i == 1))
-    //   printer.lnf(q.ast)
-    //   println(q.ast)
-    //   //q.ast.toString mustEqual """querySchema("test_entity", _.i -> "ii")"""
-    //   ctx.run(q).strAndExec mustEqual ("""querySchema("test_entity", _.i -> "ii").map(x => (x.s, x.i, x.l, x.o))""", ExecutionType.Dynamic)
-    // }
+    "custom dynamic and composition" in {
+      implicit val meta: SchemaMeta[TestEntity] = schemaMeta[TestEntity]("test_entity", _.i -> "ii")
+      inline def q = quote(query[TestEntity].filter(e => e.i == 1))
+      printer.lnf(q.ast)
+      println(q.ast)
+      //q.ast.toString mustEqual """querySchema("test_entity", _.i -> "ii")"""
+      ctx.run(q).strAndExec mustEqual ("""querySchema("test_entity", _.i -> "ii").filter(e => e.i == 1).map(e => (e.s, e.i, e.l, e.o))""", ExecutionType.Dynamic)
+    }
     "custom with embedded" in {
       case class Entity(emb: EmbValue)
       implicit inline def meta: SchemaMeta[Entity] = schemaMeta[Entity]("test_entity", _.emb.i -> "ii")

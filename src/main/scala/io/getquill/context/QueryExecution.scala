@@ -119,7 +119,7 @@ object QueryExecution:
       val decoder = summonDecoderOrThrow[RawT]
       // Expand the outermost quote using the macro and put it back into the quote
       // Is the expansion on T or RawT, need to investigate
-      val expandedAst = Expander.runtimeImpl[T]('{ $quote.ast })
+      val expandedAst = Elaborate.runtimeImpl[T]('{ $quote.ast })
       val expandedAstQuote = '{ $quote.copy(ast = $expandedAst) }
 
       // Move this prepare down into RunDynamicExecution since need to use ReifyStatement to know what lifts to call when?

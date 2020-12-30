@@ -401,21 +401,21 @@ class QuotationTest extends Spec with Inside {
       println(ctx.run(q))
     }
 
-    "pull quote from unavailable context" in {
-      val ctx = new MirrorContext(PostgresDialect, Literal)
-      import ctx._
+    // "pull quote from unavailable context" in {
+    //   val ctx = new MirrorContext(PostgresDialect, Literal)
+    //   import ctx._
 
-      class Outer {
-        inline def qqq = quote { new Inner().qq }
-        class Inner {
-          inline def qq = quote { new Core().q }
-          class Core {
-            inline def q = quote { query[Person] }
-          }
-        }
-      }
-      inline def qry = quote { new Outer().qqq }
-      println(ctx.run(qry))
-    }
+    //   class Outer {
+    //     inline def qqq = quote { new Inner().qq }
+    //     class Inner {
+    //       inline def qq = quote { new Core().q }
+    //       class Core {
+    //         inline def q = quote { query[Person] }
+    //       }
+    //     }
+    //   }
+    //   inline def qry = quote { new Outer().qqq }
+    //   println(ctx.run(qry))
+    // }
   }
 }

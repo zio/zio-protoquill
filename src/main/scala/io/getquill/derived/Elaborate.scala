@@ -10,7 +10,7 @@ import scala.deriving._
 import scala.quoted._
 
 
-object Expander {
+object Elaborate {
   import io.getquill.dsl.GenericDecoder
 
   sealed trait TermType
