@@ -13,7 +13,9 @@ import io.getquill.Query
 import io.getquill.EntityQuery
 
 // TODO lifts needs to be List of Planter to allow QueryLifts
-case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _]], runtimeQuotes: List[QuotationVase])
+case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _]], runtimeQuotes: List[QuotationVase]) {
+  override def toString = io.getquill.util.Messages.qprint(this).plainText
+}
   //override def toString = ast.toString
   // make a function that uses a stateless transformer to walk through the tuple,
   // gather the lifted quoted blocks, splice their qutations into the ast, and then

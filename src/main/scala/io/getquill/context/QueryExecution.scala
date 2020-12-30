@@ -128,12 +128,7 @@ object QueryExecution:
         case ExtractBehavior.Skip =>    '{ None }
 
       // TODO What about when an extractor is not neededX
-      '{  
-        println("================== INPUT QUOTE ==================\n" + io.getquill.util.Messages.qprint($quote))
-        println("================== EXPANDED AST ==================\n" + io.getquill.util.Messages.qprint($expandedAst))
-        println("================== EXPANDED AST QUOTE ==================\n" + io.getquill.util.Messages.qprint($expandedAstQuote))
-        RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($expandedAstQuote, $ContextOperation, $extractor) 
-      }
+      '{ RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($expandedAstQuote, $ContextOperation, $extractor) }
     
 
     

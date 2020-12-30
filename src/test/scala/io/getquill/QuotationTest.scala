@@ -242,7 +242,6 @@ class QuotationTest extends Spec with Inside {
       }
 
       val qqq = quote { qq.map(s => s + lift("are you")) }
-      println("=====================IN TEST=================\n" + io.getquill.util.Messages.qprint(qqq))
       qqq must matchPattern {
         case Quoted(
             Map(QuotationTag(qid2), Id("s"), Id("s") `(+)` ScalarTag(tid2)),
@@ -300,16 +299,43 @@ class QuotationTest extends Spec with Inside {
 
     
 
-    /*
-     * Inject runtime -> Into compile-time -> Into runtime
-     * 
-     * If a runtime query is injected into a compile-time one a QuotationVase will be created
-     * in the compile-time query.
-     * When the compile-time query is the injected into second runtime one, the compile-time
-     * query has a QuotationVase so it will be treated like a runtime query and be put into a
-     * QuotationVase. It's lifts however will be spliced into the last-query's ones however.
-     * This is fine because during execution all the lifts are deduped by UID.
-     */
+    "compile-time -> runtime -> compile-time" in {
+      case class Address(street:String, zip:Int) extends Embedded
+      case class Person(name: String, age: Int, address: Address)
+      inline def q = quote { query[Person] }
+
+      val ctx = new MirrorContext(PostgresDialect, Literal)
+      import ctx._
+
+      val qq = quote { q.map(p => p.name + lift("how")) }
+      qq must matchPattern {
+        case Quoted(
+          Map(Ent("Person"), Ident("p"), Property(Ident("p"), "name") `(+)` ScalarTag(tuid)),
+          List(EagerPlanter("how", enc, puid)),
+          Nil
+        ) if (tuid == puid) =>
+      }
+
+      inline def qqq = quote { qq.map(s => s + lift("are you")) }
+      println(io.getquill.util.Messages.qprint(qqq))
+      // Should not match this pattern, should be spliced directly from the inline def
+      qqq must matchPattern {
+        case Quoted(
+            Map(QuotationTag(qid2), Id("s"), Id("s") `(+)` ScalarTag(tid2)),
+            List(EagerPlanter("are you", enc2, pid2)),
+            List(QuotationVase(
+              Quoted(
+                Map(Ent("Person"), Ident("p"), Property(Ident("p"), "name") `(+)` ScalarTag(tid)),
+                List(EagerPlanter("how", enc1, pid)),
+                Nil
+              ),
+              vid2
+            ))
+          ) if (pid == tid && tid2 == pid2 && qid2 == vid2) =>
+      }
+      ctx.pull(qqq) mustEqual (List("how", "are you"), ExecutionType.Dynamic)
+    }
+
     "runtime -> compile-time -> runtime" in {
       case class Address(street:String, zip:Int) extends Embedded
       case class Person(name: String, age: Int, address: Address)
@@ -344,20 +370,11 @@ class QuotationTest extends Spec with Inside {
             ))
           ) if (tid == pid && qid == vid && pid1 == pid && tid2 == pid2 && qid2 == vid2) =>
       }
-
-      val r = ctx.run(qqq)
       ctx.pull(qqq) mustEqual (List("how", "are you"), ExecutionType.Dynamic)
     }
   }
 }
-// two quotations: runtime -> compiletime, compiletime -> runtime
-// three quotations: runtime -> compiletime -> runtime, compiletime -> runtime -> compiletime
-// test lazy lift going into a runtime query
 
-// test a runtime quotation
-// test two runtime quotations
-// test a runtime going into a compiletime
-
-
-// test a quotation with a context
+// test lazy lift going into a runtime query (i.e. should throw an exception)
+// test a quotation with a context that is no longer available (e.g. inner class)
 // test a quotation producing a variable
