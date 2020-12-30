@@ -406,9 +406,9 @@ class QuotationTest extends Spec with Inside {
       import ctx._
 
       class Outer {
-        inline def qqq = quote { new Inner().qq.map(s => s + lift("are you")) }
+        inline def qqq = quote { new Inner().qq }
         class Inner {
-          inline def qq = quote { new Core().q.map(p => p.name + lift("how")) }
+          inline def qq = quote { new Core().q }
           class Core {
             inline def q = quote { query[Person] }
           }
