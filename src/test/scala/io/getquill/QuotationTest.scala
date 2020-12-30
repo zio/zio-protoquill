@@ -406,15 +406,9 @@ class QuotationTest extends Spec with Inside {
       import ctx._
 
       class Outer {
-        inline def qqq = quote { new Inner().qq }
-        class Inner {
-          inline def qq = quote { new Core().q }
-          class Core {
-            inline def q = quote { query[Person] }
-          }
-        }
+        inline def qqq = quote { query[Person] }
       }
-      inline def qry = quote { new Outer().qqq }
+      inline def qry = new Outer().qqq
       println(ctx.run(qry))
     }
   }
