@@ -354,7 +354,6 @@ class QuotationTest extends Spec with Inside {
       }
 
       val qqq = quote { qq.map(s => s + lift("are you")) }
-      println(io.getquill.util.Messages.qprint(qqq))
       // Should not match this pattern, should be spliced directly from the inline def
       qqq must matchPattern {
         case Quoted(
@@ -373,8 +372,33 @@ class QuotationTest extends Spec with Inside {
       ctx.pull(qqq) mustEqual (List("how", "are you"), ExecutionType.Dynamic)
     }
   }
-}
 
-// test lazy lift going into a runtime query (i.e. should throw an exception)
-// test a quotation with a context that is no longer available (e.g. inner class)
-// test a quotation producing a variable
+  "special cases" - {
+    "lazy lift shuold crash dynamic query" in {
+      case class Person(name: String, age: Int)
+      val q = quote { query[Person].map(p => p.name + lazyLift("hello")) }
+
+      val ctx = new MirrorContext(PostgresDialect, Literal)
+      import ctx._
+
+      assertThrows[IllegalArgumentException] { ctx.run(q) }
+    }
+
+    "pull quote from unavailable context" in {
+      val ctx = new MirrorContext(PostgresDialect, Literal)
+      import ctx._
+
+      class Outer {
+        inline def qqq = quote { new Inner().qq.map(s => s + lift("are you")) }
+        class Inner {
+          inline def qq = quote { new Core().q.map(p => p.name + lift("how")) }
+          class Core {
+            inline def q = quote { query[Person] }
+          }
+        }
+      }
+      inline def q = new Outer().qqq
+      println(ctx.run(q))
+    }
+  }
+}
