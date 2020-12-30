@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 import io.getquill.quoter.QuotationLot
 import io.getquill.quoter.Dsl._
 import io.getquill._
-import io.getquill.ast._
+import io.getquill.ast.{ Query => AQuery, _ }
 import io.getquill.ast.{ Property => Prop }
 import io.getquill.quoter.Quoted
 import io.getquill.quoter.Planter
@@ -14,6 +14,7 @@ import io.getquill.quoter.QuotationVase
 import io.getquill.quoter.QuotationLot
 import io.getquill.dsl.GenericEncoder
 import io.getquill.context.mirror.Row
+import io.getquill.context.ExecutionType
 
 import org.scalatest._
 
@@ -21,6 +22,16 @@ class QuotationTest extends Spec with Inside {
   case class Address(street:String, zip:Int) extends Embedded
   case class Person(name: String, age: Int, address: Address)
   import ShortAst._
+
+  // TODO Move this to spec?
+  import io.getquill.NamingStrategy
+  import io.getquill.idiom.Idiom
+  
+  // TODO add to all tests?
+  extension [T, D <: Idiom, N <: NamingStrategy](ctx: MirrorContext[D, N])
+    inline def pull(inline q: Query[T]) =
+      val r = ctx.run(q)
+      (r.prepareRow.data.toList, r.executionType)
 
   "compiletime quotation has correct ast for" - {
     "trivial whole-record select" in {
@@ -163,17 +174,17 @@ class QuotationTest extends Spec with Inside {
       }
     }
 
-    "query with a lift" in {
+    "lift" in {
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
       import ctx._
-      inline def q = quote { lift("hello") }
+      val q = quote { lift("hello") }
       q must matchPattern {
         case Quoted(ScalarTag(tagUid), List(EagerPlanter("hello", encoder, vaseUid)), List()) if (tagUid == vaseUid) =>
       }
       List(Row("hello")) mustEqual q.encodeEagerLifts(new Row())
     }
 
-    "two-level query with a lift" in {
+    "spliced lift" in {
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
       import ctx._
       val q = quote { lift("hello") }
@@ -199,7 +210,21 @@ class QuotationTest extends Spec with Inside {
           ) if (tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
       }
     }
-    "two level val query with a two lifts and plus operator" in {
+    "two-level query with a lift and plus operator" in {
+      val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+      import ctx._
+      val q = quote { query[Person] }
+      val qq = quote { q.map(p => p.name + lift("hello")) }
+      qq must matchPattern {
+        case Quoted(
+            Map(QuotationTag(tid), Id("p"), Property(Id("p"), "name") `(+)` ScalarTag(tagUid)),
+            List(EagerPlanter("hello", encoder, planterUid)),
+            List(QuotationVase(Quoted(Ent("Person"), Nil, Nil), vid))
+          ) if (tid == vid && tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
+      }
+      ctx.pull(qq) mustEqual (List("hello"), ExecutionType.Dynamic)
+    }
+    "three level val query with a two lifts and plus operator" in {
       case class Address(street:String, zip:Int) extends Embedded
       case class Person(name: String, age: Int, address: Address)
       val q = quote { query[Person] }
@@ -217,6 +242,7 @@ class QuotationTest extends Spec with Inside {
       }
 
       val qqq = quote { qq.map(s => s + lift("are you")) }
+      println("=====================IN TEST=================\n" + io.getquill.util.Messages.qprint(qqq))
       qqq must matchPattern {
         case Quoted(
             Map(QuotationTag(qid2), Id("s"), Id("s") `(+)` ScalarTag(tid2)),
@@ -231,114 +257,102 @@ class QuotationTest extends Spec with Inside {
             ))
           ) if (tid == pid && qid == vid && tid2 == pid2 && qid2 == vid2) =>
       }
-      //println(pprint.apply(qqq))
+      // if this below tests fails, line error is 259 on scalatest, report as a bug? reproduce?
+      // [info]   (List(how),Dynamic) did not equal (List(how, are you),Dynamic) (QuotationTest.scala:259)
+      ctx.pull(qqq) mustEqual (List("how", "are you"), ExecutionType.Dynamic)
+    }
+  }
+
+  "mixed compile-time and runtime queries" - {
+    // TODO Make a test of this case but with an eager lazy lift that shuold fail?
+    "runtime -> compile-time" in {
+      val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+      import ctx._
+      val q = quote { query[Person] }
+      inline def qq = quote { q.map(p => p.name + lift("hello")) }
+      qq must matchPattern {
+        case Quoted(
+            Map(QuotationTag(tid), Id("p"), Property(Id("p"), "name") `(+)` ScalarTag(tagUid)),
+            List(EagerPlanter("hello", encoder, planterUid)),
+            List(QuotationVase(Quoted(Ent("Person"), Nil, Nil), vid))
+          ) if (tid == vid && tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
+      }
+      val r = ctx.run(qq)
+      ctx.pull(qq) mustEqual (List("hello"), ExecutionType.Dynamic)
+    }
+
+    "compile-time -> runtime" in {
+      val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+      import ctx._
+      inline def q = quote { query[Person] }
+      val qq = quote { q.map(p => p.name + lift("hello")) }
+      qq must matchPattern {
+        case Quoted(
+            Map(Ent("Person"), Id("p"), Property(Id("p"), "name") `(+)` ScalarTag(tagUid)),
+            List(EagerPlanter("hello", encoder, planterUid)),
+            Nil
+          ) if (tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
+      }
+      
+      val r = ctx.run(qq)
+      ctx.pull(qq) mustEqual (List("hello"), ExecutionType.Dynamic)
+    }
+
+    
+
+    /*
+     * Inject runtime -> Into compile-time -> Into runtime
+     * 
+     * If a runtime query is injected into a compile-time one a QuotationVase will be created
+     * in the compile-time query.
+     * When the compile-time query is the injected into second runtime one, the compile-time
+     * query has a QuotationVase so it will be treated like a runtime query and be put into a
+     * QuotationVase. It's lifts however will be spliced into the last-query's ones however.
+     * This is fine because during execution all the lifts are deduped by UID.
+     */
+    "runtime -> compile-time -> runtime" in {
+      case class Address(street:String, zip:Int) extends Embedded
+      case class Person(name: String, age: Int, address: Address)
+      val q = quote { query[Person] }
+
+      val ctx = new MirrorContext(PostgresDialect, Literal)
+      import ctx._
+
+      inline def qq = quote { q.map(p => p.name + lift("how")) }
+      qq must matchPattern {
+        case Quoted(
+          Map(QuotationTag(qid), Ident("p"), Property(Ident("p"), "name") `(+)` ScalarTag(tuid)),
+          List(EagerPlanter("how", enc, puid)),
+          List(QuotationVase(Quoted(Ent("Person"), Nil, Nil), vid))
+        ) if (tuid == puid && qid == vid) =>
+      }
+
+      val qqq = quote { qq.map(s => s + lift("are you")) }
       println(io.getquill.util.Messages.qprint(qqq))
-      ctx.run(qqq).prepareRow.data.toList mustEqual List("how", "are you")
+      // Should not match this pattern, should be spliced directly from the inline def
+      qqq must matchPattern {
+        case Quoted(
+            Map(QuotationTag(qid2), Id("s"), Id("s") `(+)` ScalarTag(tid2)),
+            List(EagerPlanter("how", enc, pid), EagerPlanter("are you", enc2, pid2)),
+            List(QuotationVase(
+              Quoted(
+                Map(QuotationTag(qid), Ident("p"), Property(Ident("p"), "name") `(+)` ScalarTag(tid)),
+                List(EagerPlanter("how", enc1, pid1)),
+                List(QuotationVase(Quoted(Ent("Person"), Nil, Nil), vid))
+              ),
+              vid2
+            ))
+          ) if (tid == pid && qid == vid && pid1 == pid && tid2 == pid2 && qid2 == vid2) =>
+      }
+
+      val r = ctx.run(qqq)
+      ctx.pull(qqq) mustEqual (List("how", "are you"), ExecutionType.Dynamic)
     }
   }
 }
-
-
-// @main def simpleLift = {
-//   
-
-//   case class Person(name: String)
-
-//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-//   import ctx._
-//   inline def q = quote {
-//     liftEager("hello")
-//   }
-//   println(q)
-//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[Planter[String, ctx.PrepareRow /* or just Row */]]
-//   println(vase.encoder.apply(0, vase.value, new Row()))
-// }
-
-// @main def runtimeEagerLift = {
-//   
-
-//   case class Person(name: String)
-
-//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-//   import ctx._
-//   def q = quote {
-//     liftEager("hello")
-//   }
-//   val qq = quote { q }
-//   println(qq)
-//   val vase = q.lifts.asInstanceOf[Product].productIterator.toList.head.asInstanceOf[Planter[String, ctx.PrepareRow /* or just Row */]]
-//   println(vase.encoder.apply(0, vase.value, new Row()))
-// }
-
-
-// @main def liftAndRun = {
-//   
-
-//   case class Person(name: String)
-
-//   inline def q = quote {
-//     query[Person].map(p => p.name + lift("foo"))
-//   }
-
-//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-//   import ctx._
-
-//   println(q)
-
-//   println(run(q).string)
-//   println(run(q).prepareRow(new Row()))
-// }
-
-// @main def identTest = {
-//   //import scala.language.implicitConversions
-
-//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-//   import ctx._
-//   val q = quote {
-//     lift("hello")
-//   }
-//   val qq = quote { //hello
-//     q
-//   }
-//   printer.lnf(qq)
-//   //val output = run(qq)
-// }
-
-// TODO Need to have an error for this scenario!!
-// @main def noEncoderTestRuntime = { 
-//   //import scala.language.implicitConversions
-//   case class Person(name: String, age: Int)
-
-//   class Foo
-//   val q = quote {
-//     query[Person].map(p => p.name + lift(new Foo))
-//   }
-//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-//   import ctx._
-//   val qq = quote { //hello
-//     q
-//   }
-//   printer.lnf(qq)
-//   val output = run(qq)
-// }
-
-// TODO This is a negative test (i.e. encoder finding should not work. Should look into how to write these for dotty)
-// @main def noEncoderTestCompile = { 
-//   case class Person(name: String, age: Int)
-
-//   class Foo
-//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-//   import ctx._
-//   inline def q = quote {
-//     query[Person].map(p => p.name + lift(new Foo))
-//   }
-  
-//   inline def qq = quote { //hello
-//     q
-//   }
-//   printer.lnf(qq)
-//   val output = run(qq)
-// }
+// two quotations: runtime -> compiletime, compiletime -> runtime
+// three quotations: runtime -> compiletime -> runtime, compiletime -> runtime -> compiletime
+// test lazy lift going into a runtime query
 
 // test a runtime quotation
 // test two runtime quotations
