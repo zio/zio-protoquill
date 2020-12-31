@@ -8,9 +8,9 @@ import scala.compiletime.erasedValue
 import io.getquill.ast.Visibility.{ Hidden, Visible }
 import scala.deriving._
 import scala.quoted._
+import io.getquill.parser.Lifter
 
-
-object Elaborate {
+object ElaborateQueryMeta {
   import io.getquill.dsl.GenericDecoder
 
   sealed trait TermType
@@ -175,7 +175,8 @@ object Elaborate {
     val expanded = base[T](Term(baseName, Branch))
     expanded.toAst
   }
-
+  
+  /** ElaborateQueryMeta the query AST in a static query **/
   def static[T](ast: Ast)(using Quotes, Type[T]): AMap = {
     val lifted = staticList[T]("x")
     //println("Expanded to: " + expanded)
@@ -188,12 +189,12 @@ object Elaborate {
     AMap(ast, Ident("x"), insert)
   }
 
-  import io.getquill.parser.Lifter
+  /** An external hook to run the Elaboration with a given AST during runtime (mostly for testing). */
+  inline def external[T](ast: Ast): AMap = ${ dynamic[T]('ast) }
 
-  inline def runtime[T](ast: Ast): AMap = ${ runtimeImpl[T]('ast) }
-  def runtimeImpl[T](ast: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
-    val expanded = base[T](Term("x", Branch))
-    val lifted = expanded.toAst.map(ast => Lifter(ast))
+  /** ElaborateQueryMeta the query AST in a dynamic query **/
+  def dynamic[T](ast: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
+    val lifted = staticList[T]("x").map(ast => Lifter(ast))
     val insert = 
       if (lifted.length == 1) 
         lifted.head 

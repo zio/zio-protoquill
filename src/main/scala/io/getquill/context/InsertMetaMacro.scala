@@ -7,7 +7,7 @@ import io.getquill.util.LoadObject
 import io.getquill.parser.Parser
 import io.getquill.parser.Parser.Implicits._
 import io.getquill.parser.ParserFactory
-import io.getquill.derived.Elaborate
+import io.getquill.derived.ElaborateQueryMeta
 import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, _ }
 import io.getquill.quoter.Quoted
 import io.getquill.parser.Lifter

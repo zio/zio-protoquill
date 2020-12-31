@@ -8,7 +8,7 @@ import io.getquill.util.LoadObject
 import io.getquill.parser.Parser
 import io.getquill.parser.Parser.Implicits._
 import io.getquill.parser.ParserFactory
-import io.getquill.derived.Elaborate
+import io.getquill.derived.ElaborateQueryMeta
 import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, _ }
 import io.getquill.parser.Lifter
 import io.getquill.parser.Unlifter
@@ -126,7 +126,7 @@ object InsertMacro {
     def deduceAssignmentsFrom(insertee: CaseClass) = {
       // Expand into a AST
       // T:Person(name:Str, age:Option[Age]) Age(value: Int) -> Ast: List(v.name, v.age.map(v => v.value))
-      val expansionList = Elaborate.staticList[T](VIdent.name)
+      val expansionList = ElaborateQueryMeta.staticList[T](VIdent.name)
 
       // Now synthesize (v) => vAssignmentProperty -> assignmentValue
       // e.g. (p:Person) => p.firstName -> "Joe"
