@@ -6,6 +6,7 @@ import io.getquill._
 import io.getquill.ast._
 import io.getquill.quoter.Quoted
 import io.getquill._
+import org.scalatest._
 
 class OneMapRunSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)

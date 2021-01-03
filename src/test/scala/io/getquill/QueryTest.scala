@@ -114,13 +114,13 @@ class QueryTest extends Spec with Inside { //hellooooooo
   // @Test
   ("runtime query") - {
     ("should be the same as compile-time when not referencing anything else") in {
-      inside(peopleRuntime) { case Quoted(Entity(entityName, List()), List(), _) => 
-        entityName mustEqual "Person"
-      }
+      peopleRuntime.must(matchPattern({
+        case Quoted(Entity("Person", List()), List(), _) => 
+      }))
     }
 
     ("should contain a QuotationVase when referencing a runtime query") in {
-      inside(addressesRuntime) { 
+      addressesRuntime must matchPattern { 
         case Quoted(
           Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "address")), 
           List(),
