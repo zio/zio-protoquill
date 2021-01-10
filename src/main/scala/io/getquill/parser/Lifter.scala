@@ -1,12 +1,24 @@
 package io.getquill.parser
 
-import scala.quoted._
+import scala.quoted.{ Type => TType, _ }
 import scala.quoted.Const
 import scala.quoted
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import io.getquill.parser.TastyMatchers._
 import scala.reflect.ClassTag;
 import scala.reflect.classTag;
+import io.getquill.quat.Quat
+import io.getquill.util.Messages
+
+object Lifter {
+  private def newLifter(ast: Ast) = new Lifter(ast.countQuatFields > Messages.maxQuatFields) {}
+  def apply(ast: Ast): Quotes ?=> Expr[Ast] = newLifter(ast).liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
+  def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = newLifter(ast).liftableAssignment(ast)
+  def entity(ast: Entity): Quotes ?=> Expr[Entity] = newLifter(ast).liftableEntity(ast)
+  def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = newLifter(ast).liftableTuple(ast)
+  def quat(quat: Quat): Quotes ?=> Expr[Quat] = 
+    (new Lifter(quat.countFields > Messages.maxQuatFields) {}).liftableQuat(quat)
+}
 
 /**
  * Convert constructs of Quill Ast into Expr[Ast]. This allows them to be passed
@@ -15,12 +27,7 @@ import scala.reflect.classTag;
  * 
  * Note that liftable List is already taken care of by the Dotty implicits
  */
-object Lifter {
-
-  def apply(ast: Ast): Quotes ?=> Expr[Ast] = liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
-  def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = liftableAssignment(ast)
-  def entity(ast: Entity): Quotes ?=> Expr[Entity] = liftableEntity(ast)
-  def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = liftableTuple(ast)
+trait Lifter(serializeQuats: Boolean) {
 
   extension [T](t: T)(using ToExpr[T], Quotes)
     def expr: Expr[T] = Expr(t)
@@ -43,7 +50,7 @@ object Lifter {
       case Visibility.Hidden => '{ Visibility.Hidden }
   }
 
-  given liftProperty : NiceLiftable[Property] with {
+  given liftableProperty : NiceLiftable[Property] with {
     def lift = {
       // Don't need the other case since Property.Opinionated will match the object
       // Note: don't declare variable called 'ast' since it is used internally
@@ -52,9 +59,9 @@ object Lifter {
     }
   }
 
-  given liftIdent : NiceLiftable[AIdent] with {
+  given liftableIdent : NiceLiftable[AIdent] with {
     def lift =
-      case AIdent(name: String) => '{ AIdent(${name.expr})  }
+      case AIdent(name: String, quat) => '{ AIdent(${name.expr}, ${quat.expr})  }
   }
 
   given liftPropertyAlias : NiceLiftable[PropertyAlias] with {
@@ -75,11 +82,40 @@ object Lifter {
       case FullJoin => '{ FullJoin }
   }
 
-  given liftOptionOperation : NiceLiftable[OptionOperation] with {
+  given liftableQuatProduct: NiceLiftable[Quat.Product] with {
+    def lift =
+      // If we are in the JVM, use Kryo to serialize our Quat due to JVM 64KB method limit that we will run into of the Quat Constructor
+      // if plainly lifted into the method created by our macro (i.e. the 'ast' method).
+      case quat: Quat.Product if (serializeQuats)                                       => '{ io.getquill.quat.Quat.Product.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
+      case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) => '{ io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${tpe.expr})(${fields.toList.spliceVarargs}: _*)(${values.toList.spliceVarargs}: _*)(${renamesFrom.toList.spliceVarargs}: _*)(${renamesTo.toList.spliceVarargs}: _*) }
+  }
+
+  extension [T: TType](list: List[T])(using ToExpr[T], Quotes)
+    def spliceVarargs = Varargs(list.map(Expr(_)).toSeq)
+
+  given liftableQuat : NiceLiftable[Quat] with {
+    def lift =
+      case quat: Quat.Product if (serializeQuats) => '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
+      case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) => '{ io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${tpe.expr})(${fields.toList.spliceVarargs}: _*)(${values.toList.spliceVarargs}: _*)(${renamesFrom.toList.spliceVarargs}: _*)(${renamesTo.toList.spliceVarargs}: _*) }
+      case Quat.Value => '{ io.getquill.quat.Quat.Value }
+      case Quat.Null => '{ io.getquill.quat.Quat.Null }
+      case Quat.Generic => '{ io.getquill.quat.Quat.Generic }
+      case Quat.Unknown => '{ io.getquill.quat.Quat.Unknown }
+      case Quat.BooleanValue => '{ io.getquill.quat.Quat.BooleanValue }
+      case Quat.BooleanExpression => '{ io.getquill.quat.Quat.BooleanExpression }
+  }
+
+  given liftableQuatProductType: NiceLiftable[Quat.Product.Type] with {
+    def lift =
+      case Quat.Product.Type.Concrete => '{ io.getquill.quat.Quat.Product.Type.Concrete }
+      case Quat.Product.Type.Abstract => '{ io.getquill.quat.Quat.Product.Type.Abstract }
+  }
+
+  given liftableOptionOperation : NiceLiftable[OptionOperation] with {
     def lift =
       case OptionApply(a) => '{ OptionApply(${a.expr}) }
       case OptionSome(a) => '{ OptionSome(${a.expr}) }
-      case OptionNone => '{ OptionNone }
+      case OptionNone(quat) => '{ OptionNone(${quat.expr}) }
       case OptionIsEmpty(a) => '{ OptionIsEmpty(${a.expr}) }
       case OptionMap(a, b, c) => '{ OptionMap(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionTableMap(a, b, c) => '{ OptionTableMap(${a.expr}, ${b.expr}, ${c.expr}) }
@@ -89,7 +125,7 @@ object Lifter {
 
   given liftableEntity : NiceLiftable[Entity] with
     def lift = 
-      case Entity(name: String, list) => '{ Entity(${name.expr}, ${list.expr})  }
+      case Entity(name: String, list, quat) => '{ Entity(${name.expr}, ${list .expr}, ${quat.expr})  }
 
   given liftableTuple: NiceLiftable[Tuple] with
     def lift = 
@@ -98,7 +134,7 @@ object Lifter {
 
   given liftableAst : NiceLiftable[Ast] with {
     def lift =
-      case Constant(tmc.ConstantValue(v)) => '{ Constant(${tmc.ConstantExpr(v)}) }
+      case Constant(tmc.ConstantValue(v), quat) => '{ Constant(${tmc.ConstantExpr(v)}, ${quat.expr}) }
       case Function(params: List[AIdent], body: Ast) => '{ Function(${params.expr}, ${body.expr}) }
       case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.expr}, ${values.expr}) }
       case v: Entity => liftableEntity(v)
@@ -111,14 +147,14 @@ object Lifter {
       case QuotationTag(uid: String) => '{QuotationTag(${uid.expr})}
       case Union(a, b) => '{ Union(${a.expr}, ${b.expr}) }
       case Insert(query: Ast, assignments: List[Assignment]) => '{ Insert(${query.expr}, ${assignments.expr}) }
-      case Infix(parts, params, pure) => '{ Infix(${parts.expr}, ${params.expr}, ${pure.expr}) }
+      case Infix(parts, params, pure, quat) => '{ Infix(${parts.expr}, ${params.expr}, ${pure.expr}, ${quat.expr}) }
       case Join(typ, a, b, identA, identB, body) => '{ Join(${typ.expr}, ${a.expr}, ${b.expr}, ${identA.expr}, ${identB.expr}, ${body.expr}) }
       case FlatJoin(typ, a, identA, on) => '{ FlatJoin(${typ.expr}, ${a.expr}, ${identA.expr}, ${on.expr}) }
       case NullValue => '{ NullValue }
       case CaseClass(lifts) => '{ CaseClass(${lifts.expr}) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
-      case v: Property => liftProperty(v)
-      case v: AIdent => liftIdent(v)
-      case v: OptionOperation => liftOptionOperation(v)
+      case v: Property => liftableProperty(v)
+      case v: AIdent => liftableIdent(v)
+      case v: OptionOperation => liftableOptionOperation(v)
   }
 
   import EqualityOperator.{ == => ee }

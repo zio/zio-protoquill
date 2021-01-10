@@ -66,9 +66,15 @@ object QuoteMacro {
 
     // TODo add an error if body cannot be parsed
     val rawAst = parserFactory.apply.seal.apply(body)
+    //println("Raw Ast is: " + io.getquill.util.Messages.qprint(rawAst))
+    //println("Raw Quat is: " + rawAst.quat)
+
     val ast = BetaReduction(rawAst)
 
-    //println("Ast Is: " + ast)
+    //println("Raw Ast is (Again) ===: " + io.getquill.util.Messages.qprint(rawAst))
+    //println("Raw Quat is (Again) ===: " + rawAst.quat)
+    //println("Ast Is ====: " + io.getquill.util.Messages.qprint(ast))
+    //println("Quat is: " + ast.quat)
 
     // TODO Add an error if the lifting cannot be found
     val reifiedAst = Lifter(ast)

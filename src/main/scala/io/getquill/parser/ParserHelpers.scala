@@ -15,13 +15,16 @@ import io.getquill.EntityQuery
 import io.getquill.Query
 import io.getquill.Format
 import io.getquill.parser.ParserHelpers._
+import io.getquill.quat.QuatMaking
+import io.getquill.quat.Quat
 
 object ParserHelpers {
 
-  trait Idents(implicit val qctx: Quotes) extends TastyMatchers {
+  trait Idents(implicit override val qctx: Quotes) extends TastyMatchers with QuatMaking {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
 
-    def cleanIdent(name: String): AIdent = AIdent(name.replace("_$", "x"))
+    def cleanIdent(name: String, quat: Quat): AIdent = AIdent(name.replace("_$", "x"), quat)
+    def cleanIdent(name: String, tpe: TypeRepr): AIdent = AIdent(name.replace("_$", "x"), InferQuat.ofType(tpe))
   }
   
   trait Assignments(implicit override val qctx: Quotes) extends Idents with TastyMatchers {
@@ -39,8 +42,8 @@ object ParserHelpers {
 
       def unapply(term: Term): Option[Assignment] =
         UntypeExpr(term.asExpr) match {
-          case Lambda1(ident, '{ type v; ($prop: Any).->[`v`](($value: `v`)) }) => 
-            Some(Assignment(cleanIdent(ident), astParse(prop), astParse(value)))
+          case Lambda1(ident, identTpe, '{ type v; ($prop: Any).->[`v`](($value: `v`)) }) => 
+            Some(Assignment(cleanIdent(ident, identTpe), astParse(prop), astParse(value)))
           case _ => None
         }
     }
@@ -62,12 +65,12 @@ object ParserHelpers {
           case _ => Parser.throwExpressionError(expr, classOf[PropertyAlias])
 
       def unapply[T: Type](expr: Expr[Any]): Option[PropertyAlias] = expr match
-        case Lambda1(_, '{ ($prop: Any).->[v](${ConstExpr(alias: String)}) } ) =>
+        case Lambda1(_, _, '{ ($prop: Any).->[v](${ConstExpr(alias: String)}) } ) =>
           def path(tree: Expr[_]): List[String] =
             tree match
               case a`.`b => 
                 path(a) :+ b
-              case '{ (${a`.`b}: Option[t]).map[r](${Lambda1(arg, body)}) } =>
+              case '{ (${a`.`b}: Option[t]).map[r](${Lambda1(arg, tpe, body)}) } =>
                 path(a) ++ (b :: path(body))
               case _ => 
                 Nil
@@ -79,7 +82,7 @@ object ParserHelpers {
       
   }
 
-  trait PatternMatchingValues(implicit val qctx: Quotes) extends TastyMatchers {
+  trait PatternMatchingValues(implicit override val qctx: Quotes) extends TastyMatchers with QuatMaking {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import Parser.Implicits._
     import io.getquill.util.Interpolator
@@ -92,9 +95,9 @@ object ParserHelpers {
     object ValDefTerm {
       def unapply(tree: Tree): Option[Ast] =
         tree match {
-          case TValDef(name, Inferred(), Some(t @ PatMatchTerm(ast))) =>
+          case TValDef(name, tpe, Some(t @ PatMatchTerm(ast))) =>
             println(s"====== Parsing Val Def ${name} = ${t.show}")
-            Some(Val(AIdent(name), ast))
+            Some(Val(AIdent(name, InferQuat.ofType(tpe.tpe)), ast))
 
           // In case a user does a 'def' instead of a 'val' with no paras and no types then treat it as a val def
           // this is useful for things like (TODO Get name) where you'll have something like:
@@ -104,7 +107,7 @@ object ParserHelpers {
           // Then in the AST it will look something like:
           // query[Person].map(p => (p.name, p.age)).filter(x$1 => { val name=x$1._1; val age=x$1._2; name == "Joe" })
           // and you need to resolve the val defs thare are created automatically
-          case DefDef(name, _, paramss, _, rhsOpt) if (paramss.length == 0) =>
+          case DefDef(name, _, paramss, tpe, rhsOpt) if (paramss.length == 0) =>
             //println(s"====== Parsing Def Def ${name} = ${rhsOpt.map(_.show)}")
             val body =
               rhsOpt match {
@@ -113,9 +116,9 @@ object ParserHelpers {
                 case Some(rhs) => rhs
               }
             val bodyAst = astParse(body.asExpr)
-            Some(Val(AIdent(name), bodyAst))
+            Some(Val(AIdent(name, InferQuat.ofType(tpe.tpe)), bodyAst))
 
-          case TValDef(name, Inferred(), rhsOpt) =>
+          case TValDef(name, tpe, rhsOpt) =>
             val body =
               rhsOpt match {
                 // TODO Better site-description in error
@@ -123,7 +126,7 @@ object ParserHelpers {
                 case Some(rhs) => rhs
               }
             val bodyAst = astParse(body.asExpr)
-            Some(Val(AIdent(name), bodyAst))
+            Some(Val(AIdent(name, InferQuat.ofType(tpe.tpe)), bodyAst))
 
           case _ => None
         }

@@ -10,6 +10,7 @@ import io.getquill.quoter.QuotationLot
 import io.getquill.quoter.QuotationVase
 import io.getquill.context.ExecutionType
 import org.scalatest._
+import io.getquill.quat.quatOf
 
 class QueryTest extends Spec with Inside { //hellooooooo
 
@@ -115,16 +116,16 @@ class QueryTest extends Spec with Inside { //hellooooooo
   ("runtime query") - {
     ("should be the same as compile-time when not referencing anything else") in {
       peopleRuntime.must(matchPattern({
-        case Quoted(Entity("Person", List()), List(), _) => 
+        case Quoted(Entity("Person", List(), _), List(), _) => 
       }))
     }
 
     ("should contain a QuotationVase when referencing a runtime query") in {
       addressesRuntime must matchPattern { 
         case Quoted(
-          Map(QuotationTag(_), Ident("p"), Property(Ident("p"), "address")), 
+          Map(QuotationTag(_), Ident("p", _), Property(Ident("p", _), "address")), 
           List(),
-          List(QuotationVase(Quoted(Entity("Person", List()), List(), _), _))
+          List(QuotationVase(Quoted(Entity("Person", List(), _), List(), _), _))
         ) =>
       }
     }

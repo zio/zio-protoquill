@@ -9,6 +9,7 @@ import io.getquill.ast.Visibility.{ Hidden, Visible }
 import scala.deriving._
 import scala.quoted._
 import io.getquill.parser.Lifter
+import io.getquill.quat.Quat
 
 /**
  * This was around to flesh-out details of the outermost AST of a query based on the fields of the
@@ -105,14 +106,14 @@ object ElaborateQueryMeta {
             toAst(elem, property(parent, name, tt)))
           
         case Term(name, Leaf, list, true) =>
-          val idV = Ident("v")
+          val idV = Ident("v", Quat.Generic) // TODO Specific quat inference
           for {
             elem <- list
             newAst <- toAst(elem, idV)
           } yield OptionMap(property(parent, name, Leaf), idV, newAst)
 
         case Term(name, Branch, list, true) =>
-          val idV = Ident("v")
+          val idV = Ident("v", Quat.Generic)
           for {
             elem <- list
             newAst <- toAst(elem, idV)
@@ -123,25 +124,25 @@ object ElaborateQueryMeta {
       node match {
         // If leaf node, return the term, don't care about if it is optional or not
         case Term(name, _, Nil, _) =>
-          List(Ident(name))
+          List(Ident(name, Quat.Generic))
 
         // T( a, [T(b), T(c)] ) => [ a.b, a.c ] 
         // (done?)         => [ P(a, b), P(a, c) ] 
         // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
         // where T is Term and P is Property (in Ast) and [] is a list
         case Term(name, _, list, false) =>
-          list.flatMap(elem => toAst(elem, Ident(name)))
+          list.flatMap(elem => toAst(elem, Ident(name, Quat.Generic)))
 
         // T-Opt( a, T(b), T(c) ) => 
         // [ a.map(v => v.b), a.map(v => v.c) ] 
         // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
         // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
         case Term(name, _, list, true) =>
-          val idV = Ident("v")
+          val idV = Ident("v", Quat.Generic)
           for {
             elem <- list
             newAst <- toAst(elem, idV)
-          } yield Map(Ident(name), idV, newAst)
+          } yield Map(Ident(name, Quat.Generic), idV, newAst)
       }
     }
   }
@@ -245,7 +246,7 @@ object ElaborateQueryMeta {
       else
         Tuple(lifted)
 
-    AMap(ast, Ident("x"), insert)
+    AMap(ast, Ident("x", Quat.Generic), insert)
   }
 
   /** An external hook to run the Elaboration with a given AST during runtime (mostly for testing). */
@@ -260,6 +261,6 @@ object ElaborateQueryMeta {
       else 
         '{ Tuple(${Expr.ofList(lifted)}) }
 
-    '{ AMap($ast, Ident("x"), $insert) }
+    '{ AMap($ast, Ident("x", Quat.Generic), $insert) }
   }
 }

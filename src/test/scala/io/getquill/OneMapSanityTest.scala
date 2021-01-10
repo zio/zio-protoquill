@@ -5,6 +5,7 @@ import io.getquill.quoter.Dsl._
 import io.getquill._
 import io.getquill.ast._
 import io.getquill.quoter.Quoted
+import io.getquill.quat.quatOf
 
 class OneMapSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)
@@ -16,7 +17,8 @@ class OneMapSanityTest extends Spec {
     inline def qq = quote {
       q.map(p => p.name)
     }
-     qq.ast mustEqual Map(Entity("SanePerson", List()), Ident("p"), Property(Ident("p"), "name"))
+    val quat = quatOf[SanePerson]
+     qq.ast mustEqual Map(Entity("SanePerson", List(), quat.probit), Ident("p", quat), Property(Ident("p", quat), "name"))
   }
 
 }

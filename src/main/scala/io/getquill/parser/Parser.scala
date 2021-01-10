@@ -15,6 +15,8 @@ import io.getquill.EntityQuery
 import io.getquill.Query
 import io.getquill.Format
 import io.getquill.parser.ParserHelpers._
+import io.getquill.quat.QuatMaking
+import io.getquill.quat.Quat
 
 type Parser[R] = PartialFunction[quoted.Expr[_], R]
 type SealedParser[R] = (quoted.Expr[_] => R)
@@ -65,7 +67,7 @@ object Parser {
     }
   }
 
-  trait Clause[R](using override val qctx: Quotes) extends Delegated[R] with TastyMatchers with Idents { base =>
+  trait Clause[R](using override val qctx: Quotes) extends Delegated[R] with TastyMatchers with Idents with QuatMaking { base =>
     import Implicits._
 
     def root: Parser[Ast]
@@ -159,7 +161,7 @@ case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit va
 
   def delegate: PartialFunction[Expr[_], Ast] = {
     case Unseal(RawLambdaN(params, body)) =>
-      val subtree = Function(params.map(cleanIdent(_)), astParse(body.asExpr))
+      val subtree = Function(params.map((name, tpe) => cleanIdent(name, tpe)), astParse(body.asExpr))
       // If there are actions inside the subtree, we need to do some additional sanitizations
       // of the variables so that their content will not collide with code that we have generated.
 
@@ -283,13 +285,13 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   def delegate: PartialFunction[Expr[_], Ast] = {
     case '{ ($o: Option[t]).isEmpty } => OptionIsEmpty(astParse(o))
 
-    case '{ ($o: Option[t]).map(${Lambda1(id, body)}) } => 
-      if (is[Product](o)) OptionTableMap(astParse(o), cleanIdent(id), astParse(body))
-      else OptionMap(astParse(o), cleanIdent(id), astParse(body))
+    case '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } => 
+      if (is[Product](o)) OptionTableMap(astParse(o), cleanIdent(id, idType), astParse(body))
+      else OptionMap(astParse(o), cleanIdent(id, idType), astParse(body))
     
-    case '{ ($o: Option[t]).exists(${Lambda1(id, body)}) } =>
-      if (is[Product](o)) OptionTableExists(astParse(o), cleanIdent(id), astParse(body))
-      else OptionExists(astParse(o), cleanIdent(id), astParse(body))
+    case '{ ($o: Option[t]).exists(${Lambda1(id, idType, body)}) } =>
+      if (is[Product](o)) OptionTableExists(astParse(o), cleanIdent(id, idType), astParse(body))
+      else OptionExists(astParse(o), cleanIdent(id, idType), astParse(body))
   }
 }
 
@@ -305,38 +307,39 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
 
   // This seems to work?
     case '{ type t; EntityQuery.apply[`t`] } => //: EntityQuery[`$t`]
-      val name: String = TypeRepr.of[t].classSymbol.get.name
-      Entity(name, List())
+      val tpe = TypeRepr.of[t]
+      val name: String = tpe.classSymbol.get.name
+      Entity(name, List(), InferQuat.ofType(tpe).probit)
 
     case '{ Dsl.querySchema[t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
       println("Props are: " + properties.map(_.show))
-      val output = Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), Renameable.Fixed)
+      val output = Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), InferQuat.of[t].probit, Renameable.Fixed)
       printer.lnf(output)
       output
 
-    case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, body)}) } => 
-      Map(astParse(q), cleanIdent(ident), astParse(body))
+    case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, tpe, body)}) } => 
+      Map(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    case '{ ($q:Query[qt]).flatMap[mt](${Lambda1(ident, body)}) } => 
-      FlatMap(astParse(q), cleanIdent(ident), astParse(body))
+    case '{ ($q:Query[qt]).flatMap[mt](${Lambda1(ident, tpe, body)}) } => 
+      FlatMap(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    case '{ ($q:Query[qt]).filter(${Lambda1(ident, body)}) } => 
-      Filter(astParse(q), cleanIdent(ident), astParse(body))
+    case '{ ($q:Query[qt]).filter(${Lambda1(ident, tpe, body)}) } => 
+      Filter(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    case '{ ($q:Query[qt]).withFilter(${Lambda1(ident, body)}) } => 
-      Filter(astParse(q), cleanIdent(ident), astParse(body))
+    case '{ ($q:Query[qt]).withFilter(${Lambda1(ident, tpe, body)}) } => 
+      Filter(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
     case '{ ($a: Query[t]).union($b) } => Union(astParse(a), astParse(b))
 
-    case '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1), cleanIdent(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1), cleanIdent(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1), cleanIdent(ident2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, ident2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1), cleanIdent(ident2), astParse(on))
+    case '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
+    case '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
+    case '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
+    case '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
 
-    case '{ type t1; ($q1: Query[`t1`]).join[`t1`](${Lambda1(ident1, on)}) } => 
-      FlatJoin(InnerJoin, astParse(q1), cleanIdent(ident1), astParse(on))
-    case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, on)}) } => 
-      FlatJoin(LeftJoin, astParse(q1), cleanIdent(ident1), astParse(on))
+    case '{ type t1; ($q1: Query[`t1`]).join[`t1`](${Lambda1(ident1, tpe, on)}) } => 
+      FlatJoin(InnerJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
+    case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, tpe, on)}) } => 
+      FlatJoin(LeftJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -395,7 +398,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
   def del: PartialFunction[Expr[_], Ast] = {
     case '{ ($str:String).like($other) } => 
-      Infix(List(""," like ",""), List(astParse(str), astParse(other)), true)
+      Infix(List(""," like ",""), List(astParse(str), astParse(other)), true, Quat.Value)
     case expr @ NamedOp1(left, "==", right) =>
       val leftAst = astParse(left)
       val rightAst = astParse(right)
@@ -408,8 +411,11 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
     case '{ ($i: Int).toString } => astParse(i)
     case '{ ($i: String).toString } => astParse(i)
-    case '{ ($str: String).toInt } => Infix(List("CAST(", " AS Int)"), List(astParse(str)), true)
-    case '{ ($str: String).length } => Infix(List("Len(",")"), List(astParse(str)), true)
+    // TODO .toInt should not have a cast, probably should rely on SQL auto conversion
+    case '{ ($str: String).toInt } => Infix(List("CAST(", " AS Int)"), List(astParse(str)), true, Quat.Value)
+    // TODO not sure how I want to do this on an SQL level. Maybe implement using SQL function containers since
+    // they should be more dialect-portable then just infix
+    case '{ ($str: String).length } => Infix(List("Len(",")"), List(astParse(str)), true, Quat.Value)
 
     case NamedOp1(left, "+", right) if is[String](left) || is[String](right) =>
       BinaryOperation(astParse(left), StringOperator.+, astParse(right))
@@ -454,12 +460,12 @@ case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     // Parse Null values
     case Unseal(Literal(NullConstant())) => NullValue
     // Parse Constants
-    case Unseal(ConstantTerm(v)) => Constant(v)
+    case expr @ Unseal(ConstantTerm(v)) => Constant(v, InferQuat.ofExpr(expr))
     // Parse Option constructors
     case '{ Some.apply[t]($v) } => OptionSome(astParse(v))
     case '{ Option.apply[t]($v) } => OptionApply(astParse(v))
-    case '{ None } => OptionNone
-    case '{ Option.empty[t] } => OptionNone
+    case '{ None } => OptionNone(Quat.Null)
+    case '{ Option.empty[t] } => OptionNone(InferQuat.of[t])
 
     // Parse tuples
     case Unseal(Apply(TypeApply(Select(TupleIdent(), "apply"), types), values)) => 
@@ -471,7 +477,10 @@ case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       val argsAst = args.map(astParse(_))
       CaseClass(fields.zip(argsAst))
       
-    case id @ Unseal(i @ TIdent(x)) => cleanIdent(i.symbol.name)
+    case id @ Unseal(i @ TIdent(x)) => 
+      //cleanIdent(i.symbol.name, InferQuat.ofExpr(id))
+      //println(s"@@@@@@@@@@@@@@@@@@@@@ Parsing ident: ${i.show}: ${i.tpe.widen}")
+      cleanIdent(i.symbol.name, InferQuat.ofType(i.tpe))
   }
 }
 

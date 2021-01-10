@@ -40,7 +40,7 @@ object TypeclassUsecase_Typeclass {
     inline def latestStatus[T, G](inline q: Query[T])(using inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]) =
       q.leftJoin(q)
       .on((a, b) => 
-          groupKey(b) == groupKey(a) &&
+          groupKey(b) == groupKey(a) && //hello
           earlierThan(b, a)
       )
       .filter((a, b) => 

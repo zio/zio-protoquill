@@ -17,6 +17,7 @@ import io.getquill.quoter.QuotationLotExpr._
 import io.getquill.parser.TastyMatchers
 import io.getquill.quoter.Quoted
 import io.getquill.quoter.InsertMeta
+import io.getquill.quat.QuatMaking
 
 /**
  * The function call that regularly drives query insertion is 
@@ -63,14 +64,14 @@ object InsertMacro {
    * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
    * statement is based. The schema is based on the EntityQuery which could potentially be an unquoted SchemaMeta.
    */
-  class Pipeline[T: Type, Parser <: ParserFactory: Type](schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T])(using val qctx: Quotes) extends TastyMatchers:
+  class Pipeline[T: Type, Parser <: ParserFactory: Type](schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T])(using override val qctx: Quotes) extends TastyMatchers with QuatMaking:
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
 
     object EntitySchema:
       private def plainEntity: Entity =
         val entityName = TypeRepr.of[T].classSymbol.get.name
-        Entity(entityName, List())
+        Entity(entityName, List(), InferQuat.of[T].probit)
 
       def summon: Entity =
         val schema = schemaRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]

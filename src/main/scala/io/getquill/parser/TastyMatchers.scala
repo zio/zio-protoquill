@@ -129,33 +129,33 @@ trait TastyMatchers {
   }
 
   object Lambda1 {
-    def unapply(expr: Expr[_]): Option[(String, quoted.Expr[_])] =
-      unapplyTerm(expr.asTerm).map((str, expr) => (str, expr.asExpr))
+    def unapply(expr: Expr[_]): Option[(String, TypeRepr, quoted.Expr[_])] =
+      unapplyTerm(expr.asTerm).map((str, tpe, expr) => (str, tpe, expr.asExpr))
 
-    def unapplyTerm(term: Term): Option[(String, Term)] = Untype(term) match {
-      case Lambda(List(ValDef(ident, _, _)), methodBody) => Some((ident, methodBody))
+    def unapplyTerm(term: Term): Option[(String, TypeRepr, Term)] = Untype(term) match {
+      case Lambda(List(ValDef(ident, tpeTree, _)), methodBody) => Some((ident, tpeTree.tpe, methodBody))
       case Block(List(), expr) => unapplyTerm(expr)
       case _ => None
     }
   }
 
   object Lambda2 {
-    def unapply(expr: Expr[_]): Option[(String, String, quoted.Expr[_])] =
-      unapplyTerm(expr.asTerm).map((str1, str2, expr) => (str1, str2, expr.asExpr))
+    def unapply(expr: Expr[_]): Option[(String, TypeRepr, String, TypeRepr, quoted.Expr[_])] =
+      unapplyTerm(expr.asTerm).map((str1, tpe1, str2, tpe2, expr) => (str1, tpe1, str2, tpe2, expr.asExpr))
 
-    def unapplyTerm(term: Term): Option[(String, String, Term)] = Untype(term) match {
-      case Lambda(List(ValDef(ident1, _, _), ValDef(ident2, _, _)), methodBody) => Some((ident1, ident2, methodBody))
+    def unapplyTerm(term: Term): Option[(String, TypeRepr, String, TypeRepr, Term)] = Untype(term) match {
+      case Lambda(List(ValDef(ident1, tpe1, _), ValDef(ident2, tpe2, _)), methodBody) => Some((ident1, tpe1.tpe, ident2, tpe2.tpe, methodBody))
       case Block(List(), expr) => unapplyTerm(expr)
       case _ => None
     }
   }
 
   object RawLambdaN {
-    def unapply(term: Term): Option[(List[String], Term)] = Untype(term) match {
+    def unapply(term: Term): Option[(List[(String, TypeRepr)], Term)] = Untype(term) match {
         case Lambda(valDefs, methodBody) => 
           val idents =
             valDefs.map {
-              case ValDef(ident, i, u) => ident
+              case ValDef(ident, typeTree, u) => (ident, typeTree.tpe)
             }
 
           Some((idents, methodBody))
@@ -165,8 +165,8 @@ trait TastyMatchers {
   }
 
   object LambdaN {
-    def unapply(term: Expr[_]): Option[(List[String], quoted.Expr[_])] =
-      RawLambdaN.unapply(term.asTerm).map((str, term) => (str, term.asExpr))
+    def unapply(term: Expr[_]): Option[(List[(String, TypeRepr)], quoted.Expr[_])] =
+      RawLambdaN.unapply(term.asTerm).map((strAndTpe, term) => (strAndTpe, term.asExpr))
   }
 
   // object Lambda2 {

@@ -5,8 +5,9 @@ import pprint.{PPrinter, Tree, Util}
 import fansi.Str
 import pprint.{ Renderer, Tree, Truncated }
 import scala.quoted._
+import io.getquill.util.FromMessages
 
-class AstPrinter extends io.getquill.AstPrinter(false, false) {
+class AstPrinter extends io.getquill.AstPrinter(false, false, FromMessages.traceQuats) {
 
   val removePrefixes = Set(
 

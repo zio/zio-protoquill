@@ -6,6 +6,7 @@ import io.getquill._
 import io.getquill.ast._
 import io.getquill.quoter.Quoted
 import io.getquill._
+import io.getquill.quat.quatOf
 
 class OneMapSqlSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)
@@ -17,7 +18,8 @@ class OneMapSqlSanityTest extends Spec {
     inline def qq = quote {
       q.map(p => p.name)
     }
-     qq.ast mustEqual Map(Entity("SanePerson", List()), Ident("p"), Property(Ident("p"), "name"))
+    val quat = quatOf[SanePerson]
+    qq.ast mustEqual Map(Entity("SanePerson", List(), quat.probit), Ident("p", quat), Property(Ident("p", quat), "name"))
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
     val output = ctx.run(qq).string

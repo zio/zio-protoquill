@@ -9,6 +9,7 @@ import scala.concurrent.duration.Duration
 import io.getquill.quoter.Quoted
 import io.getquill.quoter.EagerPlanter
 import io.getquill.ast._
+import io.getquill.quat.Quat
 
 abstract class Spec extends AnyFreeSpec with Matchers /* with BeforeAndAfterAll */ {
 
@@ -21,11 +22,11 @@ abstract class Spec extends AnyFreeSpec with Matchers /* with BeforeAndAfterAll 
 
   object ShortAst {
     object Id {
-      def apply(str: String) = Ident(str)
+      def apply(str: String, quat: Quat) = Ident(str, quat)
       def unapply(id: Ident) = Some(id.name)
     }
     object Ent {
-      def apply(name: String) = Entity(name, Nil)
+      def apply(name: String, quat: Quat.Product) = Entity(name, Nil, quat)
       def unapply(entity: Entity) = Some(entity.name)
     }
     object `(+)` {

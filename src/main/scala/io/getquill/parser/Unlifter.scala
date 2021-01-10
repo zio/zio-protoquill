@@ -1,10 +1,11 @@
 package io.getquill.parser
 
-import scala.quoted._
+import scala.quoted.{ Type => TType, _ }
 import scala.reflect.ClassTag
 import scala.reflect.classTag;
-
+import io.getquill.quat.Quat
 import io.getquill.ast.{Ident => AIdent, Query => Qry, _}
+
 
 object UnlifterType {
   type Unlift[T] = PartialFunction[Expr[T], T]
@@ -58,7 +59,7 @@ object Unlifter {
 
   given unliftIdent: NiceUnliftable[AIdent] with
     def unlift =
-      case '{ AIdent(${Const(name: String)}) } => AIdent(name)
+      case '{ AIdent(${Const(name: String)}, $quat) } => AIdent(name, quat.unexpr)
 
   given unliftJoinType: NiceUnliftable[JoinType] with
     def unlift =
@@ -89,7 +90,7 @@ object Unlifter {
     def unlift =
       case '{ OptionApply.apply($a) } => OptionApply(a.unexpr)
       case '{ OptionSome.apply($a) } => OptionSome(a.unexpr)
-      case '{ OptionNone } => OptionNone
+      case '{ OptionNone($quat) } => OptionNone(quat.unexpr)
       case '{ OptionIsEmpty.apply($a) } => OptionIsEmpty(a.unexpr)
       case '{ OptionMap.apply($a, $b, $c) } => OptionMap(a.unexpr, b.unexpr, c.unexpr)
       case '{ OptionTableMap.apply($a, $b, $c) } => OptionTableMap(a.unexpr, b.unexpr, c.unexpr)
@@ -105,12 +106,12 @@ object Unlifter {
   given unliftAst: NiceUnliftable[Ast] with {
     // TODO have a typeclass like Splicer to translate constant to strings
     def unlift =
-      case '{ Constant(${Const(b)}: Double) } => Constant(b)
-      case '{ Constant(${Const(b)}: Boolean) } => Constant(b)
-      case '{ Constant(${Const(b)}: String) } => Constant(b)
-      case '{ Constant(${Const(b)}: Int) } => Constant(b)
-      case '{ Entity.apply(${Const(b: String)}, ${elems})  } =>
-        Entity(b, elems.unexpr)
+      case '{ Constant(${Const(b)}: Double, $quat) } => Constant(b, quat.unexpr)
+      case '{ Constant(${Const(b)}: Boolean, $quat) } => Constant(b, quat.unexpr)
+      case '{ Constant(${Const(b)}: String, $quat) } => Constant(b, quat.unexpr)
+      case '{ Constant(${Const(b)}: Int, $quat) } => Constant(b, quat.unexpr)
+      case '{ Entity.apply(${Const(b: String)}, $elems, $quat)  } =>
+        Entity(b, elems.unexpr, quat.unexpr)
       case '{ Function($params, $body) } => Function(params.unexpr, body.unexpr)
       case '{ FunctionApply($function, $values) } => FunctionApply(function.unexpr, values.unexpr)
       case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(query.unexpr, alias.unexpr, body.unexpr)
@@ -125,7 +126,7 @@ object Unlifter {
         QuotationTag(constString(uid))
       case '{ Union($a, $b) } => Union(a.unexpr, b.unexpr)
       case '{ Insert($query, $assignments) } => Insert(query.unexpr, assignments.unexpr)
-      case '{ Infix($parts, $params, $pure) } => Infix(parts.unexpr, params.unexpr, pure.unexpr)
+      case '{ Infix($parts, $params, $pure, $quat) } => Infix(parts.unexpr, params.unexpr, pure.unexpr, quat.unexpr)
       case '{ Tuple.apply($values) } => Tuple(values.unexpr)
       case '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
       case '{ FlatJoin($typ, $a, $aliasA, $on) } => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
@@ -150,6 +151,38 @@ object Unlifter {
       case '{ EqualityOperator.== } =>  EqualityOperator.==
       case '{ BooleanOperator.|| } =>  BooleanOperator.||
       case '{ BooleanOperator.&& } =>  BooleanOperator.&&
+  }
+
+  given quatProductTypeUnliftable: NiceUnliftable[Quat.Product.Type] with {
+    def unlift =
+      case '{ Quat.Product.Type.Concrete } => Quat.Product.Type.Concrete
+      case '{ Quat.Product.Type.Abstract } => Quat.Product.Type.Abstract
+  }
+
+  extension [T](expr: Seq[Expr[T]])(using FromExpr[T], Quotes)
+    def unexprSeq = expr.map(_.valueOrError)
+
+  given quatProductUnliftable: NiceUnliftable[Quat.Product] with {
+    // On JVM, a Quat must be serialized and then lifted from the serialized state i.e. as a FromSerialized using JVM (due to 64KB method limit)
+    def unlift =
+      case '{ Quat.Product.fromSerializedJVM(${Const(str)}) } => Quat.Product.fromSerializedJVM(str)
+      case '{ Quat.Product.WithRenamesCompact.apply($tpe)(${Varargs(fields)}: _*)(${Varargs(values)}: _*)(${Varargs(renamesFrom)}: _*)(${Varargs(renamesTo)}: _*) } => Quat.Product.WithRenamesCompact(tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
+  }
+
+  given quatUnliftable: NiceUnliftable[Quat] with {
+    def unlift =
+      // On JVM, a Quat must be serialized and then lifted from the serialized state i.e. as a FromSerialized using JVM (due to 64KB method limit)
+      case '{ Quat.fromSerializedJVM(${Const(str)}) } => Quat.fromSerializedJVM(str)
+      case '{ Quat.Product.WithRenamesCompact.apply($tpe)(${Varargs(fields)}: _*)(${Varargs(values)}: _*)(${Varargs(renamesFrom)}: _*)(${Varargs(renamesTo)}: _*) } => Quat.Product.WithRenamesCompact(tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
+      
+      // TODO Ask Nicolas How do you uniquely identify this?
+      //case '{ Quat.Product.apply(${Varargs(fields)}: _*) } => Quat.Product(fields.unexprSeq: _*)
+      case '{ Quat.Value } => Quat.Value
+      case '{ Quat.Null } => Quat.Null
+      case '{ Quat.Generic } => Quat.Generic
+      case '{ Quat.Unknown } => Quat.Unknown
+      case '{ Quat.BooleanValue } => Quat.BooleanValue
+      case '{ Quat.BooleanExpression } => Quat.BooleanExpression
   }
 
 }
