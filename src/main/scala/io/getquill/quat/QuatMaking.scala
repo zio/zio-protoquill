@@ -10,6 +10,8 @@ import io.getquill.Query
 import io.getquill.util.Messages
 import io.getquill.parser.Lifter
 import io.getquill.Udt
+import scala.collection.mutable
+import io.getquill.dsl.GenericEncoder
 
 case class Quoted[+T](val ast: io.getquill.ast.Ast)
 
@@ -30,6 +32,32 @@ object QuatMaking {
     println(io.getquill.util.Messages.qprint(quat))
     Lifter.quat(quat)
   }
+
+  type QuotesTypeRepr = Quotes#reflectModule#TypeRepr
+
+  private val encodeableCache: mutable.Map[QuotesTypeRepr, Boolean] = mutable.Map()
+  def lookupIsEncodeable(tpe: QuotesTypeRepr)(computeEncodeable: () => Boolean) =
+    val lookup = encodeableCache.get(tpe)
+    lookup match
+      case Some(value) => 
+        value
+      case None =>
+        val encodeable = computeEncodeable()
+        encodeableCache.put(tpe, encodeable)
+        encodeable
+
+  private val quatCache: mutable.Map[QuotesTypeRepr, Quat] = mutable.Map()
+  def lookupCache(tpe: QuotesTypeRepr)(computeQuat: () => Quat) =
+    val lookup = quatCache.get(tpe)
+    lookup match
+      case Some(value) => 
+        println(s"---------------- SUCESSFULL LOOKUP OF: ${tpe}: ${value}")
+        value
+      case None =>
+        println(s"-------!!!!!!!!! FAILED LOOKUP OF: ${tpe}")
+        val quat = computeQuat()
+        quatCache.put(tpe, quat)
+        quat
 }
 
 inline def quatOf[T]: Quat = ${ QuatMaking.ofType[T] }
@@ -37,12 +65,17 @@ inline def quatOf[T]: Quat = ${ QuatMaking.ofType[T] }
 trait QuatMaking(using override val qctx: Quotes) extends QuatMakingBase {
   import qctx.reflect._
   override def existsEncoderFor(tpe: TypeRepr): Boolean =  
-    tpe.asType match
-      case '[t] => Expr.summon[Value[t]] match
-        case Some(_) => true
-        case None => false
-      case _ =>
-        false
+    // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
+    def encoderComputation() = {
+      tpe.asType match
+        case '[t] => Expr.summon[GenericEncoder[t, _]] match // Pass in PrepareRow as well in order to have things be possibly products in one dialect and values in another???
+          case Some(_) => true
+          case None => false
+        case _ =>
+          false
+    }
+    val output = QuatMaking.lookupIsEncodeable(tpe.widen)(encoderComputation)
+    output
         //quotes.reflect.report.throwError(s"No type for: ${tpe}")
 }
 
@@ -305,7 +338,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
 
           // If the type is optional, recurse
           case OptionType(innerParam) =>
-            //println("=========> Is Option")
+            //asprintln("=========> Is Option")
             parseType(innerParam)
 
           case _ if (isNone(tpe)) =>
@@ -336,7 +369,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
             //Quat.Unknown
         }
 
-      val output = parseTopLevelType(tpe)
+      val output = QuatMaking.lookupCache(tpe.widen)(() => parseTopLevelType(tpe))
       //println(s"*********** PARSED QUAT: ${output} ***********")
       output
     }
