@@ -59,7 +59,11 @@ object Unlifter {
 
   given unliftIdent: NiceUnliftable[AIdent] with
     def unlift =
-      case '{ AIdent(${Const(name: String)}, $quat) } => AIdent(name, quat.unexpr)
+      case '{ AIdent(${Const(name: String)}, $quat) } =>
+        // Performance optimization! Since Ident.quat is a by-name parameter, unless we force it to unexpr here,
+        // it will be done over and over again each time quat.unexpr is called which is extremely wasteful.
+        val unliftedQuat = quat.unexpr
+        AIdent(name, unliftedQuat)
 
   given unliftJoinType: NiceUnliftable[JoinType] with
     def unlift =
@@ -90,7 +94,11 @@ object Unlifter {
     def unlift =
       case '{ OptionApply.apply($a) } => OptionApply(a.unexpr)
       case '{ OptionSome.apply($a) } => OptionSome(a.unexpr)
-      case '{ OptionNone($quat) } => OptionNone(quat.unexpr)
+      case '{ OptionNone($quat) } => 
+        // Performance optimization, same as Ident. Do quat.unexper once instead of each time on 
+        // OptionNone.quat which would otherwise happen if quat.unexper would be passed directly.
+        val unliftedQuat = quat.unexpr
+        OptionNone(unliftedQuat)
       case '{ OptionIsEmpty.apply($a) } => OptionIsEmpty(a.unexpr)
       case '{ OptionMap.apply($a, $b, $c) } => OptionMap(a.unexpr, b.unexpr, c.unexpr)
       case '{ OptionTableMap.apply($a, $b, $c) } => OptionTableMap(a.unexpr, b.unexpr, c.unexpr)
@@ -106,12 +114,22 @@ object Unlifter {
   given unliftAst: NiceUnliftable[Ast] with {
     // TODO have a typeclass like Splicer to translate constant to strings
     def unlift =
-      case '{ Constant(${Const(b)}: Double, $quat) } => Constant(b, quat.unexpr)
-      case '{ Constant(${Const(b)}: Boolean, $quat) } => Constant(b, quat.unexpr)
-      case '{ Constant(${Const(b)}: String, $quat) } => Constant(b, quat.unexpr)
-      case '{ Constant(${Const(b)}: Int, $quat) } => Constant(b, quat.unexpr)
+      case '{ Constant(${Const(b)}: Double, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Const(b)}: Boolean, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Const(b)}: String, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Const(b)}: Int, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
       case '{ Entity.apply(${Const(b: String)}, $elems, $quat)  } =>
-        Entity(b, elems.unexpr, quat.unexpr)
+        // Performance optimization, same as for Ident. Entity.quat is by-name so make sure to do unexper once here.
+        val unliftedQuat = quat.unexpr
+        Entity(b, elems.unexpr, unliftedQuat)
       case '{ Function($params, $body) } => Function(params.unexpr, body.unexpr)
       case '{ FunctionApply($function, $values) } => FunctionApply(function.unexpr, values.unexpr)
       case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(query.unexpr, alias.unexpr, body.unexpr)
@@ -126,7 +144,9 @@ object Unlifter {
         QuotationTag(constString(uid))
       case '{ Union($a, $b) } => Union(a.unexpr, b.unexpr)
       case '{ Insert($query, $assignments) } => Insert(query.unexpr, assignments.unexpr)
-      case '{ Infix($parts, $params, $pure, $quat) } => Infix(parts.unexpr, params.unexpr, pure.unexpr, quat.unexpr)
+      case '{ Infix($parts, $params, $pure, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Infix(parts.unexpr, params.unexpr, pure.unexpr, unliftedQuat)
       case '{ Tuple.apply($values) } => Tuple(values.unexpr)
       case '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
       case '{ FlatJoin($typ, $a, $aliasA, $on) } => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)

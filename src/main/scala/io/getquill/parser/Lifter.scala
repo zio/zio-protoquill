@@ -86,7 +86,9 @@ trait Lifter(serializeQuats: Boolean) {
     def lift =
       // If we are in the JVM, use Kryo to serialize our Quat due to JVM 64KB method limit that we will run into of the Quat Constructor
       // if plainly lifted into the method created by our macro (i.e. the 'ast' method).
-      case quat: Quat.Product if (serializeQuats)                                       => '{ io.getquill.quat.Quat.Product.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
+      //case quat: Quat.Product if (serializeQuats)                                       => 
+      //  println("(((((((((((((( Serializing Quat: " + quat)
+      //  '{ io.getquill.quat.Quat.Product.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
       case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) => '{ io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${tpe.expr})(${fields.toList.spliceVarargs}: _*)(${values.toList.spliceVarargs}: _*)(${renamesFrom.toList.spliceVarargs}: _*)(${renamesTo.toList.spliceVarargs}: _*) }
   }
 
@@ -95,7 +97,9 @@ trait Lifter(serializeQuats: Boolean) {
 
   given liftableQuat : NiceLiftable[Quat] with {
     def lift =
-      case quat: Quat.Product if (serializeQuats) => '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
+      //case quat: Quat.Product if (serializeQuats) => 
+      //  println("(((((((((((((( Serializing Quat: " + quat)
+      //  '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
       case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) => '{ io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${tpe.expr})(${fields.toList.spliceVarargs}: _*)(${values.toList.spliceVarargs}: _*)(${renamesFrom.toList.spliceVarargs}: _*)(${renamesTo.toList.spliceVarargs}: _*) }
       case Quat.Value => '{ io.getquill.quat.Quat.Value }
       case Quat.Null => '{ io.getquill.quat.Quat.Null }

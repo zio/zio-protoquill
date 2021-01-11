@@ -51,10 +51,10 @@ object QuatMaking {
     val lookup = quatCache.get(tpe)
     lookup match
       case Some(value) => 
-        println(s"---------------- SUCESSFULL LOOKUP OF: ${tpe}: ${value}")
+        //println(s"---------------- SUCESSFULL LOOKUP OF: ${tpe}: ${value}")
         value
       case None =>
-        println(s"-------!!!!!!!!! FAILED LOOKUP OF: ${tpe}")
+        //println(s"-------!!!!!!!!! FAILED LOOKUP OF: ${tpe}")
         val quat = computeQuat()
         quatCache.put(tpe, quat)
         quat
