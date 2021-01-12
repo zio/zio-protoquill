@@ -18,6 +18,7 @@ import io.getquill.parser.TastyMatchers
 import io.getquill.quoter.Quoted
 import io.getquill.quoter.InsertMeta
 import io.getquill.quat.QuatMaking
+import io.getquill.quat.Quat
 
 /**
  * The function call that regularly drives query insertion is 
@@ -58,7 +59,7 @@ import io.getquill.quat.QuatMaking
  * The end result of this synthesis is a series of assignments for an insert for the given entity
  */
 object InsertMacro {
-  private[getquill] val VIdent = AIdent("v")
+  private[getquill] val VIdent = AIdent("v", Quat.Generic)
 
   /** 
    * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
@@ -96,11 +97,11 @@ object InsertMacro {
           case Some(insertMeta) =>
             QuotationLotExpr(insertMeta.asTerm.underlyingArgument.asExpr) match
               case Uprootable(_, ast, _, _, _, _) =>
-                println(s"***************** Found an uprootable ast: ${ast.show} *****************")
+                //println(s"***************** Found an uprootable ast: ${ast.show} *****************")
                 Unlifter(ast) match
                   // It needs to be a tuple of values and the values all need to be properties
                   case Tuple(values) if (values.forall(_.isInstanceOf[Property])) =>
-                    println(s"***************** Found Tuple of values: ${values} *****************")
+                    //println(s"***************** Found Tuple of values: ${values} *****************")
                     values
                   case other => 
                     report.throwError(s"Invalid values in InsertMeta: ${other}. An InsertMeta AST must be a tuple of Property elements.")
@@ -147,7 +148,7 @@ object InsertMacro {
 
     def excludeExclusions(assignments: List[Assignment]) =
       val exclusions = InsertExclusions.summon.toSet
-      println(s"***************** Doing Excludsions with: ${exclusions} *****************")
+      //println(s"***************** Doing Excludsions with: ${exclusions} *****************")
       assignments.filterNot(asi => exclusions.contains(asi.property))
 
 
@@ -175,12 +176,8 @@ object InsertMacro {
 
       unquotation
     }
-
       
   end Pipeline
-    
-  
-
   
   def apply[T: Type, Parser <: ParserFactory: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[Insert[T]] =
     new Pipeline(entityRaw, bodyRaw).apply

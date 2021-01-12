@@ -10,8 +10,18 @@ import io.getquill.quoter.Quoted
 import io.getquill.quoter.EagerPlanter
 import io.getquill.ast._
 import io.getquill.quat.Quat
+import io.getquill.NamingStrategy
+import io.getquill.idiom.Idiom
+import io.getquill.Query
+import io.getquill.quoter._
+import io.getquill.quoter.Dsl._
 
 abstract class Spec extends AnyFreeSpec with Matchers /* with BeforeAndAfterAll */ {
+  
+  extension [T, D <: Idiom, N <: NamingStrategy](ctx: MirrorContext[D, N])
+    inline def pull(inline q: Query[T]) =
+      val r = ctx.run(q)
+      (r.prepareRow.data.toList, r.executionType)
 
   extension [T, PrepareRow](q: Quoted[T]) {
     def encodeEagerLifts(row: PrepareRow) =

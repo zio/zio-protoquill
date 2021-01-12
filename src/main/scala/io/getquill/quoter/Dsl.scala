@@ -78,5 +78,5 @@ trait QuoteDsl[Parser <: ParserFactory] {
   inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteMacro[T, Parser]('body) }
 
   extension [T](inline entity: EntityQuery[T])
-    inline def insertI(inline value: T): Insert[T] = ${ InsertMacro.apply[T, Parser]('entity, 'value) }
+    inline def insert(inline value: T): Insert[T] = ${ InsertMacro.apply[T, Parser]('entity, 'value) }
 }

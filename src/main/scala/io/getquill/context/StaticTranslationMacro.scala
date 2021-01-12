@@ -53,9 +53,9 @@ object StaticTranslationMacro {
         case _: AQuery => ElaborateQueryMeta.static[T](unliftedAst)
         case _ => unliftedAst
 
-      //println("Expanded Ast Is: " + expandedAst)
+      // TODO Should make this enable-able via a logging configuration
+      //println("=============== Static Expanded Ast Is ===========\n" + io.getquill.util.Messages.qprint(expandedAst))
 
-      //println("=========== Unlifted Ast =======\n" + io.getquill.util.Messages.qprint(expandedAst))
       val (ast, stmt) = idiom.translate(expandedAst)(using naming)
       val output =
         ReifyStatement(

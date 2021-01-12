@@ -296,7 +296,9 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
 
-
+// We can't use SpecificClause[Option[_]] here since the types of quotations that need to match
+// are not necessarily an Option[_] e.g. Option[t].isEmpty needs to match on a clause whose type is Boolean
+// That's why we need to use the 'Is' object and optimize it that way here 
 case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
   import qctx.reflect.{Constant => TConstantant, _}
   import Parser.Implicits._

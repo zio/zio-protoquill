@@ -29,14 +29,14 @@ with MirrorDecoders with MirrorEncoders { self =>
         string
   }
 
-  case class ActionMirror(string: String, prepareRow: PrepareRow)
+  case class ActionMirror(string: String, prepareRow: PrepareRow, executionType: ExecutionType)
   case class ActionReturningMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], returningBehavior: ReturnAction)
 
   def executeQuery[T](string: String, prepare: Prepare, extractor: Extractor[T] = identityExtractor)(executionType: ExecutionType, dc: DatasourceContext) =
     QueryMirror(string, prepare(Row())._2, extractor, executionType)
 
   def executeAction[T](string: String, prepare: Prepare = identityPrepare)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionResult] =
-    ActionMirror(string, prepare(Row())._2)
+    ActionMirror(string, prepare(Row())._2, executionType)
     
   import scala.annotation.targetName
 

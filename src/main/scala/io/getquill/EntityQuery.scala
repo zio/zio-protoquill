@@ -26,7 +26,7 @@ trait EntityQuery[T] extends EntityQueryModel[T] {
   
   //override def delete: Delete[T] = NonQuotedException()
 
-  // Variant of this where value is inline? insertI
+  // Variant of this where value is inline? insert
   
   //def insert(f: (T => (Any, Any)), f2: (T => (Any, Any))*): Insert[T] = NonQuotedException()
 

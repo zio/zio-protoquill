@@ -104,22 +104,36 @@ object QueryExecution:
       case Extract
       case Skip
 
+    enum QuotationType:
+      case Action
+      case Query
+
     /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to T */
-    def runWithMeta[RawT: Type](quoted: Expr[Quoted[Query[T]]]): Expr[Res] =
+    def runWithQueryMeta[RawT: Type](quoted: Expr[Quoted[Query[T]]]): Expr[Res] =
       val (queryRawT, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted)
       staticStateOpt match {
         case Some(staticState) =>
           executeStatic[RawT](staticState, converter, ExtractBehavior.Extract)
         case None => 
-          executeDynamic[RawT, Query](queryRawT, converter, ExtractBehavior.Extract)
+          // NOTE: Can assume QuotationType is `Query` here since summonly a Query-meta is only allowed for Queries
+          executeDynamic[RawT, Query](queryRawT, converter, ExtractBehavior.Extract, QuotationType.Query)
       }
     
 
-    def executeDynamic[RawT: Type, Q[_]: Type](quote: Expr[Quoted[Q[RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior) =
+    /**
+     * Expand dynamic-queries i.e. queries whose query-string cannot be computed at compile-time.
+     * Note that for now, QuotationType is only needed for dynamic queries (which is only needed to know whether you
+     * need to use ElaborateQueryMeta or not. This is decided in the StaticTranslationMacro for static queries using a 
+     * different method. I.e. since StaticTranslationMacro knows the AST node it infers Action/Query from that).
+     */
+    def executeDynamic[RawT: Type, Q[_]: Type](quote: Expr[Quoted[Q[RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior, quotationType: QuotationType) =
       val decoder = summonDecoderOrThrow[RawT]
       // Expand the outermost quote using the macro and put it back into the quote
       // Is the expansion on T or RawT, need to investigate
-      val expandedAst = ElaborateQueryMeta.dynamic[T]('{ $quote.ast })
+      val expandedAst = quotationType match
+        case QuotationType.Query => ElaborateQueryMeta.dynamic[T]('{ $quote.ast })
+        case QuotationType.Action => '{ $quote.ast }
+      
       val expandedAstQuote = '{ $quote.copy(ast = $expandedAst) }
 
       // Move this prepare down into RunDynamicExecution since need to use ReifyStatement to know what lifts to call when?
@@ -182,7 +196,7 @@ object QueryExecution:
       summonMetaIfExists match
         // Can we get a QueryMeta? Run that pipeline if we can
         case Some(rowRepr) =>
-          rowRepr match { case '[rawT] => runWithMeta[rawT](quoted) } 
+          rowRepr match { case '[rawT] => runWithQueryMeta[rawT](quoted) } 
         case None =>
           // Otherwise the regular pipeline
           StaticTranslationMacro.applyInner[Query, T, D, N](quoted) match 
@@ -190,14 +204,14 @@ object QueryExecution:
             case Some(staticState) =>
               executeStatic[T](staticState, idConvert, ExtractBehavior.Extract) // Yes we can, do it!
             case None => 
-              executeDynamic(quoted, idConvert, ExtractBehavior.Extract)        // No we can't. Do dynamic
+              executeDynamic(quoted, idConvert, ExtractBehavior.Extract, QuotationType.Query)        // No we can't. Do dynamic
 
     def applyAction(quoted: Expr[Quoted[Action[T]]]): Expr[Res] =
       StaticTranslationMacro.applyInner[Action, T, D, N](quoted) match 
         case Some(staticState) =>
           executeStatic[T](staticState, idConvert, ExtractBehavior.Skip)
         case None => 
-          executeDynamic(quoted, idConvert, ExtractBehavior.Skip)
+          executeDynamic(quoted, idConvert, ExtractBehavior.Skip, QuotationType.Action)
 
     def apply() =
       quotedOp match
@@ -282,6 +296,9 @@ object RunDynamicExecution:
     // which means that the compiler has not done the splicing for us. We need to do this ourselves. 
     // So we need to go through all the QuotationTags in the AST and splice in the corresponding QuotationVase into it's place.
     val splicedAst = spliceQuotations(quoted)
+
+    // TODO Should make this enable-able via a logging configuration
+    //println("=============== Dynamic Expanded Ast Is ===========\n" + io.getquill.util.Messages.qprint(splicedAst))
       
     // Tokenize the spliced AST
     val (outputAst, stmt) = ctx.idiom.translate(splicedAst)(using ctx.naming)
