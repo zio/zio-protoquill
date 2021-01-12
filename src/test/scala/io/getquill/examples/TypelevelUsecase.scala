@@ -92,7 +92,7 @@ object TypelevelUsecase {
   println( run(q2).string(true) )
   println( run(q2).string(true) )
   println( run(q2).string(true) )
-  println( run(q2).string(true) ) //hello
+  println( run(q2).string(true) ) //helloooooooooooooooooooooooooooooooo
   println( run(q2).string(true) )
   println( run(q2).string(true) )
   println( run(q2).string(true) )
