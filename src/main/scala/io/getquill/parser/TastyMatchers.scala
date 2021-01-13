@@ -306,20 +306,24 @@ trait TastyMatchers {
   object CaseClassCreation:
     // For modules, the _ in Select coule be a couple of things (say the class is Person):
     //   New(TypeIdent("Person$")), "<init>"), Nil) - When the case class is declared in a function body
+    //   Select(This(This(Some(outerClass))), name) - When the case class is declared in the same class as the context (currently happens in actions, see the "macro" test in ActionTest.scala)
     //   Ident("Person")                            - When the case class is declared in an object or top-level
     object ModuleCreation:
       def unapply(term: Term) = term match
         case Apply(Select(New(TypeIdent(moduleType)), "<init>"), list) if (list.length == 0) && moduleType.endsWith("$") => true
+        case Select(This(outerClass), name)  => true
         case Ident(name) => true
         case _ => false
 
-    def unapply(expr: Expr[Any]): Option[(String, List[String], List[Expr[Any]])] =
+    def unapply(expr: Expr[Any]): Option[(String, List[String], List[Expr[Any]])] = {
       // lazy val tpe = expr.asTerm.tpe
       // lazy val companionClass = tpe.classSymbol.get.companionClass
       // lazy val name = tpe.classSymbol.get.name
       // lazy val fields = tpe.classSymbol.get.caseFields.map(_.name) // Don't actually evaluate them unless it matches
+      //println(s"@@@@@@@@@@@@@@ ***************** TRYING CASE CLASS CREATE ***************** @@@@@@@@@@@@@@\n" + Printer.TreeStructure.show(expr.asTerm))
 
-      def companionIsProduct(classSymbol: Symbol) = expr.asTerm.tpe.select(classSymbol.companionClass) <:< TypeRepr.of[Product]
+      //def companionIsProduct(classSymbol: Symbol) = expr.asTerm.tpe.select(classSymbol.companionClass) <:< TypeRepr.of[Product]
+      val out =
       UntypeExpr(expr) match
         // case Unseal(theExpr @ Apply(Select(foo, "apply"), list)) if (foo.show.contains("Contact")) =>
           // println("**************** STOP HERE ****************")
@@ -336,11 +340,18 @@ trait TastyMatchers {
           // println("Flags: " + (tpe.classSymbol.get.flags.show))
           // report.throwError("**************** STOP HERE ****************")
         case ClassSymbolAndUnseal(sym, Apply(Select(New(TypeIdent(_)), "<init>"), args)) if isType[Product](expr) =>
+          //println("@@@@@@@@@@@@============== !!!!! MATCH ON IN-FUNC !!!!! ==============@@@@@@@@@@@@")
           Some((sym.name, sym.caseFields.map(_.name), args.map(_.asExpr)))
-        case ClassSymbolAndUnseal(sym, Apply(Select(ModuleCreation(), "apply"), args)) if isType[Product](expr) && sym.flags.is(Flags.Case) =>
+        case ClassSymbolAndUnseal(sym, Apply(Select(ModuleCreation(), "apply"), args)) if isType[Product](expr) => //&& sym.flags.is(Flags.Case)
+          //println("@@@@@@@@@@@@============== !!!!! MATCH ON MOD !!!!! ==============@@@@@@@@@@@@")
           Some((sym.name, sym.caseFields.map(_.name), args.map(_.asExpr)))
         case _ => 
+          //println("@@@@@@@@@@@@============== No Match ==============@@@@@@@@@@@@")
           None
+
+      //println("@@@@@@@@@@@@============== OUT ==============@@@@@@@@@@@@\n" + out)
+      out
+    }
 
   // TODO Change to 'is'
   def isType[T: Type](input: Expr[_]) =

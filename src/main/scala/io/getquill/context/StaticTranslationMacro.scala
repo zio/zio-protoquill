@@ -47,6 +47,10 @@ object StaticTranslationMacro {
 
     val unliftedAst = Unlifter.apply(astExpr)
 
+    //import quotes.reflect._
+    //println("~~~~~~~~~~~~~~~~ Pre-Unlifted AST ~~~~~~~~~~~~~~\n" + io.getquill.util.Messages.qprint(astExpr.asTerm))
+    //println("~~~~~~~~~~~~~~~~ Unlifted AST ~~~~~~~~~~~~~~\n" + io.getquill.util.Messages.qprint(unliftedAst))
+
     if (noRuntimeQuotations(unliftedAst)) {
       
       val expandedAst = unliftedAst match

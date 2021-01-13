@@ -11,46 +11,77 @@ import io.getquill.quoter.QuotationVase
 import io.getquill.context.ExecutionType
 import org.scalatest._
 import io.getquill.quat.quatOf
-import io.getquill.context.ExecutionType
+import io.getquill.context.ExecutionType.Static
+import io.getquill.context.ExecutionType.Dynamic
 
 class ActionTest extends Spec with Inside {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
-  "Entity with embedding" - {
-    case class Person(name: String, age: Int)
+  case class Person(name: String, age: Int)
 
+  // TODO, next up we need to have this: query[Person].insert(lift(Person("Joe", 123))), that's a case class lift
+
+  "insert for simple entity should work for" - {
     // Insert(Entity("Person", List()), List(Assignment(Id("x1"), Property(Id("x1"), "name"), "Joe"), Assignment(Id("x2"), Property(Id("x2"), "age"), 123)))
-    "simple" in {
-      val result = ctx.run(query[Person].insert(_.name -> "Joe", _.age -> 123))
-      result.string mustEqual "INSERT INTO Person (name,age) VALUES ('Joe', 123)"
-      result.executionType mustEqual ExecutionType.Static
-      result.prepareRow.data.toList mustEqual List() //hello
-    } //hello
-
-    // Doesn't work
-    "simple - compiletime" in {
-      val q = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) }
-      val result = ctx.run(q)
-      result.string mustEqual "INSERT INTO Person (name,age) VALUES ('Joe', 123)"
-      result.executionType mustEqual ExecutionType.Dynamic
-      result.prepareRow.data.toList mustEqual List()
+    "simple, inline query" - {
+      inline def a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
+      inline def q = quote { query[Person].insert(Person("Joe", 123)) }            // Insert entity form
+      "regular" in {
+        ctx.run(q).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
+        ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
+      }
+      "simple with schemaMeta" in {
+        inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
+        ctx.run(q).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Static)
+        ctx.run(a).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Static)
+      }
+      "simple with insert meta" in {
+        inline given personMeta: InsertMeta[Person] = insertMeta[Person](_.age)
+        ctx.run(q).triple mustEqual ("INSERT INTO Person (name) VALUES ('Joe')", List(), Static)
+        ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
+      }
+      "simple with schemaMeta and insert meta" in {
+        inline given personMeta: InsertMeta[Person] = insertMeta[Person](_.age)
+        inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
+        ctx.run(q).triple mustEqual ("INSERT INTO tblPerson (colName) VALUES ('Joe')", List(), Static)
+        ctx.run(a).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Static)
+      }
+      "simple with schemaMeta with extra columns and insert meta" in {
+        inline given personSchema: InsertMeta[Person] = insertMeta[Person](_.age)
+        inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName", _.age -> "colAge")
+        ctx.run(q).triple mustEqual ("INSERT INTO tblPerson (colName) VALUES ('Joe')", List(), Static)
+        ctx.run(a).triple mustEqual ("INSERT INTO tblPerson (colName,colAge) VALUES ('Joe', 123)", List(), Static)
+      }
     }
 
-    "macro" in {
+    "simple - runtime" in {
+      val a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) }
+      val q = quote { query[Person].insert(Person("Joe", 123)) }
+      ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
+      ctx.run(q).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
+    }
+
+    "direct" in {
+      ctx.run(query[Person].insert(_.name -> "Joe", _.age -> 123)).triple mustEqual
+        ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
+    }
+
+    "auto-quote" in {
       val result = ctx.run(query[Person].insert(Person("Joe", 123)))
       result.string mustEqual "INSERT INTO Person (name,age) VALUES ('Joe', 123)"
       result.executionType mustEqual ExecutionType.Static
       result.prepareRow.data.toList mustEqual List()
     }
 
-    "macro with lift" in {
+    "auto-quote with lift" in {
       val result = ctx.run(query[Person].insert(Person(lift("Joe"), 123)))
       result.string mustEqual "INSERT INTO Person (name,age) VALUES (?, 123)"
       result.executionType mustEqual ExecutionType.Static
       result.prepareRow.data.toList mustEqual List("Joe")
     }
   }
+
 
   // TODO Need more testing of this for multiple use-cases
 //   "Entity with embedding" - {

@@ -18,17 +18,20 @@ import io.getquill.quoter.Dsl._
 
 abstract class Spec extends AnyFreeSpec with Matchers /* with BeforeAndAfterAll */ {
   
+  extension [T](m: MirrorContext[_, _]#ActionMirror)
+    def triple = (m.string, m.prepareRow.data.toList, m.executionType)
+
   extension [T, D <: Idiom, N <: NamingStrategy](ctx: MirrorContext[D, N])
     inline def pull(inline q: Query[T]) =
       val r = ctx.run(q)
       (r.prepareRow.data.toList, r.executionType)
 
-  extension [T, PrepareRow](q: Quoted[T]) {
+  extension [T, PrepareRow](q: Quoted[T])
     def encodeEagerLifts(row: PrepareRow) =
       q.lifts.zipWithIndex.collect {
         case (ep: EagerPlanter[String, PrepareRow], idx) => ep.encoder(idx, ep.value, row)
       }
-  }
+  
 
   object ShortAst {
     object Id {

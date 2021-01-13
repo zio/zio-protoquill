@@ -69,6 +69,8 @@ object InsertMacro {
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
 
+    //println("====================((( INSERTEE )))================\n" + pprint.apply(inserteeRaw.asTerm.underlyingArgument))
+
     object EntitySchema:
       private def plainEntity: Entity =
         val entityName = TypeRepr.of[T].classSymbol.get.name
@@ -109,6 +111,7 @@ object InsertMacro {
                 println("WARNING: Only inline insert-metas are supported for insertions so far. Falling back to a insertion of all fields.")
                 List()
           case None =>
+            //println("*************** No Insert Exclusions Found ************")
             List()
 
 
@@ -117,6 +120,7 @@ object InsertMacro {
     def parseInsertee: CaseClass = {  
       val insertee = inserteeRaw.asTerm.underlyingArgument.asExpr
       val parserFactory = LoadObject[Parser].get
+      //println(s"***************** STARTED PARSING *****************")
       val rawAst = parserFactory.apply.seal.apply(insertee)
       val ast = BetaReduction(rawAst)
       // TODO Implement dynamic pipeline for schema meta
@@ -151,8 +155,9 @@ object InsertMacro {
       //println(s"***************** Doing Excludsions with: ${exclusions} *****************")
       assignments.filterNot(asi => exclusions.contains(asi.property))
 
-
     def apply = {
+
+      //println("******************* TOP OF APPLY **************")
       val assignmentsAst = excludeExclusions(deduceAssignments)
 
       // Insertion could have lifts and quotes, need to extract those
@@ -164,8 +169,12 @@ object InsertMacro {
       val assignments = assignmentsAst.map(asi => Lifter.assignment(asi))
       val insert = '{ AInsert(${Lifter.entity(entity)}, ${Expr.ofList(assignments)}) }
 
+      
+
       val quotation = 
         '{ Quoted[Insert[T]](${insert}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
+
+      //println("~~~~~~~~~~~~~~ Quotation ~~~~~~~~~~~\n" + io.getquill.util.Messages.qprint(insert))
 
       val unquotation = UnquoteMacro(quotation)
       // use the quoation macro to parse the value into a class expression

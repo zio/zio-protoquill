@@ -277,7 +277,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 
   def del: PartialFunction[Expr[_], Ast] = {
     case '{ type t; ($query: EntityQuery[`t`]).insert(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-      println("****************** Parsed Here ***********")
+      //println("****************** Parsed Here ***********")
       val insertAssignments = first.asTerm +: others.map(_.asTerm)
       val assignments = insertAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
       Insert(astParse(query), assignments.toList)
