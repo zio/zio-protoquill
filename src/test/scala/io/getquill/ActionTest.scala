@@ -36,17 +36,20 @@ class ActionTest extends Spec with Inside {
         ctx.run(q).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Static)
         ctx.run(a).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Static)
       }
+      // TODO Doing this with a runtime query should throw an exception (for now)
       "simple with insert meta" in {
         inline given personMeta: InsertMeta[Person] = insertMeta[Person](_.age)
         ctx.run(q).triple mustEqual ("INSERT INTO Person (name) VALUES ('Joe')", List(), Static)
         ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
       }
+      // TODO Doing this with a runtime query should throw an exception (for now)
       "simple with schemaMeta and insert meta" in {
         inline given personMeta: InsertMeta[Person] = insertMeta[Person](_.age)
         inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
         ctx.run(q).triple mustEqual ("INSERT INTO tblPerson (colName) VALUES ('Joe')", List(), Static)
         ctx.run(a).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Static)
       }
+      // TODO Doing this with a runtime query should throw an exception (for now)
       "simple with schemaMeta with extra columns and insert meta" in {
         inline given personSchema: InsertMeta[Person] = insertMeta[Person](_.age)
         inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName", _.age -> "colAge")
