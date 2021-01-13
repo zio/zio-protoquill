@@ -37,27 +37,29 @@ object QuatMaking {
 
   private val encodeableCache: mutable.Map[QuotesTypeRepr, Boolean] = mutable.Map()
   def lookupIsEncodeable(tpe: QuotesTypeRepr)(computeEncodeable: () => Boolean) =
-    val lookup = encodeableCache.get(tpe)
-    lookup match
-      case Some(value) => 
-        value
-      case None =>
-        val encodeable = computeEncodeable()
-        encodeableCache.put(tpe, encodeable)
-        encodeable
+    computeEncodeable()
+    // val lookup = encodeableCache.get(tpe)
+    // lookup match
+    //   case Some(value) => 
+    //     value
+    //   case None =>
+    //     val encodeable = computeEncodeable()
+    //     encodeableCache.put(tpe, encodeable)
+    //     encodeable
 
   private val quatCache: mutable.Map[QuotesTypeRepr, Quat] = mutable.Map()
   def lookupCache(tpe: QuotesTypeRepr)(computeQuat: () => Quat) =
-    val lookup = quatCache.get(tpe)
-    lookup match
-      case Some(value) => 
-        //println(s"---------------- SUCESSFULL LOOKUP OF: ${tpe}: ${value}")
-        value
-      case None =>
-        //println(s"-------!!!!!!!!! FAILED LOOKUP OF: ${tpe}")
-        val quat = computeQuat()
-        quatCache.put(tpe, quat)
-        quat
+    computeQuat()
+    // val lookup = quatCache.get(tpe)
+    // lookup match
+    //   case Some(value) => 
+    //     //println(s"---------------- SUCESSFULL LOOKUP OF: ${tpe}: ${value}")
+    //     value
+    //   case None =>
+    //     //println(s"-------!!!!!!!!! FAILED LOOKUP OF: ${tpe}")
+    //     val quat = computeQuat()
+    //     quatCache.put(tpe, quat)
+    //     quat
 }
 
 inline def quatOf[T]: Quat = ${ QuatMaking.ofType[T] }
