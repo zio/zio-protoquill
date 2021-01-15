@@ -67,4 +67,14 @@ case class SchemaMeta[T](val entity: Quoted[io.getquill.EntityQuery[T]], uid: St
 
 case class InsertMeta[T](val entity: Quoted[T], uid: String) extends QuotationLot[T](entity, uid)
 
+// enum ActionMetaType { Insert, Update }
+// or with traits?
+// trait ActionMetaType; object ActionMetaType { trait Insert extends ActionMetaType; trait Update extends ActionMetaType }
+
+// trait ActionMeta[T, MetaType]
+// case class InsertMeta[T](val entity: Quoted[T], uid: String) extends ActionMeta[T, Insert] with QuotationLot[T](entity, uid)
+
+// Then ActionMacro will take a MT (i.e. MetaType) generic argument that will control what to summon and what kind of AST
+// element Ast.Insert or Ast.Update to return (also there should probably be 'Delete' meta type which does not summon a column-excluding meta) 
+
 case class QueryMeta[T, R](val entity: Quoted[Query[T] => Query[R]], uid: String, extract: R => T) extends QuotationLot[Query[T] => Query[R]](entity, uid)
