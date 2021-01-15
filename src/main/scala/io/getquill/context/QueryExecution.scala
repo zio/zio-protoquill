@@ -303,6 +303,9 @@ object RunDynamicExecution:
     // Tokenize the spliced AST
     val (outputAst, stmt) = ctx.idiom.translate(splicedAst)(using ctx.naming)
 
+    // TODO check if there are ScalarTag instances that have no lifts and blow them up
+    // (shuold test this scenario for both compile-time and dynamic query variants)
+
     // Turn the Tokenized AST into an actual string and pull out the ScalarTags (i.e. the lifts)
     val (string, externals) =
       ReifyStatement(
