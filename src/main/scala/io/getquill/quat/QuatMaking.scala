@@ -13,6 +13,7 @@ import io.getquill.Udt
 import scala.collection.mutable
 import io.getquill.dsl.GenericEncoder
 
+// TODO Shuold not be using this 'Quoted', remove it
 case class Quoted[+T](val ast: io.getquill.ast.Ast)
 
 trait Value[T]
