@@ -271,8 +271,6 @@ object RunDynamicExecution:
     extractor: Option[ResultRow => T]
   ): Res = 
   {
-    println("&&&&&&&&&&&&&&&&&&&&&& RUNNING DYNAMIC PIPE FOR &&&&&&&&&&&&&&&&&&&&&&&\n" + io.getquill.util.Messages.qprint(quoted))
-
     def gatherLifts(quoted: Quoted[_]): List[Planter[_, _]] =
       quoted.lifts ++ quoted.runtimeQuotes.flatMap(vase => gatherLifts(vase.quoted))
 
@@ -298,8 +296,6 @@ object RunDynamicExecution:
     // which means that the compiler has not done the splicing for us. We need to do this ourselves. 
     // So we need to go through all the QuotationTags in the AST and splice in the corresponding QuotationVase into it's place.
     val splicedAst = spliceQuotations(quoted)
-
-    println("&&&&&&&&&&&&&&&&&& Spliced Ast &&&&&&&&&&&&&&&" + io.getquill.util.Messages.qprint(splicedAst))
 
     // TODO Should make this enable-able via a logging configuration
     //println("=============== Dynamic Expanded Ast Is ===========\n" + io.getquill.util.Messages.qprint(splicedAst))
