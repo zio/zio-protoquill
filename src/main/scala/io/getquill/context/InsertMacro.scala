@@ -215,7 +215,7 @@ object InsertMacro {
           // If we get a dynamic entity back
           case SummonState.Dynamic(uid, entityQuotation) =>
             // Need to create a ScalarTag representing a splicing of the entity (then going to add the actual thing into a QuotationVase and add to the pluckedUnquotes)
-            val insert = '{ AInsert(ScalarTag(${Expr(uid)}), ${assignmentsAst}) }
+            val insert = '{ AInsert(QuotationTag(${Expr(uid)}), ${assignmentsAst}) }
             // Create the QuotationVase in which this dynamic quotation will go
             val runtimeQuote = '{ QuotationVase($entityQuotation, ${Expr(uid)}) }
             // Then create the quotation, adding the new runtimeQuote to the list of pluckedUnquotes
