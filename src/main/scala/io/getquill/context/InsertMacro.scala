@@ -20,7 +20,6 @@ import io.getquill.quoter.QuotationVase
 import io.getquill.quoter.InsertMeta
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
-import io.getquill.quoted.Quoted
 
 /**
  * The function call that regularly drives query insertion is 
@@ -66,12 +65,12 @@ object InsertMacro {
   object DynamicUtil {
     def retrieveAssignmentTuple(quoted: Quoted[_]): Set[Ast] =
       quoted.ast match
-        case Tuple(values) if (values.forall(_.isInstanceOf[Property])) => values
-        case _ => throw new IllegalArgumentException(s"Invalid values in InsertMeta: ${other}. An InsertMeta AST must be a tuple of Property elements.")
+        case Tuple(values) if (values.forall(_.isInstanceOf[Property])) => values.toSet
+        case other => throw new IllegalArgumentException(s"Invalid values in InsertMeta: ${other}. An InsertMeta AST must be a tuple of Property elements.")
   }
 
-  enum SummonState[T]:
-    case Static[T](value: T) extends SummonState[T]
+  enum SummonState[+T]:
+    case Static(value: T) extends SummonState[T]
     case Dynamic(uid: String, quotation: Expr[Quoted[Any]]) extends SummonState[Nothing]
 
   /** 
@@ -98,7 +97,7 @@ object InsertMacro {
           case QuotationLotExpr.Unquoted(unquotation) => unquotation match
             case Uprootable(_, ast, _, _, _, _) => 
               Unlifter(ast) match
-                case ent: Entity => SummonState.Static(state)
+                case ent: Entity => SummonState.Static(ent)
                 case other => report.throwError(s"Unlifted insertion Entity '${qprint(other).plainText}' is not a Query.")
             case Pluckable(uid, quotation, _) =>
               SummonState.Dynamic(uid, quotation)
@@ -120,7 +119,7 @@ object InsertMacro {
                     SummonState.Static(values.toSet)
                   case other => 
                     report.throwError(s"Invalid values in InsertMeta: ${other}. An InsertMeta AST must be a tuple of Property elements.")
-              case Pluckable(uid, quotation) =>
+              case Pluckable(uid, quotation, _) =>
                 SummonState.Dynamic(uid, quotation)
               // TODO Improve this error
               case _ => report.throwError("Invalid form, cannot be pointable")
@@ -129,7 +128,7 @@ object InsertMacro {
                 //println("WARNING: Only inline insert-metas are supported for insertions so far. Falling back to a insertion of all fields.")
                 //
           case None =>
-            SummonState.Static(List())
+            SummonState.Static(Set.empty)
 
 
 
@@ -214,9 +213,9 @@ object InsertMacro {
             UnquoteMacro(quotation)
 
           // If we get a dynamic entity back
-          case SummonState.Dynamic(uid, entityQuotation)
+          case SummonState.Dynamic(uid, entityQuotation) =>
             // Need to create a ScalarTag representing a splicing of the entity (then going to add the actual thing into a QuotationVase and add to the pluckedUnquotes)
-            val insert = '{ AInsert(ScalarTag(${Expr(uid)}, ${assignmentsAst})) }
+            val insert = '{ AInsert(ScalarTag(${Expr(uid)}), ${assignmentsAst}) }
             // Create the QuotationVase in which this dynamic quotation will go
             val runtimeQuote = '{ QuotationVase($entityQuotation, ${Expr(uid)}) }
             // Then create the quotation, adding the new runtimeQuote to the list of pluckedUnquotes
