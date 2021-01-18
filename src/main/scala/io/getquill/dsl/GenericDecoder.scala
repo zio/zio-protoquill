@@ -15,23 +15,57 @@ trait GenericDecoder[ResultRow, T] {
   def apply(i: Int, rr: ResultRow):T
 }
 
-// trait CoproductDeterminant[ResultRow, T] {
+trait Determinant[ResultRow, Co] {
+  transparent inline def apply(rr: ResultRow): Co
+}
 
-// }
+object ShapeUtil {
 
-// trait Example[ResultRow] {
-  
-//   enum Shape(id: String):
-//     case Square(id: String, width: Int, height: Int) extends Shape(id)
-//     case Circle(id: String, radius: Int) extends Shape(id)
+  class MyRow {
+    def get(i: Int): String = ""
+  }
 
-//   given GenericDecoder[ResultRow, Shape.Square] = GenericDecoder.derived
-//   given GenericDecoder[ResultRow, Shape.Circle] = GenericDecoder.derived
+  // Can't find a needed reference to Type[Shape.Circle] and Type[Shape.Square] if you
+  // put this code inside of Example. Not sure why
+  enum Shape(id: String):
+    case Square(id: String, width: Int, height: Int) extends Shape(id)
+    case Circle(id: String, radius: Int) extends Shape(id)
 
+  given deter: Determinant[MyRow, Shape] with {
+    transparent inline def apply(rr: MyRow): Shape =
+      rr.get(1) match
+        case "circle" => erasedValue[Shape.Circle]
+        case "square" => erasedValue[Shape.Square]
+  }
+}
+
+
+
+
+
+// trait Example[ResultRow](using quotes: Quotes) {
+//   import quotes.reflect._
+
+//   given deter: Determinant[ResultRow, Shape]
+
+//   given dec1: GenericDecoder[ResultRow, String]
+//   given dec2: GenericDecoder[ResultRow, Int]
+
+//   given sq1: GenericDecoder[ResultRow, Shape.Square] = GenericDecoder.derived
+//   given cr1: GenericDecoder[ResultRow, Shape.Circle] = GenericDecoder.derived
+//   // implicit inline def genDec[ResultRow, T]: GenericDecoder[T] = ${ GenericDecoder.derived[ResultRow, T] }
+
+//   // Note: Can program this logic directly in the decoder!!!
+//   // I.e. use the 'Determinant to do summoning'
 //   // Need a column resolver since columns need to be retrieved by name
-//   given [ResultRow, Shape](using resolver: ColumnResolver[ResultRow]): GenericDecoder[ResultRow, Shape] with {
+//   given (using resolver: ColumnResolver[ResultRow], deter: Determinant[ResultRow, Shape]): GenericDecoder[ResultRow, Shape] with {
 //     def apply(i: Int, rr: ResultRow): Shape =
-//       resolver.apply(rr, "shapeType")
+//       deter.apply(rr) match {
+//         case '[Shape.Circle] => summon[GenericDecoder[ResultRow, Shape.Circle]](i, rr)
+//         case '[Shape.Square] => summon[GenericDecoder[ResultRow, Shape.Square]](i, rr)
+//       }
+
+//       //resolver.apply(rr, "shapeType")
 //   }
 
 //   //given JsonEncoder[ThePerson] = JsonEncoder.derived
@@ -41,6 +75,13 @@ trait GenericDecoder[ResultRow, T] {
 // }
 
 object GenericDecoder {
+
+  // Determine a row type for a coproduct Co
+  // TODO Need good error message for user if this is not found
+  transparent inline def determinant[ResultRow, Co]: Determinant[ResultRow, Co] =
+    summonFrom {
+      case det: Determinant[ResultRow, Co] => det
+    }
 
   // TODO Cache this return since it only needs to be done once?
   inline def columnResolver[ResultRow]: Option[ColumnResolver[ResultRow]] =
@@ -69,6 +110,25 @@ object GenericDecoder {
       case Some(resolver) => resolver(resultRow, fieldName)
     }
 
+  inline def chooseAndDecode[Fields <: Tuple, Elems <: Tuple, ResultRow, Co](rawIndex: Int, resultRow: ResultRow): Co = {
+    inline erasedValue[(Fields, Elems)] match {
+      case (_: (field *: fields), _: (head *: tail)) =>
+        // TODO Optimize, move this out of method
+        // If we've matched on the type, decode the children and return. E.g. if Co is Shape, determinant[ResultRow, Shape]
+        // may return Shape.Square. If the 'head' value of this list of Sum-Types is Shape.Square then we encode a square
+        // and return it
+        determinant[ResultRow, Co](resultRow) match {
+          case _: head => 
+            val decoded = summonAndDecode[head, ResultRow](rawIndex, resultRow)
+            decoded.asInstanceOf[Co]
+          case _ => 
+            chooseAndDecode[fields, tail, ResultRow, Co](rawIndex, resultRow)
+        }
+
+      case (_, _: EmptyTuple) => throw new IllegalArgumentException(s"Cannot resolve coproduct type")
+    }
+  }
+
   // TODO Handling of optionals. I.e. don't continue to decode child rows if any columns 
   // in the parent object are undefined (unless they are optional)
   inline def decodeChildern[Fields <: Tuple, Elems <: Tuple, ResultRow](rawIndex: Int, resultRow: ResultRow): Tuple =
@@ -95,6 +155,10 @@ object GenericDecoder {
                   case m: Mirror.ProductOf[T] =>
                     val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
                     m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
+                  case m: Mirror.SumOf[T] =>
+                    // Try to get the mirror element and decode it
+                    val res = chooseAndDecode[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow, T](index, resultRow)
+                    res
                 }
           }     
     }
