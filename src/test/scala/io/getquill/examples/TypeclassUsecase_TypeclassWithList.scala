@@ -61,7 +61,7 @@ object TypeclassUsecase_TypeclassWithList {
   inline given queryJoiningFunctor: QueryJoiningFunctor = new QueryJoiningFunctor
   inline given listJoiningFunctor: ListJoiningFunctor = new ListJoiningFunctor
 
-  inline def latestStatus[F[_], T, G](inline q: F[T])(using inline fun: JoiningFunctor[F], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): F[T] =
+  inline def latestStatus[F[+_], T, G](inline q: F[T])(using inline fun: JoiningFunctor[F], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): F[T] =
       q.leftJoin(q)((a, b) => 
           groupKey(b) == groupKey(a) &&
           earlierThan(b, a)
@@ -76,9 +76,9 @@ object TypeclassUsecase_TypeclassWithList {
 
   def main(args: Array[String]): Unit = {
 
-    inline def nodesLatest = quote { latestStatus(select[Node]) }
-    inline def mastersLatest = quote { latestStatus(select[Master]) }
-    inline def workersLatest = quote { latestStatus(select[Worker]) }
+    inline def nodesLatest = quote { latestStatus(query[Node]) }
+    inline def mastersLatest = quote { latestStatus(query[Master]) }
+    inline def workersLatest = quote { latestStatus(query[Worker]) }
 
     println( run(nodesLatest).string )
     println( run(mastersLatest).string )

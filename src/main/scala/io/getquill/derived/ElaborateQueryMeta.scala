@@ -79,7 +79,44 @@ object ElaborateQueryMeta {
 
   case class Term(name: String, typeType: TermType, children: List[Term] = List(), optional: Boolean = false) {
     def withChildren(children: List[Term]) = this.copy(children = children)
-    def toAst = Term.toAst(this)
+    def toAst = Term.toAstTop(this)
+
+    // Used by coproducts, merges all fields of a term with another if this is valid
+    // Note that T is only needed for the error message. Maybe take it out once we store Types inside of Term
+    def merge[T: Type](other: Term)(using quotes: Quotes) = {
+      import quotes.reflect._
+
+      // Terms must both have the same name
+      if (this.name != other.name)
+        report.throwError(s"Cannot resolve coproducts because terms ${this} and ${other} have different names") // TODO Describe this as better error messages for users?
+
+      if (this.optional != other.optional)
+        report.throwError(s"Cannot resolve coproducts because one of the terms ${this} and ${other} is optional and the other is not")
+
+      if (this.typeType != other.typeType)
+        report.throwError(s"Cannot resolve coproducts because the terms ${this} and ${other} have different types (${this.typeType} and ${other.typeType} respectively)")
+
+      import GroupByOps._
+      // Given Shape -> (Square, Rectangle) the result will be:
+      // Shape.x detected multiple kinds of values: List(Term(x,Branch,List(Term(width,Leaf,List(),false), Term(height,Leaf,List(),false)),false), Term(x,Branch,List(Term(radius,Leaf,List(),false)),false))
+      // Need to merge these terms
+      val orderedGroupBy = (this.children ++ other.children).groupByOrdered(_.name)
+      // Validate the keys to make sure that they are all the same kind of thing. E.g. if you have a Shape coproduct
+      // with a Square.height and a Rectagnle.height, both 'height' fields but be a Leaf (and also in the future will need to have the same data type)
+      // TODO Need to add datatype to Term so we can also verify types are the same for the coproducts
+      val newChildren =
+        orderedGroupBy.map((term, values) => {
+          val distinctValues = values.distinct
+          if (distinctValues.length > 1)
+            report.throwError(s"Invalid coproduct at: ${TypeRepr.of[T].widen.typeSymbol.name}.${term} detected multiple kinds of values: ${distinctValues}")
+          
+          // TODO Check if there are zero?
+          distinctValues.head
+        }).toList
+
+      this.copy(children = newChildren)
+    }
+
   }
   object Term {
     import io.getquill.ast._
@@ -93,45 +130,60 @@ object ElaborateQueryMeta {
         }
       )
 
-    def toAst(node: Term, parent: Ast): List[Ast] =
+    def toAst(node: Term, parent: Ast): List[(Ast, String)] =
       node match {
         // If there are no children, property should not be hidden i.e. since it's not 'intermediate'
         // I.e. for the sake of SQL we set properties representing embedded objects to 'hidden'
         // so they don't show up in the SQL.
         case Term(name, tt, Nil, _) =>
-          List(property(parent, name, tt))
+          val output = List(property(parent, name, tt))
+          // Add field name to the output: x.width -> (x.width, width)
+          output.map(ast => (ast, name))
 
         case Term(name, tt, list, false) =>
-          list.flatMap(elem => 
-            toAst(elem, property(parent, name, tt)))
+          val output = 
+            list.flatMap(elem => 
+              toAst(elem, property(parent, name, tt)))
+          // Add field name to the output
+          output.map((ast, childName) => (ast, name + childName))
           
         case Term(name, Leaf, list, true) =>
           val idV = Ident("v", Quat.Generic) // TODO Specific quat inference
-          for {
-            elem <- list
-            newAst <- toAst(elem, idV)
-          } yield OptionMap(property(parent, name, Leaf), idV, newAst)
+          val output =
+            for {
+              elem <- list
+              (newAst, name) <- toAst(elem, idV)
+            } yield (OptionMap(property(parent, name, Leaf), idV, newAst), name)
+          // Add field name to the output
+          output.map((ast, childName) => (ast, name + childName))
 
         case Term(name, Branch, list, true) =>
           val idV = Ident("v", Quat.Generic)
-          for {
-            elem <- list
-            newAst <- toAst(elem, idV)
-          } yield OptionTableMap(property(parent, name, Branch), idV, newAst)
+          val output = 
+            for {
+              elem <- list
+              (newAst, name) <- toAst(elem, idV)
+            } yield (OptionTableMap(property(parent, name, Branch), idV, newAst), name)
+          // Add field name to the output
+          output.map((ast, childName) => (ast, name + childName))
       }
 
-    def toAst(node: Term): List[Ast] = {
+    def toAstTop(node: Term): List[(Ast, String)] = {
       node match {
         // If leaf node, return the term, don't care about if it is optional or not
         case Term(name, _, Nil, _) =>
-          List(Ident(name, Quat.Generic))
+          val output = List(Ident(name, Quat.Generic))
+          // For a single-element field, add field name to the output
+          output.map(ast => (ast, name))
 
         // T( a, [T(b), T(c)] ) => [ a.b, a.c ] 
         // (done?)         => [ P(a, b), P(a, c) ] 
         // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
         // where T is Term and P is Property (in Ast) and [] is a list
         case Term(name, _, list, false) =>
-          list.flatMap(elem => toAst(elem, Ident(name, Quat.Generic)))
+          val output = list.flatMap(elem => toAst(elem, Ident(name, Quat.Generic)))
+          // Do not add top level field to the output. Otherwise it would be x -> (x.width, xwidth), (x.height, xheight)
+          output
 
         // T-Opt( a, T(b), T(c) ) => 
         // [ a.map(v => v.b), a.map(v => v.c) ] 
@@ -139,10 +191,13 @@ object ElaborateQueryMeta {
         // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
         case Term(name, _, list, true) =>
           val idV = Ident("v", Quat.Generic)
-          for {
-            elem <- list
-            newAst <- toAst(elem, idV)
-          } yield Map(Ident(name, Quat.Generic), idV, newAst)
+          val output = 
+            for {
+              elem <- list
+              (newAst, name) <- toAst(elem, idV)
+            } yield (Map(Ident(name, Quat.Generic), idV, newAst), name)
+          // Do not add top level field to the output. Otherwise it would be x -> (x.width, xwidth), (x.height, xheight)
+          output
       }
     }
   }
@@ -163,6 +218,20 @@ object ElaborateQueryMeta {
       }
     def isProduct(tpe: Type[_]): Boolean =
       TypeRepr.of(using tpe) <:< TypeRepr.of[Product]
+  }
+
+  /** Go through all possibilities that the element might be and collect their fields */
+  def collectFields[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(using Quotes): List[Term] = {
+    import quotes.reflect.{Term => QTerm, _}
+    val ext = new TypeExtensions
+    import ext._
+    
+    (fieldsTup, typesTup) match {
+      case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct =>
+        base[tpe](node) :: collectFields(node, Type.of[fields], Type.of[types])
+      case (_, '[EmptyTuple]) => Nil
+      case _ => report.throwError("Cannot Derive Sum during Type Flattening of Expression:\n" + (fieldsTup, typesTup))
+    }
   }
 
   def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(using Quotes): List[Term] = {
@@ -199,7 +268,7 @@ object ElaborateQueryMeta {
 
       case (_, '[EmptyTuple]) => Nil
 
-      case _ => report.throwError("Cannot Types In Expression Expression:\n" + (fieldsTup, typesTup))
+      case _ => report.throwError("Cannot Derive Product during Type Flattening of Expression:\n" + (fieldsTup, typesTup))
     } 
   }
 
@@ -214,6 +283,17 @@ object ElaborateQueryMeta {
           case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
             val children = flatten(term, Type.of[elementLabels], Type.of[elementTypes])
             term.withChildren(children)
+
+
+          // TODO Make sure you can summon a ColumnResolver if there is a SumMirror, otherwise this kind of decoding should be impossible
+          case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+            // Find field infos (i.e. Term objects) for all potential types that this coproduct could be
+            val alternatives = collectFields(term, Type.of[elementLabels], Type.of[elementTypes])
+            // Then merge them together to get one term representing all of their fields types.
+            // Say you have a coproduct Shape -> (Square(width), Rectangle(width,height), Circle(radius))
+            // You would get Term(width, height, radius)
+            alternatives.reduce((termA, termB) => termA.merge[T](termB))
+            
           case _ =>
             Expr.summon[GenericDecoder[_, T]] match {
               case Some(decoder) => term
@@ -233,20 +313,24 @@ object ElaborateQueryMeta {
 
   def staticList[T](baseName: String)(using Quotes, Type[T]): List[Ast] = {
     val expanded = base[T](Term(baseName, Branch))
-    expanded.toAst
+    expanded.toAst.map(_._1)
+  }
+
+  private def productized[T](using Quotes, Type[T]): Ast = {
+    val lifted = base[T](Term("x", Branch)).toAst
+    val insert =
+      if (lifted.length == 1)
+        lifted.head._1
+      else {
+        CaseClass(lifted.map((ast, name) => (name, ast)))
+      }
+    insert
   }
   
   /** ElaborateQueryMeta the query AST in a static query **/
   def static[T](ast: Ast)(using Quotes, Type[T]): AMap = {
-    val lifted = staticList[T]("x")
-    //println("Expanded to: " + expanded)
-    val insert =
-      if (lifted.length == 1)
-        lifted.head
-      else
-        Tuple(lifted)
-
-    AMap(ast, Ident("x", Quat.Generic), insert)
+    val bodyAst = productized[T]
+    AMap(ast, Ident("x", Quat.Generic), bodyAst)
   }
 
   /** An external hook to run the Elaboration with a given AST during runtime (mostly for testing). */
@@ -254,13 +338,38 @@ object ElaborateQueryMeta {
 
   /** ElaborateQueryMeta the query AST in a dynamic query **/
   def dynamic[T](ast: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
-    val lifted = staticList[T]("x").map(ast => Lifter(ast))
-    val insert = 
-      if (lifted.length == 1) 
-        lifted.head 
-      else 
-        '{ Tuple(${Expr.ofList(lifted)}) }
+    val bodyAst = productized[T]
+    '{ AMap($ast, Ident("x", Quat.Generic), ${Lifter(bodyAst)}) }
+  }
+}
 
-    '{ AMap($ast, Ident("x", Quat.Generic), $insert) }
+
+object GroupByOps {
+  import collection.immutable.ListSet
+  import collection.mutable.{LinkedHashMap, Builder}
+
+  implicit class GroupByOrderedImplicitImpl[A](val t: Traversable[A]) extends AnyVal {
+    def groupByOrderedUnique[K](f: A => K): Map[K, ListSet[A]] =
+      groupByGen(ListSet.newBuilder[A])(f)
+
+    def groupByOrdered[K](f: A => K): Map[K, List[A]] =
+      groupByGen(List.newBuilder[A])(f)
+
+    def groupByGen[K, C[_]](makeBuilder: => Builder[A, C[A]])(f: A => K): Map[K, C[A]] = {
+      val map = LinkedHashMap[K, Builder[A, C[A]]]()
+      for (i <- t) {
+        val key = f(i)
+        val builder = map.get(key) match {
+          case Some(existing) => existing
+          case None =>
+            val newBuilder = makeBuilder
+            map(key) = newBuilder
+            newBuilder
+        }
+        builder += i
+      }
+      // Don't need to keep the original map, just map the values in place
+      map.mapValues(_.result).toMap // TODO Need to convert this to LinkedHashMap for ordering guarentees?
+    }
   }
 }
