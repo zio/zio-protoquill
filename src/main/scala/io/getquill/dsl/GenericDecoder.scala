@@ -20,42 +20,6 @@ trait RowTyper[ResultRow, Co] {
   def test(rr: ResultRow): ClassTag[_]
 }
 
-
-
-
-
-
-// trait Example[ResultRow](using quotes: Quotes) {
-//   import quotes.reflect._
-
-//   given deter: Determinant[ResultRow, Shape]
-
-//   given dec1: GenericDecoder[ResultRow, String]
-//   given dec2: GenericDecoder[ResultRow, Int]
-
-//   given sq1: GenericDecoder[ResultRow, Shape.Square] = GenericDecoder.derived
-//   given cr1: GenericDecoder[ResultRow, Shape.Circle] = GenericDecoder.derived
-//   // implicit inline def genDec[ResultRow, T]: GenericDecoder[T] = ${ GenericDecoder.derived[ResultRow, T] }
-
-//   // Note: Can program this logic directly in the decoder!!!
-//   // I.e. use the 'Determinant to do summoning'
-//   // Need a column resolver since columns need to be retrieved by name
-//   given (using resolver: ColumnResolver[ResultRow], deter: Determinant[ResultRow, Shape]): GenericDecoder[ResultRow, Shape] with {
-//     def apply(i: Int, rr: ResultRow): Shape =
-//       deter.apply(rr) match {
-//         case '[Shape.Circle] => summon[GenericDecoder[ResultRow, Shape.Circle]](i, rr)
-//         case '[Shape.Square] => summon[GenericDecoder[ResultRow, Shape.Square]](i, rr)
-//       }
-
-//       //resolver.apply(rr, "shapeType")
-//   }
-
-//   //given JsonEncoder[ThePerson] = JsonEncoder.derived
-//   //given JsonEncoder[TheAddress] = JsonEncoder.derived
-//   //inline def [T](x: =>T) === (y: =>T)(using eq: Eq[T]): Boolean = eq.eqv(x, y)
-//   //implicit inline def eqGen[T]: Eq[T] = ${ Eq.derived[T] }
-// }
-
 object GenericDecoder {
 
   // Determine a row type for a coproduct Co

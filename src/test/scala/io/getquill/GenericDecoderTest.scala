@@ -41,7 +41,7 @@ class GenericDecoderTest extends Spec {
   given GenericDecoder[MyResult, Int] with
     def apply(index: Int, row: MyResult): Int = row.get(index).toString.toInt
 
-  implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.derived
+  
 
   // "test product type" in {
   //   val result = MyResult(LinkedHashMap("name" -> "Joe", "age" -> 123))
@@ -51,7 +51,6 @@ class GenericDecoderTest extends Spec {
   // TODO automatically provide this in 'context'
   given res: ColumnResolver[MyResult] with {
     def apply(resultRow: MyResult, columnName: String): Int = {
-      println("******************* USING RESOLVER **************") //hellooooooooooooooo
       resultRow.resolve(columnName)
     }
   }
@@ -60,11 +59,12 @@ class GenericDecoderTest extends Spec {
   // // use sealed trait and put inside main body. Probably because scala compiler has not been able 
   // to close the class yet hence it does not yet know that it is a sum
 
-  // TODO Include 'type' here and make sure it will write it
   enum Shape:
     case Square(width: Int, height: Int) extends Shape
     case Circle(radius: Int) extends Shape
 
+
+  implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.derived
   given sq1: GenericDecoder[MyResult, Shape.Square] = GenericDecoder.derived
   given cr1: GenericDecoder[MyResult, Shape.Circle] = GenericDecoder.derived
   
