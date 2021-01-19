@@ -65,8 +65,8 @@ class GenericDecoderTest extends Spec {
 
 
   implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.derived
-  //given sq1: GenericDecoder[MyResult, Shape.Square] = GenericDecoder.derived
-  //given cr1: GenericDecoder[MyResult, Shape.Circle] = GenericDecoder.derived
+  given sq1: GenericDecoder[MyResult, Shape.Square] = GenericDecoder.derived
+  given cr1: GenericDecoder[MyResult, Shape.Circle] = GenericDecoder.derived
   
 
   given deter: RowTyper[MyResult, Shape] with {
