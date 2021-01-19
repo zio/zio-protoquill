@@ -26,6 +26,10 @@ class ExpanderTest extends Spec {
 
   "coproduct" - {  
     // TODO test nested embedded classes in the coproducts
+
+    
+    //   // implicit inline def genDec[ResultRow, T]: GenericDecoder[T] = ${ GenericDecoder.derived[ResultRow, T] }
+
     val v = ElaborateQueryMeta.external[Blah.Shape](body)
     println(v)
   }
