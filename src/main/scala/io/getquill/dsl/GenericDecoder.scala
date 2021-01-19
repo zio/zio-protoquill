@@ -17,7 +17,7 @@ trait GenericDecoder[ResultRow, T] {
 }
 
 trait RowTyper[ResultRow, Co] {
-  inline def test[T](rr: ResultRow): Boolean
+  def test(rr: ResultRow): ClassTag[_]
 }
 
 
@@ -101,10 +101,14 @@ object GenericDecoder {
   type IsProduct[T <: Product] = T
 
   // If a columnName -> columns index is available, use that. It is necessary for coproducts
-  def resolveIndexOrFallback[ResultRow](originalIndex: Int, resultRow: ResultRow, fieldName: String) =
-    columnResolver match {
-      case None => originalIndex
-      case Some(resolver) => resolver(resultRow, fieldName)
+  inline def resolveIndexOrFallback[ResultRow](originalIndex: Int, resultRow: ResultRow, fieldName: String) =
+    columnResolver[ResultRow] match {
+      case None => 
+        println(s"---------------- Using Original Index ${originalIndex} ----------------")
+        originalIndex
+      case Some(resolver) =>
+        println(s"---------------- Using Resolver Index '${fieldName}' -> ${resolver(resultRow, fieldName)} ----------------")
+        resolver(resultRow, fieldName)
     }
 
   inline def chooseAndDecode[Fields <: Tuple, Elems <: Tuple, ResultRow, Co](rawIndex: Int, resultRow: ResultRow): Co = {
@@ -114,33 +118,15 @@ object GenericDecoder {
         // If we've matched on the type, decode the children and return. E.g. if Co is Shape, determinant[ResultRow, Shape]
         // may return Shape.Square. If the 'head' value of this list of Sum-Types is Shape.Square then we encode a square
         // and return it
+        val tpeClass = summonInline[ClassTag[tpe]].runtimeClass
+        val rowClass = summonRowTyper[ResultRow, Co].test(resultRow).runtimeClass
         println(s"-----------=============== GOT HERE =============== ${showType[tpe]} -----------")
-        if (summonRowTyper[ResultRow, Co].test[tpe](resultRow)) {
+        if (tpeClass.isAssignableFrom(rowClass)) {
             val decoded = summonAndDecode[tpe, ResultRow](rawIndex, resultRow)
             decoded.asInstanceOf[Co]
         } else {
             chooseAndDecode[fields, tpes, ResultRow, Co](rawIndex, resultRow)
         }
-
-        
-        // val determinedCls = summonDeterminant[ResultRow, Co](resultRow)
-        // if (determinedCls.runtimeClass.isAssignableFrom(tpeCls.runtimeClass)) {
-        //   val decoded = summonAndDecode[tpe, ResultRow](rawIndex, resultRow)
-        //   decoded.asInstanceOf[Co]
-        // } else {
-        //   chooseAndDecode[fields, tpes, ResultRow, Co](rawIndex, resultRow)
-        // }
-
-        // determinant[ResultRow, Co](resultRow)
-        
-        // match {
-        //   case _: Det[head] => 
-        //     val decoded = summonAndDecode[head, ResultRow](rawIndex, resultRow)
-        //     decoded.asInstanceOf[Co]
-        //   case _ => 
-        //     chooseAndDecode[fields, tail, ResultRow, Co](rawIndex, resultRow)
-        // }
-
       case (_, _: EmptyTuple) => throw new IllegalArgumentException(s"Cannot resolve coproduct type")
     }
   }
@@ -162,20 +148,22 @@ object GenericDecoder {
       case (_, _: EmptyTuple) => EmptyTuple
     }
 
-  inline def derived[T, ResultRow]: GenericDecoder[ResultRow, T] = 
+  inline def decode[T, ResultRow](index: Int, resultRow: ResultRow) =
     summonFrom {
-        case ev: Mirror.Of[T] =>
-          new GenericDecoder[ResultRow, T] {
-            def apply(index: Int, resultRow: ResultRow): T =
-                inline ev match {
-                  case m: Mirror.ProductOf[T] =>
-                    val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
-                    m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
-                  case m: Mirror.SumOf[T] =>
-                    // Try to get the mirror element and decode it
-                    val res = chooseAndDecode[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow, T](index, resultRow)
-                    res
-                }
-          }     
+      case ev: Mirror.Of[T] =>
+        inline ev match {
+          case m: Mirror.ProductOf[T] =>
+            val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
+            m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
+          case m: Mirror.SumOf[T] =>
+            // Try to get the mirror element and decode it
+            val res = chooseAndDecode[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow, T](index, resultRow)
+            res
+        }
+    }
+
+  inline def derived[T, ResultRow]: GenericDecoder[ResultRow, T] = 
+    new GenericDecoder[ResultRow, T] {
+      def apply(index: Int, resultRow: ResultRow): T = decode[T, ResultRow](index, resultRow)     
     }
 }

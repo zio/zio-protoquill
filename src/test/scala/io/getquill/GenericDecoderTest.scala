@@ -32,7 +32,7 @@ class GenericDecoderTest extends Spec {
   case class MyResult(list: LinkedHashMap[String, Any]) {
     def get(i: Int): String = list.values.toList(i-1).toString
     def get(key: String): String = list.apply(key).toString
-    def resolve(key: String): Int = list.valuesIterator.toList.indexOf(key)
+    def resolve(key: String): Int = list.keysIterator.toList.indexOf(key) + 1
   }
 
   given GenericDecoder[MyResult, String] with
@@ -50,7 +50,10 @@ class GenericDecoderTest extends Spec {
 
   // TODO automatically provide this in 'context'
   given res: ColumnResolver[MyResult] with {
-    def apply(resultRow: MyResult, columnName: String): Int = resultRow.resolve(columnName)
+    def apply(resultRow: MyResult, columnName: String): Int = {
+      println("******************* USING RESOLVER **************") //hellooooooooooooooo
+      resultRow.resolve(columnName)
+    }
   }
 
   // // Can't find a needed reference to Type[Shape.Circle] and Type[Shape.Square] if you
@@ -66,13 +69,13 @@ class GenericDecoderTest extends Spec {
   given cr1: GenericDecoder[MyResult, Shape.Circle] = GenericDecoder.derived
   
 
-  inline given deter: RowTyper[MyResult, Shape] with {
-    inline def test[T](rr: MyResult): Boolean = {
+  given deter: RowTyper[MyResult, Shape] with {
+    def test(rr: MyResult): ClassTag[_] = {
       val typeValue = rr.get("type")
-      inline erasedValue[T] match {
-        case _: Shape.Circle => typeValue == "circle"
-        case _: Shape.Square => typeValue == "square"
-        case _: Any => throw new IllegalArgumentException(s"Cannot resolve type: ${typeValue} for any shape (shapeType was: ${GenericDecoder.showType[T]})")
+      typeValue match {
+        case "circle" => classTag[Shape.Circle]
+        case "square" => classTag[Shape.Square]
+        case _ => throw new IllegalArgumentException(s"Cannot resolve type: ${typeValue})")
       }
     }
   }
