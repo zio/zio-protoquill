@@ -23,6 +23,14 @@ import scala.collection.mutable.LinkedHashMap
 import scala.reflect.ClassTag
 import scala.reflect.classTag
 
+object Example {
+  sealed trait Shape
+  object Shape {
+    case class Square(width: Int, height: Int) extends Shape
+    case class Circle(radius: Int) extends Shape
+  }
+}
+
 class GenericDecoderTest extends Spec {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
@@ -59,14 +67,15 @@ class GenericDecoderTest extends Spec {
   // // use sealed trait and put inside main body. Probably because scala compiler has not been able 
   // to close the class yet hence it does not yet know that it is a sum
 
-  enum Shape:
-    case Square(width: Int, height: Int) extends Shape
-    case Circle(radius: Int) extends Shape
+  import Example._
+  // enum Shape:
+  //   case Square(width: Int, height: Int) extends Shape
+  //   case Circle(radius: Int) extends Shape
 
 
   implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.derived
-  given sq1: GenericDecoder[MyResult, Shape.Square] = GenericDecoder.derived
-  given cr1: GenericDecoder[MyResult, Shape.Circle] = GenericDecoder.derived
+  //given sq1: GenericDecoder[MyResult, Shape.Square] = GenericDecoder.derived
+  //given cr1: GenericDecoder[MyResult, Shape.Circle] = GenericDecoder.derived
   
 
   given deter: RowTyper[MyResult, Shape] with {
