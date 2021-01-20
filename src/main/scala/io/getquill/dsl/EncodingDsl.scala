@@ -14,5 +14,7 @@ trait EncodingDsl {
 
   type Encoder[T] = GenericEncoder[T, PrepareRow]
   type Decoder[T] = GenericDecoder[ResultRow, T]
+  type ColumnResolver = GenericColumnResolver[ResultRow]
+  type RowTyper[T] = GenericRowTyper[ResultRow, T]
   
 }

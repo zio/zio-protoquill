@@ -359,7 +359,11 @@ trait QuatMakingBase(using val qctx: Quotes) {
             //println("=========> Is ArbitraryClassBased")
             Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
 
+          // If the quat is a coproduct, merge the sub quats that are recursively retrieved
+          case CoProduct(quat) => quat
+
           // Is it a generic or does it have any generic parameters that have not been filled (e.g. is T not filled in Option[T] ?)
+          // TODO Improve by making specific flag check to see that it's a coproduct
           case Param(tpe) =>
             //println("=========> Is Generic")
             Quat.Generic
@@ -375,6 +379,64 @@ trait QuatMakingBase(using val qctx: Quotes) {
       val output = QuatMaking.lookupCache(tpe.widen)(() => parseTopLevelType(tpe))
       //println(s"*********** PARSED QUAT: ${output} ***********")
       output
+    }
+
+    object CoProduct {
+      import io.getquill.quat.LinkedHashMapOps._
+      import scala.deriving._
+      import scala.quoted._
+
+      def computeCoproduct[T](using tpe: Type[T]): Option[Quat] = {
+        Expr.summon[Mirror.Of[T]] match
+          case Some(ev) =>
+            ev match
+              case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+                  val coproductQuats = traverseCoproduct[elementTypes](Type.of[elementTypes])
+                  val reduced = coproductQuats.reduce((q1, q2) => mergeQuats(q1, q2))
+                  Some(reduced)
+              case _ =>
+                None
+
+          case None =>
+            None
+      }
+
+      def unapply(tpeRepr: TypeRepr) =
+        // If you don't widen the exception happens: "Could not match on type: Type.of[...]
+        val tpe = tpeRepr.widen.asType
+        tpe match {
+          case '[t] => 
+            val typedTpe = tpe.asInstanceOf[Type[t]]
+            computeCoproduct[t](using typedTpe)
+          case _ =>
+            report.throwError(s"Could not match on type: ${tpe}")
+        }
+
+      def traverseCoproduct[Types](types: Type[Types]): List[Quat] =
+        types match
+          case '[tpe *: tpes] =>
+            InferQuat.of[tpe] :: traverseCoproduct[tpes](Type.of[tpes])
+          case '[EmptyTuple] =>
+            Nil
+
+      def mergeQuats(q1: Quat, q2: Quat): Quat =
+        (q1, q2) match
+          case (first: Quat.Product, second: Quat.Product) =>
+            val newFields =
+              first.fields.outerZipWith(second.fields) {
+                case (key, Some(first), Some(second)) => (key, mergeQuats(first, second))
+                case (key, Some(first), None) => (key, first)
+                case (key, None, Some(second)) => (key, second)
+                case (key, None, None) => throw new IllegalArgumentException(s"Invalid state for Quat key ${key}, both values of merging quats were null")
+              }
+            Quat.Product(newFields)
+
+          case (firstQuat, secondQuat) => 
+            firstQuat.leastUpperType(secondQuat) match
+              case Some(value) => value
+              // TODO Get field names for these quats if they are inside something else?
+              case None => throw new IllegalArgumentException(s"Could not create coproduct by merging quats ${q1} and ${q2}")
+
     }
 
     object QuotedType {

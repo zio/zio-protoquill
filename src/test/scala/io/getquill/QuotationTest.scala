@@ -176,7 +176,7 @@ class QuotationTest extends Spec with Inside {
       q must matchPattern {
         case Quoted(ScalarTag(tagUid), List(EagerPlanter("hello", encoder, vaseUid)), List()) if (tagUid == vaseUid) =>
       }
-      List(Row("hello")) mustEqual q.encodeEagerLifts(new Row())
+      List(Row.single("hello")) mustEqual q.encodeEagerLifts(new Row())
     }
 
     "spliced lift" in {
@@ -191,7 +191,7 @@ class QuotationTest extends Spec with Inside {
             List(QuotationVase(Quoted(ScalarTag(scalarTagId), List(EagerPlanter("hello", encoder, planterId)), Nil), quotationVaseId))
           ) if (quotationTagId == quotationVaseId && scalarTagId == planterId && encoder.eq(summon[Encoder[String]])) =>
       }
-      List(Row("hello")) mustEqual q.encodeEagerLifts(new Row())
+      List(Row.single("hello")) mustEqual q.encodeEagerLifts(new Row())
     }
     "query with a lift and plus operator" in {
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)

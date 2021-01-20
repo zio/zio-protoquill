@@ -23,7 +23,7 @@ trait MirrorDecoders extends EncodingDsl {
   implicit def optionDecoder[T](implicit d: Decoder[T]): Decoder[Option[T]] =
     MirrorDecoder((index: Int, row: ResultRow) =>
       row[Option[Any]](index) match {
-        case Some(v) => Some(d(0, Row(v)))
+        case Some(v) => Some(d(0, Row.fromList(v)))
         case None    => None
       })
 

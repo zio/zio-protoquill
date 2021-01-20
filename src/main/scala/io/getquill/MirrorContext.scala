@@ -3,11 +3,23 @@ package io.getquill
 import io.getquill.context.mirror._
 import io.getquill.context._
 import io.getquill.quoter.Quoted
+import io.getquill.idiom.Idiom
+import io.getquill.NamingStrategy
 
 sealed trait Dummy
 object DummyInst extends Dummy
 
-class MirrorContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy](val idiom: Dialect, val naming: Naming)
+// TODO Dialect <: Idiom, Naming <: NamingStrategy are not actually needed so can remove them but that causes a compile-time error. Need to figure that out
+// TODO Modify some major unit tests with embedded etc... to make sure this works in all cases
+trait MirrorColumnResolving[Dialect <: Idiom, Naming <: NamingStrategy] { self: MirrorContextBase[Dialect, Naming] =>
+  given mirrorResover: ColumnResolver with {
+    def apply(resultRow: Row, columnName: String): Int = resultRow.indexOfKey(columnName)
+  }
+}
+
+class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming) extends MirrorContextBase[Dialect, Naming]
+
+trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
 extends Context[Dialect, Naming] 
 with MirrorDecoders with MirrorEncoders { self =>
   override type Result[T] = T

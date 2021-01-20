@@ -8,7 +8,7 @@ import scala.deriving._
 import scala.compiletime.{erasedValue, constValue, summonFrom, summonInline}
 
 
-trait ColumnResolver[ResultRow] {
+trait GenericColumnResolver[ResultRow] {
   def apply(resultRow: ResultRow, columnName: String): Int
 }
 
@@ -16,30 +16,23 @@ trait GenericDecoder[ResultRow, T] {
   def apply(i: Int, rr: ResultRow):T
 }
 
-trait RowTyper[ResultRow, Co] {
+trait GenericRowTyper[ResultRow, Co] {
   def test(rr: ResultRow): ClassTag[_]
 }
 
 object GenericDecoder {
 
-  // Determine a row type for a coproduct Co
-  // TODO Need good error message for user if this is not found
-  transparent inline def summonRowTyper[ResultRow, Co] = // : RowTyper[ResultRow, Co]
+  // transparent 
+  inline def summonRowTyper[ResultRow, Co]: Option[GenericRowTyper[ResultRow, Co]] =
     summonFrom {
-      case det: RowTyper[ResultRow, Co] => det
-      // TODO Better error via report.throwError if cant find it (or return None and error later?)
+      case det: GenericRowTyper[ResultRow, Co] => Some(det)
+      case _ => None
     }
 
-  // inline def summonDeterminantIfMatches[ResultRow, Co, PossibleCo](rr: ResultRow): Option[Determinant[ResultRow, Co]] =
-  //   val ct = summonDeterminant[ResultRow, Co].apply(rr)
-  //   (erasedValue[PossibleCo], ct) match {
-  //     case (_: ev, _: ct)
-  //   }
-
   // TODO Cache this return since it only needs to be done once?
-  inline def columnResolver[ResultRow]: Option[ColumnResolver[ResultRow]] =
+  inline def columnResolver[ResultRow]: Option[GenericColumnResolver[ResultRow]] =
     summonFrom {
-        case res: ColumnResolver[ResultRow] => Some(res)
+        case res: GenericColumnResolver[ResultRow] => Some(res)
         case _ => None
     }
 
@@ -68,10 +61,10 @@ object GenericDecoder {
   inline def resolveIndexOrFallback[ResultRow](originalIndex: Int, resultRow: ResultRow, fieldName: String) =
     columnResolver[ResultRow] match {
       case None => 
-        println(s"---------------- Using Original Index ${originalIndex} ----------------")
+        //println(s"---------------- Using Original Index ${originalIndex} ----------------")
         originalIndex
       case Some(resolver) =>
-        println(s"---------------- Using Resolver Index '${fieldName}' -> ${resolver(resultRow, fieldName)} ----------------")
+        //println(s"---------------- Using Resolver Index '${fieldName}' -> ${resolver(resultRow, fieldName)} ----------------")
         resolver(resultRow, fieldName)
     }
 
@@ -83,15 +76,20 @@ object GenericDecoder {
         // may return Shape.Square. If the 'head' value of this list of Sum-Types is Shape.Square then we encode a square
         // and return it
         val tpeClass = summonInline[ClassTag[tpe]].runtimeClass
-        val rowClass = summonRowTyper[ResultRow, Co].test(resultRow).runtimeClass
-        println(s"-----------=============== GOT HERE =============== ${showType[tpe]} -----------")
+        // TODO Cache this or move it to upper level (i.e. to 'decode' to improve performance)
+        val rowClass = 
+          summonRowTyper[ResultRow, Co] match
+            case Some(typer) => typer.test(resultRow).runtimeClass
+            case None => throw new IllegalArgumentException(s"Cannot summon RowTyper for type: ${showType[Co]}")
+
+        //println(s"-----------=============== GOT HERE =============== ${showType[tpe]} -----------")
         if (tpeClass.isAssignableFrom(rowClass)) {
             val decoded = summonAndDecode[tpe, ResultRow](rawIndex, resultRow)
             decoded.asInstanceOf[Co]
         } else {
             chooseAndDecode[fields, tpes, ResultRow, Co](rawIndex, resultRow)
         }
-      case (_, _: EmptyTuple) => throw new IllegalArgumentException(s"Cannot resolve coproduct type")
+      case (_, _: EmptyTuple) => throw new IllegalArgumentException(s"Cannot resolve coproduct type for ${showType[Co]}")
     }
   }
 
@@ -120,6 +118,10 @@ object GenericDecoder {
             val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
             m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
           case m: Mirror.SumOf[T] =>
+            columnResolver[ResultRow] match {
+              case None => throw new IllegalArgumentException(s"Need column resolver for in order to be able to decode a coproduct but none exists for ${showType[ResultRow]}")
+              case _ =>
+            }
             // Try to get the mirror element and decode it
             val res = chooseAndDecode[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow, T](index, resultRow)
             res
