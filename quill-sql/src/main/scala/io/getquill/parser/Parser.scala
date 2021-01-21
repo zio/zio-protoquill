@@ -434,6 +434,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
       }
   }
 
+  // Harrison Test
   // TODO Is there any way to check if Numeric[T] exists if you don't know the type T
   // but know the type of the term?
   // def isNumeric(expr: Expr[Any]) = {
