@@ -75,7 +75,7 @@ import io.getquill.quat.Quat
 import io.getquill.parser.TastyMatchers
 
 // TODO Explain this is a specific elaborator used for Case Class Lifts
-class TermElaborator(using val qctx: Quotes) extends TastyMatchers {
+class ElaborateCaseClass(using val qctx: Quotes) extends TastyMatchers {
   import qctx.reflect._
   import io.getquill.derived.ElaborateQueryMeta.Term
 
@@ -88,8 +88,8 @@ class TermElaborator(using val qctx: Quotes) extends TastyMatchers {
     }    
   }
 
-  def elaborate(node: Term, expr: Expr[_]): List[(Expr[_], String)] = {
-    val elaborations = elaborateObjectRecurse(node, expr)
+  def apply(node: Term, caseClass: Expr[_]): List[(Expr[_], String)] = {
+    val elaborations = elaborateObjectRecurse(node, caseClass)
     elaborations.map((expr, name) => (flattenOptions(expr), name))
   }
 
@@ -105,6 +105,8 @@ class TermElaborator(using val qctx: Quotes) extends TastyMatchers {
       // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
       // where T is Term and P is Property (in Ast) and [] is a list
       case (field, Term(name, _, childProps, false)) =>
+        // TODO For coproducts need to check that the childName method actually exists on the type and
+        // exclude it if it does not
         val output =
           childProps.flatMap { 
             childTerm =>
@@ -112,9 +114,6 @@ class TermElaborator(using val qctx: Quotes) extends TastyMatchers {
               elaborateObjectRecurse(childTerm, expr)
           }
         output.map((expr, childName) => (expr, name + childName))
-
-      // What about this case:
-      // v: (i: foo, j: Opt[(x: foo, y:(a, Opt[b])]) when expanding v.j.y.b we need do do a flatten
 
       // Production node inside an Option
       // T-Opt( a, [T(b), T(c)] ) => 
@@ -419,6 +418,13 @@ object ElaborateQueryMeta {
   def static[T](ast: Ast)(using Quotes, Type[T]): AMap = {
     val bodyAst = productized[T]
     AMap(ast, Ident("x", Quat.Generic), bodyAst)
+  }
+
+  // i.e. case class, enum, or coproduct (some TODOs for that)
+  def caseclass[T](using Quotes, Type[T]) = {
+    val schema = base[T <: Product](expr: Expr[T])(Term("x", Branch))
+    val elaboration = new ElaborateCaseClass().apply(schema, expr)
+    elaboration
   }
 
   /** An external hook to run the Elaboration with a given AST during runtime (mostly for testing). */
