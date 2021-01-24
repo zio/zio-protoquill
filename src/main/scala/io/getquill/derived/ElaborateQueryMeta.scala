@@ -70,6 +70,61 @@ import io.getquill.quat.Quat
  * The fact that we know that Person expands into Prop(Id("p"),"name"), Prop(Id("p"),"age")) helps
  * us compute the necessary assignments in the `InsertMacro`.
  */
+
+
+import io.getquill.parser.TastyMatchers
+
+class TermElaborator(using val qctx: Quotes) extends TastyMatchers {
+  import qctx.reflect._
+  import io.getquill.derived.ElaborateQueryMeta.Term
+
+
+  def elaborateObjectTop(node: Term, expr: Expr[_]): List[(Expr[_], String)] = {
+    (expr, node) match {
+      // If leaf node, return the term, don't care about if it is optional or not
+      case (_, Term(name, _, Nil, _)) =>
+        List((expr, name))
+
+      // Product node not inside an option
+      // T( a, [T(b), T(c)] ) => [ a.b, a.c ] 
+      // (done?)         => [ P(a, b), P(a, c) ] 
+      // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
+      // where T is Term and P is Property (in Ast) and [] is a list
+      case (field, Term(name, _, childProps, false)) =>
+        val output =
+          childProps.flatMap { 
+            childTerm =>
+              val expr = field `.` (childTerm.name)
+              elaborateObjectTop(childTerm, expr)
+          }
+        output.map((expr, childName) => (expr, name + childName))
+
+      // What about this case:
+      // v: (i: foo, j: Opt[(x: foo, y:(a, Opt[b])]) when expanding v.j.y.b we need do do a flatten
+
+      // Production node inside an Option
+      // T-Opt( a, [T(b), T(c)] ) => 
+      // [ a.map(v => v.b), a.map(v => v.c) ] 
+      // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
+      // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
+      case ('{ ($optField: Option[Any]) }, Term(name, _, childProps, true)) =>
+        val output =
+          // TODO For coproducts need to check that the childName method actually exists on the type and
+          // exclude it if it does not
+          childProps.flatMap { 
+            childTerm => 
+              val expr = '{ $optField.map(prop => ${'prop `.` (childTerm.name)}) }
+              elaborateObjectTop(childTerm, expr)
+          }
+        output.map((expr, childName) => (expr, name + childName))
+
+      case _ =>
+          report.throwError(s"Illegal state during reducing expression term: '${node}' and expression: '${expr.show}'")
+    }
+  }
+
+}
+
 object ElaborateQueryMeta {
   import io.getquill.dsl.GenericDecoder
 
@@ -118,6 +173,7 @@ object ElaborateQueryMeta {
     }
 
   }
+
   object Term {
     import io.getquill.ast._
 
@@ -130,6 +186,8 @@ object ElaborateQueryMeta {
         }
       )
 
+    
+
     def toAst(node: Term, parent: Ast): List[(Ast, String)] =
       node match {
         // If there are no children, property should not be hidden i.e. since it's not 'intermediate'
@@ -140,6 +198,7 @@ object ElaborateQueryMeta {
           // Add field name to the output: x.width -> (x.width, width)
           output.map(ast => (ast, name))
 
+        
         case Term(name, tt, list, false) =>
           val output = 
             list.flatMap(elem => 
@@ -147,6 +206,7 @@ object ElaborateQueryMeta {
           // Add field name to the output
           output.map((ast, childName) => (ast, name + childName))
           
+        // Leaflnode in an option
         case Term(name, Leaf, list, true) =>
           val idV = Ident("v", Quat.Generic) // TODO Specific quat inference
           val output =
@@ -157,6 +217,7 @@ object ElaborateQueryMeta {
           // Add field name to the output
           output.map((ast, childName) => (ast, name + childName))
 
+        // Product node in a option
         case Term(name, Branch, list, true) =>
           val idV = Ident("v", Quat.Generic)
           val output = 
@@ -164,18 +225,30 @@ object ElaborateQueryMeta {
               elem <- list
               (newAst, name) <- toAst(elem, idV)
             } yield (OptionTableMap(property(parent, name, Branch), idV, newAst), name)
+
           // Add field name to the output
           output.map((ast, childName) => (ast, name + childName))
       }
 
+    /**
+     * Top-Level expansion of a Term is slighly different the later levels. A the top it's always ident.map(id => ...)
+     * if Ident is an option as opposed to OptionMap which it would be, in lower layers.  
+     *
+     * Legend: 
+     *   T(x, [y,z])      := Term(x=name, children=List(y,z)), T-Opt=OptionalTerm I.e. term where optional=true
+     *   P(a, b)          := Property(a, b) i.e. a.b
+     *   M(a, v, P(v, b)) := Map(a, v, P(v, b)) or m.map(v => P(v, b))
+     */
     def toAstTop(node: Term): List[(Ast, String)] = {
       node match {
+        // Node without children
         // If leaf node, return the term, don't care about if it is optional or not
         case Term(name, _, Nil, _) =>
           val output = List(Ident(name, Quat.Generic))
           // For a single-element field, add field name to the output
           output.map(ast => (ast, name))
 
+        // Product node not inside an option. 
         // T( a, [T(b), T(c)] ) => [ a.b, a.c ] 
         // (done?)         => [ P(a, b), P(a, c) ] 
         // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
@@ -185,7 +258,8 @@ object ElaborateQueryMeta {
           // Do not add top level field to the output. Otherwise it would be x -> (x.width, xwidth), (x.height, xheight)
           output
 
-        // T-Opt( a, T(b), T(c) ) => 
+        // Production node inside an Option
+        // T-Opt( a, [T(b), T(c)] ) => 
         // [ a.map(v => v.b), a.map(v => v.c) ] 
         // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
         // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]

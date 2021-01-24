@@ -121,6 +121,19 @@ trait TastyMatchers {
     }
   }
 
+  extension (expr: Expr[_]) {
+    def `.`(property: String) = {
+      val method = 
+        expr.asTerm.tpe.widen.classSymbol
+          .getOrElse { report.throwError(s"Cannot find class symbol of the property ${expr.show}") }
+          .memberMethod(property)
+          .headOption
+          .getOrElse { report.throwError(s"Cannot find property ${property} of ${expr.show}") }
+
+      '{ (${ Apply(Select(expr.asTerm, method), List()).asExprOf[Any] }) }
+    }
+  }
+
   object SelectExprOpt {
     def unapply(term: Expr[_]): Option[(Expr[Option[_]], String)] = term match {
       case Unseal(Select(prefix, memberName)) => Some((prefix.asExprOf[Option[Any]], memberName))

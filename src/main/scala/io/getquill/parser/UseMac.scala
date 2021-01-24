@@ -1,18 +1,11 @@
-// package io.getquill.parser
+package io.getquill.parser
 
-// object UseMac {
+object UseMac {
   
 
-//   def main(args: Array[String]):Unit = {
-//     import io.getquill.quoter.QueryDsl._
-    
-//     //inline def p = Person(123, "Joe")
-
-//     case class Person(id: Int, name: String)
-//     inline def p = new Person(123, name = "Joe")
-//     MatchMac(p)
-
-//     PrintMac(p)
-
-//   }
-// }
+  def main(args: Array[String]):Unit = {
+    //val res = TestMac.takeOpt(Option("foo"), (str:String) => str.length) //hello
+    val res = TestMac.takeStr(Option("foo")) //hellooooooo
+    println(res)
+  }
+}

@@ -85,7 +85,6 @@ class ActionTest extends Spec with Inside {
     }
   }
 
-  // TODO Move to ActionTestDynamic
   // Variation of this with only InsertMeta, and well as both InsertMeta and SchemaMeta (inline and dynamic)
   "entity insert with dynamic components should work for" - {
     "given queries in an outer scope" - {
@@ -107,7 +106,7 @@ class ActionTest extends Spec with Inside {
       }
     }
 
-    // Variation of this with only InsertMeta, and well as both InsertMeta and SchemaMeta (inline, and dynamic)
+    // TODO Variation of this with only InsertMeta, and well as both InsertMeta and SchemaMeta (inline, and dynamic)
     "given queries in an outer scope - with the given already there" - {
       given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
       inline def a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
@@ -124,7 +123,7 @@ class ActionTest extends Spec with Inside {
       }
     }
 
-    // Variation of this with only InsertMeta, and well as both InsertMeta and SchemaMeta (inline and dynamic)
+    // TODO Variation of this with only InsertMeta, and well as both InsertMeta and SchemaMeta (inline and dynamic)
     "given queries in an outer scope - with the given already there (static)" - {
       inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
       inline def a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
