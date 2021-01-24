@@ -74,12 +74,26 @@ import io.getquill.quat.Quat
 
 import io.getquill.parser.TastyMatchers
 
+// TODO Explain this is a specific elaborator used for Case Class Lifts
 class TermElaborator(using val qctx: Quotes) extends TastyMatchers {
   import qctx.reflect._
   import io.getquill.derived.ElaborateQueryMeta.Term
 
+  private[getquill] def flattenOptions(expr: Expr[_]): Expr[_] = {
+    expr.asTerm.tpe.asType match {
+      case '[Option[Option[t]]] => 
+        flattenOptions('{ ${expr.asExprOf[Option[Option[t]]]}.flatten })
+      case _ =>
+        expr
+    }    
+  }
 
-  def elaborateObjectTop(node: Term, expr: Expr[_]): List[(Expr[_], String)] = {
+  def elaborate(node: Term, expr: Expr[_]): List[(Expr[_], String)] = {
+    val elaborations = elaborateObjectRecurse(node, expr)
+    elaborations.map((expr, name) => (flattenOptions(expr), name))
+  }
+
+  private[getquill] def elaborateObjectRecurse(node: Term, expr: Expr[_]): List[(Expr[_], String)] = {
     (expr, node) match {
       // If leaf node, return the term, don't care about if it is optional or not
       case (_, Term(name, _, Nil, _)) =>
@@ -95,7 +109,7 @@ class TermElaborator(using val qctx: Quotes) extends TastyMatchers {
           childProps.flatMap { 
             childTerm =>
               val expr = field `.` (childTerm.name)
-              elaborateObjectTop(childTerm, expr)
+              elaborateObjectRecurse(childTerm, expr)
           }
         output.map((expr, childName) => (expr, name + childName))
 
@@ -114,7 +128,7 @@ class TermElaborator(using val qctx: Quotes) extends TastyMatchers {
           childProps.flatMap { 
             childTerm => 
               val expr = '{ $optField.map(prop => ${'prop `.` (childTerm.name)}) }
-              elaborateObjectTop(childTerm, expr)
+              elaborateObjectRecurse(childTerm, expr)
           }
         output.map((expr, childName) => (expr, name + childName))
 

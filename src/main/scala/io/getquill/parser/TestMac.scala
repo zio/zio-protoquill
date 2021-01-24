@@ -4,22 +4,31 @@ import scala.quoted._
 import io.getquill.parser.TastyMatchers
 
 object TestMac {
-  inline def takeOpt[T,R](opt: Option[T], f: T=>R):Option[R] = ${ takeOptImpl('opt, 'f) }
-  def takeOptImpl[T:Type,R:Type](opt: Expr[Option[T]], f: Expr[T=>R])(using qctx: Quotes): Expr[Option[R]] =
-    '{ $opt.map(prop => $f(prop)) }
-
-  inline def takeStr(opt: Option[String]):Option[Any] = ${ takeStrImpl('opt) }
-  def takeStrImpl(opt: Expr[Option[String]])(using qctx: Quotes): Expr[Option[Any]] = {
+  inline def flattenOpt(inline list: List[Any]):List[Any] = ${ flattenOptImpl('list) }
+  def flattenOptImpl(list: Expr[List[Any]])(using qctx: Quotes): Expr[List[Any]] = {
     import qctx.reflect._
-    class Opt(using val qctx: Quotes) extends TastyMatchers {
-      def apply: Expr[Option[Any]] = {
-        //'{ $opt.map($prop => ${`.`(prop.asInstanceOf[Expr[String]])("length")}.asInstanceOf[Int]) }
-        //'{ $opt.map(prop => ${'{prop} `.` ("length") }) }
-        '{ $opt.map(prop => ${'prop `.` ("length") }) }
-        //Lambda(opt.asTerm.termSymbol, MMethod)
-      }
+
+    def flattenOptions(expr: Expr[_]): Expr[_] = {
+      expr.asTerm.tpe.asType match {
+        case '[Option[Option[t]]] => 
+          println(s"======= YES Flattening for ${Printer.TreeShortCode.show(expr.asTerm)}} *** ${Printer.TypeReprShortCode.show(expr.asTerm.tpe)} =======")
+          flattenOptions('{ ${expr.asExprOf[Option[Option[t]]]}.flatten })
+        // case '[Some[Some[t]]] => 
+        //   println(s"======= YES Flattening for ${expr.show} =======")
+        //   flattenOptions('{ ${expr.asExprOf[Option[Option[Any]]]}.flatten })
+        case _ =>
+          println(s"------ NO Flattening for ${Printer.TreeShortCode.show(expr.asTerm)} *** ${Printer.TypeReprShortCode.show(expr.asTerm.tpe)} ------")
+          expr
+      }    
     }
-    new Opt().apply
+
+    val elems = list match {
+      case '{ List.apply(${Varargs(elems)}: _*) } => elems
+    }
+
+    Expr.ofList(elems.map(flattenOptions).toList)
   }
+    
+
     
 }
