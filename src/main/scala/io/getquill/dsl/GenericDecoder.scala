@@ -17,7 +17,7 @@ trait GenericDecoder[ResultRow, T] {
 }
 
 trait GenericRowTyper[ResultRow, Co] {
-  def test(rr: ResultRow): ClassTag[_]
+  def apply(rr: ResultRow): ClassTag[_]
 }
 
 object GenericDecoder {
@@ -68,27 +68,17 @@ object GenericDecoder {
         resolver(resultRow, fieldName)
     }
 
-  inline def chooseAndDecode[Fields <: Tuple, Elems <: Tuple, ResultRow, Co](rawIndex: Int, resultRow: ResultRow): Co = {
-    inline erasedValue[(Fields, Elems)] match {
-      case (_: (field *: fields), _: (tpe *: tpes)) =>
-        // TODO Optimize, move this out of method
-        // If we've matched on the type, decode the children and return. E.g. if Co is Shape, determinant[ResultRow, Shape]
-        // may return Shape.Square. If the 'head' value of this list of Sum-Types is Shape.Square then we encode a square
-        // and return it
+  inline def selectAndDecode[Elems <: Tuple, ResultRow, Co](rawIndex: Int, resultRow: ResultRow, rowClassTag: ClassTag[_]): Co = {
+    inline erasedValue[Elems] match {
+      case _: (tpe *: tpes) =>
         val tpeClass = summonInline[ClassTag[tpe]].runtimeClass
-        // TODO Cache this or move it to upper level (i.e. to 'decode' to improve performance)
-        val rowClass = 
-          summonRowTyper[ResultRow, Co] match
-            case Some(typer) => typer.test(resultRow).runtimeClass
-            case None => throw new IllegalArgumentException(s"Cannot summon RowTyper for type: ${showType[Co]}")
+        val rowClass = rowClassTag.runtimeClass
 
-        //println(s"-----------=============== GOT HERE =============== ${showType[tpe]} -----------")
-        if (tpeClass.isAssignableFrom(rowClass)) {
-            val decoded = summonAndDecode[tpe, ResultRow](rawIndex, resultRow)
-            decoded.asInstanceOf[Co]
-        } else {
-            chooseAndDecode[fields, tpes, ResultRow, Co](rawIndex, resultRow)
-        }
+        if (tpeClass.isAssignableFrom(rowClass))
+            summonAndDecode[tpe, ResultRow](rawIndex, resultRow).asInstanceOf[Co]
+        else
+            selectAndDecode[tpes, ResultRow, Co](rawIndex, resultRow, rowClassTag)
+        
       case (_, _: EmptyTuple) => throw new IllegalArgumentException(s"Cannot resolve coproduct type for ${showType[Co]}")
     }
   }
@@ -122,9 +112,15 @@ object GenericDecoder {
               case None => throw new IllegalArgumentException(s"Need column resolver for in order to be able to decode a coproduct but none exists for ${showType[ResultRow]}")
               case _ =>
             }
+            
+            // Get a row-typer to be able to determine what sub-class the row should be
+            val rowClass = 
+              summonRowTyper[ResultRow, T] match
+                case Some(rowTyper) => rowTyper(resultRow)
+                case None => throw new IllegalArgumentException(s"Cannot summon RowTyper for type: ${showType[T]}")
+            
             // Try to get the mirror element and decode it
-            val res = chooseAndDecode[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow, T](index, resultRow)
-            res
+            selectAndDecode[m.MirroredElemTypes, ResultRow, T](index, resultRow, rowClass: ClassTag[_])
         }
     }
 

@@ -36,20 +36,20 @@ class GenericDecoderTest extends Spec {
     def test(row: Row) = 
       row.apply[String]("type") match
         case "square" => classTag[Shape.Square]
-        case "circle" => classTag[Shape.Circle] //hellooo
+        case "circle" => classTag[Shape.Circle]
 
   "test product type" in {
-    inline def q = quote { query[Shape] }
+    inline def q = quote { query[Shape].filter(s => s.id == 18) }
     val result = ctx.run(q)
 
-    val squareRow = Row("type" -> "square", "radius" -> 890, "width" -> 123, "height" -> 456)
-    result.extractor(squareRow) mustEqual Shape.Square(123, 456)
-    val circleRow = Row("type" -> "circle", "radius" -> 890, "width" -> 123, "height" -> 456)
-    result.extractor(circleRow) mustEqual Shape.Circle(890)
+    val squareRow = Row("type" -> "square", "id" -> 18, "radius" -> 890, "width" -> 123, "height" -> 456)
+    result.extractor(squareRow) mustEqual Shape.Square(18, 123, 456)
+    val circleRow = Row("type" -> "circle", "id" -> 18, "radius" -> 890, "width" -> 123, "height" -> 456)
+    result.extractor(circleRow) mustEqual Shape.Circle(18, 890)
   }
 }
 object StaticEnumExample {
-  enum Shape:
-    case Square(width: Int, height: Int) extends Shape
-    case Circle(radius: Int) extends Shape
+  enum Shape(val id: Int):
+    case Square(override val id: Int, width: Int, height: Int) extends Shape(id)
+    case Circle(override val id: Int, radius: Int) extends Shape(id)
 }
