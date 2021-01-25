@@ -79,7 +79,7 @@ object GenericDecoder {
         else
             selectAndDecode[tpes, ResultRow, Co](rawIndex, resultRow, rowClassTag)
         
-      case (_, _: EmptyTuple) => throw new IllegalArgumentException(s"Cannot resolve coproduct type for ${showType[Co]}")
+      case _: EmptyTuple => throw new IllegalArgumentException(s"Cannot resolve coproduct type for ${showType[Co]}")
     }
   }
 

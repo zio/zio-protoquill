@@ -89,11 +89,15 @@ class ElaborateCaseClass(using val qctx: Quotes) extends TastyMatchers {
   }
 
   def apply(node: Term, caseClass: Expr[_]): List[(Expr[_], String)] = {
-    val elaborations = elaborateObjectRecurse(node, caseClass)
+    val elaborations = elaborateObjectRecurse(node, caseClass, true)
     elaborations.map((expr, name) => (flattenOptions(expr), name))
   }
 
-  private[getquill] def elaborateObjectRecurse(node: Term, expr: Expr[_]): List[(Expr[_], String)] = {
+  // Note: Not sure if always appending name + childName is right to do. When looking
+  // up fields by name with sub-sub Embedded things going to need to look into that
+  private[getquill] def elaborateObjectRecurse(node: Term, expr: Expr[_], topLevel: Boolean = false): List[(Expr[_], String)] = {
+    def emptyIfTop(str: String) = if(topLevel) "" else str
+    println("====================== TERM ==================\n" + node)
     (expr, node) match {
       // If leaf node, return the term, don't care about if it is optional or not
       case (_, Term(name, _, Nil, _)) =>
@@ -113,14 +117,14 @@ class ElaborateCaseClass(using val qctx: Quotes) extends TastyMatchers {
               val expr = field `.` (childTerm.name)
               elaborateObjectRecurse(childTerm, expr)
           }
-        output.map((expr, childName) => (expr, name + childName))
+        output.map((expr, childName) => (expr, emptyIfTop(name) + childName))
 
       // Production node inside an Option
       // T-Opt( a, [T(b), T(c)] ) => 
       // [ a.map(v => v.b), a.map(v => v.c) ] 
       // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
       // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
-      case ('{ ($optField: Option[Any]) }, Term(name, _, childProps, true)) =>
+      case ('{ ($optField: Option[t]) }, Term(name, _, childProps, true)) =>
         val output =
           // TODO For coproducts need to check that the childName method actually exists on the type and
           // exclude it if it does not
@@ -129,7 +133,7 @@ class ElaborateCaseClass(using val qctx: Quotes) extends TastyMatchers {
               val expr = '{ $optField.map(prop => ${'prop `.` (childTerm.name)}) }
               elaborateObjectRecurse(childTerm, expr)
           }
-        output.map((expr, childName) => (expr, name + childName))
+        output.map((expr, childName) => (expr, emptyIfTop(name) + childName))
 
       case _ =>
           report.throwError(s"Illegal state during reducing expression term: '${node}' and expression: '${expr.show}'")
@@ -295,6 +299,7 @@ object ElaborateQueryMeta {
     implicit class TypeExt(tpe: Type[_]) {
       def constValue = self.constValue(tpe)
       def isProduct = self.isProduct(tpe)
+      def notOption = self.notOption(tpe)
     }
 
     def constValue(tpe: Type[_]): String =
@@ -305,6 +310,8 @@ object ElaborateQueryMeta {
       }
     def isProduct(tpe: Type[_]): Boolean =
       TypeRepr.of(using tpe) <:< TypeRepr.of[Product]
+    def notOption(tpe: Type[_]): Boolean =
+      !(TypeRepr.of(using tpe) <:< TypeRepr.of[Option[Any]])
   }
 
   /** Go through all possibilities that the element might be and collect their fields */
@@ -339,18 +346,22 @@ object ElaborateQueryMeta {
 
       case ('[field *: fields], '[Option[tpe] *: types]) if Type.of[tpe].isProduct =>
         val childTerm = Term(Type.of[field].constValue, Branch, optional = true)
+        println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
         base[tpe](childTerm) :: flatten(node, Type.of[fields], Type.of[types])
 
-      case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct =>
+      case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct && Type.of[tpe].notOption  =>
         val childTerm = Term(Type.of[field].constValue, Branch)
+        println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
         base[tpe](childTerm) :: flatten(node, Type.of[fields], Type.of[types])
 
       case ('[field *: fields], '[Option[tpe] *: types]) =>
         val childTerm = Term(Type.of[field].constValue, Leaf, optional = true)
+        println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
         childTerm :: flatten(node, Type.of[fields], Type.of[types])
 
-      case ('[field *: fields], '[tpe *: types]) =>
+      case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].notOption =>
         val childTerm = Term(Type.of[field].constValue, Leaf)
+        println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
         childTerm :: flatten(node, Type.of[fields], Type.of[types])
 
       case (_, '[EmptyTuple]) => Nil
@@ -421,10 +432,10 @@ object ElaborateQueryMeta {
   }
 
   // i.e. case class, enum, or coproduct (some TODOs for that)
-  def caseclass[T](using Quotes, Type[T]) = {
-    val schema = base[T <: Product](expr: Expr[T])(Term("x", Branch))
-    val elaboration = new ElaborateCaseClass().apply(schema, expr)
-    elaboration
+  def caseclass[T <: Product: Type](caseclass: Expr[T])(using qctx: Quotes) = {
+    val schema = base[T](Term("x", Branch))
+    val elaboration = new ElaborateCaseClass().apply(schema, caseclass)
+    elaboration.map((v, k) => (k, v))
   }
 
   /** An external hook to run the Elaboration with a given AST during runtime (mostly for testing). */

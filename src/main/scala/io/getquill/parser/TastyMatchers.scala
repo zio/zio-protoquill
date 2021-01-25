@@ -123,14 +123,18 @@ trait TastyMatchers {
 
   extension (expr: Expr[_]) {
     def `.`(property: String) = {
+      val cls =  
+          expr.asTerm.tpe.widen.classSymbol.getOrElse { 
+            report.throwError(s"Cannot find class symbol of the property ${expr.show}", expr) 
+          }
       val method = 
-        expr.asTerm.tpe.widen.classSymbol
-          .getOrElse { report.throwError(s"Cannot find class symbol of the property ${expr.show}") }
-          .memberMethod(property)
-          .headOption
-          .getOrElse { report.throwError(s"Cannot find property ${property} of ${expr.show}") }
+        cls.memberFields // using memberFields might be more efficient but with it we have no control over the error messages since if method doesn't exist, exception is thrown right away
+          .find(sym => sym.name == property)
+          .getOrElse { 
+            report.throwError(s"Cannot find property '${property}' of (${expr.show}:${cls.name}) fields are: ${cls.memberFields.map(_.name)}", expr)
+          }
 
-      '{ (${ Apply(Select(expr.asTerm, method), List()).asExprOf[Any] }) }
+      '{ (${ Select(expr.asTerm, method).asExpr }) }
     }
   }
 

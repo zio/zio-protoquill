@@ -68,7 +68,7 @@ class GenericDecoderCoproductTest extends Spec {
   //given cr1: GenericDecoder[MyResult, Shape.Circle] = GenericDecoder.derived  
 
   given deter: GenericRowTyper[MyResult, Shape] with {
-    def test(rr: MyResult): ClassTag[_] = {
+    def apply(rr: MyResult): ClassTag[_] = {
       val typeValue = rr.get("type")
       typeValue match {
         case "circle" => classTag[Shape.Circle]

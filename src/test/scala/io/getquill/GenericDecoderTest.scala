@@ -33,7 +33,7 @@ class GenericDecoderTest extends Spec {
   case class Person(name: String, age: Int)
 
   given RowTyper[Shape] with
-    def test(row: Row) = 
+    def apply(row: Row) = 
       row.apply[String]("type") match
         case "square" => classTag[Shape.Square]
         case "circle" => classTag[Shape.Circle]

@@ -11,7 +11,7 @@ object Blah {
   case class Circle(radius: Int) extends Shape
 }
 
-class ExpanderTest extends Spec {
+class ElaborateQueryMetaSpec extends Spec {
   import io.getquill.derived.ElaborateQueryMeta._
   val body = Ident("body", Quat.Generic)
 
