@@ -82,8 +82,10 @@ class ElaborateCaseClass(using val qctx: Quotes) extends TastyMatchers {
   private[getquill] def flattenOptions(expr: Expr[_]): Expr[_] = {
     expr.asTerm.tpe.asType match {
       case '[Option[Option[t]]] => 
-        flattenOptions('{ ${expr.asExprOf[Option[Option[t]]]}.flatten })
+        println(s"~~~~~~~~~~~~~ Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
+        flattenOptions('{ ${expr.asExprOf[Option[Option[t]]]}.flatten[t] })
       case _ =>
+        println(s"~~~~~~~~~~~~~ Non-Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
         expr
     }    
   }
@@ -130,8 +132,15 @@ class ElaborateCaseClass(using val qctx: Quotes) extends TastyMatchers {
           // exclude it if it does not
           childProps.flatMap { 
             childTerm => 
-              val expr = '{ $optField.map(prop => ${'prop `.` (childTerm.name)}) }
-              elaborateObjectRecurse(childTerm, expr)
+              // In order to be able to flatten optionals in the flattenOptionals later, we need ot make
+              // sure that the method-type in the .map function below is 100% correct. That means we
+              // need to lookup what the type of the field of this particular member should actually be.
+              val memField = TypeRepr.of[t].classSymbol.get.memberField(childTerm.name)
+              val memeType = TypeRepr.of[t].memberType(memField)
+              memeType.asType match
+                case '[mt] =>
+                  val expr = '{ $optField.map[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[mt]}) }
+                  elaborateObjectRecurse(childTerm, expr)
           }
         output.map((expr, childName) => (expr, emptyIfTop(name) + childName))
 
@@ -346,7 +355,7 @@ object ElaborateQueryMeta {
 
       case ('[field *: fields], '[Option[tpe] *: types]) if Type.of[tpe].isProduct =>
         val childTerm = Term(Type.of[field].constValue, Branch, optional = true)
-        println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
+        //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
         base[tpe](childTerm) :: flatten(node, Type.of[fields], Type.of[types])
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct && Type.of[tpe].notOption  =>
