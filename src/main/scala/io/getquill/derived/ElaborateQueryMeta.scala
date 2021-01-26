@@ -10,6 +10,7 @@ import scala.deriving._
 import scala.quoted._
 import io.getquill.parser.Lifter
 import io.getquill.quat.Quat
+import io.getquill.ast.{Map => AMap, _}
 
 /**
  * This was around to flesh-out details of the outermost AST of a query based on the fields of the
@@ -70,87 +71,6 @@ import io.getquill.quat.Quat
  * The fact that we know that Person expands into Prop(Id("p"),"name"), Prop(Id("p"),"age")) helps
  * us compute the necessary assignments in the `InsertMacro`.
  */
-
-
-import io.getquill.parser.TastyMatchers
-
-// TODO Explain this is a specific elaborator used for Case Class Lifts
-class ElaborateCaseClass(using val qctx: Quotes) extends TastyMatchers {
-  import qctx.reflect._
-  import io.getquill.derived.ElaborateQueryMeta.Term
-
-  private[getquill] def flattenOptions(expr: Expr[_]): Expr[_] = {
-    expr.asTerm.tpe.asType match {
-      case '[Option[Option[t]]] => 
-        println(s"~~~~~~~~~~~~~ Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
-        flattenOptions('{ ${expr.asExprOf[Option[Option[t]]]}.flatten[t] })
-      case _ =>
-        println(s"~~~~~~~~~~~~~ Non-Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
-        expr
-    }    
-  }
-
-  def apply(node: Term, caseClass: Expr[_]): List[(Expr[_], String)] = {
-    val elaborations = elaborateObjectRecurse(node, caseClass, true)
-    elaborations.map((expr, name) => (flattenOptions(expr), name))
-  }
-
-  // Note: Not sure if always appending name + childName is right to do. When looking
-  // up fields by name with sub-sub Embedded things going to need to look into that
-  private[getquill] def elaborateObjectRecurse(node: Term, expr: Expr[_], topLevel: Boolean = false): List[(Expr[_], String)] = {
-    def emptyIfTop(str: String) = if(topLevel) "" else str
-    println("====================== TERM ==================\n" + node)
-    (expr, node) match {
-      // If leaf node, return the term, don't care about if it is optional or not
-      case (_, Term(name, _, Nil, _)) =>
-        List((expr, name))
-
-      // Product node not inside an option
-      // T( a, [T(b), T(c)] ) => [ a.b, a.c ] 
-      // (done?)         => [ P(a, b), P(a, c) ] 
-      // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
-      // where T is Term and P is Property (in Ast) and [] is a list
-      case (field, Term(name, _, childProps, false)) =>
-        // TODO For coproducts need to check that the childName method actually exists on the type and
-        // exclude it if it does not
-        val output =
-          childProps.flatMap { 
-            childTerm =>
-              val expr = field `.` (childTerm.name)
-              elaborateObjectRecurse(childTerm, expr)
-          }
-        output.map((expr, childName) => (expr, emptyIfTop(name) + childName))
-
-      // Production node inside an Option
-      // T-Opt( a, [T(b), T(c)] ) => 
-      // [ a.map(v => v.b), a.map(v => v.c) ] 
-      // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
-      // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
-      case ('{ ($optField: Option[t]) }, Term(name, _, childProps, true)) =>
-        val output =
-          // TODO For coproducts need to check that the childName method actually exists on the type and
-          // exclude it if it does not
-          childProps.flatMap { 
-            childTerm => 
-              // In order to be able to flatten optionals in the flattenOptionals later, we need ot make
-              // sure that the method-type in the .map function below is 100% correct. That means we
-              // need to lookup what the type of the field of this particular member should actually be.
-              val memField = TypeRepr.of[t].classSymbol.get.memberField(childTerm.name)
-              val memeType = TypeRepr.of[t].memberType(memField)
-              memeType.asType match
-                case '[mt] =>
-                  val expr = '{ $optField.map[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[mt]}) }
-                  elaborateObjectRecurse(childTerm, expr)
-          }
-        output.map((expr, childName) => (expr, emptyIfTop(name) + childName))
-
-      case _ =>
-          report.throwError(s"Illegal state during reducing expression term: '${node}' and expression: '${expr.show}'")
-    }
-  }
-
-}
-
 object ElaborateQueryMeta {
   import io.getquill.dsl.GenericDecoder
 
@@ -416,14 +336,12 @@ object ElaborateQueryMeta {
     }
   }
 
-  import io.getquill.ast.{Map => AMap, _}
-
-  def staticList[T](baseName: String)(using Quotes, Type[T]): List[Ast] = {
+  def staticList[T: Type](baseName: String)(using Quotes): List[Ast] = {
     val expanded = base[T](Term(baseName, Branch))
     expanded.toAst.map(_._1)
   }
 
-  private def productized[T](using Quotes, Type[T]): Ast = {
+  private def productized[T: Type](using Quotes): Ast = {
     val lifted = base[T](Term("x", Branch)).toAst
     val insert =
       if (lifted.length == 1)
@@ -434,6 +352,7 @@ object ElaborateQueryMeta {
     insert
   }
   
+  // ofStaticAst
   /** ElaborateQueryMeta the query AST in a static query **/
   def static[T](ast: Ast)(using Quotes, Type[T]): AMap = {
     val bodyAst = productized[T]
@@ -441,49 +360,19 @@ object ElaborateQueryMeta {
   }
 
   // i.e. case class, enum, or coproduct (some TODOs for that)
-  def caseclass[T <: Product: Type](caseclass: Expr[T])(using qctx: Quotes) = {
+  def ofEntity[T <: Product: Type](entity: Expr[T])(using qctx: Quotes) = {
     val schema = base[T](Term("x", Branch))
-    val elaboration = new ElaborateCaseClass().apply(schema, caseclass)
+    val elaboration = DeconstructElaboratedEntity(schema, entity)
     elaboration.map((v, k) => (k, v))
   }
 
   /** An external hook to run the Elaboration with a given AST during runtime (mostly for testing). */
   inline def external[T](ast: Ast): AMap = ${ dynamic[T]('ast) }
 
+  // ofDynamicAst
   /** ElaborateQueryMeta the query AST in a dynamic query **/
-  def dynamic[T](ast: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
+  def dynamic[T](queryAst: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
     val bodyAst = productized[T]
-    '{ AMap($ast, Ident("x", Quat.Generic), ${Lifter(bodyAst)}) }
-  }
-}
-
-
-object GroupByOps {
-  import collection.immutable.ListSet
-  import collection.mutable.{LinkedHashMap, Builder}
-
-  implicit class GroupByOrderedImplicitImpl[A](val t: Traversable[A]) extends AnyVal {
-    def groupByOrderedUnique[K](f: A => K): Map[K, ListSet[A]] =
-      groupByGen(ListSet.newBuilder[A])(f)
-
-    def groupByOrdered[K](f: A => K): Map[K, List[A]] =
-      groupByGen(List.newBuilder[A])(f)
-
-    def groupByGen[K, C[_]](makeBuilder: => Builder[A, C[A]])(f: A => K): Map[K, C[A]] = {
-      val map = LinkedHashMap[K, Builder[A, C[A]]]()
-      for (i <- t) {
-        val key = f(i)
-        val builder = map.get(key) match {
-          case Some(existing) => existing
-          case None =>
-            val newBuilder = makeBuilder
-            map(key) = newBuilder
-            newBuilder
-        }
-        builder += i
-      }
-      // Don't need to keep the original map, just map the values in place
-      map.mapValues(_.result).toMap // TODO Need to convert this to LinkedHashMap for ordering guarentees?
-    }
+    '{ AMap($queryAst, Ident("x", Quat.Generic), ${Lifter(bodyAst)}) }
   }
 }

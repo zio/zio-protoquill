@@ -88,6 +88,8 @@ object GenericDecoder {
   inline def decodeChildern[Fields <: Tuple, Elems <: Tuple, ResultRow](rawIndex: Int, resultRow: ResultRow): Tuple =
     inline erasedValue[(Fields, Elems)] match {
       case (_: (field *: fields), _: (IsProduct[head] *: tail)) =>
+        // TODO With embedded objects the parent-field-name is tacked onto the column name so need
+        // to get that from the parent traversal. Need to have a test for that
         val index = resolveIndexOrFallback(rawIndex, resultRow, constValue[field].toString)
         val decodedHead = summonAndDecode[head, ResultRow](index, resultRow)
         val air = decodedHead.asInstanceOf[Product].productArity
