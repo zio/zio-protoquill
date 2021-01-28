@@ -306,6 +306,53 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       val insertAssignments = first.asTerm +: others.map(_.asTerm)
       val assignments = insertAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
       Insert(astParse(query), assignments.toList)
+    // case '{ type t; ($query: EntityQuery[`t`]).update(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
+    //   println("****************** Parsed Here ***********")
+    //   val updateAssignments = first.asTerm +: others.map(_.asTerm)
+    //   val assignments = updateAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
+    //   Update(astParse(query), assignments.toList)
+    // case '{ type t; ($query: EntityQuery[`t`]).delete(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
+    //   println("****************** Parsed Here ***********")
+    //   val deleteAssignments = first.asTerm +: others.map(_.asTerm)
+    //   val assignments = deleteAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
+    //   Delete(astParse(query), assignments.toList)
+
+    // case Unseal(Update) =>
+    //   Update(astParser(query), assignments.map(assignmentParser(_)))
+    // case Unseal(Insert) =>
+    //   Insert(astParser(query), assignments.map(assignmentParser(_)))
+    // case Unseal(Delete) =>
+    //   Delete(astParser(query))
+    // case Unseal(Returning_NoArguments) =>
+    //   c.fail(s"A 'returning' clause must have arguments.")
+    // case Unseal(Returning) =>
+    //   val ident = identParser(alias)
+    //   val bodyAst = reprocessReturnClause(ident, astParser(body), action)
+    //   // Verify that the idiom supports this type of returning clause
+    //   idiomReturnCapability match {
+    //     case ReturningMultipleFieldSupported | ReturningClauseSupported | OutputClauseSupported =>
+    //     case ReturningSingleFieldSupported =>
+    //       c.fail(s"The 'returning' clause is not supported by the ${currentIdiom.getOrElse("specified")} idiom. Use 'returningGenerated' instead.")
+    //     case ReturningNotSupported =>
+    //       c.fail(s"The 'returning' or 'returningGenerated' clauses are not supported by the ${currentIdiom.getOrElse("specified")} idiom.")
+    //   }
+    //   // Verify that the AST in the returning-body is valid
+    //   idiomReturnCapability.verifyAst(bodyAst)
+    //   Returning(astParser(action), ident, bodyAst)
+    // case Unseal(Returning_generated) =>
+    //   val ident = identParser(alias)
+    //   val bodyAst = reprocessReturnClause(ident, astParser(body), action)
+    //   // Verify that the idiom supports this type of returning clause
+    //   idiomReturnCapability match {
+    //     case ReturningNotSupported =>
+    //       c.fail(s"The 'returning' or 'returningGenerated' clauses are not supported by the ${currentIdiom.getOrElse("specified")} idiom.")
+    //     case _ =>
+    //   }
+    //   // Verify that the AST in the returning-body is valid
+    //   idiomReturnCapability.verifyAst(bodyAst)
+    //   ReturningGenerated(astParser(action), ident, bodyAst)
+    // case Unseal(Foreach) =>
+    //   AvoidAliasConflict.sanitizeVariables(Foreach(astParser(query), identParser(alias), astParser(body)), dangerousVariables)
 
     // case Unseal(Apply(Select(query, "insert"), insertAssignments)) =>
     //   val assignments = insertAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
@@ -710,3 +757,5 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
     //   //astParse(content.asExpr)
   }
 }
+
+
