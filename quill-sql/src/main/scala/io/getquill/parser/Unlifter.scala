@@ -136,9 +136,8 @@ object Unlifter {
         QuotationTag(constString(uid))
       case '{ Union($a, $b) } => Union(a.unexpr, b.unexpr)
       case '{ Insert($query, $assignments) } => Insert(query.unexpr, assignments.unexpr)
-      case '{ Infix($parts, $params, $pure, $quat) } => 
-        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
-        Infix(parts.unexpr, params.unexpr, pure.unexpr, unliftedQuat)
+      case '{ Update($query, $assignments) } => Update(query.unexpr, assignments.unexpr)
+      case '{ Infix($parts, $params, $pure, $quat) } => Infix(parts.unexpr, params.unexpr, pure.unexpr, quat.unexpr)
       case '{ Tuple.apply($values) } => Tuple(values.unexpr)
       case '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
       case '{ FlatJoin($typ, $a, $aliasA, $on) } => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)

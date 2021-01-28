@@ -26,6 +26,7 @@ import io.getquill.metaprog.Pluckable
 import io.getquill.metaprog.Pointable
 import io.getquill.metaprog.Extractors
 import io.getquill.util.printer
+import io.getquill.EntityQueryModel
 
 type Parser[R] = PartialFunction[quoted.Expr[_], R]
 type SealedParser[R] = (quoted.Expr[_] => R)
@@ -301,16 +302,20 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   import Parser.Implicits._
   
   def delegate: PartialFunction[Expr[_], Ast] = {
-    case '{ type t; ($query: EntityQuery[`t`]).insert(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-      //println("****************** Parsed Here ***********")
+    del
+  }
+
+  def del: PartialFunction[Expr[_], Ast] = {
+    case '{ type t; ($query: EntityQueryModel[`t`]).insert(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
+      println("****************** Parsed Here ***********")
       val insertAssignments = first.asTerm +: others.map(_.asTerm)
       val assignments = insertAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
       Insert(astParse(query), assignments.toList)
-    // case '{ type t; ($query: EntityQuery[`t`]).update(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-    //   println("****************** Parsed Here ***********")
-    //   val updateAssignments = first.asTerm +: others.map(_.asTerm)
-    //   val assignments = updateAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
-    //   Update(astParse(query), assignments.toList)
+    case '{ type t; ($query: EntityQueryModel[`t`]).update(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
+      println("****************** Parsed Here ***********")
+      val updateAssignments = first.asTerm +: others.map(_.asTerm)
+      val assignments = updateAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
+      Update(astParse(query), assignments.toList)
     // case '{ type t; ($query: EntityQuery[`t`]).delete(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
     //   println("****************** Parsed Here ***********")
     //   val deleteAssignments = first.asTerm +: others.map(_.asTerm)
