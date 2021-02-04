@@ -132,8 +132,6 @@ object ElaborateQueryMeta {
         }
       )
 
-    
-
     def toAst(node: Term, parent: Ast): List[(Ast, String)] =
       node match {
         // If there are no children, property should not be hidden i.e. since it's not 'intermediate'
@@ -158,8 +156,8 @@ object ElaborateQueryMeta {
           val output =
             for {
               elem <- list
-              (newAst, name) <- toAst(elem, idV)
-            } yield (OptionMap(property(parent, name, Leaf), idV, newAst), name)
+              (newAst, subName) <- toAst(elem, idV)
+            } yield (OptionMap(property(parent, name, Leaf), idV, newAst), subName)
           // Add field name to the output
           output.map((ast, childName) => (ast, name + childName))
 
@@ -169,8 +167,8 @@ object ElaborateQueryMeta {
           val output = 
             for {
               elem <- list
-              (newAst, name) <- toAst(elem, idV)
-            } yield (OptionTableMap(property(parent, name, Branch), idV, newAst), name)
+              (newAst, subName) <- toAst(elem, idV)
+            } yield (OptionTableMap(property(parent, name, Branch), idV, newAst), subName)
 
           // Add field name to the output
           output.map((ast, childName) => (ast, name + childName))
@@ -215,6 +213,7 @@ object ElaborateQueryMeta {
             for {
               elem <- list
               (newAst, name) <- toAst(elem, idV)
+              // TODO Is this right? Should it be OptionTableMap?
             } yield (Map(Ident(name, Quat.Generic), idV, newAst), name)
           // Do not add top level field to the output. Otherwise it would be x -> (x.width, xwidth), (x.height, xheight)
           output
@@ -280,12 +279,12 @@ object ElaborateQueryMeta {
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct && Type.of[tpe].notOption  =>
         val childTerm = Term(Type.of[field].constValue, Branch)
-        println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
+        //println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
         base[tpe](childTerm) :: flatten(node, Type.of[fields], Type.of[types])
 
       case ('[field *: fields], '[Option[tpe] *: types]) =>
         val childTerm = Term(Type.of[field].constValue, Leaf, optional = true)
-        println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
+        //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
         childTerm :: flatten(node, Type.of[fields], Type.of[types])
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].notOption =>
@@ -341,6 +340,8 @@ object ElaborateQueryMeta {
     expanded.toAst.map(_._1)
   }
 
+  
+
   private def productized[T: Type](using Quotes): Ast = {
     val lifted = base[T](Term("x", Branch)).toAst
     val insert =
@@ -374,5 +375,67 @@ object ElaborateQueryMeta {
   def dynamic[T](queryAst: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
     val bodyAst = productized[T]
     '{ AMap($queryAst, Ident("x", Quat.Generic), ${Lifter(bodyAst)}) }
+  }
+
+  /**
+   * 
+   * 
+   * Example:
+   *   case class Person(name: String, age: Option[Int])
+   *   val p = Person("Joe")
+   *   lift(p)
+   * Output: 
+   *   Quote(ast: CaseClass("name" -> ScalarTag(name), lifts: EagerLift(p.name, name))
+   * 
+   * Example:
+   *   case class Name(first: String, last: String)
+   *   case class Person(name: Name)
+   *   val p = Person(Name("Joe", "Bloggs"))
+   *   lift(p)
+   * Output: 
+   *   Quote(ast: CaseClass("name" -> CaseClass("first" -> ScalarTag(namefirst), "last" -> ScalarTag(last)), 
+   *         lifts: EagerLift(p.name.first, namefirst), EagerLift(p.name.last, namelast))
+   * 
+   * Note for examples below:
+   *  idA := "namefirst"
+   *  idB := "namelast"
+   * 
+   * Example:
+   *   case class Name(first: String, last: String)
+   *   case class Person(name: Option[Name])
+   *   val p = Person(Some(Name("Joe", "Bloggs")))
+   *   lift(p)
+   * Output: 
+   *   Quote(ast:   CaseClass("name" -> OptionSome(CaseClass("first" -> ScalarTag(idA), "last" -> ScalarTag(idB))), 
+   *         lifts: EagerLift(p.name.map(_.first), namefirst), EagerLift(p.name.map(_.last), namelast))
+   * 
+   * Alternatively, the case where it is:
+   *   val p = Person(None) the AST and lifts remain the same, only they effectively become None for every value:
+   *         lifts: EagerLift(None               , idA), EagerLift(None              , idB))
+   * 
+   * Legend: x:a->b := Assignment(Ident("x"), a, b)
+   */
+  // TODO Should have specific tests for this function indepdendently
+  def nestedWithLifts[T: Type](baseName: String, claseClassExpression: Expr[T])(using Quotes): (Ast, List[(String, Expr[_])]) = {
+    def toAst(node: Term, parentTerm: String): (String, Ast) =
+      node match
+        case Term(name, Leaf, _, _) =>
+          (name, ScalarTag(parentTerm + name))
+        case Term(name, Branch, list, false) =>
+          val children = list.map(child => toAst(child, name))
+          (name, CaseClass(children))
+        case Term(name, Branch, list, true) =>
+          val children = list.map(child => toAst(child, name))
+          (name, OptionSome(CaseClass(children)))
+        case _ =>
+          quotes.reflect.report.throwError(s"Illegal derived schema: $node from type ${Type.of[T]}", claseClassExpression)
+
+    val expanded = base[T](Term(baseName, Branch))
+    // create a nested AST for the Term nest with the expected scalar tags inside
+    val (_, nestedAst) = toAst(expanded, "none")
+    // create the list of (label, lift) for the expanded entities
+    val lifts = DeconstructElaboratedEntity(expanded, claseClassExpression).map((k,v) => (v,k))
+    // return nested AST keyed by the lifts list
+    (nestedAst, lifts)
   }
 }
