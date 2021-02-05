@@ -367,9 +367,6 @@ object ElaborateQueryMeta {
     elaboration.map((v, k) => (k, v))
   }
 
-  /** An external hook to run the Elaboration with a given AST during runtime (mostly for testing). */
-  inline def external[T](ast: Ast): AMap = ${ dynamic[T]('ast) }
-
   // ofDynamicAst
   /** ElaborateQueryMeta the query AST in a dynamic query **/
   def dynamic[T](queryAst: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
@@ -416,7 +413,9 @@ object ElaborateQueryMeta {
    * Legend: x:a->b := Assignment(Ident("x"), a, b)
    */
   // TODO Should have specific tests for this function indepdendently
-  def nestedWithLifts[T: Type](baseName: String, claseClassExpression: Expr[T])(using Quotes): (Ast, List[(String, Expr[_])]) = {
+  // keep namefirst, namelast etc.... so that testability is easier due to determinism
+  // re-key by the UIDs later
+  def ofCaseClassExpression[T: Type](baseName: String, claseClassExpression: Expr[T])(using Quotes): TaggedLiftedCaseClass = {
     def toAst(node: Term, parentTerm: String): (String, Ast) =
       node match
         case Term(name, Leaf, _, _) =>
@@ -436,6 +435,30 @@ object ElaborateQueryMeta {
     // create the list of (label, lift) for the expanded entities
     val lifts = DeconstructElaboratedEntity(expanded, claseClassExpression).map((k,v) => (v,k))
     // return nested AST keyed by the lifts list
-    (nestedAst, lifts)
+    TaggedLiftedCaseClass(nestedAst, lifts)
+  }
+
+  extension [T](opt: Option[T])
+    def getOrThrow(msg: String) = opt.getOrElse { throw new IllegalArgumentException(msg) }
+
+  case class TaggedLiftedCaseClass(caseClass: Ast, lifts: List[(String, Expr[_])]) {
+    import java.util.UUID
+    def uuid() = UUID.randomUUID.toString
+
+    /** Replace keys of the tagged lifts with proper UUIDs */
+    def reKeyWithUids(): TaggedLiftedCaseClass = {
+      def replaceKeys(newKeys: Map[String, String]): Ast =
+        Transform(caseClass) {
+          case ScalarTag(keyName) => 
+            lazy val msg = s"Cannot find key: '${keyName}' in the list of replacements: ${newKeys}"
+            ScalarTag(newKeys.get(keyName).getOrThrow(msg))
+        }
+      
+      val oldAndNewKeys = lifts.map((key, expr) => (key, uuid(), expr))
+      val keysToNewKeys = oldAndNewKeys.map((key, newKey, _) => (key, newKey)).toMap
+      val newNewKeysToLifts = oldAndNewKeys.map((_, newKey, lift) => (newKey, lift))
+      val newAst = replaceKeys(keysToNewKeys)
+      TaggedLiftedCaseClass(newAst, newNewKeysToLifts)
+    }
   }
 }

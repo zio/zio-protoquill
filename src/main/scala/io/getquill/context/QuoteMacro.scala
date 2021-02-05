@@ -33,6 +33,9 @@ object ExtractLifts {
     
     import quotes.reflect._
     //println("==== Printing Search Body =====\n" + body.show)
+
+    // TODO First one for each UID should win because it's the outermost one, should make sure tha't the case
+    // PlanterExpr.findUnquotes(body).foldLeft(LinkedHashMap[String, PlanterExpr[_, _]]())((elem, map) => (map.addIfNotContains(elem.uid, elem)))
     PlanterExpr.findUnquotes(body).distinctBy(_.uid).map(_.plant)
   }
 

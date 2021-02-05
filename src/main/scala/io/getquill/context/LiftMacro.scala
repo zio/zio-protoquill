@@ -30,6 +30,8 @@ import io.getquill.quat.Quat
 import scala.quoted._
 import io.getquill._
 import io.getquill.quat.QuatMaking
+import io.getquill.derived.ElaborateQueryMeta.TaggedLiftedCaseClass
+import io.getquill.parser.Lifter
 
 object LiftMacro {
   private[getquill] def newUuid = java.util.UUID.randomUUID().toString
@@ -41,35 +43,36 @@ object LiftMacro {
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
     QuatMaking.ofType[T] match
       //case Quat.Product => liftProduct(vvv)
-      case _ => liftValue[T, PrepareRow](vvv)
+      case _ => 
+        var liftPlanter = liftValue[T, PrepareRow](vvv)
+        '{ $liftPlanter.unquote }
   }
 
   
-  // private[getquill] def liftProduct[T, PrepareRow](vvv: Expr[T])(using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[T] = {
-  //   import qctx.reflect._
-  //   val lifts: List[(String, Ast, Expr[_])] = ElaborateQueryMeta.staticListWithLifts[T]("x", vvv)
-  //   val assignmentsAndLifts = 
-  //     lifts.map(
-  //       (str, astPath, lift) => 
-  //         // since we don't have an implicit Type for every single lift, we need to pull out each of their TypeReprs convert them to Type and manually pass them in
-  //         val liftType = lift.asTerm.tpe.asType
-  //         val liftUuid = newUuid
-  //         val liftValue = LiftMacro.liftValue(lift, liftUuid)(using liftType, prepareRowTpe, quotes)
-  //         // Each assignemnt will point to a scalar tag that contains the actual value of the corresponding field of the lifted case-class
-  //         // TODO Need to check this works for embedded case classes
-  //         val astAssignment = Assignment(VIdent, astPath, ScalarTag(liftUuid))
-  //     )
-  //   null
-  // }
+private[getquill] def liftProduct[T, PrepareRow](vvv: Expr[T])(using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[Quoted[T]] = {
+    import qctx.reflect._
+    val TaggedLiftedCaseClass(caseClassAst, lifts) = ElaborateQueryMeta.ofCaseClassExpression[T]("x", vvv).reKeyWithUids()
+    val liftPlanters = 
+      lifts.map(
+        (liftKey, lift) => 
+          // since we don't have an implicit Type for every single lift, we need to pull out each of their TypeReprs convert them to Type and manually pass them in
+          val liftType = lift.asTerm.tpe.asType
+          liftType match {
+            case '[liftT] =>
+              liftValue[liftT, PrepareRow](lift.asExprOf[liftT], liftKey) // Note: if want to get this to work, try doing 'summon[Type[liftT]]' (using liftType, prepareRowTpe, quotes)
+          }
+      )
+    '{ Quoted[T](${Lifter(caseClassAst)}, ${Expr.ofList(liftPlanters)}, Nil) }
+  }
 
-  private[getquill] def liftValue[T: Type, PrepareRow: Type](vvv: Expr[T], uuid: String = newUuid)(using Quotes): Expr[T] = {
+  private[getquill] def liftValue[T: Type, PrepareRow: Type](vvv: Expr[T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
     import quotes.reflect._
     val encoder = 
       Expr.summon[GenericEncoder[T, PrepareRow]] match
         case Some(enc) => enc
         case None => report.throwError(s"Cannot Find a ${TypeRepr.of[T]} Encoder of ${Printer.TreeShortCode.show(vvv.asTerm)}", vvv)
 
-    '{ EagerPlanter($vvv, $encoder, ${Expr(uuid)}).unquote } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
+    '{ EagerPlanter($vvv, $encoder, ${Expr(uuid)}) } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 
   def applyLazy[T, PrepareRow](vvv: Expr[T])(using Quotes, Type[T], Type[PrepareRow]): Expr[T] = {
