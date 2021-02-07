@@ -78,3 +78,5 @@ case class InsertMeta[T](val entity: Quoted[T], uid: String) extends QuotationLo
 // element Ast.Insert or Ast.Update to return (also there should probably be 'Delete' meta type which does not summon a column-excluding meta) 
 
 case class QueryMeta[T, R](val entity: Quoted[Query[T] => Query[R]], uid: String, extract: R => T) extends QuotationLot[Query[T] => Query[R]](entity, uid)
+
+case class CaseClassLift[T](val entity: Quoted[T], uid: String) extends QuotationLot[T](entity, uid)

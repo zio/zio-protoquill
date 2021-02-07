@@ -32,6 +32,7 @@ import io.getquill._
 import io.getquill.quat.QuatMaking
 import io.getquill.derived.ElaborateStructure.TaggedLiftedCaseClass
 import io.getquill.parser.Lifter
+import io.getquill.quoter.CaseClassLift
 
 object LiftMacro {
   private[getquill] def newUuid = java.util.UUID.randomUUID().toString
@@ -42,14 +43,15 @@ object LiftMacro {
 
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
     QuatMaking.ofType[T] match
-      //case Quat.Product => liftProduct(vvv)
+      case Quat.Product => 
+        '{ ${liftProduct[T, PrepareRow](vvv)}.unquote }
       case _ => 
         var liftPlanter = liftValue[T, PrepareRow](vvv)
         '{ $liftPlanter.unquote }
   }
 
   
-private[getquill] def liftProduct[T, PrepareRow](vvv: Expr[T])(using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[Quoted[T]] = {
+private[getquill] def liftProduct[T, PrepareRow](vvv: Expr[T])(using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[CaseClassLift[T]] = {
     import qctx.reflect._
     val TaggedLiftedCaseClass(caseClassAst, lifts) = ElaborateStructure.ofCaseClassExpression[T]("x", vvv).reKeyWithUids()
     val liftPlanters = 
@@ -62,7 +64,8 @@ private[getquill] def liftProduct[T, PrepareRow](vvv: Expr[T])(using qctx:Quotes
               liftValue[liftT, PrepareRow](lift.asExprOf[liftT], liftKey) // Note: if want to get this to work, try doing 'summon[Type[liftT]]' (using liftType, prepareRowTpe, quotes)
           }
       )
-    '{ Quoted[T](${Lifter(caseClassAst)}, ${Expr.ofList(liftPlanters)}, Nil) }
+    val quotation = '{ Quoted[T](${Lifter(caseClassAst)}, ${Expr.ofList(liftPlanters)}, Nil) }
+    '{ CaseClassLift[T]($quotation, ${Expr(java.util.UUID.randomUUID.toString)}) } // NOTE UUID technically not needed here. Can try to remove it later
   }
 
   private[getquill] def liftValue[T: Type, PrepareRow: Type](vvv: Expr[T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {

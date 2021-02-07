@@ -20,6 +20,7 @@ import io.getquill.quoter.QuotationVase
 import io.getquill.quoter.InsertMeta
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
+import io.getquill.quoter.PlanterExpr
 
 /**
  * The function call that regularly drives query insertion is 
@@ -101,6 +102,9 @@ object InsertMacro {
                 case other => report.throwError(s"Unlifted insertion Entity '${qprint(other).plainText}' is not a Query.")
             case Pluckable(uid, quotation, _) =>
               SummonState.Dynamic(uid, quotation)
+            case _ => report.throwError(s"Quotation Lot of InsertMeta either pluckable or uprootable from: '${unquotation}'")
+          
+          case _ => report.throwError(s"Cannot process illegal insert meta: ${schema}")
 
               // TODO Make an option to ignore dynamic entity schemas and return the plain entity?
               //println("WARNING: Only inline schema-metas are supported for insertions so far. Falling back to a plain entity.")
@@ -133,9 +137,42 @@ object InsertMacro {
 
 
 
-    /** Parse the input to of query[Person].insert(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs") */
-    def parseInsertee: CaseClass = {  
+    /**
+     * Inserted object 
+     * can either be static: query[Person].insert(Person("Joe", "Bloggs"))
+     * or it can be lifted:  query[Person].insert(lift(Person("Joe", "Bloggs")))
+     * 
+     * In the later case, it will become: 
+     * {{
+     *   //Assuming x := Person("Joe", "Bloggs")
+     *   CaseClassLift(
+     *    Quoted(ast: CaseClass(name -> lift(idA)), ...), lifts: List(EagerLift(x.name, idA), ...))
+     *   )
+     * }}
+     */
+    def parseInsertee(): CaseClass = {
       val insertee = inserteeRaw.asTerm.underlyingArgument.asExpr
+      insertee match
+        case QuotationLotExpr(exprType) =>
+          exprType match
+            // If clause is uprootable, pull it out. Note that any lifts inside don't need to be extracted here 
+            // since they will be extracted later in ExtractLifts
+            case Uprootable(_, astExpr, _, _, _, _) => 
+              val ast = Unlifter(astExpr)
+              if (!ast.isInstanceOf[CaseClass])
+                report.throwError(s"The lifted insertion element needs to be parsed as a Ast CaseClass but it is: ${ast}")
+              ast.asInstanceOf[CaseClass]
+            case _ => 
+              report.throwError("Cannot uproot lifted element. A lifted Insert element e.g. query[T].insert(lift(element)) must be lifted directly inside the lift clause.")
+        // Otherwise the inserted element (i.e. the insertee) is static and should be parsed as an ordinary case class
+        case _ =>
+          parseStaticInsertee(insertee)
+    }
+
+    /** 
+     * Parse the input to of query[Person].insert(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs") 
+     */
+    def parseStaticInsertee(insertee: Expr[_]): CaseClass = {  
       val parserFactory = LoadObject[Parser].get
       val rawAst = parserFactory.apply.seal.apply(insertee)
       val ast = BetaReduction(rawAst)
@@ -161,16 +198,16 @@ object InsertMacro {
       assignmentsAst
     }
 
-    def deduceAssignments =
-      val astCaseClass = parseInsertee
+    def deduceAssignments() =
+      val astCaseClass = parseInsertee()
       deduceAssignmentsFrom(astCaseClass)
 
     /** 
      * Get assignments from an entity and then either exclude or include them
      * either statically or dynamically.
      */
-    def processAssignmentExclusions: Expr[List[Assignment]] =
-      val assignmentsOfEntity = deduceAssignments
+    def processAssignmentExclusions(): Expr[List[io.getquill.ast.Assignment]] =
+      val assignmentsOfEntity = deduceAssignments()
       InsertExclusions.summon match
         // If we have assignment-exclusions during compile time
         case SummonState.Static(exclusions) =>
@@ -194,7 +231,9 @@ object InsertMacro {
     def apply = {
 
       //println("******************* TOP OF APPLY **************")
-      val assignmentsAst = processAssignmentExclusions
+      // Processed Assignments AST plus any lifts that may have come from the assignments AST themsevles.
+      // That is usually the case when 
+      val assignmentsAst = processAssignmentExclusions()
 
       // Insertion could have lifts and quotes, need to extract those. Note that the Insertee must always
       // be available dynamically (i.e. it must be a Uprootable Quotation)
