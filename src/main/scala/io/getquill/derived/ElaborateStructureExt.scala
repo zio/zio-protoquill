@@ -6,13 +6,13 @@ import io.getquill.derived.ElaborateStructure.TaggedLiftedCaseClass
 import io.getquill.parser.Lifter
 
 /** Testing Hook for ElaborateStructure */
-object ElaborateStructureHook {
+object ElaborateStructureExt {
 
   /** An external hook to run the Elaboration with a given AST during runtime (mostly for testing). */
   inline def external[T](ast: Ast): AMap = ${ ElaborateStructure.ontoDynamicAst[T]('ast) }
 
   inline def ofCaseClassExternal[T](baseName: String, claseClassExpression: T): TaggedSplicedCaseClass = 
-    ${ ElaborateStructureHook.ofCaseClassExternalImpl('baseName, 'claseClassExpression) }
+    ${ ElaborateStructureExt.ofCaseClassExternalImpl('baseName, 'claseClassExpression) }
 
   
   inline def entityValues[T <: Product](entity: T): List[(String, Any)] = ${ entityValuesImpl('entity) }
