@@ -123,7 +123,7 @@ object QueryExecution:
     /**
      * Expand dynamic-queries i.e. queries whose query-string cannot be computed at compile-time.
      * Note that for now, QuotationType is only needed for dynamic queries (which is only needed to know whether you
-     * need to use ElaborateQueryMeta or not. This is decided in the StaticTranslationMacro for static queries using a 
+     * need to use ElaborateStructure or not. This is decided in the StaticTranslationMacro for static queries using a 
      * different method. I.e. since StaticTranslationMacro knows the AST node it infers Action/Query from that).
      */
     def executeDynamic[RawT: Type, Q[_]: Type](quote: Expr[Quoted[Q[RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior, quotationType: QuotationType) =
@@ -131,7 +131,7 @@ object QueryExecution:
       // Expand the outermost quote using the macro and put it back into the quote
       // Is the expansion on T or RawT, need to investigate
       val expandedAst = quotationType match
-        case QuotationType.Query => ElaborateQueryMeta.dynamic[T]('{ $quote.ast })
+        case QuotationType.Query => ElaborateStructure.ontoDynamicAst[T]('{ $quote.ast })
         case QuotationType.Action => '{ $quote.ast }
       
       val expandedAstQuote = '{ $quote.copy(ast = $expandedAst) }

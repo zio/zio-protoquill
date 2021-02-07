@@ -25,12 +25,12 @@ import io.getquill.idiom.ReifyStatement
 import io.getquill.quoter.EagerPlanter
 import io.getquill.quoter.LazyPlanter
 import io.getquill.dsl.GenericEncoder
-import io.getquill.derived.ElaborateQueryMeta
+import io.getquill.derived.ElaborateStructure
 import io.getquill.quat.Quat
 import scala.quoted._
 import io.getquill._
 import io.getquill.quat.QuatMaking
-import io.getquill.derived.ElaborateQueryMeta.TaggedLiftedCaseClass
+import io.getquill.derived.ElaborateStructure.TaggedLiftedCaseClass
 import io.getquill.parser.Lifter
 
 object LiftMacro {
@@ -51,7 +51,7 @@ object LiftMacro {
   
 private[getquill] def liftProduct[T, PrepareRow](vvv: Expr[T])(using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[Quoted[T]] = {
     import qctx.reflect._
-    val TaggedLiftedCaseClass(caseClassAst, lifts) = ElaborateQueryMeta.ofCaseClassExpression[T]("x", vvv).reKeyWithUids()
+    val TaggedLiftedCaseClass(caseClassAst, lifts) = ElaborateStructure.ofCaseClassExpression[T]("x", vvv).reKeyWithUids()
     val liftPlanters = 
       lifts.map(
         (liftKey, lift) => 

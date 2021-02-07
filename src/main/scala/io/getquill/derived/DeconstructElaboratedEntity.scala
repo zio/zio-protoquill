@@ -11,7 +11,7 @@ import scala.quoted._
 import io.getquill.parser.Lifter
 import io.getquill.quat.Quat
 import io.getquill.ast.{Map => AMap, _}
-import io.getquill.derived.ElaborateQueryMeta.Term
+import io.getquill.derived.ElaborateStructure.Term
 import io.getquill.parser.TastyMatchers
 
 object DeconstructElaboratedEntity {
@@ -22,7 +22,7 @@ object DeconstructElaboratedEntity {
 // TODO Explain this is a specific elaborator used for Case Class Lifts
 private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) extends TastyMatchers {
   import qctx.reflect._
-  import io.getquill.derived.ElaborateQueryMeta.Term
+  import io.getquill.derived.ElaborateStructure.Term
 
   private[getquill] def flattenOptions(expr: Expr[_]): Expr[_] = {
     expr.asTerm.tpe.asType match {

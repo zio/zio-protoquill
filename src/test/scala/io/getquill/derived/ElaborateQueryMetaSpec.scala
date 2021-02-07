@@ -11,8 +11,8 @@ object Blah {
   case class Circle(radius: Int) extends Shape
 }
 
-class ElaborateQueryMetaSpec extends Spec {
-  import io.getquill.derived.ElaborateQueryMeta._
+class ElaborateStructureSpec extends Spec {
+  import io.getquill.derived.ElaborateStructure._
   val body = Ident("body", Quat.Generic)
 
   // If from here, there will be no product mirror
@@ -30,7 +30,7 @@ class ElaborateQueryMetaSpec extends Spec {
     
     //   // implicit inline def genDec[ResultRow, T]: GenericDecoder[T] = ${ GenericDecoder.derived[ResultRow, T] }
 
-    val v = ElaborateQueryMetaHook.external[Blah.Shape](body)
+    val v = ElaborateStructureHook.external[Blah.Shape](body)
     println(v)
   }
 
@@ -39,27 +39,27 @@ class ElaborateQueryMetaSpec extends Spec {
     "Person with Embedded Address" in {
       case class Address(street: String)
       case class Person(name: String, address: Address)
-      val exp = ElaborateQueryMetaHook.external[Person](body)
+      val exp = ElaborateStructureHook.external[Person](body)
     }
     
     "Entity with Nestsed" in {
       case class Nested(i: Int, l: Long)
       case class Entity(a: String, b: Nested)
-      val ast = ElaborateQueryMetaHook.external[Entity](body)
+      val ast = ElaborateStructureHook.external[Entity](body)
       ast.toString  mustEqual  "body.map(x => CaseClass(a: x.a, bi: x.b.i, bl: x.b.l))"
     }
 
     "Nested with optional field" in {
       case class Nested(i: Int)
       case class Entity(a: Option[Nested])
-      val ast = ElaborateQueryMetaHook.external[Entity](body)
+      val ast = ElaborateStructureHook.external[Entity](body)
       ast.toString  mustEqual  "body.map(x => x.a.map((v) => v.i))"
     }
 
     "Nested with optional and multiple fields" in {
       case class Nested(i: Int, l: Long)
       case class Entity(a: String, b: Option[Nested])
-      val ast = ElaborateQueryMetaHook.external[Entity](body)
+      val ast = ElaborateStructureHook.external[Entity](body)
       ast.toString  mustEqual  "body.map(x => CaseClass(a: x.a, bi: x.b.map((v) => v.i), bl: x.b.map((v) => v.l)))"
     }
 
@@ -67,18 +67,18 @@ class ElaborateQueryMetaSpec extends Spec {
       case class ReallyNested(foo: Int, bar: Int)
       case class Nested(i: Int, l: Option[ReallyNested])
       case class Entity(a: String, b: Option[Nested])
-      val ast = ElaborateQueryMetaHook.external[Entity](body)
+      val ast = ElaborateStructureHook.external[Entity](body)
       ast.toString  mustEqual  "body.map(x => CaseClass(a: x.a, bi: x.b.map((v) => v.i), blfoo: x.b.map((v) => v.l.map((v) => v.foo)), blbar: x.b.map((v) => v.l.map((v) => v.bar))))"
     }
 
     "Tuple" in {
-      val ast = ElaborateQueryMetaHook.external[(String, String)](body)
+      val ast = ElaborateStructureHook.external[(String, String)](body)
       ast.toString  mustEqual  "body.map(x => CaseClass(_1: x._1, _2: x._2))"
     }
 
     "Nested Tuple" in {
       case class Entity(a: String, b: Int)
-      val ast = ElaborateQueryMetaHook.external[(String, Option[Entity])](body)
+      val ast = ElaborateStructureHook.external[(String, Option[Entity])](body)
       ast.toString  mustEqual  "body.map(x => CaseClass(_1: x._1, _2a: x._2.map((v) => v.a), _2b: x._2.map((v) => v.b)))"
     }
   }

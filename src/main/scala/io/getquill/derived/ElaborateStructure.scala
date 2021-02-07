@@ -13,6 +13,7 @@ import io.getquill.quat.Quat
 import io.getquill.ast.{Map => AMap, _}
 
 /**
+ * Based on valueComputation and materializeQueryMeta from the old Quill
  * This was around to flesh-out details of the outermost AST of a query based on the fields of the
  * object T in Query[T] that the AST represents. For an example say we have something like this:
  * {{{
@@ -71,7 +72,7 @@ import io.getquill.ast.{Map => AMap, _}
  * The fact that we know that Person expands into Prop(Id("p"),"name"), Prop(Id("p"),"age")) helps
  * us compute the necessary assignments in the `InsertMacro`.
  */
-object ElaborateQueryMeta {
+object ElaborateStructure {
   import io.getquill.dsl.GenericDecoder
 
   sealed trait TermType
@@ -333,14 +334,7 @@ object ElaborateQueryMeta {
           case None => report.throwError(s"Cannot find derive or summon a decoder for ${Type.show[T]}")
         }
     }
-  }
-
-  def staticList[T: Type](baseName: String)(using Quotes): List[Ast] = {
-    val expanded = base[T](Term(baseName, Branch))
-    expanded.toAst.map(_._1)
-  }
-
-  
+  }  
 
   private def productized[T: Type](using Quotes): Ast = {
     val lifted = base[T](Term("x", Branch)).toAst
@@ -354,25 +348,23 @@ object ElaborateQueryMeta {
   }
   
   // ofStaticAst
-  /** ElaborateQueryMeta the query AST in a static query **/
-  def static[T](ast: Ast)(using Quotes, Type[T]): AMap = {
+  /** ElaborateStructure the query AST in a static query **/
+  def ontoAst[T](ast: Ast)(using Quotes, Type[T]): AMap = {
     val bodyAst = productized[T]
     AMap(ast, Ident("x", Quat.Generic), bodyAst)
   }
 
-  // i.e. case class, enum, or coproduct (some TODOs for that)
-  def ofEntity[T <: Product: Type](entity: Expr[T])(using qctx: Quotes) = {
-    val schema = base[T](Term("x", Branch))
-    val elaboration = DeconstructElaboratedEntity(schema, entity)
-    elaboration.map((v, k) => (k, v))
-  }
-
-  // ofDynamicAst
-  /** ElaborateQueryMeta the query AST in a dynamic query **/
-  def dynamic[T](queryAst: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
+  /** ElaborateStructure the query AST in a dynamic query **/
+  def ontoDynamicAst[T](queryAst: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
     val bodyAst = productized[T]
     '{ AMap($queryAst, Ident("x", Quat.Generic), ${Lifter(bodyAst)}) }
   }
+
+  def ofType[T: Type](baseName: String)(using Quotes): List[Ast] = {
+    val expanded = base[T](Term(baseName, Branch))
+    expanded.toAst.map(_._1)
+  }
+
 
   /**
    * 

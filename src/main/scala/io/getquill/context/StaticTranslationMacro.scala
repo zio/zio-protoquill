@@ -54,7 +54,7 @@ object StaticTranslationMacro {
     if (noRuntimeQuotations(unliftedAst)) {
       
       val expandedAst = unliftedAst match
-        case _: AQuery => ElaborateQueryMeta.static[T](unliftedAst)
+        case _: AQuery => ElaborateStructure.ontoAst[T](unliftedAst)
         case _ => unliftedAst
 
       // TODO Should make this enable-able via a logging configuration
