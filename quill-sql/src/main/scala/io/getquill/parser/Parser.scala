@@ -307,20 +307,18 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 
   def del: PartialFunction[Expr[_], Ast] = {
     case '{ type t; ($query: EntityQueryModel[`t`]).insert(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-      println("****************** Parsed Here ***********")
+      println("****************** Insert Parsed Here ***********")
       val insertAssignments = first.asTerm +: others.map(_.asTerm)
       val assignments = insertAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
       Insert(astParse(query), assignments.toList)
     case '{ type t; ($query: EntityQueryModel[`t`]).update(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-      println("****************** Parsed Here ***********")
+      println("****************** Update Parsed Here ***********")
       val updateAssignments = first.asTerm +: others.map(_.asTerm)
       val assignments = updateAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
       Update(astParse(query), assignments.toList)
-    // case '{ type t; ($query: EntityQuery[`t`]).delete(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-    //   println("****************** Parsed Here ***********")
-    //   val deleteAssignments = first.asTerm +: others.map(_.asTerm)
-    //   val assignments = deleteAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
-    //   Delete(astParse(query), assignments.toList)
+    case '{ type t; ($query: EntityQuery[`t`]).delete } =>
+      println("****************** Delete Parsed Here ***********")
+      Delete(astParse(query))
 
     // case Unseal(Update) =>
     //   Update(astParser(query), assignments.map(assignmentParser(_)))
