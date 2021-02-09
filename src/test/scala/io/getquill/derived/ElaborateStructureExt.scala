@@ -11,8 +11,8 @@ object ElaborateStructureExt {
   /** An external hook to run the Elaboration with a given AST during runtime (mostly for testing). */
   inline def external[T](ast: Ast): AMap = ${ ElaborateStructure.ontoDynamicAst[T]('ast) }
 
-  inline def ofCaseClassExternal[T](baseName: String, claseClassExpression: T): TaggedSplicedCaseClass = 
-    ${ ElaborateStructureExt.ofCaseClassExternalImpl('baseName, 'claseClassExpression) }
+  inline def ofProductValueExternal[T](productValue: T): TaggedSplicedCaseClass = 
+    ${ ElaborateStructureExt.ofProductValueExternalImpl('productValue) }
 
   
   inline def entityValues[T <: Product](entity: T): List[(String, Any)] = ${ entityValuesImpl('entity) }
@@ -25,13 +25,9 @@ object ElaborateStructureExt {
     Expr.ofList(outExpr)
   }
 
-  def ofCaseClassExternalImpl[T: Type](baseName: Expr[String], claseClassExpression: Expr[T])(using qctx: Quotes): Expr[TaggedSplicedCaseClass] = {
+  def ofProductValueExternalImpl[T: Type](productValue: Expr[T])(using qctx: Quotes): Expr[TaggedSplicedCaseClass] = {
     import qctx.reflect._
-    val baseNameStr = 
-      baseName match 
-        case Expr(str: String) => str
-
-    val tlcc = ElaborateStructure.ofCaseClassExpression[T](baseNameStr, claseClassExpression)
+    val tlcc = ElaborateStructure.ofProductValue[T](productValue)
     val liftedLifts = tlcc.lifts.map((str, lift) => '{ ((${Expr(str)}, $lift)) })
     '{ TaggedSplicedCaseClass(${Lifter(tlcc.caseClass)}, ${Expr.ofList(liftedLifts)}) }    
   }

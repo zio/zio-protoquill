@@ -360,7 +360,7 @@ object ElaborateStructure {
     '{ AMap($queryAst, Ident("x", Quat.Generic), ${Lifter(bodyAst)}) }
   }
 
-  def ofType[T: Type](baseName: String)(using Quotes): List[Ast] = {
+  def ofProductType[T: Type](baseName: String)(using Quotes): List[Ast] = {
     val expanded = base[T](Term(baseName, Branch))
     expanded.toAst.map(_._1)
   }
@@ -407,25 +407,31 @@ object ElaborateStructure {
   // TODO Should have specific tests for this function indepdendently
   // keep namefirst, namelast etc.... so that testability is easier due to determinism
   // re-key by the UIDs later
-  def ofCaseClassExpression[T: Type](baseName: String, claseClassExpression: Expr[T])(using Quotes): TaggedLiftedCaseClass = {
-    def toAst(node: Term, parentTerm: String): (String, Ast) =
-      node match
-        case Term(name, Leaf, _, _) =>
-          (name, ScalarTag(parentTerm + name))
-        case Term(name, Branch, list, false) =>
-          val children = list.map(child => toAst(child, name))
-          (name, CaseClass(children))
-        case Term(name, Branch, list, true) =>
-          val children = list.map(child => toAst(child, name))
-          (name, OptionSome(CaseClass(children)))
-        case _ =>
-          quotes.reflect.report.throwError(s"Illegal derived schema: $node from type ${Type.of[T]}", claseClassExpression)
+  def ofProductValue[T: Type](productValue: Expr[T])(using Quotes): TaggedLiftedCaseClass = {
 
-    val expanded = base[T](Term(baseName, Branch))
+    def toAst(node: Term): (String, Ast) =
+      def toAstRec(node: Term, parentTerm: String, topLevel: Boolean = false): (String, Ast) =
+        def notTopLevel(str: String) = if (topLevel) "" else str
+        node match
+          case Term(name, Leaf, _, _) =>
+            (name, ScalarTag(parentTerm + name))
+          // On the top level, parent is "", and 1st parent in recursion is also ""
+          case Term(name, Branch, list, false) =>
+            val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
+            (name, CaseClass(children))
+          // same logic for optionals
+          case Term(name, Branch, list, true) =>
+            val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
+            (name, OptionSome(CaseClass(children)))
+          case _ =>
+            quotes.reflect.report.throwError(s"Illegal derived schema: $node from type ${Type.of[T]}", productValue)
+      toAstRec(node, "", true)
+
+    val expanded = base[T](Term("notused", Branch))
     // create a nested AST for the Term nest with the expected scalar tags inside
-    val (_, nestedAst) = toAst(expanded, "none")
+    val (_, nestedAst) = toAst(expanded)
     // create the list of (label, lift) for the expanded entities
-    val lifts = DeconstructElaboratedEntity(expanded, claseClassExpression).map((k,v) => (v,k))
+    val lifts = DeconstructElaboratedEntity(expanded, productValue).map((k,v) => (v,k))
     // return nested AST keyed by the lifts list
     TaggedLiftedCaseClass(nestedAst, lifts)
   }

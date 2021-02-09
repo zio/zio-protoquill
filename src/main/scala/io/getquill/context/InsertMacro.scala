@@ -58,7 +58,14 @@ import io.getquill.quoter.PlanterExpr
  *   )
  * {code}
  * 
- * The end result of this synthesis is a series of assignments for an insert for the given entity
+ * The end result of this synthesis is a series of assignments for an insert for the given entity.
+ * 
+ * Another possiblity is that the entity is lifted:
+ * {code}
+ *  case class Person(name: String, age: Option[Age]); Age(value: Int)
+ *  quote { query[Person].insert(lift(Person("Joe", Age(345)))) }
+ * {code}
+ * TODO Finish doc
  */
 object InsertMacro {
   private[getquill] val VIdent = AIdent("v", Quat.Generic)
@@ -185,7 +192,7 @@ object InsertMacro {
     def deduceAssignmentsFrom(insertee: CaseClass) = {
       // Expand into a AST
       // T:Person(name:Str, age:Option[Age]) Age(value: Int) -> Ast: List(v.name, v.age.map(v => v.value))
-      val expansionList = ElaborateStructure.ofType[T](VIdent.name)
+      val expansionList = ElaborateStructure.ofProductType[T](VIdent.name)
 
       // Now synthesize (v) => vAssignmentProperty -> assignmentValue
       // e.g. (p:Person) => p.firstName -> "Joe"

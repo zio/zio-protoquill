@@ -38,22 +38,22 @@ object LiftMacro {
   private[getquill] def newUuid = java.util.UUID.randomUUID().toString
   private[getquill] val VIdent = AIdent("v", Quat.Generic)
 
-  def apply[T: Type, PrepareRow: Type](vvv: Expr[T])(using Quotes): Expr[T] = {
+  def apply[T: Type, PrepareRow: Type](entity: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect._
 
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
     QuatMaking.ofType[T] match
       case Quat.Product => 
-        '{ ${liftProduct[T, PrepareRow](vvv)}.unquote }
+        '{ ${liftProduct[T, PrepareRow](entity)}.unquote }
       case _ => 
-        var liftPlanter = liftValue[T, PrepareRow](vvv)
+        var liftPlanter = liftValue[T, PrepareRow](entity)
         '{ $liftPlanter.unquote }
   }
 
   
-private[getquill] def liftProduct[T, PrepareRow](vvv: Expr[T])(using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[CaseClassLift[T]] = {
+private[getquill] def liftProduct[T, PrepareRow](productEntity: Expr[T])(using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[CaseClassLift[T]] = {
     import qctx.reflect._
-    val TaggedLiftedCaseClass(caseClassAst, lifts) = ElaborateStructure.ofCaseClassExpression[T]("x", vvv).reKeyWithUids()
+    val TaggedLiftedCaseClass(caseClassAst, lifts) = ElaborateStructure.ofProductValue[T](productEntity).reKeyWithUids()
     val liftPlanters = 
       lifts.map(
         (liftKey, lift) => 
@@ -68,19 +68,19 @@ private[getquill] def liftProduct[T, PrepareRow](vvv: Expr[T])(using qctx:Quotes
     '{ CaseClassLift[T]($quotation, ${Expr(java.util.UUID.randomUUID.toString)}) } // NOTE UUID technically not needed here. Can try to remove it later
   }
 
-  private[getquill] def liftValue[T: Type, PrepareRow: Type](vvv: Expr[T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
+  private[getquill] def liftValue[T: Type, PrepareRow: Type](valueEntity: Expr[T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
     import quotes.reflect._
     val encoder = 
       Expr.summon[GenericEncoder[T, PrepareRow]] match
         case Some(enc) => enc
-        case None => report.throwError(s"Cannot Find a ${TypeRepr.of[T]} Encoder of ${Printer.TreeShortCode.show(vvv.asTerm)}", vvv)
+        case None => report.throwError(s"Cannot Find a ${TypeRepr.of[T]} Encoder of ${Printer.TreeShortCode.show(valueEntity.asTerm)}", valueEntity)
 
-    '{ EagerPlanter($vvv, $encoder, ${Expr(uuid)}) } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
+    '{ EagerPlanter($valueEntity, $encoder, ${Expr(uuid)}) } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 
-  def applyLazy[T, PrepareRow](vvv: Expr[T])(using Quotes, Type[T], Type[PrepareRow]): Expr[T] = {
+  def applyLazy[T, PrepareRow](valueEntity: Expr[T])(using Quotes, Type[T], Type[PrepareRow]): Expr[T] = {
     import quotes.reflect._
     val uuid = java.util.UUID.randomUUID().toString
-    '{ LazyPlanter($vvv, ${Expr(uuid)}).unquote } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
+    '{ LazyPlanter($valueEntity, ${Expr(uuid)}).unquote } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 }
