@@ -42,10 +42,14 @@ object LiftMacro {
     import quotes.reflect._
 
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
-    QuatMaking.ofType[T] match
-      case Quat.Product => 
+    val quat = QuatMaking.ofType[T]
+    println(s"============= Found Quat is: ${quat} =============")
+    quat match
+      case _: Quat.Product => 
+        println("========== Lifting Product ==========")
         '{ ${liftProduct[T, PrepareRow](entity)}.unquote }
       case _ => 
+        println("========== Lifting Value ==========")
         var liftPlanter = liftValue[T, PrepareRow](entity)
         '{ $liftPlanter.unquote }
   }
@@ -58,7 +62,8 @@ private[getquill] def liftProduct[T, PrepareRow](productEntity: Expr[T])(using q
       lifts.map(
         (liftKey, lift) => 
           // since we don't have an implicit Type for every single lift, we need to pull out each of their TypeReprs convert them to Type and manually pass them in
-          val liftType = lift.asTerm.tpe.asType
+          // Also need to widen the type otherwise for some value v=Person(name: String) the type will be TermRef(TermRef(NoPrefix,val v),val name) as oppsoed to 'String'
+          val liftType = lift.asTerm.tpe.widen.asType
           liftType match {
             case '[liftT] =>
               liftValue[liftT, PrepareRow](lift.asExprOf[liftT], liftKey) // Note: if want to get this to work, try doing 'summon[Type[liftT]]' (using liftType, prepareRowTpe, quotes)

@@ -19,7 +19,15 @@ import io.getquill.quoter.Dsl._
 abstract class Spec extends AnyFreeSpec with Matchers /* with BeforeAndAfterAll */ {
   
   extension [T](m: MirrorContext[_, _]#ActionMirror)
-    def triple = (m.string, m.prepareRow.data.toList, m.executionType)
+    def triple = 
+      (
+        m.string, 
+        m.prepareRow match {
+          case r: io.getquill.context.mirror.Row => 
+            r.data.toList.map(_._2)
+        }, 
+        m.executionType
+      )
 
   extension [T, D <: Idiom, N <: NamingStrategy](ctx: MirrorContext[D, N])
     inline def pull(inline q: Query[T]) =

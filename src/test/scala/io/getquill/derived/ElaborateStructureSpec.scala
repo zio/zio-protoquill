@@ -34,7 +34,7 @@ class ElaborateProductValueStructureSpec extends Spec {
       ast mustEqual CaseClass(List(("a", ScalarTag("a")), ("b", CaseClass(List(("i", ScalarTag("bi")), ("l", ScalarTag("bl")))))))
       // Stringified form
       ast.toString mustEqual "CaseClass(a: lift(a), b: CaseClass(i: lift(bi), l: lift(bl)))"
-      lifts mustEqual List(("a","foo"), ("bi",1), ("bl",2))
+      lifts mustEqual List(("a", "foo"), ("bi", 1), ("bl", 2))
     }
 
     "Nested with optional fields" in {
@@ -42,16 +42,55 @@ class ElaborateProductValueStructureSpec extends Spec {
       case class Entity(a: String, b: Option[Nested])
       val (ast, lifts) = ElaborateStructureExt.ofProductValueExternal(Entity("foo", Some(Nested(1, 2L)))).pullout
       ast.toString mustEqual "CaseClass(a: lift(a), b: Some(CaseClass(i: lift(bi), l: lift(bl))))"
-      lifts mustEqual List(("a","foo"), ("bi",Some(1)), ("bl",Some(2)))
+      lifts mustEqual List(("a", "foo"), ("bi", Some(1)), ("bl", Some(2)))
     }
 
-    // "Triple-nested with optional fields" in {
-    //   case class ReallyNested(foo: Int, bar: Int)
-    //   case class Nested(i: Int, l: Option[ReallyNested])
-    //   case class Entity(a: String, b: Option[Nested])
-    //   val ast = ElaborateStructureExt.external[Entity](body)
-    //   ast.toString  mustEqual  "body.map(x => CaseClass(a: x.a, bi: x.b.map((v) => v.i), blfoo: x.b.map((v) => v.l.map((v) => v.foo)), blbar: x.b.map((v) => v.l.map((v) => v.bar))))"
-    // }
+    "Nested with optional fields (None)" in {
+      case class Nested(i: Int, l: Long)
+      case class Entity(a: String, b: Option[Nested])
+      val (ast, lifts) = ElaborateStructureExt.ofProductValueExternal(Entity("foo", None)).pullout
+      ast.toString mustEqual "CaseClass(a: lift(a), b: Some(CaseClass(i: lift(bi), l: lift(bl))))"
+      lifts mustEqual List(("a", "foo"), ("bi", None), ("bl", None))
+    }
+
+    "Triple-nested with optional fields" in {
+      case class ReallyNested(one: Int, two: Int)
+      case class Nested(i: Int, l: Option[ReallyNested])
+      case class Entity(a: String, b: Option[Nested])
+      val (ast, lifts) = ElaborateStructureExt.ofProductValueExternal(Entity("foo", Some(Nested(1, Some(ReallyNested(2, 3)))))).pullout
+      ast.toString mustEqual "CaseClass(a: lift(a), b: Some(CaseClass(i: lift(bi), l: Some(CaseClass(one: lift(blone), two: lift(bltwo))))))"
+      lifts mustEqual List(("a","foo"), ("bi",Some(1)), ("blone",Some(2)), ("bltwo",Some(3)))
+    }
+
+    "Quadruple-nested with optional fields" in {
+      case class ReallyReallyNested(alpha: Int, beta: Int)
+      case class ReallyNested(one: Int, two: Option[ReallyReallyNested])
+      case class Nested(i: Int, l: Option[ReallyNested])
+      case class Entity(a: String, b: Option[Nested])
+      val (ast, lifts) = ElaborateStructureExt.ofProductValueExternal(Entity("foo", Some(Nested(1, Some(ReallyNested(2, Some(ReallyReallyNested(3, 4)))))))).pullout
+      ast.toString mustEqual "CaseClass(a: lift(a), b: Some(CaseClass(i: lift(bi), l: Some(CaseClass(one: lift(blone), two: Some(CaseClass(alpha: lift(bltwoalpha), beta: lift(bltwobeta))))))))"
+      lifts mustEqual List(("a","foo"), ("bi",Some(1)), ("blone",Some(2)), ("bltwoalpha",Some(3)), ("bltwobeta",Some(4)))
+    }
+
+    "Quadruple-nested with optional fields (None)" in {
+      case class ReallyReallyNested(alpha: Int, beta: Int)
+      case class ReallyNested(one: Int, two: Option[ReallyReallyNested])
+      case class Nested(i: Int, l: Option[ReallyNested])
+      case class Entity(a: String, b: Option[Nested])
+      val (ast, lifts) = ElaborateStructureExt.ofProductValueExternal(Entity("foo", None)).pullout
+      ast.toString mustEqual "CaseClass(a: lift(a), b: Some(CaseClass(i: lift(bi), l: Some(CaseClass(one: lift(blone), two: Some(CaseClass(alpha: lift(bltwoalpha), beta: lift(bltwobeta))))))))"
+      lifts mustEqual List(("a","foo"), ("bi",None), ("blone",None), ("bltwoalpha",None), ("bltwobeta",None))
+    }
+
+    "Quadruple-nested with optional fields Some/None" in {
+      case class ReallyReallyNested(alpha: Int, beta: Int)
+      case class ReallyNested(one: Int, two: Option[ReallyReallyNested])
+      case class Nested(i: Int, l: Option[ReallyNested])
+      case class Entity(a: String, b: Option[Nested])
+      val (ast, lifts) = ElaborateStructureExt.ofProductValueExternal(Entity("foo", Some(Nested(1, None)))).pullout
+      ast.toString mustEqual "CaseClass(a: lift(a), b: Some(CaseClass(i: lift(bi), l: Some(CaseClass(one: lift(blone), two: Some(CaseClass(alpha: lift(bltwoalpha), beta: lift(bltwobeta))))))))"
+      lifts mustEqual List(("a","foo"), ("bi",Some(1)), ("blone",None), ("bltwoalpha",None), ("bltwobeta",None))
+    }
 
     // "Tuple" in {
     //   val ast = ElaborateStructureExt.external[(String, String)](body)

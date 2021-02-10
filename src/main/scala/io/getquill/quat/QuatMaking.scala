@@ -20,6 +20,8 @@ trait Value[T]
 
 // TODO Quat lifting so can return them from this function
 
+inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
+
 object QuatMaking {
   inline def inferQuat[T](value: T): Quat = ${ inferQuatImpl('value) }
   def inferQuatImpl[T: TType](value: Expr[T])(using quotes: Quotes): Expr[Quat] = {
@@ -28,7 +30,10 @@ object QuatMaking {
     Lifter.quat(quat)
   }
 
-  def ofType[T: TType](using quotes: Quotes): Expr[Quat] = {
+  def ofType[T: TType](using quotes: Quotes): Quat =
+   (new QuatMaking {}).InferQuat.of[T]
+
+  def quatOfImpl[T: TType](using quotes: Quotes): Expr[Quat] = {
     val quat = (new QuatMaking {}).InferQuat.of[T]
     println(io.getquill.util.Messages.qprint(quat))
     Lifter.quat(quat)
@@ -62,8 +67,6 @@ object QuatMaking {
     //     quatCache.put(tpe, quat)
     //     quat
 }
-
-inline def quatOf[T]: Quat = ${ QuatMaking.ofType[T] }
 
 trait QuatMaking(using override val qctx: Quotes) extends QuatMakingBase {
   import qctx.reflect._

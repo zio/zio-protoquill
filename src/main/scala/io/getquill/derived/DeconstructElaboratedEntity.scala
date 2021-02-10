@@ -71,7 +71,16 @@ private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) exte
       // [ a.map(v => v.b), a.map(v => v.c) ] 
       // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
       // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
+
       case ('{ ($optField: Option[t]) }, Term(name, _, childProps, true)) =>
+        // def innerType[IT: Type]: Type[_] =
+        //   Type.of[IT] match
+        //     case '[Option[t]] => Type.of[t]
+        //     case _ => tpe
+
+        // val innerType = innerType[outerT]
+
+        
         val output =
           // TODO For coproducts need to check that the childName method actually exists on the type and
           // exclude it if it does not
@@ -80,9 +89,16 @@ private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) exte
               // In order to be able to flatten optionals in the flattenOptionals later, we need ot make
               // sure that the method-type in the .map function below is 100% correct. That means we
               // need to lookup what the type of the field of this particular member should actually be.
-              val memField = TypeRepr.of[t].classSymbol.get.memberField(childTerm.name)
-              val memeType = TypeRepr.of[t].memberType(memField)
+              val tpe = TypeRepr.of[t]
+              println(s"Get member '${childTerm.name}' of ${Printer.TypeReprShortCode.show(tpe)}")
+              val memField = tpe.classSymbol.get.memberField(childTerm.name)
+              val memeType = tpe.memberType(memField)
+              println(s"MemField of ${childTerm.name} is ${memField}: ${Printer.TypeReprShortCode.show(memeType)}")
               memeType.asType match
+                // If the nested field is itself optional, need to account for immediate flattening
+                case '[Option[mt]] =>
+                  val expr = '{ $optField.flatMap[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[Option[mt]]}) }
+                  elaborateObjectRecurse(childTerm, expr)
                 case '[mt] =>
                   val expr = '{ $optField.map[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[mt]}) }
                   elaborateObjectRecurse(childTerm, expr)

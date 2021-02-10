@@ -79,8 +79,8 @@ with EncodingDsl //  with Closeable
   // todo add 'prepare' i.e. encoders here
   //def executeAction[T](cql: String, prepare: Prepare = identityPrepare)(implicit executionContext: ExecutionContext): Result[RunActionResult]
 
-  inline def lift[T](inline vv: T): T = 
-    ${ LiftMacro[T, PrepareRow]('vv) }
+  inline def lift[T](inline runtimeValue: T): T = 
+    ${ LiftMacro[T, PrepareRow]('runtimeValue) }
 
   inline def runQueryBase[T](inline quoted: Quoted[Query[T]], inline dc: DatasourceContext): Result[RunQueryResult[T]] = {
     val ca = new ContextOperation[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]](self.idiom, self.naming) {
