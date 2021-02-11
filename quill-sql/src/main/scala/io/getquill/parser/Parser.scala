@@ -400,6 +400,11 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       FlatJoin(InnerJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
     case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, tpe, on)}) } => 
       FlatJoin(LeftJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
+    
+    case '{ type t; ($q: Query[`t`]).take($n: Int) } => 
+      println("Salvage is TWAT")
+      Take(astParse(q),astParse(n))
+      // Take(querySchema("Person"), 5)
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
