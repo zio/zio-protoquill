@@ -316,7 +316,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       val updateAssignments = first.asTerm +: others.map(_.asTerm)
       val assignments = updateAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
       Update(astParse(query), assignments.toList)
-    case '{ type t; ($query: EntityQuery[`t`]).delete } =>
+    case '{ type t; ($query: EntityQueryModel[`t`]).delete } =>
       println("****************** Delete Parsed Here ***********")
       Delete(astParse(query))
 

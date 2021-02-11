@@ -10,33 +10,37 @@ object ActionParserTest {
 
     case class Person(name:String, age:Int)
 
-    // val insertOutput = quote {
-    //   query[Person].insert(_.name -> "John", _.age -> 21)
-    //   //INSERT INTO Person (name,age) VALUES (?, ?)
-    // }
+    val insertOutput = quote {
+      query[Person].insert(_.name -> "John", _.age -> 21)
+      //INSERT INTO Person (name,age) VALUES (?, ?)
+    }
+    run(insertOutput)
 
-    // val updateOutput = quote {
-    //   query[Person].filter(_.name=="Joe").update(_.name -> "John")
-    //    //UPDATE Person SET name = ? WHERE name = ?
-    // }
+    val updateOutput = quote {
+      query[Person].filter(_.name=="Joe").update(_.name -> "John")
+       //UPDATE Person SET name = ? WHERE name = ?
+    }
+    run(updateOutput)
 
-    val deleteOutput = quote {
+    inline def deleteOutput = quote {
       query[Person].filter(p => p.name == "Joe").delete
       //DELTE FROM Person WHERE name = 'Joe'
     }
+    run(deleteOutput)
 
-    // val queryReturning = quote {
+    // val queryReturningOutput = quote {
     //   query[Person].insert(_.name -> "John", _.age -> 21).returning(p => p.name)
     //   //INSERT INTO Person (name, age) VALUES ('Joe', 21) RETURNING name
     // }
+    // run(queryReturningOutput)
 
-    // val queryReturningGenerated = quote {
+    // val queryReturningGeneratedOutput = quote {
     //   query[Person].insert(_.name -> "John", _.age -> 21).returningGenerated(p => p.name)
     //   //INSERT INTO Person (id, name, age) VALUES (-1, 'Joe', 1) RETURNING id
     // }
+    // run(queryReturningGeneratedOutput)
     
-    run(deleteOutput)
-    //compilee
+    //compileeeeeeeee
 
     println('\n'*10)
   }
