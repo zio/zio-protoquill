@@ -12,7 +12,7 @@ object QueryParserTest {
     val a = 2
     val b = 3
 
-    val q = quote { query[Person].take(a + b) }
+    val q = quote { query[Person].drop(a + b) }
     //compile
 
     println(q)

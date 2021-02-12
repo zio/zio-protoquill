@@ -137,6 +137,7 @@ object Unlifter {
       case '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
       case '{ FlatJoin($typ, $a, $aliasA, $on) } => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
       case '{ Take($query, $num)} => Take(query.unexpr, num.unexpr)
+      case '{ Drop($query, $num)} => Drop(query.unexpr, num.unexpr)
       case '{ CaseClass($values) } => CaseClass(values.unexpr)
       case '{ NullValue } => NullValue
       case '{ $p: Property } => unliftProperty(p)

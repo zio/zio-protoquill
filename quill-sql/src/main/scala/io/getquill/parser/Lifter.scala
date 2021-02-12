@@ -156,6 +156,7 @@ trait Lifter(serializeQuats: Boolean) {
       case Join(typ, a, b, identA, identB, body) => '{ Join(${typ.expr}, ${a.expr}, ${b.expr}, ${identA.expr}, ${identB.expr}, ${body.expr}) }
       case FlatJoin(typ, a, identA, on) => '{ FlatJoin(${typ.expr}, ${a.expr}, ${identA.expr}, ${on.expr}) }
       case Take(query: Ast, num: Ast) => '{ Take(${query.expr}, ${num.expr})}
+      case Drop(query: Ast, num: Ast) => '{ Drop(${query.expr}, ${num.expr})}
       case NullValue => '{ NullValue }
       case CaseClass(lifts) => '{ CaseClass(${lifts.expr}) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
       case v: Property => liftableProperty(v)
