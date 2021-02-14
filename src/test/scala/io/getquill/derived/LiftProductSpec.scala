@@ -54,6 +54,6 @@ class LiftProductSpec extends Spec with Inside {
         ("INSERT INTO Person (name,age) VALUES (?, ?)", List("Joe", 123), ExecutionType.Dynamic)
     }
 
-    // TODO complex case, take from ElaborateStructureSpec
+    
   }
 }

@@ -54,7 +54,7 @@ class QueryTest extends Spec with Inside { //hellooooooo
       import ctx._
       "with full expansion" in {
         val result = ctx.run(people)
-        result.string mustEqual """querySchema("Person").map(x => (x.name, x.age, x.address.street, x.address.zip))"""
+        result.string mustEqual """querySchema("Person").map(x => CaseClass(name: x.name, age: x.age, addressstreet: x.address.street, addresszip: x.address.zip))"""
         result.executionType mustEqual ExecutionType.Static
       }
       "with field select and lift" in {
@@ -101,7 +101,7 @@ class QueryTest extends Spec with Inside { //hellooooooo
     ("should expand with MirrorContext") in {
       import ctx._
       val result = ctx.run(addresses)
-      result.string mustEqual """querySchema("Person").map(p => (p.address.street, p.address.zip))"""
+      result.string mustEqual """querySchema("Person").map(p => CaseClass(street: p.address.street, zip: p.address.zip))"""
       result.executionType mustEqual ExecutionType.Static
     }
     ("should expand with SqlMirrorContext") in {
@@ -134,7 +134,7 @@ class QueryTest extends Spec with Inside { //hellooooooo
     "reference should express correct in MirrorContext" in {
       import ctx._
       val result = ctx.run(addressesRuntime)
-      result.string mustEqual """querySchema("Person").map(p => (p.address.street, p.address.zip))"""
+      result.string mustEqual """querySchema("Person").map(p => CaseClass(street: p.address.street, zip: p.address.zip))"""
       result.executionType mustEqual ExecutionType.Dynamic
     }
     "reference should express correct in SqlMirrorContext" in {

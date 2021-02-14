@@ -79,9 +79,11 @@ class ActionTest extends Spec with Inside {
 
     "auto-quote with lift" in {
       val result = ctx.run(query[Person].insert(Person(lift("Joe"), 123)))
-      result.string mustEqual "INSERT INTO Person (name,age) VALUES (?, 123)"
-      result.executionType mustEqual ExecutionType.Static
-      result.prepareRow.data.toList mustEqual List("Joe")
+      result.triple mustEqual (
+        "INSERT INTO Person (name,age) VALUES (?, 123)",
+        List("Joe"),
+        ExecutionType.Static
+      )
     }
   }
 

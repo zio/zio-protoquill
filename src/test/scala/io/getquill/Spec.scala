@@ -32,7 +32,13 @@ abstract class Spec extends AnyFreeSpec with Matchers /* with BeforeAndAfterAll 
   extension [T, D <: Idiom, N <: NamingStrategy](ctx: MirrorContext[D, N])
     inline def pull(inline q: Query[T]) =
       val r = ctx.run(q)
-      (r.prepareRow.data.toList, r.executionType)
+      (
+        r.prepareRow match {
+          case r: io.getquill.context.mirror.Row => 
+            r.data.toList.map(_._2)
+        }, 
+        r.executionType
+      )
 
   extension [T, PrepareRow](q: Quoted[T])
     def encodeEagerLifts(row: PrepareRow) =
