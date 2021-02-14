@@ -121,8 +121,13 @@ trait Lifter(serializeQuats: Boolean) {
       case OptionSome(a) => '{ OptionSome(${a.expr}) }
       case OptionNone(quat) => '{ OptionNone(${quat.expr}) }
       case OptionIsEmpty(a) => '{ OptionIsEmpty(${a.expr}) }
+      case OptionNonEmpty(a) => '{ OptionNonEmpty(${a.expr}) }
+      case OptionIsDefined(a) => '{ OptionIsDefined(${a.expr}) }
+      case OptionGetOrElse(a, b) => '{ OptionGetOrElse(${a.expr}, ${b.expr}) }
+      case OptionContains(a, b) => '{ OptionContains(${a.expr}, ${b.expr}) }
       case OptionMap(a, b, c) => '{ OptionMap(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionTableMap(a, b, c) => '{ OptionTableMap(${a.expr}, ${b.expr}, ${c.expr}) }
+      case OptionTableFlatMap(a, b, c) => '{ OptionTableFlatMap(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionExists(a, b, c) => '{ OptionExists(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionTableExists(a, b, c) => '{ OptionTableExists(${a.expr}, ${b.expr}, ${c.expr}) }
   }

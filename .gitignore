@@ -1,16 +1,4 @@
 .idea
-project/target
-target
-.dotty-ide*
-nohup.out
-.vscode
-.bloop/
-.metals/
-project/.bloop/
-project/metals.sbt
-project/project/
-.bsp/
-.idea
 target
 .classpath
 .project
@@ -51,3 +39,4 @@ project/.bloop/
 .jvmopts
 .DS_Store
 .vscode
+.scalafmt.conf
