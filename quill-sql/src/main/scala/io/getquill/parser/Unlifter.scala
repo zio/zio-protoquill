@@ -121,6 +121,7 @@ object Unlifter {
       case '{ FlatMap(${query}, ${alias}, ${body}: Ast) } => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
       case '{ Filter(${query}, ${alias}, ${body}: Ast) } => Filter(query.unexpr, alias.unexpr, body.unexpr)
       case '{ Foreach(${query}, ${alias}, ${body}: Ast) } => Foreach(query.unexpr, alias.unexpr, body.unexpr)
+      case '{ UnaryOperation(${operator}, ${a}: Ast) } => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
       case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
       case '{ Property(${ast}, ${name}) } =>
         Property(ast.unexpr, constString(name))
@@ -157,6 +158,11 @@ object Unlifter {
       case '{ NumericOperator.> } =>  NumericOperator.>
       case '{ NumericOperator.< } =>  NumericOperator.<
       case '{ StringOperator.+ } =>  StringOperator.+
+      case '{ StringOperator.toUpperCase } =>  StringOperator.toUpperCase
+      case '{ StringOperator.toLowerCase } =>  StringOperator.toLowerCase
+      case '{ StringOperator.toLong } =>  StringOperator.toLong
+      case '{ StringOperator.startsWith } =>  StringOperator.startsWith
+      case '{ StringOperator.split } =>  StringOperator.split
       case '{ EqualityOperator.== } =>  EqualityOperator.==
       case '{ BooleanOperator.|| } =>  BooleanOperator.||
       case '{ BooleanOperator.&& } =>  BooleanOperator.&&

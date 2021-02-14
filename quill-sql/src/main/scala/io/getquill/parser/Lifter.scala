@@ -147,6 +147,7 @@ trait Lifter(serializeQuats: Boolean) {
       case FlatMap(query: Ast, alias: AIdent, body: Ast) => '{ FlatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
       case Filter(query: Ast, alias: AIdent, body: Ast) => '{ Filter(${query.expr}, ${alias.expr}, ${body.expr})  }
       case Foreach(query: Ast, alias: AIdent, body: Ast) => '{ Foreach(${query.expr}, ${alias.expr}, ${body.expr})  }
+      case UnaryOperation(operator: UnaryOperator, a: Ast) => '{ UnaryOperation(${liftOperator(operator).asInstanceOf[Expr[UnaryOperator]]}, ${a.expr})  }
       case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${a.expr}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${b.expr})  }
       case ScalarTag(uid: String) => '{ScalarTag(${uid.expr})}
       case QuotationTag(uid: String) => '{QuotationTag(${uid.expr})}
@@ -177,6 +178,11 @@ trait Lifter(serializeQuats: Boolean) {
       case NumericOperator.> => '{ NumericOperator.> }
       case NumericOperator.< => '{ NumericOperator.< }
       case StringOperator.+ => '{ StringOperator.+ }
+      case StringOperator.toUpperCase => '{ StringOperator.toUpperCase }
+      case StringOperator.toLowerCase => '{ StringOperator.toLowerCase }
+      case StringOperator.toLong => '{ StringOperator.toLong }
+      case StringOperator.startsWith => '{ StringOperator.startsWith }
+      case StringOperator.split => '{ StringOperator.split }
       case _: ee.type => '{ EqualityOperator.== } // if you don't do it this way, complains about 'stable identifier error'
       case BooleanOperator.|| => '{ BooleanOperator.|| }
       case BooleanOperator.&& => '{ BooleanOperator.&& }

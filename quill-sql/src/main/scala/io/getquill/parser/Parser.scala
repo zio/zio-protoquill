@@ -499,23 +499,36 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     case '{ ($i: String).toString } => astParse(i)
 
     //toUpperCase
-    case '{ ($str:String).toUpperCase() } =>
+    case '{ ($str:String).toUpperCase } =>
       Console.println("String to uppercase found")
-      Infix(List("ToUpperCase(", ")"), List(astParse(str)), true, Quat.Value)
+      UnaryOperation(StringOperator.toUpperCase, astParse(str))
 
     //toLowerCase
-    case '{ ($str:String).toLowerCase() } =>
+    case '{ ($str:String).toLowerCase } =>
       Console.println("String to lowercase found")
-      Infix(List("ToLowerCase(", ")"), List(astParse(str)), true, Quat.Value)
+      UnaryOperation(StringOperator.toLowerCase, astParse(str))
 
     //toLong
+    case '{ ($str:String).toLong } =>
+      Console.println("String toLong found")
+      UnaryOperation(StringOperator.toLong, astParse(str))
 
     //startsWith
+    case '{ ($left:String).startsWith($right) } =>
+      Console.println("String startsWith found")
+      BinaryOperation(astParse(left), StringOperator.startsWith, astParse(right))
 
     //split
-
+    case '{ ($left:String).split($right:String) } =>
+      //Console.println("String split found")
+      BinaryOperation(astParse(left), StringOperator.split, astParse(right))
     
 
+    /*
+    //SET Operations
+    case '{ ($set:String).contains() } =>
+      Console.printl("Wow you actually did it!")
+    */
     
     // 1 + 1
     // Apply(Select(Lit(1), +), Lit(1))
