@@ -3,7 +3,6 @@ package io.getquill.parser
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import io.getquill.quoter._
 import scala.quoted._
-import scala.quoted.{Const => ConstExpr}
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
@@ -65,7 +64,7 @@ object ParserHelpers {
           case _ => Parser.throwExpressionError(expr, classOf[PropertyAlias])
 
       def unapply[T: Type](expr: Expr[Any]): Option[PropertyAlias] = expr match
-        case Lambda1(_, _, '{ ($prop: Any).->[v](${ConstExpr(alias: String)}) } ) =>
+        case Lambda1(_, _, '{ ($prop: Any).->[v](${Const(alias: String)}) } ) =>
           def path(tree: Expr[_]): List[String] =
             tree match
               case a`.`b => 
@@ -107,7 +106,7 @@ object ParserHelpers {
           // Then in the AST it will look something like:
           // query[Person].map(p => (p.name, p.age)).filter(x$1 => { val name=x$1._1; val age=x$1._2; name == "Joe" })
           // and you need to resolve the val defs thare are created automatically
-          case DefDef(name, _, paramss, tpe, rhsOpt) if (paramss.length == 0) =>
+          case DefDef(name, paramss, tpe, rhsOpt) if (paramss.length == 0) =>
             //println(s"====== Parsing Def Def ${name} = ${rhsOpt.map(_.show)}")
             val body =
               rhsOpt match {

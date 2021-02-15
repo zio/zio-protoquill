@@ -1,6 +1,6 @@
 package io.getquill.parser
 
-import scala.quoted.{ Const => _, _ }
+import scala.quoted._
 import scala.quoted.Varargs
 
 final class TastyMatchersContext(using val qctx: Quotes) extends TastyMatchers
@@ -408,7 +408,7 @@ trait TastyMatchers {
         case Inlined(_, Nil, e) => rec(e)
         case _  => None
       }
-      rec(Term.of(expr))
+      rec(expr.asTerm)
     }
   }
 }

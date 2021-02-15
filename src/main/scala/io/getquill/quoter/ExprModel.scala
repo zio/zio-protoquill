@@ -1,7 +1,7 @@
 package io.getquill.quoter
 
 import scala.quoted._
-import scala.quoted.{Const => ConstExpr, _}
+import scala.quoted._
 import io.getquill.dsl.GenericEncoder
 import io.getquill.ast.Ast
 import io.getquill.parser.TastyMatchersContext
@@ -64,9 +64,9 @@ object PlanterExpr {
       //println("@@@@@@@@@@@ Trying to match: " + Printer.TreeStructure.show(e.asTerm))
 
       UntypeExpr(expr) match {
-        case '{ EagerPlanter.apply[qt, prep]($liftValue, $encoder, ${scala.quoted.Const(uid: String)}) } =>
+        case '{ EagerPlanter.apply[qt, prep]($liftValue, $encoder, ${Const(uid: String)}) } =>
           Some(EagerPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
-        case '{ LazyPlanter.apply[qt, prep]($liftValue, ${scala.quoted.Const(uid: String)}) } =>
+        case '{ LazyPlanter.apply[qt, prep]($liftValue, ${Const(uid: String)}) } =>
           Some(LazyPlanterExpr[qt, prep](uid, liftValue).asInstanceOf[PlanterExpr[_, _]])
         case _ => 
           None
@@ -240,19 +240,19 @@ object QuotationLotExpr {
         // Extract the entity, the uid and any other expressions the qutation bin may have 
         // (e.g. the extractor if the QuotationLot is a QueryMeta)
 
-        case '{ Unquote.apply[t]($quotation, ${ConstExpr(uid: String)}) } =>
+        case '{ Unquote.apply[t]($quotation, ${Const(uid: String)}) } =>
           Some((quotation, uid, List()))
 
-        case '{ SchemaMeta.apply[t]($quotation, ${ConstExpr(uid: String)}) } =>
+        case '{ SchemaMeta.apply[t]($quotation, ${Const(uid: String)}) } =>
           Some((quotation, uid, List()))
 
-        case '{ InsertMeta.apply[t]($quotation, ${ConstExpr(uid: String)}) } =>
+        case '{ InsertMeta.apply[t]($quotation, ${Const(uid: String)}) } =>
           Some((quotation, uid, List()))
 
-        case '{ CaseClassLift.apply[t]($quotation, ${ConstExpr(uid: String)}) } =>
+        case '{ CaseClassLift.apply[t]($quotation, ${Const(uid: String)}) } =>
           Some((quotation, uid, List()))
 
-        case '{ QueryMeta.apply[t, r]($quotation, ${ConstExpr(uid: String)}, $extractor) } =>
+        case '{ QueryMeta.apply[t, r]($quotation, ${Const(uid: String)}, $extractor) } =>
           Some((quotation, uid, List(extractor)))
 
         case other =>

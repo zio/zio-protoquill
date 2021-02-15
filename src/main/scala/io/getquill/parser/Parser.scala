@@ -3,7 +3,6 @@ package io.getquill.parser
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import io.getquill.quoter._
 import scala.quoted._
-import scala.quoted.{Const => ConstExpr}
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
@@ -334,7 +333,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       val name: String = tpe.classSymbol.get.name
       Entity(name, List(), InferQuat.ofType(tpe).probit)
 
-    case '{ Dsl.querySchema[t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
+    case '{ Dsl.querySchema[t](${Const(name: String)}, ${GenericSeq(properties)}: _*) } =>
       println("Props are: " + properties.map(_.show))
       val output = Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), InferQuat.of[t].probit, Renameable.Fixed)
       printer.lnf(output)

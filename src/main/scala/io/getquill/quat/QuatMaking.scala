@@ -173,8 +173,8 @@ trait QuatMakingBase(using val qctx: Quotes) {
         // Note that things like String are alias types so can't
         // use this functionality when checking against constants
         // if (tpe.typeSymbol.isTypeParam) println(s"((((( ${tpe} is a Type Param")
-        // if (tpe.typeSymbol.isAliasType) println(s"((((( ${tpe} is a Alias Type")
-        // if (tpe.typeSymbol.isAbstractType) println(s"((((( ${tpe} is a Abstract Type")
+        // if (tpe.typeSymbol.isliasType) println(s"((((( ${tpe} is a Alias Type")
+        // if (tpe.typeSymbol.isbstractType) println(s"((((( ${tpe} is a Abstract Type")
         // TODO What about abstract classes? What does Flags.Abstract do?
         tpe.typeSymbol.isTypeParam || tpe.typeSymbol.isAliasType || tpe.typeSymbol.isAbstractType || tpe.typeSymbol.flags.is(Flags.Trait) || tpe.typeSymbol.flags.is(Flags.Abstract) || tpe.typeSymbol.flags.is(Flags.Param)
       }
@@ -221,7 +221,8 @@ trait QuatMakingBase(using val qctx: Quotes) {
       }
 
       def isConstantType(tpe: TypeRepr) =
-        (tpe.is[Boolean] ||
+        (
+        tpe.is[Boolean] ||
         tpe.is[String] ||
         tpe.is[Int] ||
         tpe.is[Long] ||
@@ -238,7 +239,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
           else if (tpe <:< TypeRepr.of[Udt])
             //println(s"------------> ${tpe} Is UDT (not definite value) ")
             None
-          else if (isType[AnyVal](tpe))
+          else if (tpe.is[AnyVal])
             //println(s"------------> ${tpe} Is AnyValue")
             Some(tpe)
           else if (existsEncoderFor(tpe))
@@ -468,8 +469,8 @@ trait QuatMakingBase(using val qctx: Quotes) {
       era =:= TypeRepr.of[None.type]
     }
 
-    extension [T: TType] (tpe: TypeRepr)
-      def is = isType[T](tpe)
+    extension (tpe: TypeRepr)
+      def is[T](using TType[T]) = isType[T](tpe)
 
     private[getquill] def isType[T](tpe: TypeRepr)(implicit tt: TType[T]) =
       tpe <:< TypeRepr.of[T] && !(tpe =:= TypeRepr.of[Nothing])
