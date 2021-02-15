@@ -251,7 +251,7 @@ object InsertMacro {
       val unquotation =
         EntitySchema.summon match
           // If we can get a static entity back
-          case SummonState.Static(entity) => entity
+          case SummonState.Static(entity) =>
             // Lift it into an `Insert` ast, put that into a `quotation`, then return that `quotation.unquote` i.e. ready to splice into the quotation from which this `.insert` macro has been called
             val insert = '{ AInsert(${Lifter.entity(entity)}, ${assignmentsAst}) }
             val quotation = '{ Quoted[Insert[T]](${insert}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
