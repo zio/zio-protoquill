@@ -50,6 +50,9 @@
 //     def must(must: Must): Unit = must.execute(some)
 //   }
 
+//   def inside(any: Any)(func: PartialFunction[Any, Any]) =
+//     func.lift(any)
+
 //   //def matchPattern(any: Any) = new Must { def value = "foo" }
 //   def matchPattern(func: PartialFunction[Any, Any]) =
 //     new Must {

@@ -10,6 +10,7 @@ import io.getquill.quoter._
 import io.getquill._
 import org.scalatest._
 import io.getquill.context.ExecutionType
+import io.getquill.context.mirror.Row
 
 class LiftProductSpec extends Spec with Inside {
 
@@ -52,6 +53,22 @@ class LiftProductSpec extends Spec with Inside {
       val q = quote { query[Person].insert(lift(v)) }
       ctx.run(q).triple mustEqual
         ("INSERT INTO Person (name,age) VALUES (?, ?)", List("Joe", 123), ExecutionType.Dynamic)
+    }
+
+    "triple nested class" in {
+      case class ReallyNested(one: Int, two: Int)
+      case class Nested(i: Int, l: Option[ReallyNested])
+      case class Entity(a: String, b: Option[Nested])
+      val v = Entity("foo", Some(Nested(1, Some(ReallyNested(2, 3)))))
+      inline def q = quote { query[Entity].insert(lift(v)) }
+      val result = ctx.run(q)
+      // When fully expanded, the inner row-values for insertions are based on a tuple-index
+      result.prepareRow.asInstanceOf[Row].data.toList mustEqual
+        List(("_1","foo"), ("_2",Some(("_1",1))), ("_3",Some(("_1",2))), ("_4",Some(("_1",3))))
+      result.string mustEqual 
+        "INSERT INTO Entity (a,i,one,two) VALUES (?, ?, ?, ?)"
+      result.executionType mustEqual
+        ExecutionType.Static
     }
 
     
