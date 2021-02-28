@@ -8,7 +8,7 @@ import io.getquill.parser.TastyMatchersContext
 import io.getquill.parser.TastyMatchersContext
 import io.getquill.quoter.Quoted
 import io.getquill.quoter.QuotationLotExpr
-
+import io.getquill.metaprog.ExprAccumulate
 
 /* As the different kinds of parsing in Quill-Dotty became more complex, the need for an
 overarching model of "how stuff works" became necessary. There are several places in the
