@@ -1,8 +1,6 @@
 package io.getquill.parser
 
 import scala.quoted.{ Type => TType, _ }
-import scala.quoted.Const
-import scala.quoted
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import io.getquill.parser.TastyMatchers._
 import scala.reflect.ClassTag;
