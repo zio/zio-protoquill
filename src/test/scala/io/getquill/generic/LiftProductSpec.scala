@@ -1,9 +1,9 @@
-package io.getquill.derived
+package io.getquill.generic
 
 import io.getquill.ast._
 import io.getquill.Spec
 import io.getquill.quat.Quat
-import io.getquill.derived.ElaborateStructureExt.TaggedSplicedCaseClass
+import io.getquill.generic.ElaborateStructureExt.TaggedSplicedCaseClass
 import scala.quoted.Expr
 import io.getquill.quoter.Dsl._
 import io.getquill.quoter._

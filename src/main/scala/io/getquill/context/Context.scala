@@ -9,7 +9,7 @@ import io.getquill.{ ReturnAction }
 import io.getquill.dsl.EncodingDsl
 import io.getquill.quoter.Quoted
 import io.getquill.quoter.QueryMeta
-import io.getquill.derived._
+import io.getquill.generic._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.dsl.GenericDecoder
@@ -73,7 +73,7 @@ extends ProtoContext[Dialect, Naming]
 with EncodingDsl //  with Closeable
 { self =>
 
-  implicit inline def autoDecoder[T]:Decoder[T] = GenericDecoder.derived
+  implicit inline def autoDecoder[T]:Decoder[T] = GenericDecoder.generic
 
   //def probe(statement: String): Try[_]
   // todo add 'prepare' i.e. encoders here

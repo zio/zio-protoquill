@@ -1,9 +1,9 @@
-package io.getquill.derived
+package io.getquill.generic
 
 import io.getquill.ast._
 import io.getquill.Spec
 import io.getquill.quat.Quat
-import io.getquill.derived.ElaborateStructureExt.TaggedSplicedCaseClass
+import io.getquill.generic.ElaborateStructureExt.TaggedSplicedCaseClass
 import scala.quoted.Expr
 
 object Blah {
@@ -106,7 +106,7 @@ class ElaborateProductValueStructureSpec extends Spec {
 }
 
 class ElaborateStructureSpec extends Spec {
-  import io.getquill.derived.ElaborateStructure._
+  import io.getquill.generic.ElaborateStructure._
   val body = Ident("body", Quat.Generic)
 
   // If from here, there will be no product mirror
@@ -122,7 +122,7 @@ class ElaborateStructureSpec extends Spec {
     // TODO test nested embedded classes in the coproducts
 
     
-    //   // implicit inline def genDec[ResultRow, T]: GenericDecoder[T] = ${ GenericDecoder.derived[ResultRow, T] }
+    //   // implicit inline def genDec[ResultRow, T]: GenericDecoder[T] = ${ GenericDecoder.generic[ResultRow, T] }
 
     val v = ElaborateStructureExt.external[Blah.Shape](body)
     println(v)

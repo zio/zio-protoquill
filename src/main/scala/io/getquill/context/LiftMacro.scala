@@ -9,7 +9,7 @@ import io.getquill.{ ReturnAction }
 import io.getquill.dsl.EncodingDsl
 import io.getquill.quoter.Quoted
 import io.getquill.quoter.QueryMeta
-import io.getquill.derived._
+import io.getquill.generic._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.dsl.GenericDecoder
@@ -25,12 +25,12 @@ import io.getquill.idiom.ReifyStatement
 import io.getquill.quoter.EagerPlanter
 import io.getquill.quoter.LazyPlanter
 import io.getquill.dsl.GenericEncoder
-import io.getquill.derived.ElaborateStructure
+import io.getquill.generic.ElaborateStructure
 import io.getquill.quat.Quat
 import scala.quoted._
 import io.getquill._
 import io.getquill.quat.QuatMaking
-import io.getquill.derived.ElaborateStructure.TaggedLiftedCaseClass
+import io.getquill.generic.ElaborateStructure.TaggedLiftedCaseClass
 import io.getquill.parser.Lifter
 import io.getquill.quoter.CaseClassLift
 

@@ -1,8 +1,8 @@
-package io.getquill.derived
+package io.getquill.generic
 
 import scala.quoted._
 import io.getquill.ast.{ Ast, Map => AMap }
-import io.getquill.derived.ElaborateStructure.TaggedLiftedCaseClass
+import io.getquill.generic.ElaborateStructure.TaggedLiftedCaseClass
 import io.getquill.parser.Lifter
 
 /** Testing Hook for ElaborateStructure */

@@ -9,7 +9,7 @@ import io.getquill.{ ReturnAction }
 import io.getquill.dsl.EncodingDsl
 import io.getquill.quoter.Quoted
 import io.getquill.quoter.QueryMeta
-import io.getquill.derived._
+import io.getquill.generic._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.dsl.GenericDecoder

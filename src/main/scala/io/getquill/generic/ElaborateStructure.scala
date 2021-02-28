@@ -1,4 +1,4 @@
-package io.getquill.derived
+package io.getquill.generic
 
 import io.getquill.quoter._
 import scala.reflect.ClassTag
@@ -424,7 +424,7 @@ object ElaborateStructure {
             val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
             (name, OptionSome(CaseClass(children)))
           case _ =>
-            quotes.reflect.report.throwError(s"Illegal derived schema: $node from type ${Type.of[T]}", productValue)
+            quotes.reflect.report.throwError(s"Illegal generic schema: $node from type ${Type.of[T]}", productValue)
       toAstRec(node, "", true)
 
     val expanded = base[T](Term("notused", Branch))

@@ -126,7 +126,7 @@ object GenericDecoder {
         }
     }
 
-  inline def derived[T, ResultRow]: GenericDecoder[ResultRow, T] = 
+  inline def generic[T, ResultRow]: GenericDecoder[ResultRow, T] = 
     new GenericDecoder[ResultRow, T] {
       def apply(index: Int, resultRow: ResultRow): T = decode[T, ResultRow](index, resultRow)     
     }

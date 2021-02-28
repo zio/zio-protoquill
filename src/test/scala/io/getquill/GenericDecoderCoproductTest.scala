@@ -63,9 +63,9 @@ class GenericDecoderCoproductTest extends Spec {
   //   case Circle(radius: Int) extends Shape
 
 
-  implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.derived
-  //given sq1: GenericDecoder[MyResult, Shape.Square] = GenericDecoder.derived
-  //given cr1: GenericDecoder[MyResult, Shape.Circle] = GenericDecoder.derived  
+  implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.generic
+  //given sq1: GenericDecoder[MyResult, Shape.Square] = GenericDecoder.generic
+  //given cr1: GenericDecoder[MyResult, Shape.Circle] = GenericDecoder.generic  
 
   given deter: GenericRowTyper[MyResult, Shape] with {
     def apply(rr: MyResult): ClassTag[_] = {

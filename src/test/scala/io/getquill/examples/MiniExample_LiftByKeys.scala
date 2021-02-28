@@ -9,7 +9,7 @@ object MiniExample_LiftByKeys {
   import io.getquill._
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
-  import io.getquill.derived.MapProc
+  import io.getquill.generic.MapProc
 
   case class Person(firstName: String, lastName: String, age: Int)
 

@@ -8,7 +8,7 @@ import io.getquill.util.LoadObject
 import io.getquill.parser.Parser
 import io.getquill.parser.Parser.Implicits._
 import io.getquill.parser.ParserFactory
-import io.getquill.derived.ElaborateStructure
+import io.getquill.generic.ElaborateStructure
 import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, _ }
 import io.getquill.parser.Lifter
 import io.getquill.parser.Unlifter
