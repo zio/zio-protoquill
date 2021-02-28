@@ -6,13 +6,13 @@ import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
 import io.getquill.{ ReturnAction }
-import io.getquill.dsl.EncodingDsl
+import io.getquill.generic.EncodingDsl
 import io.getquill.quoter.Quoted
 import io.getquill.quoter.QueryMeta
 import io.getquill.generic._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
-import io.getquill.dsl.GenericDecoder
+import io.getquill.generic.GenericDecoder
 import io.getquill.quoter.Planter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag

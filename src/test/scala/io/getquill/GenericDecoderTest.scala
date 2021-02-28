@@ -13,9 +13,9 @@ import org.scalatest._
 import io.getquill.quat.quatOf
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
-import io.getquill.dsl.GenericDecoder
-import io.getquill.dsl.GenericRowTyper
-import io.getquill.dsl.GenericColumnResolver
+import io.getquill.generic.GenericDecoder
+import io.getquill.generic.GenericRowTyper
+import io.getquill.generic.GenericColumnResolver
 import scala.quoted._
 import scala.deriving._
 import scala.compiletime.{erasedValue, constValue, summonFrom}

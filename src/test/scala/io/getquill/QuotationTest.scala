@@ -12,7 +12,7 @@ import io.getquill.quoter.EagerPlanter
 import io.getquill.quoter.LazyPlanter
 import io.getquill.quoter.QuotationVase
 import io.getquill.quoter.QuotationLot
-import io.getquill.dsl.GenericEncoder
+import io.getquill.generic.GenericEncoder
 import io.getquill.context.mirror.Row
 import io.getquill.context.ExecutionType
 import io.getquill.quat.quatOf

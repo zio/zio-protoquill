@@ -7,7 +7,7 @@ import scala.annotation.StaticAnnotation
 import printer.AstPrinter
 import scala.deriving._
 import scala.quoted.Const
-import io.getquill.dsl.GenericEncoder
+import io.getquill.generic.GenericEncoder
 import io.getquill.parser.ParserFactory
 import io.getquill.parser.Parser.Implicits._
 import io.getquill.quotation.NonQuotedException

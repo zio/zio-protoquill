@@ -1,6 +1,6 @@
 package io.getquill.context.mirror
 
-import io.getquill.dsl._
+import io.getquill.generic._
 import scala.reflect.ClassTag
 
 trait MirrorDecoders extends EncodingDsl {

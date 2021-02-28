@@ -11,7 +11,7 @@ import io.getquill.util.Messages
 import io.getquill.parser.Lifter
 import io.getquill.Udt
 import scala.collection.mutable
-import io.getquill.dsl.GenericEncoder
+import io.getquill.generic.GenericEncoder
 
 // TODO Shuold not be using this 'Quoted', remove it
 case class Quoted[+T](val ast: io.getquill.ast.Ast)

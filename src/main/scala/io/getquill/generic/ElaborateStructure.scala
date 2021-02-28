@@ -73,7 +73,7 @@ import io.getquill.ast.{Map => AMap, _}
  * us compute the necessary assignments in the `InsertMacro`.
  */
 object ElaborateStructure {
-  import io.getquill.dsl.GenericDecoder
+  import io.getquill.generic.GenericDecoder
 
   sealed trait TermType
   case object Leaf extends TermType

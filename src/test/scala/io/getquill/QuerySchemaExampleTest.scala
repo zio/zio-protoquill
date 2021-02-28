@@ -1,7 +1,7 @@
 package io.getquill
 
 import io.getquill._
-import io.getquill.dsl._
+import io.getquill.generic._
 import io.getquill.quoter.Dsl._
 
 class QuerySchemaExampleTest extends Spec {

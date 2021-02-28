@@ -2,7 +2,7 @@ package io.getquill.quoter
 
 import scala.quoted._
 import scala.quoted.{Const => ConstExpr, _}
-import io.getquill.dsl.GenericEncoder
+import io.getquill.generic.GenericEncoder
 import io.getquill.ast.Ast
 import io.getquill.parser.TastyMatchersContext
 import io.getquill.parser.TastyMatchersContext

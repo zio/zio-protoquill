@@ -235,7 +235,7 @@ case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implici
 // }
 
 
-// TODO Pluggable-in unlifter via implicit? Quotation dsl should have it in the root?
+// TODO Pluggable-in unlifter via implicit? Quotation generic should have it in the root?
 case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
   import quotes.reflect.{ Ident => TIdent, _}
   import Parser.Implicits._
