@@ -2,6 +2,8 @@ package io.getquill.idiom
 
 import io.getquill._
 
+// TODO need to actually write the test for this
+
 @main def testReflectLoadTypes() = {
   val comp = NamingStrategy(SnakeCase, UpperCase)
   LoadNaming.mac[Literal](Literal)

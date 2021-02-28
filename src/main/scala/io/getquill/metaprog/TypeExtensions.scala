@@ -1,4 +1,4 @@
-package io.getquill.generic
+package io.getquill.metaprog
 
 import io.getquill.quoter._
 import scala.reflect.ClassTag

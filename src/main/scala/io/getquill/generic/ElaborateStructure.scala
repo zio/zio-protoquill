@@ -222,6 +222,7 @@ object ElaborateStructure {
     }
   }
 
+  // TODO Merge with the type-extensions in metaprog
   class TypeExtensions(using Quotes) { self =>
     import quotes.reflect._
     
