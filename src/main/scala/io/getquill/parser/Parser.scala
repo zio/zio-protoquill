@@ -15,6 +15,7 @@ import io.getquill.Query
 import io.getquill.Format
 import io.getquill.parser.ParserHelpers._
 import io.getquill.quat.QuatMaking
+import io.getquill.quat.QuatMakingBase
 import io.getquill.quat.Quat
 
 type Parser[R] = PartialFunction[quoted.Expr[_], R]
@@ -73,7 +74,7 @@ object Parser {
       expr.asTerm.tpe <:< TypeRepr.of[Criteria] && delegate.isDefinedAt(expr)
   }
 
-  trait Clause[R](using override val qctx: Quotes) extends Delegated[R] with TastyMatchers with Idents with QuatMaking { base =>
+  abstract class Clause[R](using override val qctx: Quotes) extends Delegated[R] with TastyMatchers with Idents with QuatMaking with QuatMakingBase { base =>
     import Implicits._
 
     def root: Parser[Ast]

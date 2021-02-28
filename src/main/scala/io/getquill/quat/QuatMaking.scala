@@ -25,16 +25,16 @@ inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
 object QuatMaking {
   inline def inferQuat[T](value: T): Quat = ${ inferQuatImpl('value) }
   def inferQuatImpl[T: TType](value: Expr[T])(using quotes: Quotes): Expr[Quat] = {
-    val quat = (new QuatMaking {}).InferQuat.of[T]
+    val quat = (new QuatMaking with QuatMakingBase {}).InferQuat.of[T]
     println(io.getquill.util.Messages.qprint(quat))
     Lifter.quat(quat)
   }
 
   def ofType[T: TType](using quotes: Quotes): Quat =
-   (new QuatMaking {}).InferQuat.of[T]
+   (new QuatMaking with QuatMakingBase {}).InferQuat.of[T]
 
   def quatOfImpl[T: TType](using quotes: Quotes): Expr[Quat] = {
-    val quat = (new QuatMaking {}).InferQuat.of[T]
+    val quat = (new QuatMaking with QuatMakingBase {}).InferQuat.of[T]
     println(io.getquill.util.Messages.qprint(quat))
     Lifter.quat(quat)
   }

@@ -23,7 +23,7 @@ class OneMapRunSanityTest extends Spec {
     val quat = quatOf[SanePerson]
     qq.ast mustEqual Map(Entity("SanePerson", List(), quat.probit), Ident("p", quat), Property(Ident("p", quat), "name"))
     val ctx = new MirrorContext(MirrorIdiom, Literal)
-    import ctx._
+    import ctx.{ _, given }
     val output = ctx.run(qq).string
      output mustEqual """querySchema("SanePerson").map(p => p.name)"""
   }
