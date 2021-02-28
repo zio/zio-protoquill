@@ -25,7 +25,7 @@ lazy val root = project
       //("org.scalameta" %% "scalafmt-cli" % "2.7.4").withDottyCompat(scalaVersion.value),
       //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
 
-      "org.scalatest" % "scalatest_3.0.0-RC1" % "3.2.5" % "test",
-      "org.scalatest" % "scalatest-mustmatchers_3.0.0-RC1" % "3.2.5" % "test"
+      //"org.scalatest" % "scalatest_3.0.0-RC1" % "3.2.5" % "test",
+      //"org.scalatest" % "scalatest-mustmatchers_3.0.0-RC1" % "3.2.5" % "test"
     )
   )

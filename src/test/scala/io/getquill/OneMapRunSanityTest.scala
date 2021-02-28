@@ -5,7 +5,6 @@ import io.getquill.quoter.Dsl._
 import io.getquill._
 import io.getquill.ast._
 import io.getquill.quoter.Quoted
-import io.getquill._
 import org.scalatest._
 import io.getquill.quat.Quat
 import io.getquill.quat.quatOf
@@ -18,12 +17,12 @@ class OneMapRunSanityTest extends Spec {
       query[SanePerson] // helloo
     }
     inline def qq = quote {
-      q.map(p => p.name)
+      q //.map(p => p.age)
     }
     val quat = quatOf[SanePerson]
     qq.ast mustEqual Map(Entity("SanePerson", List(), quat.probit), Ident("p", quat), Property(Ident("p", quat), "name"))
     val ctx = new MirrorContext(MirrorIdiom, Literal)
-    import ctx.{ _, given }
+    import ctx.{given,*}
     val output = ctx.run(qq).string
      output mustEqual """querySchema("SanePerson").map(p => p.name)"""
   }
