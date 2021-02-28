@@ -98,7 +98,7 @@ object ElaborateStructure {
       if (this.typeType != other.typeType)
         report.throwError(s"Cannot resolve coproducts because the terms ${this} and ${other} have different types (${this.typeType} and ${other.typeType} respectively)")
 
-      import GroupByOps._
+      import io.getquill.util.GroupByOps._
       // Given Shape -> (Square, Rectangle) the result will be:
       // Shape.x detected multiple kinds of values: List(Term(x,Branch,List(Term(width,Leaf,List(),false), Term(height,Leaf,List(),false)),false), Term(x,Branch,List(Term(radius,Leaf,List(),false)),false))
       // Need to merge these terms
