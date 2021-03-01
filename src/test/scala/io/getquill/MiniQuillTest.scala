@@ -1,15 +1,15 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import io.getquill.Dsl._
-import io.getquill.QueryDsl._
-import io.getquill.SchemaMeta
-import io.getquill.QueryMeta
-import io.getquill.InsertMeta
+//import io.getquill.Dsl._
+//import io.getquill.QueryDsl._
+//import io.getquill.SchemaMeta
+//import io.getquill.QueryMeta
+//import io.getquill.InsertMeta
 import io.getquill.parser.PrintMac
+import io.getquill.lib._
 
 object MiniQuillTest {
-  import io.getquill._
 
   def main(args: Array[String]): Unit = {
 
@@ -142,9 +142,9 @@ object MiniQuillTest {
       //PrintMac(personSchema)
       // TODO What if this is a val?
       inline def q = quote {
-        query[Person].insert(Person(1, "Joe"))
+        query[Person].insert(Person(1, "Joe")) //hello
       }
-      PrintMac(q)
+      //PrintMac(q)
       println( run(q) ) // hello
     }
     // TODO Exclude from Optional object (i.e and multiple excludes)

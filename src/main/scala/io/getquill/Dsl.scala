@@ -30,6 +30,15 @@ import io.getquill.context.LiftMacro
 //   def quote[T](bodyExpr: T): Quoted[T] = ???
 // }
 
+object lib extends Dsl[ParserLibrary] {
+  export io.getquill.Query
+  export io.getquill.Action
+  export io.getquill.Insert
+  export io.getquill.Update
+  export io.getquill.Delete
+  export io.getquill.ActionReturning
+}
+
 object Dsl extends Dsl[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
 trait Dsl[Parser <: ParserFactory] extends QuoteDsl[Parser] with QueryDsl[Parser] with MetaDsl[Parser]
