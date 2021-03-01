@@ -12,6 +12,7 @@ import io.getquill.context.ExecutionType
 import org.scalatest._
 import io.getquill.quat.quatOf
 import io.getquill.context.ExecutionType
+import io.getquill.util.printer
 
 class QueryTest extends Spec with Inside { //hellooooooo
 

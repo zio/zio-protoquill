@@ -1,11 +1,11 @@
-package printer
+package io.getquill.util.printer
 
 import pprint.{PPrinter, Tree, Util}
 
 import fansi.Str
 import pprint.{ Renderer, Tree, Truncated }
 import scala.quoted._
-import printer.AstPrinter
+import io.getquill.util.printer.AstPrinter
 
 class ContextAstPrinter(using Quotes) extends AstPrinter {
   import quotes.reflect.{Ident, Tree => TTree, _}

@@ -11,6 +11,7 @@ import io.getquill.QuotationLot
 import io.getquill.QuotationVase
 import io.getquill.context.ExecutionType
 import org.scalatest._
+import io.getquill.util.printer
 
 class QuerySchemaTest extends Spec with Inside {
 

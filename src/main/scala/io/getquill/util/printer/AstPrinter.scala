@@ -1,4 +1,4 @@
-package printer
+package io.getquill.util.printer
 
 import pprint.{PPrinter, Tree, Util}
 
@@ -78,15 +78,15 @@ class XUnapplier(message: String)(using Quotes) {
       t match {
         case e: Expr[_] => e.show
         case Some(e: Expr[_]) => e.show
-        case t: Term => printer.str(t)
+        case t: Term => str(t)
         case other => other.toString
       }
 
     def tStringAst = 
       t match {
-        case e: Expr[_] => printer.str(e.asTerm)
-        case Some(e: Expr[_]) => printer.str(e.asTerm)
-        case t: Term => printer.str(t)
+        case e: Expr[_] => str(e.asTerm)
+        case Some(e: Expr[_]) => str(e.asTerm)
+        case t: Term => str(t)
         case other => other.toString
       }
 

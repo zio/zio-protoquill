@@ -2,6 +2,7 @@ package io.getquill.metaprog
 
 import scala.quoted.{ Const => _, _ }
 import scala.quoted.Varargs
+import io.getquill.util.printer
 
 final class ExtractorsBundle(using val qctx: Quotes) extends Extractors
 
