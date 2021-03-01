@@ -32,12 +32,7 @@ import io.getquill.context.LiftMacro
 
 object Dsl extends Dsl[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
-
-trait Dsl[Parser <: ParserFactory] extends QuoteDsl[Parser] with QueryDsl[Parser] with MetaDsl[Parser] {
-  def run[T](query: Quoted[T]): String = {
-    query.ast.toString
-  }
-}
+trait Dsl[Parser <: ParserFactory] extends QuoteDsl[Parser] with QueryDsl[Parser] with MetaDsl[Parser]
 
 trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
   @compileTimeOnly(NonQuotedException.message)
