@@ -52,6 +52,9 @@ with MirrorDecoders with MirrorEncoders { self =>
     
   import scala.annotation.targetName
 
+  // Think I need to implement 'run' here as opposed to in Context because an abstract
+  // inline method cannot be called. Should look into this further. E.g. maybe the 'inline' in
+  // the regular context can be non inline
   @targetName("runQuery")
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = runQueryBase[T](quoted, ())
 

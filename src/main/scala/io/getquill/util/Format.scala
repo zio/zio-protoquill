@@ -1,4 +1,4 @@
-package io.getquill
+package io.getquill.util
 
 object Format {
   // import org.scalafmt.interfaces.Scalafmt

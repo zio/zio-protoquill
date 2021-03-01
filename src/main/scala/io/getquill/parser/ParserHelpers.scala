@@ -13,7 +13,7 @@ import io.getquill.norm.capture.AvoidAliasConflict
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.EntityQuery
 import io.getquill.Query
-import io.getquill.Format
+import io.getquill.util.Format
 import io.getquill.parser.ParserHelpers._
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
