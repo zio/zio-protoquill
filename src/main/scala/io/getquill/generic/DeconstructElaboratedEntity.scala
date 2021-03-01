@@ -12,7 +12,7 @@ import io.getquill.parser.Lifter
 import io.getquill.quat.Quat
 import io.getquill.ast.{Map => AMap, _}
 import io.getquill.generic.ElaborateStructure.Term
-import io.getquill.metaprog.TastyMatchers
+import io.getquill.metaprog.Extractors
 
 object DeconstructElaboratedEntity {
   def apply(elaboration: Term, entity: Expr[_])(using qctx: Quotes) =
@@ -20,7 +20,7 @@ object DeconstructElaboratedEntity {
 }
 
 // TODO Explain this is a specific elaborator used for Case Class Lifts
-private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) extends TastyMatchers {
+private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) extends Extractors {
   import qctx.reflect._
   import io.getquill.generic.ElaborateStructure.Term
 

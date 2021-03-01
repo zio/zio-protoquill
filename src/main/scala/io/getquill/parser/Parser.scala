@@ -23,7 +23,7 @@ import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.Uprootable
 import io.getquill.metaprog.Pluckable
 import io.getquill.metaprog.Pointable
-import io.getquill.metaprog.TastyMatchers
+import io.getquill.metaprog.Extractors
 
 type Parser[R] = PartialFunction[quoted.Expr[_], R]
 type SealedParser[R] = (quoted.Expr[_] => R)
@@ -63,7 +63,7 @@ object Parser {
     }
   }
 
-  trait Delegated[R] extends Parser[R] with TastyMatchers {
+  trait Delegated[R] extends Parser[R] with Extractors {
     override implicit val qctx: Quotes
     def delegate: PartialFunction[Expr[_], R]
     override def apply(expr: Expr[_]): R = {
@@ -81,7 +81,7 @@ object Parser {
       expr.asTerm.tpe <:< TypeRepr.of[Criteria] && delegate.isDefinedAt(expr)
   }
 
-  trait Clause[R](using override val qctx: Quotes) extends Delegated[R] with TastyMatchers with Idents with QuatMaking { base =>
+  trait Clause[R](using override val qctx: Quotes) extends Delegated[R] with Extractors with Idents with QuatMaking { base =>
     import Implicits._
 
     def root: Parser[Ast]

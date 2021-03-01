@@ -33,7 +33,7 @@ import io.getquill.Query
 import io.getquill.Action
 import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
-import io.getquill.metaprog.TastyMatchers
+import io.getquill.metaprog.Extractors
 
 trait ContextOperation[T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: Option[ResultRow => T], executionType: ExecutionType): Res
@@ -57,7 +57,7 @@ object QueryExecution:
     }
   }
 
-  trait QueryMetaHelper[T: Type] extends TastyMatchers {
+  trait QueryMetaHelper[T: Type] extends Extractors {
     import qctx.reflect.report
     // See if there there is a QueryMeta mapping T to some other type RawT
     def summonMetaIfExists =
@@ -96,7 +96,7 @@ object QueryExecution:
     ContextOperation: Expr[ContextOperation[T, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes) 
   extends SummonHelper[ResultRow] 
     with QueryMetaHelper[T] 
-    with TastyMatchers:
+    with Extractors:
     
     import qctx.reflect._
 

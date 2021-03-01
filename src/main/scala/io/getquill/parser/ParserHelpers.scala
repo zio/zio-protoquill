@@ -17,18 +17,18 @@ import io.getquill.util.Format
 import io.getquill.parser.ParserHelpers._
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
-import io.getquill.metaprog.TastyMatchers
+import io.getquill.metaprog.Extractors
 
 object ParserHelpers {
 
-  trait Idents(implicit override val qctx: Quotes) extends TastyMatchers with QuatMaking {
+  trait Idents(implicit override val qctx: Quotes) extends Extractors with QuatMaking {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
 
     def cleanIdent(name: String, quat: Quat): AIdent = AIdent(name.replace("_$", "x"), quat)
     def cleanIdent(name: String, tpe: TypeRepr): AIdent = AIdent(name.replace("_$", "x"), InferQuat.ofType(tpe))
   }
   
-  trait Assignments(implicit override val qctx: Quotes) extends Idents with TastyMatchers {
+  trait Assignments(implicit override val qctx: Quotes) extends Idents with Extractors {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import Parser.Implicits._
     import io.getquill.util.Interpolator
@@ -51,7 +51,7 @@ object ParserHelpers {
   }
 
 
-  trait PropertyAliases(implicit val qctx: Quotes) extends TastyMatchers {
+  trait PropertyAliases(implicit val qctx: Quotes) extends Extractors {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import Parser.Implicits._
     import io.getquill.util.Interpolator
@@ -83,7 +83,7 @@ object ParserHelpers {
       
   }
 
-  trait PatternMatchingValues(implicit override val qctx: Quotes) extends TastyMatchers with QuatMaking {
+  trait PatternMatchingValues(implicit override val qctx: Quotes) extends Extractors with QuatMaking {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import Parser.Implicits._
     import io.getquill.util.Interpolator

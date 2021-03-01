@@ -3,13 +3,13 @@ package io.getquill.context
 import scala.quoted._
 import io.getquill.Query
 import io.getquill.EntityQuery
-import io.getquill.metaprog.TastyMatchersContext
+import io.getquill.metaprog.ExtractorsBundle
 import io.getquill.SchemaMeta
 
 object QueryMacro {
   def apply[T: Type](using Quotes): Expr[EntityQuery[T]] = {
     import quotes.reflect._
-    val tmc = new TastyMatchersContext
+    val tmc = new ExtractorsBundle
     import tmc._
     import scala.quoted.Expr.summon
     import io.getquill.metaprog.QuotationLotExpr

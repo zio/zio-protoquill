@@ -3,24 +3,24 @@ package io.getquill.metaprog
 import scala.quoted.{ Const => _, _ }
 import scala.quoted.Varargs
 
-final class TastyMatchersContext(using val qctx: Quotes) extends TastyMatchers
+final class ExtractorsBundle(using val qctx: Quotes) extends Extractors
 
 /**
- * Allows tmporting TastyMatchers._ in order to be able to use
- * TastyMatchersContext as a matcher without having to declare it. You can just use 
+ * Allows tmporting Extractors._ in order to be able to use
+ * ExtractorsBundle as a matcher without having to declare it. You can just use 
  * it e.g:
  * <code>
- * import TastyMatchers._
+ * import Extractors._
  * foo match {
  *   case tmc.ConstantExpr(expr) => expr
  * }
  * </code>
  */
-object TastyMatchers {
-  inline def tmc(using Quotes) = new TastyMatchersContext
+object Extractors {
+  inline def tmc(using Quotes) = new ExtractorsBundle
 }
 
-trait TastyMatchers {
+trait Extractors {
   implicit val qctx: Quotes
   import qctx.reflect._
 

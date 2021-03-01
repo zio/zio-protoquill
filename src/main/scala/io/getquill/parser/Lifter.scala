@@ -4,7 +4,7 @@ import scala.quoted.{ Type => TType, _ }
 import scala.quoted.Const
 import scala.quoted
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
-import io.getquill.metaprog.TastyMatchers._
+import io.getquill.metaprog.Extractors._
 import scala.reflect.ClassTag;
 import scala.reflect.classTag;
 import io.getquill.quat.Quat

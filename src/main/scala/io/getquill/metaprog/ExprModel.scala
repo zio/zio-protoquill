@@ -4,8 +4,8 @@ import scala.quoted._
 import scala.quoted.{Const => ConstExpr, _}
 import io.getquill.generic.GenericEncoder
 import io.getquill.ast.Ast
-import io.getquill.metaprog.TastyMatchersContext
-import io.getquill.metaprog.TastyMatchersContext
+import io.getquill.metaprog.ExtractorsBundle
+import io.getquill.metaprog.ExtractorsBundle
 import io.getquill.Quoted
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.ExprAccumulate
@@ -59,7 +59,7 @@ object PlanterExpr {
   object Uprootable {
     def unapply(expr: Expr[Any])(using Quotes): Option[PlanterExpr[_, _]] = 
       import quotes.reflect._
-      val tmc = new TastyMatchersContext
+      val tmc = new ExtractorsBundle
       import tmc._
       val e = UntypeExpr(expr)
       //println("@@@@@@@@@@@ Trying to match: " + Printer.TreeStructure.show(e.asTerm))
@@ -119,7 +119,7 @@ object PlanterExpr {
   object UprootableList {
     def unapply(expr: Expr[List[Any]])(using Quotes): Option[List[PlanterExpr[_, _]]] = {
       import quotes.reflect._
-      val tmc = new TastyMatchersContext
+      val tmc = new ExtractorsBundle
       import tmc._
 
       UntypeExpr(expr.asTerm.underlyingArgument.asExpr) match {
@@ -155,7 +155,7 @@ object QuotedExpr {
   object Uprootable {
     def unapply(expr: Expr[Any])(using Quotes): Option[QuotedExpr] = {
       import quotes.reflect.{Term => QTerm, _}
-      val tmc = new TastyMatchersContext
+      val tmc = new ExtractorsBundle
       import tmc._
 
       expr match {
@@ -209,7 +209,7 @@ object QuotationLotExpr {
   protected object `(QuotationLot).unquote` {
     def unapply(expr: Expr[Any])(using Quotes) = {
       import quotes.reflect._
-      val tm = new TastyMatchersContext
+      val tm = new ExtractorsBundle
       import tm._
       UntypeExpr(expr) match {
         // When a QuotationLot is embedded into an ast
@@ -235,7 +235,7 @@ object QuotationLotExpr {
     
     def unapply(expr: Expr[Any])(using Quotes): Option[(Expr[Quoted[Any]], String, List[Expr[_]])] = {
       import quotes.reflect._
-      val tm = new TastyMatchersContext
+      val tm = new ExtractorsBundle
       import tm._
       UntypeExpr(expr) match {
         // Extract the entity, the uid and any other expressions the qutation bin may have 

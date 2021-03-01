@@ -14,7 +14,7 @@ import io.getquill.parser.Lifter
 import io.getquill.parser.Unlifter
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.QuotationLotExpr._
-import io.getquill.metaprog.TastyMatchers
+import io.getquill.metaprog.Extractors
 import io.getquill.Quoted
 import io.getquill.QuotationVase
 import io.getquill.InsertMeta
@@ -85,7 +85,7 @@ object InsertMacro {
    * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
    * statement is based. The schema is based on the EntityQuery which could potentially be an unquoted SchemaMeta.
    */
-  class Pipeline[T: Type, Parser <: ParserFactory: Type](schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T])(using override val qctx: Quotes) extends TastyMatchers with QuatMaking:
+  class Pipeline[T: Type, Parser <: ParserFactory: Type](schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T])(using override val qctx: Quotes) extends Extractors with QuatMaking:
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
 
