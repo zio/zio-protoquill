@@ -1,4 +1,4 @@
-package io.getquill.parser
+package io.getquill.util.debug
 
 import scala.quoted._
 import io.getquill.metaprog.Extractors

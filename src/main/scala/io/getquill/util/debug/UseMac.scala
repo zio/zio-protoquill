@@ -1,4 +1,4 @@
-package io.getquill.parser
+package io.getquill.util.debug
 
 object UseMac {
   

@@ -6,7 +6,7 @@ import scala.language.implicitConversions
 //import io.getquill.SchemaMeta
 //import io.getquill.QueryMeta
 //import io.getquill.InsertMeta
-import io.getquill.parser.PrintMac
+import io.getquill.util.debug.PrintMac
 import io.getquill.lib._
 
 object MiniQuillTest {
