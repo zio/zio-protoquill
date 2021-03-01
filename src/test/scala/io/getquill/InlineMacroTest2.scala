@@ -8,10 +8,10 @@
 // object InlineMacroTest2 {
 
 //   inline def fold[R](inline curr: R, inline list: List[R], inline op: (R, R) => R): R = {
-//     inline if (ListProc.isNil(list))
+//     inline if (ListFlicer.isNil(list))
 //       curr
 //     else
-//       fold(op(curr, ListProc.index(list, 0)), ListProc.tail(list), op)
+//       fold(op(curr, ListFlicer.index(list, 0)), ListFlicer.tail(list), op)
 //   }
 
 //   //inline def addl(inline str1:String, inline str2: String) = str1 + str2

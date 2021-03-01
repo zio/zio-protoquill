@@ -10,10 +10,10 @@ object MiniExample_OneOf {
   import ctx._
 
   inline def oneOf(inline list: List[String], inline column:String): Boolean = {
-    inline if (ListProc.isNil(list))
+    inline if (ListFlicer.isNil(list))
       false
     else
-      ListProc.index(list, 0) == column || oneOf(ListProc.tail(list), column)
+      ListFlicer.index(list, 0) == column || oneOf(ListFlicer.tail(list), column)
   }
 
   case class Person(name: String, age: Int)

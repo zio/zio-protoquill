@@ -9,7 +9,7 @@ object MiniExample_LiftByKeys {
   import io.getquill._
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
-  import io.getquill.metaprog.MapFilterator
+  import io.getquill.metaprog.MapFlicer
 
   case class Person(firstName: String, lastName: String, age: Int)
 
@@ -18,7 +18,7 @@ object MiniExample_LiftByKeys {
   def regularMapProc() = {
     inline def q = quote {
       query[Person].filter(p => 
-        MapFilterator[Person, PrepareRow](p, values, null, (a, b) => (a == b) || (b == (null) ) )
+        MapFlicer[Person, PrepareRow](p, values, null, (a, b) => (a == b) || (b == (null) ) )
       )
     }
     val r = run(q)
@@ -28,7 +28,7 @@ object MiniExample_LiftByKeys {
 
   extension [T](inline q: EntityQuery[T]) {
     inline def filterByKeys(inline map: Map[String, String]) =
-      q.filter(p => MapFilterator[T, PrepareRow](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
+      q.filter(p => MapFlicer[T, PrepareRow](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
   }
 
   def extensionMapProc() = {

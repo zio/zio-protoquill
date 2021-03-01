@@ -2,7 +2,8 @@ package io.getquill
 
 import scala.quoted._
 
-object ListProc {
+// I.e. List-Folding-Splicer since it recursively spliced clauses into a map
+object ListFlicer {
   inline def index[T](inline list: List[T], index:Int): T = ${ indexImpl('list, 'index) }
   def indexImpl[T: Type](list: Expr[List[T]], index: Expr[Int])(using Quotes): Expr[T] = {
     import quotes.reflect._
