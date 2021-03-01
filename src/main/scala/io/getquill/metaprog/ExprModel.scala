@@ -1,4 +1,4 @@
-package io.getquill.quoter
+package io.getquill.metaprog
 
 import scala.quoted._
 import scala.quoted.{Const => ConstExpr, _}
@@ -7,8 +7,9 @@ import io.getquill.ast.Ast
 import io.getquill.parser.TastyMatchersContext
 import io.getquill.parser.TastyMatchersContext
 import io.getquill.quoter.Quoted
-import io.getquill.quoter.QuotationLotExpr
+import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.ExprAccumulate
+import io.getquill.quoter._
 
 /* As the different kinds of parsing in Quill-Dotty became more complex, the need for an
 overarching model of "how stuff works" became necessary. There are several places in the

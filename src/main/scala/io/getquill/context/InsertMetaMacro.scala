@@ -12,8 +12,8 @@ import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, _ }
 import io.getquill.quoter.Quoted
 import io.getquill.parser.Lifter
 import io.getquill.parser.Unlifter
-import io.getquill.quoter.QuotationLotExpr
-import io.getquill.quoter.QuotationLotExpr._
+import io.getquill.metaprog.QuotationLotExpr
+import io.getquill.metaprog.QuotationLotExpr._
 import io.getquill.parser.TastyMatchers
 import io.getquill.quoter.InsertMeta
 

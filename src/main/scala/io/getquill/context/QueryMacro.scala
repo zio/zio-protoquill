@@ -12,8 +12,8 @@ object QueryMacro {
     val tmc = new TastyMatchersContext
     import tmc._
     import scala.quoted.Expr.summon
-    import io.getquill.quoter.QuotationLotExpr
-    import io.getquill.quoter.QuotationLotExpr._
+    import io.getquill.metaprog.QuotationLotExpr
+    import io.getquill.metaprog.QuotationLotExpr._
 
 
     Expr.summon[SchemaMeta[T]] match {

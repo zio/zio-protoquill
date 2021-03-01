@@ -7,10 +7,10 @@ import io.getquill.norm.BetaReduction
 import io.getquill.parser.Parser
 import io.getquill.parser.Parser.Implicits._
 import io.getquill.parser.Lifter
-import io.getquill.quoter.PlanterExpr
-import io.getquill.quoter.QuotationLotExpr
-import io.getquill.quoter.Pluckable
-import io.getquill.quoter.Pointable
+import io.getquill.metaprog.PlanterExpr
+import io.getquill.metaprog.QuotationLotExpr
+import io.getquill.metaprog.Pluckable
+import io.getquill.metaprog.Pointable
 import io.getquill.quoter.Quoted
 
 

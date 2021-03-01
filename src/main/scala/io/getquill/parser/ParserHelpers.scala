@@ -10,7 +10,7 @@ import io.getquill.Embedable
 import io.getquill.quoter.Dsl
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
-import io.getquill.quoter.QuotationLotExpr
+import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.EntityQuery
 import io.getquill.Query
 import io.getquill.Format

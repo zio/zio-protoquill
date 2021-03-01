@@ -22,8 +22,8 @@ import scala.quoted._
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
 import io.getquill.quoter.QuotationLot
-import io.getquill.quoter.QuotedExpr
-import io.getquill.quoter.PlanterExpr
+import io.getquill.metaprog.QuotedExpr
+import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 
 import io.getquill._
@@ -51,7 +51,10 @@ object QueryMetaExtractor {
   import io.getquill.parser._
   import scala.quoted._ // Expr.summon is actually from here
   import io.getquill.quoter.Planter
-  import io.getquill.quoter._
+  import io.getquill.metaprog.QuotationLotExpr
+  import io.getquill.metaprog.Uprootable
+  import io.getquill.metaprog.Pluckable
+  import io.getquill.metaprog.Pointable
   import io.getquill.ast.FunctionApply
 
   // inline def apply[T, R, D <: io.getquill.idiom.Idiom, N <: io.getquill.NamingStrategy](

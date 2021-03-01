@@ -1,22 +1,28 @@
 package io.getquill.parser
 
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
-import io.getquill.quoter._
+import io.getquill.metaprog.PlanterExpr
+import io.getquill.metaprog.QuotedExpr
 import scala.quoted._
 import scala.quoted.{Const => ConstExpr}
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
 import io.getquill.quoter.Dsl
+import io.getquill.quoter.QueryDsl
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
-import io.getquill.quoter.QuotationLotExpr
+import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.EntityQuery
 import io.getquill.Query
 import io.getquill.Format
 import io.getquill.parser.ParserHelpers._
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
+import io.getquill.metaprog.QuotationLotExpr
+import io.getquill.metaprog.Uprootable
+import io.getquill.metaprog.Pluckable
+import io.getquill.metaprog.Pointable
 
 type Parser[R] = PartialFunction[quoted.Expr[_], R]
 type SealedParser[R] = (quoted.Expr[_] => R)

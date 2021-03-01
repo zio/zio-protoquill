@@ -12,15 +12,15 @@ import io.getquill.generic.ElaborateStructure
 import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, _ }
 import io.getquill.parser.Lifter
 import io.getquill.parser.Unlifter
-import io.getquill.quoter.QuotationLotExpr
-import io.getquill.quoter.QuotationLotExpr._
+import io.getquill.metaprog.QuotationLotExpr
+import io.getquill.metaprog.QuotationLotExpr._
 import io.getquill.parser.TastyMatchers
 import io.getquill.quoter.Quoted
 import io.getquill.quoter.QuotationVase
 import io.getquill.quoter.InsertMeta
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
-import io.getquill.quoter.PlanterExpr
+import io.getquill.metaprog.PlanterExpr
 
 /**
  * The function call that regularly drives query insertion is 

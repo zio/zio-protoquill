@@ -20,8 +20,8 @@ import scala.quoted._
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
 import io.getquill.quoter.QuotationLot
-import io.getquill.quoter.QuotedExpr
-import io.getquill.quoter.PlanterExpr
+import io.getquill.metaprog.QuotedExpr
+import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.Query
 import QueryExecution.QuotedOperation
