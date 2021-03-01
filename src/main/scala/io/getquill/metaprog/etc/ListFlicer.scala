@@ -1,4 +1,4 @@
-package io.getquill
+package io.getquill.metaprog.etc
 
 import scala.quoted._
 

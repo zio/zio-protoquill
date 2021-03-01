@@ -1,4 +1,4 @@
-package io.getquill.metaprog
+package io.getquill.metaprog.etc
 
 import io.getquill.generic._
 import io.getquill._
@@ -10,6 +10,7 @@ import io.getquill.ast.Visibility.{ Hidden, Visible }
 import scala.deriving._
 import scala.quoted._
 import io.getquill.context.LiftMacro
+import io.getquill.metaprog.TypeExtensions
 
 // I.e. Map-Folding-Splicer since it recursively spliced clauses into a map
 object MapFlicer {
