@@ -1,7 +1,7 @@
 package io.getquill.metaprog
 
 import io.getquill.generic._
-import io.getquill.quoter._
+import io.getquill._
 import scala.reflect.ClassTag
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 import io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}

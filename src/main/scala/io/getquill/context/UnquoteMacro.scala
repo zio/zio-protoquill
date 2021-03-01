@@ -1,8 +1,8 @@
 package io.getquill.context
 
 import scala.quoted._
-import io.getquill.quoter.Quoted
-import io.getquill.quoter.Unquote
+import io.getquill.Quoted
+import io.getquill.Unquote
 
 object UnquoteMacro {
   def apply[T: Type](quoted: Expr[Quoted[T]])(using Quotes): Expr[T] = {

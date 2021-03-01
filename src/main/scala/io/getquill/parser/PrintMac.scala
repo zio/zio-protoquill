@@ -24,7 +24,7 @@ object Mac {
 }
 
 object MatchMac {
-    import io.getquill.quoter.QueryDsl._
+    import io.getquill.QueryDsl._
     inline def apply(inline any: Any): Unit = ${ printMacImpl('any) }
 
     def printMacImpl(anyRaw: Expr[Any])(using Quotes): Expr[Unit] = {

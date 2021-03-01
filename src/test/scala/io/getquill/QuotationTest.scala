@@ -1,17 +1,17 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import io.getquill.quoter.QuotationLot
-import io.getquill.quoter.Dsl._
+import io.getquill.QuotationLot
+import io.getquill.Dsl._
 import io.getquill._
 import io.getquill.ast.{ Query => AQuery, _ }
 import io.getquill.ast.{ Property => Prop }
-import io.getquill.quoter.Quoted
-import io.getquill.quoter.Planter
-import io.getquill.quoter.EagerPlanter
-import io.getquill.quoter.LazyPlanter
-import io.getquill.quoter.QuotationVase
-import io.getquill.quoter.QuotationLot
+import io.getquill.Quoted
+import io.getquill.Planter
+import io.getquill.EagerPlanter
+import io.getquill.LazyPlanter
+import io.getquill.QuotationVase
+import io.getquill.QuotationLot
 import io.getquill.generic.GenericEncoder
 import io.getquill.context.mirror.Row
 import io.getquill.context.ExecutionType

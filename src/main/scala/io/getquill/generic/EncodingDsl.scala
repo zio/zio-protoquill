@@ -1,6 +1,6 @@
 package io.getquill.generic
 
-import io.getquill.quoter._
+import io.getquill._
 import scala.reflect.ClassTag
 import scala.quoted._
 import scala.deriving._

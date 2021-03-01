@@ -1,13 +1,13 @@
 package io.getquill.parser
 
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
-import io.getquill.quoter._
+import io.getquill._
 import scala.quoted._
 import scala.quoted.{Const => ConstExpr}
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
-import io.getquill.quoter.Dsl
+import io.getquill.Dsl
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
 import io.getquill.metaprog.QuotationLotExpr

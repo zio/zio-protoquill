@@ -7,23 +7,23 @@ import scala.compiletime.summonFrom
 import scala.util.Try
 import io.getquill.{ ReturnAction }
 import io.getquill.generic.EncodingDsl
-import io.getquill.quoter.Quoted
-import io.getquill.quoter.QueryMeta
+import io.getquill.Quoted
+import io.getquill.QueryMeta
 import io.getquill.generic._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.generic.GenericDecoder
-import io.getquill.quoter.Planter
+import io.getquill.Planter
 import io.getquill.ast.{ Ast, Ident => AIdent }
 import io.getquill.ast.ScalarTag
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
-import io.getquill.quoter.QuotationLot
+import io.getquill.QuotationLot
 import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
-import io.getquill.quoter.EagerPlanter
-import io.getquill.quoter.LazyPlanter
+import io.getquill.EagerPlanter
+import io.getquill.LazyPlanter
 import io.getquill.generic.GenericEncoder
 import io.getquill.generic.ElaborateStructure
 import io.getquill.quat.Quat
@@ -32,7 +32,7 @@ import io.getquill._
 import io.getquill.quat.QuatMaking
 import io.getquill.generic.ElaborateStructure.TaggedLiftedCaseClass
 import io.getquill.parser.Lifter
-import io.getquill.quoter.CaseClassLift
+import io.getquill.CaseClassLift
 
 object LiftMacro {
   private[getquill] def newUuid = java.util.UUID.randomUUID().toString

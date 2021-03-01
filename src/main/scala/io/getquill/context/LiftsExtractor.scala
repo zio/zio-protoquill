@@ -1,8 +1,8 @@
 package io.getquill.context
 
-import io.getquill.quoter.EagerPlanter
-import io.getquill.quoter.LazyPlanter
-import io.getquill.quoter.Planter
+import io.getquill.EagerPlanter
+import io.getquill.LazyPlanter
+import io.getquill.Planter
 import io.getquill.ast.Ast
 
 object LiftsExtractor {

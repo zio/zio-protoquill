@@ -4,7 +4,7 @@ import scala.quoted._
 import io.getquill.Query
 import io.getquill.EntityQuery
 import io.getquill.parser.TastyMatchersContext
-import io.getquill.quoter.SchemaMeta
+import io.getquill.SchemaMeta
 
 object QueryMacro {
   def apply[T: Type](using Quotes): Expr[EntityQuery[T]] = {

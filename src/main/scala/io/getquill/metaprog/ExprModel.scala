@@ -6,10 +6,10 @@ import io.getquill.generic.GenericEncoder
 import io.getquill.ast.Ast
 import io.getquill.parser.TastyMatchersContext
 import io.getquill.parser.TastyMatchersContext
-import io.getquill.quoter.Quoted
+import io.getquill.Quoted
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.ExprAccumulate
-import io.getquill.quoter._
+import io.getquill._
 
 /* As the different kinds of parsing in Quill-Dotty became more complex, the need for an
 overarching model of "how stuff works" became necessary. There are several places in the
@@ -367,7 +367,7 @@ object QuotationLotExpr {
   ) extends QuotationLotExpr
 }
 
-// This allows anyone who imports io.getquill.quoter automatically bring in QuotationLot subclasses
+// This allows anyone who imports io.getquill automatically bring in QuotationLot subclasses
 export QuotationLotExpr.Pointable
 export QuotationLotExpr.Pluckable
 export QuotationLotExpr.Uprootable

@@ -7,19 +7,19 @@ import scala.compiletime.summonFrom
 import scala.util.Try
 import io.getquill.{ ReturnAction }
 import io.getquill.generic.EncodingDsl
-import io.getquill.quoter.Quoted
-import io.getquill.quoter.QueryMeta
+import io.getquill.Quoted
+import io.getquill.QueryMeta
 import io.getquill.generic._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.generic.GenericDecoder
-import io.getquill.quoter.Planter
+import io.getquill.Planter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import scala.quoted._
 import io.getquill.idiom.Idiom
 import io.getquill.ast.{Transform, QuotationTag}
-import io.getquill.quoter.QuotationLot
+import io.getquill.QuotationLot
 import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement

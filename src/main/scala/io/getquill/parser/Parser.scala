@@ -8,8 +8,8 @@ import scala.quoted.{Const => ConstExpr}
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
-import io.getquill.quoter.Dsl
-import io.getquill.quoter.QueryDsl
+import io.getquill.Dsl
+import io.getquill.QueryDsl
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
 import io.getquill.metaprog.QuotationLotExpr

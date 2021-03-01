@@ -1,8 +1,8 @@
 package io.getquill.examples
 
 import scala.language.implicitConversions
-import io.getquill.quoter.Dsl._
-import io.getquill.quoter.QueryDsl._
+import io.getquill.Dsl._
+import io.getquill.QueryDsl._
 
 object MiniExample3_InlineFilter {
   import io.getquill._

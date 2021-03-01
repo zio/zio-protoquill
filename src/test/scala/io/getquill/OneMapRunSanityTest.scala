@@ -1,10 +1,10 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import io.getquill.quoter.Dsl._
+import io.getquill.Dsl._
 import io.getquill._
 import io.getquill.ast._
-import io.getquill.quoter.Quoted
+import io.getquill.Quoted
 import io.getquill._
 import org.scalatest._
 import io.getquill.quat.Quat

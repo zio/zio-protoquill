@@ -2,7 +2,7 @@ package io.getquill
 
 import io.getquill.context.mirror._
 import io.getquill.context._
-import io.getquill.quoter.Quoted
+import io.getquill.Quoted
 import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
 

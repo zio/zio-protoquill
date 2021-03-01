@@ -1,4 +1,4 @@
-package io.getquill.quoter
+package io.getquill
 
 import io.getquill.parser._
 import scala.quoted._

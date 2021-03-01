@@ -11,7 +11,7 @@ import io.getquill.metaprog.PlanterExpr
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.Pluckable
 import io.getquill.metaprog.Pointable
-import io.getquill.quoter.Quoted
+import io.getquill.Quoted
 
 
 object ExtractLifts {

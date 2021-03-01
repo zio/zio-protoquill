@@ -3,9 +3,9 @@ package io.getquill.context
 import scala.quoted._
 import io.getquill.parser.ParserFactory
 import io.getquill.parser.TastyMatchersContext
-import io.getquill.quoter.MetaDsl
-import io.getquill.quoter.SchemaMeta
-import io.getquill.quoter.Unquote
+import io.getquill.MetaDsl
+import io.getquill.SchemaMeta
+import io.getquill.Unquote
 import io.getquill.util.LoadObject
 
 object SchemaMetaMacro {

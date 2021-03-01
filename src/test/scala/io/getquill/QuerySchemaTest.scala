@@ -1,14 +1,14 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import io.getquill.quoter.Dsl._
-import io.getquill.quoter.Dsl
-import io.getquill.quoter.Quoted
-import io.getquill.quoter._
+import io.getquill.Dsl._
+import io.getquill.Dsl
+import io.getquill.Quoted
+import io.getquill._
 import io.getquill._
 import io.getquill.ast._
-import io.getquill.quoter.QuotationLot
-import io.getquill.quoter.QuotationVase
+import io.getquill.QuotationLot
+import io.getquill.QuotationVase
 import io.getquill.context.ExecutionType
 import org.scalatest._
 

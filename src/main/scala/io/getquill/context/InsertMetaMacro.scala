@@ -9,13 +9,13 @@ import io.getquill.parser.Parser.Implicits._
 import io.getquill.parser.ParserFactory
 import io.getquill.generic.ElaborateStructure
 import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, _ }
-import io.getquill.quoter.Quoted
+import io.getquill.Quoted
 import io.getquill.parser.Lifter
 import io.getquill.parser.Unlifter
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.QuotationLotExpr._
 import io.getquill.parser.TastyMatchers
-import io.getquill.quoter.InsertMeta
+import io.getquill.InsertMeta
 
 object InsertMetaMacro:
   import io.getquill.parser.ParserFactory

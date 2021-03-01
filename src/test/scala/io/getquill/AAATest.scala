@@ -1,11 +1,11 @@
 // package io.getquill
 
 // import scala.language.implicitConversions
-// import io.getquill.quoter.Dsl._
-// import io.getquill.quoter.QueryDsl._
-// import io.getquill.quoter.SchemaMeta
-// import io.getquill.quoter.QueryMeta
-// import io.getquill.quoter.InsertMeta
+// import io.getquill.Dsl._
+// import io.getquill.QueryDsl._
+// import io.getquill.SchemaMeta
+// import io.getquill.QueryMeta
+// import io.getquill.InsertMeta
 // import io.getquill.parser.PrintMac
 
 // object AAATest {

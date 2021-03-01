@@ -1,4 +1,4 @@
-package io.getquill.quoter
+package io.getquill
 
 import io.getquill.ast.Ast
 import io.getquill.parser._

@@ -1,7 +1,7 @@
 package io.getquill.examples
 
 import scala.language.implicitConversions
-import io.getquill.quoter.Dsl._
+import io.getquill.Dsl._
 
 object TypelevelUsecase_WithPassin {
 

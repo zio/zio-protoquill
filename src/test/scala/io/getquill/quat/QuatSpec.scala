@@ -7,8 +7,8 @@
 // import org.scalatest.matchers.must.Matchers._
 // import org.scalatest._
 
-// import io.getquill.quoter.Dsl._
-// import io.getquill.quoter.QueryDsl._
+// import io.getquill.Dsl._
+// import io.getquill.QueryDsl._
 
 // class QuatSpec extends AnyFreeSpec {
 

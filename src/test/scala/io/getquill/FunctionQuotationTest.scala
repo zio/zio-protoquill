@@ -1,15 +1,15 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import io.getquill.quoter.QuotationLot
-import io.getquill.quoter.Dsl._
-import io.getquill.quoter._
+import io.getquill.QuotationLot
+import io.getquill.Dsl._
+import io.getquill._
 import io.getquill._
 import io.getquill.ast.{Query => AQuery, _}
-import io.getquill.quoter.Quoted
-import io.getquill.quoter.Planter
-import io.getquill.quoter.QuotationVase
-import io.getquill.quoter.QuotationLot
+import io.getquill.Quoted
+import io.getquill.Planter
+import io.getquill.QuotationVase
+import io.getquill.QuotationLot
 import org.scalatest._
 import io.getquill.quat.Quat
 

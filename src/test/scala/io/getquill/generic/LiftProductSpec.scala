@@ -5,8 +5,8 @@ import io.getquill.Spec
 import io.getquill.quat.Quat
 import io.getquill.generic.ElaborateStructureExt.TaggedSplicedCaseClass
 import scala.quoted.Expr
-import io.getquill.quoter.Dsl._
-import io.getquill.quoter._
+import io.getquill.Dsl._
+import io.getquill._
 import io.getquill._
 import org.scalatest._
 import io.getquill.context.ExecutionType

@@ -6,15 +6,15 @@ import org.scalatest.matchers.must.Matchers
 
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration.Duration
-import io.getquill.quoter.Quoted
-import io.getquill.quoter.EagerPlanter
+import io.getquill.Quoted
+import io.getquill.EagerPlanter
 import io.getquill.ast._
 import io.getquill.quat.Quat
 import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
 import io.getquill.Query
-import io.getquill.quoter._
-import io.getquill.quoter.Dsl._
+import io.getquill._
+import io.getquill.Dsl._
 
 abstract class Spec extends AnyFreeSpec with Matchers /* with BeforeAndAfterAll */ {
   
