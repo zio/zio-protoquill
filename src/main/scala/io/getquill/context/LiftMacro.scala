@@ -43,13 +43,10 @@ object LiftMacro {
 
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
     val quat = QuatMaking.ofType[T]
-    println(s"============= Found Quat is: ${quat} =============")
     quat match
       case _: Quat.Product => 
-        println("========== Lifting Product ==========")
         '{ ${liftProduct[T, PrepareRow](entity)}.unquote }
       case _ => 
-        println("========== Lifting Value ==========")
         var liftPlanter = liftValue[T, PrepareRow](entity)
         '{ $liftPlanter.unquote }
   }

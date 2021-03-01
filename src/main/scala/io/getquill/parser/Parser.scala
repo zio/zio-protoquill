@@ -343,7 +343,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       Entity(name, List(), InferQuat.ofType(tpe).probit)
 
     case '{ Dsl.querySchema[t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
-      println("Props are: " + properties.map(_.show))
+      //println("Props are: " + properties.map(_.show))
       val output = Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), InferQuat.of[t].probit, Renameable.Fixed)
       printer.lnf(output)
       output

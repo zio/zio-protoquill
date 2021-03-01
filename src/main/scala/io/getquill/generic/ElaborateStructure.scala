@@ -291,7 +291,7 @@ object ElaborateStructure {
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].notOption =>
         val childTerm = Term(Type.of[field].constValue, Leaf)
-        println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
+        //println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
         childTerm :: flatten(node, Type.of[fields], Type.of[types])
 
       case (_, '[EmptyTuple]) => Nil

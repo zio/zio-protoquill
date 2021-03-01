@@ -11,13 +11,13 @@ object TestMac {
     def flattenOptions(expr: Expr[_]): Expr[_] = {
       expr.asTerm.tpe.asType match {
         case '[Option[Option[t]]] => 
-          println(s"======= YES Flattening for ${Printer.TreeShortCode.show(expr.asTerm)}} *** ${Printer.TypeReprShortCode.show(expr.asTerm.tpe)} =======")
+          //println(s"======= YES Flattening for ${Printer.TreeShortCode.show(expr.asTerm)}} *** ${Printer.TypeReprShortCode.show(expr.asTerm.tpe)} =======")
           flattenOptions('{ ${expr.asExprOf[Option[Option[t]]]}.flatten })
         // case '[Some[Some[t]]] => 
         //   println(s"======= YES Flattening for ${expr.show} =======")
         //   flattenOptions('{ ${expr.asExprOf[Option[Option[Any]]]}.flatten })
         case _ =>
-          println(s"------ NO Flattening for ${Printer.TreeShortCode.show(expr.asTerm)} *** ${Printer.TypeReprShortCode.show(expr.asTerm.tpe)} ------")
+          //println(s"------ NO Flattening for ${Printer.TreeShortCode.show(expr.asTerm)} *** ${Printer.TypeReprShortCode.show(expr.asTerm.tpe)} ------")
           expr
       }    
     }

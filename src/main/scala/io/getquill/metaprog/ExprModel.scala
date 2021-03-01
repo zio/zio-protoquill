@@ -196,7 +196,8 @@ object QuotedExpr {
     quoted match {
       case QuotedExpr.Uprootable(quotedExpr) => Some(quotedExpr)
       case _ => 
-        println("Quotations do not meet compiletime criteria: " + Printer.TreeShortCode.show(quoted.asTerm)); 
+        // TODO formatter should kick-in here and format the printed code so that pattern is understandable to the user
+        //println("Quotations do not meet compiletime criteria: " + Printer.TreeShortCode.show(quoted.asTerm)); 
         None
     }
 }

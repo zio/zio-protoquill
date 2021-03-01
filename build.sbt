@@ -3,7 +3,7 @@
 lazy val root = project
   .in(file("."))
   .settings(
-    name := "dotty-simple",
+    name := "protoquill",
     version := "0.1.0",
     resolvers ++= Seq(
       Resolver.mavenLocal,
