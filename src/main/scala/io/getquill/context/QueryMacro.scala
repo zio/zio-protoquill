@@ -3,7 +3,7 @@ package io.getquill.context
 import scala.quoted._
 import io.getquill.Query
 import io.getquill.EntityQuery
-import io.getquill.parser.TastyMatchersContext
+import io.getquill.metaprog.TastyMatchersContext
 import io.getquill.SchemaMeta
 
 object QueryMacro {

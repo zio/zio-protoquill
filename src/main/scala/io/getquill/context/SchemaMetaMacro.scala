@@ -2,7 +2,7 @@ package io.getquill.context
 
 import scala.quoted._
 import io.getquill.parser.ParserFactory
-import io.getquill.parser.TastyMatchersContext
+import io.getquill.metaprog.TastyMatchersContext
 import io.getquill.MetaDsl
 import io.getquill.SchemaMeta
 import io.getquill.Unquote

@@ -14,7 +14,7 @@ import io.getquill.parser.Lifter
 import io.getquill.parser.Unlifter
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.QuotationLotExpr._
-import io.getquill.parser.TastyMatchers
+import io.getquill.metaprog.TastyMatchers
 import io.getquill.InsertMeta
 
 object InsertMetaMacro:

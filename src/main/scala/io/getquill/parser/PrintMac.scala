@@ -1,5 +1,7 @@
 package io.getquill.parser
 
+import io.getquill.metaprog.TastyMatchers
+
 import scala.quoted._
 
 object Mac {

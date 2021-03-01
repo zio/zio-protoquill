@@ -1,7 +1,7 @@
 package io.getquill.parser
 
 import scala.quoted._
-import io.getquill.parser.TastyMatchers
+import io.getquill.metaprog.TastyMatchers
 
 object TestMac {
   inline def flattenOpt(inline list: List[Any]):List[Any] = ${ flattenOptImpl('list) }

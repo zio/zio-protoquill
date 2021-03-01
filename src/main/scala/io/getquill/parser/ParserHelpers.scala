@@ -17,6 +17,7 @@ import io.getquill.util.Format
 import io.getquill.parser.ParserHelpers._
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
+import io.getquill.metaprog.TastyMatchers
 
 object ParserHelpers {
 

@@ -23,6 +23,7 @@ import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.Uprootable
 import io.getquill.metaprog.Pluckable
 import io.getquill.metaprog.Pointable
+import io.getquill.metaprog.TastyMatchers
 
 type Parser[R] = PartialFunction[quoted.Expr[_], R]
 type SealedParser[R] = (quoted.Expr[_] => R)

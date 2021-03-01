@@ -12,7 +12,7 @@ import io.getquill.parser.Lifter
 import io.getquill.quat.Quat
 import io.getquill.ast.{Map => AMap, _}
 import io.getquill.generic.ElaborateStructure.Term
-import io.getquill.parser.TastyMatchers
+import io.getquill.metaprog.TastyMatchers
 
 object DeconstructElaboratedEntity {
   def apply(elaboration: Term, entity: Expr[_])(using qctx: Quotes) =

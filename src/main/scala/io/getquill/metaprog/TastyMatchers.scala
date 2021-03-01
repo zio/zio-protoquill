@@ -1,4 +1,4 @@
-package io.getquill.parser
+package io.getquill.metaprog
 
 import scala.quoted.{ Const => _, _ }
 import scala.quoted.Varargs

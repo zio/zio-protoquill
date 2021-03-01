@@ -4,8 +4,8 @@ import scala.quoted._
 import scala.quoted.{Const => ConstExpr, _}
 import io.getquill.generic.GenericEncoder
 import io.getquill.ast.Ast
-import io.getquill.parser.TastyMatchersContext
-import io.getquill.parser.TastyMatchersContext
+import io.getquill.metaprog.TastyMatchersContext
+import io.getquill.metaprog.TastyMatchersContext
 import io.getquill.Quoted
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.ExprAccumulate
