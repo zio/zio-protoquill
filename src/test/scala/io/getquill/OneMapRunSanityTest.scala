@@ -13,16 +13,25 @@ class OneMapRunSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)
 
   "simple test for inline query and map translated to the mirror idiom" in {
+    val ctx = new MirrorContext(MirrorIdiom, Literal)
+    import ctx.{*, given}
+    //import ctx.given
+
+    // implicit val stringDecoder: Decoder[String] = decoder[String]
+    // implicit val intDecoder: Decoder[Int] = decoder[Int]
+    // import io.getquill.generic.GenericDecoder
+    // inline given autoDecoder[T]:Decoder[T] = GenericDecoder.generic
+
     inline def q = quote {
       query[SanePerson] // helloo
     }
     inline def qq = quote {
-      q //.map(p => p.age)
+      q.map(p => p.name)
     }
     val quat = quatOf[SanePerson]
     qq.ast mustEqual Map(Entity("SanePerson", List(), quat.probit), Ident("p", quat), Property(Ident("p", quat), "name"))
-    val ctx = new MirrorContext(MirrorIdiom, Literal)
-    import ctx.{given,*}
+    
+    
     val output = ctx.run(qq).string
      output mustEqual """querySchema("SanePerson").map(p => p.name)"""
   }

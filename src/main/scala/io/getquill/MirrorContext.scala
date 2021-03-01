@@ -5,6 +5,7 @@ import io.getquill.context._
 import io.getquill.quoter.Quoted
 import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
+import io.getquill.generic.GenericDecoder
 
 sealed trait Dummy
 object DummyInst extends Dummy
