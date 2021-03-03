@@ -15,6 +15,7 @@ class TypeExtensions(using qctx: Quotes) { self =>
   implicit class TypeExt(tpe: Type[_]) {
     def constValue = self.constValue(tpe)
     def isProduct = self.isProduct(tpe)
+    def notOption = self.notOption(tpe)
   }
 
   def constValue(tpe: Type[_]): String =
@@ -25,4 +26,6 @@ class TypeExtensions(using qctx: Quotes) { self =>
     }
   def isProduct(tpe: Type[_]): Boolean =
     TypeRepr.of(using tpe) <:< TypeRepr.of[Product]
+  def notOption(tpe: Type[_]): Boolean =
+    !(TypeRepr.of(using tpe) <:< TypeRepr.of[Option[Any]])
 }

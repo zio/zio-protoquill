@@ -11,6 +11,7 @@ import scala.quoted._
 import io.getquill.parser.Lifter
 import io.getquill.quat.Quat
 import io.getquill.ast.{Map => AMap, _}
+import io.getquill.metaprog.TypeExtensions
 
 /**
  * Based on valueComputation and materializeQueryMeta from the old Quill
@@ -220,28 +221,6 @@ object ElaborateStructure {
           output
       }
     }
-  }
-
-  // TODO Merge with the type-extensions in metaprog
-  class TypeExtensions(using Quotes) { self =>
-    import quotes.reflect._
-    
-    implicit class TypeExt(tpe: Type[_]) {
-      def constValue = self.constValue(tpe)
-      def isProduct = self.isProduct(tpe)
-      def notOption = self.notOption(tpe)
-    }
-
-    def constValue(tpe: Type[_]): String =
-      TypeRepr.of(using tpe) match {
-        case ConstantType(IntConstant(value)) => value.toString
-        case ConstantType(StringConstant(value)) => value.toString
-        // Macro error
-      }
-    def isProduct(tpe: Type[_]): Boolean =
-      TypeRepr.of(using tpe) <:< TypeRepr.of[Product]
-    def notOption(tpe: Type[_]): Boolean =
-      !(TypeRepr.of(using tpe) <:< TypeRepr.of[Option[Any]])
   }
 
   /** Go through all possibilities that the element might be and collect their fields */
