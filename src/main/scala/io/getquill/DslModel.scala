@@ -12,6 +12,12 @@ import scala.annotation.compileTimeOnly
 import io.getquill.Query
 import io.getquill.EntityQuery
 
+object EntityQuery {
+  def apply[T] = new EntityQuery[T]() { }
+}
+
+trait EntityQuery[T] extends EntityQueryModel[T]
+
 // TODO lifts needs to be List of Planter to allow QueryLifts
 case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _]], runtimeQuotes: List[QuotationVase]) {
   override def toString = io.getquill.util.Messages.qprint(this).plainText
@@ -22,8 +28,6 @@ case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _]], 
   // add their lifted values into the parent tuple.... basically a runtime
   // flattening of the tree. This is the mechanism that will be used by the 'run' function
   // for dynamic queries
-
-
 
 
 // Planters contain trees that can be re-inserted into compile-time code.
