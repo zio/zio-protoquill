@@ -25,6 +25,7 @@ import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.Query
 import QueryExecution.QuotedOperation
+import io.getquill.metaprog.etc.MapFlicer
 
 import io.getquill._
 
@@ -81,6 +82,11 @@ with EncodingDsl //  with Closeable
 
   inline def lift[T](inline runtimeValue: T): T = 
     ${ LiftMacro[T, PrepareRow]('runtimeValue) }
+
+  extension [T](inline q: Query[T]) {
+    inline def filterByKeys(inline map: Map[String, String]) =
+      q.filter(p => MapFlicer[T, PrepareRow](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
+  }
 
   inline def runQueryBase[T](inline quoted: Quoted[Query[T]], inline dc: DatasourceContext): Result[RunQueryResult[T]] = {
     val ca = new ContextOperation[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]](self.idiom, self.naming) {

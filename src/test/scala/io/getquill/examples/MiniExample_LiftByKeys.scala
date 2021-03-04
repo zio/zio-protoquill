@@ -26,11 +26,6 @@ object MiniExample_LiftByKeys {
     println( r.prepareRow.data.toList) 
   }
 
-  extension [T](inline q: EntityQuery[T]) {
-    inline def filterByKeys(inline map: Map[String, String]) =
-      q.filter(p => MapFlicer[T, PrepareRow](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
-  }
-
   def extensionMapProc() = {
     inline def q = quote {
       query[Person].filterByKeys(values)

@@ -5,6 +5,7 @@ lazy val root = project
   .settings(
     name := "protoquill",
     version := "0.1.0",
+    
     resolvers ++= Seq(
       Resolver.mavenLocal,
       "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"

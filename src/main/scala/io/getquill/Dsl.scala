@@ -30,6 +30,7 @@ import io.getquill.context.LiftMacro
 //   def quote[T](bodyExpr: T): Quoted[T] = ???
 // }
 
+// allows you to write quote, query, insert/delete/update, lazyLift with just importing this
 object lib extends Dsl[ParserLibrary] {
   export io.getquill.Query
   export io.getquill.Action
