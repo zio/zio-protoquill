@@ -4,7 +4,7 @@ import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.metaprog.QuotedExpr
 import scala.quoted._
-import scala.quoted.{Const => ConstExpr}
+import scala.quoted._
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable

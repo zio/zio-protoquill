@@ -1,7 +1,7 @@
 package io.getquill.parser
 
 import scala.quoted.{ Type => TType, _ }
-import scala.quoted.Const
+import scala.quoted._
 import scala.quoted
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import io.getquill.metaprog.Extractors._

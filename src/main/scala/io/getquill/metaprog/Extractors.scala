@@ -1,6 +1,6 @@
 package io.getquill.metaprog
 
-import scala.quoted.{ Const => _, _ }
+import scala.quoted._
 import scala.quoted.Varargs
 import io.getquill.util.printer
 
@@ -292,7 +292,7 @@ trait Extractors {
 
     def unapply[T <: ConstantValue.Kind](t: Expr[T]) =
       t match
-        case Const(v) => Some(v)
+        case ConstExpr(v) => Some(v)
         case _ => None
         
 
@@ -379,7 +379,7 @@ trait Extractors {
   def is[T: Type](inputs: Expr[_]*): Boolean =
     inputs.forall(input => input.asTerm.tpe <:< TypeRepr.of[T])
 
-  object Const {
+  object ConstExpr {
     /** Matches expressions containing literal constant values and extracts the value.
      *
      *  - Converts expression containg literal values to their values:
@@ -388,7 +388,7 @@ trait Extractors {
      *
      *  Usage:
      *  ```
-     *  case '{ ... ${expr @ Const(value)}: T ...} =>
+     *  case '{ ... ${expr @ ConstExpr(value)}: T ...} =>
      *    // expr: Expr[T]
      *    // value: T
      *  ```

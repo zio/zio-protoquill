@@ -47,7 +47,7 @@ import io.getquill.metaprog.PlanterExpr
  * This expands out into a series of statements which will be parsed to AST assignments
  * This: `(v: Person) => v.name -> (v:Person).name`
  * Will be parsed into this:
- * {code} Assignment(Id(v), Prop(Id(v), name), Const("Joe")) {code}
+ * {code} Assignment(Id(v), Prop(Id(v), name), Constant("Joe")) {code}
  * 
  * This: `(v: Person) => v.age.map(v => v.value) -> Option(v:Age).map(v => v.value)`
  * Will be parsed into this:

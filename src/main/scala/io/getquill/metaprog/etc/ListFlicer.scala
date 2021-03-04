@@ -10,7 +10,7 @@ object ListFlicer {
     import quotes.reflect._
     val tm = new ExtractorsBundle
     import tm._
-    val indexValue = index match { case  Const(i: Int) => i }
+    val indexValue = index match { case  Expr(i: Int) => i }
     val exprs = UntypeExpr(list.asTerm.underlyingArgument.asExpr) match { 
       case '{ scala.List.apply[T](${Varargs(args)}: _*) } => args  
       case _ => report.throwError("Does not match: " + Printer.TreeStructure.show(list.asTerm))

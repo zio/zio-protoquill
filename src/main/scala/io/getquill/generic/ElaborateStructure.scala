@@ -66,8 +66,8 @@ import io.getquill.metaprog.TypeExtensions
  * query[Person].insert(_.name -> "Joe", _.age -> 44)
  * // Which is actually:
  * EntityQuery("Person").insert(
- *   Assignment(Id("x1"), Prop(Id("x1"), "name"), Const("Joe")), 
- *   Assignment(Id("x1"), Prop(Id("x1"), "name"), Const(44))
+ *   Assignment(Id("x1"), Prop(Id("x1"), "name"), Constant("Joe")), 
+ *   Assignment(Id("x1"), Prop(Id("x1"), "name"), Constant(44))
  * )
  * }}}
  * The fact that we know that Person expands into Prop(Id("p"),"name"), Prop(Id("p"),"age")) helps
