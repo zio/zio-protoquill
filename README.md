@@ -42,8 +42,13 @@ Note that lazy lifts can only be used with compile-time queries.
 import io.getquill.lib._
 val n = "Joe"
 val q = quote {
-  query[Person].filter(p => p.firstName == lift(n))
+  // You can do lazyLift to lift with no imported context
+  query[Person].filter(p => p.firstName == lazyLift(n))
 }
+
+val ctx = new MirrorContext(Literal, PostgresDialect)
+ctx.run(q)
+// SELECT p.firstName, p.lastName, p.age FROM Person p WHERE p.firstName = ?
 ```
 
 #### Composing with Inline
