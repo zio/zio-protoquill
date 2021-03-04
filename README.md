@@ -1,4 +1,4 @@
-## Future Dotty-Based Quill Implementation
+## ProtoQuill: Future Dotty-Based Quill Implementation
 
 Compile using sbt `compile` and `test:compile` normally. Currently on M3.
 
@@ -11,6 +11,11 @@ The functionality that is currently available is:
  - query, insert, delete, update basic functionality
  - basic lift functionality `lift(scalar)` and `insert(lift(caseClass))`.
  - basic parsing of quoted clauses, see `Parser.scala` for details
+
+For further information, watch:
+ - [Quill, Dotty, And The Awesome Power of 'Inline'](https://www.youtube.com/watch?v=SmBpGkIsJIU) - Many examples of new things that can be done with this library that cannot be done with standard Quill.
+ - [ScQuilL Sessions - Quill, Dotty, and Macros](https://www.youtube.com/watch?v=0PSg__PPjY8&list=PLqky8QybCVQYNZY_MNJpkjFKT-dAdHQDX) - A tutorial on developing Dotty-Quill from scratch (covers quoting, liftables, and liftables).
+ - [Generic Derivation is the New Reflection](https://www.youtube.com/watch?v=E9L1-rkYPng) - A tutorial on how Dotty Generic Derivation works covering a Dotty-Quill use-case.
 
 ### Getting started
 In Proto-Quill you can get started with just the following code:
@@ -119,8 +124,3 @@ run(q)
   - Hopefully it will be possible to share this code from Quill 3 in the future.
  - Build and release functionality
 
-### Media
-
-For further information, watch:
- - [ScQuilL Sessions - Quill, Dotty, and Macros](https://www.youtube.com/watch?v=0PSg__PPjY8&list=PLqky8QybCVQYNZY_MNJpkjFKT-dAdHQDX) - A tutorial on developing Dotty-Quill from scratch (covers quoting, liftables, and liftables).
- - [Quill, Dotty, And The Awesome Power of 'Inline'](https://www.youtube.com/watch?v=SmBpGkIsJIU) - Many examples of new things that can be done with this library that cannot be done with standard Quill.
