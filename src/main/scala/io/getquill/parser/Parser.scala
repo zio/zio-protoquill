@@ -82,7 +82,7 @@ object Parser {
       expr.asTerm.tpe <:< TypeRepr.of[Criteria] && delegate.isDefinedAt(expr)
   }
 
-  trait Clause[R](using override val qctx: Quotes) extends Delegated[R] with Extractors with Idents with QuatMaking { base =>
+  trait Clause[R] extends Delegated[R] with Extractors with Idents with QuatMaking { base =>
     import Implicits._
 
     def root: Parser[Ast]

@@ -23,18 +23,22 @@ trait Value[T]
 inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
 
 object QuatMaking {
+  def quatMaker(using qctx: Quotes) = new QuatMaking {
+    implicit val qctx = qctx
+  }
+
   inline def inferQuat[T](value: T): Quat = ${ inferQuatImpl('value) }
   def inferQuatImpl[T: TType](value: Expr[T])(using quotes: Quotes): Expr[Quat] = {
-    val quat = (new QuatMaking {}).InferQuat.of[T]
+    val quat = quatMaker.InferQuat.of[T]
     println(io.getquill.util.Messages.qprint(quat))
     Lifter.quat(quat)
   }
 
   def ofType[T: TType](using quotes: Quotes): Quat =
-   (new QuatMaking {}).InferQuat.of[T]
+   quatMaker.InferQuat.of[T]
 
   def quatOfImpl[T: TType](using quotes: Quotes): Expr[Quat] = {
-    val quat = (new QuatMaking {}).InferQuat.of[T]
+    val quat = quatMaker.InferQuat.of[T]
     println(io.getquill.util.Messages.qprint(quat))
     Lifter.quat(quat)
   }
@@ -68,7 +72,7 @@ object QuatMaking {
     //     quat
 }
 
-trait QuatMaking(using override val qctx: Quotes) extends QuatMakingBase {
+trait QuatMaking extends QuatMakingBase {
   import qctx.reflect._
   override def existsEncoderFor(tpe: TypeRepr): Boolean =  
     // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
@@ -86,7 +90,8 @@ trait QuatMaking(using override val qctx: Quotes) extends QuatMakingBase {
 }
 
 
-trait QuatMakingBase(using val qctx: Quotes) {
+trait QuatMakingBase {
+  implicit val qctx: Quotes
   import qctx.reflect._
 
   // TODO Either can summon an Encoder[T] or quill 'Value[T]' so that we know it's a quat value and not a case class

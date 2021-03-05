@@ -21,15 +21,15 @@ import io.getquill.metaprog.Extractors
 
 object ParserHelpers {
 
-  trait Idents(implicit override val qctx: Quotes) extends Extractors with QuatMaking {
-    import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
+  trait Idents extends Extractors with QuatMaking {
+    import qctx.reflect.{Ident => TIdent, ValDef => TValDef, _}
 
     def cleanIdent(name: String, quat: Quat): AIdent = AIdent(name.replace("_$", "x"), quat)
     def cleanIdent(name: String, tpe: TypeRepr): AIdent = AIdent(name.replace("_$", "x"), InferQuat.ofType(tpe))
   }
   
-  trait Assignments(implicit override val qctx: Quotes) extends Idents with Extractors {
-    import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
+  trait Assignments extends Idents with Extractors {
+    import qctx.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import Parser.Implicits._
     import io.getquill.util.Interpolator
     import io.getquill.util.Messages.TraceType
