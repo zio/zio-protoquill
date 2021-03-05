@@ -52,7 +52,7 @@ object QueryExecution:
     def summonDecoderOrThrow[DecoderT: Type]: Expr[GenericDecoder[ResultRow, DecoderT]] = {
       Expr.summon[GenericDecoder[ResultRow, DecoderT]] match {
         case Some(decoder) => decoder
-        case None => report.throwError("Decoder could not be summoned")
+        case None => report.throwError("Decoder could not be summoned during query execution")
       }
     }
   }
@@ -158,16 +158,9 @@ object QueryExecution:
                 case Some(decoder) =>
                   '{ EagerPlanter[t, ResultRow]($l.value.asInstanceOf[t], $decoder, $l.uid) }
                 case None => 
-                  report.throwError("Decoder could not be summoned")
+                  report.throwError("Encoder could not be summoned during lazy-lift resolution")
               }
           }
-          
-          //report.throwError(s"Found Type: ${tpe.show} at ${Printer.TreeShortCode.show(l.asTerm)}", l)
-
-          // Expr.summon[GenericDecoder[ResultRow, DecoderT]] match {
-          //   case Some(decoder) => decoder
-          //   case None => report.throwError("Decoder could not be summoned")
-          // }
       }
 
     /** 

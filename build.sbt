@@ -11,7 +11,7 @@ lazy val root = project
       "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
     ),
 
-    scalaVersion := "3.0.0-RC2-bin-20210303-0be4099-NIGHTLY", // "0.21.0-RC1", //"0.22.0-bin-20200114-193f7de-NIGHTLY", //dottyLatestNightlyBuild.get,
+    scalaVersion := "3.0.0-RC2-bin-20210304-5fa55b1-NIGHTLY", // "0.21.0-RC1", //"0.22.0-bin-20200114-193f7de-NIGHTLY", //dottyLatestNightlyBuild.get,
 
     scalacOptions ++= Seq(
       "-language:implicitConversions"
