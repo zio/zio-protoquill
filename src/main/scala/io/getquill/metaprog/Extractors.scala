@@ -409,7 +409,7 @@ trait Extractors {
         case Inlined(_, Nil, e) => rec(e)
         case _  => None
       }
-      rec(Term.of(expr))
+      rec(expr.asTerm)
     }
   }
 }

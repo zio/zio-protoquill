@@ -468,8 +468,8 @@ trait QuatMakingBase(using val qctx: Quotes) {
       era =:= TypeRepr.of[None.type]
     }
 
-    extension [T: TType] (tpe: TypeRepr)
-      def is = isType[T](tpe)
+    extension (tpe: TypeRepr)
+      def is[T](using TType[T]) = isType[T](tpe)
 
     private[getquill] def isType[T](tpe: TypeRepr)(implicit tt: TType[T]) =
       tpe <:< TypeRepr.of[T] && !(tpe =:= TypeRepr.of[Nothing])
