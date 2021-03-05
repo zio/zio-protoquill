@@ -23,9 +23,8 @@ trait Value[T]
 inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
 
 object QuatMaking {
-  def quatMaker(using qctx: Quotes) = new QuatMaking {
-    implicit val qctx = qctx
-  }
+  private class SimpleQuatMaker(using override val qctx: Quotes) extends QuatMakingBase(using qctx), QuatMaking
+  private def quatMaker(using qctx: Quotes) = new SimpleQuatMaker
 
   inline def inferQuat[T](value: T): Quat = ${ inferQuatImpl('value) }
   def inferQuatImpl[T: TType](value: Expr[T])(using quotes: Quotes): Expr[Quat] = {
@@ -90,8 +89,7 @@ trait QuatMaking extends QuatMakingBase {
 }
 
 
-trait QuatMakingBase {
-  implicit val qctx: Quotes
+trait QuatMakingBase(using val qctx: Quotes) {
   import qctx.reflect._
 
   // TODO Either can summon an Encoder[T] or quill 'Value[T]' so that we know it's a quat value and not a case class
