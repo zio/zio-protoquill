@@ -88,7 +88,15 @@ with EncodingDsl //  with Closeable
       q.filter(p => MapFlicer[T, PrepareRow](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
   }
 
-  inline def runQueryBase[T](inline quoted: Quoted[Query[T]], inline dc: DatasourceContext): Result[RunQueryResult[T]] = {
+  def context: DatasourceContext
+
+  import scala.annotation.targetName
+
+  // Think I need to implement 'run' here as opposed to in Context because an abstract
+  // inline method cannot be called. Should look into this further. E.g. maybe the 'inline' in
+  // the regular context can be non inline
+  @targetName("runQuery")
+  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val ca = new ContextOperation[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractorOpt: Option[ResultRow => T], executionType: ExecutionType) =
         val extractor = 
@@ -96,19 +104,18 @@ with EncodingDsl //  with Closeable
             case Some(e) => e
             case None => throw new IllegalArgumentException("Extractor required")
 
-        self.executeQuery(sql, prepare, extractor)(executionType, dc)
+        self.executeQuery(sql, prepare, extractor)(executionType, context)
     }
     // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
     QueryExecution.apply(QuotedOperation.QueryOp(quoted), ca)
   }
 
-  inline def runActionBase[T](inline quoted: Quoted[Action[T]], inline dc: DatasourceContext): Result[RunActionResult] = {
+  @targetName("runAction")
+  inline def run[T](inline quoted: Quoted[Action[T]]): Result[RunActionResult] = {
     val ca = new ContextOperation[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunActionResult]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractorOpt: Option[ResultRow => T], executionType: ExecutionType) =
-        self.executeAction(sql, prepare)(executionType, dc)
+        self.executeAction(sql, prepare)(executionType, context)
     }
     QueryExecution.apply(QuotedOperation.ActionOp(quoted), ca)
   }
-
-
 }
