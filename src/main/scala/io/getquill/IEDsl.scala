@@ -6,6 +6,7 @@ import io.getquill.quat.productQuatOf
 import io.getquill.ast._
 import io.getquill.{ lib => qlib }
 import io.getquill.Quoted
+import io.getquill.context.UnquoteMacro
 
 object IEDsl {
   import Macro._
@@ -18,7 +19,7 @@ object IEDsl {
       //Query[T](Filter(q.ast, Ident("id", Quat.Value), parse(f)))
       // val param = Ident(lambda1Param(f), quatOf[T]) // can't make variables like this & splice them because quill that doesn't work in ast splicing?
       // technically the Quill parser should understand it. Need to look into it
-      Query[T](Filter(spliceAst(q.ast), Ident(lambda1Param(f), quatOf[T]), FunctionApply(parse(f), List(Ident(lambda1Param(f), quatOf[T])))))
+      Query[T](Filter(parse(qlib.unquote(toQuote(q))), Ident(lambda1Param(f), quatOf[T]), FunctionApply(parse(f), List(Ident(lambda1Param(f), quatOf[T])))))
 
   inline def toQuote[T](inline qry: Query[T]): Quoted[io.getquill.Query[T]] = ${ Macro.toQuoteImpl[T]('qry) }
   
@@ -33,19 +34,19 @@ object IEDsl {
     def toQuoteImpl[T: Type](qry: Expr[Query[T]])(using qctx: Quotes): Expr[Quoted[io.getquill.Query[T]]] = {
       class Ext(implicit override val qctx: Quotes) extends Extractors {
         import qctx.reflect._
-        def extractAst(expr: Expr[_]): Ast =  
+        def extractAst(expr: Expr[_]): Expr[Ast] =  
           val underlying = expr.asTerm.underlyingArgument.asExpr
-          println(Printer.TreeShortCode.show(expr.asTerm.underlyingArgument))
-          val liftedAst =
-            UntypeExpr(underlying) match {
-              case '{ Query[t].apply($ast) } => ast
-              case _ => report.throwError("Could not extract from Query object")
-            }
-          Unlifter(liftedAst)
+          //println(Printer.TreeShortCode.show(expr.asTerm.underlyingArgument))
+          // can't unlift AST at this point since it might be spliced with variables?
+          UntypeExpr(underlying) match {
+            case '{ Query.apply[t]($ast) } => ast
+            case _ => 
+              //println(Printer.TreeStructure.show(expr.asTerm.underlyingArgument))
+              report.throwError("Could not extract from Query object")
+          }
       }
       val ast = new Ext().extractAst(qry)
-      val liftedAst = Lifter(ast)
-      '{ Quoted($liftedAst, Nil, Nil) }
+      '{ Quoted($ast, Nil, Nil) }
     }
 
     inline def spliceAst(code: Ast): Ast = ${ spliceAstImpl('code) }
