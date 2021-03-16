@@ -21,6 +21,7 @@ trait Value[T]
 // TODO Quat lifting so can return them from this function
 
 inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
+inline def productQuatOf[T]: Quat.Product = ${ QuatMaking.productQuatOfImpl[T] }
 
 object QuatMaking {
   private class SimpleQuatMaker(using override val qctx: Quotes) extends QuatMakingBase(using qctx), QuatMaking
@@ -40,6 +41,17 @@ object QuatMaking {
     val quat = quatMaker.InferQuat.of[T]
     println(io.getquill.util.Messages.qprint(quat))
     Lifter.quat(quat)
+  }
+
+  def productQuatOfImpl[T: TType](using quotes: Quotes): Expr[Quat.Product] = {
+    import quotes.reflect._
+    val quat = quatMaker.InferQuat.of[T]
+    quat match
+      case p: Quat.Product =>
+        // At this point we know it's a product so we can safely lift it
+        Lifter.quat(p).asInstanceOf[Expr[Quat.Product]]
+      case _ => 
+        report.throwError("Was not a product Quat")
   }
 
   type QuotesTypeRepr = Quotes#reflectModule#TypeRepr
