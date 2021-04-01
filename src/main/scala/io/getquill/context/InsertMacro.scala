@@ -24,6 +24,8 @@ import io.getquill.quat.Quat
 import io.getquill.metaprog.PlanterExpr
 
 /**
+ * TODO Right now this is just insert but we can easily extend to update and delete
+ * 
  * The function call that regularly drives query insertion is 
  * {code}
  * query[T].insert(_.field1 -> value, _.field2 -> value, etc...)
@@ -67,6 +69,11 @@ import io.getquill.metaprog.PlanterExpr
  *  quote { query[Person].insert(lift(Person("Joe", Age(345)))) }
  * {code}
  * TODO Finish doc
+ * 
+ * Note that as a result of the way this is implemented, if either the InsertMeta or the SchemaMeta is not
+ * inline, the entire resulting query will not be inline since they both will be summoned and used in the
+ * resulting expressions. It might be useful to introduce a configuration parameter to ignore non-inline InsertMetas
+ * or non-inline SchemaMetas. Or maybe this could even be an annotation.
  */
 object InsertMacro {
   private[getquill] val VIdent = AIdent("v", Quat.Generic)
@@ -99,21 +106,25 @@ object InsertMacro {
       def summon: SummonState[Entity] =
         val schema = schemaRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]
         UntypeExpr(schema) match 
-          // TODO What if it is an qnuote container a querySchema? Will that just work normally? getting an Entity object
-          // If it is a plain entity query (as returned from QueryMacro)
+          // Case 1: query[Person].insert(...)
+          // the schemaRaw part is {query[Person]} which is a plain entity query (as returned from QueryMacro)
           case '{ EntityQuery[t] } => SummonState.Static(plainEntity)
-          // If there are query schemas involved i.e. a QuotationLotExpr.Unquoted has been spliced in
-          case QuotationLotExpr.Unquoted(unquotation) => unquotation match
-            case Uprootable(_, ast, _, _, _, _) => 
-              Unlifter(ast) match
-                case ent: Entity => SummonState.Static(ent)
-                case other => report.throwError(s"Unlifted insertion Entity '${qprint(other).plainText}' is not a Query.")
-            case Pluckable(uid, quotation, _) =>
-              SummonState.Dynamic(uid, quotation)
-            case _ => report.throwError(s"Quotation Lot of InsertMeta either pluckable or uprootable from: '${unquotation}'")
-          
-          case _ => report.throwError(s"Cannot process illegal insert meta: ${schema}")
-
+          // Case 2: querySchema[Person](...).insert(...)
+          // there are query schemas involved i.e. the {querySchema[Person]} part is a QuotationLotExpr.Unquoted that has been spliced in
+          case QuotationLotExpr.Unquoted(unquotation) => 
+            unquotation match
+              // The {querySchema[Person]} part is static (i.e. fully known at compile-time)
+              case Uprootable(_, ast, _, _, _, _) => 
+                Unlifter(ast) match
+                  case ent: Entity => SummonState.Static(ent)
+                  case other       => report.throwError(s"Unlifted insertion Entity '${qprint(other).plainText}' is not a Query.")
+              // The {querySchema[Person]} is dynamic (i.e. not fully known at compile-time)
+              case Pluckable(uid, quotation, _) =>
+                SummonState.Dynamic(uid, quotation)
+              case _ => 
+                report.throwError(s"Quotation Lot of InsertMeta either pluckable or uprootable from: '${unquotation}'")
+          case _ => 
+            report.throwError(s"Cannot process illegal insert meta: ${schema}")
               // TODO Make an option to ignore dynamic entity schemas and return the plain entity?
               //println("WARNING: Only inline schema-metas are supported for insertions so far. Falling back to a plain entity.")
               //plainEntity
@@ -121,9 +132,11 @@ object InsertMacro {
     
     object InsertExclusions:
       def summon: SummonState[Set[Ast]] =
+        // If someone has defined a: given meta: InsertMeta[Person] = insertMeta[Person](_.id)
         Expr.summon[InsertMeta[T]] match
           case Some(insertMeta) =>
             QuotationLotExpr(insertMeta.asTerm.underlyingArgument.asExpr) match
+              // if the meta is inline i.e. 'inline given meta: InsertMeta[Person] = ...'
               case Uprootable(_, ast, _, _, _, _) =>
                 //println(s"***************** Found an uprootable ast: ${ast.show} *****************")
                 Unlifter(ast) match
@@ -131,19 +144,16 @@ object InsertMacro {
                     SummonState.Static(values.toSet)
                   case other => 
                     report.throwError(s"Invalid values in InsertMeta: ${other}. An InsertMeta AST must be a tuple of Property elements.")
+              // if the meta is not inline
               case Pluckable(uid, quotation, _) =>
                 SummonState.Dynamic(uid, quotation)
               // TODO Improve this error
               case _ => report.throwError("Invalid form, cannot be pointable")
-
                 // TODO Configuration to ignore dynamic insert metas?
                 //println("WARNING: Only inline insert-metas are supported for insertions so far. Falling back to a insertion of all fields.")
                 //
           case None =>
             SummonState.Static(Set.empty)
-
-
-
 
     /**
      * Inserted object 
@@ -243,8 +253,10 @@ object InsertMacro {
       // That is usually the case when 
       val assignmentsAst = processAssignmentExclusions()
 
-      // Insertion could have lifts and quotes, need to extract those. Note that the Insertee must always
-      // be available dynamically (i.e. it must be a Uprootable Quotation)
+      // Insertion could have lifts and quotes inside, need to extract those. 
+      // E.g. it can be 'query[Person].insert(lift(Person("Joe",123)))'' which becomes Quoted(CaseClass(name -> lift(x), age -> lift(y), List(ScalarLift("Joe", x), ScalarLift(123, y)), Nil).
+      // (In some cases, maybe even the runtimeQuotes position could contain things)
+      // However, the insertee itself must always be available statically (i.e. it must be a Uprootable Quotation)
       val (lifts, pluckedUnquotes) = ExtractLifts(inserteeRaw)
 
       // TODO If implicit insert meta, need to detect it and use it instead (i.e. with exclusions)
@@ -260,6 +272,7 @@ object InsertMacro {
             UnquoteMacro(quotation)
 
           // If we get a dynamic entity back
+          // e.g. entityQuotation is 'querySchema[Person](...)' which is not inline
           case SummonState.Dynamic(uid, entityQuotation) =>
             // Need to create a ScalarTag representing a splicing of the entity (then going to add the actual thing into a QuotationVase and add to the pluckedUnquotes)
             val insert = '{ AInsert(QuotationTag(${Expr(uid)}), ${assignmentsAst}) }
