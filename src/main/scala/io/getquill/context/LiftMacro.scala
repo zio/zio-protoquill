@@ -34,6 +34,22 @@ import io.getquill.generic.ElaborateStructure.TaggedLiftedCaseClass
 import io.getquill.parser.Lifter
 import io.getquill.CaseClassLift
 
+object LiftQueryMacro {
+  private[getquill] def newUuid = java.util.UUID.randomUUID().toString
+
+  def apply[T: Type, U[_] <: Iterable[_]: Type, PrepareRow: Type](entity: Expr[U[T]])(using Quotes): Expr[Query[T]] = {
+    import quotes.reflect._
+    // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
+    val quat = QuatMaking.ofType[T]
+    quat match
+      case _: Quat.Product => 
+        // Not sure why cast back to iterable is needed here but U param is not needed once it is inside of the planter
+        '{ EagerEntitiesPlanter[T, PrepareRow]($entity.asInstanceOf[Iterable[T]], ${Expr(newUuid)}).unquote }
+      case _ => 
+        report.throwError("Scalar liftQuery not implemented yet", entity)
+  }
+}
+
 object LiftMacro {
   private[getquill] def newUuid = java.util.UUID.randomUUID().toString
   private[getquill] val VIdent = AIdent("v", Quat.Generic)

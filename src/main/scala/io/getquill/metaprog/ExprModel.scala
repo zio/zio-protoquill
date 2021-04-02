@@ -38,13 +38,11 @@ class ExprModel {
 }
 
 
-// TODO Change to 'replant' ?
-// Plant the Planter back into the Scala AST
-// Holds and parses variations of the Planter
+// This is the mirror of `Planter`. It holds types of
+// Planters and allows planting them back into the Scala AST
 sealed trait PlanterExpr[T: Type, PrepareRow: Type]:
   def uid: String
-  def expr: Expr[T]
-  def plant(using Quotes): Expr[Planter[T, PrepareRow]]
+  def plant(using Quotes): Expr[Planter[T, PrepareRow]] // TODO Change to 'replant' ?
 
 case class EagerPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T], encoder: Expr[GenericEncoder[T, PrepareRow]]) extends PlanterExpr[T, PrepareRow]:
   def plant(using Quotes): Expr[EagerPlanter[T, PrepareRow]] =
@@ -53,6 +51,10 @@ case class EagerPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T
 case class LazyPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T]) extends PlanterExpr[T, PrepareRow]:
   def plant(using Quotes): Expr[LazyPlanter[T, PrepareRow]] =
     '{ LazyPlanter[T, PrepareRow]($expr, ${Expr(uid)}) }
+
+case class EagerEntitiesPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[Iterable[T]])(using Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow]:
+  def plant(using Quotes): Expr[EagerEntitiesPlanter[T, PrepareRow]] =
+    '{ EagerEntitiesPlanter[T, PrepareRow]($expr, ${Expr(uid)}) }
 
 object PlanterExpr {
   object Uprootable {
@@ -68,6 +70,8 @@ object PlanterExpr {
           Some(EagerPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
         case '{ LazyPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } =>
           Some(LazyPlanterExpr[qt, prep](uid, liftValue).asInstanceOf[PlanterExpr[_, _]])
+        case '{ EagerEntitiesPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } =>
+          Some(EagerEntitiesPlanterExpr[qt, prep](uid, liftValue).asInstanceOf[EagerEntitiesPlanterExpr[_, _]])
         case _ => 
           None
       }

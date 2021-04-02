@@ -81,7 +81,10 @@ with EncodingDsl //  with Closeable
   //def executeAction[T](cql: String, prepare: Prepare = identityPrepare)(implicit executionContext: ExecutionContext): Result[RunActionResult]
 
   inline def lift[T](inline runtimeValue: T): T = 
-    ${ LiftMacro[T, PrepareRow]('runtimeValue) }
+    ${ LiftMacro[T, PrepareRow]('runtimeValue) } // Needs PrepareRow in order to be able to summon encoders
+
+  inline def liftQuery[U[_] <: Iterable[_], T](inline runtimeValue: U[T]): Query[T] = 
+    ${ LiftQueryMacro[T, U, PrepareRow]('runtimeValue) }
 
   extension [T](inline q: Query[T]) {
     inline def filterByKeys(inline map: Map[String, String]) =

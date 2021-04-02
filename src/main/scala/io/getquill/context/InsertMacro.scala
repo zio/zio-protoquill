@@ -98,7 +98,7 @@ object InsertMacro {
     import io.getquill.util.Messages.qprint
 
 
-    object EntitySchema:
+    object InserteeSchema:
       private def plainEntity: Entity =
         val entityName = TypeRepr.of[T].classSymbol.get.name
         Entity(entityName, List(), InferQuat.of[T].probit)
@@ -130,7 +130,7 @@ object InsertMacro {
               //plainEntity
 
     
-    object InsertExclusions:
+    object IgnoredColumns:
       def summon: SummonState[Set[Ast]] =
         // If someone has defined a: given meta: InsertMeta[Person] = insertMeta[Person](_.id)
         Expr.summon[InsertMeta[T]] match
@@ -167,10 +167,14 @@ object InsertMacro {
      *    Quoted(ast: CaseClass(name -> lift(idA)), ...), lifts: List(EagerLift(x.name, idA), ...))
      *   )
      * }}
+     * 
+     * For batch queries liftQuery(people).foreach(p => query[Person].insert(p))
+     * it will be just the ast Ident("p")
      */
-    def parseInsertee(): CaseClass = {
+    def parseInsertee(): CaseClass | Ident = {
       val insertee = inserteeRaw.asTerm.underlyingArgument.asExpr
       insertee match
+        // The case: query[Person].insert(lift(Person("Joe", "Bloggs")))
         case QuotationLotExpr(exprType) =>
           exprType match
             // If clause is uprootable, pull it out. Note that any lifts inside don't need to be extracted here 
@@ -183,6 +187,7 @@ object InsertMacro {
             case _ => 
               report.throwError("Cannot uproot lifted element. A lifted Insert element e.g. query[T].insert(lift(element)) must be lifted directly inside the lift clause.")
         // Otherwise the inserted element (i.e. the insertee) is static and should be parsed as an ordinary case class
+        // i.e. the case query[Person].insert(Person("Joe", "Bloggs")) (or the batch case)
         case _ =>
           parseStaticInsertee(insertee)
     }
@@ -190,14 +195,14 @@ object InsertMacro {
     /** 
      * Parse the input to of query[Person].insert(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs") 
      */
-    def parseStaticInsertee(insertee: Expr[_]): CaseClass = {  
+    def parseStaticInsertee(insertee: Expr[_]): CaseClass | Ident = {  
       val parserFactory = LoadObject[Parser].get
       val rawAst = parserFactory.apply.seal.apply(insertee)
       val ast = BetaReduction(rawAst)
-      // TODO Implement dynamic pipeline for schema meta
       ast match
         case cc: CaseClass => cc
-        case _ => report.throwError(s"Parsed Insert Macro AST is not a Case Class: ${qprint(ast).plainText}")  
+        case id: Ident => id
+        case _ => report.throwError(s"Parsed Insert Macro AST is not a Case Class: ${qprint(ast).plainText} (or a batch-query Ident)")  
     }
 
     def deduceAssignmentsFrom(insertee: CaseClass) = {
@@ -217,8 +222,9 @@ object InsertMacro {
     }
 
     def deduceAssignments() =
-      val astCaseClass = parseInsertee()
-      deduceAssignmentsFrom(astCaseClass)
+      parseInsertee() match
+        case astCaseClass: CaseClass => deduceAssignmentsFrom(astCaseClass)
+        case astIdent: Ident => List()
 
     /** 
      * Get assignments from an entity and then either exclude or include them
@@ -226,7 +232,7 @@ object InsertMacro {
      */
     def processAssignmentExclusions(): Expr[List[io.getquill.ast.Assignment]] =
       val assignmentsOfEntity = deduceAssignments()
-      InsertExclusions.summon match
+      IgnoredColumns.summon match
         // If we have assignment-exclusions during compile time
         case SummonState.Static(exclusions) =>
           // process which assignments to exclude and take them out
@@ -262,7 +268,7 @@ object InsertMacro {
       // TODO If implicit insert meta, need to detect it and use it instead (i.e. with exclusions)
       // TODO if there is a schemaMeta need to use that to create the entity
       val unquotation =
-        EntitySchema.summon match
+        InserteeSchema.summon match
           // If we can get a static entity back
           case SummonState.Static(entity) =>
             // Lift it into an `Insert` ast, put that into a `quotation`, then return that `quotation.unquote` i.e. ready to splice into the quotation from which this `.insert` macro has been called
@@ -298,3 +304,4 @@ object InsertMacro {
     new Pipeline(entityRaw, bodyRaw).apply
 
 }
+
