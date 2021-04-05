@@ -352,6 +352,9 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case '{ ($q:Query[qt]).flatMap[mt](${Lambda1(ident, tpe, body)}) } => 
       FlatMap(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
+    //case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unq) } =>
+    //  Foreach(astParse(q), cleanIdent(ident, tpe), astParse(body))
+
     case '{ ($q:Query[qt]).filter(${Lambda1(ident, tpe, body)}) } => 
       Filter(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
@@ -370,8 +373,6 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, tpe, on)}) } => 
       FlatJoin(LeftJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
 
-    //case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unquote) } =>
-    //  Foreach(astParse(q), cleanIdent(ident, tpe), astParse(body))
     // case '{ ($q: Query[t]).foreach($stuff)($stuff2) } =>
     //   val content = stuff.asTerm
     //   val astClass = classOf[Insert]
@@ -552,20 +553,48 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
 
       // E.g. in situations like liftQuery where liftQuery(people:List[Person]) happens the following tree occurs (EntityQueryPlanter(...))($conforms[Insert[Person]])
       // so we need to take out that last part
-    case Unseal(Apply(Apply(Untype(UntypeApply(Select(q, "foreach"))), List( Lambda1.Term(ident, tpe, body) )), List(TypeApply(TIdent("$conforms"), List(Inferred()))))) if is[Query[Any]](q.asExpr) =>
-      val astClass = classOf[Insert]
-      val content = body
-      // report.throwError(s"""|
-      // |s"==== Got Here: '${astClass.getSimpleName}' ===
-      // |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
-      // |==== Extractors ===
-      // |  ${Format(Printer.TreeStructure.show(content))}
-      // |==== Tree ===
-      // |  ${printer.str(content)}
-      // |""".stripMargin)
-      
-      Foreach(astParse(q.asExpr), cleanIdent(ident, tpe), astParse(body.asExpr))
 
-      //astParse(content.asExpr)
+    case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unq) } =>
+      Foreach(astParse(q), cleanIdent(ident, tpe), astParse(body))
+
+    // case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unq) } =>
+    //   val astClass = classOf[Insert]
+    //   val content = body.asTerm
+    //   report.throwError(s"""|
+    //     |s"==== Got Here Yay Yay: '${astClass.getSimpleName}' ===
+    //     |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
+    //     |==== Extractors ===
+    //     |  ${Format(Printer.TreeStructure.show(content))}
+    //     |==== Tree ===
+    //     |  ${printer.str(content)}
+    //     |""".stripMargin)
+
+    // case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b]($contentExpr)($unq) } =>
+    //   val astClass = classOf[Insert]
+    //   val content = contentExpr.asTerm
+    //   report.throwError(s"""|
+    //     |s"==== Got Here Yay Yay: '${astClass.getSimpleName}' ===
+    //     |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
+    //     |==== Extractors ===
+    //     |  ${Format(Printer.TreeStructure.show(content))}
+    //     |==== Tree ===
+    //     |  ${printer.str(content)}
+    //     |""".stripMargin)
+
+    // case Unseal(Apply(Apply(Untype(UntypeApply(Select(q, "foreach"))), List( Lambda1.Term(ident, tpe, body) )), List(TypeApply(TIdent("$conforms"), List(Inferred()))))) if is[Query[Any]](q.asExpr) =>
+    //   val astClass = classOf[Insert]
+    //   val content = body
+    //   // report.throwError(s"""|
+    //   // |s"==== Got Here: '${astClass.getSimpleName}' ===
+    //   // |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
+    //   // |==== Extractors ===
+    //   // |  ${Format(Printer.TreeStructure.show(content))}
+    //   // |==== Tree ===
+    //   // |  ${printer.str(content)}
+    //   // |""".stripMargin)
+      
+    //   Foreach(astParse(q.asExpr), cleanIdent(ident, tpe), astParse(body.asExpr))
+
+    //   //astParse(content.asExpr)
   }
 }
