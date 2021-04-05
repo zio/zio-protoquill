@@ -114,6 +114,9 @@ trait ParserFactory {
 trait ParserLibrary extends ParserFactory {
   import Parser._
 
+
+  // TODO add a before everything identity parser, 
+  // a after everything except Inline recurse parser
   def quotationParser(using qctx: Quotes)          = Series.single(new QuotationParser)
   def queryParser(using qctx: Quotes)              = Series.single(new QueryParser)
   def patMatchParser(using qctx: Quotes)           = Series.single(new CasePatMatchParser)
@@ -124,6 +127,7 @@ trait ParserLibrary extends ParserFactory {
   def operationsParser(using qctx: Quotes)         = Series.single(new OperationsParser)
   def genericExpressionsParser(using qctx: Quotes) = Series.single(new GenericExpressionsParser)
   def actionParser(using qctx: Quotes)             = Series.single(new ActionParser)
+  def batchActionParser(using qctx: Quotes)        = Series.single(new BatchActionParser)
   def optionParser(using qctx: Quotes)             = Series.single(new OptionParser)
   def valueParser(using qctx: Quotes)              = Series.single(new ValueParser)
 
@@ -137,6 +141,7 @@ trait ParserLibrary extends ParserFactory {
         .combine(queryParser)
         .combine(optionParser)
         .combine(actionParser)
+        .combine(batchActionParser)
         .combine(functionParser) // decided to have it be it's own parser unlike Quill3
         .combine(patMatchParser)
         .combine(valParser)
@@ -277,15 +282,13 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
   }
 }
 
+// As a performance optimization, ONLY Matches things returning io.getquill.Action[_] UP FRONT. 
+// All other kinds of things rejected
 case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[io.getquill.Action[_], Ast] with Assignments {
   import quotes.reflect.{Constant => TConstantant, _}
   import Parser.Implicits._
   
   def delegate: PartialFunction[Expr[_], Ast] = {
-    del
-  }
-
-  def del: PartialFunction[Expr[_], Ast] = {
     case '{ type t; ($query: EntityQuery[`t`]).insert(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
       //println("****************** Parsed Here ***********")
       val insertAssignments = first.asTerm +: others.map(_.asTerm)
@@ -302,6 +305,20 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       case Repeated(Nil, any) => true
       case _ => false
     }
+
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+}
+
+// As a performance optimization, ONLY Matches things returning io.getquill.BatchAction[_] UP FRONT. 
+// All other kinds of things rejected
+case class BatchActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[io.getquill.BatchAction[_], Ast] with Assignments {
+  import quotes.reflect.{Constant => TConstant, _}
+  import Parser.Implicits._
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unq) } =>
+      Foreach(astParse(q), cleanIdent(ident, tpe), astParse(body))
+  }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
@@ -328,8 +345,10 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   }
 }
 
+// As a performance optimization, ONLY Matches things returning io.getquill.Query[_] UP FRONT. 
+// All other kinds of things rejected
 case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[io.getquill.Query[_], Ast] with PropertyAliases {
-  import qctx.reflect.{Constant => TConstantant, _}
+  import qctx.reflect.{Constant => TConstant, Ident => TIdent, _}
   import Parser.Implicits._
 
   def delegate: PartialFunction[Expr[_], Ast] = {
@@ -352,9 +371,6 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case '{ ($q:Query[qt]).flatMap[mt](${Lambda1(ident, tpe, body)}) } => 
       FlatMap(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    //case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unq) } =>
-    //  Foreach(astParse(q), cleanIdent(ident, tpe), astParse(body))
-
     case '{ ($q:Query[qt]).filter(${Lambda1(ident, tpe, body)}) } => 
       Filter(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
@@ -372,18 +388,6 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       FlatJoin(InnerJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
     case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, tpe, on)}) } => 
       FlatJoin(LeftJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
-
-    // case '{ ($q: Query[t]).foreach($stuff)($stuff2) } =>
-    //   val content = stuff.asTerm
-    //   val astClass = classOf[Insert]
-    //   report.throwError(s"""|
-    //   |s"==== Got Here: '${astClass.getSimpleName}' ===
-    //   |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
-    //   |==== Extractors ===
-    //   |  ${Format(Printer.TreeStructure.show(content))}
-    //   |==== Tree ===
-    //   |  ${printer.str(content)}
-    //   |""".stripMargin)
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -529,7 +533,9 @@ case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val q
 }
 
 case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
+  import quotes.reflect.{Constant => TConstantant, Ident => TIdent, _}
+  import Parser.Implicits._
+
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
@@ -554,8 +560,20 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
       // E.g. in situations like liftQuery where liftQuery(people:List[Person]) happens the following tree occurs (EntityQueryPlanter(...))($conforms[Insert[Person]])
       // so we need to take out that last part
 
-    case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unq) } =>
-      Foreach(astParse(q), cleanIdent(ident, tpe), astParse(body))
+    // case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unq) } =>
+    //   val astClass = classOf[Insert]
+    //   val content = body.asTerm
+    //   report.throwError(s"""|
+    //     |s"==== Got Here - END CLAUSE: '${astClass.getSimpleName}' ===
+    //     |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
+    //     |==== Extractors ===
+    //     |  ${Format(Printer.TreeStructure.show(content))}
+    //     |==== Tree ===
+    //     |  ${printer.str(content)}
+    //     |""".stripMargin)
+    //   //Foreach(astParse(q), cleanIdent(ident, tpe), astParse(body))
+
+    
 
     // case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unq) } =>
     //   val astClass = classOf[Insert]
