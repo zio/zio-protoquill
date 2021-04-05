@@ -42,13 +42,14 @@ object Parser {
 
   def throwExpressionError(expr: Expr[_], astClass: Class[_])(using Quotes) =
     import quotes.reflect._
+    val term = expr.asTerm
     report.throwError(s"""|
       |s"==== Tree cannot be parsed to '${astClass.getSimpleName}' ===
-      |  ${Format(Printer.TreeShortCode.show(expr.asTerm)) /* Or Maybe just expr? */}
+      |  ${Format(Printer.TreeShortCode.show(term)) /* Or Maybe just expr? */}
       |==== Extractors ===
-      |  ${Format(Printer.TreeStructure.show(expr.asTerm))}
+      |  ${Format(Printer.TreeStructure.show(term))}
       |==== Tree ===
-      |  ${printer.str(expr.asTerm)}
+      |  ${printer.str(term)}
       |""".stripMargin, 
       expr)
   
@@ -332,10 +333,6 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
   import Parser.Implicits._
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-    del
-  }
-
-  def del: PartialFunction[Expr[_], Ast] = {
 
   // This seems to work?
     case '{ type t; EntityQuery.apply[`t`] } => //: EntityQuery[`$t`]
@@ -372,6 +369,20 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       FlatJoin(InnerJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
     case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, tpe, on)}) } => 
       FlatJoin(LeftJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
+
+    //case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unquote) } =>
+    //  Foreach(astParse(q), cleanIdent(ident, tpe), astParse(body))
+    // case '{ ($q: Query[t]).foreach($stuff)($stuff2) } =>
+    //   val content = stuff.asTerm
+    //   val astClass = classOf[Insert]
+    //   report.throwError(s"""|
+    //   |s"==== Got Here: '${astClass.getSimpleName}' ===
+    //   |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
+    //   |==== Extractors ===
+    //   |  ${Format(Printer.TreeStructure.show(content))}
+    //   |==== Tree ===
+    //   |  ${printer.str(content)}
+    //   |""".stripMargin)
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -538,5 +549,23 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
       //println("Case Inlined")
       //root.parse(v.asExprOf[T]) // With method-apply can't rely on it always being T?
       astParse(v.asExpr)
+
+      // E.g. in situations like liftQuery where liftQuery(people:List[Person]) happens the following tree occurs (EntityQueryPlanter(...))($conforms[Insert[Person]])
+      // so we need to take out that last part
+    case Unseal(Apply(Apply(Untype(UntypeApply(Select(q, "foreach"))), List( Lambda1.Term(ident, tpe, body) )), List(TypeApply(TIdent("$conforms"), List(Inferred()))))) if is[Query[Any]](q.asExpr) =>
+      val astClass = classOf[Insert]
+      val content = body
+      // report.throwError(s"""|
+      // |s"==== Got Here: '${astClass.getSimpleName}' ===
+      // |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
+      // |==== Extractors ===
+      // |  ${Format(Printer.TreeStructure.show(content))}
+      // |==== Tree ===
+      // |  ${printer.str(content)}
+      // |""".stripMargin)
+      
+      Foreach(astParse(q.asExpr), cleanIdent(ident, tpe), astParse(body.asExpr))
+
+      //astParse(content.asExpr)
   }
 }

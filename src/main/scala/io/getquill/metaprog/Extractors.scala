@@ -148,12 +148,15 @@ trait Extractors {
 
   object Lambda1 {
     def unapply(expr: Expr[_]): Option[(String, TypeRepr, quoted.Expr[_])] =
-      unapplyTerm(expr.asTerm).map((str, tpe, expr) => (str, tpe, expr.asExpr))
+      Lambda1.Term.unapply(expr.asTerm).map((str, tpe, expr) => (str, tpe, expr.asExpr))
 
-    def unapplyTerm(term: Term): Option[(String, TypeRepr, Term)] = Untype(term) match {
-      case Lambda(List(ValDef(ident, tpeTree, _)), methodBody) => Some((ident, tpeTree.tpe, methodBody))
-      case Block(List(), expr) => unapplyTerm(expr)
-      case _ => None
+    // TODO I like this pattern of doing 'Term' in a sub-object should do more of this in future
+    object Term {
+      def unapply(term: Term): Option[(String, TypeRepr, Term)] = Untype(term) match {
+        case Lambda(List(ValDef(ident, tpeTree, _)), methodBody) => Some((ident, tpeTree.tpe, methodBody))
+        case Block(List(), expr) => Lambda1.Term.unapply(expr)
+        case _ => None
+      } 
     }
   }
 
@@ -220,7 +223,7 @@ trait Extractors {
       }
   }
 
-    object UntypeApply {
+  object UntypeApply {
     private def recurse(term: Term): Term = {
       //println("============== Recursing UntypeApply =============")
       term match {
@@ -230,6 +233,11 @@ trait Extractors {
     }
     def unapply(term: Term) = Some(recurse(term))
   }
+
+  // object UntypeAll {
+  //   def unapply(term: Term) =
+  //     Untype(UntypeApply(term))
+  // }
 
   object Method0 {
     def unapply(term: Term): Option[(Term, String)] =

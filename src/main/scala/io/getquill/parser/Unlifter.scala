@@ -120,6 +120,7 @@ object Unlifter {
       case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(query.unexpr, alias.unexpr, body.unexpr)
       case '{ FlatMap(${query}, ${alias}, ${body}: Ast) } => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
       case '{ Filter(${query}, ${alias}, ${body}: Ast) } => Filter(query.unexpr, alias.unexpr, body.unexpr)
+      case '{ Foreach(${query}, ${alias}, ${body}: Ast) } => Foreach(query.unexpr, alias.unexpr, body.unexpr)
       case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
       case '{ Property(${ast}, ${name}) } =>
         Property(ast.unexpr, constString(name))

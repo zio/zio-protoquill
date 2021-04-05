@@ -81,27 +81,8 @@ trait QuoteDsl[Parser <: ParserFactory] {
 
   inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteMacro[T, Parser]('body) }
 
-  // e.g. liftQuery(people:List[Person]).foreach(p => query[Person].insert(p))
-  // where Act is Insert[_] and Ent is Person
-  extension [T](inline entityList: Query[T])
-    // def foreach[A <: Action[_], B](f: T => B)(implicit unquote: B => A): BatchAction[A] = NonQuotedException()
-    inline def foreachMac[A <: Action[_]](inline f: T => A): BatchAction[A] = ${ ForeachMacro[T, A, Parser]('entityList, 'f) }
-
   extension [T](inline entity: EntityQuery[T])
     // Note that although this is in the static DSL if you lift a case class inside the insert or anything else, it will try to do a standard lift for that
     // requiring a context to be present
     inline def insert(inline value: T): Insert[T] = ${ InsertMacro[T, Parser]('entity, 'value) }
-}
-
-object ForeachMacro {
-  def apply[T: Type, A <: Action[_], Parser <: ParserFactory: Type](liftedQuery: Expr[Query[T]], f: Expr[T => A])(using Quotes): BatchAction[A] = {
-    // AST parse the function, it should be something like Function(Ident, UnliftedInsert)
-    // pull out the UnliftedInsert part
-    // Pull out the entity list in the liftedQuery (convert the iterator to a seq or just loop over it?)
-    // substitute the Ident for a value from the liftedQuery list which should be parsed into a case class
-    // (TODO Is this efficient? Maybe need to just do it for one entity and substuite lifts?)
-    // pass these substitutions into something which is an implementation of BatchAction, probably a quotation container of some sort
-
-    '{ ??? }
-  }
 }

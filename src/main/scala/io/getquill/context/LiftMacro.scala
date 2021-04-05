@@ -44,7 +44,7 @@ object LiftQueryMacro {
     quat match
       case _: Quat.Product => 
         // Not sure why cast back to iterable is needed here but U param is not needed once it is inside of the planter
-        '{ EagerEntitiesPlanter[T, PrepareRow]($entity.asInstanceOf[Iterable[T]], ${Expr(newUuid)}).unquote }
+        '{ EagerEntitiesPlanter($entity.asInstanceOf[Iterable[T]], ${Expr(newUuid)}).unquote } // [T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
       case _ => 
         report.throwError("Scalar liftQuery not implemented yet", entity)
   }
