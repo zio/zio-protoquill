@@ -6,11 +6,12 @@ import scala.quoted._
 import scala.deriving._
 import scala.compiletime.{erasedValue, summonFrom}  
 
-
 trait EncodingDsl {
   type PrepareRow
   type ResultRow
   //type Index = Int
+
+  type BaseEncoder[T] = (Int, T, PrepareRow) => PrepareRow
 
   type Encoder[T] = GenericEncoder[T, PrepareRow]
   type Decoder[T] = GenericDecoder[ResultRow, T]

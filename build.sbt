@@ -3,16 +3,16 @@ lazy val baseModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-sql`
 )
 
-// lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-//   `quill-jdbc`
-// )
+lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
+  `quill-jdbc`
+)
 
 // lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
 //   `quill-jasync`
 // )
 
 lazy val allModules =
-  baseModules
+  baseModules ++ dbModules
 
 val filteredModules = {
   allModules
@@ -55,12 +55,12 @@ lazy val `quill-sql` =
       }
     )
 
-// lazy val `quill-jdbc` =
-//   (project in file("quill-jdbc"))
-//     .settings(commonSettings: _*)
-//     //.settings(mimaSettings: _*)
-//     //.settings(jdbcTestingSettings: _*)
-//     .dependsOn(`quill-sql` % "compile->compile;test->test")
+lazy val `quill-jdbc` =
+  (project in file("quill-jdbc"))
+    .settings(commonSettings: _*)
+    //.settings(mimaSettings: _*)
+    .settings(jdbcTestingSettings: _*)
+    .dependsOn(`quill-sql` % "compile->compile;test->test")
 
 // Include scalafmt formatter for pretty printing failed queries
 val includeFormatter =
@@ -68,9 +68,27 @@ val includeFormatter =
 
 lazy val commonSettings = /* ReleasePlugin.extraReleaseCommands ++  */ basicSettings
 
+lazy val jdbcTestingLibraries = Seq(
+  libraryDependencies ++= Seq(
+    "com.zaxxer"              %  "HikariCP"                % "3.4.5",
+    "mysql"                   %  "mysql-connector-java"    % "8.0.22"             % Test,
+    "com.h2database"          %  "h2"                      % "1.4.200"            % Test,
+    "org.postgresql"          %  "postgresql"              % "42.2.18"             % Test,
+    "org.xerial"              %  "sqlite-jdbc"             % "3.32.3.2"             % Test,
+    "com.microsoft.sqlserver" %  "mssql-jdbc"              % "7.1.1.jre8-preview" % Test,
+    "com.oracle.ojdbc"        %  "ojdbc8"                  % "19.3.0.0"           % Test,
+    //"org.mockito"             %% "mockito-scala-scalatest" % "1.16.2"              % Test
+  )
+)
+
+lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
+  fork in Test := true
+)
+
 lazy val basicSettings = Seq(
   scalaVersion := "3.0.0-RC2", // "0.21.0-RC1", //"0.22.0-bin-20200114-193f7de-NIGHTLY", //dottyLatestNightlyBuild.get,
   scalacOptions ++= Seq(
     "-language:implicitConversions"
   )
 )
+

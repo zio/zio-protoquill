@@ -32,6 +32,7 @@ with MirrorDecoders with MirrorEncoders { self =>
   override type DatasourceContext = Unit
   def context: DatasourceContext = ()
 
+  // TODO Not needed, get rid of this
   implicit val d: Dummy = DummyInst
 
   case class QueryMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], executionType: ExecutionType) {
@@ -45,7 +46,7 @@ with MirrorDecoders with MirrorEncoders { self =>
   case class ActionMirror(string: String, prepareRow: PrepareRow, executionType: ExecutionType)
   case class ActionReturningMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], returningBehavior: ReturnAction)
 
-  def executeQuery[T](string: String, prepare: Prepare, extractor: Extractor[T] = identityExtractor)(executionType: ExecutionType, dc: DatasourceContext) =
+  def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionType: ExecutionType, dc: DatasourceContext) =
     QueryMirror(string, prepare(Row())._2, extractor, executionType)
 
   def executeAction[T](string: String, prepare: Prepare = identityPrepare)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionResult] =

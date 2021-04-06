@@ -26,6 +26,7 @@ import io.getquill.idiom.ReifyStatement
 import io.getquill.Query
 import QueryExecution.QuotedOperation
 import io.getquill.metaprog.etc.MapFlicer
+import io.getquill.util.Messages.fail
 
 import io.getquill._
 
@@ -91,6 +92,7 @@ with EncodingDsl //  with Closeable
       q.filter(p => MapFlicer[T, PrepareRow](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
   }
 
+  // TODO Should not need this member on this level. Get rid of it?
   def context: DatasourceContext
 
   import scala.annotation.targetName
@@ -121,4 +123,10 @@ with EncodingDsl //  with Closeable
     }
     QueryExecution.apply(QuotedOperation.ActionOp(quoted), ca)
   }
+
+  protected def handleSingleResult[T](list: List[T]) =
+    list match {
+      case value :: Nil => value
+      case other        => fail(s"Expected a single result but got $other")
+    }
 }
