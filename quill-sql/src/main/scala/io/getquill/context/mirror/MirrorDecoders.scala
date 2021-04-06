@@ -3,6 +3,8 @@ package io.getquill.context.mirror
 import io.getquill.generic._
 import scala.reflect.ClassTag
 
+import io.getquill.MappedEncoding
+
 trait MirrorDecoders extends EncodingDsl {
 
   override type PrepareRow = Row
@@ -18,8 +20,8 @@ trait MirrorDecoders extends EncodingDsl {
 
   def decoderUnsafe[T]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow) => row.data(index).asInstanceOf[T])
 
-  //implicit def mappedDecoder[I, O](implicit mapped: MappedEncoding[I, O], d: Decoder[I]): Decoder[O] =
-  //  MirrorDecoder((index: Index, row: ResultRow) => mapped.f(d.apply(index, row)))
+  implicit def mappedDecoder[I, O](implicit mapped: MappedEncoding[I, O], d: ContextDecoder[I]): ContextDecoder[O] =
+    MirrorDecoder((index: Int, row: ResultRow) => mapped.f(d.apply(index, row)))
 
   implicit def optionDecoder[T](implicit d: Decoder[T]): Decoder[Option[T]] =
     MirrorDecoder((index: Int, row: ResultRow) =>
