@@ -13,10 +13,10 @@ trait Decoders {
   this: JdbcRunContext[_, _] =>
 
   // In Scala2-Quill Decoders get this from JdbcRunContext which gets it from Encoders. That doesn't seem to happen in Dotty
-  protected val dateTimeZone = TimeZone.getDefault
+  private val dateTimeZone = TimeZone.getDefault
 
   // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
-  type Index = Int
+  // type Index = Int (Defined in JdbcRunContext)
   type Decoder[T] = JdbcDecoder[T]
 
   case class JdbcDecoder[T](decoder: DecoderMethod[T]) extends ContextDecoder[T] {

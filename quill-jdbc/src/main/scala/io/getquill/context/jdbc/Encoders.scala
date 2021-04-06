@@ -17,10 +17,10 @@ trait Encoders extends EncodingDsl {
   this: JdbcRunContext[_, _] =>
 
   // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
-  type Index = Int
+  // type Index = Int (Defined in JdbcRunContext)
   type Encoder[T] = JdbcEncoder[T]
 
-  protected val dateTimeZone = TimeZone.getDefault
+  private val dateTimeZone = TimeZone.getDefault
 
   case class JdbcEncoder[T](sqlType: Int, encoder: EncoderMethod[T]) extends ContextEncoder[T] {
     override def apply(index: Index, value: T, row: PrepareRow) =

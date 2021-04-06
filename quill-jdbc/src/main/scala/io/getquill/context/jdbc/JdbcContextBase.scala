@@ -20,10 +20,15 @@ trait JdbcContextSimplified[Dialect <: SqlIdiom, Naming <: NamingStrategy]
 
 trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   extends Context[Dialect, Naming]
-  //with SqlContext[Dialect, Naming]
-  //with Encoders
-  //with Decoders 
-  {
+  //with SqlContext[Dialect, Naming] // Don't need this in Dotty Quill?
+  with Encoders
+  with Decoders 
+{
+
+  // Dotty doesn't like that this is defined in both Encoders and Decoders.
+  // Makes us define it here in order to resolve the conflict.
+  type Index = Int
+
   private[getquill] val logger = ContextLogger(classOf[JdbcRunContext[_, _]]) // Note this is incorrect in the Scala 2 JdbcRunContext.scala
 
   // Not required for JdbcRunContext in Scala2-Quill but it's a typing error. It only works 
