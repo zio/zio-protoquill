@@ -34,6 +34,7 @@ import io.getquill.Action
 import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
 import io.getquill.metaprog.Extractors
+import io.getquill.BatchAction
 
 trait ContextOperation[T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: Option[ResultRow => T], executionType: ExecutionType): Res
