@@ -24,6 +24,7 @@ lazy val root = project
       ("io.getquill" %% "quill-sql-portable" % "3.6.1").withDottyCompat(scalaVersion.value),
       //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
       //("org.scalameta" %% "scalafmt-cli" % "2.7.4").withDottyCompat(scalaVersion.value),
+      ("org.scalameta" %% "scalafmt-cli" % "2.7.5" ).excludeAll(ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")).withDottyCompat(scalaVersion.value),
       //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
 
       "org.scalatest" % "scalatest_3.0.0-RC2" % "3.2.7" % "test",

@@ -12,6 +12,6 @@ object UseMac {
     val l = List(Person("Joe", 123))
     inline def q = quote { liftQuery(l).foreach(p => query[Person].insert(p)) }
     //inline def q = liftQuery(l).foreach(p => query[Person].insert(p))
-    PrintMac(q) //hellooooooooooooooo
+    PrintMac(q) //helloooooooooooo
   }
 }

@@ -1,6 +1,7 @@
 package io.getquill.util.debug
 
 import io.getquill.metaprog.Extractors
+import io.getquill.util.Format
 
 import scala.quoted._
 
@@ -78,7 +79,7 @@ object PrintMac {
       class Operations(implicit val qctx: Quotes) extends Extractors {
         import quotes.reflect._
         println("================= Tree =================")
-        println(any.show)
+        println(Format(Printer.TreeShortCode.show(any.asTerm)))
 
         println("================= Matchers =================")
         println(Printer.TreeStructure.show(Untype(any.asTerm)))
