@@ -8,13 +8,14 @@ import scala.reflect.ClassTag
 trait MirrorEncoders extends EncodingDsl {
   override type PrepareRow = Row
   override type ResultRow = Row
+  type Encoder[T] = MirrorEncoder[T]
 
-  case class MirrorEncoder[T](encoder: Encoder[T]) extends Encoder[T] {
+  case class MirrorEncoder[T](encoder: EncoderMethod[T]) extends ContextEncoder[T] {
     override def apply(index: Int, value: T, row: PrepareRow) =
       encoder(index, value, row)
   }
 
-  def encoder[T]: Encoder[T] = MirrorEncoder((index: Int, value: T, row: PrepareRow) => row.add(value))
+  def encoder[T]: MirrorEncoder[T] = MirrorEncoder((index: Int, value: T, row: PrepareRow) => row.add(value))
 
   // implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], e: Encoder[O]): Encoder[I] =
   //   MirrorEncoder((index: Index, value: I, row: PrepareRow) => e(index, mapped.f(value), row))

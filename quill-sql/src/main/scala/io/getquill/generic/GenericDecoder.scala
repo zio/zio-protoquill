@@ -12,8 +12,8 @@ trait GenericColumnResolver[ResultRow] {
   def apply(resultRow: ResultRow, columnName: String): Int
 }
 
-trait GenericDecoder[ResultRow, T] {
-  def apply(i: Int, rr: ResultRow):T
+trait GenericDecoder[ResultRow, T] extends ((Int, ResultRow) => T) {
+  def apply(i: Int, rr: ResultRow): T
 }
 
 trait GenericRowTyper[ResultRow, Co] {

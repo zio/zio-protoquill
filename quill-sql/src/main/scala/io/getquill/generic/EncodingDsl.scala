@@ -11,11 +11,21 @@ trait EncodingDsl {
   type ResultRow
   //type Index = Int
 
-  type BaseEncoder[T] = (Int, T, PrepareRow) => PrepareRow
+  type EncoderMethod[T] = (Int, T, PrepareRow) => PrepareRow
+  type DecoderMethod[T] = (Int, ResultRow) => T
 
-  type Encoder[T] = GenericEncoder[T, PrepareRow]
-  type Decoder[T] = GenericDecoder[ResultRow, T]
+  type ContextEncoder[T] = GenericEncoder[T, PrepareRow]
+  type ContextDecoder[T] = GenericDecoder[ResultRow, T]
   type ColumnResolver = GenericColumnResolver[ResultRow]
   type RowTyper[T] = GenericRowTyper[ResultRow, T]
+
+  // TODO Needed for mapped encoding? Need to change signature
+  //implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], encoder: Encoder[O]): Encoder[I]
+  //implicit def mappedDecoder[I, O](implicit mapped: MappedEncoding[I, O], decoder: Decoder[I]): Decoder[O]
   
+  protected def mappedBaseEncoder[I, O](mapped: MappedEncoding[I, O], encoder: EncoderMethod[O]): EncoderMethod[I] =
+    (index, value, row) => encoder(index, mapped.f(value), row)
+
+  protected def mappedBaseDecoder[I, O](mapped: MappedEncoding[I, O], decoder: DecoderMethod[I]): DecoderMethod[O] =
+    (index, row) => mapped.f(decoder(index, row))
 }

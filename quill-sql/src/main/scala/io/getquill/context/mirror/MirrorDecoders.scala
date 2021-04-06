@@ -7,13 +7,14 @@ trait MirrorDecoders extends EncodingDsl {
 
   override type PrepareRow = Row
   override type ResultRow = Row
+  type Decoder[T] = MirrorDecoder[T]
 
-  case class MirrorDecoder[T](decoder: Decoder[T]) extends Decoder[T] {
+  case class MirrorDecoder[T](decoder: ContextDecoder[T]) extends ContextDecoder[T] {
     override def apply(index: Int, row: ResultRow) =
       decoder(index, row)
   }
 
-  def decoder[T: ClassTag]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow) => row.apply[T](index))
+  def decoder[T: ClassTag]: MirrorDecoder[T] = MirrorDecoder((index: Int, row: ResultRow) => row.apply[T](index))
 
   def decoderUnsafe[T]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow) => row.data(index).asInstanceOf[T])
 
