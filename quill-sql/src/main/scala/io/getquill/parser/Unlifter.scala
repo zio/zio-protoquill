@@ -85,8 +85,13 @@ object Unlifter {
         val unliftedQuat = quat.unexpr
         OptionNone(unliftedQuat)
       case '{ OptionIsEmpty.apply($a) } => OptionIsEmpty(a.unexpr)
+      case '{ OptionNonEmpty.apply($a) } => OptionNonEmpty(a.unexpr)
+      case '{ OptionIsDefined.apply($a) } => OptionIsDefined(a.unexpr)
+      case '{ OptionGetOrElse.apply($a, $b) } => OptionGetOrElse(a.unexpr, b.unexpr)
+      case '{ OptionContains.apply($a, $b) } => OptionContains(a.unexpr, b.unexpr)
       case '{ OptionMap.apply($a, $b, $c) } => OptionMap(a.unexpr, b.unexpr, c.unexpr)
       case '{ OptionTableMap.apply($a, $b, $c) } => OptionTableMap(a.unexpr, b.unexpr, c.unexpr)
+      case '{ OptionTableFlatMap.apply($a, $b, $c) } => OptionTableFlatMap(a.unexpr, b.unexpr, c.unexpr)
       case '{ OptionExists.apply($a, $b, $c) } => OptionExists(a.unexpr, b.unexpr, c.unexpr)
       case '{ OptionTableExists.apply($a, $b, $c) } => OptionTableExists(a.unexpr, b.unexpr, c.unexpr)
   }
@@ -121,6 +126,7 @@ object Unlifter {
       case '{ FlatMap(${query}, ${alias}, ${body}: Ast) } => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
       case '{ Filter(${query}, ${alias}, ${body}: Ast) } => Filter(query.unexpr, alias.unexpr, body.unexpr)
       case '{ Foreach(${query}, ${alias}, ${body}: Ast) } => Foreach(query.unexpr, alias.unexpr, body.unexpr)
+      case '{ UnaryOperation(${operator}, ${a}: Ast) } => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
       case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
       case '{ Property(${ast}, ${name}) } =>
         Property(ast.unexpr, constString(name))
@@ -130,12 +136,15 @@ object Unlifter {
         QuotationTag(constString(uid))
       case '{ Union($a, $b) } => Union(a.unexpr, b.unexpr)
       case '{ Insert($query, $assignments) } => Insert(query.unexpr, assignments.unexpr)
-      case '{ Infix($parts, $params, $pure, $quat) } => 
-        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
-        Infix(parts.unexpr, params.unexpr, pure.unexpr, unliftedQuat)
+      case '{ Update($query, $assignments) } => Update(query.unexpr, assignments.unexpr)
+      case '{ Delete($query) } => Delete(query.unexpr)
+      case '{ Infix($parts, $params, $pure, $quat) } => Infix(parts.unexpr, params.unexpr, pure.unexpr, quat.unexpr)
       case '{ Tuple.apply($values) } => Tuple(values.unexpr)
       case '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
       case '{ FlatJoin($typ, $a, $aliasA, $on) } => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
+      case '{ Take($query, $num)} => Take(query.unexpr, num.unexpr)
+      case '{ Drop($query, $num)} => Drop(query.unexpr, num.unexpr)
+      case '{ ConcatMap(${query}, ${alias}, ${body}: Ast) } => ConcatMap(query.unexpr, alias.unexpr, body.unexpr)
       case '{ CaseClass($values) } => CaseClass(values.unexpr)
       case '{ NullValue } => NullValue
       case '{ $p: Property } => unliftProperty(p)
@@ -154,6 +163,11 @@ object Unlifter {
       case '{ NumericOperator.> } =>  NumericOperator.>
       case '{ NumericOperator.< } =>  NumericOperator.<
       case '{ StringOperator.+ } =>  StringOperator.+
+      case '{ StringOperator.toUpperCase } =>  StringOperator.toUpperCase
+      case '{ StringOperator.toLowerCase } =>  StringOperator.toLowerCase
+      case '{ StringOperator.toLong } =>  StringOperator.toLong
+      case '{ StringOperator.startsWith } =>  StringOperator.startsWith
+      case '{ StringOperator.split } =>  StringOperator.split
       case '{ EqualityOperator.== } =>  EqualityOperator.==
       case '{ BooleanOperator.|| } =>  BooleanOperator.||
       case '{ BooleanOperator.&& } =>  BooleanOperator.&&

@@ -121,8 +121,13 @@ trait Lifter(serializeQuats: Boolean) {
       case OptionSome(a) => '{ OptionSome(${a.expr}) }
       case OptionNone(quat) => '{ OptionNone(${quat.expr}) }
       case OptionIsEmpty(a) => '{ OptionIsEmpty(${a.expr}) }
+      case OptionNonEmpty(a) => '{ OptionNonEmpty(${a.expr}) }
+      case OptionIsDefined(a) => '{ OptionIsDefined(${a.expr}) }
+      case OptionGetOrElse(a, b) => '{ OptionGetOrElse(${a.expr}, ${b.expr}) }
+      case OptionContains(a, b) => '{ OptionContains(${a.expr}, ${b.expr}) }
       case OptionMap(a, b, c) => '{ OptionMap(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionTableMap(a, b, c) => '{ OptionTableMap(${a.expr}, ${b.expr}, ${c.expr}) }
+      case OptionTableFlatMap(a, b, c) => '{ OptionTableFlatMap(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionExists(a, b, c) => '{ OptionExists(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionTableExists(a, b, c) => '{ OptionTableExists(${a.expr}, ${b.expr}, ${c.expr}) }
   }
@@ -147,14 +152,20 @@ trait Lifter(serializeQuats: Boolean) {
       case FlatMap(query: Ast, alias: AIdent, body: Ast) => '{ FlatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
       case Filter(query: Ast, alias: AIdent, body: Ast) => '{ Filter(${query.expr}, ${alias.expr}, ${body.expr})  }
       case Foreach(query: Ast, alias: AIdent, body: Ast) => '{ Foreach(${query.expr}, ${alias.expr}, ${body.expr})  }
+      case UnaryOperation(operator: UnaryOperator, a: Ast) => '{ UnaryOperation(${liftOperator(operator).asInstanceOf[Expr[UnaryOperator]]}, ${a.expr})  }
       case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${a.expr}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${b.expr})  }
       case ScalarTag(uid: String) => '{ScalarTag(${uid.expr})}
       case QuotationTag(uid: String) => '{QuotationTag(${uid.expr})}
       case Union(a, b) => '{ Union(${a.expr}, ${b.expr}) }
       case Insert(query: Ast, assignments: List[Assignment]) => '{ Insert(${query.expr}, ${assignments.expr}) }
+      case Update(query: Ast, assignments: List[Assignment]) => '{ Update(${query.expr}, ${assignments.expr}) }
+      case Delete(query: Ast) => '{ Delete(${query.expr}) }
       case Infix(parts, params, pure, quat) => '{ Infix(${parts.expr}, ${params.expr}, ${pure.expr}, ${quat.expr}) }
       case Join(typ, a, b, identA, identB, body) => '{ Join(${typ.expr}, ${a.expr}, ${b.expr}, ${identA.expr}, ${identB.expr}, ${body.expr}) }
       case FlatJoin(typ, a, identA, on) => '{ FlatJoin(${typ.expr}, ${a.expr}, ${identA.expr}, ${on.expr}) }
+      case Take(query: Ast, num: Ast) => '{ Take(${query.expr}, ${num.expr})}
+      case Drop(query: Ast, num: Ast) => '{ Drop(${query.expr}, ${num.expr})}
+      case ConcatMap(query: Ast, alias: AIdent, body: Ast) => '{ ConcatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
       case NullValue => '{ NullValue }
       case CaseClass(lifts) => '{ CaseClass(${lifts.expr}) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
       case v: Property => liftableProperty(v)
@@ -174,6 +185,11 @@ trait Lifter(serializeQuats: Boolean) {
       case NumericOperator.> => '{ NumericOperator.> }
       case NumericOperator.< => '{ NumericOperator.< }
       case StringOperator.+ => '{ StringOperator.+ }
+      case StringOperator.toUpperCase => '{ StringOperator.toUpperCase }
+      case StringOperator.toLowerCase => '{ StringOperator.toLowerCase }
+      case StringOperator.toLong => '{ StringOperator.toLong }
+      case StringOperator.startsWith => '{ StringOperator.startsWith }
+      case StringOperator.split => '{ StringOperator.split }
       case _: ee.type => '{ EqualityOperator.== } // if you don't do it this way, complains about 'stable identifier error'
       case BooleanOperator.|| => '{ BooleanOperator.|| }
       case BooleanOperator.&& => '{ BooleanOperator.&& }
