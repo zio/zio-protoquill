@@ -507,6 +507,8 @@ case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val q
   def delegate: PartialFunction[Expr[_], Ast] = {
     // Parse Null values
     case Unseal(Literal(NullConstant())) => NullValue
+    // For cases where a series of flatMaps returns nothing etc...
+    case Unseal(Literal(UnitConstant())) => Constant((), Quat.Value)
     // Parse Constants
     case expr @ Unseal(ConstantTerm(v)) => Constant(v, InferQuat.ofExpr(expr))
     // Parse Option constructors

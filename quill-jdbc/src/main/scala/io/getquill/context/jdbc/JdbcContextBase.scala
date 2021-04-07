@@ -8,6 +8,8 @@ import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.{ Context, ContextEffect }
 import io.getquill.util.ContextLogger
 import io.getquill.context.ExecutionType
+import io.getquill.generic.EncodingDsl
+import io.getquill.context.sql.SqlContext
 
 trait JdbcContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends JdbcContextSimplified[Dialect, Naming] {
   // Note: This context has been created for Session Prepare use-cases. Prepare in ProtoQuill is not supported yet.
@@ -19,8 +21,7 @@ trait JdbcContextSimplified[Dialect <: SqlIdiom, Naming <: NamingStrategy]
 }
 
 trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
-  extends Context[Dialect, Naming]
-  //with SqlContext[Dialect, Naming] // Don't need this in Dotty Quill?
+  extends SqlContext[Dialect, Naming]
   with Encoders
   with Decoders 
 {
