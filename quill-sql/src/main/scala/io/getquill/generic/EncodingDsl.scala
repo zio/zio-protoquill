@@ -14,11 +14,15 @@ trait EncodingDsl {
   type EncoderMethod[T] = (Int, T, PrepareRow) => PrepareRow
   type DecoderMethod[T] = (Int, ResultRow) => T
 
+  // Final Encoder/Decoder classes that Context implementations will use for their actual signatures
   type Encoder[T]
   type Decoder[T]
 
+  // Initial Encoder/Decoder classes that Context implementations will subclass for their
+  // respective Encoder[T]/Decoder[T] implementations e.g. JdbcEncoder[T](...) extends BaseEncoder[T]
   type BaseEncoder[T] = GenericEncoder[T, PrepareRow]
   type BaseDecoder[T] = GenericDecoder[ResultRow, T]
+
   type ColumnResolver = GenericColumnResolver[ResultRow]
   type RowTyper[T] = GenericRowTyper[ResultRow, T]
 
