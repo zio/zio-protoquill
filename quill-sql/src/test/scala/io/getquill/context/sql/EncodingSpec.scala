@@ -21,7 +21,7 @@
 
 // trait EncodingSpec extends Spec {
 
-//   val context: SqlContext[_, _] with TestEncoders with TestDecoders
+//   val context: SqlContext[_, _] //with TestEncoders with TestDecoders
 
 //   import context._
 
@@ -39,7 +39,7 @@
 //     v11: Date,
 //     v12: EncodingTestType,
 //     v13: LocalDate,
-//     v14: UUID,
+//     //v14: UUID,
 //     o1:  Option[String],
 //     o2:  Option[BigDecimal],
 //     o3:  Option[Boolean],
@@ -53,7 +53,7 @@
 //     o11: Option[Date],
 //     o12: Option[EncodingTestType],
 //     o13: Option[LocalDate],
-//     o14: Option[UUID],
+//     //o14: Option[UUID],
 //     o15: Option[Number]
 //   )
 
@@ -81,7 +81,7 @@
 //         new Date(31200000),
 //         EncodingTestType("s"),
 //         LocalDate.of(2013, 11, 23),
-//         UUID.randomUUID(),
+//         //UUID.randomUUID(),
 //         Some("s"),
 //         Some(BigDecimal(1.1)),
 //         Some(true),
@@ -95,7 +95,7 @@
 //         Some(new Date(31200000)),
 //         Some(EncodingTestType("s")),
 //         Some(LocalDate.of(2013, 11, 23)),
-//         Some(UUID.randomUUID()),
+//         //Some(UUID.randomUUID()),
 //         Some(Number("0"))
 //       ),
 //       EncodingTestEntity(
@@ -108,11 +108,11 @@
 //         0L,
 //         0F,
 //         0D,
-//         Array(),
+//         Array[Byte](), // In ProtoQuill, Dotty requires this to be typed
 //         new Date(0),
 //         EncodingTestType(""),
 //         LocalDate.ofEpochDay(0),
-//         UUID.randomUUID(),
+//         //UUID.randomUUID(),
 //         None,
 //         None,
 //         None,
@@ -126,7 +126,7 @@
 //         None,
 //         None,
 //         None,
-//         None,
+//         //None,
 //         None
 //       )
 //     )
@@ -148,7 +148,7 @@
 //         e1.v11 mustEqual e2.v11
 //         e1.v12 mustEqual e2.v12
 //         e1.v13 mustEqual e2.v13
-//         e1.v14 mustEqual e2.v14
+//         //e1.v14 mustEqual e2.v14
 
 //         e1.o1 mustEqual e2.o1
 //         e1.o2 mustEqual e2.o2
@@ -164,18 +164,21 @@
 //         e1.o11 mustEqual e2.o11
 //         e1.o12 mustEqual e2.o12
 //         e1.o13 mustEqual e2.o13
-//         e1.o14 mustEqual e2.o14
+//         //e1.o14 mustEqual e2.o14
 //         e1.o15 mustEqual e2.o15
 //     }
 //   }
 
 //   case class BarCode(description: String, uuid: Option[UUID] = None)
 
+//   case class BarCode2(description: Option[String], uuid: Option[UUID] = None)
+
 //   // No ReturningGenerated in Protoquill yet
 //   //val insertBarCode = quote((b: BarCode) => query[BarCode].insert(b).returningGenerated(_.uuid))
 //   val barCodeEntry = BarCode("returning UUID")
 
-//   def findBarCodeByUuid(uuid: UUID) = quote(query[BarCode].filter(_.uuid.forall(_ == lift(uuid))))
+//   //def findBarCodeByUuid(uuid: UUID) = quote(query[BarCode].filter(_.uuid.forall(_ == lift(uuid))))
+//   def findBarCodeByUuid(uuid: UUID) = quote(query[BarCode2].filter(_.description.forall(_ == lift(uuid.toString))))
 
 //   def verifyBarcode(barCode: BarCode) = barCode.description mustEqual "returning UUID"
 // }
