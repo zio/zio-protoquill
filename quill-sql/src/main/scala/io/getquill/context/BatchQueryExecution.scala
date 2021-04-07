@@ -38,20 +38,21 @@ import io.getquill.BatchAction
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.QuotationLotExpr._
 
-trait BatchContextOperation[T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
-  def execute(sql: String, prepare: List[PrepareRow], extractor: Option[ResultRow => T], executionType: ExecutionType): Res
+trait BatchContextOperation[T, A <: Action[_], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
+  def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], executionType: ExecutionType): Res
 }
 
 object BatchQueryExecution:
   class RunQuery[
     T: Type,
+    A <: Action[_]: Type,
     ResultRow: Type, 
     PrepareRow: Type, 
     D <: Idiom: Type, 
     N <: NamingStrategy: Type, 
     Res: Type
-  ](quoted: Expr[BatchAction[Action[T]]],
-    batchContextOperation: Expr[BatchContextOperation[T, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes) 
+  ](quoted: Expr[Quoted[BatchAction[A]]],
+    batchContextOperation: Expr[BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes) 
   extends Extractors:
     import quotes.reflect._
 
@@ -59,8 +60,14 @@ object BatchQueryExecution:
       QuotationLotExpr.Unquoted(UntypeExpr(quoted)) match
         case Uprootable(_, ast, _, _, queryLifts, _) => 
           queryLifts match
-            case List(PlanterExpr.Uprootable(EagerEntitiesPlanterExpr(uid, liftsIterator))) =>
-              ???
+            case List(PlanterExpr.Uprootable(expr @ EagerEntitiesPlanterExpr(uid, liftsIterator))) =>
+              
+              // Get the expression type
+              val exprType = expr.tpe
+              report.throwError(s"Got to BatchQueryExecutionPoint: ${expr}", quoted)
+
+              // Use expander of InjectMacro to expand out lifts to series of expressions?
+              // Put those into injectable planters?
 
             case _ =>
               report.throwError(s"Invalid liftQuery clause: ${queryLifts}. Must be a single EagerEntitiesPlanter", quoted)
@@ -72,23 +79,25 @@ object BatchQueryExecution:
 
   inline def apply[
     T, 
+    A <: Action[_],
     ResultRow, 
     PrepareRow, 
     D <: Idiom, 
     N <: NamingStrategy, 
     Res
-  ](inline quoted: BatchAction[Action[T]], ctx: BatchContextOperation[T, D, N, PrepareRow, ResultRow, Res]) = 
+  ](inline quoted: Quoted[BatchAction[A]], ctx: BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]) = 
     ${ applyImpl('quoted, 'ctx) }
   
   def applyImpl[
     T: Type,
+    A <: Action[_]: Type,
     ResultRow: Type,
     PrepareRow: Type, 
     D <: Idiom: Type, 
     N <: NamingStrategy: Type, 
     Res: Type
-  ](quoted: Expr[BatchAction[Action[T]]],
-    ctx: Expr[BatchContextOperation[T, D, N, PrepareRow, ResultRow, Res]])(using qctx: Quotes): Expr[Res] =
-    new RunQuery[T, ResultRow, PrepareRow, D, N, Res](quoted, ctx).apply()
+  ](quoted: Expr[Quoted[BatchAction[A]]],
+    ctx: Expr[BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]])(using qctx: Quotes): Expr[Res] =
+    new RunQuery[T, A, ResultRow, PrepareRow, D, N, Res](quoted, ctx).apply()
 
 end BatchQueryExecution

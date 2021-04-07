@@ -66,6 +66,7 @@ trait ProtoContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.Nam
 
   def executeQuery[T](sql: String, prepare: Prepare, extractor: Extractor[T])(executionType: ExecutionType, dc: DatasourceContext): Result[RunQueryResult[T]]
   def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionResult]
+  def executeBatchAction(groups: List[BatchGroup])(executionType: ExecutionType, dc: DatasourceContext): Result[RunBatchActionResult]
 
   // Cannot implement 'run' here because it's parameter needs to be inline, and we can't override a non-inline parameter with an inline one
 }
@@ -137,6 +138,18 @@ with Closeable
         self.executeAction(sql, prepare)(executionType, runContext)
     }
     QueryExecution.apply(QuotedOperation.ActionOp(quoted), ca)
+  }
+
+  @targetName("runBatchAction")
+  inline def run[T, A <: Action[_]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
+    val ca = new BatchContextOperation[T, A, Dialect, Naming, PrepareRow, ResultRow, Result[RunBatchActionResult]](self.idiom, self.naming) {
+      def execute(sql: String, prepares: List[PrepareRow => (List[Any], PrepareRow)], executionType: ExecutionType) =
+        val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
+        // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
+        val group = BatchGroup(sql, prepares)
+        self.executeBatchAction(List(group))(executionType, runContext)
+    }
+    BatchQueryExecution.apply(quoted, ca)
   }
 
   protected def handleSingleResult[T](list: List[T]) =

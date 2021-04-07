@@ -48,11 +48,17 @@ case class EagerPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T
   def plant(using Quotes): Expr[EagerPlanter[T, PrepareRow]] =
     '{ EagerPlanter[T, PrepareRow]($expr, $encoder, ${Expr(uid)}) }
 
+case class InjectableEagerPlanterExpr[T: Type, PrepareRow: Type](uid: String, inject: Expr[Any => T], encoder: Expr[GenericEncoder[T, PrepareRow]]) extends PlanterExpr[T, PrepareRow]:
+  def plant(using Quotes): Expr[InjectableEagerPlanter[T, PrepareRow]] =
+    '{ InjectableEagerPlanter[T, PrepareRow]($inject, $encoder, ${Expr(uid)}) }
+  def inject(injectee: Expr[Any])(using Quotes): Expr[EagerPlanter[T, PrepareRow]] =
+    '{ EagerPlanter[T, PrepareRow]($inject($injectee), $encoder, ${Expr(uid)}) }
+
 case class LazyPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T]) extends PlanterExpr[T, PrepareRow]:
   def plant(using Quotes): Expr[LazyPlanter[T, PrepareRow]] =
     '{ LazyPlanter[T, PrepareRow]($expr, ${Expr(uid)}) }
 
-case class EagerEntitiesPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[Iterable[T]])(using Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow]:
+case class EagerEntitiesPlanterExpr[T, PrepareRow: Type](uid: String, expr: Expr[Iterable[T]])(using val tpe: Type[T], queryTpe: Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow]:
   def plant(using Quotes): Expr[EagerEntitiesPlanter[T, PrepareRow]] =
     '{ EagerEntitiesPlanter[T, PrepareRow]($expr, ${Expr(uid)}) }
 
@@ -68,6 +74,8 @@ object PlanterExpr {
       UntypeExpr(expr) match {
         case '{ EagerPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } =>
           Some(EagerPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
+        case '{ InjectableEagerPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } =>
+          Some(InjectableEagerPlanterExpr[qt, prep](uid, liftValue, encoder))
         case '{ LazyPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } =>
           Some(LazyPlanterExpr[qt, prep](uid, liftValue).asInstanceOf[PlanterExpr[_, _]])
         case '{ EagerEntitiesPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } =>
