@@ -16,6 +16,7 @@ import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.util.Try
 import io.getquill.context.ExecutionType
+import io.getquill.context.DatasourceContextInjection
 
 abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteConnection](val idiom: D, val naming: N, pool: ConnectionPool[C])
   extends JAsyncContextBase[D, N]
@@ -23,6 +24,8 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
 {
 
   private val logger = ContextLogger(classOf[JAsyncContext[_, _, _]])
+
+  override type DatasourceContextBehavior = DatasourceContextInjection.Implicit
 
   // Need to define this in ProtoQuill so can pass implicit contexts
   override type DatasourceContext = ExecutionContext

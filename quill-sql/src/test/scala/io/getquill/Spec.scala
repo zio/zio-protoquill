@@ -16,7 +16,7 @@ import io.getquill.Query
 import io.getquill._
 import io.getquill.Dsl._
 
-abstract class Spec extends AnyFreeSpec with Matchers /* with BeforeAndAfterAll */ {
+abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   
   extension [T](m: MirrorContext[_, _]#ActionMirror)
     def triple = 

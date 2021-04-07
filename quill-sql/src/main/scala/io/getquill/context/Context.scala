@@ -70,12 +70,24 @@ trait ProtoContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.Nam
   // Cannot implement 'run' here because it's parameter needs to be inline, and we can't override a non-inline parameter with an inline one
 }
 
+
+sealed trait DatasourceContextInjection
+object DatasourceContextInjection {
+  sealed trait Implicit extends DatasourceContextInjection
+  object Implicit extends Implicit
+  sealed trait Member extends DatasourceContextInjection
+  object Member extends Member
+}
+
+
 // TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
 trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy]
 extends ProtoContext[Dialect, Naming]
 with EncodingDsl 
 with Closeable
 { self =>
+
+  type DatasourceContextBehavior <: DatasourceContextInjection
 
   implicit inline def autoDecoder[T]: BaseDecoder[T] = GenericDecoder.generic
 
@@ -94,8 +106,7 @@ with Closeable
       q.filter(p => MapFlicer[T, PrepareRow](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
   }
 
-  // TODO Should not need this member on this level. Get rid of it?
-  def context: DatasourceContext
+  protected def context: DatasourceContext = fail(s"DatasourceContext method not implemented for '${this.getClass}' Context")
 
   import scala.annotation.targetName
 
@@ -111,7 +122,8 @@ with Closeable
             case Some(e) => e
             case None => throw new IllegalArgumentException("Extractor required")
 
-        self.executeQuery(sql, prepare, extractor)(executionType, context)
+        val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
+        self.executeQuery(sql, prepare, extractor)(executionType, runContext)
     }
     // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
     QueryExecution.apply(QuotedOperation.QueryOp(quoted), ca)
@@ -121,7 +133,8 @@ with Closeable
   inline def run[T](inline quoted: Quoted[Action[T]]): Result[RunActionResult] = {
     val ca = new ContextOperation[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunActionResult]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractorOpt: Option[ResultRow => T], executionType: ExecutionType) =
-        self.executeAction(sql, prepare)(executionType, context)
+        val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
+        self.executeAction(sql, prepare)(executionType, runContext)
     }
     QueryExecution.apply(QuotedOperation.ActionOp(quoted), ca)
   }

@@ -8,7 +8,7 @@ lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
 )
 
 lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-jasync` //, `quill-jasync-postgres`
+  `quill-jasync`, `quill-jasync-postgres`
 )
 
 lazy val allModules =

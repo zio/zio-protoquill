@@ -30,7 +30,7 @@ with MirrorDecoders with MirrorEncoders { self =>
   override type RunActionReturningResult[T] = ActionReturningMirror[T]
 
   override type DatasourceContext = Unit
-  def context: DatasourceContext = ()
+  override def context: DatasourceContext = ()
 
   // TODO Not needed, get rid of this
   implicit val d: Dummy = DummyInst
