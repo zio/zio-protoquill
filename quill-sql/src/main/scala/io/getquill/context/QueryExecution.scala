@@ -137,9 +137,10 @@ object QueryExecution:
       
       val expandedAstQuote = '{ $quote.copy(ast = $expandedAst) }
 
+      // TODO Allow passing in a starting index here?
       // Move this prepare down into RunDynamicExecution since need to use ReifyStatement to know what lifts to call when?
       val extractor = extract match
-        case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(1, r)) ) }
+        case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
         case ExtractBehavior.Skip =>    '{ None }
 
       // TODO What about when an extractor is not neededX
@@ -177,7 +178,8 @@ object QueryExecution:
       // and the extractor to read out the results (e.g. ResultSet)
       val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($lifts, row) }
       val extractor = extract match
-        case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(1, r)) ) }
+        // TODO Allow passing in a starting index here?
+        case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
         case ExtractBehavior.Skip =>    '{ None }
       // Plug in the components and execute
       '{ $ContextOperation.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
