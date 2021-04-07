@@ -22,7 +22,7 @@ trait Encoders extends EncodingDsl {
 
   private val dateTimeZone = TimeZone.getDefault
 
-  case class JdbcEncoder[T](sqlType: Int, encoder: EncoderMethod[T]) extends ContextEncoder[T] {
+  case class JdbcEncoder[T](sqlType: Int, encoder: EncoderMethod[T]) extends BaseEncoder[T] {
     override def apply(index: Index, value: T, row: PrepareRow) =
       encoder(index + 1, value, row)
   }
@@ -36,7 +36,7 @@ trait Encoders extends EncodingDsl {
   def encoder[T](sqlType: Int, f: PrepareRow => (Index, T) => Unit): Encoder[T] =
     encoder(sqlType, (index: Index, value: T, row: PrepareRow) => f(row)(index, value))
 
-  implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], e: Encoder[O]): Encoder[I] =
+  override implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], e: Encoder[O]): Encoder[I] =
     JdbcEncoder(e.sqlType, mappedBaseEncoder(mapped, e.encoder))
 
   private[this] val nullEncoder: Encoder[Int] = encoder(Types.INTEGER, _.setNull)

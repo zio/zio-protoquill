@@ -19,7 +19,7 @@ trait Decoders {
   // type Index = Int (Defined in JdbcRunContext)
   type Decoder[T] = JdbcDecoder[T]
 
-  case class JdbcDecoder[T](decoder: DecoderMethod[T]) extends ContextDecoder[T] {
+  case class JdbcDecoder[T](decoder: DecoderMethod[T]) extends BaseDecoder[T] {
     def apply(index: Index, row: ResultRow) =
       decoder(index + 1, row)
   }

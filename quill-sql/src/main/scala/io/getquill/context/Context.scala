@@ -75,7 +75,7 @@ extends ProtoContext[Dialect, Naming]
 with EncodingDsl //  with Closeable
 { self =>
 
-  implicit inline def autoDecoder[T]: ContextDecoder[T] = GenericDecoder.generic
+  implicit inline def autoDecoder[T]: BaseDecoder[T] = GenericDecoder.generic
 
   //def probe(statement: String): Try[_]
   // todo add 'prepare' i.e. encoders here

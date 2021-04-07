@@ -11,14 +11,14 @@ trait MirrorEncoders extends EncodingDsl {
   override type ResultRow = Row
   type Encoder[T] = MirrorEncoder[T]
 
-  case class MirrorEncoder[T](encoder: EncoderMethod[T]) extends ContextEncoder[T] {
+  case class MirrorEncoder[T](encoder: EncoderMethod[T]) extends BaseEncoder[T] {
     override def apply(index: Int, value: T, row: PrepareRow) =
       encoder(index, value, row)
   }
 
   def encoder[T]: MirrorEncoder[T] = MirrorEncoder((index: Int, value: T, row: PrepareRow) => row.add(value))
 
-  implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], e: ContextEncoder[O]): ContextEncoder[I] =
+  implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], e: Encoder[O]): Encoder[I] =
      MirrorEncoder((index: Int, value: I, row: PrepareRow) => e(index, mapped.f(value), row))
 
   implicit def optionEncoder[T](implicit d: Encoder[T]): Encoder[Option[T]] =
