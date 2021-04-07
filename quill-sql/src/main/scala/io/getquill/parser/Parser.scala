@@ -307,17 +307,14 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 
   def del: PartialFunction[Expr[_], Ast] = {
     case '{ type t; ($query: EntityQueryModel[`t`]).insert(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-      println("****************** Insert Parsed Here ***********")
       val insertAssignments = first.asTerm +: others.map(_.asTerm)
       val assignments = insertAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
       Insert(astParse(query), assignments.toList)
     case '{ type t; ($query: EntityQueryModel[`t`]).update(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-      println("****************** Update Parsed Here ***********")
       val updateAssignments = first.asTerm +: others.map(_.asTerm)
       val assignments = updateAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
       Update(astParse(query), assignments.toList)
     case '{ type t; ($query: EntityQueryModel[`t`]).delete } =>
-      println("****************** Delete Parsed Here ***********")
       Delete(astParse(query))
 
     // case Unseal(Update) =>
@@ -571,7 +568,6 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
     //+
     case NamedOp1(left, "+", right) if is[String](left) || is[String](right) =>
-      Console.println("String addition found");
       BinaryOperation(astParse(left), StringOperator.+, astParse(right))
 
     //toString
@@ -579,27 +575,22 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
     //toUpperCase
     case '{ ($str:String).toUpperCase } =>
-      Console.println("String to uppercase found")
       UnaryOperation(StringOperator.toUpperCase, astParse(str))
 
     //toLowerCase
     case '{ ($str:String).toLowerCase } =>
-      Console.println("String to lowercase found")
       UnaryOperation(StringOperator.toLowerCase, astParse(str))
 
     //toLong
     case '{ ($str:String).toLong } =>
-      Console.println("String toLong found")
       UnaryOperation(StringOperator.toLong, astParse(str))
 
     //startsWith
     case '{ ($left:String).startsWith($right) } =>
-      Console.println("String startsWith found")
       BinaryOperation(astParse(left), StringOperator.startsWith, astParse(right))
 
     //split
     case '{ ($left:String).split($right:String) } =>
-      //Console.println("String split found")
       BinaryOperation(astParse(left), StringOperator.split, astParse(right))
     
 
@@ -613,7 +604,6 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     // Apply(Select(Lit(1), +), Lit(1))
     // Expr[_] => BinaryOperation
     case NumericOperation(binaryOperation) =>
-      Console.println("Numeric Operation");
       binaryOperation
   }
 

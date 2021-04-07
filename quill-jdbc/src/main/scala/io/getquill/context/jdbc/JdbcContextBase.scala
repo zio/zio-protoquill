@@ -43,7 +43,7 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   override type Session = Connection
 
   override type DatasourceContext = Unit
-  def context: DatasourceContext = ()
+  override def context: DatasourceContext = ()
 
   protected val effect: ContextEffect[Result]
   import effect._

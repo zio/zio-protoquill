@@ -13,12 +13,11 @@ object DatasourceContextInjectionMacro {
     if (dciType <:< TypeRepr.of[DatasourceContextInjection.Implicit])
       Expr.summon[DatasourceContext] match
         case Some(dc) => 
-          println(s"============ Using Summoned DataSource from context =========")
+          //println(s"============ Using Summoned DataSource from context =========")
           dc
         case None =>
           report.throwError(s"Cannot find implicit data-source '${Printer.TypeReprCode.show(TypeRepr.of[DatasourceContext])}'")
     else {
-      println(s"============ Using Member DataSource from context =========")
       memberDc
     }
   }

@@ -56,7 +56,7 @@ abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
       finally conn.close()
     }
 
-  def close() = dataSource.close()
+  override def close() = dataSource.close()
 
   def probe(sql: String) =
     Try {
