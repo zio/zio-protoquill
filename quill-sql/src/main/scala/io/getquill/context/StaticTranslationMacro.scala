@@ -161,7 +161,7 @@ object StaticTranslationMacro {
         (queryString, externals) <- processAst[T](quotedExpr.ast, idiom, naming).errPrint("Could not process the ASt")
         encodedLifts             <- processLifts(quotedExpr.lifts, externals).errPrint("Could not process the lifts")
       } yield {
-        println(
+        report.info(
           "Compile Time Query Is: " + 
             (if (System.getProperty("quill.macro.log.pretty", "false") == "true") idiom.format(queryString)
             else queryString)
