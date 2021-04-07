@@ -4,7 +4,7 @@ import scala.quoted._
 
 object DatasourceContextInjectionMacro {
   // If the datasource context is supposed to be injected do that, otherwise pull it in as a variable
-  inline def apply[DCI <: DatasourceContextInjection, DatasourceContext, Ctx](memberDc: DatasourceContext): DatasourceContext =
+  inline def apply[DCI <: DatasourceContextInjection, DatasourceContext, Ctx](inline memberDc: DatasourceContext): DatasourceContext =
     ${ applyImpl[DCI, DatasourceContext, Ctx]('memberDc) }
   
   def applyImpl[DCI <: DatasourceContextInjection: Type, DatasourceContext: Type, Ctx: Type](memberDc: Expr[DatasourceContext])(using quotes: Quotes): Expr[DatasourceContext] = {
@@ -17,9 +17,10 @@ object DatasourceContextInjectionMacro {
           dc
         case None =>
           report.throwError(s"Cannot find implicit data-source '${Printer.TypeReprCode.show(TypeRepr.of[DatasourceContext])}'")
-    else
+    else {
       println(s"============ Using Member DataSource from context =========")
       memberDc
+    }
   }
 }
 

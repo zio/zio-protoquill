@@ -77,7 +77,7 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
   //   }
 
   // TODO Remove from all contexts
-  override def context: DatasourceContext = ???
+  override def context: DatasourceContext = throw new IllegalStateException("DatasourceContext (ExecutionContext) of JAsyncContext is summoned implicitly, the member is unused.")
 
   def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionType: ExecutionType, dc: ExecutionContext): Future[List[T]] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in

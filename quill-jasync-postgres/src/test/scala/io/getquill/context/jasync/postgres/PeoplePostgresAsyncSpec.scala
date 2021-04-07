@@ -9,17 +9,49 @@ class PeoplePostgresAsyncSpec extends PeopleSpec {
   val context = testContext
   import testContext._
 
-  override def beforeAll() =
+  // override def beforeAll() =
+  //   await {
+  //     testContext.transaction { implicit ec =>
+  //       for {
+  //         _ <- testContext.run(query[Couple].delete)
+  //         _ <- testContext.run(query[Person].filter(_.age > 0).delete)
+  //         //_ <- testContext.run(liftQuery(peopleEntries).foreach(e => peopleInsert(e)))
+  //         //_ <- testContext.run(liftQuery(couplesEntries).foreach(e => couplesInsert(e)))
+  //       } yield {}
+  //     }
+  //   }
+
+  import scala.util.Try
+  import scala.util.Success
+
+  "FooTest" in {
     await {
       testContext.transaction { implicit ec =>
         for {
           _ <- testContext.run(query[Couple].delete)
-          _ <- testContext.run(query[Person].filter(_.age > 0).delete)
-          //_ <- testContext.run(liftQuery(peopleEntries).foreach(e => peopleInsert(e)))
-          //_ <- testContext.run(liftQuery(couplesEntries).foreach(e => couplesInsert(e)))
-        } yield {}
+          _ <- testContext.run(query[Person].delete)
+        } yield {}  
       }
     }
+    Try {
+      await {
+        testContext.transaction { implicit ec =>
+          for {
+            _ <- testContext.run(query[Couple].insert(lift(Couple("Alex", "Bert"))))
+            _ <- scala.concurrent.Future { throw new RuntimeException("Blahblahblah") }
+            _ <- testContext.run(query[Person].insert(lift(Person("Alex", 60))))
+            //_ <- testContext.run(liftQuery(peopleEntries).foreach(e => peopleInsert(e)))
+            //_ <- testContext.run(liftQuery(couplesEntries).foreach(e => couplesInsert(e)))
+          } yield {}
+        }
+      }
+    } match {
+      case Success(value) => fail("Query with failure should not succeed")
+      case _ => println("Expected failure reached")
+    }
+    await(testContext.run(query[Couple])) mustEqual List()
+    await(testContext.run(query[Person])) mustEqual List()
+  }
 
   // "Example 1 - differences" in {
   //   await(testContext.run(`Ex 1 differences`)) mustEqual `Ex 1 expected result`
