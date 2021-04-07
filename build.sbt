@@ -7,12 +7,12 @@ lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-jdbc`
 )
 
-// lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-//   `quill-jasync`
-// )
+lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
+  `quill-jasync` //, `quill-jasync-postgres`
+)
 
 lazy val allModules =
-  baseModules ++ dbModules
+  baseModules ++ dbModules ++ jasyncModules
 
 val filteredModules = {
   allModules
@@ -58,10 +58,32 @@ lazy val `quill-sql` =
 lazy val `quill-jdbc` =
   (project in file("quill-jdbc"))
     .settings(commonSettings: _*)
-    //.settings(mimaSettings: _*)
     .settings(jdbcTestingSettings: _*)
     .dependsOn(`quill-sql` % "compile->compile;test->test")
 
+lazy val `quill-jasync` =
+  (project in file("quill-jasync"))
+    .settings(commonSettings: _*)
+    .settings(
+      fork in Test := true,
+      libraryDependencies ++= Seq(
+        "com.github.jasync-sql" % "jasync-common" % "1.1.4",
+        ("org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1").withDottyCompat(scalaVersion.value)
+      )
+    )
+    .dependsOn(`quill-sql` % "compile->compile;test->test")
+
+lazy val `quill-jasync-postgres` =
+  (project in file("quill-jasync-postgres"))
+    .settings(commonSettings: _*)
+    .settings(
+      fork in Test := true,
+      libraryDependencies ++= Seq(
+        "com.github.jasync-sql" % "jasync-postgresql" % "1.1.4"
+      )
+    )
+    .dependsOn(`quill-jasync` % "compile->compile;test->test")
+    
 // Include scalafmt formatter for pretty printing failed queries
 val includeFormatter =
   sys.props.getOrElse("formatScala", "false").toBoolean

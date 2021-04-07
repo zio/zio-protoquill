@@ -40,3 +40,5 @@ project/.bloop/
 .DS_Store
 .vscode
 .scalafmt.conf
+project/metals.sbt
+project/project/

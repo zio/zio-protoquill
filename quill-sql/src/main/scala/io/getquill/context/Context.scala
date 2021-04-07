@@ -27,6 +27,7 @@ import io.getquill.Query
 import QueryExecution.QuotedOperation
 import io.getquill.metaprog.etc.MapFlicer
 import io.getquill.util.Messages.fail
+import java.io.Closeable
 
 import io.getquill._
 
@@ -72,7 +73,8 @@ trait ProtoContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.Nam
 // TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
 trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy]
 extends ProtoContext[Dialect, Naming]
-with EncodingDsl //  with Closeable
+with EncodingDsl 
+with Closeable
 { self =>
 
   implicit inline def autoDecoder[T]: BaseDecoder[T] = GenericDecoder.generic
@@ -129,4 +131,7 @@ with EncodingDsl //  with Closeable
       case value :: Nil => value
       case other        => fail(s"Expected a single result but got $other")
     }
+
+  // Can close context. Does nothing by default.
+  def close(): Unit = ()
 }
