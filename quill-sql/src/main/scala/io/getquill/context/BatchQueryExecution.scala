@@ -38,6 +38,7 @@ import io.getquill.BatchAction
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.QuotationLotExpr._
 import io.getquill.util.Format
+import io.getquill.context.LiftMacro
 
 trait BatchContextOperation[T, A <: Action[_], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], executionType: ExecutionType): Res
@@ -62,18 +63,26 @@ object BatchQueryExecution:
         case QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), planters) =>
           planters match
             case List(planterModel @ EagerEntitiesPlanterExpr(_, iterableExpr)) =>
+
+              println("========================== HERE ==========================")
+              println( Format.Expr(quoted) )
               
               // Get the expression type
               val exprType = 
                 planterModel.tpe match
                   case '[tt] => TypeRepr.of[tt]
               
-              ???
+              val (ast, lifts) = LiftMacro.liftInjectedProduct[T, PrepareRow]
+              //val insertQuery = 
+
+              // synthesize a runnable query and get it's static state (for batch queries it must exist, I don't see how I could be dynamic)
+              // inject the lifts and return the query
 
               //report.throwError(s"Got to BatchQueryExecutionPoint: ${Format.Expr(iterableExpr)}, type: ${Format.Type(planterModel.tpe)}", quoted)
 
               // Use expander of InjectMacro to expand out lifts to series of expressions?
               // Put those into injectable planters?
+              ???
 
             case _ =>
               report.throwError(s"Invalid liftQuery clause: ${planters}. Must be a single EagerEntitiesPlanter", quoted)

@@ -40,6 +40,13 @@ private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) exte
     elaborations.map((expr, name) => (flattenOptions(expr), name))
   }
 
+
+  // Optimization IDEA pass in List[Term] that represents a unique path as opposed to a full recursive traversal
+  // that way, in ElaborateStructure.liftInjectedProductComponents we can pre-compute the flattened path
+  // of the nodes (to the flattened product elements) and just pass the different paths down
+  // into here. Each one will then only produce one path from (entity: T) to T's flattened sub-child
+  // instead of having to compute all sub-children for T and then choose one based on the index
+
   // Note: Not sure if always appending name + childName is right to do. When looking
   // up fields by name with sub-sub Embedded things going to need to look into that
   private[getquill] def elaborateObjectRecurse(node: Term, expr: Expr[_], topLevel: Boolean = false): List[(Expr[_], String)] = {

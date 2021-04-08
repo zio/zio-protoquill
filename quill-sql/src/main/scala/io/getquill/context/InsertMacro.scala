@@ -91,14 +91,14 @@ object InsertMacro {
 
   /** 
    * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
-   * statement is based. The schema is based on the EntityQuery which could potentially be an unquoted SchemaMeta.
+   * statement is based. The schema is based on the EntityQuery which could potentially be an unquoted QuerySchema.
    */
-  class Pipeline[T: Type, Parser <: ParserFactory: Type](schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T])(using override val qctx: Quotes) extends Extractors with QuatMaking with QuatMakingBase(using qctx):
+  class Pipeline[T: Type, Parser <: ParserFactory: Type](using override val qctx: Quotes) extends Extractors with QuatMaking with QuatMakingBase(using qctx):
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
 
 
-    object InserteeSchema:
+    case class InserteeSchema(schemaRaw: Expr[EntityQuery[T]]):
       private def plainEntity: Entity =
         val entityName = TypeRepr.of[T].classSymbol.get.name
         Entity(entityName, List(), InferQuat.of[T].probit)
@@ -111,6 +111,9 @@ object InsertMacro {
           case '{ EntityQuery[t] } => SummonState.Static(plainEntity)
           // Case 2: querySchema[Person](...).insert(...)
           // there are query schemas involved i.e. the {querySchema[Person]} part is a QuotationLotExpr.Unquoted that has been spliced in
+          // also if there is an implicit/given schemaMeta this case will be hit (because if there is a schemaMeta,
+          // the query macro would have spliced it into the code already).
+          // TODO when using querySchema directly this doesn't work. Need to test that out and make it work
           case QuotationLotExpr.Unquoted(unquotation) => 
             unquotation match
               // The {querySchema[Person]} part is static (i.e. fully known at compile-time)
@@ -128,7 +131,7 @@ object InsertMacro {
               // TODO Make an option to ignore dynamic entity schemas and return the plain entity?
               //println("WARNING: Only inline schema-metas are supported for insertions so far. Falling back to a plain entity.")
               //plainEntity
-
+    end InserteeSchema
     
     object IgnoredColumns:
       def summon: SummonState[Set[Ast]] =
@@ -254,9 +257,8 @@ object InsertMacro {
       //   case astIdent: Ident => List()
       // val assignmentsOfEntity = deduceAssignments()
 
-    def apply() = createQuotation(inserteeRaw.asTerm.underlyingArgument.asExpr)
-
-    def createQuotation(insertee: Expr[Any]) = {
+    def apply(schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T]) = {
+      val insertee = inserteeRaw.asTerm.underlyingArgument.asExpr
       val assignmentOfEntity =
         parseInsertee(insertee) match
           // if it is a CaseClass we either have a static thing e.g. query[Person].insert(Person("Joe", 123)) 
@@ -265,14 +267,10 @@ object InsertMacro {
           case astCaseClass: CaseClass => deduceAssignmentsFrom(astCaseClass)
           // if it is a Ident, then we know we have a batch query i.e. liftQuery(people).foreach(p => query[Person].insert(p))
           // we want to re-syntheize this as a lifted thing i.e. liftQuery(people).foreach(p => query[Person].insert(lift(p)))
-          // and then reprocess the contents. We also want the lifts to be InjecatbleEagerLifts since for a batch the actual
-          // entity needs to be inject from the iterable in liftQuery(iterable)
+          // and then reprocess the contents. 
+          // We don't want to do that here thought because we don't have the PrepareRow
+          // so we can't lift content here into planters. Instead this is done in the BatchQueryExecution pipeline
           case astIdent: Ident => List()
-
-      //println("******************* TOP OF APPLY **************")
-      // Processed Assignments AST plus any lifts that may have come from the assignments AST themsevles.
-      // That is usually the case when 
-      val assignmentsAst = processAssignmentsAndExclusions(assignmentOfEntity)
 
       // Insertion could have lifts and quotes inside, need to extract those. 
       // E.g. it can be 'query[Person].insert(lift(Person("Joe",123)))'' which becomes Quoted(CaseClass(name -> lift(x), age -> lift(y), List(ScalarLift("Joe", x), ScalarLift(123, y)), Nil).
@@ -280,10 +278,26 @@ object InsertMacro {
       // However, the insertee itself must always be available statically (i.e. it must be a Uprootable Quotation)
       val (lifts, pluckedUnquotes) = ExtractLifts(inserteeRaw)
 
-      // TODO If implicit insert meta, need to detect it and use it instead (i.e. with exclusions)
-      // TODO if there is a schemaMeta need to use that to create the entity
+      createQuotation(
+        InserteeSchema(schemaRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]).summon, 
+        assignmentOfEntity, lifts, pluckedUnquotes
+      )
+    }
+
+    // use in BatchQueryExecution
+    def createFromPremade(entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]]) =
+      val assignments = deduceAssignmentsFrom(caseClass)
+      createQuotation(SummonState.Static(entity), assignments, lifts, List())
+
+    def createQuotation(summonState: SummonState[Entity], assignmentOfEntity: List[Assignment], lifts: List[Expr[Planter[?, ?]]], pluckedUnquotes: List[Expr[QuotationVase]]) = {
+      //println("******************* TOP OF APPLY **************")
+      // Processed Assignments AST plus any lifts that may have come from the assignments AST themsevles.
+      // That is usually the case when 
+      val assignmentsAst = processAssignmentsAndExclusions(assignmentOfEntity)
+
+      // TODO where if there is a schemaMeta? Need to use that to create the entity
       val unquotation =
-        InserteeSchema.summon match
+        summonState match
           // If we can get a static entity back
           case SummonState.Static(entity) =>
             // Lift it into an `Insert` ast, put that into a `quotation`, then return that `quotation.unquote` i.e. ready to splice into the quotation from which this `.insert` macro has been called
@@ -316,7 +330,10 @@ object InsertMacro {
   end Pipeline
   
   def apply[T: Type, Parser <: ParserFactory: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[Insert[T]] =
-    new Pipeline(entityRaw, bodyRaw).apply()
+    new Pipeline().apply(entityRaw, bodyRaw)
+
+  //def createFromPremade[T: Type, Parser <: ParserFactory: Type](caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]])(using Quotes) = 
+  //  new Pipeline(entityRaw, bodyRaw).createFromPremade(caseClass, lifts)
 
 }
 

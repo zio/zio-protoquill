@@ -79,7 +79,7 @@ object LiftMacro {
     }
 
   // TODO Injected => Injectable
-  private[getquill] def liftInjectedProduct[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]) = {
+  private[getquill] def liftInjectedProduct[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): (Ast, List[Expr[InjectableEagerPlanter[_, PrepareRow]]]) = {
     import qctx.reflect._
     val (caseClassAstInitial, liftsInitial) = liftInjectedProductComponents[T, PrepareRow]
     val TaggedLiftedCaseClass(caseClassAst, lifts) = TaggedLiftedCaseClass(caseClassAstInitial, liftsInitial).reKeyWithUids()
@@ -126,6 +126,10 @@ object LiftMacro {
     // the runtime code inefficient and could run into java's method limit size
     // A true optimization would be to actually produce the whole method once and then parse the body
     // pulling out all the needed content. This is currently out of scope but may be needed at some point
+
+    // One relatively optimization I have wrote about next to DeconstructElaborateEntity.elaborateObjectRecurse
+    // where we could pre-compute the list of flattened paths in advance and just follow the path of a particular
+    // sub-path of entity:T down to the children.
     def liftCombo(index: Int) =
       '{ (entity: T) => ${
         val lifts = ElaborateStructure.liftsOfProductValue[T](elaborated, 'entity)
