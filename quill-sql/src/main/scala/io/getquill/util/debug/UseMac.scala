@@ -14,11 +14,11 @@ object UseMac {
     //inline def q = liftQuery(l).foreach(p => query[Person].insert(p))
     import io.getquill.context.LiftMacro
 
-    inline def content = LiftMacro.liftInjectedProductExtern[Person, Int]
+    inline def content = LiftMacro.liftInjectedProductExternal[Person, Int]
     PrintMac(content)
 
-    val list = LiftMacro.liftInjectedProductExtern[Person, Int]
-    println( list.map(elem => elem(Person("Joe", 123))) )
+    val list = LiftMacro.liftInjectedProductExternal[Person, Int]
+    println( list.map(elem => (elem._1, elem._2.apply(Person("Joe", 123)))) )
 
     //PrintMac(q) //hellooooooooooooooooooooooooooo
     //println( run(q) )
