@@ -67,8 +67,10 @@ object BatchQueryExecution:
               val exprType = 
                 planterModel.tpe match
                   case '[tt] => TypeRepr.of[tt]
+              
+              ???
 
-              report.throwError(s"Got to BatchQueryExecutionPoint: ${Format.Expr(iterableExpr)}, type: ${Format.Type(planterModel.tpe)}", quoted)
+              //report.throwError(s"Got to BatchQueryExecutionPoint: ${Format.Expr(iterableExpr)}, type: ${Format.Type(planterModel.tpe)}", quoted)
 
               // Use expander of InjectMacro to expand out lifts to series of expressions?
               // Put those into injectable planters?

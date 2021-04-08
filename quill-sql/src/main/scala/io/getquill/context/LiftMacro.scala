@@ -67,6 +67,39 @@ object LiftMacro {
         '{ $liftPlanter.unquote }
   }
 
+  private[getquill] def liftInjectedProduct[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[CaseClassLift[T]] = {
+    import qctx.reflect._
+    import scala.quoted._
+
+    // Get the elaboration and AST once so that it will not have to be parsed out of the liftedCombo (since they are normally returned by ElaborateStructure.ofProductValue)
+    val elaborated = ElaborateStructure.elaborationOfProductValue[T]
+    val (_, caseClassAst) = ElaborateStructure.productValueToAst[T](elaborated)
+
+    // Need to parse lifts out of a lambda method and then isolate the clauses later. Need to do it like this
+    // instead of just making a fake-variable because doing the latter would violate phase-consistency (i.e. since we would)
+    // be using a variable in a phase that does not actually exists
+    val liftedCombo =
+      '{ (entity: T) => ${
+        val lifts = ElaborateStructure.liftsOfProductValue[T](elaborated, 'entity)
+        val liftsExprs = lifts.map((caseClass, liftValue) => { (Expr(caseClass), liftValue) } )
+        val liftsAndNamesExprs = Expr.ofList(liftsExprs.map((caseClassExpr, liftValueExpr) => '{ ($caseClassExpr, $liftValueExpr) } ))
+        liftsAndNamesExprs
+      } }
+    
+    // val liftPlanters = 
+    //   lifts.map(
+    //     (liftKey, lift) => 
+    //       // since we don't have an implicit Type for every single lift, we need to pull out each of their TypeReprs convert them to Type and manually pass them in
+    //       // Also need to widen the type otherwise for some value v=Person(name: String) the type will be TermRef(TermRef(NoPrefix,val v),val name) as oppsoed to 'String'
+    //       val liftType = lift.asTerm.tpe.widen.asType
+    //       liftType match {
+    //         case '[liftT] =>
+    //           liftValue[liftT, PrepareRow](lift.asExprOf[liftT], liftKey) // Note: if want to get this to work, try doing 'summon[Type[liftT]]' (using liftType, prepareRowTpe, quotes)
+    //       }
+    //   )
+    ???
+  }
+
   
   private[getquill] def liftProduct[T, PrepareRow](productEntity: Expr[T])(using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[CaseClassLift[T]] = {
     import qctx.reflect._

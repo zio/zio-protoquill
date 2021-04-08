@@ -171,8 +171,7 @@ object InsertMacro {
      * For batch queries liftQuery(people).foreach(p => query[Person].insert(p))
      * it will be just the ast Ident("p")
      */
-    def parseInsertee(): CaseClass | Ident = {
-      val insertee = inserteeRaw.asTerm.underlyingArgument.asExpr
+    def parseInsertee(insertee: Expr[Any]): CaseClass | Ident = {
       insertee match
         // The case: query[Person].insert(lift(Person("Joe", "Bloggs")))
         case QuotationLotExpr(exprType) =>
@@ -221,17 +220,11 @@ object InsertMacro {
       assignmentsAst
     }
 
-    def deduceAssignments() =
-      parseInsertee() match
-        case astCaseClass: CaseClass => deduceAssignmentsFrom(astCaseClass)
-        case astIdent: Ident => List()
-
     /** 
      * Get assignments from an entity and then either exclude or include them
      * either statically or dynamically.
      */
-    def processAssignmentExclusions(): Expr[List[io.getquill.ast.Assignment]] =
-      val assignmentsOfEntity = deduceAssignments()
+    def processAssignmentsAndExclusions(assignmentsOfEntity: List[io.getquill.ast.Assignment]): Expr[List[io.getquill.ast.Assignment]] =
       IgnoredColumns.summon match
         // If we have assignment-exclusions during compile time
         case SummonState.Static(exclusions) =>
@@ -252,12 +245,34 @@ object InsertMacro {
           // ... and return the filtered assignments
           liftedFilteredAssignments
 
-    def apply = {
+
+      //   def deduceAssignments(insertee: CaseClass) =
+      // // Parse the insertee that we got passed to the macro
+      // parseInsertee(inserteeRaw.asTerm.underlyingArgument.asExpr) match
+      //   // if it is a case class, 
+      //   case astCaseClass: CaseClass => deduceAssignmentsFrom(astCaseClass)
+      //   case astIdent: Ident => List()
+      // val assignmentsOfEntity = deduceAssignments()
+
+    def apply() = createQuotation(inserteeRaw.asTerm.underlyingArgument.asExpr)
+
+    def createQuotation(insertee: Expr[Any]) = {
+      val assignmentOfEntity =
+        parseInsertee(insertee) match
+          // if it is a CaseClass we either have a static thing e.g. query[Person].insert(Person("Joe", 123)) 
+          // or we have a lifted thing e.g. query[Person].insert(lift(Person("Joe", 123)))
+          // so we just process it based on what kind of pattern we encounter
+          case astCaseClass: CaseClass => deduceAssignmentsFrom(astCaseClass)
+          // if it is a Ident, then we know we have a batch query i.e. liftQuery(people).foreach(p => query[Person].insert(p))
+          // we want to re-syntheize this as a lifted thing i.e. liftQuery(people).foreach(p => query[Person].insert(lift(p)))
+          // and then reprocess the contents. We also want the lifts to be InjecatbleEagerLifts since for a batch the actual
+          // entity needs to be inject from the iterable in liftQuery(iterable)
+          case astIdent: Ident => List()
 
       //println("******************* TOP OF APPLY **************")
       // Processed Assignments AST plus any lifts that may have come from the assignments AST themsevles.
       // That is usually the case when 
-      val assignmentsAst = processAssignmentExclusions()
+      val assignmentsAst = processAssignmentsAndExclusions(assignmentOfEntity)
 
       // Insertion could have lifts and quotes inside, need to extract those. 
       // E.g. it can be 'query[Person].insert(lift(Person("Joe",123)))'' which becomes Quoted(CaseClass(name -> lift(x), age -> lift(y), List(ScalarLift("Joe", x), ScalarLift(123, y)), Nil).
@@ -301,7 +316,7 @@ object InsertMacro {
   end Pipeline
   
   def apply[T: Type, Parser <: ParserFactory: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[Insert[T]] =
-    new Pipeline(entityRaw, bodyRaw).apply
+    new Pipeline(entityRaw, bodyRaw).apply()
 
 }
 

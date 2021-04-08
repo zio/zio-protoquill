@@ -388,33 +388,42 @@ object ElaborateStructure {
   // keep namefirst, namelast etc.... so that testability is easier due to determinism
   // re-key by the UIDs later
   def ofProductValue[T: Type](productValue: Expr[T])(using Quotes): TaggedLiftedCaseClass = {
-
-    def toAst(node: Term): (String, Ast) =
-      def toAstRec(node: Term, parentTerm: String, topLevel: Boolean = false): (String, Ast) =
-        def notTopLevel(str: String) = if (topLevel) "" else str
-        node match
-          case Term(name, Leaf, _, _) =>
-            (name, ScalarTag(parentTerm + name))
-          // On the top level, parent is "", and 1st parent in recursion is also ""
-          case Term(name, Branch, list, false) =>
-            val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
-            (name, CaseClass(children))
-          // same logic for optionals
-          case Term(name, Branch, list, true) =>
-            val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
-            (name, OptionSome(CaseClass(children)))
-          case _ =>
-            quotes.reflect.report.throwError(s"Illegal generic schema: $node from type ${Type.of[T]}", productValue)
-      toAstRec(node, "", true)
-
-    val expanded = base[T](Term("notused", Branch))
+    val elaborated = elaborationOfProductValue[T]
     // create a nested AST for the Term nest with the expected scalar tags inside
-    val (_, nestedAst) = toAst(expanded)
+    val (_, nestedAst) = productValueToAst(elaborated)
     // create the list of (label, lift) for the expanded entities
-    val lifts = DeconstructElaboratedEntity(expanded, productValue).map((k,v) => (v,k))
+    val lifts = liftsOfProductValue(elaborated, productValue)
     // return nested AST keyed by the lifts list
     TaggedLiftedCaseClass(nestedAst, lifts)
   }
+
+  private[getquill] def elaborationOfProductValue[T: Type](using Quotes) =
+    base[T](Term("notused", Branch))
+
+  private[getquill] def liftsOfProductValue[T: Type](elaboration: Term, productValue: Expr[T])(using Quotes) =
+    DeconstructElaboratedEntity(elaboration, productValue).map((k,v) => (v,k))
+
+  /** 
+   * Flatten the elaboration from 'node' into a completely flat product type
+   * Technicallly don't need Type T but it's very useful to know for errors and it's an internal API so I'll keep it for now
+   */
+  private[getquill] def productValueToAst[T: Type](node: Term /* i.e. the elaboration */)(using Quotes): (String, Ast) =
+    def toAstRec(node: Term, parentTerm: String, topLevel: Boolean = false): (String, Ast) =
+      def notTopLevel(str: String) = if (topLevel) "" else str
+      node match
+        case Term(name, Leaf, _, _) =>
+          (name, ScalarTag(parentTerm + name))
+        // On the top level, parent is "", and 1st parent in recursion is also ""
+        case Term(name, Branch, list, false) =>
+          val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
+          (name, CaseClass(children))
+        // same logic for optionals
+        case Term(name, Branch, list, true) =>
+          val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
+          (name, OptionSome(CaseClass(children)))
+        case _ =>
+          quotes.reflect.report.throwError(s"Illegal generic schema: $node from type ${Type.of[T]}")
+    toAstRec(node, "", true)
 
   extension [T](opt: Option[T])
     def getOrThrow(msg: String) = opt.getOrElse { throw new IllegalArgumentException(msg) }
