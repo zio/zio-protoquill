@@ -105,18 +105,19 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
   //     .map(extractActionResult(returningAction, extractor))
   // }
 
-  // def executeBatchAction(groups: List[BatchGroup])(implicit ec: ExecutionContext): Future[List[Long]] =
-  //   Future.sequence {
-  //     groups.map {
-  //       case BatchGroup(sql, prepare) =>
-  //         prepare.foldLeft(Future.successful(List.newBuilder[Long])) {
-  //           case (acc, prepare) =>
-  //             acc.flatMap { list =>
-  //               executeAction(sql, prepare).map(list += _)
-  //             }
-  //         }.map(_.result())
-  //     }
-  //   }.map(_.flatten.toList)
+  def executeBatchAction(groups: List[BatchGroup])(executionType: ExecutionType, dc: ExecutionContext): Future[List[Long]] =
+    implicit val ec = dc // implicitly define the execution context that will be passed in
+    Future.sequence {
+      groups.map {
+        case BatchGroup(sql, prepare) =>
+          prepare.foldLeft(Future.successful(List.newBuilder[Long])) {
+            case (acc, prepare) =>
+              acc.flatMap { list =>
+                executeAction(sql, prepare)(executionType, dc).map(list += _)
+              }
+          }.map(_.result())
+      }
+    }.map(_.flatten.toList)
 
   // def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(implicit ec: ExecutionContext): Future[List[T]] =
   //   Future.sequence {

@@ -30,13 +30,19 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   // Makes us define it here in order to resolve the conflict.
   type Index = Int
 
-  private[getquill] val logger = ContextLogger(classOf[JdbcRunContext[_, _]]) // Note this is incorrect in the Scala 2 JdbcRunContext.scala
+  //private[getquill] val logger = ContextLogger(classOf[JdbcRunContext[_, _]]) // Note this is incorrect in the Scala 2 JdbcRunContext.scala
 
   // Not required for JdbcRunContext in Scala2-Quill but it's a typing error. It only works 
   // because executeQuery is not actually defined in Context.scala therefore typing doesn't have
   // to be correct on the base-level. Same issue with RunActionResult and others
+  override type Result[T] = T
   override type RunQueryResult[T] = List[T]
+  override type RunQuerySingleResult[T] = T
   override type RunActionResult = Long
+  override type RunActionReturningResult[T] = T
+  override type RunBatchActionResult = List[Long]
+  override type RunBatchActionReturningResult[T] = List[T]
+
 
   override type PrepareRow = PreparedStatement
   override type ResultRow = ResultSet
@@ -56,7 +62,8 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   override def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionType: ExecutionType, dc: DatasourceContext): Result[Long] =
     withConnectionWrapped { conn =>
       val (params, ps) = prepare(conn.prepareStatement(sql))
-      logger.logQuery(sql, params)
+      // TODO ContextLogger is a macro? Figure out how to inject a logger here
+      //logger.logQuery(sql, params)
       ps.executeUpdate().toLong
     }
 
@@ -64,7 +71,7 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   override def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionType: ExecutionType, dc: DatasourceContext): Result[List[T]] =
     withConnectionWrapped { conn =>
       val (params, ps) = prepare(conn.prepareStatement(sql))
-      logger.logQuery(sql, params)
+      //logger.logQuery(sql, params)
       val rs = ps.executeQuery()
       extractResult(rs, extractor)
     }
@@ -87,20 +94,20 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   //     case ReturnNothing          => conn.prepareStatement(sql)
   //   }
 
-  // def executeBatchAction(groups: List[BatchGroup]): Result[List[Long]] =
-  //   withConnectionWrapped { conn =>
-  //     groups.flatMap {
-  //       case BatchGroup(sql, prepare) =>
-  //         val ps = conn.prepareStatement(sql)
-  //         logger.underlying.debug("Batch: {}", sql)
-  //         prepare.foreach { f =>
-  //           val (params, _) = f(ps)
-  //           logger.logBatchItem(sql, params)
-  //           ps.addBatch()
-  //         }
-  //         ps.executeBatch().map(_.toLong)
-  //     }
-  //   }
+  override def executeBatchAction(groups: List[BatchGroup])(executionType: ExecutionType, dc: DatasourceContext): Result[List[Long]] =
+    withConnectionWrapped { conn =>
+      groups.flatMap {
+        case BatchGroup(sql, prepare) =>
+          val ps = conn.prepareStatement(sql)
+          //logger.underlying.debug("Batch: {}", sql)
+          prepare.foreach { f =>
+            val (params, _) = f(ps)
+            //logger.logBatchItem(sql, params)
+            ps.addBatch()
+          }
+          ps.executeBatch().map(_.toLong)
+      }
+    }
 
   // def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T]): Result[List[T]] =
   //   withConnectionWrapped { conn =>

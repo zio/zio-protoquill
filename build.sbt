@@ -48,7 +48,7 @@ lazy val `quill-sql` =
         "org.scalatest" % "scalatest-mustmatchers_3.0.0-RC2" % "3.2.7" % "test"
       ),
       libraryDependencies ++= {
-        if (includeFormatter) 
+        if (true) 
           Seq(("org.scalameta" %% "scalafmt-cli" % "2.7.5" ).excludeAll(ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")).withDottyCompat(scalaVersion.value))
         else
           Seq()

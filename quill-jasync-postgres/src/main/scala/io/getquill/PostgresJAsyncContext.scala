@@ -40,5 +40,4 @@ class PostgresJAsyncContext[N <: NamingStrategy](naming: N, pool: ConnectionPool
       case ReturnColumns(columns) => s"$sql RETURNING ${columns.mkString(", ")}"
       case ReturnNothing          => s"$sql"
     }
-
 }

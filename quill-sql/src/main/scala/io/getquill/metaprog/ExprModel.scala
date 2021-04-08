@@ -9,6 +9,7 @@ import io.getquill.Quoted
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.ExprAccumulate
 import io.getquill._
+import io.getquill.util.Format
 
 /* As the different kinds of parsing in Quill-Dotty became more complex, the need for an
 overarching model of "how stuff works" became necessary. There are several places in the
@@ -68,7 +69,7 @@ object PlanterExpr {
       import quotes.reflect._
       val tmc = new ExtractorsBundle
       import tmc._
-      val e = UntypeExpr(expr)
+      //val e = UntypeExpr(expr)
       //println("@@@@@@@@@@@ Trying to match: " + Printer.TreeStructure.show(e.asTerm))
 
       UntypeExpr(expr) match {
@@ -284,7 +285,8 @@ object QuotationLotExpr {
 
   object Unquoted {
     def apply(expr: Expr[Any])(using Quotes): QuotationLotExpr =
-      unapply(expr).getOrElse { quotes.reflect.report.throwError(s"The expression: ${expr.show} is not a valid unquotation of a Quoted Expression (i.e. a [quoted-expression].unqoute) and cannot be unquoted.") }
+      import quotes.reflect._
+      unapply(expr).getOrElse { quotes.reflect.report.throwError(s"The expression: ${Format(Printer.TreeShortCode.show(expr.asTerm))} is not a valid unquotation of a Quoted Expression (i.e. a [quoted-expression].unqoute) and cannot be unquoted.") }
 
     def unapply(expr: Expr[Any])(using Quotes): Option[QuotationLotExpr] = 
       //println("=================== Unapplying Unquote ===================")

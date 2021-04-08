@@ -42,8 +42,8 @@ abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   //   super.executeQuerySingle(sql, prepare, extractor)
   // override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction): O =
   //   super.executeActionReturning(sql, prepare, extractor, returningBehavior)
-  // override def executeBatchAction(groups: List[BatchGroup]): List[Long] =
-  //   super.executeBatchAction(groups)
+  override def executeBatchAction(groups: List[BatchGroup])(executionType: ExecutionType, dc: DatasourceContext): List[Long] =
+    super.executeBatchAction(groups)(executionType, dc)
   // override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T]): List[T] =
   //   super.executeBatchActionReturning(groups, extractor)
 

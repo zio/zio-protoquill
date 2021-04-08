@@ -1,10 +1,28 @@
 package io.getquill.util
 
 import scala.util.{ Try, Success, Failure }
+import scala.quoted._
 
 object Format {
   // import org.scalafmt.interfaces.Scalafmt
   // import org.scalafmt.cli.Scalafmt210
+
+  object Type {
+    def apply(tpe: scala.quoted.Type[_])(using Quotes) =
+      import quotes.reflect._
+      tpe match
+        case '[tt] => Printer.TypeReprShortCode.show(TypeRepr.of[tt])
+  }
+
+  object Expr {
+    def apply(expr: Expr[_])(using Quotes) =
+      import quotes.reflect._
+      Format(Printer.TreeShortCode.show(expr.asTerm))
+
+    def Detail(expr: Expr[_])(using Quotes) =
+      import quotes.reflect._
+      Format(Printer.TreeStructure.show(expr.asTerm))
+  }
 
   def apply(code: String) = {
       val formedCode =

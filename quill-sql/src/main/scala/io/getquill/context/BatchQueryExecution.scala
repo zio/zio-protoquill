@@ -37,6 +37,7 @@ import io.getquill.metaprog.Extractors
 import io.getquill.BatchAction
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.QuotationLotExpr._
+import io.getquill.util.Format
 
 trait BatchContextOperation[T, A <: Action[_], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], executionType: ExecutionType): Res
@@ -57,23 +58,26 @@ object BatchQueryExecution:
     import quotes.reflect._
 
     def apply(): Expr[Res] = 
-      QuotationLotExpr.Unquoted(UntypeExpr(quoted)) match
-        case Uprootable(_, ast, _, _, queryLifts, _) => 
-          queryLifts match
-            case List(PlanterExpr.Uprootable(expr @ EagerEntitiesPlanterExpr(uid, liftsIterator))) =>
+      UntypeExpr(quoted) match
+        case QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), planters) =>
+          planters match
+            case List(planterModel @ EagerEntitiesPlanterExpr(_, iterableExpr)) =>
               
               // Get the expression type
-              val exprType = expr.tpe
-              report.throwError(s"Got to BatchQueryExecutionPoint: ${expr}", quoted)
+              val exprType = 
+                planterModel.tpe match
+                  case '[tt] => TypeRepr.of[tt]
+
+              report.throwError(s"Got to BatchQueryExecutionPoint: ${Format.Expr(iterableExpr)}, type: ${Format.Type(planterModel.tpe)}", quoted)
 
               // Use expander of InjectMacro to expand out lifts to series of expressions?
               // Put those into injectable planters?
 
             case _ =>
-              report.throwError(s"Invalid liftQuery clause: ${queryLifts}. Must be a single EagerEntitiesPlanter", quoted)
+              report.throwError(s"Invalid liftQuery clause: ${planters}. Must be a single EagerEntitiesPlanter", quoted)
 
         case _ =>
-          report.throwError(s"Batch actions must be static quotations. Found: ${quoted}", quoted)
+          report.throwError(s"Batch actions must be static quotations. Found: ${Format.Expr(quoted)}", quoted)
 
   end RunQuery
 
