@@ -26,6 +26,6 @@ object UseMac {
     //PrintMac(q) //hellooooooooooooooooooooooooooo
 
     // Uncomment to get error
-    //println( run(q) )
+    println( run(q) )
   }
 }

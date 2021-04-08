@@ -75,6 +75,11 @@ object BatchQueryExecution:
               val (ast, lifts) = LiftMacro.liftInjectedProduct[T, PrepareRow]
               //val insertQuery = 
 
+              report.warning("List length is: " + lifts.length)
+
+              lifts.foreach(lift => println(io.getquill.util.Format.Expr(lift)))
+              
+
               // synthesize a runnable query and get it's static state (for batch queries it must exist, I don't see how I could be dynamic)
               // inject the lifts and return the query
 
@@ -101,7 +106,7 @@ object BatchQueryExecution:
     N <: NamingStrategy, 
     Res
   ](inline quoted: Quoted[BatchAction[A]], ctx: BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]) = 
-    ${ applyImpl('quoted, 'ctx) }
+    ${ applyImpl[T, A, ResultRow, PrepareRow, D, N, Res]('quoted, 'ctx) }
   
   def applyImpl[
     T: Type,

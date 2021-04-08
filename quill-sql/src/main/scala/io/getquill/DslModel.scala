@@ -30,7 +30,7 @@ sealed trait Planter[T, PrepareRow] {
   def uid: String
 }
 
-case class InjectableEagerPlanter[T, PrepareRow](inject: Any => T, encoder: GenericEncoder[T, PrepareRow], uid: String) extends Planter[T, PrepareRow] {
+case class InjectableEagerPlanter[T, PrepareRow](inject: _ => T, encoder: GenericEncoder[T, PrepareRow], uid: String) extends Planter[T, PrepareRow] {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }

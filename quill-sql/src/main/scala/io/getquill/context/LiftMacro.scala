@@ -91,7 +91,7 @@ object LiftMacro {
           val liftType = lift.asTerm.tpe.widen.asType
           liftType match {
             case '[T => liftT] =>
-              injectableLiftValue[liftT, PrepareRow](lift.asExprOf[Any => liftT], liftKey) // Note: if want to get this to work, try doing 'summon[Type[liftT]]' (using liftType, prepareRowTpe, quotes)
+              injectableLiftValue[liftT, PrepareRow](lift.asExprOf[T => liftT], liftKey) // Note: if want to get this to work, try doing 'summon[Type[liftT]]' (using liftType, prepareRowTpe, quotes)
           }
       )
     (caseClassAst, liftPlanters)
@@ -100,6 +100,7 @@ object LiftMacro {
   private[getquill] def liftInjectedProductComponents[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): (CaseClass, List[(String, Expr[T => _])]) = {
     import qctx.reflect._
     import scala.quoted._
+    import io.getquill.util.Format
 
     // Get the elaboration and AST once so that it will not have to be parsed out of the liftedCombo (since they are normally returned by ElaborateStructure.ofProductValue)
     val elaborated = ElaborateStructure.elaborationOfProductValue[T]
@@ -107,10 +108,14 @@ object LiftMacro {
     val caseClass = caseClassAst.asInstanceOf[io.getquill.ast.CaseClass]
     
     // Get just the labels. We need to pass in an instance of T which we don't actually use
-    // so it's fine to pass in anything but technically that is a bit inelegant. We should fine
-    // a way to get labels person.name, person.age, person.optstuff.stuff etc... just from T.
-    // Need to check the elaborator if it can do that already.
-    val labels = ElaborateStructure.liftsOfProductValue[T](elaborated, '{???.asInstanceOf[T]}).map(_._1)
+    // so it's fine to pass in anything but technically that is a bit inelegant.
+    // Unfortunately, we need not only the flattened labels (which would could probably get from the Elaborator)
+    // since we need to manually type the lift T=>element-of-T functions e.g. we need to type
+    // (p:Person=>p.name) manually as String which we will do below in determining the output.
+    // otherwise scala will just think they are 'Any' and we won't be able to summon encoders for them later
+    val elems = ElaborateStructure.liftsOfProductValue[T](elaborated, '{???.asInstanceOf[T]})
+    val labels = elems.map(_._1)
+    val exprTypes = elems.map(_._2.asTerm.tpe.widen.asType)
 
     // Need to parse lifts out of a lambda method and then isolate the clauses later. Need to do it like this
     // instead of just making a fake-variable because doing the latter would violate phase-consistency (i.e. since we would)
@@ -130,15 +135,20 @@ object LiftMacro {
     // One relatively optimization I have wrote about next to DeconstructElaborateEntity.elaborateObjectRecurse
     // where we could pre-compute the list of flattened paths in advance and just follow the path of a particular
     // sub-path of entity:T down to the children.
-    def liftCombo(index: Int) =
+    def liftCombo[Output: Type](index: Int) =
       '{ (entity: T) => ${
         val lifts = ElaborateStructure.liftsOfProductValue[T](elaborated, 'entity)
         val liftsExprs = lifts.map((caseClass, liftValue) => liftValue)
-        liftsExprs(index)
+        '{ ${liftsExprs(index)}.asInstanceOf[Output] }
       } }
 
-    val output =
-      labels.zipWithIndex.map((label, index) => (label, liftCombo(index)) )
+    
+    
+    val output = 
+      labels.zipWithIndex.map((label, index) => {
+        exprTypes(index) match
+          case '[tt] => (label, liftCombo[tt](index))
+      } )
 
     (caseClass, output)
 
@@ -182,7 +192,7 @@ object LiftMacro {
     '{ EagerPlanter($valueEntity, $encoder, ${Expr(uuid)}) } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 
-  private[getquill] def injectableLiftValue[T: Type, PrepareRow: Type](valueEntity: Expr[Any => T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
+  private[getquill] def injectableLiftValue[T: Type, PrepareRow: Type](valueEntity: Expr[_ => T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
     import quotes.reflect._
     val encoder = 
       Expr.summon[GenericEncoder[T, PrepareRow]] match

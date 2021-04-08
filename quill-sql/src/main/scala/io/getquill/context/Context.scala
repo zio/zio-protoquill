@@ -141,7 +141,7 @@ with Closeable
   }
 
   @targetName("runBatchAction")
-  inline def run[T, A <: Action[_]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
+  inline def run[T, A <: Action[T]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
     val ca = new BatchContextOperation[T, A, Dialect, Naming, PrepareRow, ResultRow, Result[RunBatchActionResult]](self.idiom, self.naming) {
       def execute(sql: String, prepares: List[PrepareRow => (List[Any], PrepareRow)], executionType: ExecutionType) =
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
