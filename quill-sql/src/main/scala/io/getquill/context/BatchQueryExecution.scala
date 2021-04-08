@@ -61,36 +61,48 @@ object BatchQueryExecution:
     def apply(): Expr[Res] = 
       UntypeExpr(quoted) match
         case QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), planters) =>
-          planters match
-            case List(planterModel @ EagerEntitiesPlanterExpr(_, iterableExpr)) =>
+          val (planterModel, iterableExpr) =
+            planters match
+              case List(planterModel @ EagerEntitiesPlanterExpr(_, iterableExpr)) => (planterModel, iterableExpr)
+              case _ => report.throwError(s"Invalid liftQuery clause: ${planters}. Must be a single EagerEntitiesPlanter", quoted)
+          
+          val insertEntity = {
+            // putting this in a block since I don't want to externally import these packages
+            import io.getquill.ast._
+            ast match
+              case Insert(entity: Entity, Nil) => entity
+              case other => report.throwError(s"Malformed batch entity: ${other}. Batch insertion entities must have the form Insert(Entity, Nil: List[Assignment])")
+          }
+          
+          // Get the expression type
+          val exprType = 
+            planterModel.tpe match
+              case '[tt] => TypeRepr.of[tt]
+          
+          // Use some custom functionality in the lift macro to prepare the case class an injectable lifts
+          // e.g. if T is Person(name: String, age: Int) and we do liftQuery(people:List[Person]).foreach(p => query[Person].insert(p))
+          // ast = CaseClass(name -> lift(UUID1), age -> lift(UUID2))
+          // lifts = List(InjectableEagerLift(p.name, UUID1), InjectableEagerLift(p.age, UUID2))
+          val (caseClassAst, lifts) = LiftMacro.liftInjectedProduct[T, PrepareRow]
+          
+          // Once we have that, use the Insert macro to generate a correct insert clause. The insert macro
+          // should summon a schemaMeta if needed (and account for querySchema age) 
+          // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
+          val insertQuotation = InsertMacro.createFromPremade[T](insertEntity, caseClassAst, lifts) 
 
-              println("========================== HERE ==========================")
-              println( Format.Expr(quoted) )
-              
-              // Get the expression type
-              val exprType = 
-                planterModel.tpe match
-                  case '[tt] => TypeRepr.of[tt]
-              
-              val (ast, lifts) = LiftMacro.liftInjectedProduct[T, PrepareRow]
-              //val insertQuery = 
+          report.warning("List length is: " + lifts.length)
 
-              report.warning("List length is: " + lifts.length)
+          lifts.foreach(lift => println(io.getquill.util.Format.Expr(lift)))
+          
 
-              lifts.foreach(lift => println(io.getquill.util.Format.Expr(lift)))
-              
+          // synthesize a runnable query and get it's static state (for batch queries it must exist, I don't see how I could be dynamic)
+          // inject the lifts and return the query
 
-              // synthesize a runnable query and get it's static state (for batch queries it must exist, I don't see how I could be dynamic)
-              // inject the lifts and return the query
+          //report.throwError(s"Got to BatchQueryExecutionPoint: ${Format.Expr(iterableExpr)}, type: ${Format.Type(planterModel.tpe)}", quoted)
 
-              //report.throwError(s"Got to BatchQueryExecutionPoint: ${Format.Expr(iterableExpr)}, type: ${Format.Type(planterModel.tpe)}", quoted)
-
-              // Use expander of InjectMacro to expand out lifts to series of expressions?
-              // Put those into injectable planters?
-              ???
-
-            case _ =>
-              report.throwError(s"Invalid liftQuery clause: ${planters}. Must be a single EagerEntitiesPlanter", quoted)
+          // Use expander of InjectMacro to expand out lifts to series of expressions?
+          // Put those into injectable planters?
+          ???
 
         case _ =>
           report.throwError(s"Batch actions must be static quotations. Found: ${Format.Expr(quoted)}", quoted)

@@ -70,6 +70,7 @@ object LiftMacro {
 
 
   // TODO Move this method to testing code since this method is only accessed by other macros in the source
+  // TODO Use this functionality to test the internals of liftInjectedProduct i.e. see if the correct encoders are summoned
   inline def liftInjectedProductExternal[T, PrepareRow]: List[(String, T => Any)] = ${ liftInjectedProductExternalImpl[T, PrepareRow] }
   def liftInjectedProductExternalImpl[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[List[(String, T => Any)]] =
     Expr.ofList {
@@ -79,7 +80,7 @@ object LiftMacro {
     }
 
   // TODO Injected => Injectable
-  private[getquill] def liftInjectedProduct[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): (Ast, List[Expr[InjectableEagerPlanter[_, PrepareRow]]]) = {
+  private[getquill] def liftInjectedProduct[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): (CaseClass, List[Expr[InjectableEagerPlanter[_, PrepareRow]]]) = {
     import qctx.reflect._
     val (caseClassAstInitial, liftsInitial) = liftInjectedProductComponents[T, PrepareRow]
     val TaggedLiftedCaseClass(caseClassAst, lifts) = TaggedLiftedCaseClass(caseClassAstInitial, liftsInitial).reKeyWithUids()

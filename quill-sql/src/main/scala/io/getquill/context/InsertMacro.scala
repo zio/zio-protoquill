@@ -93,7 +93,7 @@ object InsertMacro {
    * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
    * statement is based. The schema is based on the EntityQuery which could potentially be an unquoted QuerySchema.
    */
-  class Pipeline[T: Type, Parser <: ParserFactory: Type](using override val qctx: Quotes) extends Extractors with QuatMaking with QuatMakingBase(using qctx):
+  class Pipeline[T: Type](using override val qctx: Quotes) extends Extractors with QuatMaking with QuatMakingBase(using qctx):
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
 
@@ -174,7 +174,7 @@ object InsertMacro {
      * For batch queries liftQuery(people).foreach(p => query[Person].insert(p))
      * it will be just the ast Ident("p")
      */
-    def parseInsertee(insertee: Expr[Any]): CaseClass | Ident = {
+    def parseInsertee[Parser <: ParserFactory: Type](insertee: Expr[Any]): CaseClass | Ident = {
       insertee match
         // The case: query[Person].insert(lift(Person("Joe", "Bloggs")))
         case QuotationLotExpr(exprType) =>
@@ -249,15 +249,11 @@ object InsertMacro {
           liftedFilteredAssignments
 
 
-      //   def deduceAssignments(insertee: CaseClass) =
-      // // Parse the insertee that we got passed to the macro
-      // parseInsertee(inserteeRaw.asTerm.underlyingArgument.asExpr) match
-      //   // if it is a case class, 
-      //   case astCaseClass: CaseClass => deduceAssignmentsFrom(astCaseClass)
-      //   case astIdent: Ident => List()
-      // val assignmentsOfEntity = deduceAssignments()
-
-    def apply(schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T]) = {
+    /** 
+     * Note that the only reason Parser is needed here is to pass it into parseInsertee.
+     * The batch pipeline driven by createFromPremade currently doesn't need it.
+     */
+    def apply[Parser <: ParserFactory: Type](schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T]) = {
       val insertee = inserteeRaw.asTerm.underlyingArgument.asExpr
       val assignmentOfEntity =
         parseInsertee(insertee) match
@@ -278,14 +274,16 @@ object InsertMacro {
       // However, the insertee itself must always be available statically (i.e. it must be a Uprootable Quotation)
       val (lifts, pluckedUnquotes) = ExtractLifts(inserteeRaw)
 
-      createQuotation(
-        InserteeSchema(schemaRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]).summon, 
-        assignmentOfEntity, lifts, pluckedUnquotes
-      )
+      val quotation =
+        createQuotation(
+          InserteeSchema(schemaRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]).summon, 
+          assignmentOfEntity, lifts, pluckedUnquotes
+        )
+      UnquoteMacro(quotation)
     }
 
-    // use in BatchQueryExecution
-    def createFromPremade(entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]]) =
+    /** used in BatchQueryExecution */
+    def createFromPremade(entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]]): Expr[Quoted[Insert[T]]] =
       val assignments = deduceAssignmentsFrom(caseClass)
       createQuotation(SummonState.Static(entity), assignments, lifts, List())
 
@@ -296,44 +294,49 @@ object InsertMacro {
       val assignmentsAst = processAssignmentsAndExclusions(assignmentOfEntity)
 
       // TODO where if there is a schemaMeta? Need to use that to create the entity
-      val unquotation =
-        summonState match
-          // If we can get a static entity back
-          case SummonState.Static(entity) =>
-            // Lift it into an `Insert` ast, put that into a `quotation`, then return that `quotation.unquote` i.e. ready to splice into the quotation from which this `.insert` macro has been called
-            val insert = '{ AInsert(${Lifter.entity(entity)}, ${assignmentsAst}) }
-            val quotation = '{ Quoted[Insert[T]](${insert}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
-            // Unquote the quotation and return
-            UnquoteMacro(quotation)
+      summonState match
+        // If we can get a static entity back
+        case SummonState.Static(entity) =>
+          // Lift it into an `Insert` ast, put that into a `quotation`, then return that `quotation.unquote` i.e. ready to splice into the quotation from which this `.insert` macro has been called
+          val insert = '{ AInsert(${Lifter.entity(entity)}, ${assignmentsAst}) }
+          val quotation = '{ Quoted[Insert[T]](${insert}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
+          // Unquote the quotation and return
+          quotation
 
-          // If we get a dynamic entity back
-          // e.g. entityQuotation is 'querySchema[Person](...)' which is not inline
-          case SummonState.Dynamic(uid, entityQuotation) =>
-            // Need to create a ScalarTag representing a splicing of the entity (then going to add the actual thing into a QuotationVase and add to the pluckedUnquotes)
-            val insert = '{ AInsert(QuotationTag(${Expr(uid)}), ${assignmentsAst}) }
-            // Create the QuotationVase in which this dynamic quotation will go
-            val runtimeQuote = '{ QuotationVase($entityQuotation, ${Expr(uid)}) }
-            // Then create the quotation, adding the new runtimeQuote to the list of pluckedUnquotes
-            val quotation = '{ Quoted[Insert[T]](${insert}, ${Expr.ofList(lifts)}, $runtimeQuote +: ${Expr.ofList(pluckedUnquotes)}) }
-            // Unquote the quotation and return
-            UnquoteMacro(quotation)
+        // If we get a dynamic entity back
+        // e.g. entityQuotation is 'querySchema[Person](...)' which is not inline
+        case SummonState.Dynamic(uid, entityQuotation) =>
+          // Need to create a ScalarTag representing a splicing of the entity (then going to add the actual thing into a QuotationVase and add to the pluckedUnquotes)
+          val insert = '{ AInsert(QuotationTag(${Expr(uid)}), ${assignmentsAst}) }
+          // Create the QuotationVase in which this dynamic quotation will go
+          val runtimeQuote = '{ QuotationVase($entityQuotation, ${Expr(uid)}) }
+          // Then create the quotation, adding the new runtimeQuote to the list of pluckedUnquotes
+          val quotation = '{ Quoted[Insert[T]](${insert}, ${Expr.ofList(lifts)}, $runtimeQuote +: ${Expr.ofList(pluckedUnquotes)}) }
+          // Unquote the quotation and return
+          quotation
       
       // use the quoation macro to parse the value into a class expression
       // use that with (v) => (v) -> (class-value) to create a quoation
       // incorporate that into a new quotation, use the generated quotation's lifts and runtime lifts
       // the output value
       // use the Unquote macro to take it back to an 'Insert[T]'
-
-      unquotation
     }
       
   end Pipeline
   
   def apply[T: Type, Parser <: ParserFactory: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[Insert[T]] =
-    new Pipeline().apply(entityRaw, bodyRaw)
+    new Pipeline[T]().apply[Parser](entityRaw, bodyRaw)
 
-  //def createFromPremade[T: Type, Parser <: ParserFactory: Type](caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]])(using Quotes) = 
-  //  new Pipeline(entityRaw, bodyRaw).createFromPremade(caseClass, lifts)
+  /** 
+   * If you have a pre-created entity, a case class, and lifts (as is the case for the Batch queries in BatchQueryExecution)
+   * then you can create an insert assignments clause without the need for parsing etc. The only thing that needs to be checked
+   * is if there is a existing schemaMeta that needs to be injected (i.e. to make a Entity(T, fieldMappings)) 
+   * object (i.e. the AST form of querySchema[T](...)).
+   */
+  def createFromPremade[T: Type](entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]])(using Quotes) = 
+    // unlike in 'apply', types here need to be manually specified for Pipeline, it seems that since they're in arguments, in the
+    // 'apply' variation, the scala compiler can figure them out but not here
+    new Pipeline[T]().createFromPremade(entity, caseClass, lifts)
 
 }
 

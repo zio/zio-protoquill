@@ -428,7 +428,7 @@ object ElaborateStructure {
   extension [T](opt: Option[T])
     def getOrThrow(msg: String) = opt.getOrElse { throw new IllegalArgumentException(msg) }
 
-  case class TaggedLiftedCaseClass(caseClass: Ast, lifts: List[(String, Expr[_])]) {
+  case class TaggedLiftedCaseClass(caseClass: CaseClass, lifts: List[(String, Expr[_])]) {
     import java.util.UUID
     def uuid() = UUID.randomUUID.toString
 
@@ -445,7 +445,7 @@ object ElaborateStructure {
       val keysToNewKeys = oldAndNewKeys.map((key, newKey, _) => (key, newKey)).toMap
       val newNewKeysToLifts = oldAndNewKeys.map((_, newKey, lift) => (newKey, lift))
       val newAst = replaceKeys(keysToNewKeys)
-      TaggedLiftedCaseClass(newAst, newNewKeysToLifts)
+      TaggedLiftedCaseClass(newAst.asInstanceOf[CaseClass], newNewKeysToLifts)
     }
   }
 }
