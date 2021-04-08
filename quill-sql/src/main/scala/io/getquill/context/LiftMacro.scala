@@ -67,24 +67,65 @@ object LiftMacro {
         '{ $liftPlanter.unquote }
   }
 
-  private[getquill] def liftInjectedProduct[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[CaseClassLift[T]] = {
+
+  inline def liftInjectedProductExtern[T, PrepareRow]: List[T => Any] = ${ liftInjectedProduct[T, PrepareRow] }
+  /*private[getquill]*/ 
+  def liftInjectedProduct[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[List[T => Any]] = {
     import qctx.reflect._
     import scala.quoted._
 
     // Get the elaboration and AST once so that it will not have to be parsed out of the liftedCombo (since they are normally returned by ElaborateStructure.ofProductValue)
     val elaborated = ElaborateStructure.elaborationOfProductValue[T]
     val (_, caseClassAst) = ElaborateStructure.productValueToAst[T](elaborated)
+    val caseClass = caseClassAst.asInstanceOf[io.getquill.ast.CaseClass]
+    
+    val labels = ElaborateStructure.liftsOfProductValue[T](elaborated, '{???.asInstanceOf[T]}).map(_._1)
 
     // Need to parse lifts out of a lambda method and then isolate the clauses later. Need to do it like this
     // instead of just making a fake-variable because doing the latter would violate phase-consistency (i.e. since we would)
-    // be using a variable in a phase that does not actually exists
-    val liftedCombo =
-      '{ (entity: T) => ${
+    // be using a variable in a phase that does not actually exists. Instead we create a (singleArg) => { List(lift(singleArg.foo), lift(singleArg.bar), etc...)) }
+    // ...
+    // and the respectively pull out lift(singleArg.foo), lift(singleArg.bar), etc... from that clause turning it into
+    // (singleArg) => lift(singleArg.foo), (singleArg) => lift(singleArg.bar), (singleArg) => etc... so that everything remains phase consistent
+
+    // Note that this can be quite compile-time inefficient for large values since for every element
+    // this entire thing needs to be re-computed. The alternative would be to pass the index
+    // as a runtime parameter and compute this only once (i.e. ( val liftCombo = (elementIndex: Int) => (entity: T) => ${ ... } ))
+    // but that means that the splice itself would have every single element over and over again which would make
+    // the runtime code inefficient and could run into java's method limit size
+    // A true optimization would be to actually produce the whole method once and then parse the body
+    // pulling out all the needed content. This is currently out of scope but may be needed at some point
+    def liftCombo =
+      '{ (elementIndex: Int) => (entity: T) => ${
         val lifts = ElaborateStructure.liftsOfProductValue[T](elaborated, 'entity)
-        val liftsExprs = lifts.map((caseClass, liftValue) => { (Expr(caseClass), liftValue) } )
-        val liftsAndNamesExprs = Expr.ofList(liftsExprs.map((caseClassExpr, liftValueExpr) => '{ ($caseClassExpr, $liftValueExpr) } ))
-        liftsAndNamesExprs
+        val liftsExprs = lifts.map((caseClass, liftValue) => liftValue)
+        '{ ${Expr.ofList(liftsExprs)}(elementIndex) }
       } }
+
+    val output =
+      labels.zipWithIndex.map((_, index) => Expr.betaReduce('{ $liftCombo(${Expr(index)}) }) )
+
+    Expr.ofList(output)
+
+    // import io.getquill.metaprog.Extractors._
+    // val output =
+    //   //tmc.UntypeExpr(liftedCombo).asTerm match
+    //   liftedCombo.asTerm.underlyingArgument match
+    //     case Lambda(params, body) =>
+    //       val paramTypes = params.map(_.tpt.tpe)
+    //       val paramNames = params.map(_.name)
+    //       val mt = MethodType(paramNames)(_ => paramTypes, _ => TypeRepr.of[Any] /*.appliedTo(body.tpe.widen)*/ )
+    //       Lambda(Symbol.spliceOwner, mt, (owner,args) => body.changeOwner(owner))
+          
+        
+    //'{ ${output.asExpr} }.asInstanceOf[Expr[T => Any]]
+    //'{ (entity: T) => ${output.asExpr} }
+
+    //output.asExprOf[(T => Any)]
+
+    //liftedCombo.asTerm.underlyingArgument.asExprOf[(T => Any)]
+    
+
     
     // val liftPlanters = 
     //   lifts.map(
@@ -97,7 +138,7 @@ object LiftMacro {
     //           liftValue[liftT, PrepareRow](lift.asExprOf[liftT], liftKey) // Note: if want to get this to work, try doing 'summon[Type[liftT]]' (using liftType, prepareRowTpe, quotes)
     //       }
     //   )
-    ???
+    
   }
 
   
