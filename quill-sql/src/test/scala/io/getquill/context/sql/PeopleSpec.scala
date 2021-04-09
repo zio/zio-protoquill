@@ -28,7 +28,7 @@ trait PeopleSpec extends Spec {
     Person("Fred", 60)
   )
 
-  inline def g =
+  inline def couplesInsert =
     quote((c: Couple) => query[Couple].insert(c))
 
   inline def couplesEntries = List(
@@ -37,17 +37,17 @@ trait PeopleSpec extends Spec {
     Couple("Edna", "Fred")
   )
 
-  // val `Ex 1 differences` =
-  //   quote {
-  //     for {
-  //       c <- query[Couple]
-  //       w <- query[Person]
-  //       m <- query[Person] if (c.her == w.name && c.him == m.name && w.age > m.age)
-  //     } yield {
-  //       (w.name, w.age - m.age)
-  //     }
-  //   }
-  // val `Ex 1 expected result` = List(("Alex", 5), ("Cora", 2))
+  val `Ex 1 differences` =
+    quote {
+      for {
+        c <- query[Couple]
+        w <- query[Person]
+        m <- query[Person] if (c.her == w.name && c.him == m.name && w.age > m.age)
+      } yield {
+        (w.name, w.age - m.age)
+      }
+    }
+  val `Ex 1 expected result` = List(("Alex", 5), ("Cora", 2))
 
   // val `Ex 2 rangeSimple` = quote {
   //   (a: Int, b: Int) =>

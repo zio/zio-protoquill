@@ -21,9 +21,25 @@ class PeoplePostgresAsyncSpec extends PeopleSpec {
       }
     }
 
-  // "Example 1 - differences" in {
-  //   await(testContext.run(`Ex 1 differences`)) mustEqual `Ex 1 expected result`
-  // }
+  "Example 1 - differences" in {
+    //println( await(testContext.run(`Ex 1 differences`)) )
+
+    inline def q =
+      quote {
+        for {
+          c <- query[Couple]
+          w <- query[Person]
+          m <- query[Person] if (c.her == w.name && c.him == m.name && w.age > m.age)
+        } yield {
+          (w.name, w.age)
+        }
+      }
+
+    await( testContext.run(q) )
+
+    //println( await(testContext.run(query[Person])) )
+    //await(testContext.run(`Ex 1 differences`)) mustEqual `Ex 1 expected result`
+  }
 
   // "Example 2 - range simple" in {
   //   await(testContext.run(`Ex 2 rangeSimple`(lift(`Ex 2 param 1`), lift(`Ex 2 param 2`)))) mustEqual `Ex 2 expected result`
