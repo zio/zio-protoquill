@@ -191,13 +191,13 @@ object InsertMacro {
         // Otherwise the inserted element (i.e. the insertee) is static and should be parsed as an ordinary case class
         // i.e. the case query[Person].insert(Person("Joe", "Bloggs")) (or the batch case)
         case _ =>
-          parseStaticInsertee(insertee)
+          parseStaticInsertee[Parser](insertee)
     }
 
     /** 
      * Parse the input to of query[Person].insert(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs") 
      */
-    def parseStaticInsertee(insertee: Expr[_]): CaseClass | Ident = {  
+    def parseStaticInsertee[Parser <: ParserFactory: Type](insertee: Expr[_]): CaseClass | Ident = {  
       val parserFactory = LoadObject[Parser].get
       val rawAst = parserFactory.apply.seal.apply(insertee)
       val ast = BetaReduction(rawAst)

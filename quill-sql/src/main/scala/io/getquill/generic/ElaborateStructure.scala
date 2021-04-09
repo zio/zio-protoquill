@@ -387,7 +387,7 @@ object ElaborateStructure {
   // TODO Should have specific tests for this function indepdendently
   // keep namefirst, namelast etc.... so that testability is easier due to determinism
   // re-key by the UIDs later
-  def ofProductValue[T: Type](productValue: Expr[T])(using Quotes): TaggedLiftedCaseClass = {
+  def ofProductValue[T: Type](productValue: Expr[T])(using Quotes): TaggedLiftedCaseClass[Ast] = {
     val elaborated = elaborationOfProductValue[T]
     // create a nested AST for the Term nest with the expected scalar tags inside
     val (_, nestedAst) = productValueToAst(elaborated)
@@ -428,12 +428,12 @@ object ElaborateStructure {
   extension [T](opt: Option[T])
     def getOrThrow(msg: String) = opt.getOrElse { throw new IllegalArgumentException(msg) }
 
-  case class TaggedLiftedCaseClass(caseClass: CaseClass, lifts: List[(String, Expr[_])]) {
+  case class TaggedLiftedCaseClass[A <: Ast](caseClass: A, lifts: List[(String, Expr[_])]) {
     import java.util.UUID
     def uuid() = UUID.randomUUID.toString
 
     /** Replace keys of the tagged lifts with proper UUIDs */
-    def reKeyWithUids(): TaggedLiftedCaseClass = {
+    def reKeyWithUids(): TaggedLiftedCaseClass[A] = {
       def replaceKeys(newKeys: Map[String, String]): Ast =
         Transform(caseClass) {
           case ScalarTag(keyName) => 
@@ -445,7 +445,7 @@ object ElaborateStructure {
       val keysToNewKeys = oldAndNewKeys.map((key, newKey, _) => (key, newKey)).toMap
       val newNewKeysToLifts = oldAndNewKeys.map((_, newKey, lift) => (newKey, lift))
       val newAst = replaceKeys(keysToNewKeys)
-      TaggedLiftedCaseClass(newAst.asInstanceOf[CaseClass], newNewKeysToLifts)
+      TaggedLiftedCaseClass(newAst.asInstanceOf[A], newNewKeysToLifts)
     }
   }
 }

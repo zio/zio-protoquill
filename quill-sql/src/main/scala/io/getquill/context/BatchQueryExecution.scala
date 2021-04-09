@@ -39,6 +39,7 @@ import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.QuotationLotExpr._
 import io.getquill.util.Format
 import io.getquill.context.LiftMacro
+import io.getquill.parser.Unlifter
 
 trait BatchContextOperation[T, A <: Action[_], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], executionType: ExecutionType): Res
@@ -61,48 +62,54 @@ object BatchQueryExecution:
     def apply(): Expr[Res] = 
       UntypeExpr(quoted) match
         case QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), planters) =>
-          val (planterModel, iterableExpr) =
+          val iterableExpr =
             planters match
-              case List(planterModel @ EagerEntitiesPlanterExpr(_, iterableExpr)) => (planterModel, iterableExpr)
+              case List(EagerEntitiesPlanterExpr(_, iterableExpr)) => iterableExpr
               case _ => report.throwError(s"Invalid liftQuery clause: ${planters}. Must be a single EagerEntitiesPlanter", quoted)
           
+          println(pprint.apply(Unlifter(ast)))
+
           val insertEntity = {
             // putting this in a block since I don't want to externally import these packages
             import io.getquill.ast._
-            ast match
-              case Insert(entity: Entity, Nil) => entity
+            Unlifter(ast) match
+              case Foreach(_, _, Insert(entity: Entity, Nil)) => entity
               case other => report.throwError(s"Malformed batch entity: ${other}. Batch insertion entities must have the form Insert(Entity, Nil: List[Assignment])")
           }
-          
-          // Get the expression type
-          val exprType = 
-            planterModel.tpe match
-              case '[tt] => TypeRepr.of[tt]
+
+          import io.getquill.metaprog.InjectableEagerPlanterExpr
           
           // Use some custom functionality in the lift macro to prepare the case class an injectable lifts
           // e.g. if T is Person(name: String, age: Int) and we do liftQuery(people:List[Person]).foreach(p => query[Person].insert(p))
           // ast = CaseClass(name -> lift(UUID1), age -> lift(UUID2))
           // lifts = List(InjectableEagerLift(p.name, UUID1), InjectableEagerLift(p.age, UUID2))
-          val (caseClassAst, lifts) = LiftMacro.liftInjectedProduct[T, PrepareRow]
+          val (caseClassAst, rawLifts) = LiftMacro.liftInjectedProduct[T, PrepareRow]
+          // Assuming that all lifts of the batch query are injectable
+          val injectableLifts =
+            rawLifts.map {
+              case PlanterExpr.Uprootable(expr @ InjectableEagerPlanterExpr(_, _, _)) => expr
+              case PlanterExpr.Uprootable(expr) => 
+                report.throwError(s"wrong kind of uprootable ${(expr)}")
+              case other => report.throwError(s"The lift expression ${Format.Expr(other)} is not valid for batch queries because it is not injectable")
+            }
           
           // Once we have that, use the Insert macro to generate a correct insert clause. The insert macro
           // should summon a schemaMeta if needed (and account for querySchema age) 
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
-          val insertQuotation = InsertMacro.createFromPremade[T](insertEntity, caseClassAst, lifts) 
-
-          report.warning("List length is: " + lifts.length)
-
-          lifts.foreach(lift => println(io.getquill.util.Format.Expr(lift)))
+          val insertQuotation = InsertMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts) 
+          StaticTranslationMacro.applyInner[Action, T, D, N](insertQuotation) match 
+            case Some(StaticState(queryString, _)) =>
+              val prepares =
+                '{ $iterableExpr.map(elem => ${
+                  val injectedLifts = injectableLifts.map(lift => lift.inject('elem))
+                  val injectedLiftsExpr = Expr.ofList(injectedLifts)
+                  val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($injectedLiftsExpr, row) }  
+                  prepare
+                }) }              
+              '{ $batchContextOperation.execute(${Expr(queryString)}, $prepares.toList, ExecutionType.Static) }
           
-
-          // synthesize a runnable query and get it's static state (for batch queries it must exist, I don't see how I could be dynamic)
-          // inject the lifts and return the query
-
-          //report.throwError(s"Got to BatchQueryExecutionPoint: ${Format.Expr(iterableExpr)}, type: ${Format.Type(planterModel.tpe)}", quoted)
-
-          // Use expander of InjectMacro to expand out lifts to series of expressions?
-          // Put those into injectable planters?
-          ???
+            case None => 
+              report.throwError(s"Could not create static state from the query: ${Format.Expr(insertQuotation)}")
 
         case _ =>
           report.throwError(s"Batch actions must be static quotations. Found: ${Format.Expr(quoted)}", quoted)

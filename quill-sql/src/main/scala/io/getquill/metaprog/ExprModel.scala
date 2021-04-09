@@ -49,11 +49,11 @@ case class EagerPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T
   def plant(using Quotes): Expr[EagerPlanter[T, PrepareRow]] =
     '{ EagerPlanter[T, PrepareRow]($expr, $encoder, ${Expr(uid)}) }
 
-case class InjectableEagerPlanterExpr[T: Type, PrepareRow: Type](uid: String, inject: Expr[Any => T], encoder: Expr[GenericEncoder[T, PrepareRow]]) extends PlanterExpr[T, PrepareRow]:
+case class InjectableEagerPlanterExpr[T: Type, PrepareRow: Type](uid: String, inject: Expr[_ => T], encoder: Expr[GenericEncoder[T, PrepareRow]]) extends PlanterExpr[T, PrepareRow]:
   def plant(using Quotes): Expr[InjectableEagerPlanter[T, PrepareRow]] =
     '{ InjectableEagerPlanter[T, PrepareRow]($inject, $encoder, ${Expr(uid)}) }
   def inject(injectee: Expr[Any])(using Quotes): Expr[EagerPlanter[T, PrepareRow]] =
-    '{ EagerPlanter[T, PrepareRow]($inject($injectee), $encoder, ${Expr(uid)}) }
+    '{ EagerPlanter[T, PrepareRow]($inject.asInstanceOf[Any => T].apply($injectee), $encoder, ${Expr(uid)}) }
 
 case class LazyPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T]) extends PlanterExpr[T, PrepareRow]:
   def plant(using Quotes): Expr[LazyPlanter[T, PrepareRow]] =

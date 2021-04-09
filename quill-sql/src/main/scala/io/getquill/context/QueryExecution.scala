@@ -94,7 +94,7 @@ object QueryExecution:
     N <: NamingStrategy: Type, 
     Res: Type
   ](quotedOp: Expr[QuotedOperation[T, Q]], 
-    ContextOperation: Expr[ContextOperation[T, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes) 
+    contextOperation: Expr[ContextOperation[T, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes) 
   extends SummonHelper[ResultRow] 
     with QueryMetaHelper[T] 
     with Extractors:
@@ -144,7 +144,7 @@ object QueryExecution:
         case ExtractBehavior.Skip =>    '{ None }
 
       // TODO What about when an extractor is not neededX
-      '{ RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($expandedAstQuote, $ContextOperation, $extractor) }
+      '{ RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($expandedAstQuote, $contextOperation, $extractor) }
     
 
     
@@ -182,7 +182,7 @@ object QueryExecution:
         case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
         case ExtractBehavior.Skip =>    '{ None }
       // Plug in the components and execute
-      '{ $ContextOperation.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
+      '{ $contextOperation.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
 
     // Simple ID function that we use in a couple of places
     private val idConvert = '{ (t:T) => t }
