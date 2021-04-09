@@ -105,43 +105,51 @@ object GenericDecoder {
 
   type IsTuple[T <: Tuple]
 
-  inline def decode[T, ResultRow](index: Int, resultRow: ResultRow) = {
-    // got here throw new RuntimeException("========== Outer Decode Clause ==========")
+
+  inline def decode[T, ResultRow]/*(index: Int, resultRow: ResultRow)*/ = {
+    //throw new RuntimeException(s"========== Outer Decode Clause index: ${index} results: ${resultRow}, type: ${io.getquill.util.Format.TypeOf[T]} ==========")
     summonFrom {
-      case ev: Mirror.Of[T] =>
-        inline ev match {
-          case m: Mirror.ProductOf[IsTuple[T]] =>
-            throw new RuntimeException("========== Tup Clause ==========")
-            val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
-            tup.asInstanceOf[T]
-          case m: Mirror.ProductOf[T] =>
-            throw new RuntimeException("========== Product Clause ==========")
-            val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
-            m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
-          case m: Mirror.SumOf[T] =>
-            throw new RuntimeException("========== Sum Clause ==========")
-            columnResolver[ResultRow] match {
-              case None => throw new IllegalArgumentException(s"Need column resolver for in order to be able to decode a coproduct but none exists for ${showType[ResultRow]}")
-              case _ =>
-            }
-            
-            // Get a row-typer to be able to determine what sub-class the row should be
-            val rowClass = 
-              summonRowTyper[ResultRow, T] match
-                case Some(rowTyper) => rowTyper(resultRow)
-                case None => throw new IllegalArgumentException(s"Cannot summon RowTyper for type: ${showType[T]}")
-            
-            // Try to get the mirror element and decode it
-            selectAndDecode[m.MirroredElemTypes, ResultRow, T](index, resultRow, rowClass: ClassTag[_])
-        }
+      case ev: Mirror.ProductOf[T] =>
+        throw new RuntimeException("========== MirrorOf Clause ==========")
     }
+
+      // case ev: Mirror.ProductOf[T] =>
+      //   throw new RuntimeException("========== MirrorOf Clause ==========")
+      //   inline ev match {
+      //     case blah =>
+      //       throw new RuntimeException("========== BLAH Clause ==========")
+          // case m: Mirror.ProductOf[IsTuple[T]] =>
+          //   throw new RuntimeException("========== Tup Clause ==========")
+          //   // val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
+          //   // tup.asInstanceOf[T]
+          // case m: Mirror.ProductOf[T] =>
+          //   throw new RuntimeException("========== Product Clause ==========")
+          //   // val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
+          //   // m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
+          // case m: Mirror.SumOf[T] =>
+          //   throw new RuntimeException("========== Sum Clause ==========")
+            // columnResolver[ResultRow] match {
+            //   case None => throw new IllegalArgumentException(s"Need column resolver for in order to be able to decode a coproduct but none exists for ${showType[ResultRow]}")
+            //   case _ =>
+            // }
+            
+            // // Get a row-typer to be able to determine what sub-class the row should be
+            // val rowClass = 
+            //   summonRowTyper[ResultRow, T] match
+            //     case Some(rowTyper) => rowTyper(resultRow)
+            //     case None => throw new IllegalArgumentException(s"Cannot summon RowTyper for type: ${showType[T]}")
+            
+            // // Try to get the mirror element and decode it
+            // selectAndDecode[m.MirroredElemTypes, ResultRow, T](index, resultRow, rowClass: ClassTag[_])
+        
+    
   }
 
   inline def generic[T, ResultRow]: GenericDecoder[ResultRow, T] = 
     new GenericDecoder[ResultRow, T] {
       def apply(index: Int, resultRow: ResultRow): T = {
         //throw new RuntimeException("========== GenericDecoderClause ==========")
-        decode[T, ResultRow](index, resultRow)
+        decode[T, ResultRow]//(index, resultRow)
       }
     }
 }

@@ -7,6 +7,11 @@ object Format {
   // import org.scalafmt.interfaces.Scalafmt
   // import org.scalafmt.cli.Scalafmt210
 
+  object TypeOf {
+    inline def apply[T]: String = ${ printTypeImpl[T] }
+    def printTypeImpl[T: Type](using Quotes): Expr[String] = scala.quoted.Expr(io.getquill.util.Format.Type(scala.quoted.Type.of[T]))
+  }
+
   object Type {
     def apply(tpe: scala.quoted.Type[_])(using Quotes) =
       import quotes.reflect._
