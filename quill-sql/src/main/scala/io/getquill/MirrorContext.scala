@@ -46,7 +46,7 @@ with MirrorDecoders with MirrorEncoders { self =>
 
   case class ActionMirror(string: String, prepareRow: PrepareRow, executionType: ExecutionType)
   case class ActionReturningMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], returningBehavior: ReturnAction)
-  case class BatchActionMirror(groups: List[(String, List[Row])])
+  case class BatchActionMirror(groups: List[(String, List[Row])], executionType: ExecutionType)
 
   override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionType: ExecutionType, dc: DatasourceContext) =
     QueryMirror(string, prepare(Row())._2, extractor, executionType)
@@ -55,11 +55,12 @@ with MirrorDecoders with MirrorEncoders { self =>
     ActionMirror(string, prepare(Row())._2, executionType)
 
   override def executeBatchAction(groups: List[BatchGroup])(executionType: ExecutionType, dc: DatasourceContext): Result[RunBatchActionResult] =
-    BatchActionMirror {
+    BatchActionMirror(
       groups.map {
         case BatchGroup(string, prepare) =>
           (string, prepare.map(_(Row())._2))
-      }
-    }
+      },
+      executionType
+    )
     
 }
