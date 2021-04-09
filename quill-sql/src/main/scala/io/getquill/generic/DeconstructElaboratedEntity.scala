@@ -97,10 +97,10 @@ private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) exte
               // sure that the method-type in the .map function below is 100% correct. That means we
               // need to lookup what the type of the field of this particular member should actually be.
               val tpe = TypeRepr.of[t]
-              println(s"Get member '${childTerm.name}' of ${Printer.TypeReprShortCode.show(tpe)}")
+              //println(s"Get member '${childTerm.name}' of ${Printer.TypeReprShortCode.show(tpe)}")
               val memField = tpe.classSymbol.get.memberField(childTerm.name)
               val memeType = tpe.memberType(memField)
-              println(s"MemField of ${childTerm.name} is ${memField}: ${Printer.TypeReprShortCode.show(memeType)}")
+              //println(s"MemField of ${childTerm.name} is ${memField}: ${Printer.TypeReprShortCode.show(memeType)}")
               memeType.asType match
                 // If the nested field is itself optional, need to account for immediate flattening
                 case '[Option[mt]] =>

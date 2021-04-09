@@ -54,20 +54,18 @@ object BatchQueryExecution:
     D <: Idiom: Type, 
     N <: NamingStrategy: Type, 
     Res: Type
-  ](quoted: Expr[Quoted[BatchAction[A]]],
+  ](quotedRaw: Expr[Quoted[BatchAction[A]]],
     batchContextOperation: Expr[BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes) 
   extends Extractors:
     import quotes.reflect._
-
+    val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
     def apply(): Expr[Res] = 
-      UntypeExpr(quoted) match
+      Uninline(UntypeExpr(quoted)) match
         case QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), planters) =>
           val iterableExpr =
             planters match
               case List(EagerEntitiesPlanterExpr(_, iterableExpr)) => iterableExpr
               case _ => report.throwError(s"Invalid liftQuery clause: ${planters}. Must be a single EagerEntitiesPlanter", quoted)
-          
-          println(pprint.apply(Unlifter(ast)))
 
           val insertEntity = {
             // putting this in a block since I don't want to externally import these packages
@@ -92,7 +90,7 @@ object BatchQueryExecution:
                 report.throwError(s"wrong kind of uprootable ${(expr)}")
               case other => report.throwError(s"The lift expression ${Format.Expr(other)} is not valid for batch queries because it is not injectable")
             }
-          
+
           // Once we have that, use the Insert macro to generate a correct insert clause. The insert macro
           // should summon a schemaMeta if needed (and account for querySchema age) 
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))

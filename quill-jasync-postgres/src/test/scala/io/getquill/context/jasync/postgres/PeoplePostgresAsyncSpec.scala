@@ -9,17 +9,17 @@ class PeoplePostgresAsyncSpec extends PeopleSpec {
   val context = testContext
   import testContext._
 
-  // override def beforeAll() =
-  //   await {
-  //     testContext.transaction { implicit ec =>
-  //       for {
-  //         _ <- testContext.run(query[Couple].delete)
-  //         _ <- testContext.run(query[Person].filter(_.age > 0).delete)
-  //         //_ <- testContext.run(liftQuery(peopleEntries).foreach(e => peopleInsert(e)))
-  //         //_ <- testContext.run(liftQuery(couplesEntries).foreach(e => couplesInsert(e)))
-  //       } yield {}
-  //     }
-  //   }
+  override def beforeAll() =
+    await {
+      testContext.transaction { implicit ec =>
+        for {
+          _ <- testContext.run(query[Couple].delete)
+          _ <- testContext.run(query[Person].filter(_.age > 0).delete)
+          _ <- testContext.run(liftQuery(peopleEntries).foreach(e => peopleInsert(e)))
+          _ <- testContext.run(liftQuery(couplesEntries).foreach(e => couplesInsert(e)))
+        } yield {}
+      }
+    }
 
   // "Example 1 - differences" in {
   //   await(testContext.run(`Ex 1 differences`)) mustEqual `Ex 1 expected result`

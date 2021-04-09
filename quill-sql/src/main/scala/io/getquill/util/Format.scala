@@ -11,7 +11,7 @@ object Format {
     def apply(tpe: scala.quoted.Type[_])(using Quotes) =
       import quotes.reflect._
       tpe match
-        case '[tt] => Printer.TypeReprShortCode.show(TypeRepr.of[tt])
+        case '[tt] => Printer.TypeReprShortCode.show(TypeRepr.of[tt]) //hello
   }
 
   object Expr {
@@ -49,11 +49,8 @@ object Format {
 
       extension [T](t: Try[T])
         def toOptionMsg = t match
-          case Success(v) => println("Succeeded"); Some(v)
-          case Failure(e) =>
-            //println("Failed: " + e.getMessage);
-            //e.printStackTrace
-            None
+          case Success(v) => Some(v)
+          case Failure(e) => None
 
       val formattedCode =
         for {

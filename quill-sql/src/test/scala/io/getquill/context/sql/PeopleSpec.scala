@@ -16,26 +16,26 @@ trait PeopleSpec extends Spec {
   case class Person(name: String, age: Int)
   case class Couple(her: String, him: String)
 
-  // val peopleInsert =
-  //   quote((p: Person) => query[Person].insert(p))
+  inline def peopleInsert =
+    quote((p: Person) => query[Person].insert(p))
 
-  // val peopleEntries = List(
-  //   Person("Alex", 60),
-  //   Person("Bert", 55),
-  //   Person("Cora", 33),
-  //   Person("Drew", 31),
-  //   Person("Edna", 21),
-  //   Person("Fred", 60)
-  // )
+  val peopleEntries = List(
+    Person("Alex", 60),
+    Person("Bert", 55),
+    Person("Cora", 33),
+    Person("Drew", 31),
+    Person("Edna", 21),
+    Person("Fred", 60)
+  )
 
-  // val couplesInsert =
-  //   quote((c: Couple) => query[Couple].insert(c))
+  inline def g =
+    quote((c: Couple) => query[Couple].insert(c))
 
-  // val couplesEntries = List(
-  //   Couple("Alex", "Bert"),
-  //   Couple("Cora", "Drew"),
-  //   Couple("Edna", "Fred")
-  // )
+  inline def couplesEntries = List(
+    Couple("Alex", "Bert"),
+    Couple("Cora", "Drew"),
+    Couple("Edna", "Fred")
+  )
 
   // val `Ex 1 differences` =
   //   quote {

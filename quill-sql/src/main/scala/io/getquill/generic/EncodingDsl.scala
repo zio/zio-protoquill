@@ -37,4 +37,14 @@ trait EncodingDsl {
 
   protected def mappedBaseDecoder[I, O](mapped: MappedEncoding[I, O], decoder: DecoderMethod[I]): DecoderMethod[O] =
     (index, row) => mapped.f(decoder(index, row))
+
+  // Define some standard encoders that all contexts should have
+  implicit def stringEncoder: Encoder[String]
+  implicit def bigDecimalEncoder: Encoder[BigDecimal]
+  implicit def booleanEncoder: Encoder[Boolean]
+  implicit def byteEncoder: Encoder[Byte]
+  implicit def shortEncoder: Encoder[Short]
+  implicit def intEncoder: Encoder[Int]
+  implicit def longEncoder: Encoder[Long]
+  implicit def doubleEncoder: Encoder[Double]
 }

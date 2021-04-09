@@ -82,10 +82,10 @@ object PrintMac {
         println(Format(Printer.TreeShortCode.show(any.asTerm)))
 
         println("================= Matchers =================")
-        println(Printer.TreeStructure.show(Untype(any.asTerm)))
+        println(Format(Printer.TreeStructure.show(Untype(any.asTerm))))
 
-        println("================= Pretty Tree =================")
-        println(pprint.apply(Untype(any.asTerm)))
+        //println("================= Pretty Tree =================")
+        //println(pprint.apply(Untype(any.asTerm)))
       }
 
       new Operations()

@@ -252,22 +252,25 @@ object QuotationLotExpr {
       import tm._
       UntypeExpr(expr) match {
         // Extract the entity, the uid and any other expressions the qutation bin may have 
-        // (e.g. the extractor if the QuotationLot is a QueryMeta)
-
+        // (e.g. the extractor if the QuotationLot is a QueryMeta). That `Uninline`
+        // is needed because in some cases, the `underlyingArgument` call (that gets called somewhere before here)
+        // will not be able to remove all inlines which will produce a tree that cannot be matched.
+        // See https://gist.github.com/deusaquilus/29bffed4abcb8a90fccd7db61227a992#file-example-scala
+        // for a example of what happens in Uninline is not here.
         case '{ Unquote.apply[t]($quotation, ${Expr(uid: String)}) } =>
-          Some((quotation, uid, List()))
+          Some((Uninline(quotation), uid, List()))
 
         case '{ SchemaMeta.apply[t]($quotation, ${Expr(uid: String)}) } =>
-          Some((quotation, uid, List()))
+          Some((Uninline(quotation), uid, List()))
 
         case '{ InsertMeta.apply[t]($quotation, ${Expr(uid: String)}) } =>
-          Some((quotation, uid, List()))
+          Some((Uninline(quotation), uid, List()))
 
         case '{ CaseClassLift.apply[t]($quotation, ${Expr(uid: String)}) } =>
-          Some((quotation, uid, List()))
+          Some((Uninline(quotation), uid, List()))
 
         case '{ QueryMeta.apply[t, r]($quotation, ${Expr(uid: String)}, $extractor) } =>
-          Some((quotation, uid, List(extractor)))
+          Some((Uninline(quotation), uid, List(extractor)))
 
         case other =>
           None
@@ -288,12 +291,11 @@ object QuotationLotExpr {
       import quotes.reflect._
       unapply(expr).getOrElse { quotes.reflect.report.throwError(s"The expression: ${Format(Printer.TreeShortCode.show(expr.asTerm))} is not a valid unquotation of a Quoted Expression (i.e. a [quoted-expression].unqoute) and cannot be unquoted.") }
 
-    def unapply(expr: Expr[Any])(using Quotes): Option[QuotationLotExpr] = 
-      //println("=================== Unapplying Unquote ===================")
-      //println(io.getquill.Format(expr.show))
+    def unapply(expr: Expr[Any])(using Quotes): Option[QuotationLotExpr] =
       expr match {
+        // In certain situations even after doing 'underlyingArgument', there are still inline blocks
+        // remaining in the AST. 
         case `(QuotationLot).unquote`(QuotationLotExpr(vaseExpr)) => 
-          //println("=============== MATCHED ===============")
           Some(vaseExpr)
         case _ => 
           //println("=============== NOT MATCHED ===============")
@@ -308,14 +310,11 @@ object QuotationLotExpr {
   // to search the AST since it has been parsed already
   def unapply(expr: Expr[Any])(using Quotes): Option[QuotationLotExpr] = {
     import quotes.reflect._
-
-    
     expr match {
       case vase @ `QuotationLot.apply`(quoted @ QuotedExpr.Uprootable(ast, PlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
         Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
 
       case ql @ `QuotationLot.apply`(quotation, uid, rest) =>
-        //println("======= Only Pluckable: " + Printer.TreeShortCode.show(ql.asTerm))
         Some(Pluckable(uid, quotation, rest))
 
       // If it's a QuotationLot but we can't extract it at all, need to throw an error
@@ -336,7 +335,8 @@ object QuotationLotExpr {
    * is just used by a QueryMeta to carry an extractor function that contra-maps back to the T type
    */
   case class Pluckable(uid: String, expr: Expr[Quoted[Any]], other: List[Expr[_]]) extends QuotationLotExpr {
-    def pluck(using Quotes) = '{ QuotationVase($expr, ${Expr(uid)}) }
+    def pluck(using Quotes) = 
+      '{ QuotationVase($expr, ${Expr(uid)}) }
   }
 
   // QuotationLots expressions that can be further inlined into quotated clauses

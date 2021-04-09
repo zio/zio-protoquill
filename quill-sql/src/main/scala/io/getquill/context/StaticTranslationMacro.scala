@@ -23,6 +23,7 @@ import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.ast.{ Query => AQuery, _ }
+import scala.util.{Success, Failure}
 
 import io.getquill._
 
@@ -138,9 +139,7 @@ object StaticTranslationMacro {
     import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
-
-    import scala.util.{Success, Failure}
-    idiomAndNamingStatic match {
+    idiomAndNamingStatic[D, N] match {
       case Success(v) =>
       case Failure(f) => f.printStackTrace()
     }

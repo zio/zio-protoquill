@@ -387,6 +387,18 @@ trait Extractors {
   def is[T: Type](inputs: Expr[_]*): Boolean =
     inputs.forall(input => input.asTerm.tpe <:< TypeRepr.of[T])
 
+  object Uninline {
+    def unapply[T: Type](any: Expr[T]): Option[Expr[T]] = Some(Term.apply(any.asTerm).asExprOf[T])
+    def apply[T: Type](any: Expr[T]): Expr[T] = Term.apply(any.asTerm).asExprOf[T]
+
+    object Term:
+      def unapply(any: Term): Option[Term] = Some(Term.apply(any))
+      def apply(any: Term) = 
+        any match
+          case Inlined(_, _, v) => v
+          case _ => any
+  }
+
   object ConstExpr {
     /** Matches expressions containing literal constant values and extracts the value.
      *
