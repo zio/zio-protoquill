@@ -91,6 +91,7 @@ object GenericDecoder {
         // TODO With embedded objects the parent-field-name is tacked onto the column name so need
         // to get that from the parent traversal. Need to have a test for that
         val index = resolveIndexOrFallback(rawIndex, resultRow, constValue[field].toString)
+        
         val decodedHead = summonAndDecode[head, ResultRow](index, resultRow)
         val air = decodedHead.asInstanceOf[Product].productArity
         (decodedHead *: decodeChildern[fields, tail, ResultRow](index + air, resultRow)) 
@@ -102,14 +103,23 @@ object GenericDecoder {
       case (_, _: EmptyTuple) => EmptyTuple
     }
 
-  inline def decode[T, ResultRow](index: Int, resultRow: ResultRow) =
+  type IsTuple[T <: Tuple]
+
+  inline def decode[T, ResultRow](index: Int, resultRow: ResultRow) = {
+    // got here throw new RuntimeException("========== Outer Decode Clause ==========")
     summonFrom {
       case ev: Mirror.Of[T] =>
         inline ev match {
+          case m: Mirror.ProductOf[IsTuple[T]] =>
+            throw new RuntimeException("========== Tup Clause ==========")
+            val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
+            tup.asInstanceOf[T]
           case m: Mirror.ProductOf[T] =>
+            throw new RuntimeException("========== Product Clause ==========")
             val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
             m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
           case m: Mirror.SumOf[T] =>
+            throw new RuntimeException("========== Sum Clause ==========")
             columnResolver[ResultRow] match {
               case None => throw new IllegalArgumentException(s"Need column resolver for in order to be able to decode a coproduct but none exists for ${showType[ResultRow]}")
               case _ =>
@@ -125,9 +135,13 @@ object GenericDecoder {
             selectAndDecode[m.MirroredElemTypes, ResultRow, T](index, resultRow, rowClass: ClassTag[_])
         }
     }
+  }
 
   inline def generic[T, ResultRow]: GenericDecoder[ResultRow, T] = 
     new GenericDecoder[ResultRow, T] {
-      def apply(index: Int, resultRow: ResultRow): T = decode[T, ResultRow](index, resultRow)     
+      def apply(index: Int, resultRow: ResultRow): T = {
+        //throw new RuntimeException("========== GenericDecoderClause ==========")
+        decode[T, ResultRow](index, resultRow)
+      }
     }
 }

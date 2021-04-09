@@ -84,7 +84,10 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
     val (params, values) = prepare(Nil)
     logger.logQuery(sql, params)
     withConnection(_.sendPreparedStatement(sql, values.asJava))
-      .map(_.getRows.asScala.iterator.map(extractor).toList)
+      .map(_.getRows.asScala.iterator.map(row => {
+        println("=== ROW: "+ row.asScala.toList)
+        extractor(row)
+      }).toList)
   }
 
   // def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(implicit ec: ExecutionContext): Future[T] =

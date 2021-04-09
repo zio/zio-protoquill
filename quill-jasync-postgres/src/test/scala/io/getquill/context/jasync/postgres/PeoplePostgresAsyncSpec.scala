@@ -4,6 +4,8 @@ import scala.concurrent.ExecutionContext.Implicits.{ global => ec }
 import io.getquill.context.sql.PeopleSpec
 import io.getquill.Dsl._
 
+case class Blah(a: String, b: Int)
+
 class PeoplePostgresAsyncSpec extends PeopleSpec {
 
   val context = testContext
@@ -31,7 +33,7 @@ class PeoplePostgresAsyncSpec extends PeopleSpec {
           w <- query[Person]
           m <- query[Person] if (c.her == w.name && c.him == m.name && w.age > m.age)
         } yield {
-          (w.name, w.age)
+          (w.name, w.age) //helloooooooooooooooooooooooooooo
         }
       }
 
