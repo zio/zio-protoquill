@@ -114,7 +114,6 @@ object GenericDecoder {
     //   case ev: Mirror.ProductOf[T] =>
     //     throw new RuntimeException("========== MirrorOf Clause ==========")
     // }
-    io.getquill.util.debug.PrintMac {
     summonFrom {
       case ev: Mirror.ProductOf[IsTuple[T]] =>
         throw new RuntimeException("========== Tup Clause ==========")
@@ -131,7 +130,7 @@ object GenericDecoder {
       case m: Mirror.SumOf[T] =>
         throw new RuntimeException("========== Sum Clause ==========")
     }
-    }
+    
 
       // case ev: Mirror.ProductOf[T] =>
       //   throw new RuntimeException("========== MirrorOf Clause ==========")
@@ -174,3 +173,5 @@ object GenericDecoder {
       }
     }
 }
+
+

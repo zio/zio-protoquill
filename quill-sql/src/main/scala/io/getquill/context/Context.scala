@@ -80,6 +80,10 @@ object DatasourceContextInjection {
   object Member extends Member
 }
 
+import scala.deriving._
+
+
+
 
 // TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
 trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy]
