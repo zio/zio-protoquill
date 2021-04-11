@@ -33,7 +33,7 @@ class PeoplePostgresAsyncSpec extends PeopleSpec {
           w <- query[Person]
           m <- query[Person] if (c.her == w.name && c.him == m.name && w.age > m.age)
         } yield {
-          (w.name, w.age) //helloooooooooooooooooooooooooooooooooooooooooooo
+          Blah(w.name, w.age) //helloooooooooooooooooooooooooooooooooooooooooooooooooo
         }
       }
 
