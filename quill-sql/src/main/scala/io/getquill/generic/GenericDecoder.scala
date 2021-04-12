@@ -93,7 +93,7 @@ object GenericDecoder {
     import quotes.reflect._
     '{
       new GenericDecoder[ResultRow, T] {
-        def decode(index: Int, resultRow: ResultRow) = ${GenericDecoder.decode[T, ResultRow]('index, 'resultRow)}
+        def apply(index: Int, resultRow: ResultRow) = ${GenericDecoder.decode[T, ResultRow]('index, 'resultRow)}
       }
     }
 }
