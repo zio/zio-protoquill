@@ -6,7 +6,8 @@ import scala.reflect.classTag
 import scala.quoted._
 import scala.deriving._
 import scala.compiletime.{erasedValue, constValue, summonFrom, summonInline}
-
+import io.getquill.metaprog.TypeExtensions
+import io.getquill.util.Format
 
 trait GenericColumnResolver[ResultRow] {
   def apply(resultRow: ResultRow, columnName: String): Int
@@ -22,119 +23,77 @@ trait GenericRowTyper[ResultRow, Co] {
 
 object GenericDecoder {
 
-  // transparent 
-  inline def summonRowTyper[ResultRow, Co]: Option[GenericRowTyper[ResultRow, Co]] =
-    summonFrom {
-      case det: GenericRowTyper[ResultRow, Co] => Some(det)
-      case _ => None
-    }
+  def summonAndDecode[ResultRow: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[T] = 
+    import quotes.reflect.{Term => QTerm, _}
+    Expr.summon[GenericDecoder[ResultRow, T]] match
+      case Some(decoder) => '{ $decoder($index, $resultRow) }
+      case _ => report.throwError(s"Cannot find decoder for the type: ${Format.TypeOf[T]}")
 
-  // TODO Cache this return since it only needs to be done once?
-  inline def columnResolver[ResultRow]: Option[GenericColumnResolver[ResultRow]] =
-    summonFrom {
-        case res: GenericColumnResolver[ResultRow] => Some(res)
-        case _ => None
-    }
+  def flatten[ResultRow: Type, Types: Type](index: Expr[Int], resultRow: Expr[ResultRow])(typesTup: Type[Types])(using Quotes): List[(Type[_], Expr[_])] = {
+    import quotes.reflect.{Term => QTerm, _}
+    val ext = new TypeExtensions
+    import ext._
 
-  inline def showType[T]: String = ${ showTypeImpl[T] }
-  def showTypeImpl[T: Type](using Quotes): Expr[String] = {
+    typesTup match {
+      //case ('[tpe *: types]) if Type.of[tpe].isProduct =>
+      //  val air = TypeRepr.of[tpe].classSymbol.get.caseFields.length
+      //  (TypeTree.of[tpe], summonAndDecode[ResultRow, tpe](index, resultRow)) :: flatten[ResultRow, types]('{$index + ${Expr(air)}}, resultRow)(Type.of[types])
+
+      case ('[tpe *: types]) =>
+        val air = TypeRepr.of[tpe].classSymbol.get.caseFields.length
+        (Type.of[tpe], summonAndDecode[ResultRow, tpe](index, resultRow)) :: flatten[ResultRow, types]('{$index + 1}, resultRow)(Type.of[types])
+
+      case ('[EmptyTuple]) => Nil
+
+      case _ => report.throwError("Cannot Derive Product during Type Flattening of Expression:\n" + typesTup)
+    } 
+  }
+
+  def decode[T: Type, ResultRow: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[T] = {
     import quotes.reflect._
-    Expr(TypeRepr.of[T].simplified.typeSymbol.name)
-  }
+    // if there is a decoder for the term, just return the term
+    Expr.summon[Mirror.Of[T]] match
+      case Some(ev) =>
+        // Otherwise, recursively summon fields
+        ev match {
+          case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+            val children = flatten(index, resultRow)(Type.of[elementTypes])
+            val types = children.map(_._1)
+            val terms = children.map(_._2)
+            val constructor = TypeRepr.of[T].typeSymbol.primaryConstructor
 
-  inline def summonAndDecode[T, ResultRow](index: Int, resultRow: ResultRow): T =
-    summonFrom {
-        case dec: GenericDecoder[ResultRow, T] => dec(index, resultRow)
-        case _ => throw new IllegalArgumentException(s"Cannot find decoder for type: ${showType[T]}")
-        // TODO Better error via report.throwError if cant find it (or return None and error later?)
-    }
-
-  // inline def arity[Elems <: Tuple]: Int =
-  //   inline erasedValue[Elems] match {
-  //     case _: (head *: tail) => 1 + arity[tail]
-  //     case _ => 0
-  //   }
-
-  type IsProduct[T <: Product] = T
-
-  // If a columnName -> columns index is available, use that. It is necessary for coproducts
-  inline def resolveIndexOrFallback[ResultRow](originalIndex: Int, resultRow: ResultRow, fieldName: String) =
-    columnResolver[ResultRow] match {
-      case None => 
-        //println(s"---------------- Using Original Index ${originalIndex} ----------------")
-        originalIndex
-      case Some(resolver) =>
-        //println(s"---------------- Using Resolver Index '${fieldName}' -> ${resolver(resultRow, fieldName)} ----------------")
-        resolver(resultRow, fieldName)
-    }
-
-  inline def selectAndDecode[Elems <: Tuple, ResultRow, Co](rawIndex: Int, resultRow: ResultRow, rowClassTag: ClassTag[_]): Co = {
-    inline erasedValue[Elems] match {
-      case _: (tpe *: tpes) =>
-        val tpeClass = summonInline[ClassTag[tpe]].runtimeClass
-        val rowClass = rowClassTag.runtimeClass
-
-        if (tpeClass.isAssignableFrom(rowClass))
-            summonAndDecode[tpe, ResultRow](rawIndex, resultRow).asInstanceOf[Co]
-        else
-            selectAndDecode[tpes, ResultRow, Co](rawIndex, resultRow, rowClassTag)
-        
-      case _: EmptyTuple => throw new IllegalArgumentException(s"Cannot resolve coproduct type for ${showType[Co]}")
-    }
-  }
-
-  // TODO Handling of optionals. I.e. don't continue to decode child rows if any columns 
-  // in the parent object are undefined (unless they are optional)
-  inline def decodeChildern[Fields <: Tuple, Elems <: Tuple, ResultRow](rawIndex: Int, resultRow: ResultRow): Tuple =
-    inline erasedValue[(Fields, Elems)] match {
-      case (_: (field *: fields), _: (IsProduct[head] *: tail)) =>
-        // TODO With embedded objects the parent-field-name is tacked onto the column name so need
-        // to get that from the parent traversal. Need to have a test for that
-        val index = resolveIndexOrFallback(rawIndex, resultRow, constValue[field].toString)
-        val decodedHead = summonAndDecode[head, ResultRow](index, resultRow)
-        val air = decodedHead.asInstanceOf[Product].productArity
-        (decodedHead *: decodeChildern[fields, tail, ResultRow](index + air, resultRow)) 
-
-      case (_: (field *: fields), _: (head *: tail)) =>
-        val index = resolveIndexOrFallback(rawIndex, resultRow, constValue[field].toString)
-        (summonAndDecode[head, ResultRow](index, resultRow) *: decodeChildern[fields, tail, ResultRow](index + 1, resultRow))
-
-      case (_, _: EmptyTuple) => EmptyTuple
-    }
-
-  import io.getquill.util.debug.PrintMac
-
-  inline def decode[T, ResultRow](index: Int, resultRow: ResultRow): T =
-    inline erasedValue[T] match
-      case _: Tuple =>
-        DecodeAlternate[T, ResultRow](index, resultRow)
-      case _ =>
-        summonFrom {
-          case ev: Mirror.Of[T] =>
-            inline ev match {
-              case m: Mirror.ProductOf[T] =>
-                val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
-                m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
-              case m: Mirror.SumOf[T] =>
-                columnResolver[ResultRow] match {
-                  case None => throw new IllegalArgumentException(s"Need column resolver for in order to be able to decode a coproduct but none exists for ${showType[ResultRow]}")
-                  case _ =>
-                }
-                
-                // Get a row-typer to be able to determine what sub-class the row should be
-                val rowClass = 
-                  summonRowTyper[ResultRow, T] match
-                    case Some(rowTyper) => rowTyper(resultRow)
-                    case None => throw new IllegalArgumentException(s"Cannot summon RowTyper for type: ${showType[T]}")
-                
-                // Try to get the mirror element and decode it
-                selectAndDecode[m.MirroredElemTypes, ResultRow, T](index, resultRow, rowClass: ClassTag[_])
-            }
+            val construct =
+              if (TypeRepr.of[T] <:< TypeRepr.of[Tuple]) {
+                Apply(
+                  TypeApply(
+                    Select(New(TypeTree.of[T]), constructor),
+                    types.map { tpe =>
+                      tpe match
+                        case '[tt] => TypeTree.of[tt]
+                    }
+                  ),
+                  terms.map(_.asTerm)
+                )
+              } else {
+                Apply(
+                  Select(New(TypeTree.of[T]), constructor),
+                  terms.map(_.asTerm)
+                )
+              }
+            construct.asExprOf[T]
+            
+          case _ => report.throwError("Tuple decoder could not be summoned")
         }
-        
+      
+      case _ => 
+        report.throwError("Tuple decoder could not be summoned")
+  }
 
-  inline def generic[T, ResultRow]: GenericDecoder[ResultRow, T] = 
-    new GenericDecoder[ResultRow, T] {
-      def apply(index: Int, resultRow: ResultRow): T = decode[T, ResultRow](index, resultRow)
+  def apply[T: Type, ResultRow: Type](using quotes: Quotes): Expr[GenericDecoder[ResultRow, T]] =
+    import quotes.reflect._
+    '{
+      new GenericDecoder[ResultRow, T] {
+        def decode(index: Int, resultRow: ResultRow) = ${GenericDecoder.decode[T, ResultRow]('index, 'resultRow)}
+      }
     }
 }

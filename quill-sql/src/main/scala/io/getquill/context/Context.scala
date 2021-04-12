@@ -28,6 +28,7 @@ import QueryExecution.QuotedOperation
 import io.getquill.metaprog.etc.MapFlicer
 import io.getquill.util.Messages.fail
 import java.io.Closeable
+import io.getquill.util.Format
 
 import io.getquill._
 
@@ -80,6 +81,8 @@ object DatasourceContextInjection {
   object Member extends Member
 }
 
+import io.getquill.generic.DecodeAlternate
+
 
 // TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
 trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy]
@@ -90,7 +93,12 @@ with Closeable
 
   type DatasourceContextBehavior <: DatasourceContextInjection
 
-  implicit inline def autoDecoder[T]: BaseDecoder[T] = GenericDecoder.generic
+  //implicit inline def autoDecoder[T]: BaseDecoder[T] = GenericDecoder.generic
+  // inline given dec[T](using dec: DecodeAlternate[T, ResultRow]): GenericDecoder[T, ResultRow] with
+  //   inline def decode(t: T) = ${ DecodeAlternate[T, ResultRow] }
+
+  inline given dec[T]: GenericDecoder[ResultRow, T] = ${ GenericDecoder[T, ResultRow] }
+    
 
   //def probe(statement: String): Try[_]
   // todo add 'prepare' i.e. encoders here

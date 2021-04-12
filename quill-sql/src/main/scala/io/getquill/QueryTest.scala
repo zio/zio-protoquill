@@ -18,8 +18,8 @@ object QueryTest {
     //println( DecodeAlternate.apply[(String, Int), ResultRow](0, resultRow) )
     
     // This does not
-    //inline def q = quote { query[Person].map(p => (p.name, p.age)) }
-    //val m = run(q)
+    inline def q = quote { query[Person].map(p => (p.name, p.age)) }
+    val m = run(q)
 
   }
 }
