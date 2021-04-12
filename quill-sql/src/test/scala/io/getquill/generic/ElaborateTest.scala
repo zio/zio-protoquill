@@ -1,6 +1,7 @@
 package io.getquill.generic
 
 import io.getquill.ast.Ident
+import io.getquill.generic.ElaborateStructureExt
 
 object ElaborateTest {
   

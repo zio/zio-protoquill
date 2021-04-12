@@ -32,26 +32,7 @@ object StaticSealedTraitExample {
 }
 
 class GenericDecoderCoproductTest extends Spec {
-  case class MyResult(values: (String, Any)*) {
-    lazy val list = LinkedHashMap[String, Any](values.toList: _*)
-    def get(i: Int): String = list.values.toList(i-1).toString
-    def get(key: String): String = list.apply(key).toString
-    def resolve(key: String): Int = list.keysIterator.toList.indexOf(key) + 1
-  }
-
-  given GenericDecoder[MyResult, String] with
-    def apply(index: Int, row: MyResult): String = row.get(index).toString
-
-  given GenericDecoder[MyResult, Int] with
-    def apply(index: Int, row: MyResult): Int = row.get(index).toString.toInt
-
-  
-  // TODO automatically provide this in 'context'
-  given res: GenericColumnResolver[MyResult] with {
-    def apply(resultRow: MyResult, columnName: String): Int = {
-      resultRow.resolve(columnName)
-    }
-  }
+  import GenericDecoderCoproductTestAdditional._
 
   // // Can't find a needed reference to Type[Shape.Circle] and Type[Shape.Square] if you
   // // use sealed trait and put inside main body. Probably because scala compiler has not been able 
@@ -60,12 +41,7 @@ class GenericDecoderCoproductTest extends Spec {
   import StaticSealedTraitExample._
   // enum Shape:
   //   case Square(width: Int, height: Int) extends Shape
-  //   case Circle(radius: Int) extends Shape
-
-
-  implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.generic
-  //given sq1: GenericDecoder[MyResult, Shape.Square] = GenericDecoder.generic
-  //given cr1: GenericDecoder[MyResult, Shape.Circle] = GenericDecoder.generic  
+  //   case Circle(radius: Int) extends Shape  
 
   given deter: GenericRowTyper[MyResult, Shape] with {
     def apply(rr: MyResult): ClassTag[_] = {
