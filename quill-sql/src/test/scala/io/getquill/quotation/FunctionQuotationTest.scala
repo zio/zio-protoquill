@@ -1,4 +1,4 @@
-package io.getquill
+package io.getquill.quotation
 
 import scala.language.implicitConversions
 import io.getquill.QuotationLot
@@ -35,21 +35,21 @@ class FunctionQuotationTest extends Spec with Inside {
     }
   }
   "function apply" - {
-      "local function" in {
-        inline def f = quote {
-          (s: String) => s
-        }
-        inline def q = quote {
-          f("s")
-        }
-        quote(unquote(q)).ast mustEqual Constant("s", Quat.Value)
+    "local function" in {
+      inline def f = quote {
+        (s: String) => s
       }
-      "function reference" in {
-        inline def q = quote {
-          (f: String => String) => f("a")
-        }
-        quote(unquote(q)).ast.asInstanceOf[Function].body mustEqual FunctionApply(Ident("f"), List(Constant("a", Quat.Value)))
-        quote(unquote(q)).ast mustEqual Function(List(Ident("f")), FunctionApply(Ident("f"), List(Constant("a", Quat.Value))))
+      inline def q = quote {
+        f("s")
       }
+      quote(unquote(q)).ast mustEqual Constant("s", Quat.Value)
     }
+    "function reference" in {
+      inline def q = quote {
+        (f: String => String) => f("a")
+      }
+      quote(unquote(q)).ast.asInstanceOf[Function].body mustEqual FunctionApply(Ident("f"), List(Constant("a", Quat.Value)))
+      quote(unquote(q)).ast mustEqual Function(List(Ident("f")), FunctionApply(Ident("f"), List(Constant("a", Quat.Value))))
+    }
+  }
 }

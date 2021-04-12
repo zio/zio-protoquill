@@ -52,6 +52,9 @@ trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
 
   inline def queryMeta[T, R](inline expand: Quoted[Query[T] => Query[R]])(inline extract: R => T): QueryMeta[T, R] =
     ${ QueryMetaMacro.embed[T, R, Parser]('this, 'expand, 'extract) }
+
+  /** Automatic implicit ordering DSL for: `query[Person].sortBy(_.field)(<here>)` */
+  implicit def implicitOrd[T]: Ord[T] = Ord.ascNullsFirst
 }
 
 object QueryDsl {

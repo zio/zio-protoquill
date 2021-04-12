@@ -51,6 +51,12 @@ object UseMac {
 
   def main(args: Array[String]):Unit = {
 
+    import io.getquill.Ord
+
+    PrintMac {
+      Ord.apply(Ord.asc[String], Ord.desc[Int])
+    }
+
     // PrintMac {
     //   new Person("Joe", 123) //hello
     // }

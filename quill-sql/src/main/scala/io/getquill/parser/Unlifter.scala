@@ -162,6 +162,8 @@ object Unlifter {
       case '{ NumericOperator.% } =>  NumericOperator.%
       case '{ NumericOperator.> } =>  NumericOperator.>
       case '{ NumericOperator.< } =>  NumericOperator.<
+      case '{ NumericOperator.>= } =>  NumericOperator.>=
+      case '{ NumericOperator.<= } =>  NumericOperator.<=
       case '{ StringOperator.+ } =>  StringOperator.+
       case '{ StringOperator.toUpperCase } =>  StringOperator.toUpperCase
       case '{ StringOperator.toLowerCase } =>  StringOperator.toLowerCase

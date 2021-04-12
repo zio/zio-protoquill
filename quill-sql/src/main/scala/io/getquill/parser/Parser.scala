@@ -71,7 +71,7 @@ object Parser {
 
   }
 
-  trait Delegated[R] extends Parser[R] with Extractors {
+  trait Delegated[+R] extends Parser[R] with Extractors {
     override implicit val qctx: Quotes
     def delegate: PartialFunction[Expr[_], R]
 
@@ -95,7 +95,7 @@ object Parser {
       expr.asTerm.tpe <:< TypeRepr.of[Criteria] && delegate.isDefinedAt(expr)
   }
 
-  abstract class Clause[R](using override val qctx: Quotes) extends Delegated[R] with Extractors with Idents with QuatMaking with QuatMakingBase(using qctx) { base =>
+  abstract class Clause[+R](using override val qctx: Quotes) extends Delegated[R] with Extractors with Idents with QuatMaking with QuatMakingBase(using qctx) { base =>
     import Implicits._
 
     def root: Parser[Ast]
@@ -137,6 +137,7 @@ trait ParserLibrary extends ParserFactory {
   def valParser(using qctx: Quotes)                = Series.single(new ValParser)
   def blockParser(using qctx: Quotes)              = Series.single(new BlockParser)
   def operationsParser(using qctx: Quotes)         = Series.single(new OperationsParser)
+  def orderingParser(using qctx: Quotes)           = Series.single(new OrderingParser)
   def genericExpressionsParser(using qctx: Quotes) = Series.single(new GenericExpressionsParser)
   def actionParser(using qctx: Quotes)             = Series.single(new ActionParser)
   def batchActionParser(using qctx: Quotes)        = Series.single(new BatchActionParser)
@@ -153,6 +154,7 @@ trait ParserLibrary extends ParserFactory {
     quotationParser
         .combine(queryParser)
         .combine(optionParser)
+        .combine(orderingParser)
         .combine(actionParser)
         .combine(batchActionParser)
         .combine(functionParser) // decided to have it be it's own parser unlike Quill3
@@ -245,6 +247,32 @@ case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implici
 
   def delegate: PartialFunction[Expr[_], Ast] = {
     case Unseal(PatMatchTerm(ast)) => ast
+  }
+}
+
+
+case class OrderingParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[io.getquill.ast.Ordering] with PatternMatchingValues {
+  import quotes.reflect._
+  import Parser.Implicits._
+  import io.getquill.Ord
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ordering] = {
+    case '{ ($ordDsl: io.getquill.MetaDsl[_]).implicitOrd } => 
+      AscNullsFirst // Not Ord.ascNullsFirst since that's on the DSL layer (i.e. gets parsed below)
+
+    // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
+    case Unseal(Apply(TypeApply(Select(Ident("Ord"), "apply"), _), args)) => 
+      // parse all sub-orderings if this is a composite
+      val subOrderings = args.map(_.asExpr).map(ordExpression => delegate.seal(ordExpression))
+      TupleOrdering(subOrderings)
+
+    case '{ Ord.asc[t] }               => Asc
+    case '{ Ord.desc[t] }              => Desc
+    case '{ Ord.ascNullsFirst[t] }     => AscNullsFirst
+    case '{ Ord.descNullsFirst[t] }    => DescNullsFirst
+    case '{ Ord.ascNullsLast[t] }      => AscNullsLast
+    case '{ Ord.descNullsLast[t] }     => DescNullsLast
   }
 }
 
@@ -392,43 +420,31 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-    del
-  }
-
-  def del: PartialFunction[Expr[_], Ast] = {
     case '{ ($o: Option[t]).isEmpty } => 
-      // println("=======================isEmpty found=======================")
       OptionIsEmpty(astParse(o))
 
     case '{ ($o: Option[t]).nonEmpty } => 
-      // println("=======================nonEmpty found=======================")
       OptionNonEmpty(astParse(o))
 
     case '{ ($o: Option[t]).isDefined } => 
-      // println("=======================isDefined found=======================")
       OptionIsDefined(astParse(o))
 
     case '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } => 
-      // println("=======================map found=======================")
       if (is[Product](o)) OptionTableMap(astParse(o), cleanIdent(id, idType), astParse(body))
       else OptionMap(astParse(o), cleanIdent(id, idType), astParse(body))
 
     case '{ ($o: Option[t]).flatMap(${Lambda1(id, idType, body)}) } => 
-      // println("=======================flatMap found=======================")
       if (is[Product](o)) OptionTableFlatMap(astParse(o), cleanIdent(id, idType), astParse(body))
       else OptionMap(astParse(o), cleanIdent(id, idType), astParse(body))
 
     case '{ ($o: Option[t]).exists(${Lambda1(id, idType, body)}) } =>
-      // println("=======================exists found=======================")
       if (is[Product](o)) OptionTableExists(astParse(o), cleanIdent(id, idType), astParse(body))
       else OptionExists(astParse(o), cleanIdent(id, idType), astParse(body))
 
     case '{ type t; ($o: Option[`t`]).getOrElse($body: `t`) } =>
-      // println("=======================getOrElse found=======================")
       OptionGetOrElse(astParse(o), astParse(body))
 
     case '{ type t; ($o: Option[`t`]).contains($body: `t`) } =>
-      // println("=======================contains found=======================")
       OptionContains(astParse(o), astParse(body))
   }
 }
@@ -484,6 +500,10 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       Take(astParse(q),astParse(n))
     case '{ type t; ($q: Query[`t`]).drop($n: Int) } =>
       Drop(astParse(q),astParse(n))
+
+    // TODO need to test if this is sufficient for implicit ordering cases or if need to specify the other variation in parser as well
+    case '{ type r; ($q: Query[t]).sortBy[`r`](${Lambda1(ident1, tpe, body)})($ord: io.getquill.Ord[`r`]) } =>
+      SortBy(astParse(q), cleanIdent(ident1, tpe), astParse(body), astParse(ord))
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -570,34 +590,33 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     case NamedOp1(left, "+", right) if is[String](left) || is[String](right) =>
       BinaryOperation(astParse(left), StringOperator.+, astParse(right))
 
-    //toString
+    // String.toString
     case '{ ($i: String).toString } => astParse(i)
 
-    //toUpperCase
+    // String.toUpperCase
     case '{ ($str:String).toUpperCase } =>
       UnaryOperation(StringOperator.toUpperCase, astParse(str))
 
-    //toLowerCase
+    // String.toLowerCase
     case '{ ($str:String).toLowerCase } =>
       UnaryOperation(StringOperator.toLowerCase, astParse(str))
 
-    //toLong
+    // String.toLong
     case '{ ($str:String).toLong } =>
       UnaryOperation(StringOperator.toLong, astParse(str))
 
-    //startsWith
+    // String.startsWith
     case '{ ($left:String).startsWith($right) } =>
       BinaryOperation(astParse(left), StringOperator.startsWith, astParse(right))
 
-    //split
+    // String.split
     case '{ ($left:String).split($right:String) } =>
       BinaryOperation(astParse(left), StringOperator.split, astParse(right))
-    
 
     /*
     //SET Operations
     case '{ ($set:String).contains() } =>
-      Console.printl("Wow you actually did it!")
+      Conso le.printl("Wow you actually did it!")
     */
     
     // 1 + 1
@@ -627,6 +646,8 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
         case "%" => Some(NumericOperator.%)
         case ">" => Some(NumericOperator.`>`)
         case "<" => Some(NumericOperator.`<`)
+        case ">=" => Some(NumericOperator.`>=`)
+        case "<=" => Some(NumericOperator.`<=`)
         case _ => None
       }
   }
