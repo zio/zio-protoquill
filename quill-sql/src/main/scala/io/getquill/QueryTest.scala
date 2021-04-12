@@ -20,6 +20,6 @@ object QueryTest {
     // This does not
     inline def q = quote { query[Person].map(p => (p.name, p.age)) }
     val m = run(q)
-
+    println( m.extractor(resultRow) )
   }
 }

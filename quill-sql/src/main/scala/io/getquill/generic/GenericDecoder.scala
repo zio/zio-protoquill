@@ -35,9 +35,9 @@ object GenericDecoder {
     import ext._
 
     typesTup match {
-      //case ('[tpe *: types]) if Type.of[tpe].isProduct =>
-      //  val air = TypeRepr.of[tpe].classSymbol.get.caseFields.length
-      //  (TypeTree.of[tpe], summonAndDecode[ResultRow, tpe](index, resultRow)) :: flatten[ResultRow, types]('{$index + ${Expr(air)}}, resultRow)(Type.of[types])
+      case ('[tpe *: types]) if Type.of[tpe].isProduct =>
+       val air = TypeRepr.of[tpe].classSymbol.get.caseFields.length
+       (Type.of[tpe], summonAndDecode[ResultRow, tpe](index, resultRow)) :: flatten[ResultRow, types]('{$index + ${Expr(air)}}, resultRow)(Type.of[types])
 
       case ('[tpe *: types]) =>
         val air = TypeRepr.of[tpe].classSymbol.get.caseFields.length
@@ -49,51 +49,51 @@ object GenericDecoder {
     } 
   }
 
-  def decode[T: Type, ResultRow: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[T] = {
+  def derived[T: Type, ResultRow: Type](using Quotes): Expr[GenericDecoder[ResultRow, T]] = {
     import quotes.reflect._
     // if there is a decoder for the term, just return the term
-    Expr.summon[Mirror.Of[T]] match
-      case Some(ev) =>
-        // Otherwise, recursively summon fields
-        ev match {
-          case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-            val children = flatten(index, resultRow)(Type.of[elementTypes])
-            val types = children.map(_._1)
-            val terms = children.map(_._2)
-            val constructor = TypeRepr.of[T].typeSymbol.primaryConstructor
-
-            val construct =
-              if (TypeRepr.of[T] <:< TypeRepr.of[Tuple]) {
-                Apply(
-                  TypeApply(
-                    Select(New(TypeTree.of[T]), constructor),
-                    types.map { tpe =>
-                      tpe match
-                        case '[tt] => TypeTree.of[tt]
-                    }
-                  ),
-                  terms.map(_.asTerm)
-                )
-              } else {
-                Apply(
-                  Select(New(TypeTree.of[T]), constructor),
-                  terms.map(_.asTerm)
-                )
-              }
-            construct.asExprOf[T]
-            
-          case _ => report.throwError("Tuple decoder could not be summoned")
-        }
-      
-      case _ => 
-        report.throwError("Tuple decoder could not be summoned")
-  }
-
-  def apply[T: Type, ResultRow: Type](using quotes: Quotes): Expr[GenericDecoder[ResultRow, T]] =
-    import quotes.reflect._
     '{
       new GenericDecoder[ResultRow, T] {
-        def decode(index: Int, resultRow: ResultRow) = ${GenericDecoder.decode[T, ResultRow]('index, 'resultRow)}
+        override def apply(index: Int, resultRow: ResultRow): T = ${
+
+          Expr.summon[Mirror.Of[T]] match
+            case Some(ev) =>
+              // Otherwise, recursively summon fields
+              ev match {
+                case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+                  val children = flatten('index, 'resultRow)(Type.of[elementTypes])
+                  val types = children.map(_._1)
+                  val terms = children.map(_._2)
+                  val constructor = TypeRepr.of[T].typeSymbol.primaryConstructor
+
+                  val construct =
+                    if (TypeRepr.of[T] <:< TypeRepr.of[Tuple]) {
+                      Apply(
+                        TypeApply(
+                          Select(New(TypeTree.of[T]), constructor),
+                          types.map { tpe =>
+                            tpe match
+                              case '[tt] => TypeTree.of[tt]
+                          }
+                        ),
+                        terms.map(_.asTerm)
+                      )
+                    } else {
+                      Apply(
+                        Select(New(TypeTree.of[T]), constructor),
+                        terms.map(_.asTerm)
+                      )
+                    }
+                  construct.asExprOf[T]
+                  
+                case _ => '{ ??? }
+                  
+              }
+            
+            case _ => '{ ??? }
+              
+        }
       }
     }
+  }
 }
