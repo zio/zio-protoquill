@@ -14,6 +14,12 @@ object QueryTest {
   import ctx.{given, _} // need to import givens so that the mirror resolver will be import
   // note, maybe that's why need to do 'implicit inline def' for generic decoder i.e. since implicits are automatically imported
   // unlike givens, so should try doing ctx.{given, _} and see if that fixes it
+
+  // also interesting to note that when reverting the original GenericDecoder, it might make sense
+  // to add some macros that attempt to summon a RowTyper, ColumnResolver via Expr.summon
+  // (i.e. off to the side) and give a warning if those things are not present. In that case,
+  // the user would know during compilation that they are not present. We could do report.error
+  // or report.throwError but then there would just be the generic 'Decoder could not be summoned during query execution' message
   import io.getquill.context.mirror.Row
   import io.getquill.generic.DecodeAlternate
 
