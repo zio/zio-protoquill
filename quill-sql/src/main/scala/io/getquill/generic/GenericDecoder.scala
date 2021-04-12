@@ -102,32 +102,39 @@ object GenericDecoder {
       case (_, _: EmptyTuple) => EmptyTuple
     }
 
-  inline def decode[T, ResultRow](index: Int, resultRow: ResultRow) =
-    summonFrom {
-      case ev: Mirror.Of[T] =>
-        inline ev match {
-          case m: Mirror.ProductOf[T] =>
-            val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
-            m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
-          case m: Mirror.SumOf[T] =>
-            columnResolver[ResultRow] match {
-              case None => throw new IllegalArgumentException(s"Need column resolver for in order to be able to decode a coproduct but none exists for ${showType[ResultRow]}")
-              case _ =>
+  import io.getquill.util.debug.PrintMac
+
+  inline def decode[T, ResultRow](index: Int, resultRow: ResultRow): T =
+    inline erasedValue[T] match
+      case _: Tuple =>
+        DecodeAlternate[T, ResultRow](index, resultRow)
+      case _ =>
+        summonFrom {
+          case ev: Mirror.Of[T] =>
+            inline ev match {
+              case m: Mirror.ProductOf[T] =>
+                val tup = decodeChildern[m.MirroredElemLabels, m.MirroredElemTypes, ResultRow](index, resultRow)
+                m.fromProduct(tup.asInstanceOf[Product]).asInstanceOf[T]
+              case m: Mirror.SumOf[T] =>
+                columnResolver[ResultRow] match {
+                  case None => throw new IllegalArgumentException(s"Need column resolver for in order to be able to decode a coproduct but none exists for ${showType[ResultRow]}")
+                  case _ =>
+                }
+                
+                // Get a row-typer to be able to determine what sub-class the row should be
+                val rowClass = 
+                  summonRowTyper[ResultRow, T] match
+                    case Some(rowTyper) => rowTyper(resultRow)
+                    case None => throw new IllegalArgumentException(s"Cannot summon RowTyper for type: ${showType[T]}")
+                
+                // Try to get the mirror element and decode it
+                selectAndDecode[m.MirroredElemTypes, ResultRow, T](index, resultRow, rowClass: ClassTag[_])
             }
-            
-            // Get a row-typer to be able to determine what sub-class the row should be
-            val rowClass = 
-              summonRowTyper[ResultRow, T] match
-                case Some(rowTyper) => rowTyper(resultRow)
-                case None => throw new IllegalArgumentException(s"Cannot summon RowTyper for type: ${showType[T]}")
-            
-            // Try to get the mirror element and decode it
-            selectAndDecode[m.MirroredElemTypes, ResultRow, T](index, resultRow, rowClass: ClassTag[_])
         }
-    }
+        
 
   inline def generic[T, ResultRow]: GenericDecoder[ResultRow, T] = 
     new GenericDecoder[ResultRow, T] {
-      def apply(index: Int, resultRow: ResultRow): T = decode[T, ResultRow](index, resultRow)     
+      def apply(index: Int, resultRow: ResultRow): T = decode[T, ResultRow](index, resultRow)
     }
 }

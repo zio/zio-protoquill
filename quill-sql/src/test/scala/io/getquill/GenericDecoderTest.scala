@@ -32,20 +32,40 @@ class GenericDecoderTest extends Spec {
 
   case class Person(name: String, age: Int)
 
-  given RowTyper[Shape] with
-    def apply(row: Row) = 
-      row.apply[String]("type") match
-        case "square" => classTag[Shape.Square]
-        case "circle" => classTag[Shape.Circle]
+  "domain-model product using row-typer" - {
+    given RowTyper[Shape] with
+      def apply(row: Row) = 
+        row.apply[String]("type") match
+          case "square" => classTag[Shape.Square]
+          case "circle" => classTag[Shape.Circle]
 
-  "test product type" in {
-    inline def q = quote { query[Shape].filter(s => s.id == 18) }
-    val result = ctx.run(q)
+    "test product type" in {
+      inline def q = quote { query[Shape].filter(s => s.id == 18) }
+      val result = ctx.run(q)
 
-    val squareRow = Row("type" -> "square", "id" -> 18, "radius" -> 890, "width" -> 123, "height" -> 456)
-    result.extractor(squareRow) mustEqual Shape.Square(18, 123, 456)
-    val circleRow = Row("type" -> "circle", "id" -> 18, "radius" -> 890, "width" -> 123, "height" -> 456)
-    result.extractor(circleRow) mustEqual Shape.Circle(18, 890)
+      val squareRow = Row("type" -> "square", "id" -> 18, "radius" -> 890, "width" -> 123, "height" -> 456)
+      result.extractor(squareRow) mustEqual Shape.Square(18, 123, 456)
+      val circleRow = Row("type" -> "circle", "id" -> 18, "radius" -> 890, "width" -> 123, "height" -> 456)
+      result.extractor(circleRow) mustEqual Shape.Circle(18, 890)
+    }
+  }
+
+  "simple examples" - {
+    "test tuple type" in {
+      inline def q = quote { query[Person].map(p => (p.name, p.age)) }
+      val result = ctx.run(q)
+
+      val tupleRow = Row("_1" -> "Joe", "_2" -> 123)
+      result.extractor(tupleRow) mustEqual ("Joe", 123)
+    }
+
+    "test case class type" in {
+      inline def q = quote { query[Person] }
+      val result = ctx.run(q)
+
+      val tupleRow = Row("name" -> "Joe", "age" -> 123)
+      result.extractor(tupleRow) mustEqual Person("Joe", 123)
+    }
   }
 }
 object StaticEnumExample {

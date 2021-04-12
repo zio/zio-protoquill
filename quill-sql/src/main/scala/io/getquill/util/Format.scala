@@ -6,6 +6,11 @@ import scala.quoted._
 object Format {
   // import org.scalafmt.interfaces.Scalafmt
   // import org.scalafmt.cli.Scalafmt210
+  object TypeOf {
+    def apply[T: Type](using Quotes) = 
+      import quotes.reflect._
+      Format.Type(summon[Type[T]])
+  }
 
   object Type {
     def apply(tpe: scala.quoted.Type[_])(using Quotes) =
