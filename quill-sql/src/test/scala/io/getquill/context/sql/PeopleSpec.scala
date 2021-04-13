@@ -7,6 +7,7 @@ import io.getquill.context.Context
 import io.getquill.Dsl._
 import io.getquill.Quoted
 
+// TODO Move tests for these into quotation package from QuotationSpec
 class PeopleSpecUseCls extends PeopleSpec {
   import io.getquill._
   import io.getquill.MirrorContext

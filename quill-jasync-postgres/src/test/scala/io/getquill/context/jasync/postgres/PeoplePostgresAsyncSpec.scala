@@ -47,8 +47,7 @@ class PeoplePostgresAsyncSpec extends PeopleSpec {
 
   "Example 7 - predicate 1" in {
     val q = quote { satisfies(eval(`Ex 7 predicate`)) }
-    println( io.getquill.util.Messages.qprint.apply(q) ) //helloooo
-    //await(testContext.run(satisfies(eval(`Ex 7 predicate`)))) mustEqual `Ex 7 expected result`
+    await(testContext.run(satisfies(eval(`Ex 7 predicate`)))) mustEqual `Ex 7 expected result`
   }
 
   // "Example 8 - contains empty" in {
