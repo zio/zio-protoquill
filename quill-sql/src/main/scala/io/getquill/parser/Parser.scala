@@ -584,7 +584,9 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     // In the future a casting system should be implemented to handle these cases.
     // Until then, let the SQL dialect take care of the auto-conversion. 
     // This is done term-level or we would have to do it for every numeric type
-    case Unseal(Select(num, "toString")) if isNumeric(num.tpe) => astParse(num.asExpr)
+    // toString is automatically converted into the Apply form i.e. foo.toString automatically becomes foo.toString()
+    // so we need to parse it as an Apply. The others don't take arg parens so they are not in apply-form.
+    case Unseal(Apply(Select(num, "toString"), List())) if isNumeric(num.tpe) => astParse(num.asExpr)
     case Unseal(Select(num, "toInt")) if isNumeric(num.tpe) => astParse(num.asExpr)
     case Unseal(Select(num, "toLong")) if isNumeric(num.tpe) => astParse(num.asExpr)
     case Unseal(Select(num, "toFloat")) if isNumeric(num.tpe) => astParse(num.asExpr)

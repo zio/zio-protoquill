@@ -55,9 +55,9 @@ object UseMac {
 
     val num = 4
 
-    // PrintMac {
-    //   -num
-    // }
+    PrintMac {
+      num.toInt
+    }
 
     // PrintMac {
     //   new Person("Joe", 123) //hello
