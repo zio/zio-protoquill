@@ -14,7 +14,7 @@ import io.getquill.quat.quatOf
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
 
-class ActionTest extends Spec with Inside {
+class InsertAdvancedSpec extends Spec with Inside {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
