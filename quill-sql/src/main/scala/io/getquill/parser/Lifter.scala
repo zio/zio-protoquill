@@ -140,6 +140,16 @@ trait Lifter(serializeQuats: Boolean) {
     def lift = 
       case Tuple(values) => '{ Tuple(${values.expr}) }
 
+  given orderingLiftable: NiceLiftable[Ordering] with
+    def lift =
+      case TupleOrdering(elems) => '{ io.getquill.ast.TupleOrdering(${elems.expr}) }
+      case Asc                  => '{ io.getquill.ast.Asc }
+      case Desc                 => '{ io.getquill.ast.Desc }
+      case AscNullsFirst        => '{ io.getquill.ast.AscNullsFirst }
+      case DescNullsFirst       => '{ io.getquill.ast.DescNullsFirst }
+      case AscNullsLast         => '{ io.getquill.ast.AscNullsLast }
+      case DescNullsLast        => '{ io.getquill.ast.DescNullsLast }
+
 
   given liftableAst : NiceLiftable[Ast] with {
     def lift =
@@ -148,9 +158,11 @@ trait Lifter(serializeQuats: Boolean) {
       case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.expr}, ${values.expr}) }
       case v: Entity => liftableEntity(v)
       case v: Tuple => liftableTuple(v)
+      case v: Ordering => orderingLiftable(v)
       case Map(query: Ast, alias: AIdent, body: Ast) => '{ Map(${query.expr}, ${alias.expr}, ${body.expr})  }
       case FlatMap(query: Ast, alias: AIdent, body: Ast) => '{ FlatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
       case Filter(query: Ast, alias: AIdent, body: Ast) => '{ Filter(${query.expr}, ${alias.expr}, ${body.expr})  }
+      case SortBy(query: Ast, alias: AIdent, criterias: Ast, ordering: Ast) => '{ SortBy(${query.expr}, ${alias.expr}, ${criterias.expr}, ${ordering.expr})  }
       case Foreach(query: Ast, alias: AIdent, body: Ast) => '{ Foreach(${query.expr}, ${alias.expr}, ${body.expr})  }
       case UnaryOperation(operator: UnaryOperator, a: Ast) => '{ UnaryOperation(${liftOperator(operator).asInstanceOf[Expr[UnaryOperator]]}, ${a.expr})  }
       case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${a.expr}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${b.expr})  }

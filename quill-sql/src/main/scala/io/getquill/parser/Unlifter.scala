@@ -100,6 +100,16 @@ object Unlifter {
     case Expr(str: String) => str
     case _ => throw new IllegalArgumentException(s"The expression: ${expr.show} is not a constant String")
 
+  given unliftOrdering: NiceUnliftable[Ordering] with
+    def unlift =
+      case '{ io.getquill.ast.TupleOrdering.apply($elems) } => TupleOrdering(elems.unexpr)
+      case '{ io.getquill.ast.Asc } => Asc
+      case '{ io.getquill.ast.Desc } => Desc
+      case '{ io.getquill.ast.AscNullsFirst } => AscNullsFirst
+      case '{ io.getquill.ast.DescNullsFirst } => DescNullsFirst
+      case '{ io.getquill.ast.AscNullsLast } => AscNullsLast
+      case '{ io.getquill.ast.DescNullsLast } => DescNullsLast
+
 
   given unliftAst: NiceUnliftable[Ast] with {
     // TODO have a typeclass like Splicer to translate constant to strings
@@ -125,6 +135,7 @@ object Unlifter {
       case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(query.unexpr, alias.unexpr, body.unexpr)
       case '{ FlatMap(${query}, ${alias}, ${body}: Ast) } => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
       case '{ Filter(${query}, ${alias}, ${body}: Ast) } => Filter(query.unexpr, alias.unexpr, body.unexpr)
+      case '{ SortBy(${query}, ${alias}, ${criterias}, ${ordering}) } => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
       case '{ Foreach(${query}, ${alias}, ${body}: Ast) } => Foreach(query.unexpr, alias.unexpr, body.unexpr)
       case '{ UnaryOperation(${operator}, ${a}: Ast) } => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
       case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
@@ -149,6 +160,7 @@ object Unlifter {
       case '{ NullValue } => NullValue
       case '{ $p: Property } => unliftProperty(p)
       case '{ $id: AIdent } => unliftIdent(id)
+      case '{ $o: Ordering } => unliftOrdering(o)
       // TODO Is the matching covariant? In that case can do "case '{ $oo: OptionOperation } and then strictly throw an error"
       case unliftOptionOperation(ast) => ast
   }

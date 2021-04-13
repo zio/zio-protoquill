@@ -30,28 +30,28 @@ trait TestEntities {
   val TestEntity5Quat = Quat.Product("i" -> QV, "s" -> QV)
   val TestEntity4EmbQuat = Quat.Product("emb" -> Quat.Product("i" -> QV))
 
-  val qr1 = quote {
+  inline def qr1 = quote {
     query[TestEntity]
   }
-  val qr1Emb = quote {
+  inline def qr1Emb = quote {
     querySchema[TestEntityEmb]("TestEntity")
   }
-  val qr2 = quote {
+  inline def qr2 = quote {
     query[TestEntity2]
   }
-  val qr3 = quote {
+  inline def qr3 = quote {
     query[TestEntity3]
   }
-  val qr4 = quote {
+  inline def qr4 = quote {
     query[TestEntity4]
   }
-  val qr5 = quote {
+  inline def qr5 = quote {
     query[TestEntity5]
   }
-  val qr4Emb = quote {
+  inline def qr4Emb = quote {
     querySchema[TestEntity4Emb]("TestEntity4")
   }
-  val qrRegular = quote {
+  inline def qrRegular = quote {
     for {
       a <- query[TestEntity]
     } yield TestEntityRegular(a.s, a.l)
