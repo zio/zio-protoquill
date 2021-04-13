@@ -207,5 +207,6 @@ trait Lifter(serializeQuats: Boolean) {
       case _: ee.type => '{ EqualityOperator.== } // if you don't do it this way, complains about 'stable identifier error'
       case BooleanOperator.|| => '{ BooleanOperator.|| }
       case BooleanOperator.&& => '{ BooleanOperator.&& }
+      case BooleanOperator.! => '{ BooleanOperator.! }
   }
 }

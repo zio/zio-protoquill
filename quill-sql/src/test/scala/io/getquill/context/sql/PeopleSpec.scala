@@ -7,6 +7,30 @@ import io.getquill.context.Context
 import io.getquill.Dsl._
 import io.getquill.Quoted
 
+class PeopleSpecUseCls extends PeopleSpec {
+  import io.getquill._
+  import io.getquill.MirrorContext
+  val context: MirrorContext[PostgresDialect, Literal] = new MirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
+  import context._
+
+  case class Foo(a: Int, b: Int)
+
+  def exec(): Unit = {
+    //val q = quote { satisfies(eval(`Ex 7 predicate`)) }
+    //println( io.getquill.util.Messages.qprint.apply(q) )
+
+    val q = quote { query[Foo].filter(f => !(f.a > f.b)) }
+    //println( io.getquill.util.Messages.qprint.apply(q) )
+    println( context.run(q) ) //hello
+  }
+}
+
+object PeopleSpecUse {
+  def main(args: Array[String]): Unit = {
+    new PeopleSpecUseCls().exec()
+  }
+}
+
 trait PeopleSpec extends Spec {
 
   val context: Context[_, _]
@@ -136,6 +160,9 @@ trait PeopleSpec extends Spec {
   //     (set: Query[Int]) =>
   //       query[Person].filter(p => set.contains(p.age))
   //   }
+
+
+  
 
   val `Ex 8 param` = Set.empty[Int]
   val `Ex 8 expected result` = List.empty[Person]

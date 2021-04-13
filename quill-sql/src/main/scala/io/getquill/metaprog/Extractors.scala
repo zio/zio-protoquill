@@ -383,6 +383,14 @@ trait Extractors {
   def isType[T: Type](input: Expr[_]) =
     input.asTerm.tpe <:< TypeRepr.of[T] // (implicit Type[T])
 
+  def isNumeric(tpe: TypeRepr) =
+    tpe <:< TypeRepr.of[Int] ||
+    tpe <:< TypeRepr.of[Long] ||
+    tpe <:< TypeRepr.of[Float] ||
+    tpe <:< TypeRepr.of[Double] ||
+    tpe <:< TypeRepr.of[Byte] ||
+    tpe <:< TypeRepr.of[Char]
+
   // TODO Change to 'are'
   def is[T: Type](inputs: Expr[_]*): Boolean =
     inputs.forall(input => input.asTerm.tpe <:< TypeRepr.of[T])

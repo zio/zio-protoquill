@@ -53,9 +53,11 @@ object UseMac {
 
     import io.getquill.Ord
 
-    PrintMac {
-      Ord.apply(Ord.asc[String], Ord.desc[Int])
-    }
+    val num = 4
+
+    // PrintMac {
+    //   -num
+    // }
 
     // PrintMac {
     //   new Person("Joe", 123) //hello

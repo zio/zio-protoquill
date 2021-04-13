@@ -575,43 +575,38 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     case NamedOp1(left, "&&", right) =>
       BinaryOperation(astParse(left), BooleanOperator.&&, astParse(right))
 
-    case '{ ($i: Int).toString } => astParse(i)
-    
-    // TODO .toInt should not have a cast, probably should rely on SQL auto conversion
-    case '{ ($str: String).toInt } => Infix(List("CAST(", " AS Int)"), List(astParse(str)), true, Quat.Value)
+    case '{ !($b: Boolean) } => UnaryOperation(BooleanOperator.!, astParse(b))
+
+    // Unary minus symbol i.e. val num: Int = 4; quote { -lift(num) }.
+    // This is done term-level or we would have to do it for every numeric type
+    case Unseal(Select(num, "unary_-")) if isNumeric(num.tpe) => astParse(num.asExpr)
+
+    // In the future a casting system should be implemented to handle these cases.
+    // Until then, let the SQL dialect take care of the auto-conversion. 
+    // This is done term-level or we would have to do it for every numeric type
+    case Unseal(Select(num, "toString")) if isNumeric(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toInt")) if isNumeric(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toLong")) if isNumeric(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toFloat")) if isNumeric(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toDouble")) if isNumeric(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toLong")) if isNumeric(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toByte")) if isNumeric(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toChar")) if isNumeric(num.tpe) => astParse(num.asExpr)
+
     // TODO not sure how I want to do this on an SQL level. Maybe implement using SQL function containers since
     // they should be more dialect-portable then just infix
     case '{ ($str: String).length } => Infix(List("Len(",")"), List(astParse(str)), true, Quat.Value)
 
-
     //String Operations Cases
-
-    //+
     case NamedOp1(left, "+", right) if is[String](left) || is[String](right) =>
       BinaryOperation(astParse(left), StringOperator.+, astParse(right))
 
-    // String.toString
     case '{ ($i: String).toString } => astParse(i)
-
-    // String.toUpperCase
-    case '{ ($str:String).toUpperCase } =>
-      UnaryOperation(StringOperator.toUpperCase, astParse(str))
-
-    // String.toLowerCase
-    case '{ ($str:String).toLowerCase } =>
-      UnaryOperation(StringOperator.toLowerCase, astParse(str))
-
-    // String.toLong
-    case '{ ($str:String).toLong } =>
-      UnaryOperation(StringOperator.toLong, astParse(str))
-
-    // String.startsWith
-    case '{ ($left:String).startsWith($right) } =>
-      BinaryOperation(astParse(left), StringOperator.startsWith, astParse(right))
-
-    // String.split
-    case '{ ($left:String).split($right:String) } =>
-      BinaryOperation(astParse(left), StringOperator.split, astParse(right))
+    case '{ ($str:String).toUpperCase } => UnaryOperation(StringOperator.toUpperCase, astParse(str))
+    case '{ ($str:String).toLowerCase } => UnaryOperation(StringOperator.toLowerCase, astParse(str))
+    case '{ ($str:String).toLong } => UnaryOperation(StringOperator.toLong, astParse(str))
+    case '{ ($left:String).startsWith($right) } => BinaryOperation(astParse(left), StringOperator.startsWith, astParse(right))
+    case '{ ($left:String).split($right:String) } => BinaryOperation(astParse(left), StringOperator.split, astParse(right))
 
     /*
     //SET Operations
