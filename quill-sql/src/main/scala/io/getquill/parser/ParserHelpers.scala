@@ -104,7 +104,7 @@ object ParserHelpers {
      * is not macro specific so a good deal of it can be refactored out into the quill-sql-portable module.
      * Do equality checking on the database level with the same truth-table as idiomatic scala 
      */
-    private def equalityWithInnerTypechecksIdiomatic(left: Term, right: Term)(equalityBehavior: EqualityBehavior) = {
+    def equalityWithInnerTypechecksIdiomatic(left: Term, right: Term)(equalityBehavior: EqualityBehavior) = {
       import io.getquill.ast.Implicits._
       val (leftIsOptional, rightIsOptional) = checkInnerTypes(left, right, ForbidInnerCompare)
       val a = astParse(left.asExpr)
@@ -130,7 +130,7 @@ object ParserHelpers {
      * (not used yet but will be used when support for 'extras' dsl functionality is added)
      * Do equality checking on the database level with the ansi-style truth table (i.e. always false if one side is null) 
      */
-    private def equalityWithInnerTypechecksAnsi(left: Term, right: Term)(equalityBehavior: EqualityBehavior) = {
+    def equalityWithInnerTypechecksAnsi(left: Term, right: Term)(equalityBehavior: EqualityBehavior) = {
       import io.getquill.ast.Implicits._
       val (leftIsOptional, rightIsOptional) = checkInnerTypes(left, right, AllowInnerCompare)
       val a = astParse(left.asExpr)
@@ -157,7 +157,7 @@ object ParserHelpers {
      * the 'weak conformance' operator is used and a subclass is allowed on either side of the `==`. Weak
      * conformance is necessary so that Longs can be compared to Ints etc...
      */
-    private def checkInnerTypes(lhs: Term, rhs: Term, optionCheckBehavior: OptionCheckBehavior): (Boolean, Boolean) = {
+    def checkInnerTypes(lhs: Term, rhs: Term, optionCheckBehavior: OptionCheckBehavior): (Boolean, Boolean) = {
       val leftType = lhs.tpe
       val rightType = rhs.tpe
       // Note that this only goes inside the optional one level i.e. Option[T] => T. If we have Option[Option[T]] it will return the inside Option[T].
@@ -167,8 +167,8 @@ object ParserHelpers {
       // typing error.
       val leftInner = innerOptionParam(leftType)
       val rightInner = innerOptionParam(rightType)
-      val leftIsOptional = isOptionType(leftType) && !is[Nothing](lhs.asExpr)
-      val rightIsOptional = isOptionType(rightType) && !is[Nothing](rhs.asExpr)
+      val leftIsOptional = isOptionType(leftType) && !(leftType.widen =:= TypeRepr.of[Nothing]) && !(leftType.widen =:= TypeRepr.of[Null])
+      val rightIsOptional = isOptionType(rightType) && !(rightType.widen =:= TypeRepr.of[Nothing]) && !(rightType.widen =:= TypeRepr.of[Null])
       val typesMatch = wideMatchTypes(rightInner, leftInner)
 
       optionCheckBehavior match {
@@ -178,16 +178,25 @@ object ParserHelpers {
           (leftIsOptional, rightIsOptional)
         case _ =>
           if (leftIsOptional || rightIsOptional)
-            report.throwError(s"${leftType.widen} == ${rightType.widen} is not allowed since ${leftInner.widen}, ${rightInner.widen} are different types.", lhs.asExpr)
+            report.throwError(s"${Format.TypeReprW(leftType)} == ${Format.TypeReprW(rightType)} is not allowed since ${Format.TypeReprW(leftInner)}, ${Format.TypeReprW(rightInner)} are different types.", lhs.asExpr)
           else
-            report.throwError(s"${leftType.widen} == ${rightType.widen} is not allowed since they are different types.", lhs.asExpr)
+            report.throwError(s"${Format.TypeReprW(leftType)} == ${Format.TypeReprW(rightType)} is not allowed since they are different types.", lhs.asExpr)
       }
     }
 
     def isOptionType(tpe: TypeRepr) = tpe <:< TypeRepr.of[Option[_]]
 
+    /**
+     * Match types in the most wide way possible. This function is not for generalized type equality since quill does not directly
+     * compare anything, rather it just translates things into SQL expressions. This kind of check is used in a general sense when things
+     * that it doesn't even make sense to compare are compared e.g. an Person and a String. In this case, we want to provide some kind
+     * of compile-time warning that the comparision the user is attempting to do in SQL is non sensical in the first place. Therefore when
+     * there is any kind of possibility that the expression makes sense (e.g. by comparing a Dog to a Animal (i.e. class to subclass), by comparing
+     * two numeric types of any kind etc... we allow the comparison to happen).
+     * For int/long/float/double comparisons don't crash on compile-time typing can re-evaluate this upon user feedback
+     */
     def wideMatchTypes(a: TypeRepr, b: TypeRepr) =
-      a <:< b || b <:< a || (isNumeric(a) && isNumeric(b)) // for int/long/float/double comparisons don't crash on compile-time typing can re-evaluate this upon user feedback
+      a.widen =:= b.widen || a.widen <:< b.widen || b.widen <:< a.widen || (isNumeric(a.widen) && isNumeric(b.widen))
 
     def innerOptionParam(tpe: TypeRepr): TypeRepr =
       if (tpe <:< TypeRepr.of[Option[_]]) 

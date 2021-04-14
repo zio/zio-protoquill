@@ -395,7 +395,9 @@ trait Extractors {
     tpe <:< TypeRepr.of[Int] ||
     tpe <:< TypeRepr.of[Long] ||
     tpe <:< TypeRepr.of[Float] ||
-    tpe <:< TypeRepr.of[Double]
+    tpe <:< TypeRepr.of[Double] ||
+    tpe <:< TypeRepr.of[scala.math.BigDecimal] ||
+    tpe <:< TypeRepr.of[java.math.BigDecimal]
 
   // TODO Change to 'are'
   def is[T: Type](inputs: Expr[_]*): Boolean =

@@ -566,11 +566,11 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
       Infix(List(""," like ",""), List(astParse(str), astParse(other)), true, Quat.Value)
 
     case expr @ NamedOp1(left, "==", right) =>
-      BinaryOperation(astParse(left), EqualityOperator.==, astParse(right))
-    case expr @ NamedOp1(left, "!=", right) =>
-      BinaryOperation(astParse(left), EqualityOperator.!=, astParse(right))
+      equalityWithInnerTypechecksIdiomatic(left.asTerm, right.asTerm)(Equal)
     case expr @ NamedOp1(left, "equals", right) =>
-      BinaryOperation(astParse(left), EqualityOperator.==, astParse(right))
+      equalityWithInnerTypechecksIdiomatic(left.asTerm, right.asTerm)(Equal)
+    case expr @ NamedOp1(left, "!=", right) =>
+      equalityWithInnerTypechecksIdiomatic(left.asTerm, right.asTerm)(NotEqual)
 
     case NamedOp1(left, "||", right) =>
       BinaryOperation(astParse(left), BooleanOperator.||, astParse(right))
@@ -679,9 +679,7 @@ case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       val argsAst = args.map(astParse(_))
       CaseClass(fields.zip(argsAst))
       
-    case id @ Unseal(i @ TIdent(x)) => 
-      //cleanIdent(i.symbol.name, InferQuat.ofExpr(id))
-      //println(s"@@@@@@@@@@@@@@@@@@@@@ Parsing ident: ${i.show}: ${i.tpe.widen}")
+    case id @ Unseal(i @ TIdent(x)) =>
       cleanIdent(i.symbol.name, InferQuat.ofType(i.tpe))
   }
 }
@@ -707,67 +705,7 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
       astParse(innerTree.asExpr)
 
     case Unseal(Inlined(_, _, v)) =>
-      //println("Case Inlined")
-      //root.parse(v.asExprOf[T]) // With method-apply can't rely on it always being T?
       astParse(v.asExpr)
-
-      // E.g. in situations like liftQuery where liftQuery(people:List[Person]) happens the following tree occurs (EntityQueryPlanter(...))($conforms[Insert[Person]])
-      // so we need to take out that last part
-
-    // case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unq) } =>
-    //   val astClass = classOf[Insert]
-    //   val content = body.asTerm
-    //   report.throwError(s"""|
-    //     |s"==== Got Here - END CLAUSE: '${astClass.getSimpleName}' ===
-    //     |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
-    //     |==== Extractors ===
-    //     |  ${Format(Printer.TreeStructure.show(content))}
-    //     |==== Tree ===
-    //     |  ${printer.str(content)}
-    //     |""".stripMargin)
-    //   //Foreach(astParse(q), cleanIdent(ident, tpe), astParse(body))
-
-    
-
-    // case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unq) } =>
-    //   val astClass = classOf[Insert]
-    //   val content = body.asTerm
-    //   report.throwError(s"""|
-    //     |s"==== Got Here Yay Yay: '${astClass.getSimpleName}' ===
-    //     |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
-    //     |==== Extractors ===
-    //     |  ${Format(Printer.TreeStructure.show(content))}
-    //     |==== Tree ===
-    //     |  ${printer.str(content)}
-    //     |""".stripMargin)
-
-    // case '{ type a <: io.getquill.Action[_]; ($q: Query[t]).foreach[`a`, b]($contentExpr)($unq) } =>
-    //   val astClass = classOf[Insert]
-    //   val content = contentExpr.asTerm
-    //   report.throwError(s"""|
-    //     |s"==== Got Here Yay Yay: '${astClass.getSimpleName}' ===
-    //     |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
-    //     |==== Extractors ===
-    //     |  ${Format(Printer.TreeStructure.show(content))}
-    //     |==== Tree ===
-    //     |  ${printer.str(content)}
-    //     |""".stripMargin)
-
-    // case Unseal(Apply(Apply(Untype(UntypeApply(Select(q, "foreach"))), List( Lambda1.Term(ident, tpe, body) )), List(TypeApply(TIdent("$conforms"), List(Inferred()))))) if is[Query[Any]](q.asExpr) =>
-    //   val astClass = classOf[Insert]
-    //   val content = body
-    //   // report.throwError(s"""|
-    //   // |s"==== Got Here: '${astClass.getSimpleName}' ===
-    //   // |  ${Format(Printer.TreeShortCode.show(content)) /* Or Maybe just expr? */}
-    //   // |==== Extractors ===
-    //   // |  ${Format(Printer.TreeStructure.show(content))}
-    //   // |==== Tree ===
-    //   // |  ${printer.str(content)}
-    //   // |""".stripMargin)
-      
-    //   Foreach(astParse(q.asExpr), cleanIdent(ident, tpe), astParse(body.asExpr))
-
-    //   //astParse(content.asExpr)
   }
 }
 
