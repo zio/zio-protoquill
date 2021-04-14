@@ -65,6 +65,6 @@ object Format {
           formatted <- Try { /* println("formatting"); */ formatMethod.invoke(inst, encosedCode, "Main.scala") }.toOptionMsg
         } yield String.valueOf(formatted) /* null safe way of doing .toString in scala) */
 
-      formattedCode.map(code => /*unEnclose*/(code)).getOrElse(code)
+      formattedCode.map(code => unEnclose(code)).getOrElse(code)
     }
 }

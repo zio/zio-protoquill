@@ -183,6 +183,7 @@ object Unlifter {
       case '{ StringOperator.startsWith } =>  StringOperator.startsWith
       case '{ StringOperator.split } =>  StringOperator.split
       case '{ EqualityOperator.== } =>  EqualityOperator.==
+      case '{ EqualityOperator.!= } =>  EqualityOperator.!=
       case '{ BooleanOperator.|| } =>  BooleanOperator.||
       case '{ BooleanOperator.&& } =>  BooleanOperator.&&
   }

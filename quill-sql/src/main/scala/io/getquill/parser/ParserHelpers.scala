@@ -80,7 +80,121 @@ object ParserHelpers {
         case _ => 
           None
     }    
-      
+  }
+
+
+  /**
+   * Helpers for different behaviors Quill supports of object equality. This is non-trivial since Quill has to make sense
+   * of different equality paradigms across ANSI-SQL and Scala for objects that may be Optional or not. Several
+   * techniques are implemented to resolve these inconsistencies.
+   */
+  trait ComparisonTechniques(implicit override val qctx: Quotes) extends Extractors {
+    import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
+    import Parser.Implicits._
+
+    // To be able to access the external parser the extends this
+    def astParse: SealedParser[Ast]
+    
+    sealed trait EqualityBehavior { def operator: BinaryOperator }
+    case object Equal extends EqualityBehavior { def operator: BinaryOperator = EqualityOperator.`==` }
+    case object NotEqual extends EqualityBehavior { def operator: BinaryOperator = EqualityOperator.`!=` }
+
+    /** 
+     * Taken from the identically named method in Parser.scala in Scala2-Quill. Much of this logic
+     * is not macro specific so a good deal of it can be refactored out into the quill-sql-portable module.
+     * Do equality checking on the database level with the same truth-table as idiomatic scala 
+     */
+    private def equalityWithInnerTypechecksIdiomatic(left: Term, right: Term)(equalityBehavior: EqualityBehavior) = {
+      import io.getquill.ast.Implicits._
+      val (leftIsOptional, rightIsOptional) = checkInnerTypes(left, right, ForbidInnerCompare)
+      val a = astParse(left.asExpr)
+      val b = astParse(right.asExpr)
+      val comparison = BinaryOperation(a, equalityBehavior.operator, b)
+      (leftIsOptional, rightIsOptional, equalityBehavior) match {
+        // == two optional things. Either they are both null or they are both defined and the same
+        case (true, true, Equal)    => (OptionIsEmpty(a) +&&+ OptionIsEmpty(b)) +||+ (OptionIsDefined(a) +&&+ OptionIsDefined(b) +&&+ comparison)
+        // != two optional things. Either one is null and the other isn't. Or they are both defined and have different values
+        case (true, true, NotEqual) => (OptionIsDefined(a) +&&+ OptionIsEmpty(b)) +||+ (OptionIsEmpty(a) +&&+ OptionIsDefined(b)) +||+ comparison
+        // No additional logic when both sides are defined
+        case (false, false, _)      => comparison
+        // Comparing an optional object with a non-optional object is not allowed when using scala-idiomatic optional behavior
+        case (lop, rop, _) => {
+          val lopString = (if (lop) "Optional" else "Non-Optional") + s" ${left}}"
+          val ropString = (if (rop) "Optional" else "Non-Optional") + s" ${right}}"
+          report.throwError(s"Cannot compare ${lopString} with ${ropString} using operator ${equalityBehavior.operator}", left.asExpr)
+        }
+      }
+    }
+
+    /** 
+     * (not used yet but will be used when support for 'extras' dsl functionality is added)
+     * Do equality checking on the database level with the ansi-style truth table (i.e. always false if one side is null) 
+     */
+    private def equalityWithInnerTypechecksAnsi(left: Term, right: Term)(equalityBehavior: EqualityBehavior) = {
+      import io.getquill.ast.Implicits._
+      val (leftIsOptional, rightIsOptional) = checkInnerTypes(left, right, AllowInnerCompare)
+      val a = astParse(left.asExpr)
+      val b = astParse(right.asExpr)
+      val comparison = BinaryOperation(a, equalityBehavior.operator, b)
+      (leftIsOptional, rightIsOptional) match {
+        case (true, true)   => OptionIsDefined(a) +&&+ OptionIsDefined(b) +&&+ comparison
+        case (true, false)  => OptionIsDefined(a) +&&+ comparison
+        case (false, true)  => OptionIsDefined(b) +&&+ comparison
+        case (false, false) => comparison
+      }
+    }
+
+    trait OptionCheckBehavior
+    /** Allow T == Option[T] comparison **/
+    case object AllowInnerCompare extends OptionCheckBehavior
+    /** Forbid T == Option[T] comparison **/
+    case object ForbidInnerCompare extends OptionCheckBehavior
+
+    /**
+     * Type-check two trees, if one of them has optionals, go into the optionals to find the root types
+     * in each of them. Then compare the types that are inside. If they are not compareable, abort the build.
+     * Otherwise return type of which side (or both) has the optional. In order to do the actual comparison,
+     * the 'weak conformance' operator is used and a subclass is allowed on either side of the `==`. Weak
+     * conformance is necessary so that Longs can be compared to Ints etc...
+     */
+    private def checkInnerTypes(lhs: Term, rhs: Term, optionCheckBehavior: OptionCheckBehavior): (Boolean, Boolean) = {
+      val leftType = lhs.tpe
+      val rightType = rhs.tpe
+      // Note that this only goes inside the optional one level i.e. Option[T] => T. If we have Option[Option[T]] it will return the inside Option[T].
+      // This is by design. If the types do not match, even if we normally don't care about the outer layer 
+      // (i.e. for equalityWithInnerTypechecksAnsi where Option[T] == T is allowed (that's in the 'extras' modules which uses ===))
+      // we still want to fail with an exception that the types are identical if the user does Option[Option[T]] == Option[T] since that is a serious
+      // typing error.
+      val leftInner = innerOptionParam(leftType)
+      val rightInner = innerOptionParam(rightType)
+      val leftIsOptional = isOptionType(leftType) && !is[Nothing](lhs.asExpr)
+      val rightIsOptional = isOptionType(rightType) && !is[Nothing](rhs.asExpr)
+      val typesMatch = wideMatchTypes(rightInner, leftInner)
+
+      optionCheckBehavior match {
+        case AllowInnerCompare if typesMatch =>
+          (leftIsOptional, rightIsOptional)
+        case ForbidInnerCompare if ((leftIsOptional && rightIsOptional) || (!leftIsOptional && !rightIsOptional)) && typesMatch =>
+          (leftIsOptional, rightIsOptional)
+        case _ =>
+          if (leftIsOptional || rightIsOptional)
+            report.throwError(s"${leftType.widen} == ${rightType.widen} is not allowed since ${leftInner.widen}, ${rightInner.widen} are different types.", lhs.asExpr)
+          else
+            report.throwError(s"${leftType.widen} == ${rightType.widen} is not allowed since they are different types.", lhs.asExpr)
+      }
+    }
+
+    def isOptionType(tpe: TypeRepr) = tpe <:< TypeRepr.of[Option[_]]
+
+    def wideMatchTypes(a: TypeRepr, b: TypeRepr) =
+      a <:< b || b <:< a || (isNumeric(a) && isNumeric(b)) // for int/long/float/double comparisons don't crash on compile-time typing can re-evaluate this upon user feedback
+
+    def innerOptionParam(tpe: TypeRepr): TypeRepr =
+      if (tpe <:< TypeRepr.of[Option[_]]) 
+        tpe.asType match
+          case '[Option[t]] => TypeRepr.of[t]
+      else
+        tpe
   }
 
   trait PatternMatchingValues(implicit override val qctx: Quotes) extends Extractors with QuatMaking {

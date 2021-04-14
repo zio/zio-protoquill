@@ -525,7 +525,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
 //   }  
 // }
 
-case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with ComparisonTechniques {
   import quotes.reflect._
   import QueryDsl._
   import io.getquill.ast.Infix
@@ -566,10 +566,12 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
       Infix(List(""," like ",""), List(astParse(str), astParse(other)), true, Quat.Value)
 
     case expr @ NamedOp1(left, "==", right) =>
-      val leftAst = astParse(left)
-      val rightAst = astParse(right)
-      val res = BinaryOperation(leftAst, EqualityOperator.==, rightAst)
-      res
+      BinaryOperation(astParse(left), EqualityOperator.==, astParse(right))
+    case expr @ NamedOp1(left, "!=", right) =>
+      BinaryOperation(astParse(left), EqualityOperator.!=, astParse(right))
+    case expr @ NamedOp1(left, "equals", right) =>
+      BinaryOperation(astParse(left), EqualityOperator.==, astParse(right))
+
     case NamedOp1(left, "||", right) =>
       BinaryOperation(astParse(left), BooleanOperator.||, astParse(right))
     case NamedOp1(left, "&&", right) =>
@@ -586,14 +588,14 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     // This is done term-level or we would have to do it for every numeric type
     // toString is automatically converted into the Apply form i.e. foo.toString automatically becomes foo.toString()
     // so we need to parse it as an Apply. The others don't take arg parens so they are not in apply-form.
-    case Unseal(Apply(Select(num, "toString"), List())) if isNumeric(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toInt")) if isNumeric(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toLong")) if isNumeric(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toFloat")) if isNumeric(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toDouble")) if isNumeric(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toLong")) if isNumeric(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toByte")) if isNumeric(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toChar")) if isNumeric(num.tpe) => astParse(num.asExpr)
+    case Unseal(Apply(Select(num, "toString"), List())) if isPrimitive(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toInt")) if isPrimitive(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toFloat")) if isPrimitive(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toDouble")) if isPrimitive(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toByte")) if isPrimitive(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toChar")) if isPrimitive(num.tpe) => astParse(num.asExpr)
 
     // TODO not sure how I want to do this on an SQL level. Maybe implement using SQL function containers since
     // they should be more dialect-portable then just infix

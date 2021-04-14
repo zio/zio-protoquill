@@ -56,7 +56,7 @@ object UseMac {
     val num = 4
 
     PrintMac {
-      num.toInt
+      Option(1) == Option(1L)
     }
 
     // PrintMac {
