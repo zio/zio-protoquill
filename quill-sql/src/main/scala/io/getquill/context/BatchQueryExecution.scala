@@ -95,7 +95,7 @@ object BatchQueryExecution:
           // should summon a schemaMeta if needed (and account for querySchema age) 
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
           val insertQuotation = InsertMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts) 
-          StaticTranslationMacro.applyInner[Action, T, D, N](insertQuotation) match 
+          StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation) match 
             case Some(StaticState(queryString, _)) =>
               val prepares =
                 '{ $iterableExpr.map(elem => ${

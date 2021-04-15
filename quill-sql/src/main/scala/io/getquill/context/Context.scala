@@ -24,7 +24,6 @@ import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.Query
-import QueryExecution.QuotedOperation
 import io.getquill.metaprog.etc.MapFlicer
 import io.getquill.util.Messages.fail
 import java.io.Closeable
@@ -132,7 +131,7 @@ with Closeable
   // the regular context can be non inline
   @targetName("runQuery")
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
-    val ca = new ContextOperation[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]](self.idiom, self.naming) {
+    val ca = new ContextOperation[Any, T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionType: ExecutionType) =
         val extract = extraction match
           case Extraction.Simple(extract) => extract
@@ -142,17 +141,17 @@ with Closeable
         self.executeQuery(sql, prepare, extract)(executionType, runContext)
     }
     // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
-    QueryExecution.apply(QuotedOperation.QueryOp(quoted), ca)
+    QueryExecution.apply(quoted, ca)
   }
 
   @targetName("runAction")
   inline def run[E](inline quoted: Quoted[Action[E]]): Result[RunActionResult] = {
-    val ca = new ContextOperation[E, Dialect, Naming, PrepareRow, ResultRow, Result[RunActionResult]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, E], executionType: ExecutionType) =
+    val ca = new ContextOperation[E, Nothing, Dialect, Naming, PrepareRow, ResultRow, Result[RunActionResult]](self.idiom, self.naming) {
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Nothing], executionType: ExecutionType) =
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
         self.executeAction(sql, prepare)(executionType, runContext)
     }
-    QueryExecution.apply(QuotedOperation.ActionOp(quoted), ca)
+    QueryExecution.apply(quoted, ca)
   }
 
   // @targetName("runActionReturning")
