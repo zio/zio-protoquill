@@ -380,8 +380,11 @@ trait Extractors {
     }
 
   // TODO Change to 'is'
-  def isType[T: Type](input: Expr[_]) =
-    input.asTerm.tpe <:< TypeRepr.of[T] // (implicit Type[T])
+  def isType[T: Type](expr: Expr[_]) =
+    expr.asTerm.tpe <:< TypeRepr.of[T]
+
+  def isType[T: Type](term: Term) =
+    term.tpe <:< TypeRepr.of[T]
 
   def isPrimitive(tpe: TypeRepr) =
     tpe <:< TypeRepr.of[Int] ||

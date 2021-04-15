@@ -345,46 +345,44 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     case '{ type t; ($query: EntityQueryModel[`t`]).delete } =>
       Delete(astParse(query))
 
-    // case Unseal(Update) =>
-    //   Update(astParser(query), assignments.map(assignmentParser(_)))
-    // case Unseal(Insert) =>
-    //   Insert(astParser(query), assignments.map(assignmentParser(_)))
-    // case Unseal(Delete) =>
-    //   Delete(astParser(query))
-    // case Unseal(Returning_NoArguments) =>
-    //   c.fail(s"A 'returning' clause must have arguments.")
-    // case Unseal(Returning) =>
-    //   val ident = identParser(alias)
-    //   val bodyAst = reprocessReturnClause(ident, astParser(body), action)
-    //   // Verify that the idiom supports this type of returning clause
-    //   idiomReturnCapability match {
-    //     case ReturningMultipleFieldSupported | ReturningClauseSupported | OutputClauseSupported =>
-    //     case ReturningSingleFieldSupported =>
-    //       c.fail(s"The 'returning' clause is not supported by the ${currentIdiom.getOrElse("specified")} idiom. Use 'returningGenerated' instead.")
-    //     case ReturningNotSupported =>
-    //       c.fail(s"The 'returning' or 'returningGenerated' clauses are not supported by the ${currentIdiom.getOrElse("specified")} idiom.")
-    //   }
-    //   // Verify that the AST in the returning-body is valid
-    //   idiomReturnCapability.verifyAst(bodyAst)
-    //   Returning(astParser(action), ident, bodyAst)
-    // case Unseal(Returning_generated) =>
-    //   val ident = identParser(alias)
-    //   val bodyAst = reprocessReturnClause(ident, astParser(body), action)
-    //   // Verify that the idiom supports this type of returning clause
-    //   idiomReturnCapability match {
-    //     case ReturningNotSupported =>
-    //       c.fail(s"The 'returning' or 'returningGenerated' clauses are not supported by the ${currentIdiom.getOrElse("specified")} idiom.")
-    //     case _ =>
-    //   }
-    //   // Verify that the AST in the returning-body is valid
-    //   idiomReturnCapability.verifyAst(bodyAst)
-    //   ReturningGenerated(astParser(action), ident, bodyAst)
-    // case Unseal(Foreach) =>
-    //   AvoidAliasConflict.sanitizeVariables(Foreach(astParser(query), identParser(alias), astParser(body)), dangerousVariables)
+    // Returning generated 
+    // summon an idiom if one can be summoned (make sure when doing import ctx._ it is provided somewhere)
+    // (for dialect-specific behavior, try to summon a dialect implicitly, it may not exist since a dialect may
+    // not be supported. If one exists then check the type of returning thing. If not then dont.
+    // Later: Introduce a module that verifies the AST later before compilation and emits a warning if the returning type is incorrect
+    //        do the same thing for dynamic contexts witha log message
 
-    // case Unseal(Apply(Select(query, "insert"), insertAssignments)) =>
-    //   val assignments = insertAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
-    //   Insert(astParse(query.asExpr), assignments)
+    // Form:    ( (Query[Perosn]).[action](....) ).returning[T]
+    // Example: ( query[Person].insert(lift(joe))).returning[Something]
+    case '{ ($action: io.getquill.Insert[t]).returning[r] } =>
+      report.throwError(s"A 'returning' clause must have arguments.")
+
+    case '{ ($action: io.getquill.Insert[t]).returning[r](${Lambda1(id, tpe, body)}) } =>
+      val ident = cleanIdent(id, tpe)
+      val bodyAst = reprocessReturnClause(ident, astParse(body), action, Type.of[t])
+      // idiomReturnCapability match {
+      //   case ReturningMultipleFieldSupported | ReturningClauseSupported | OutputClauseSupported =>
+      //   case ReturningSingleFieldSupported =>
+      //     c.fail(s"The 'returning' clause is not supported by the ${currentIdiom.getOrElse("specified")} idiom. Use 'returningGenerated' instead.")
+      //   case ReturningNotSupported =>
+      //     c.fail(s"The 'returning' or 'returningGenerated' clauses are not supported by the ${currentIdiom.getOrElse("specified")} idiom.")
+      // }
+      // // Verify that the AST in the returning-body is valid
+      // idiomReturnCapability.verifyAst(bodyAst)
+      Returning(astParse(action), ident, bodyAst)
+
+    case '{ ($action: io.getquill.Insert[t]).returningGenerated[r](${Lambda1(id, tpe, body)}) } =>
+      val ident = cleanIdent(id, tpe)
+      val bodyAst = reprocessReturnClause(ident, astParse(body), action, Type.of[t])
+      // // Verify that the idiom supports this type of returning clause
+      // idiomReturnCapability match {
+      //   case ReturningNotSupported =>
+      //     c.fail(s"The 'returning' or 'returningGenerated' clauses are not supported by the ${currentIdiom.getOrElse("specified")} idiom.")
+      //   case _ =>
+      // }
+      // // Verify that the AST in the returning-body is valid
+      // idiomReturnCapability.verifyAst(bodyAst)
+      ReturningGenerated(astParse(action), ident, bodyAst)
   }
 
   private def isNil(term: Term): Boolean =
@@ -394,6 +392,35 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  import io.getquill.generic.ElaborateStructure
+
+  /**
+   * Note. Ported from reprocessReturnClause in Scala2-Quill parsing. Logic is much simpler in Scala 3
+   * and potentially can be simplified even further.
+   * In situations where the a `.returning` clause returns the initial record i.e. `.returning(r => r)`,
+   * we need to expand out the record into it's fields i.e. `.returning(r => (r.foo, r.bar))`
+   * otherwise the tokenizer would be force to pass `RETURNING *` to the SQL which is a problem
+   * because the fields inside of the record could arrive out of order in the result set
+   * (e.g. arrive as `r.bar, r.foo`). Use use the value/flatten methods in order to expand
+   * the case-class out into fields.
+   */
+  private def reprocessReturnClause(ident: io.getquill.ast.Ident, originalBody: Ast, action: Expr[_], actionType: Type[_]) =
+    (ident == originalBody, action.asTerm.tpe) match
+      case (true , IsActionType()) =>
+        val newBody =
+          actionType match
+            case '[at] => ElaborateStructure.ofAribtraryType[at](ident.name)
+        newBody
+      case (true, _) =>
+        report.throwError("Could not process whole-record 'returning' clause. Consider trying to return individual columns.")
+      case _ => 
+        originalBody
+
+  object IsActionType {
+    def unapply(term: Term): Boolean =
+      isType[io.getquill.Insert[_]](term) || isType[io.getquill.Update[_]](term) || isType[io.getquill.Delete[_]](term)
+  }
 }
 
 // As a performance optimization, ONLY Matches things returning io.getquill.BatchAction[_] UP FRONT. 

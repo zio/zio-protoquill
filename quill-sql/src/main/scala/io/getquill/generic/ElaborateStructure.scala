@@ -316,7 +316,7 @@ object ElaborateStructure {
     }
   }  
 
-  private def productized[T: Type](using Quotes): Ast = {
+  private def productized[T: Type](baseName: String = "x")(using Quotes): Ast = {
     val lifted = base[T](Term("x", Branch)).toAst
     val insert =
       if (lifted.length == 1)
@@ -330,13 +330,13 @@ object ElaborateStructure {
   // ofStaticAst
   /** ElaborateStructure the query AST in a static query **/
   def ontoAst[T](ast: Ast)(using Quotes, Type[T]): AMap = {
-    val bodyAst = productized[T]
+    val bodyAst = productized[T]()
     AMap(ast, Ident("x", Quat.Generic), bodyAst)
   }
 
   /** ElaborateStructure the query AST in a dynamic query **/
   def ontoDynamicAst[T](queryAst: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
-    val bodyAst = productized[T]
+    val bodyAst = productized[T]()
     '{ AMap($queryAst, Ident("x", Quat.Generic), ${Lifter(bodyAst)}) }
   }
 
@@ -344,6 +344,9 @@ object ElaborateStructure {
     val expanded = base[T](Term(baseName, Branch))
     expanded.toAst.map(_._1)
   }
+
+  def ofAribtraryType[T: Type](baseName: String)(using Quotes): Ast =
+    productized(baseName)
 
 
   /**

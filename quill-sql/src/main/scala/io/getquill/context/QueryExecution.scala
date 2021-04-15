@@ -31,13 +31,14 @@ import io.getquill.Planter
 import io.getquill.idiom.ReifyStatement
 import io.getquill.Query
 import io.getquill.Action
+import io.getquill.ActionReturning
 import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
 import io.getquill.metaprog.Extractors
 import io.getquill.BatchAction
 
 trait ContextOperation[T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
-  def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: Option[ResultRow => T], executionType: ExecutionType): Res
+  def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: Extraction[ResultRow, T], executionType: ExecutionType): Res
 }
 
 /**
@@ -74,16 +75,21 @@ object QueryExecution:
   }
 
   // Doesn't need to be declared as inline here because case class arguments are automatically inlined that is very cool!
-  sealed trait QuotedOperation[T, Op[_]] {
-    def op: Quoted[Op[T]]
-  }
+  sealed trait QuotedOperation[T, Op]
 
   // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
   object QuotedOperation {
-    case class QueryOp[T](op: Quoted[Query[T]]) extends QuotedOperation[T, Query]
-    case class ActionOp[T](op: Quoted[Action[T]]) extends QuotedOperation[T, Action]
+    case class QueryOp[T](op: Quoted[Query[T]]) extends QuotedOperation[T, Query[T]]
+    case class ActionOp[T](op: Quoted[Action[T]]) extends QuotedOperation[T, Action[T]]
   }
 
+  enum ExtractBehavior:
+      case Extract
+      case Skip
+
+  enum QuotationType:
+      case Action
+      case Query
 
   class RunQuery[
     T: Type, 
@@ -101,13 +107,11 @@ object QueryExecution:
     
     import qctx.reflect._
 
-    enum ExtractBehavior:
-      case Extract
-      case Skip
-
-    enum QuotationType:
-      case Action
-      case Query
+    def apply() =
+      quotedOp match
+        case '{ QuotedOperation.QueryOp.apply[T]($op) } => applyQuery(op)
+        case '{ QuotedOperation.ActionOp.apply[T]($op) } => applyAction(op)
+        case _ => report.throwError(s"Could not match the QuotedOperation clause: ${quotedOp.show}")
 
     /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to T */
     def runWithQueryMeta[RawT: Type](quoted: Expr[Quoted[Query[T]]]): Expr[Res] =
@@ -119,7 +123,6 @@ object QueryExecution:
           // NOTE: Can assume QuotationType is `Query` here since summonly a Query-meta is only allowed for Queries
           executeDynamic[RawT, Query](queryRawT, converter, ExtractBehavior.Extract, QuotationType.Query)
       }
-    
 
     /**
      * Expand dynamic-queries i.e. queries whose query-string cannot be computed at compile-time.
@@ -139,9 +142,10 @@ object QueryExecution:
 
       // TODO Allow passing in a starting index here?
       // Move this prepare down into RunDynamicExecution since need to use ReifyStatement to know what lifts to call when?
-      val extractor = extract match
-        case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
-        case ExtractBehavior.Skip =>    '{ None }
+      val extractor: Expr[io.getquill.context.Extraction[ResultRow, T]] = 
+        extract match
+          case ExtractBehavior.Extract => '{ Extraction.Simple( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
+          case ExtractBehavior.Skip =>    '{ Extraction.None }
 
       // TODO What about when an extractor is not neededX
       '{ RunDynamicExecution.apply[RawT, T, Q, D, N, PrepareRow, ResultRow, Res]($expandedAstQuote, $contextOperation, $extractor) }
@@ -177,10 +181,12 @@ object QueryExecution:
       // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
       // and the extractor to read out the results (e.g. ResultSet)
       val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($lifts, row) }
-      val extractor = extract match
-        // TODO Allow passing in a starting index here?
-        case ExtractBehavior.Extract => '{ Some( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
-        case ExtractBehavior.Skip =>    '{ None }
+      val extractor: Expr[io.getquill.context.Extraction[ResultRow, T]] = 
+        extract match
+          // TODO Allow passing in a starting index here?
+          case ExtractBehavior.Extract => '{ Extraction.Simple( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
+          case ExtractBehavior.Skip =>    '{ Extraction.None }
+
       // Plug in the components and execute
       '{ $contextOperation.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
 
@@ -208,12 +214,6 @@ object QueryExecution:
           executeStatic[T](staticState, idConvert, ExtractBehavior.Skip)
         case None => 
           executeDynamic(quoted, idConvert, ExtractBehavior.Skip, QuotationType.Action)
-
-    def apply() =
-      quotedOp match
-        case '{ QuotedOperation.QueryOp.apply[T]($op) } => applyQuery(op)
-        case '{ QuotedOperation.ActionOp.apply[T]($op) } => applyAction(op)
-        case _ => report.throwError(s"Could not match the QuotedOperation clause: ${quotedOp.show}")
 
   end RunQuery
 
@@ -264,7 +264,7 @@ object RunDynamicExecution:
     Res
   ](quoted: Quoted[Q[RawT]], 
     ctx: ContextOperation[T, D, N, PrepareRow, ResultRow, Res],
-    extractor: Option[ResultRow => T]
+    extractor: Extraction[ResultRow, T]
   ): Res = 
   {
     def gatherLifts(quoted: Quoted[_]): List[Planter[_, _]] =
