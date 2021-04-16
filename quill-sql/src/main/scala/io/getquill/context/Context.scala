@@ -66,7 +66,7 @@ trait ProtoContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.Nam
 
   def executeQuery[T](sql: String, prepare: Prepare, extractor: Extractor[T])(executionType: ExecutionType, dc: DatasourceContext): Result[RunQueryResult[T]]
   def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionResult]
-  //def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionReturningResult[T]]
+  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionReturningResult[T]]
   def executeBatchAction(groups: List[BatchGroup])(executionType: ExecutionType, dc: DatasourceContext): Result[RunBatchActionResult]
 
   // Cannot implement 'run' here because it's parameter needs to be inline, and we can't override a non-inline parameter with an inline one
@@ -154,21 +154,22 @@ with Closeable
     QueryExecution.apply(quoted, ca)
   }
 
-  // @targetName("runActionReturning")
-  // inline def run[T](inline quoted: Quoted[ActionReturning[_, T]]): Result[RunActionReturningResult[T]] = {
-  //   val ca = new ContextOperation[T, Dialect, Naming, PrepareRow, ResultRow, Result[RunActionReturningResult[T]]](self.idiom, self.naming) {
-  //     def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionType: ExecutionType) =
-  //       // Need an extractor with special information that helps with the SQL returning specifics
-  //       val Extraction.Returning(extract, returningBehavior) = 
-  //         extraction match
-  //           case extract: Extraction.Returning[ResultRow, T] => extract
-  //           case _ => throw new IllegalArgumentException("Extractor required")
+  @targetName("runActionReturning")
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): Result[RunActionReturningResult[T]] = {
+    val ca = new ContextOperation[E, T, Dialect, Naming, PrepareRow, ResultRow, Result[RunActionReturningResult[T]]](self.idiom, self.naming) {
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionType: ExecutionType) =
+        // Need an extractor with special information that helps with the SQL returning specifics
+        val Extraction.Returning(extract, returningBehavior) = 
+          // Just match on the type and throw an exception. The outside val right above will do the deconstruction
+          extraction match
+            case _: Extraction.Returning[ResultRow, T] => extraction
+            case _ => throw new IllegalArgumentException("Returning Extractor required")
 
-  //       val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
-  //       self.executeActionReturning(sql, prepare, extract, returningBehavior)(executionType, runContext)
-  //   }
-  //   QueryExecution.apply(QuotedOperation.ActionOp(quoted), ca)
-  // }
+        val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
+        self.executeActionReturning(sql, prepare, extract, returningBehavior)(executionType, runContext)
+    }
+    QueryExecution.apply(quoted, ca)
+  }
 
   @targetName("runBatchAction")
   inline def run[T, A <: Action[T]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {

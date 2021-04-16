@@ -45,7 +45,7 @@ with MirrorDecoders with MirrorEncoders { self =>
   }
 
   case class ActionMirror(string: String, prepareRow: PrepareRow, executionType: ExecutionType)
-  case class ActionReturningMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], returningBehavior: ReturnAction)
+  case class ActionReturningMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], returningBehavior: ReturnAction, executionType: ExecutionType)
   case class BatchActionMirror(groups: List[(String, List[Row])], executionType: ExecutionType)
 
   override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionType: ExecutionType, dc: DatasourceContext) =
@@ -53,6 +53,9 @@ with MirrorDecoders with MirrorEncoders { self =>
 
   override def executeAction[T](string: String, prepare: Prepare = identityPrepare)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionResult] =
     ActionMirror(string, prepare(Row())._2, executionType)
+
+  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionReturningResult[T]] =
+    ActionReturningMirror[T](sql, prepare(Row())._2, extractor, returningBehavior, executionType)
 
   override def executeBatchAction(groups: List[BatchGroup])(executionType: ExecutionType, dc: DatasourceContext): Result[RunBatchActionResult] =
     BatchActionMirror(

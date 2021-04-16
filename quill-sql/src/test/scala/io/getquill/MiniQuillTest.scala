@@ -136,23 +136,32 @@ object MiniQuillTest {
     // }
 
     // ============ With Insert Meta ============
-    {
-      case class Person(id: Int, name: String)
-      inline given personSchema: InsertMeta[Person] = insertMeta[Person](_.id)
-      //PrintMac(personSchema)
-      // TODO What if this is a val?
-      inline def q = quote {
-        query[Person].insert(Person(1, "Joe")) //hello
-      }
-      //PrintMac(q)
-      println( run(q) ) // hello
-    }
-    // TODO Exclude from Optional object (i.e and multiple excludes)
-    // TODO Exclude from Insert meta with Insert Schema (i.e and multiple excludes)
-    // TODO Exclude from Optional object Insert meta with Insert Schema (i.e and multiple excludes)
+    // {
+    //   case class Person(id: Int, name: String)
+    //   inline given personSchema: InsertMeta[Person] = insertMeta[Person](_.id)
+    //   //PrintMac(personSchema)
+    //   // TODO What if this is a val?
+    //   inline def q = quote {
+    //     query[Person].insert(Person(1, "Joe")) //hello
+    //   }
+    //   //PrintMac(q)
+    //   println( run(q) ) // hello
+    // }
+
+    
+    // TODO Exclude a column (via InsertMeta) from Optional object (i.e and multiple excludes)
+    // TODO Exclude a column (via InsertMeta)from Insert meta with Insert Schema (i.e and multiple excludes)
+    // TODO Exclude a column (via InsertMeta)from Optional object Insert meta with Insert Schema (i.e and multiple excludes)
 
     // println(q.ast)
     //println( run(q) )
 
+
+    // ============================ Testing Insert Returning =============================
+    {
+      case class Person(id: Int, name: String, age: Int)
+      inline def q = quote { query[Person].insert(lift(Person(0, "Joe", 123))).returningGenerated(_.id) }
+      println( run(q) )
+    }
   }
 }
