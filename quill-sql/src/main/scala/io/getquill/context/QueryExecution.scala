@@ -150,6 +150,56 @@ object QueryExecution:
           // TODO refacotry QueryMetaExtractor to use QOP[I, T] => QOP[I, RawT] then use that
           executeDynamic[RawT](queryRawT.asExprOf[Quoted[QOP[I, RawT]]], converter, ExtractBehavior.Extract, ElaborationBehavior.Elaborate)
       }
+    
+    def resolveLazyLifts(lifts: List[Expr[Planter[?, ?]]]): List[Expr[EagerPlanter[?, ?]]] =
+      lifts.map {
+        case '{ ($e: EagerPlanter[a, b]) } => e
+        case '{ $l: LazyPlanter[a, b] } =>
+          val tpe = l.asTerm.tpe
+          tpe.asType match {
+            case '[LazyPlanter[t, row]] =>
+              println(s"Summoning type: ${TypeRepr.of[t].show}")
+              Expr.summon[GenericEncoder[t, ResultRow]] match {
+                case Some(decoder) =>
+                  '{ EagerPlanter[t, ResultRow]($l.value.asInstanceOf[t], $decoder, $l.uid) }
+                case None => 
+                  report.throwError("Encoder could not be summoned during lazy-lift resolution")
+              }
+          }
+      }
+
+    def makeDecoder[RawT: Type]() = summonDecoderOrThrow[RawT]()
+    def makeExtractorFrom[RawT: Type](contramap: Expr[RawT => T]) =
+      val decoder = makeDecoder()
+      '{ (r: ResultRow) => $contramap.apply(${decoder}.apply(0, r)) }
+
+    /** 
+     * Execute static query via ctx.executeQuery method given we have the ability to do so 
+     * i.e. have a staticState 
+     */
+    def executeStatic[RawT: Type](staticState: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior): Expr[Res] =    
+      val StaticState(query, allLifts, returnActionOpt) = staticState
+      val lifts = Expr.ofList(resolveLazyLifts(allLifts))
+      
+      // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
+      // and the extractor to read out the results (e.g. ResultSet)
+      val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($lifts, row) }
+      val extractor: Expr[io.getquill.context.Extraction[ResultRow, T]] = 
+        extract match
+          // TODO Allow passing in a starting index here?
+          case ExtractBehavior.Extract => 
+            val extractor = makeExtractorFrom[RawT](converter)
+            '{ Extraction.Simple($extractor) }
+          case ExtractBehavior.ExtractWithReturnAction =>
+            val extractor = makeExtractorFrom[RawT](converter)
+            val returnAction = returnActionOpt.getOrElse { throw new IllegalArgumentException(s"Return action could not be found from the Query: ${query}") }
+            '{ Extraction.Returning($extractor, ${io.getquill.parser.Lifter.returnAction(returnAction)}) }
+          case ExtractBehavior.Skip =>    
+            '{ Extraction.None }
+
+      // Plug in the components and execute
+      '{ $contextOperation.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
+    end executeStatic
 
     /**
      * Expand dynamic-queries i.e. queries whose query-string cannot be computed at compile-time.
@@ -176,72 +226,19 @@ object QueryExecution:
       val extractor: Expr[io.getquill.context.Extraction[ResultRow, T]] = 
         extract match
           case ExtractBehavior.Extract =>
-            val decoder = summonDecoderOrThrow[RawT]()
-            '{ Extraction.Simple( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
+            val extractor = makeExtractorFrom[RawT](converter)
+            '{ Extraction.Simple( $extractor ) }
           // if a return action is needed, that ReturnAction will be calculated later in the dynamic context
           // therefore here, all we do is to pass in a extractor. We will compute the Extraction.ReturningLater
           case ExtractBehavior.ExtractWithReturnAction =>
-            val decoder = summonDecoderOrThrow[RawT]()
-            '{ Extraction.Simple( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
+            val extractor = makeExtractorFrom[RawT](converter)
+            '{ Extraction.Simple( $extractor ) }
           case ExtractBehavior.Skip =>    
             '{ Extraction.None }
 
       // TODO What about when an extractor is not neededX
       '{ RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Res]($elaboratedAstQuote, $contextOperation, $extractor) }
     end executeDynamic
-
-    
-    def resolveLazyLifts(lifts: List[Expr[Planter[?, ?]]]): List[Expr[EagerPlanter[?, ?]]] =
-      lifts.map {
-        case '{ ($e: EagerPlanter[a, b]) } => e
-        case '{ $l: LazyPlanter[a, b] } =>
-          val tpe = l.asTerm.tpe
-          tpe.asType match {
-            case '[LazyPlanter[t, row]] =>
-              println(s"Summoning type: ${TypeRepr.of[t].show}")
-              Expr.summon[GenericEncoder[t, ResultRow]] match {
-                case Some(decoder) =>
-                  '{ EagerPlanter[t, ResultRow]($l.value.asInstanceOf[t], $decoder, $l.uid) }
-                case None => 
-                  report.throwError("Encoder could not be summoned during lazy-lift resolution")
-              }
-          }
-      }
-
-    /** 
-     * Execute static query via ctx.executeQuery method given we have the ability to do so 
-     * i.e. have a staticState 
-     */
-    def executeStatic[RawT: Type](staticState: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior): Expr[Res] =    
-      val StaticState(query, allLifts, returnActionOpt) = staticState
-      val lifts = Expr.ofList(resolveLazyLifts(allLifts))
-
-      // Make sure not to compute these until they are plugged into the expression since 
-      // maybe it's not even possible e.g. there's no extraction and RawT is Nothing
-      def makeDecoder() = summonDecoderOrThrow[RawT]()
-      def makeExtractor() =
-        val decoder = makeDecoder()
-        '{ (r: ResultRow) => $converter.apply(${decoder}.apply(0, r)) }
-      
-      // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
-      // and the extractor to read out the results (e.g. ResultSet)
-      val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($lifts, row) }
-      val extractor: Expr[io.getquill.context.Extraction[ResultRow, T]] = 
-        extract match
-          // TODO Allow passing in a starting index here?
-          case ExtractBehavior.Extract => 
-            val extractor = makeExtractor()
-            '{ Extraction.Simple($extractor) }
-          case ExtractBehavior.ExtractWithReturnAction =>
-            val extractor = makeExtractor()
-            val returnAction = returnActionOpt.getOrElse{ throw new IllegalArgumentException(s"Return action could not be found from the Query: ${query}") }
-            '{ Extraction.Returning($extractor, ${io.getquill.parser.Lifter.returnAction(returnAction)}) }
-          case ExtractBehavior.Skip =>    
-            '{ Extraction.None }
-
-      // Plug in the components and execute
-      '{ $contextOperation.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
-    end executeStatic
 
   end RunQuery
 
