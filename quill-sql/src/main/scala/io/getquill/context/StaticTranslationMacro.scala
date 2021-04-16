@@ -24,6 +24,7 @@ import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.ast.{ Query => AQuery, _ }
 import scala.util.{Success, Failure}
+import io.getquill.idiom.Statement
 
 import io.getquill._
 
@@ -35,9 +36,10 @@ object StaticTranslationMacro {
   import io.getquill.util.LoadObject
   import io.getquill.generic.GenericEncoder
   import io.getquill.ast.External
+  import io.getquill.ReturnAction
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(String, List[External])] = {
+  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(String, List[External], Option[ReturnAction])] = {
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
@@ -48,28 +50,39 @@ object StaticTranslationMacro {
 
     val unliftedAst = Unlifter.apply(astExpr)
 
-    //import quotes.reflect._
-    //println("~~~~~~~~~~~~~~~~ Pre-Unlifted AST ~~~~~~~~~~~~~~\n" + io.getquill.util.Messages.qprint(astExpr.asTerm))
-    //println("~~~~~~~~~~~~~~~~ Unlifted AST ~~~~~~~~~~~~~~\n" + io.getquill.util.Messages.qprint(unliftedAst))
-
-    if (noRuntimeQuotations(unliftedAst)) {
-      
+    if (noRuntimeQuotations(unliftedAst)) {      
       val expandedAst = unliftedAst match
+        // if the AST is a Query, e.g. Query(Entity[Person], ...) we expand it out until something like
+        // Map(Query(Entity[Person], ...), x, CaseClass(name: x.name, age: x.age)). This was based on the Scala2-Quill
+        // flatten method in ValueProjection.scala. Technically this can be performed in the SqlQuery from the Quat info
+        // but the old mechanism is still used because the Quat information might not be there.
         case _: AQuery => ElaborateStructure.ontoAst[T](unliftedAst)
         case _ => unliftedAst
 
-      // TODO Should make this enable-able via a logging configuration
-      //println("=============== Static Expanded Ast Is ===========\n" + io.getquill.util.Messages.qprint(expandedAst))
-
       val (ast, stmt) = idiom.translate(expandedAst)(using naming)
-      val output =
+
+      def reifyStatements(ast: Ast, stmt: Statement) =
         ReifyStatement(
           idiom.liftingPlaceholder,
           idiom.emptySetContainsToken,
           stmt,
           forProbing = false
         )
-      Some(output)
+      def reifyStatementsFirst(ast: Ast, stmt: Statement) =
+        reifyStatements(ast, stmt)._1
+
+      val returningAction = expandedAst match
+        // If we have a returning action, we need to compute some additional information about how to return things.
+        // Different database dialects handle these things differently. Some allow specifying a list of column-names to
+        // return from the query. Others compute this information from the query data directly. This information is stored
+        // in the dialect and therefore is computed here.
+        case r: ReturningAction =>
+          Some(io.getquill.norm.ExpandReturning.applyMap(r)(reifyStatementsFirst)(idiom, naming))
+        case _ =>
+          None
+
+      val (query, externals) = reifyStatements(ast, stmt)
+      Some((query, externals, returningAction))
     } else {
       None
     }
@@ -154,11 +167,11 @@ object StaticTranslationMacro {
 
     val tryStatic =
       for {
-        (idiom, naming)          <- idiomAndNamingStatic.toOption.errPrint("Could not parse Idiom/Naming")
+        (idiom, naming)                        <- idiomAndNamingStatic.toOption.errPrint("Could not parse Idiom/Naming")
         // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
-        quotedExpr               <- QuotedExpr.uprootableOpt(quoted).errPrint("Could not uproot the quote") 
-        (queryString, externals) <- processAst[T](quotedExpr.ast, idiom, naming).errPrint("Could not process the ASt")
-        encodedLifts             <- processLifts(quotedExpr.lifts, externals).errPrint("Could not process the lifts")
+        quotedExpr                             <- QuotedExpr.uprootableOpt(quoted).errPrint("Could not uproot the quote") 
+        (queryString, externals, returnAction) <- processAst[T](quotedExpr.ast, idiom, naming).errPrint("Could not process the ASt")
+        encodedLifts                           <- processLifts(quotedExpr.lifts, externals).errPrint("Could not process the lifts")
       } yield {
         report.info(
           "Compile Time Query Is: " + 
@@ -169,7 +182,7 @@ object StaticTranslationMacro {
         // What about a missing decoder?
         // need to make sure that that kind of error happens during compile time
         // (also need to propagate the line number, talk to Li Houyi about that)
-        StaticState(queryString, encodedLifts)
+        StaticState(queryString, encodedLifts, returnAction)
       }
 
     if (tryStatic.isEmpty)

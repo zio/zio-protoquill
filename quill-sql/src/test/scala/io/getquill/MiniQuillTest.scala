@@ -30,7 +30,7 @@ object MiniQuillTest {
     //   query[PersonName]
     // }
 
-    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    val ctx = new MirrorContext(PostgresDialect, Literal)
     import ctx._
 
     // inline def q = quote {
@@ -156,11 +156,11 @@ object MiniQuillTest {
     // println(q.ast)
     //println( run(q) )
 
-
+    // hello
     // ============================ Testing Insert Returning =============================
     {
       case class Person(id: Int, name: String, age: Int)
-      inline def q = quote { query[Person].insert(lift(Person(0, "Joe", 123))).returningGenerated(_.id) }
+      inline def q = quote { query[Person].insert(lift(Person(0, "Joe", 123))).returningGenerated(r => (r.name, r.id)) }
       println( run(q) )
     }
   }

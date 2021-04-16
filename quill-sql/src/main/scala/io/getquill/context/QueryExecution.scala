@@ -52,7 +52,7 @@ object QueryExecution:
     import qctx.reflect._
 
     /** Summon decoder for a given Type and Row type (ResultRow) */
-    def summonDecoderOrThrow[DecoderT: Type]: Expr[GenericDecoder[ResultRow, DecoderT]] = {
+    def summonDecoderOrThrow[DecoderT: Type](): Expr[GenericDecoder[ResultRow, DecoderT]] = {
       Expr.summon[GenericDecoder[ResultRow, DecoderT]] match {
         case Some(decoder) => decoder
         case None => report.throwError(s"Decoder could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
@@ -77,6 +77,7 @@ object QueryExecution:
 
   enum ExtractBehavior:
       case Extract
+      case ExtractWithReturnAction
       case Skip
 
   enum ElaborationBehavior:
@@ -164,24 +165,29 @@ object QueryExecution:
       // we have Expr[Ast] instead of Ast in the times when we have Type[T]. We could Elaborate T during compile-time
       // and then decide to plug in the elaboration or not during runtime (depending on the type of Ast which would be runtime-checked)
       // but that would be less straightforward to do.
-      val expandedAst = quotationType match
+      val elaboratedAst = quotationType match
         case ElaborationBehavior.Elaborate => ElaborateStructure.ontoDynamicAst[T]('{ $quote.ast })
         case ElaborationBehavior.Skip => '{ $quote.ast }
       
-      val expandedAstQuote = '{ $quote.copy(ast = $expandedAst) }
+      val elaboratedAstQuote = '{ $quote.copy(ast = $elaboratedAst) }
 
       // TODO Allow passing in a starting index here?
       // Move this prepare down into RunDynamicExecution since need to use ReifyStatement to know what lifts to call when?
       val extractor: Expr[io.getquill.context.Extraction[ResultRow, T]] = 
         extract match
           case ExtractBehavior.Extract =>
-            val decoder = summonDecoderOrThrow[RawT]
+            val decoder = summonDecoderOrThrow[RawT]()
+            '{ Extraction.Simple( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
+          // if a return action is needed, that ReturnAction will be calculated later in the dynamic context
+          // therefore here, all we do is to pass in a extractor. We will compute the Extraction.ReturningLater
+          case ExtractBehavior.ExtractWithReturnAction =>
+            val decoder = summonDecoderOrThrow[RawT]()
             '{ Extraction.Simple( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
           case ExtractBehavior.Skip =>    
             '{ Extraction.None }
 
       // TODO What about when an extractor is not neededX
-      '{ RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Res]($expandedAstQuote, $contextOperation, $extractor) }
+      '{ RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Res]($elaboratedAstQuote, $contextOperation, $extractor) }
     end executeDynamic
 
     
@@ -207,8 +213,15 @@ object QueryExecution:
      * i.e. have a staticState 
      */
     def executeStatic[RawT: Type](staticState: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior): Expr[Res] =    
-      val StaticState(query, allLifts) = staticState
+      val StaticState(query, allLifts, returnActionOpt) = staticState
       val lifts = Expr.ofList(resolveLazyLifts(allLifts))
+
+      // Make sure not to compute these until they are plugged into the expression since 
+      // maybe it's not even possible e.g. there's no extraction and RawT is Nothing
+      def makeDecoder() = summonDecoderOrThrow[RawT]()
+      def makeExtractor() =
+        val decoder = makeDecoder()
+        '{ (r: ResultRow) => $converter.apply(${decoder}.apply(0, r)) }
       
       // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
       // and the extractor to read out the results (e.g. ResultSet)
@@ -217,8 +230,12 @@ object QueryExecution:
         extract match
           // TODO Allow passing in a starting index here?
           case ExtractBehavior.Extract => 
-            val decoder = summonDecoderOrThrow[RawT]
-            '{ Extraction.Simple( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
+            val extractor = makeExtractor()
+            '{ Extraction.Simple($extractor) }
+          case ExtractBehavior.ExtractWithReturnAction =>
+            val extractor = makeExtractor()
+            val returnAction = returnActionOpt.getOrElse{ throw new IllegalArgumentException(s"Return action could not be found from the Query: ${query}") }
+            '{ Extraction.Returning($extractor, ${io.getquill.parser.Lifter.returnAction(returnAction)}) }
           case ExtractBehavior.Skip =>    
             '{ Extraction.None }
 
@@ -258,11 +275,14 @@ end QueryExecution
 
 /**
  * Drives dynamic execution from the Context
+ * Note that AST is already elaborated by the time it comes into here
  */
 object RunDynamicExecution:
 
   import io.getquill.idiom.{ Idiom => Idiom }
   import io.getquill.{ NamingStrategy => NamingStrategy }
+  import io.getquill.idiom.Statement
+  import io.getquill.ast.ReturningAction
 
   def apply[
     I,
@@ -275,7 +295,7 @@ object RunDynamicExecution:
     Res
   ](quoted: Quoted[QOP[I, RawT]], 
     ctx: ContextOperation[I, T, D, N, PrepareRow, ResultRow, Res],
-    extractor: Extraction[ResultRow, T]
+    rawExtractor: Extraction[ResultRow, T]
   ): Res = 
   {
     def gatherLifts(quoted: Quoted[_]): List[Planter[_, _]] =
@@ -310,17 +330,34 @@ object RunDynamicExecution:
     // Tokenize the spliced AST
     val (outputAst, stmt) = ctx.idiom.translate(splicedAst)(using ctx.naming)
 
-    // TODO check if there are ScalarTag instances that have no lifts and blow them up
-    // (shuold test this scenario for both compile-time and dynamic query variants)
-
-    // Turn the Tokenized AST into an actual string and pull out the ScalarTags (i.e. the lifts)
-    val (string, externals) =
+    def reifyStatements(ast: Ast, stmt: Statement) =
       ReifyStatement(
         ctx.idiom.liftingPlaceholder,
         ctx.idiom.emptySetContainsToken,
         stmt,
         forProbing = false
       )
+    def reifyStatementsFirst(ast: Ast, stmt: Statement) =
+      reifyStatements(ast, stmt)._1
+
+    val returningActionOpt = splicedAst match
+      // If we have a returning action, we need to compute some additional information about how to return things.
+      // Different database dialects handle these things differently. Some allow specifying a list of column-names to
+      // return from the query. Others compute this information from the query data directly. This information is stored
+      // in the dialect and therefore is computed here.
+      case returningActionAst: ReturningAction =>
+        Some(io.getquill.norm.ExpandReturning.applyMap(returningActionAst)(reifyStatementsFirst)(ctx.idiom, ctx.naming))
+      case _ =>
+        None
+
+    val extractor = (rawExtractor, returningActionOpt) match
+      case (Extraction.Simple(extract), Some(returningAction)) => Extraction.Returning(extract, returningAction)
+      case (Extraction.Simple(_), None) => rawExtractor
+      case (Extraction.None, None) => rawExtractor
+      case (extractor, returningAction) => throw new IllegalArgumentException(s"Invalid state. Cannot have ${extractor} with a returning action ${returningAction}")
+
+    // Turn the Tokenized AST into an actual string and pull out the ScalarTags (i.e. the lifts)
+    val (string, externals) = reifyStatements(splicedAst, stmt)
 
     // Get the UIDs from the lifts, if they are something unexpected (e.g. Lift elements from Quill 2.x) throw an exception
     val liftTags = 

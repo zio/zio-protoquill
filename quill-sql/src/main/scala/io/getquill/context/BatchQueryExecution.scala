@@ -96,7 +96,7 @@ object BatchQueryExecution:
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
           val insertQuotation = InsertMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts) 
           StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation) match 
-            case Some(StaticState(queryString, _)) =>
+            case Some(StaticState(queryString, _, _)) =>
               val prepares =
                 '{ $iterableExpr.map(elem => ${
                   val injectedLifts = injectableLifts.map(lift => lift.inject('elem))

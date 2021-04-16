@@ -9,6 +9,7 @@ import scala.reflect.ClassTag;
 import scala.reflect.classTag;
 import io.getquill.quat.Quat
 import io.getquill.util.Messages
+import io.getquill.ReturnAction
 
 object Lifter {
   private def newLifter(ast: Ast) = new Lifter(ast.countQuatFields > Messages.maxQuatFields) {}
@@ -18,6 +19,9 @@ object Lifter {
   def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = newLifter(ast).liftableTuple(ast)
   def quat(quat: Quat): Quotes ?=> Expr[Quat] = 
     (new Lifter(quat.countFields > Messages.maxQuatFields) {}).liftableQuat(quat)
+
+  def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] = 
+    (new Lifter(false) {}).liftableReturnAction(returnAction)
 }
 
 /**
@@ -38,6 +42,13 @@ trait Lifter(serializeQuats: Boolean) {
     def apply(t: T)(using Quotes): Expr[T] = 
       lift.lift(t).getOrElse { throw new IllegalArgumentException(s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element ${pprint.apply(t)} into the Quill Abstract Syntax Tree") }
     def unapply(t: T)(using Quotes) = Some(apply(t))
+
+  // Technically not part of the AST this needs to be lifted in the QueryExecution and returned to the executeActionReturning context clause
+  given liftableReturnAction : NiceLiftable[ReturnAction] with
+    def lift =
+      case ReturnAction.ReturnNothing => '{ ReturnAction.ReturnNothing }
+      case ReturnAction.ReturnColumns(colums) => '{ ReturnAction.ReturnColumns(${colums.expr}) }
+      case ReturnAction.ReturnRecord => '{ ReturnAction.ReturnRecord }
 
   given liftRenameable : NiceLiftable[Renameable] with
     def lift =
