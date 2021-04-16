@@ -55,7 +55,7 @@ object QueryExecution:
     def summonDecoderOrThrow[DecoderT: Type]: Expr[GenericDecoder[ResultRow, DecoderT]] = {
       Expr.summon[GenericDecoder[ResultRow, DecoderT]] match {
         case Some(decoder) => decoder
-        case None => report.throwError("Decoder could not be summoned during query execution")
+        case None => report.throwError(s"Decoder could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
       }
     }
   }
@@ -101,10 +101,10 @@ object QueryExecution:
 
     def apply() =
       qop match
-        case '[Query[T]] => applyQuery(quotedOp)
+        case '[QOP[Any, T]] => applyQuery(quotedOp)
+        case '[QOP[I, Nothing]] => applyAction(quotedOp)
         //case '[ReturningAction[T]] => applyAction(op) // ReturningAction is also a subtype of Action so check it before Action
-        case '[Action[I]] => applyAction(quotedOp)
-        case _ => report.throwError(s"Could not match the QuotedOperation clause: ${quotedOp.show}")
+        case _ => report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.Type(qop)}")
 
         // Simple ID function that we use in a couple of places
     private val idConvert = '{ (t:T) => t }
@@ -150,7 +150,6 @@ object QueryExecution:
      * different method. I.e. since StaticTranslationMacro knows the AST node it infers Action/Query from that).
      */
     def executeDynamic[RawT: Type](quote: Expr[Quoted[QOP[I, RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior, quotationType: QuotationType) =
-      val decoder = summonDecoderOrThrow[RawT]
       // Expand the outermost quote using the macro and put it back into the quote
       // Is the expansion on T or RawT, need to investigate
       val expandedAst = quotationType match
@@ -163,8 +162,11 @@ object QueryExecution:
       // Move this prepare down into RunDynamicExecution since need to use ReifyStatement to know what lifts to call when?
       val extractor: Expr[io.getquill.context.Extraction[ResultRow, T]] = 
         extract match
-          case ExtractBehavior.Extract => '{ Extraction.Simple( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
-          case ExtractBehavior.Skip =>    '{ Extraction.None }
+          case ExtractBehavior.Extract =>
+            val decoder = summonDecoderOrThrow[RawT]
+            '{ Extraction.Simple( (r: ResultRow) => $converter.apply($decoder.apply(0, r)) ) }
+          case ExtractBehavior.Skip =>    
+            '{ Extraction.None }
 
       // TODO What about when an extractor is not neededX
       '{ RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Res]($expandedAstQuote, $contextOperation, $extractor) }
