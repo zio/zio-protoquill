@@ -63,7 +63,7 @@ object QueryExecution:
   trait QueryMetaHelper[T: Type] extends Extractors {
     import qctx.reflect.report
     // See if there there is a QueryMeta mapping T to some other type RawT
-    def summonMetaIfExists =
+    def summonQueryMetaIfExists =
       Expr.summon[QueryMeta[T, _]] match {
         case Some(expr) =>
           // println("Summoned! " + expr.show)
@@ -79,9 +79,9 @@ object QueryExecution:
       case Extract
       case Skip
 
-  enum QuotationType:
-      case Action
-      case Query
+  enum ElaborationBehavior:
+      case Elaborate
+      case Skip
 
   class RunQuery[
     I: Type, 
@@ -103,7 +103,7 @@ object QueryExecution:
       qop match
         case '[QOP[Any, T]] => applyQuery(quotedOp)
         case '[QOP[I, Nothing]] => applyAction(quotedOp)
-        //case '[ReturningAction[T]] => applyAction(op) // ReturningAction is also a subtype of Action so check it before Action
+        case '[QOP[I, T]] => applyActionReturning(quotedOp) // ReturningAction is also a subtype of Action so check it before Action
         case _ => report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.Type(qop)}")
 
         // Simple ID function that we use in a couple of places
@@ -111,10 +111,10 @@ object QueryExecution:
 
     /** Summon all needed components and run executeQuery method */
     def applyQuery(quoted: Expr[Quoted[QOP[I, T]]]): Expr[Res] =
-      summonMetaIfExists match
+      summonQueryMetaIfExists match
         // Can we get a QueryMeta? Run that pipeline if we can
-        case Some(rowRepr) =>
-          rowRepr match { case '[rawT] => runWithQueryMeta[rawT](quoted) } 
+        case Some(queryMeta) =>
+          queryMeta match { case '[rawT] => runWithQueryMeta[rawT](quoted) } 
         case None =>
           // Otherwise the regular pipeline
           StaticTranslationMacro.applyInner[I, T, D, N](quoted) match 
@@ -122,14 +122,21 @@ object QueryExecution:
             case Some(staticState) =>
               executeStatic[T](staticState, idConvert, ExtractBehavior.Extract) // Yes we can, do it!
             case None => 
-              executeDynamic(quoted, idConvert, ExtractBehavior.Extract, QuotationType.Query)        // No we can't. Do dynamic
+              executeDynamic(quoted, idConvert, ExtractBehavior.Extract, ElaborationBehavior.Elaborate)        // No we can't. Do dynamic
 
     def applyAction(quoted: Expr[Quoted[QOP[I, T]]]): Expr[Res] =
       StaticTranslationMacro.applyInner[I, T, D, N](quoted) match 
         case Some(staticState) =>
           executeStatic[T](staticState, idConvert, ExtractBehavior.Skip)
         case None => 
-          executeDynamic(quoted, idConvert, ExtractBehavior.Skip, QuotationType.Action)
+          executeDynamic(quoted, idConvert, ExtractBehavior.Skip, ElaborationBehavior.Skip)
+
+    def applyActionReturning(quoted: Expr[Quoted[QOP[I, T]]]): Expr[Res] =
+      StaticTranslationMacro.applyInner[I, T, D, N](quoted) match 
+        case Some(staticState) =>
+          executeStatic[T](staticState, idConvert, ExtractBehavior.Extract)
+        case None => 
+          executeDynamic(quoted, idConvert, ExtractBehavior.Extract, ElaborationBehavior.Skip)
 
     /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to T */
     def runWithQueryMeta[RawT: Type](quoted: Expr[Quoted[QOP[I, T]]]): Expr[Res] =
@@ -140,7 +147,7 @@ object QueryExecution:
         case None => 
           // NOTE: Can assume QuotationType is `Query` here since summonly a Query-meta is only allowed for Queries
           // TODO refacotry QueryMetaExtractor to use QOP[I, T] => QOP[I, RawT] then use that
-          executeDynamic[RawT](queryRawT.asExprOf[Quoted[QOP[I, RawT]]], converter, ExtractBehavior.Extract, QuotationType.Query)
+          executeDynamic[RawT](queryRawT.asExprOf[Quoted[QOP[I, RawT]]], converter, ExtractBehavior.Extract, ElaborationBehavior.Elaborate)
       }
 
     /**
@@ -149,12 +156,17 @@ object QueryExecution:
      * need to use ElaborateStructure or not. This is decided in the StaticTranslationMacro for static queries using a 
      * different method. I.e. since StaticTranslationMacro knows the AST node it infers Action/Query from that).
      */
-    def executeDynamic[RawT: Type](quote: Expr[Quoted[QOP[I, RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior, quotationType: QuotationType) =
+    def executeDynamic[RawT: Type](quote: Expr[Quoted[QOP[I, RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior, quotationType: ElaborationBehavior) =
       // Expand the outermost quote using the macro and put it back into the quote
       // Is the expansion on T or RawT, need to investigate
+      // Note that in the Static case, this is done by checking the Type of the root entity. If the root Entity
+      // is a Query, then the Elaboration happens. For the dynamic query variation, this is more difficult to do because
+      // we have Expr[Ast] instead of Ast in the times when we have Type[T]. We could Elaborate T during compile-time
+      // and then decide to plug in the elaboration or not during runtime (depending on the type of Ast which would be runtime-checked)
+      // but that would be less straightforward to do.
       val expandedAst = quotationType match
-        case QuotationType.Query => ElaborateStructure.ontoDynamicAst[T]('{ $quote.ast })
-        case QuotationType.Action => '{ $quote.ast }
+        case ElaborationBehavior.Elaborate => ElaborateStructure.ontoDynamicAst[T]('{ $quote.ast })
+        case ElaborationBehavior.Skip => '{ $quote.ast }
       
       val expandedAstQuote = '{ $quote.copy(ast = $expandedAst) }
 
