@@ -148,7 +148,7 @@ with Closeable
   }
 
   @targetName("runAction")
-  inline def run[E](inline quoted: Quoted[QAC[E, Nothing] with Action[E]]): Result[RunActionResult] = {
+  inline def run[E](inline quoted: Quoted[Action[E] with QAC[E, Nothing]]): Result[RunActionResult] = {
     val ca = new ContextOperation[E, Nothing, Dialect, Naming, PrepareRow, ResultRow, Result[RunActionResult]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Nothing], executionType: ExecutionType) =
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)

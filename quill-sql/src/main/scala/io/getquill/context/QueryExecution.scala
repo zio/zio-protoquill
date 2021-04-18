@@ -102,7 +102,7 @@ object QueryExecution:
 
     def apply() =
       QAC match
-        case '[QAC[Any, T]] => applyQuery(quotedOp)
+        case '[QAC[Nothing, T]] => applyQuery(quotedOp)
         case '[QAC[I, Nothing]] => applyAction(quotedOp)
         case '[QAC[I, T]] => applyActionReturning(quotedOp) // ReturningAction is also a subtype of Action so check it before Action
         case _ => report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.Type(QAC)}")
