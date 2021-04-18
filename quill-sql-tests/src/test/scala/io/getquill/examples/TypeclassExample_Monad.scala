@@ -1,12 +1,11 @@
 package io.getquill.examples
 
-
 import scala.language.implicitConversions
-import io.getquill.Dsl._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
+import io.getquill._
 
 object TypeclassExample_Monad {
-  import io.getquill._
+  
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 

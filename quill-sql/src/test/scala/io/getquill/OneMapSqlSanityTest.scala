@@ -1,11 +1,11 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import io.getquill.Dsl._
-import io.getquill._
+
+
 import io.getquill.ast._
 import io.getquill.Quoted
-import io.getquill._
+
 import io.getquill.quat.quatOf
 
 class OneMapSqlSanityTest extends Spec {

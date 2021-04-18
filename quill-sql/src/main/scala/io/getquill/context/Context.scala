@@ -28,8 +28,11 @@ import io.getquill.metaprog.etc.MapFlicer
 import io.getquill.util.Messages.fail
 import java.io.Closeable
 import io.getquill.util.Format
-
-import io.getquill._
+import io.getquill.QAC
+import io.getquill.Action
+import io.getquill.ActionReturning
+import io.getquill.BatchAction
+import io.getquill.Literal
 
 sealed trait ExecutionType
 object ExecutionType {
@@ -131,7 +134,7 @@ with Closeable
   // the regular context can be non inline
   @targetName("runQuery")
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
-    val ca = new ContextOperation[Any, T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]](self.idiom, self.naming) {
+    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionType: ExecutionType) =
         val extract = extraction match
           case Extraction.Simple(extract) => extract
@@ -145,7 +148,7 @@ with Closeable
   }
 
   @targetName("runAction")
-  inline def run[E](inline quoted: Quoted[Action[E]]): Result[RunActionResult] = {
+  inline def run[E](inline quoted: Quoted[QAC[E, Nothing] with Action[E]]): Result[RunActionResult] = {
     val ca = new ContextOperation[E, Nothing, Dialect, Naming, PrepareRow, ResultRow, Result[RunActionResult]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Nothing], executionType: ExecutionType) =
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
@@ -172,7 +175,7 @@ with Closeable
   }
 
   @targetName("runBatchAction")
-  inline def run[T, A <: Action[T]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
+  inline def run[T, A <: Action[T] & QAC[T, Nothing]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
     val ca = new BatchContextOperation[T, A, Dialect, Naming, PrepareRow, ResultRow, Result[RunBatchActionResult]](self.idiom, self.naming) {
       def execute(sql: String, prepares: List[PrepareRow => (List[Any], PrepareRow)], executionType: ExecutionType) =
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)

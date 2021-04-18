@@ -2,7 +2,7 @@ package io.getquill.context.jasync.postgres
 
 import scala.concurrent.ExecutionContext.Implicits.{ global => ec }
 import io.getquill.context.sql.PeopleSpec
-import io.getquill.Dsl._
+import io.getquill._
 import scala.util.Try
 import scala.util.Success
 

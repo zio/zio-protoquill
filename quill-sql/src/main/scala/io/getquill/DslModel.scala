@@ -15,6 +15,8 @@ object EntityQuery {
   def apply[T] = new EntityQuery[T]() { }
 }
 
+def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
+
 trait EntityQuery[T] extends EntityQueryModel[T]
 
 case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _]], runtimeQuotes: List[QuotationVase]) {
@@ -70,7 +72,7 @@ trait QuotationLot[+T](uid: String) {
 case class Unquote[+T](quoted: Quoted[T], uid: String) extends QuotationLot[T](uid)
 
 // TODO Does this need to be covariant? It is in current quill. Need to look up what use cases they are for covariant schemas.
-case class SchemaMeta[T](val entity: Quoted[io.getquill.EntityQuery[T]], uid: String) extends QuotationLot[EntityQuery[T]](uid)
+case class SchemaMeta[T](val entity: Quoted[EntityQuery[T]], uid: String) extends QuotationLot[EntityQuery[T]](uid)
 
 case class InsertMeta[T](val entity: Quoted[T], uid: String) extends QuotationLot[T](uid)
 
@@ -89,4 +91,3 @@ case class QueryMeta[T, R](val entity: Quoted[Query[T] => Query[R]], uid: String
 // TODO Rename to EntityLift
 // Equivalent to CaseClassValueLift
 case class CaseClassLift[T](val entity: Quoted[T], uid: String) extends QuotationLot[T](uid)
-

@@ -1,10 +1,11 @@
 package io.getquill.generic
 
-import io.getquill._
+
 import scala.reflect.ClassTag
 import scala.quoted._
 import scala.deriving._
 import scala.compiletime.{erasedValue, summonFrom}  
+import io.getquill.MappedEncoding
 
 trait EncodingDsl {
   type PrepareRow

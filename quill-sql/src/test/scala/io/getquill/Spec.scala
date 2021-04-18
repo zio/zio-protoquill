@@ -13,8 +13,6 @@ import io.getquill.quat.Quat
 import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
 import io.getquill.Query
-import io.getquill._
-import io.getquill.Dsl._
 
 abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   

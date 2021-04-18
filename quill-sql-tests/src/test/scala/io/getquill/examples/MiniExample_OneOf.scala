@@ -1,11 +1,11 @@
 package io.getquill.examples
 
 import scala.language.implicitConversions
-import io.getquill.Dsl._
+import io.getquill._
 
 object MiniExample_OneOf {
 
-  import io.getquill._
+  
   import io.getquill.metaprog.etc._
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._

@@ -1,11 +1,11 @@
 package io.getquill.examples
 
 import scala.language.implicitConversions
-import io.getquill.Dsl._
+import io.getquill._
 
 object TypelevelUsecase {
 
-  import io.getquill._
+  
   case class Address(street: String, zip: Int, fk: Int) extends Embedded //helloooo
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._

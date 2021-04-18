@@ -1,10 +1,8 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import io.getquill.Dsl._
+
 import io.getquill.Quoted
-import io.getquill._
-import io.getquill._
 import io.getquill.ast._
 import io.getquill.QuotationLot
 import io.getquill.QuotationVase
@@ -14,6 +12,8 @@ import io.getquill.quat.quatOf
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
 import io.getquill.context.Context
+import io.getquill.quote
+import io.getquill.query
 
 trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   // Need SqlContext here otherwise there will be encoder-not-found issues in 'insertPeople' since that does lifting

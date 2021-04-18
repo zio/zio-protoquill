@@ -2,9 +2,6 @@ package io.getquill.ported.quotation
 
 import scala.language.implicitConversions
 import io.getquill.QuotationLot
-import io.getquill.Dsl._
-import io.getquill._
-import io.getquill._
 import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.Quoted
 import io.getquill.Planter
@@ -14,6 +11,7 @@ import org.scalatest._
 import io.getquill.quat.Quat
 import io.getquill.ast.Implicits._
 import io.getquill.norm.NormalizeStringConcat
+import io.getquill._
 
 class OperationTest extends Spec with Inside {
 

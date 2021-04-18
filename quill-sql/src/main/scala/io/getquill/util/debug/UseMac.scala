@@ -1,7 +1,7 @@
 package io.getquill.util.debug
 
+
 import io.getquill._
-import io.getquill.Dsl._
 import io.getquill.context.Context
 
 case class Person(name: String, age: Int)

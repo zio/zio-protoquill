@@ -2,11 +2,12 @@ package io.getquill.examples
 
 
 import scala.language.implicitConversions
-import io.getquill.Dsl._
+import io.getquill._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 
-object TypeclassUsecase_TypeclassQueryAndEntityQuery {
-  import io.getquill._
+object TypeclassUsecase_TypeclassWithList {
+  
+  case class Address(street: String, zip: Int) extends Embedded
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
@@ -60,12 +61,8 @@ object TypeclassUsecase_TypeclassQueryAndEntityQuery {
   inline given queryJoiningFunctor: QueryJoiningFunctor = new QueryJoiningFunctor
   inline given listJoiningFunctor: ListJoiningFunctor = new ListJoiningFunctor
 
-  inline given aconversion[T]: Conversion[EntityQuery[T], Query[T]] = (q: EntityQuery[T]) => q: Query[T]
-  inline given bconversion[T]: Conversion[Query[T], Query[T]] = (q: Query[T]) => q: Query[T]
-  inline given cconversion[T]: Conversion[List[T], List[T]] = (q: List[T]) => q: List[T]
-
-  inline def latestStatus[O[_], F[_], T, G](inline q: O[T])(using inline conv: O[T] => F[T], inline fun: JoiningFunctor[F], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): F[T] =
-      conv(q).leftJoin(conv(q))((a, b) => 
+  inline def latestStatus[F[+_], T, G](inline q: F[T])(using inline fun: JoiningFunctor[F], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): F[T] =
+      q.leftJoin(q)((a, b) => 
           groupKey(b) == groupKey(a) &&
           earlierThan(b, a)
       )
@@ -74,26 +71,18 @@ object TypeclassUsecase_TypeclassQueryAndEntityQuery {
       .map((a, b) => a)
 
   // Need this specialization so you can run latestStatus on a query[T] since that's an EntityQuery
-  //inline def latestStatus[T, G](inline q: EntityQuery[T])(using inline fun: JoiningFunctor[Query], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): Query[T] =
-  //  latestStatus[Query, T, G](q: Query[T])
+  inline def latestStatus[T, G](inline q: EntityQuery[T])(using inline fun: JoiningFunctor[Query], inline groupKey: GroupKey[T, G], inline earlierThan: EarlierThan[T]): Query[T] =
+    latestStatus[Query, T, G](q: Query[T])
 
   def main(args: Array[String]): Unit = {
 
-    inline def nodesQuery: Query[Node] = quote { latestStatus(query[Node]) }
-    inline def mastersQuery: Query[Master] = quote { latestStatus(select[Master]) }
-    inline def workersQuery: Query[Worker] = quote { latestStatus(select[Worker]) }
+    inline def nodesLatest = quote { latestStatus(query[Node]) }
+    inline def mastersLatest = quote { latestStatus(query[Master]) }
+    inline def workersLatest = quote { latestStatus(query[Worker]) }
 
-    println( run(nodesQuery).string )
-    println( run(mastersQuery).string )
-    println( run(workersQuery).string )
-
-    inline def nodesEntityQuery: Query[Node] = quote { latestStatus(query[Node]) }
-    inline def mastersEntityQuery: Query[Master] = quote { latestStatus(select[Master]) }
-    inline def workersEntityQuery: Query[Worker] = quote { latestStatus(select[Worker]) }
-
-    println( run(nodesEntityQuery).string )
-    println( run(mastersEntityQuery).string )
-    println( run(workersEntityQuery).string )
+    println( run(nodesLatest).string )
+    println( run(mastersLatest).string )
+    println( run(workersLatest).string )
 
     val nodesList = List(Node(1, 1, "UP"), Node(1, 2, "DOWN"), Node(2, 3, "WAITING"))
     println( latestStatus(nodesList) )

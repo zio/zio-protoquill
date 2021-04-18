@@ -2,8 +2,8 @@ package io.getquill
 
 import scala.language.implicitConversions
 import io.getquill.QuotationLot
-import io.getquill.Dsl._
-import io.getquill._
+
+
 import io.getquill.ast.{ Query => AQuery, _ }
 import io.getquill.ast.{ Property => Prop }
 import io.getquill.Quoted
@@ -17,6 +17,8 @@ import io.getquill.context.mirror.Row
 import io.getquill.context.ExecutionType
 import io.getquill.quat.quatOf
 import io.getquill.quat.Quat
+import io.getquill.quote
+import io.getquill.query
 
 import org.scalatest._
 

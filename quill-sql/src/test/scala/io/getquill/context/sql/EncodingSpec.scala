@@ -3,9 +3,7 @@ package io.getquill.context.sql
 import java.time.LocalDate
 import java.util.{ Date, UUID }
 import io.getquill.context.Context
-import io.getquill.Dsl._
-
-import io.getquill.Spec
+import io.getquill._
 
 case class EncodingTestType(value: String)
 

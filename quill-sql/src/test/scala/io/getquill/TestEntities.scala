@@ -2,7 +2,7 @@ package io.getquill
 
 import io.getquill.context.Context
 import io.getquill.quat.Quat
-import io.getquill.Dsl._
+
 
 trait TestEntities {
   // Has a context self type in Scala2-Quill however, for Protoquill

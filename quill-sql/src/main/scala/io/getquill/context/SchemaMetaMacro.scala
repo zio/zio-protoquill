@@ -7,6 +7,7 @@ import io.getquill.MetaDsl
 import io.getquill.SchemaMeta
 import io.getquill.Unquote
 import io.getquill.util.LoadObject
+import io.getquill.querySchema
 
 object SchemaMetaMacro {
 
@@ -22,7 +23,7 @@ object SchemaMetaMacro {
         case GenericSeq(argsExprs) => argsExprs
       }).toList
     //val quote = quoteImpl('{ $qm.querySchema[T]($entity, ${Expr.ofList(exprs)}: _*) })
-    val quote = QuoteMacro('{ $qm.querySchema[T]($entity, $columns: _*) })
+    val quote = QuoteMacro('{ querySchema[T]($entity, $columns: _*) })
     '{ SchemaMeta($quote, $uuid) }
   }
 }

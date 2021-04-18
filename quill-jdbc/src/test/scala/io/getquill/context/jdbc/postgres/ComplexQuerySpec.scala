@@ -3,7 +3,7 @@
 // import io.getquill.Spec
 // import org.scalatest.BeforeAndAfter
 // import io.getquill.Ord
-// import io.getquill.Dsl._
+// import io.getquill._
 
 // class ComplexQuerySpec extends Spec with BeforeAndAfter {
 

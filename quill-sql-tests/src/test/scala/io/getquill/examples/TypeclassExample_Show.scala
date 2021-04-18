@@ -2,11 +2,11 @@ package io.getquill.examples
 
 
 import scala.language.implicitConversions
-import io.getquill.Dsl._
+import io.getquill._
 
 object TypeclassExample_Show {
 
-  import io.getquill._
+  
   case class Person(id: Int, name: String, age: Int)
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._

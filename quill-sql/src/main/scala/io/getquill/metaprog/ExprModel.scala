@@ -5,11 +5,10 @@ import io.getquill.generic.GenericEncoder
 import io.getquill.ast.Ast
 import io.getquill.metaprog.ExtractorsBundle
 import io.getquill.metaprog.ExtractorsBundle
-import io.getquill.Quoted
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.ExprAccumulate
-import io.getquill._
 import io.getquill.util.Format
+import io.getquill._
 
 /* As the different kinds of parsing in Quill-Dotty became more complex, the need for an
 overarching model of "how stuff works" became necessary. There are several places in the

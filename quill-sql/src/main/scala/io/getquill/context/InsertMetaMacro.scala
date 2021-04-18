@@ -1,6 +1,6 @@
 package io.getquill.context
 
-import io.getquill._
+
 import scala.quoted._
 import io.getquill.norm.BetaReduction
 import io.getquill.util.LoadObject 

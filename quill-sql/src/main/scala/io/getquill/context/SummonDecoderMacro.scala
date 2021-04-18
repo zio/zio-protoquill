@@ -26,7 +26,7 @@ import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 
-import io.getquill._
+
 
 object SummonDecoderMacro {
   import io.getquill.parser._

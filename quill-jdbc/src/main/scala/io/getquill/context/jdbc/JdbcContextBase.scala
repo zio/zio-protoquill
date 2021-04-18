@@ -2,7 +2,7 @@ package io.getquill.context.jdbc
 
 import java.sql._
 
-import io.getquill._
+
 import io.getquill.ReturnAction._
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.{ Context, ContextEffect }
@@ -10,6 +10,7 @@ import io.getquill.util.ContextLogger
 import io.getquill.context.ExecutionType
 import io.getquill.generic.EncodingDsl
 import io.getquill.context.sql.SqlContext
+import io.getquill.NamingStrategy
 
 trait JdbcContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends JdbcContextSimplified[Dialect, Naming] {
   // Note: This context has been created for Session Prepare use-cases. Prepare in ProtoQuill is not supported yet.
@@ -108,6 +109,8 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
           ps.executeBatch().map(_.toLong)
       }
     }
+
+  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: io.getquill.ReturnAction)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionReturningResult[T]] = ???
 
   // def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T]): Result[List[T]] =
   //   withConnectionWrapped { conn =>

@@ -32,10 +32,9 @@ lazy val `quill-sql` =
     .settings(commonSettings: _*)
     .settings(
       resolvers ++= Seq(
-        Resolver.mavenLocal,
-        "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+        Resolver.mavenLocal//,
+        //"Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
       ),
-
       libraryDependencies ++= Seq(
         // .excludeAll(ExclusionRule(organization="com.trueaccord.scalapb")
         ("com.lihaoyi" %% "pprint" % "0.5.6").withDottyCompat(scalaVersion.value),
@@ -54,6 +53,14 @@ lazy val `quill-sql` =
           Seq()
       }
     )
+
+// Moving heavy tests to separate module so it can be compiled in parallel with others
+lazy val `quill-sql-tests` =
+  (project in file("quill-sql-tests"))
+    .settings(commonSettings: _*)
+    .dependsOn(`quill-sql` % "compile->compile;test->test")
+
+//lazy val `quill-sql-all` = (project in file(".")).aggregate(`quill-sql`, `quill-sql-tests`)
 
 lazy val `quill-jdbc` =
   (project in file("quill-jdbc"))

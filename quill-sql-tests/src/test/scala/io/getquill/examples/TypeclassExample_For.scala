@@ -2,11 +2,11 @@ package io.getquill.examples
 
 
 import scala.language.implicitConversions
-import io.getquill.Dsl._
+import io.getquill._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 
 object TypeclassExample_For {
-  import io.getquill._
+  
   case class Address(fk: Int, street: String, zip: Int) extends Embedded
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._

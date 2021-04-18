@@ -1,7 +1,7 @@
 package io.getquill.parser
 
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
-import io.getquill._
+
 import scala.quoted._
 import scala.quoted._
 import scala.annotation.StaticAnnotation

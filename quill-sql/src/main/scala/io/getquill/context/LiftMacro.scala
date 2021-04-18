@@ -34,6 +34,7 @@ import io.getquill.generic.ElaborateStructure.TaggedLiftedCaseClass
 import io.getquill.parser.Lifter
 import io.getquill.CaseClassLift
 import io.getquill.ast.CaseClass
+import io.getquill.InjectableEagerPlanter
 
 object LiftQueryMacro {
   private[getquill] def newUuid = java.util.UUID.randomUUID().toString

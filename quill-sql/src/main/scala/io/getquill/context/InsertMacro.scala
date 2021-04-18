@@ -1,7 +1,7 @@
 
 package io.getquill.context
 
-import io.getquill._
+
 import scala.quoted._
 import io.getquill.norm.BetaReduction
 import io.getquill.util.LoadObject 
@@ -16,12 +16,15 @@ import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.QuotationLotExpr._
 import io.getquill.metaprog.Extractors
 import io.getquill.Quoted
+import io.getquill.EntityQuery
 import io.getquill.QuotationVase
 import io.getquill.InsertMeta
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.QuatMakingBase
 import io.getquill.quat.Quat
 import io.getquill.metaprog.PlanterExpr
+import io.getquill.Planter
+import io.getquill.Insert
 
 /**
  * TODO Right now this is just insert but we can easily extend to update and delete
@@ -151,7 +154,7 @@ object InsertMacro {
               case Pluckable(uid, quotation, _) =>
                 SummonState.Dynamic(uid, quotation)
               // TODO Improve this error
-              case _ => report.throwError("Invalid form, cannot be pointable")
+              case _ => report.throwError(s"Invalid form, cannot be pointable: ${io.getquill.util.Format.Expr(insertMeta)}")
                 // TODO Configuration to ignore dynamic insert metas?
                 //println("WARNING: Only inline insert-metas are supported for insertions so far. Falling back to a insertion of all fields.")
                 //

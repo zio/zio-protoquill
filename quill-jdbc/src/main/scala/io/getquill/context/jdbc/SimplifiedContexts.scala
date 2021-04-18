@@ -1,7 +1,6 @@
 package io.getquill.context.jdbc
 
 import java.sql.Types
-
 import io.getquill._
 
 trait PostgresJdbcContextSimplified[N <: NamingStrategy] extends JdbcContextSimplified[PostgresDialect, N]

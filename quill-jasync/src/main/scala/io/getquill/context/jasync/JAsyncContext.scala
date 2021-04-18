@@ -132,6 +132,8 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
   //     }
   //   }.map(_.flatten.toList)
 
+  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionReturningResult[T]] = ???
+
   // Used for TranslateContext. The functionality of context.translate is not in Protoquill yet.
   //override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] =
   //  prepare(Nil)._2.map(prepareParam)

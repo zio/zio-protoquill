@@ -1,13 +1,13 @@
 // package io.getquill.quat
 
-// import io.getquill._
+// 
 // import io.getquill.quotation.QuatException
 
 // import org.scalatest.freespec.AnyFreeSpec
 // import org.scalatest.matchers.must.Matchers._
 // import org.scalatest._
 
-// import io.getquill.Dsl._
+// 
 // import io.getquill.QueryDsl._
 
 // class QuatSpec extends AnyFreeSpec {

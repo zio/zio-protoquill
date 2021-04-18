@@ -2,11 +2,11 @@ package io.getquill.examples
 
 
 import scala.language.implicitConversions
-import io.getquill.Dsl._
+import io.getquill._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 
 object TypeclassUsecase_Repetitive {
-  import io.getquill._
+  
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 

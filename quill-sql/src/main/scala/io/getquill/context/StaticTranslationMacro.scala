@@ -25,8 +25,9 @@ import io.getquill.idiom.ReifyStatement
 import io.getquill.ast.{ Query => AQuery, _ }
 import scala.util.{Success, Failure}
 import io.getquill.idiom.Statement
+import io.getquill.QAC
+import io.getquill.NamingStrategy
 
-import io.getquill._
 
 object StaticTranslationMacro {
   import io.getquill.parser._
@@ -37,6 +38,7 @@ object StaticTranslationMacro {
   import io.getquill.generic.GenericEncoder
   import io.getquill.ast.External
   import io.getquill.ReturnAction
+  import io.getquill.NamingStrategy
 
   // Process the AST during compile-time. Return `None` if that can't be done.
   private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(String, List[External], Option[ReturnAction])] = {
@@ -146,7 +148,7 @@ object StaticTranslationMacro {
   // }
 
   def applyInner[I: Type, T: Type, D <: Idiom, N <: NamingStrategy](
-    quotedRaw: Expr[Quoted[QOP[I, T]]]
+    quotedRaw: Expr[Quoted[QAC[I, T]]]
   )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[StaticState] = 
   {
     import quotes.reflect.{Try => TTry, _}

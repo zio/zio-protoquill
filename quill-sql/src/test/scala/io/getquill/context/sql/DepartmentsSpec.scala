@@ -3,7 +3,7 @@
 // import io.getquill.Spec
 // import io.getquill.Query
 // import io.getquill.context.Context
-// import io.getquill.Dsl._
+// 
 
 // trait DepartmentsSpec extends Spec {
 

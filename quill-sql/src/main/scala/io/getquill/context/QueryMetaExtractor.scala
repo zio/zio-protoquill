@@ -25,7 +25,6 @@ import io.getquill.QuotationLot
 import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
-
 import io.getquill._
 
 /**
@@ -135,7 +134,7 @@ object QueryMetaExtractor {
             attemptStaticRequip[T, R](queryLot, queryLifts, quip) match {
               
               case Some(StaticRequip(requip, baq)) =>
-                val staticTranslation = StaticTranslationMacro.applyInner[Any, R, D, N](requip)
+                val staticTranslation = StaticTranslationMacro.applyInner[Nothing, R, D, N](requip)
                 (requip, baq, staticTranslation)
 
               case None =>

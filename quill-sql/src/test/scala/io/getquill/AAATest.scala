@@ -1,7 +1,7 @@
 // package io.getquill
 
 // import scala.language.implicitConversions
-// import io.getquill.Dsl._
+// 
 // import io.getquill.QueryDsl._
 // import io.getquill.SchemaMeta
 // import io.getquill.QueryMeta
@@ -9,7 +9,7 @@
 // import io.getquill.parser.PrintMac
 
 // object AAATest {
-//   import io.getquill._
+//   
 
 //   case class Person(name: String, age: Int)
 

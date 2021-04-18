@@ -1,10 +1,10 @@
 package io.getquill
 
-import io.getquill._
-import io.getquill.Dsl._
 import scala.reflect.ClassTag
 import scala.reflect.classTag
 import io.getquill.generic.GenericColumnResolver
+import io.getquill.quote
+import io.getquill.query
 
 object QueryTest {
   case class Person(name: String, age: Int)

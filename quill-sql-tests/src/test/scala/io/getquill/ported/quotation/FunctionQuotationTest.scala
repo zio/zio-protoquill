@@ -2,16 +2,11 @@ package io.getquill.ported.quotation
 
 import scala.language.implicitConversions
 import io.getquill.QuotationLot
-import io.getquill.Dsl._
-import io.getquill._
-import io.getquill._
+import io.getquill.Spec
 import io.getquill.ast.{Query => AQuery, _}
-import io.getquill.Quoted
-import io.getquill.Planter
-import io.getquill.QuotationVase
-import io.getquill.QuotationLot
 import org.scalatest._
 import io.getquill.quat.Quat
+import io.getquill._
 
 class FunctionQuotationTest extends Spec with Inside {
   // val ctx = new MirrorContext(MirrorIdiom, Literal)

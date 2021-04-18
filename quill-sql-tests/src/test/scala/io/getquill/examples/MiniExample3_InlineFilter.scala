@@ -1,11 +1,11 @@
 package io.getquill.examples
 
 import scala.language.implicitConversions
-import io.getquill.Dsl._
+import io.getquill._
 import io.getquill.QueryDsl._
 
 object MiniExample3_InlineFilter {
-  import io.getquill._
+  
   case class Person(name: String, age: Int)
 
   def main(args: Array[String]): Unit = {

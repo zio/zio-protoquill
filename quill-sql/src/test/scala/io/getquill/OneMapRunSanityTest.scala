@@ -1,14 +1,16 @@
 package io.getquill
 
 import scala.language.implicitConversions
-import io.getquill.Dsl._
-import io.getquill._
+
+
 import io.getquill.ast._
 import io.getquill.Quoted
-import io.getquill._
+
 import org.scalatest._
 import io.getquill.quat.Quat
 import io.getquill.quat.quatOf
+import io.getquill.quote
+import io.getquill.query
 
 class OneMapRunSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)

@@ -3,7 +3,7 @@
 
 // 
 // import scala.language.implicitConversions
-// import io.getquill.Dsl._
+// 
 
 // object InlineMacroTest2 {
 
@@ -18,7 +18,7 @@
 
 //   def main(args: Array[String]): Unit = {
 
-//     import io.getquill._
+//     
 //     case class Address(street: String, zip: Int) extends Embedded
 //     given Embedable[Address]
 //     case class Person(id: Int, firstName: String, age: Int, addr: Address, middleName: String, lastName: String)

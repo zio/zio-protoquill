@@ -40,6 +40,8 @@ import io.getquill.metaprog.QuotationLotExpr._
 import io.getquill.util.Format
 import io.getquill.context.LiftMacro
 import io.getquill.parser.Unlifter
+import io.getquill._
+import io.getquill.QAC
 
 trait BatchContextOperation[T, A <: Action[_], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], executionType: ExecutionType): Res
@@ -48,7 +50,7 @@ trait BatchContextOperation[T, A <: Action[_], D <: Idiom, N <: NamingStrategy, 
 object BatchQueryExecution:
   class RunQuery[
     T: Type,
-    A <: Action[_]: Type,
+    A <: Action[_] with QAC[_, _]: Type,
     ResultRow: Type, 
     PrepareRow: Type, 
     D <: Idiom: Type, 
@@ -116,7 +118,7 @@ object BatchQueryExecution:
 
   inline def apply[
     T, 
-    A <: Action[_],
+    A <: Action[_] with QAC[_, _],
     ResultRow, 
     PrepareRow, 
     D <: Idiom, 
@@ -127,7 +129,7 @@ object BatchQueryExecution:
   
   def applyImpl[
     T: Type,
-    A <: Action[_]: Type,
+    A <: Action[_] with QAC[_, _]: Type,
     ResultRow: Type,
     PrepareRow: Type, 
     D <: Idiom: Type, 

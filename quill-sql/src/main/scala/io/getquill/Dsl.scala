@@ -23,6 +23,7 @@ import io.getquill.context.QueryMacro
 import io.getquill.context.QuoteMacro
 import io.getquill.context.UnquoteMacro
 import io.getquill.context.LiftMacro
+import io.getquill._
 
 // trait Quoter {
 //   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???
@@ -30,22 +31,24 @@ import io.getquill.context.LiftMacro
 // }
 
 // allows you to write quote, query, insert/delete/update, lazyLift with just importing this
-object lib extends Dsl[ParserLibrary] {
-  export io.getquill.Query
-  export io.getquill.Action
-  export io.getquill.Insert
-  export io.getquill.Update
-  export io.getquill.Delete
-  export io.getquill.ActionReturning
-}
+// object lib extends Dsl[ParserLibrary] {
+//   export io.getquill.Query
+//   export io.getquill.Action
+//   export io.getquill.Insert
+//   export io.getquill.Update
+//   export io.getquill.Delete
+//   export io.getquill.ActionReturning
+// }
+
+
+//export io.getquill.Dsl._
+//export io.getquill.Model._
 
 object Dsl extends Dsl[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
 trait Dsl[Parser <: ParserFactory] extends QuoteDsl[Parser] with QueryDsl[Parser] with MetaDsl[Parser]
 
 trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
-  @compileTimeOnly(NonQuotedException.message)
-  def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
 
   inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
     ${ SchemaMetaMacro[T, Parser]('this, 'entity, 'columns) }

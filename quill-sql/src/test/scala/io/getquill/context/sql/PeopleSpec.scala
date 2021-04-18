@@ -1,15 +1,11 @@
 package io.getquill.context.sql
 
-import io.getquill.Spec
-import io.getquill.Ord
-import io.getquill.Query
 import io.getquill.context.Context
-import io.getquill.Dsl._
-import io.getquill.Quoted
+import io.getquill._
 
 // TODO Move tests for these into quotation package from QuotationSpec
 class PeopleSpecUseCls extends PeopleSpec {
-  import io.getquill._
+  
   import io.getquill.MirrorContext
   val context: MirrorContext[PostgresDialect, Literal] = new MirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
   import context._
