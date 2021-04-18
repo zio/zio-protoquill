@@ -265,6 +265,9 @@ object QuotationLotExpr {
         case '{ InsertMeta.apply[t]($quotation, ${Expr(uid: String)}) } =>
           Some((Uninline(quotation), uid, List()))
 
+        case '{ UpdateMeta.apply[t]($quotation, ${Expr(uid: String)}) } =>
+          Some((Uninline(quotation), uid, List()))
+
         case '{ CaseClassLift.apply[t]($quotation, ${Expr(uid: String)}) } =>
           Some((Uninline(quotation), uid, List()))
 

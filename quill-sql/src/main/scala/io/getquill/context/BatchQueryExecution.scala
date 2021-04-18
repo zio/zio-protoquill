@@ -96,7 +96,7 @@ object BatchQueryExecution:
           // Once we have that, use the Insert macro to generate a correct insert clause. The insert macro
           // should summon a schemaMeta if needed (and account for querySchema age) 
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
-          val insertQuotation = InsertMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts) 
+          val insertQuotation = InsertUpdateMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts) 
           StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation) match 
             case Some(StaticState(queryString, _, _)) =>
               val prepares =

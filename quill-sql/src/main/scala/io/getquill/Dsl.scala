@@ -15,7 +15,7 @@ import scala.compiletime.summonFrom
 import io.getquill.EntityQuery
 import io.getquill.Query
 import io.getquill.Insert
-import io.getquill.context.InsertMacro
+import io.getquill.context.InsertUpdateMacro
 import io.getquill.context.InsertMetaMacro
 import io.getquill.context.SchemaMetaMacro
 import io.getquill.context.QueryMetaMacro
@@ -90,5 +90,5 @@ trait QuoteDsl[Parser <: ParserFactory] {
   extension [T](inline entity: EntityQuery[T])
     // Note that although this is in the static DSL if you lift a case class inside the insert or anything else, it will try to do a standard lift for that
     // requiring a context to be present
-    inline def insert(inline value: T): Insert[T] = ${ InsertMacro[T, Parser]('entity, 'value) }
+    inline def insert(inline value: T): Insert[T] = ${ InsertUpdateMacro[T, Insert, Parser]('entity, 'value) }
 }

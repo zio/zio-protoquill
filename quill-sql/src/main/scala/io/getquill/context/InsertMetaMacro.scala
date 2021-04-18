@@ -40,7 +40,7 @@ object InsertMetaMacro:
     val excludeAstProps = 
       excludeAstMethods.map {
         case Function(List(param), prop @ Property(_, _)) => 
-          BetaReduction(prop, param -> InsertMacro.VIdent)
+          BetaReduction(prop, param -> InsertUpdateMacro.VIdent)
         case other => 
           quotes.reflect.report.throwError(s"Could not recognize insert exclusion AST: ${other} as a valid exclusion AST")
       }

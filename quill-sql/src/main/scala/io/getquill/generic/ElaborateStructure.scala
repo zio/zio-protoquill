@@ -71,7 +71,7 @@ import io.getquill.metaprog.TypeExtensions
  * )
  * }}}
  * The fact that we know that Person expands into Prop(Id("p"),"name"), Prop(Id("p"),"age")) helps
- * us compute the necessary assignments in the `InsertMacro`.
+ * us compute the necessary assignments in the `InsertUpdateMacro`.
  */
 object ElaborateStructure {
   import io.getquill.generic.GenericDecoder

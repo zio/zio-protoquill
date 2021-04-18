@@ -9,7 +9,7 @@ import io.getquill.parser.Parser
 import io.getquill.parser.Parser.Implicits._
 import io.getquill.parser.ParserFactory
 import io.getquill.generic.ElaborateStructure
-import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, _ }
+import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, Update => AUpdate, _ }
 import io.getquill.parser.Lifter
 import io.getquill.parser.Unlifter
 import io.getquill.metaprog.QuotationLotExpr
@@ -19,12 +19,15 @@ import io.getquill.Quoted
 import io.getquill.EntityQuery
 import io.getquill.QuotationVase
 import io.getquill.InsertMeta
+import io.getquill.UpdateMeta
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.QuatMakingBase
 import io.getquill.quat.Quat
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.Planter
 import io.getquill.Insert
+import io.getquill.Update
+import io.getquill.util.Format
 
 /**
  * TODO Right now this is just insert but we can easily extend to update and delete
@@ -78,7 +81,7 @@ import io.getquill.Insert
  * resulting expressions. It might be useful to introduce a configuration parameter to ignore non-inline InsertMetas
  * or non-inline SchemaMetas. Or maybe this could even be an annotation.
  */
-object InsertMacro {
+object InsertUpdateMacro {
   private[getquill] val VIdent = AIdent("v", Quat.Generic)
 
   object DynamicUtil {
@@ -96,7 +99,7 @@ object InsertMacro {
    * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
    * statement is based. The schema is based on the EntityQuery which could potentially be an unquoted QuerySchema.
    */
-  class Pipeline[T: Type](using override val qctx: Quotes) extends Extractors with QuatMaking with QuatMakingBase(using qctx):
+  class Pipeline[T: Type, A[T] <: Insert[T] | Update[T]: Type](using override val qctx: Quotes) extends Extractors with QuatMaking with QuatMakingBase(using qctx):
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
 
@@ -135,26 +138,43 @@ object InsertMacro {
               //println("WARNING: Only inline schema-metas are supported for insertions so far. Falling back to a plain entity.")
               //plainEntity
     end InserteeSchema
+
+    enum MacroType:
+      case Insert
+      case Update
+    object MacroType:
+      def ofThis() =
+        if (TypeRepr.of[A] <:< TypeRepr.of[Insert])
+          MacroType.Insert
+        else if (TypeRepr.of[A] <:< TypeRepr.of[Update])
+          MacroType.Update
+        else
+          throw new IllegalArgumentException(s"Invalid macro action type ${io.getquill.util.Format.TypeOf[A[Any]]} must be either Insert or Update")
+      def summonMetaOfThis() =
+        ofThis() match
+          case MacroType.Insert => Expr.summon[InsertMeta[T]]
+          case MacroType.Update => Expr.summon[UpdateMeta[T]]
+
     
     object IgnoredColumns:
       def summon: SummonState[Set[Ast]] =
-        // If someone has defined a: given meta: InsertMeta[Person] = insertMeta[Person](_.id)
-        Expr.summon[InsertMeta[T]] match
-          case Some(insertMeta) =>
-            QuotationLotExpr(insertMeta.asTerm.underlyingArgument.asExpr) match
-              // if the meta is inline i.e. 'inline given meta: InsertMeta[Person] = ...'
+        // If someone has defined a: given meta: InsertMeta[Person] = insertMeta[Person](_.id) or UpdateMeta[Person] = updateMeta[Person](_.id)
+        MacroType.summonMetaOfThis() match
+          case Some(actionMeta) =>
+            QuotationLotExpr(actionMeta.asTerm.underlyingArgument.asExpr) match
+              // if the meta is inline i.e. 'inline given meta: InsertMeta[Person] = ...' (or UpdateMeta[Person])
               case Uprootable(_, ast, _, _, _, _) =>
                 //println(s"***************** Found an uprootable ast: ${ast.show} *****************")
                 Unlifter(ast) match
                   case Tuple(values) if (values.forall(_.isInstanceOf[Property])) =>
                     SummonState.Static(values.toSet)
                   case other => 
-                    report.throwError(s"Invalid values in InsertMeta: ${other}. An InsertMeta AST must be a tuple of Property elements.")
+                    report.throwError(s"Invalid values in ${Format.TypeRepr(actionMeta.asTerm.tpe)}: ${other}. An ${Format.TypeRepr(actionMeta.asTerm.tpe)} AST must be a tuple of Property elements.")
               // if the meta is not inline
               case Pluckable(uid, quotation, _) =>
                 SummonState.Dynamic(uid, quotation)
               // TODO Improve this error
-              case _ => report.throwError(s"Invalid form, cannot be pointable: ${io.getquill.util.Format.Expr(insertMeta)}")
+              case _ => report.throwError(s"Invalid form, cannot be pointable: ${io.getquill.util.Format.Expr(actionMeta)}")
                 // TODO Configuration to ignore dynamic insert metas?
                 //println("WARNING: Only inline insert-metas are supported for insertions so far. Falling back to a insertion of all fields.")
                 //
@@ -286,7 +306,7 @@ object InsertMacro {
     }
 
     /** used in BatchQueryExecution */
-    def createFromPremade(entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]]): Expr[Quoted[Insert[T]]] =
+    def createFromPremade(entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]]): Expr[Quoted[A[T]]] =
       val assignments = deduceAssignmentsFrom(caseClass)
       createQuotation(SummonState.Static(entity), assignments, lifts, List())
 
@@ -301,8 +321,13 @@ object InsertMacro {
         // If we can get a static entity back
         case SummonState.Static(entity) =>
           // Lift it into an `Insert` ast, put that into a `quotation`, then return that `quotation.unquote` i.e. ready to splice into the quotation from which this `.insert` macro has been called
-          val insert = '{ AInsert(${Lifter.entity(entity)}, ${assignmentsAst}) }
-          val quotation = '{ Quoted[Insert[T]](${insert}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
+          val action = MacroType.ofThis() match
+              case MacroType.Insert =>
+                '{ AInsert(${Lifter.entity(entity)}, ${assignmentsAst}) }
+              case MacroType.Update =>
+                '{ AUpdate(${Lifter.entity(entity)}, ${assignmentsAst}) }
+
+          val quotation = '{ Quoted[A[T]](${action}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
           // Unquote the quotation and return
           quotation
 
@@ -314,7 +339,7 @@ object InsertMacro {
           // Create the QuotationVase in which this dynamic quotation will go
           val runtimeQuote = '{ QuotationVase($entityQuotation, ${Expr(uid)}) }
           // Then create the quotation, adding the new runtimeQuote to the list of pluckedUnquotes
-          val quotation = '{ Quoted[Insert[T]](${insert}, ${Expr.ofList(lifts)}, $runtimeQuote +: ${Expr.ofList(pluckedUnquotes)}) }
+          val quotation = '{ Quoted[A[T]](${insert}, ${Expr.ofList(lifts)}, $runtimeQuote +: ${Expr.ofList(pluckedUnquotes)}) }
           // Unquote the quotation and return
           quotation
       
@@ -327,8 +352,8 @@ object InsertMacro {
       
   end Pipeline
   
-  def apply[T: Type, Parser <: ParserFactory: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[Insert[T]] =
-    new Pipeline[T]().apply[Parser](entityRaw, bodyRaw)
+  def apply[T: Type, A[T] <: Insert[T] | Update[T]: Type, Parser <: ParserFactory: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[A[T]] =
+    new Pipeline[T, A]().apply[Parser](entityRaw, bodyRaw)
 
   /** 
    * If you have a pre-created entity, a case class, and lifts (as is the case for the Batch queries in BatchQueryExecution)
@@ -339,7 +364,7 @@ object InsertMacro {
   def createFromPremade[T: Type](entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]])(using Quotes) = 
     // unlike in 'apply', types here need to be manually specified for Pipeline, it seems that since they're in arguments, in the
     // 'apply' variation, the scala compiler can figure them out but not here
-    new Pipeline[T]().createFromPremade(entity, caseClass, lifts)
+    new Pipeline[T, Insert]().createFromPremade(entity, caseClass, lifts)
 
 }
 

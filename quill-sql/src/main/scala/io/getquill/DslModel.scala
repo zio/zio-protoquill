@@ -76,6 +76,8 @@ case class SchemaMeta[T](val entity: Quoted[EntityQuery[T]], uid: String) extend
 
 case class InsertMeta[T](val entity: Quoted[T], uid: String) extends QuotationLot[T](uid)
 
+case class UpdateMeta[T](val entity: Quoted[T], uid: String) extends QuotationLot[T](uid)
+
 // enum ActionMetaType { Insert, Update }
 // or with traits?
 // trait ActionMetaType; object ActionMetaType { trait Insert extends ActionMetaType; trait Update extends ActionMetaType }

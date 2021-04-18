@@ -482,8 +482,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
 
   def delegate: PartialFunction[Expr[_], Ast] = {
 
-  // This seems to work?
-    case '{ type t; EntityQuery.apply[`t`] } => //: EntityQuery[`$t`]
+    case '{ type t; EntityQuery.apply[`t`] } =>
       val tpe = TypeRepr.of[t]
       val name: String = tpe.classSymbol.get.name
       Entity(name, List(), InferQuat.ofType(tpe).probit)

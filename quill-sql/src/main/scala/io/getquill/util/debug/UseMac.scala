@@ -72,7 +72,7 @@ object UseMac {
     // println( NewMac[Person] )
 
     
-    // NOTE doing querySchema here directly does not seem to work in InsertMacro, need to further test that
+    // NOTE doing querySchema here directly does not seem to work in InsertUpdateMacro, need to further test that
     //inline def q = quote { liftQuery(l).foreach(p => querySchema[Person]("thePerson").insert(p)) }
 
     // inline def q = quote { liftQuery(l).foreach(p => query[Person].insert(p)) }
