@@ -80,7 +80,7 @@ class ActionSpec extends Spec {
         testContext.run(q).string mustEqual
           "INSERT INTO TestEntity (i,s) VALUES (1, 's')"
       }
-      "using nested select" in { //hellooooooo
+      "using nested select" in {
         val q = quote {
           qr1.insert(_.l -> qr2.map(t => t.i).size, _.s -> "s")
         }
