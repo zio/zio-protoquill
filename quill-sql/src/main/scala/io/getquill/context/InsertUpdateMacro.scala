@@ -196,7 +196,7 @@ object InsertUpdateMacro {
      * For batch queries liftQuery(people).foreach(p => query[Person].insert(p))
      * it will be just the ast Ident("p")
      */
-    def parseInsertee[Parser <: ParserFactory: Type](insertee: Expr[Any]): CaseClass | Ident = {
+    def parseInsertee[Parser <: ParserFactory: Type](insertee: Expr[Any]): CaseClass | AIdent = {
       insertee match
         // The case: query[Person].insert(lift(Person("Joe", "Bloggs")))
         case QuotationLotExpr(exprType) =>
@@ -219,23 +219,51 @@ object InsertUpdateMacro {
     /** 
      * Parse the input to of query[Person].insert(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs") 
      */
-    def parseStaticInsertee[Parser <: ParserFactory: Type](insertee: Expr[_]): CaseClass | Ident = {  
+    def parseStaticInsertee[Parser <: ParserFactory: Type](insertee: Expr[_]): CaseClass | AIdent = {  
       val parserFactory = LoadObject[Parser].get
       val rawAst = parserFactory.apply.seal.apply(insertee)
       val ast = BetaReduction(rawAst)
       ast match
         case cc: CaseClass => cc
-        case id: Ident => id
+        case id: AIdent => id
         case _ => report.throwError(s"Parsed Insert Macro AST is not a Case Class: ${qprint(ast).plainText} (or a batch-query Ident)")  
     }
 
-    def deduceAssignmentsFrom(insertee: CaseClass) = {
+    /** 
+     * Actually the same as deduceAssignmentsFromCaseClass, but I decided to write
+     * a separate function and comment it extensively since the logic is not simple to
+     * extrapolate.
+     * This function creates a series of assignments
+     * of a elaborated product. However, each assignment just assigns to the identifier
+     * which will be plugged in (i.e. BetaReduced) once the Ident is actually substituted.
+     * E.g. if we have something like this: `val ip = quote { (p: Person) => query[Person].insert(p) }`
+     * and then later: `run(ip(lift(Person("Joe",123))))` then the assignments list is just based
+     * on the `p` identifier of the `ip` quoted function i.e:
+     * `(v:Person) => v.firstName -> p.firstName` this is achived by doing
+     * BetaReduce(v.firstName, v -> p). Later on when `ip(lift(Person("Joe",123)))`
+     * happens the `CaseClass(firstName -> lift(...), age -> lift(...))` comes in and
+     * all the right values are plugged in correctly.
+     */
+    def deduceAssignmentsFromIdent(insertee: AIdent) = {
+      val expansionList = ElaborateStructure.ofProductType[T](VIdent.name)
+      def mapping(path: Ast) =
+        println(s"************** Replacing: ${io.getquill.util.Messages.qprint(VIdent)} with ${io.getquill.util.Messages.qprint(insertee)} in ${io.getquill.util.Messages.qprint(path)} ****************)")
+        val reduction = BetaReduction(path, VIdent -> insertee)
+        val a = Assignment(VIdent, path, reduction)
+        println(s"************** Making assignment: ${io.getquill.util.Messages.qprint(a)} ****************")
+        a
+
+      val assignmentsAst = expansionList.map(exp => mapping(exp))
+      assignmentsAst
+    }
+
+    def deduceAssignmentsFromCaseClass(insertee: CaseClass) = {
       // Expand into a AST
       // T:Person(name:Str, age:Option[Age]) Age(value: Int) -> Ast: List(v.name, v.age.map(v => v.value))
       val expansionList = ElaborateStructure.ofProductType[T](VIdent.name)
 
       // Now synthesize (v) => vAssignmentProperty -> assignmentValue
-      // e.g. (p:Person) => p.firstName -> "Joe"
+      // e.g. (v:Person) => v.firstName -> "Joe"
       // TODO, Ast should always be a case class (maybe a tuple?) should verify that
       def mapping(path: Ast) =
         val reduction = BetaReduction(path, VIdent -> insertee)
@@ -282,13 +310,13 @@ object InsertUpdateMacro {
           // if it is a CaseClass we either have a static thing e.g. query[Person].insert(Person("Joe", 123)) 
           // or we have a lifted thing e.g. query[Person].insert(lift(Person("Joe", 123)))
           // so we just process it based on what kind of pattern we encounter
-          case astCaseClass: CaseClass => deduceAssignmentsFrom(astCaseClass)
+          case astCaseClass: CaseClass => deduceAssignmentsFromCaseClass(astCaseClass)
           // if it is a Ident, then we know we have a batch query i.e. liftQuery(people).foreach(p => query[Person].insert(p))
           // we want to re-syntheize this as a lifted thing i.e. liftQuery(people).foreach(p => query[Person].insert(lift(p)))
           // and then reprocess the contents. 
           // We don't want to do that here thought because we don't have the PrepareRow
           // so we can't lift content here into planters. Instead this is done in the BatchQueryExecution pipeline
-          case astIdent: Ident => List()
+          case astIdent: AIdent => deduceAssignmentsFromIdent(astIdent)
 
       // Insertion could have lifts and quotes inside, need to extract those. 
       // E.g. it can be 'query[Person].insert(lift(Person("Joe",123)))'' which becomes Quoted(CaseClass(name -> lift(x), age -> lift(y), List(ScalarLift("Joe", x), ScalarLift(123, y)), Nil).
@@ -306,7 +334,7 @@ object InsertUpdateMacro {
 
     /** used in BatchQueryExecution */
     def createFromPremade(entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]]): Expr[Quoted[A[T]]] =
-      val assignments = deduceAssignmentsFrom(caseClass)
+      val assignments = deduceAssignmentsFromCaseClass(caseClass)
       createQuotation(SummonState.Static(entity), assignments, lifts, List())
 
     def createQuotation(summonState: SummonState[Entity], assignmentOfEntity: List[Assignment], lifts: List[Expr[Planter[?, ?]]], pluckedUnquotes: List[Expr[QuotationVase]]) = {

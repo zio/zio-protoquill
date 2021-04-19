@@ -167,12 +167,28 @@ object MiniQuillTest {
     // hellooooooooooooo
 
     case class Person(name: String, age: Int)
-    inline def a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
-    inline def q = quote { query[Person].insert(Person("Joe", 123)) }            // Insert entity form
-    inline given personMeta: InsertMeta[Person] = insertMeta[Person](_.age)
-    PrintMac(personMeta)
-    println(ctx.run(q).string)
-    println(ctx.run(q).string == ("INSERT INTO Person (name) VALUES ('Joe')"))
-    println(ctx.run(a).string == ("INSERT INTO Person (name,age) VALUES ('Joe', 123)"))
+    // inline def a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
+    // inline def q = quote { query[Person].insert(Person("Joe", 123)) }            // Insert entity form
+    // inline given personMeta: InsertMeta[Person] = insertMeta[Person](_.age)
+    // PrintMac(personMeta)
+    // println(ctx.run(q).string)
+    // println(ctx.run(q).string == ("INSERT INTO Person (name) VALUES ('Joe')"))
+    // println(ctx.run(a).string == ("INSERT INTO Person (name,age) VALUES ('Joe', 123)"))
+
+    inline def q = quote { (p: Person) =>
+      query[Person].insert(p)
+    }
+
+    // TODO Make sure that 'v' is not used as an identifier in the insert macro, rather a new id is found
+    val p = Person("Joe", 123)
+
+    
+    //PrintMac(lift(p))
+    println(io.getquill.util.Messages.qprint(quote { lift(p) } )) //helloooooooooooooo
+
+    inline def applied = quote { q(lift(p)) }
+    println(io.getquill.util.Messages.qprint(applied))
+    //PrintMac(applied)
+    println(run(applied).string)
   }
 }
