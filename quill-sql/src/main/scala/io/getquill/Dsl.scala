@@ -95,4 +95,17 @@ trait QuoteDsl[Parser <: ParserFactory] {
     // requiring a context to be present
     inline def insert(inline value: T): Insert[T] = ${ InsertUpdateMacro[T, Insert, Parser]('entity, 'value) }
     inline def update(inline value: T): Update[T] = ${ InsertUpdateMacro[T, Update, Parser]('entity, 'value) }
+
+  // Doing:          val p = quote { query[Person] }
+  // and then doing: val q = quote { p.insert(_.name -> "blah") }
+  //  or then doing: val q = quote { p.insert(lift(Person("Joe", 123))) }
+  // confuses Dotty since it needs to be `p.unquote` first and it can't determine which
+  // variant of the function it is supposed to use. Therefore we have to explicitly define
+  // these functions on the quoted variant of the EntityQuery for the types to infer correctly.
+  // see ActionSpec.scala action->insert->simple, using nested select, etc... tets for examples of this
+  extension [T](inline quotedEntity: Quoted[EntityQuery[T]])
+    inline def insert(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Insert[T] = unquote[EntityQuery[T]](quotedEntity).insert(f, f2: _*)
+    inline def update(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Update[T] = unquote[EntityQuery[T]](quotedEntity).update(f, f2: _*)
+    inline def insert(inline value: T): Insert[T] = unquote[EntityQuery[T]](quotedEntity).insert(value)
+    inline def update(inline value: T): Update[T] = unquote[EntityQuery[T]](quotedEntity).update(value)
 }

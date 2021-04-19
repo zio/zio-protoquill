@@ -2,7 +2,9 @@ package io.getquill.context.mirror
 
 import io.getquill.generic._
 import scala.reflect.ClassTag
-
+import java.util.Date
+import java.time.LocalDate
+import java.util.UUID
 import io.getquill.MappedEncoding
 
 trait MirrorDecoders extends EncodingDsl {
@@ -40,7 +42,7 @@ trait MirrorDecoders extends EncodingDsl {
   implicit val floatDecoder: Decoder[Float] = decoder[Float]
   implicit val doubleDecoder: Decoder[Double] = decoder[Double]
   implicit val byteArrayDecoder: Decoder[Array[Byte]] = decoder[Array[Byte]]
-  // implicit val dateDecoder: Decoder[Date] = decoder[Date]
-  // implicit val localDateDecoder: Decoder[LocalDate] = decoder[LocalDate]
-  // implicit val uuidDecoder: Decoder[UUID] = decoder[UUID]
+  implicit val dateDecoder: Decoder[Date] = decoder[Date]
+  implicit val localDateDecoder: Decoder[LocalDate] = decoder[LocalDate]
+  implicit val uuidDecoder: Decoder[UUID] = decoder[UUID]
 }

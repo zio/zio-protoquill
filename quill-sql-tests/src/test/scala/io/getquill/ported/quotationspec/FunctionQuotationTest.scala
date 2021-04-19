@@ -1,4 +1,4 @@
-package io.getquill.ported.quotation
+package io.getquill.ported.quotationspec
 
 import scala.language.implicitConversions
 import io.getquill.QuotationLot

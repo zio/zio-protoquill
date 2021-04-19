@@ -17,7 +17,8 @@ trait MirrorColumnResolving[Dialect <: Idiom, Naming <: NamingStrategy] { self: 
   }
 }
 
-class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming) extends MirrorContextBase[Dialect, Naming]
+class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming) 
+extends MirrorContextBase[Dialect, Naming]
 
 trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
 extends Context[Dialect, Naming] 
