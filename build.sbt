@@ -32,8 +32,8 @@ lazy val `quill-sql` =
     .settings(commonSettings: _*)
     .settings(
       resolvers ++= Seq(
-        Resolver.mavenLocal//,
-        //"Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+        Resolver.mavenLocal,
+        "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
       ),
       libraryDependencies ++= Seq(
         // .excludeAll(ExclusionRule(organization="com.trueaccord.scalapb")
