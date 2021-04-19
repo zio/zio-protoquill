@@ -21,6 +21,14 @@ class PeoplePostgresAsyncSpec extends PeopleSpec {
       }
     }
 
+  "Example 0.1 - simple" in {
+    await(testContext.run(`Ex 0.1 simple`)) mustEqual `Ex 0.1 expected result`
+  }
+
+  "Example 0.1 - simple mapped" in {
+    await(testContext.run(`Ex 0.2 simple mapped`)) mustEqual `Ex 0.2 expected result`
+  }
+
   "Example 1 - differences" in {
     await(testContext.run(`Ex 1 differences`)) mustEqual `Ex 1 expected result`
   }

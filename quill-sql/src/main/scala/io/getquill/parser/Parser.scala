@@ -130,6 +130,7 @@ trait ParserLibrary extends ParserFactory {
   // a after everything except Inline recurse parser
   def quotationParser(using qctx: Quotes)          = Series.single(new QuotationParser)
   def queryParser(using qctx: Quotes)              = Series.single(new QueryParser)
+  def queryScalarsParser(using qctx: Quotes)       = Series.single(new QueryScalarsParser)
   def patMatchParser(using qctx: Quotes)           = Series.single(new CasePatMatchParser)
   def functionParser(using qctx: Quotes)           = Series.single(new FunctionParser)
   def functionApplyParser(using qctx: Quotes)      = Series.single(new FunctionApplyParser)
@@ -152,6 +153,7 @@ trait ParserLibrary extends ParserFactory {
   def apply(using Quotes): Parser[Ast] =
     quotationParser
         .combine(queryParser)
+        .combine(queryScalarsParser)
         .combine(optionParser)
         .combine(orderingParser)
         .combine(actionParser)
@@ -481,7 +483,6 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
   import Parser.Implicits._
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-
     case '{ type t; EntityQuery.apply[`t`] } =>
       val tpe = TypeRepr.of[t]
       val name: String = tpe.classSymbol.get.name
@@ -517,14 +518,32 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, tpe, on)}) } => 
       FlatJoin(LeftJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
     
-    case '{ type t; ($q: Query[`t`]).take($n: Int) } =>
-      Take(astParse(q),astParse(n))
-    case '{ type t; ($q: Query[`t`]).drop($n: Int) } =>
-      Drop(astParse(q),astParse(n))
+    case '{ type t; ($q: Query[`t`]).take($n: Int) } => Take(astParse(q),astParse(n))
+    case '{ type t; ($q: Query[`t`]).drop($n: Int) } => Drop(astParse(q),astParse(n))
 
     // TODO need to test if this is sufficient for implicit ordering cases or if need to specify the other variation in parser as well
     case '{ type r; ($q: Query[t]).sortBy[`r`](${Lambda1(ident1, tpe, body)})($ord: Ord[`r`]) } =>
       SortBy(astParse(q), cleanIdent(ident1, tpe), astParse(body), astParse(ord))
+  }
+
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+}
+
+/** 
+ * Since QueryParser only matches things that output Query[_], make a separate parser that
+ * parses things like query.sum, query.size etc... when needed
+ */
+case class QueryScalarsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PropertyAliases {
+  import qctx.reflect.{Constant => TConstant, Ident => TIdent, _}
+  import Parser.Implicits._
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).value[`u`] } => astParse(q)
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).min[`u`] } => Aggregation(AggregationOperator.`min`, astParse(q))
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).max[`u`] } => Aggregation(AggregationOperator.`max`, astParse(q))
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).avg[`u`]($n) } => Aggregation(AggregationOperator.`avg`, astParse(q))
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).sum[`u`]($n) } => Aggregation(AggregationOperator.`sum`, astParse(q))
+    case '{ type t; ($q: Query[`t`]).size } => Aggregation(AggregationOperator.`size`, astParse(q))
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)

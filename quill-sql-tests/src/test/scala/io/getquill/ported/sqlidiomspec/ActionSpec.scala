@@ -43,9 +43,15 @@ class ActionSpec extends Spec {
         }
         "foreach" in {
           val v = TestEntity("s", 1, 2L, Some(1), true)
-          testContext.run(
-            liftQuery(List(v)).foreach(v => query[TestEntity].insert(v))
-          ).groups mustEqual List(("INSERT INTO TestEntity (s,i,l,o,b) VALUES (?, ?, ?, ?, ?)", List(Row(List("s","i","l","o","b").zip(v.productIterator).toList: _*))))
+          val groups =
+            testContext.run(
+              liftQuery(List(v)).foreach(v => query[TestEntity].insert(v))
+            ).groups mustEqual 
+              List((
+                "INSERT INTO TestEntity (s,i,l,o,b) VALUES (?, ?, ?, ?, ?)", 
+                List(Row("_1" -> "s", "_2" -> 1, "_3" -> 2L, "_4" -> Some("_1" -> 1), "_5" -> true))
+              )
+            )
         }
         // "foreach returning" in testContext.withDialect(MirrorSqlDialectWithReturnMulti) { ctx =>
         //   import ctx._
@@ -74,7 +80,7 @@ class ActionSpec extends Spec {
         testContext.run(q).string mustEqual
           "INSERT INTO TestEntity (i,s) VALUES (1, 's')"
       }
-      "using nested select" in {
+      "using nested select" in { //hellooooooo
         val q = quote {
           qr1.insert(_.l -> qr2.map(t => t.i).size, _.s -> "s")
         }

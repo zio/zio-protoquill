@@ -15,6 +15,10 @@ object LiftsExtractor {
     apply(lifts, row)
 
   def apply[PrepareRowTemp](lifts: List[EagerPlanter[_, _]], row: PrepareRowTemp) = {
+    // start with (0, List(), PrepareRow) and List( a: Planter(encoder("foo")), b: Planter(encoder("bar")) )
+    // You get: a.encoder(0, a.value [i.e. "foo"], row) -> (0, "foo" :: Nil, row)
+    // Then:    b.encoder(1, b.value [i.e. "bar"], row) -> (0, "bar" :: "foo" :: Nil, row)
+    // etc...
     val (_, values, prepare) =
       lifts.foldLeft((0, List.empty[Any], row)) {
         case ((idx, values, row), lift) =>

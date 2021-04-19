@@ -37,6 +37,14 @@ object Unlifter {
       case '{ Visibility.Hidden } => Visibility.Hidden
       case '{ Visibility.Visible } => Visibility.Visible
 
+  given unliftAggregation: NiceUnliftable[AggregationOperator] with
+    def unlift =
+      case '{ AggregationOperator.`min` }  =>  AggregationOperator.`min`
+      case '{ AggregationOperator.`max` }  =>  AggregationOperator.`max`
+      case '{ AggregationOperator.`avg` }  =>  AggregationOperator.`avg`
+      case '{ AggregationOperator.`sum` }  =>  AggregationOperator.`sum`
+      case '{ AggregationOperator.`size` } =>  AggregationOperator.`size`
+
   given unliftRenameable: NiceUnliftable[Renameable] with
     def unlift =
       case '{ Renameable.ByStrategy } => Renameable.ByStrategy
@@ -132,6 +140,7 @@ object Unlifter {
         Entity(b, elems.unexpr, unliftedQuat)
       case '{ Function($params, $body) } => Function(params.unexpr, body.unexpr)
       case '{ FunctionApply($function, $values) } => FunctionApply(function.unexpr, values.unexpr)
+      case '{ Aggregation(${operator}, ${query}) } => Aggregation(operator.unexpr, query.unexpr)
       case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(query.unexpr, alias.unexpr, body.unexpr)
       case '{ FlatMap(${query}, ${alias}, ${body}: Ast) } => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
       case '{ Filter(${query}, ${alias}, ${body}: Ast) } => Filter(query.unexpr, alias.unexpr, body.unexpr)

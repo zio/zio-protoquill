@@ -58,6 +58,20 @@ trait PeopleSpec extends Spec {
     Couple("Edna", "Fred")
   )
 
+  val `Ex 0.1 simple` =
+    quote {
+      query[Person]
+    }
+
+  val `Ex 0.1 expected result` = peopleEntries
+
+  val `Ex 0.2 simple mapped` =
+    quote {
+      query[Person].map(p => (p.name, Option(p.age)))
+    }
+
+  val `Ex 0.2 expected result` = peopleEntries.map(p => (p.name, Some(p.age)))
+
   val `Ex 1 differences` =
     quote {
       for {

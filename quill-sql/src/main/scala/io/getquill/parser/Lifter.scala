@@ -61,6 +61,15 @@ trait Lifter(serializeQuats: Boolean) {
       case Visibility.Hidden => '{ Visibility.Hidden }
   }
 
+  given liftableAggregation : NiceLiftable[AggregationOperator] with {
+    def lift =
+      case AggregationOperator.`min`  =>  '{ AggregationOperator.`min` }
+      case AggregationOperator.`max`  =>  '{ AggregationOperator.`max` }
+      case AggregationOperator.`avg`  =>  '{ AggregationOperator.`avg` }
+      case AggregationOperator.`sum`  =>  '{ AggregationOperator.`sum` }
+      case AggregationOperator.`size` =>  '{ AggregationOperator.`size` }
+  }
+
   given liftableProperty : NiceLiftable[Property] with {
     def lift = {
       // Don't need the other case since Property.Opinionated will match the object
@@ -170,6 +179,7 @@ trait Lifter(serializeQuats: Boolean) {
       case v: Entity => liftableEntity(v)
       case v: Tuple => liftableTuple(v)
       case v: Ordering => orderingLiftable(v)
+      case Aggregation(operator, query) => '{ Aggregation(${operator.expr}, ${query.expr}) }
       case Map(query: Ast, alias: AIdent, body: Ast) => '{ Map(${query.expr}, ${alias.expr}, ${body.expr})  }
       case FlatMap(query: Ast, alias: AIdent, body: Ast) => '{ FlatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
       case Filter(query: Ast, alias: AIdent, body: Ast) => '{ Filter(${query.expr}, ${alias.expr}, ${body.expr})  }
