@@ -335,11 +335,17 @@ object InsertUpdateMacro {
         // e.g. entityQuotation is 'querySchema[Person](...)' which is not inline
         case SummonState.Dynamic(uid, entityQuotation) =>
           // Need to create a ScalarTag representing a splicing of the entity (then going to add the actual thing into a QuotationVase and add to the pluckedUnquotes)
-          val insert = '{ AInsert(QuotationTag(${Expr(uid)}), ${assignmentsAst}) }
+
+          val action = MacroType.ofThis() match
+              case MacroType.Insert =>
+                '{ AInsert(QuotationTag(${Expr(uid)}), ${assignmentsAst}) }
+              case MacroType.Update =>
+                '{ AUpdate(QuotationTag(${Expr(uid)}), ${assignmentsAst}) }
+
           // Create the QuotationVase in which this dynamic quotation will go
           val runtimeQuote = '{ QuotationVase($entityQuotation, ${Expr(uid)}) }
           // Then create the quotation, adding the new runtimeQuote to the list of pluckedUnquotes
-          val quotation = '{ Quoted[A[T]](${insert}, ${Expr.ofList(lifts)}, $runtimeQuote +: ${Expr.ofList(pluckedUnquotes)}) }
+          val quotation = '{ Quoted[A[T]](${action}, ${Expr.ofList(lifts)}, $runtimeQuote +: ${Expr.ofList(pluckedUnquotes)}) }
           // Unquote the quotation and return
           quotation
       

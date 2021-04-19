@@ -158,10 +158,20 @@ object MiniQuillTest {
 
     // hello
     // ============================ Testing Insert Returning =============================
-    {
-      case class Person(id: Int, name: String, age: Int)
-      inline def q = quote { query[Person].insert(lift(Person(0, "Joe", 123))).returningGenerated(r => (r.name, r.id)) }
-      println( run(q) )
-    }
+    // {
+    //   case class Person(id: Int, name: String, age: Int)
+    //   inline def q = quote { query[Person].insert(lift(Person(0, "Joe", 123))).returningGenerated(r => (r.name, r.id)) }
+    //   println( run(q) )
+    // }
+
+    // hello
+
+    case class Person(name: String, age: Int)
+    inline def a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
+    inline def q = quote { query[Person].insert(Person("Joe", 123)) }            // Insert entity form
+    inline given personMeta: InsertMeta[Person] = insertMeta[Person](_.age)
+    println(ctx.run(q).string)
+    println(ctx.run(q).string == ("INSERT INTO Person (name) VALUES ('Joe')"))
+    println(ctx.run(a).string == ("INSERT INTO Person (name,age) VALUES ('Joe', 123)"))
   }
 }

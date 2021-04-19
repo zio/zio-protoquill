@@ -101,20 +101,20 @@ class InsertAdvancedSpec extends Spec with Inside {
       }
       // TODO Doing this with a runtime query should throw an exception (for now)
       "simple with update meta" in {
-        inline given personMeta: InsertMeta[Person] = updateMeta[Person](_.age)
+        inline given personMeta: UpdateMeta[Person] = updateMeta[Person](_.age)
         ctx.run(q).triple mustEqual ("UPDATE Person SET name = 'Joe'", List(), Static)
         ctx.run(a).triple mustEqual ("UPDATE Person SET name = 'Joe', age = 123", List(), Static)
       }
       // TODO Doing this with a runtime query should throw an exception (for now)
       "simple with schemaMeta and update meta" in {
-        inline given personMeta: InsertMeta[Person] = updateMeta[Person](_.age)
+        inline given personMeta: UpdateMeta[Person] = updateMeta[Person](_.age)
         inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
         ctx.run(q).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe'", List(), Static)
         ctx.run(a).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Static)
       }
       // TODO Doing this with a runtime query should throw an exception (for now)
       "simple with schemaMeta with extra columns and update meta" in {
-        inline given personSchema: InsertMeta[Person] = updateMeta[Person](_.age)
+        inline given personSchema: UpdateMeta[Person] = updateMeta[Person](_.age)
         inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName", _.age -> "colAge")
         ctx.run(q).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe'", List(), Static)
         ctx.run(a).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', colAge = 123", List(), Static)

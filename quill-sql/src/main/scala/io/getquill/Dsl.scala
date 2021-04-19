@@ -17,6 +17,7 @@ import io.getquill.Query
 import io.getquill.Insert
 import io.getquill.context.InsertUpdateMacro
 import io.getquill.context.InsertMetaMacro
+import io.getquill.context.UpdateMetaMacro
 import io.getquill.context.SchemaMetaMacro
 import io.getquill.context.QueryMetaMacro
 import io.getquill.context.QueryMacro
@@ -76,7 +77,7 @@ trait QuoteDsl[Parser <: ParserFactory] {
 
   inline def insertMeta[T](inline exclude: (T => Any)*): InsertMeta[T] = ${ InsertMetaMacro[T, Parser]('exclude) }
 
-  inline def updateMeta[T](inline exclude: (T => Any)*): InsertMeta[T] = ${ InsertMetaMacro[T, Parser]('exclude) }
+  inline def updateMeta[T](inline exclude: (T => Any)*): UpdateMeta[T] = ${ UpdateMetaMacro[T, Parser]('exclude) }
 
   inline def lazyLift[T](inline vv: T): T = ${ LiftMacro.applyLazy[T, Nothing]('vv) }
 
@@ -93,4 +94,5 @@ trait QuoteDsl[Parser <: ParserFactory] {
     // Note that although this is in the static DSL if you lift a case class inside the insert or anything else, it will try to do a standard lift for that
     // requiring a context to be present
     inline def insert(inline value: T): Insert[T] = ${ InsertUpdateMacro[T, Insert, Parser]('entity, 'value) }
+    inline def update(inline value: T): Update[T] = ${ InsertUpdateMacro[T, Update, Parser]('entity, 'value) }
 }
