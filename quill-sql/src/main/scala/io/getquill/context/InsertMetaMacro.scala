@@ -53,10 +53,10 @@ end MetaMacro
 
 object InsertMetaMacro:
   def apply[T: Type, P <: ParserFactory: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[InsertMeta[T]] =
-    val (excludeTuple, uuid) = MetaMacro[T, ParserFactory](excludesRaw)
+    val (excludeTuple, uuid) = MetaMacro[T, P](excludesRaw)
     '{ InsertMeta(Quoted[T](${Lifter.tuple(excludeTuple)}, Nil, Nil), $uuid) }
 
 object UpdateMetaMacro:
   def apply[T: Type, P <: ParserFactory: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[UpdateMeta[T]] =
-    val (excludeTuple, uuid) = MetaMacro[T, ParserFactory](excludesRaw)
+    val (excludeTuple, uuid) = MetaMacro[T, P](excludesRaw)
     '{ UpdateMeta(Quoted[T](${Lifter.tuple(excludeTuple)}, Nil, Nil), $uuid) }

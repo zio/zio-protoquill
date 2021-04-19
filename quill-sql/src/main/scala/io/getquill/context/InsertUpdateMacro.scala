@@ -143,13 +143,14 @@ object InsertUpdateMacro {
       case Insert
       case Update
     object MacroType:
+      def asString = ofThis().toString
       def ofThis() =
         if (TypeRepr.of[A] <:< TypeRepr.of[Insert])
           MacroType.Insert
         else if (TypeRepr.of[A] <:< TypeRepr.of[Update])
           MacroType.Update
         else
-          throw new IllegalArgumentException(s"Invalid macro action type ${io.getquill.util.Format.TypeOf[A[Any]]} must be either Insert or Update")
+          report.throwError(s"Invalid macro action type ${io.getquill.util.Format.TypeOf[A[Any]]} must be either Insert or Update")
       def summonMetaOfThis() =
         ofThis() match
           case MacroType.Insert => Expr.summon[InsertMeta[T]]
@@ -164,7 +165,6 @@ object InsertUpdateMacro {
             QuotationLotExpr(actionMeta.asTerm.underlyingArgument.asExpr) match
               // if the meta is inline i.e. 'inline given meta: InsertMeta[Person] = ...' (or UpdateMeta[Person])
               case Uprootable(_, ast, _, _, _, _) =>
-                //println(s"***************** Found an uprootable ast: ${ast.show} *****************")
                 Unlifter(ast) match
                   case Tuple(values) if (values.forall(_.isInstanceOf[Property])) =>
                     SummonState.Static(values.toSet)
@@ -173,11 +173,10 @@ object InsertUpdateMacro {
               // if the meta is not inline
               case Pluckable(uid, quotation, _) =>
                 SummonState.Dynamic(uid, quotation)
-              // TODO Improve this error
-              case _ => report.throwError(s"Invalid form, cannot be pointable: ${io.getquill.util.Format.Expr(actionMeta)}")
+              case _ => 
+                report.throwError(s"The ${MacroType.asString}Meta form is invalid. It is Pointable: ${io.getquill.util.Format.Expr(actionMeta)}. It must be either Uprootable or Pluckable i.e. it has at least a UID that can be identified.")
                 // TODO Configuration to ignore dynamic insert metas?
                 //println("WARNING: Only inline insert-metas are supported for insertions so far. Falling back to a insertion of all fields.")
-                //
           case None =>
             SummonState.Static(Set.empty)
 

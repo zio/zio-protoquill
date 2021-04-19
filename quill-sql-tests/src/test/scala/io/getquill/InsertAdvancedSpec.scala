@@ -122,26 +122,26 @@ class InsertAdvancedSpec extends Spec with Inside {
     }
 
     "simple - runtime" in {
-      val a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) }
-      val q = quote { query[Person].insert(Person("Joe", 123)) }
+      val a = quote { query[Person].update(_.name -> "Joe", _.age -> 123) }
+      val q = quote { query[Person].update(Person("Joe", 123)) }
       ctx.run(a).triple mustEqual ("UPDATE Person SET name = 'Joe', age = 123", List(), Dynamic)
       ctx.run(q).triple mustEqual ("UPDATE Person SET name = 'Joe', age = 123", List(), Dynamic)
     }
 
     "direct" in {
-      ctx.run(query[Person].insert(_.name -> "Joe", _.age -> 123)).triple mustEqual
+      ctx.run(query[Person].update(_.name -> "Joe", _.age -> 123)).triple mustEqual
         ("UPDATE Person SET name = 'Joe', age = 123", List(), Static)
     }
 
     "auto-quote" in {
-      val result = ctx.run(query[Person].insert(Person("Joe", 123)))
+      val result = ctx.run(query[Person].update(Person("Joe", 123)))
       result.string mustEqual "UPDATE Person SET name = 'Joe', age = 123"
       result.executionType mustEqual ExecutionType.Static
       result.prepareRow.data.toList mustEqual List()
     }
 
     "auto-quote with lift" in {
-      val result = ctx.run(query[Person].insert(Person(lift("Joe"), 123)))
+      val result = ctx.run(query[Person].update(Person(lift("Joe"), 123)))
       result.triple mustEqual (
         "UPDATE Person SET name = ?, age = 123",
         List("Joe"),
