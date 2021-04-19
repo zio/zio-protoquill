@@ -73,7 +73,7 @@ object BatchQueryExecution:
             // putting this in a block since I don't want to externally import these packages
             import io.getquill.ast._
             Unlifter(ast) match
-              case Foreach(_, _, Insert(entity: Entity, Nil)) => entity
+              case Foreach(_, _, Insert(entity: Entity, _)) => entity
               case other => report.throwError(s"Malformed batch entity: ${other}. Batch insertion entities must have the form Insert(Entity, Nil: List[Assignment])")
           }
 

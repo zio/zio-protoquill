@@ -82,7 +82,8 @@ import io.getquill.util.Format
  * or non-inline SchemaMetas. Or maybe this could even be an annotation.
  */
 object InsertUpdateMacro {
-  private[getquill] val VIdent = AIdent("v", Quat.Generic)
+  // Using this ident since it is replaced in cleanIdent so user will not create something conflicting with it
+  private[getquill] val VIdent = AIdent("_$V", Quat.Generic)
 
   object DynamicUtil {
     def retrieveAssignmentTuple(quoted: Quoted[_]): Set[Ast] =
@@ -247,11 +248,8 @@ object InsertUpdateMacro {
     def deduceAssignmentsFromIdent(insertee: AIdent) = {
       val expansionList = ElaborateStructure.ofProductType[T](VIdent.name)
       def mapping(path: Ast) =
-        println(s"************** Replacing: ${io.getquill.util.Messages.qprint(VIdent)} with ${io.getquill.util.Messages.qprint(insertee)} in ${io.getquill.util.Messages.qprint(path)} ****************)")
         val reduction = BetaReduction(path, VIdent -> insertee)
-        val a = Assignment(VIdent, path, reduction)
-        println(s"************** Making assignment: ${io.getquill.util.Messages.qprint(a)} ****************")
-        a
+        Assignment(VIdent, path, reduction)
 
       val assignmentsAst = expansionList.map(exp => mapping(exp))
       assignmentsAst

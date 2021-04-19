@@ -175,18 +175,18 @@ object MiniQuillTest {
     // println(ctx.run(q).string == ("INSERT INTO Person (name) VALUES ('Joe')"))
     // println(ctx.run(a).string == ("INSERT INTO Person (name,age) VALUES ('Joe', 123)"))
 
-    inline def q = quote { (p: Person) =>
-      query[Person].insert(p)
+    inline def q = quote { (v: Person) =>
+      query[Person].insert(v)
     }
 
     // TODO Make sure that 'v' is not used as an identifier in the insert macro, rather a new id is found
-    val p = Person("Joe", 123)
+    val v = Person("Joe", 123)
 
     
     //PrintMac(lift(p))
-    println(io.getquill.util.Messages.qprint(quote { lift(p) } )) //helloooooooooooooo
+    println(io.getquill.util.Messages.qprint(quote { lift(v) } )) //helloooooooooooooooooooo
 
-    inline def applied = quote { q(lift(p)) }
+    inline def applied = quote { q(lift(v)) }
     println(io.getquill.util.Messages.qprint(applied))
     //PrintMac(applied)
     println(run(applied).string)
