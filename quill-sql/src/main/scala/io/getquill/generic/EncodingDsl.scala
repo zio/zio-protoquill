@@ -56,14 +56,14 @@ trait EncodingDsl { self =>
   protected def mappedBaseDecoder[Base, Mapped](mapped: MappedEncoding[Base, Mapped], decoder: DecoderMethod[Base]): DecoderMethod[Mapped] =
     (index, row) => mapped.f(decoder(index, row))
 
-  implicit def anyValEncoder[Cls <: AnyVal]: Encoder[Cls] =
-    MappedEncoderMaker(new AnyValEncoderContext[Encoder, Cls] {
+  implicit inline def anyValEncoder[Cls <: AnyVal]: Encoder[Cls] =
+    MappedEncoderMaker[Encoder, Cls](new AnyValEncoderContext[Encoder, Cls] {
       def mappedBaseEncoder[Base](mapped: MappedEncoding[Cls, Base], encoder: Encoder[Base]): Encoder[Cls] =
         self.mappedEncoder(mapped, encoder)
     })
 
-  implicit def anyValDecoder[Cls <: AnyVal]: Decoder[Cls] =
-    MappedEncoderMaker(new AnyValEncoderContext[Decoder, Cls] {
+  implicit inline def anyValDecoder[Cls <: AnyVal]: Decoder[Cls] =
+    MappedEncoderMaker[Decoder, Cls](new AnyValEncoderContext[Decoder, Cls] {
       def mappedBaseDecoder[Base](mapped: MappedEncoding[Base, Cls], decoder: Decoder[Base]): Decoder[Cls] =
         self.mappedDecoder(mapped, decoder)
     })

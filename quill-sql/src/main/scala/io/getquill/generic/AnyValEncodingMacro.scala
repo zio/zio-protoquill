@@ -19,9 +19,15 @@ object MappedDecoderMaker:
   def applyImpl[Decoder[_]: Type, Mapped <: AnyVal: Type](ctx: Expr[AnyValDecoderContext[Decoder, Mapped]])(using qctx: Quotes): Expr[Decoder[Mapped]] =
     import qctx.reflect._
     // try to summon a normal encoder first and see if that works
+    def isAnyValDecoder(term: Term) = 
+      term match
+        case TypeApply(Select(This(Some("EncodingDsl")), "anyValDecoder"), List(Inferred())) => true
+        case _ => false
+
     Expr.summon[Decoder[Mapped]] match
-      case Some(decoder) => decoder
-      case None =>
+      case Some(decoder) if !isAnyValDecoder(decoder.asTerm) => 
+        decoder
+      case _ =>
         // get the type from the primary constructor and try to summon an encoder for that
         val tpe = TypeRepr.of[Mapped]
         val constructor = tpe.typeSymbol.primaryConstructor
@@ -51,14 +57,25 @@ object MappedEncoderMaker:
   inline def apply[Encoder[_], Mapped <: AnyVal](ctx: AnyValEncoderContext[Encoder, Mapped]): Encoder[Mapped] = ${ applyImpl[Encoder, Mapped]('ctx) }
   def applyImpl[Encoder[_]: Type, Mapped <: AnyVal: Type](ctx: Expr[AnyValEncoderContext[Encoder, Mapped]])(using qctx: Quotes): Expr[Encoder[Mapped]] =
     import qctx.reflect._
+
+    def isAnyValEncoder(term: Term) = 
+      term match
+        case TypeApply(Select(This(Some("EncodingDsl")), "anyValEncoder"), List(Inferred())) => true
+        case _ => false
+
     // try to summon a normal encoder first and see if that works
     Expr.summon[Encoder[Mapped]] match
-      case Some(encoder) => encoder
-      case None =>
+      case Some(encoder) if !isAnyValEncoder(encoder.asTerm) => 
+        //println("-----------" + Printer.TreeStructure.show(encoder.asTerm))
+        encoder
+      case _ =>
         // get the type from the primary constructor and try to summon an encoder for that
         val tpe = TypeRepr.of[Mapped]
         // TODO Better error describing why the encoder could not be syntheisized if the constructor doesn't exist or has wrong form (i.e. != 1 arg)
-        val firstParam = tpe.typeSymbol.primaryConstructor.paramSymss(0)(0)
+        val firstParam =
+          tpe.typeSymbol.primaryConstructor.paramSymss match
+            case List(List(first)) => first
+            case _ => report.throwError(s"not matched: ${Format.TypeRepr(tpe)}")
         val firstParamField = tpe.typeSymbol.memberField(firstParam.name)
         val firstParamType = tpe.memberType(firstParamField)
         // Try to summon an encoder from the first param type
@@ -72,6 +89,7 @@ object MappedEncoderMaker:
                 report.throwError(
                   s"Cannot find a regular encoder for the AnyVal type ${Format.TypeRepr(tpe)} or a mapped-encoder for it's base type: ${Format.TypeRepr(firstParamType)}"
                 )
+end MappedEncoderMaker
 
 object AnyValToValMacro:
   // For: Foo(value: String) extends AnyVal

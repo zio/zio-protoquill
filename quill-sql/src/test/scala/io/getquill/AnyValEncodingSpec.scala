@@ -1,6 +1,6 @@
 package io.getquill
 
-case class Name(value: String) extends AnyVal // hello
+case class Name(value: String) extends AnyVal // helloooooooooo
 
 class AnyValEncodingSpec extends Spec {
 
