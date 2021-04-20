@@ -7,7 +7,21 @@ import scala.deriving._
 import scala.compiletime.{erasedValue, summonFrom}  
 import io.getquill.MappedEncoding
 
-trait EncodingDsl {
+trait LowPriorityImplicits { this: EncodingDsl =>
+  // implicit inline def anyValEncoder[Cls <: AnyVal, V]: Encoder[Cls] =
+  //   mappedEncoder[Cls, V](
+  //     AnyValToValMacro[Cls, V],
+  //     implicitly[Encoder[V]]
+  //   )
+
+  // implicit inline def anyValDecoder[Cls <: AnyVal, V]: Decoder[Cls] =
+  //   mappedDecoder[V, Cls](
+  //     ValToAnyValMacro[V, Cls],
+  //     implicitly[Decoder[V]]
+  //   )
+}
+
+trait EncodingDsl extends LowPriorityImplicits {
   type PrepareRow
   type ResultRow
   //type Index = Int
@@ -29,14 +43,17 @@ trait EncodingDsl {
   type ColumnResolver = GenericColumnResolver[ResultRow]
   type RowTyper[T] = GenericRowTyper[ResultRow, T]
 
-  // TODO Needed for mapped encoding? Need to change signature
-  implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], encoder: Encoder[O]): Encoder[I]
-  implicit def mappedDecoder[I, O](implicit mapped: MappedEncoding[I, O], decoder: Decoder[I]): Decoder[O]
-  
-  protected def mappedBaseEncoder[I, O](mapped: MappedEncoding[I, O], encoder: EncoderMethod[O]): EncoderMethod[I] =
-    (index, value, row) => encoder(index, mapped.f(value), row)
+  // For: Mapped := Foo(value: String), Base := String
+  // Encoding follows: (MappedEncoding(Foo) => String) <=(contramap)= Encoder(Foo)
+  implicit def mappedEncoder[Mapped, Base](implicit mapped: MappedEncoding[Mapped, Base], encoder: Encoder[Base]): Encoder[Mapped]
 
-  protected def mappedBaseDecoder[I, O](mapped: MappedEncoding[I, O], decoder: DecoderMethod[I]): DecoderMethod[O] =
+  // For: Base := String, Mapped := Foo(value: String)
+  // Decoding follows: (MappedEncoding(String) => Foo) =(map)=> Decoder(Foo)
+  implicit def mappedDecoder[Base, Mapped](implicit mapped: MappedEncoding[Base, Mapped], decoder: Decoder[Base]): Decoder[Mapped]
+
+  protected def mappedBaseEncoder[Mapped, Base](mapped: MappedEncoding[Mapped, Base], encoder: EncoderMethod[Base]): EncoderMethod[Mapped] =
+    (index, value, row) => encoder(index, mapped.f(value), row)
+  protected def mappedBaseDecoder[Base, Mapped](mapped: MappedEncoding[Base, Mapped], decoder: DecoderMethod[Base]): DecoderMethod[Mapped] =
     (index, row) => mapped.f(decoder(index, row))
 
   // Define some standard encoders that all contexts should have
