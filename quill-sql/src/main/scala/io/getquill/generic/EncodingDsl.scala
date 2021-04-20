@@ -21,7 +21,7 @@ trait LowPriorityImplicits { this: EncodingDsl =>
   //   )
 }
 
-trait EncodingDsl extends LowPriorityImplicits {
+trait EncodingDsl { self =>
   type PrepareRow
   type ResultRow
   //type Index = Int
@@ -55,6 +55,18 @@ trait EncodingDsl extends LowPriorityImplicits {
     (index, value, row) => encoder(index, mapped.f(value), row)
   protected def mappedBaseDecoder[Base, Mapped](mapped: MappedEncoding[Base, Mapped], decoder: DecoderMethod[Base]): DecoderMethod[Mapped] =
     (index, row) => mapped.f(decoder(index, row))
+
+  implicit def anyValEncoder[Cls <: AnyVal]: Encoder[Cls] =
+    MappedEncoderMaker(new AnyValEncoderContext[Encoder, Cls] {
+      def mappedBaseEncoder[Base](mapped: MappedEncoding[Cls, Base], encoder: Encoder[Base]): Encoder[Cls] =
+        self.mappedEncoder(mapped, encoder)
+    })
+
+  implicit def anyValDecoder[Cls <: AnyVal]: Decoder[Cls] =
+    MappedEncoderMaker(new AnyValEncoderContext[Decoder, Cls] {
+      def mappedBaseDecoder[Base](mapped: MappedEncoding[Base, Cls], decoder: Decoder[Base]): Decoder[Cls] =
+        self.mappedDecoder(mapped, decoder)
+    })
 
   // Define some standard encoders that all contexts should have
   implicit def stringEncoder: Encoder[String]

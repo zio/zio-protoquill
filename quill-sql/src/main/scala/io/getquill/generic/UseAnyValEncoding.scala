@@ -5,7 +5,7 @@ object UseAnyValEncoding {
   val foo = new Foo("blah")
  
   def main(args: Array[String]): Unit = {
-    println( AnyValToValMacro[Foo, String].f(foo) )
+    println( AnyValToValMacro[Foo, String].f(foo) ) //hello
     println( ValToAnyValMacro[String, Foo].f("blah") )
   }
 }
