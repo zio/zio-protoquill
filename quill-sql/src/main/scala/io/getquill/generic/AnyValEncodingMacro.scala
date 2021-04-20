@@ -6,22 +6,23 @@ import io.getquill.util.Format
 
 // implicit def mappedEncoder[Mapped, Base](implicit mapped: MappedEncoding[Mapped, Base], encoder: Encoder[Base]): Encoder[Mapped]
 
-trait AnyValEncoderContext[Encoder[_], Mapped] {
-  def mappedEncoder[Base](mapped: MappedEncoding[Mapped, Base], encoder: Encoder[Base]): Encoder[Mapped]
+trait AnyValEncoderContext[AnyValEncoder[_], Encoder[_], Mapped] {
+  def mappedEncoder[Base](mapped: MappedEncoding[Mapped, Base], encoder: Encoder[Base]): AnyValEncoder[Mapped]
 }
 
-trait AnyValDecoderContext[Decoder[_], Mapped] {
-  def mappedDecoder[Base](mapped: MappedEncoding[Base, Mapped], decoder: Decoder[Base]): Decoder[Mapped]
+trait AnyValDecoderContext[AnyValDecoder[_], Decoder[_], Mapped] {
+  def mappedDecoder[Base](mapped: MappedEncoding[Base, Mapped], decoder: Decoder[Base]): AnyValDecoder[Mapped]
 }
 
 object MappedDecoderMaker:
-  inline def apply[Decoder[_], Mapped <: AnyVal](ctx: AnyValDecoderContext[Decoder, Mapped]): Decoder[Mapped] = ${ applyImpl[Decoder, Mapped]('ctx) }
-  def applyImpl[Decoder[_]: Type, Mapped <: AnyVal: Type](ctx: Expr[AnyValDecoderContext[Decoder, Mapped]])(using qctx: Quotes): Expr[Decoder[Mapped]] =
+  inline def apply[AnyValDecoder[_], Decoder[_], Mapped <: AnyVal](ctx: AnyValDecoderContext[AnyValDecoder, Decoder, Mapped]): AnyValDecoder[Mapped] = ${ applyImpl[AnyValDecoder, Decoder, Mapped]('ctx) }
+  def applyImpl[AnyValDecoder[_]: Type, Decoder[_]: Type, Mapped <: AnyVal: Type](ctx: Expr[AnyValDecoderContext[AnyValDecoder, Decoder, Mapped]])(using qctx: Quotes): Expr[AnyValDecoder[Mapped]] =
     import qctx.reflect._
     // try to summon a normal encoder first and see if that works
     Expr.summon[Decoder[Mapped]] match
-      case Some(decoder) => decoder
-      case None =>
+      case Some(decoder) if !(decoder.asTerm.tpe <:< TypeRepr.of[AnyValDecoder[Any]]) =>
+        decoder.asExprOf[AnyValDecoder[Mapped]]
+      case _ =>
         // get the type from the primary constructor and try to summon an encoder for that
         val tpe = TypeRepr.of[Mapped]
         val constructor = tpe.typeSymbol.primaryConstructor
@@ -41,20 +42,21 @@ object MappedDecoderMaker:
                       List('v.asTerm)
                     ).asExprOf[Mapped]
                   }) }
-                '{ $ctx.mappedDecoder[tt]($mappedDecoding, $enc) }
+                '{ $ctx.mappedDecoder[tt]($mappedDecoding, $enc) }.asExprOf[AnyValDecoder[Mapped]]
               case None => 
                 report.throwError(
                   s"Cannot find a regular encoder for the AnyVal type ${Format.TypeRepr(tpe)} or a mapped-encoder for it's base type: ${Format.TypeRepr(firstParamType)}"
                 )
 
 object MappedEncoderMaker:
-  inline def apply[Encoder[_], Mapped <: AnyVal](ctx: AnyValEncoderContext[Encoder, Mapped]): Encoder[Mapped] = ${ applyImpl[Encoder, Mapped]('ctx) }
-  def applyImpl[Encoder[_]: Type, Mapped <: AnyVal: Type](ctx: Expr[AnyValEncoderContext[Encoder, Mapped]])(using qctx: Quotes): Expr[Encoder[Mapped]] =
+  inline def apply[AnyValEncoder[_], Encoder[_], Mapped <: AnyVal](ctx: AnyValEncoderContext[AnyValEncoder, Encoder, Mapped]): AnyValEncoder[Mapped] = ${ applyImpl[AnyValEncoder, Encoder, Mapped]('ctx) }
+  def applyImpl[AnyValEncoder[_]: Type, Encoder[_]: Type, Mapped <: AnyVal: Type](ctx: Expr[AnyValEncoderContext[AnyValEncoder, Encoder, Mapped]])(using qctx: Quotes): Expr[AnyValEncoder[Mapped]] =
     import qctx.reflect._
     // try to summon a normal encoder first and see if that works
     Expr.summon[Encoder[Mapped]] match
-      case Some(encoder) => encoder
-      case None =>
+      case Some(encoder) if !(encoder.asTerm.tpe <:< TypeRepr.of[AnyValEncoder[Any]]) =>
+        encoder.asExprOf[AnyValEncoder[Mapped]]
+      case _ =>
         // get the type from the primary constructor and try to summon an encoder for that
         val tpe = TypeRepr.of[Mapped]
         // TODO Better error describing why the encoder could not be syntheisized if the constructor doesn't exist or has wrong form (i.e. != 1 arg)
@@ -65,9 +67,9 @@ object MappedEncoderMaker:
         firstParamType.asType match
           case '[tt] =>
             Expr.summon[Encoder[tt]] match
-              case Some(enc) => 
+              case Some(enc) =>
                 val mappedEncoding = '{ MappedEncoding((v:Mapped) => ${ Select('v.asTerm, firstParamField).asExprOf[tt] }) }
-                '{ $ctx.mappedEncoder[tt]($mappedEncoding, $enc) }
+                '{ $ctx.mappedEncoder[tt]($mappedEncoding, $enc) }.asExprOf[AnyValEncoder[Mapped]]
               case None => 
                 report.throwError(
                   s"Cannot find a regular encoder for the AnyVal type ${Format.TypeRepr(tpe)} or a mapped-encoder for it's base type: ${Format.TypeRepr(firstParamType)}"

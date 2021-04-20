@@ -35,6 +35,9 @@ trait EncodingDsl { self =>
   type Encoder[T] <: GenericEncoder[T, PrepareRow]
   type Decoder[T] <: GenericDecoder[ResultRow, T]
 
+  type AnyValEncoder[T] = Encoder[T]
+  type AnyValDecoder[T] = Decoder[T]
+
   // Initial Encoder/Decoder classes that Context implementations will subclass for their
   // respective Encoder[T]/Decoder[T] implementations e.g. JdbcEncoder[T](...) extends BaseEncoder[T]
   type BaseEncoder[T] = GenericEncoder[T, PrepareRow]
@@ -57,13 +60,13 @@ trait EncodingDsl { self =>
     (index, row) => mapped.f(decoder(index, row))
 
   implicit def anyValEncoder[Cls <: AnyVal]: Encoder[Cls] =
-    MappedEncoderMaker(new AnyValEncoderContext[Encoder, Cls] {
+    MappedEncoderMaker(new AnyValEncoderContext[AnyValEncoder, Encoder, Cls] {
       def mappedBaseEncoder[Base](mapped: MappedEncoding[Cls, Base], encoder: Encoder[Base]): Encoder[Cls] =
         self.mappedEncoder(mapped, encoder)
     })
 
   implicit def anyValDecoder[Cls <: AnyVal]: Decoder[Cls] =
-    MappedEncoderMaker(new AnyValEncoderContext[Decoder, Cls] {
+    MappedEncoderMaker(new AnyValEncoderContext[AnyValDecoder, Decoder, Cls] {
       def mappedBaseDecoder[Base](mapped: MappedEncoding[Base, Cls], decoder: Decoder[Base]): Decoder[Cls] =
         self.mappedDecoder(mapped, decoder)
     })
