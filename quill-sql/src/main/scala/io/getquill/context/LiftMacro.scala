@@ -60,7 +60,7 @@ object LiftMacro {
     import quotes.reflect._
 
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
-    val quat = QuatMaking.ofType[T]
+    val quat = QuatMaking.ofType[T](QuatMaking.AnyValBehavior.TreatAsClass)
     quat match
       case _: Quat.Product => 
         '{ ${liftProduct[T, PrepareRow](entity)}.unquote }

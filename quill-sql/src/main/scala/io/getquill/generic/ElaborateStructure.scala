@@ -282,39 +282,43 @@ object ElaborateStructure {
   def base[T: Type](term: Term)(using Quotes): Term = {
     import quotes.reflect.{Term => QTerm, _}
 
-    // if there is a decoder for the term, just return the term
-    Expr.summon[Mirror.Of[T]] match {
-      case Some(ev) => {
-        // Otherwise, recursively summon fields
-        ev match {
-          case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-            val children = flatten(term, Type.of[elementLabels], Type.of[elementTypes])
-            term.withChildren(children)
-
-
-          // TODO Make sure you can summon a ColumnResolver if there is a SumMirror, otherwise this kind of decoding should be impossible
-          case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-            // Find field infos (i.e. Term objects) for all potential types that this coproduct could be
-            val alternatives = collectFields(term, Type.of[elementLabels], Type.of[elementTypes])
-            // Then merge them together to get one term representing all of their fields types.
-            // Say you have a coproduct Shape -> (Square(width), Rectangle(width,height), Circle(radius))
-            // You would get Term(width, height, radius)
-            alternatives.reduce((termA, termB) => termA.merge[T](termB))
-            
-          case _ =>
-            Expr.summon[GenericDecoder[_, T]] match {
-              case Some(decoder) => term
-              case _ => report.throwError("Cannot Find Decoder or Expand a Product of the Type:\n" + ev.show)
-            }
-        }
-      }
-      case None => 
-        Expr.summon[GenericDecoder[_, T]] match {
-          case Some(decoder) => term
-          case None => report.throwError(s"Cannot find derive or summon a decoder for ${Type.show[T]}")
-        }
-    }
-  }  
+    // See if there is a generic encoder for it. Since there are no derived generic encoders,
+    // (only Generic Decoders), it is a good way to tell if something is a value type or not.
+    Expr.summon[GenericEncoder[T, _]] match
+      case Some(decoder) => 
+        println(s"================ Found Generic Encoder for: ${io.getquill.util.Format.TypeOf[T]} Using Encoder =====================")
+        term
+      
+      // Otherwise, summon the mirror and elaborate the value
+      case _ =>
+        // if there is a decoder for the term, just return the term
+        println(s"================ NOT Found Generic Encoder for: ${io.getquill.util.Format.TypeOf[T]} Expanding As CaseClass =====================")
+        Expr.summon[Mirror.Of[T]] match 
+          case Some(ev) =>
+            // Otherwise, recursively summon fields
+            ev match
+              case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+                val children = flatten(term, Type.of[elementLabels], Type.of[elementTypes])
+                term.withChildren(children)
+              // TODO Make sure you can summon a ColumnResolver if there is a SumMirror, otherwise this kind of decoding should be impossible
+              case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+                // Find field infos (i.e. Term objects) for all potential types that this coproduct could be
+                val alternatives = collectFields(term, Type.of[elementLabels], Type.of[elementTypes])
+                // Then merge them together to get one term representing all of their fields types.
+                // Say you have a coproduct Shape -> (Square(width), Rectangle(width,height), Circle(radius))
+                // You would get Term(width, height, radius)
+                alternatives.reduce((termA, termB) => termA.merge[T](termB))
+              case _ =>
+                report.throwError("Cannot Find Decoder or Expand a Product of the Type:\n" + ev.show)
+          
+          case None =>
+            if (TypeRepr.of[T] <:< TypeRepr.of[AnyVal]) term
+            else
+              Expr.summon[GenericDecoder[_, T]] match {
+                case Some(decoder) => term
+                case None => report.throwError(s"Cannot find derive or summon a decoder for ${Type.show[T]}")
+              }
+  }
 
   private def productized[T: Type](baseName: String = "x")(using Quotes): Ast = {
     val lifted = base[T](Term("x", Branch)).toAst

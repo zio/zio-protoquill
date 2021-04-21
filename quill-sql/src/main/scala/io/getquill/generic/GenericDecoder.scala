@@ -157,7 +157,7 @@ object GenericDecoder {
             
           case _ => report.throwError("Tuple decoder could not be summoned")
         }
-      
+
       case _ => 
         report.throwError("Tuple decoder could not be summoned")
   }

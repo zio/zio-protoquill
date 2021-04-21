@@ -58,13 +58,13 @@ trait EncodingDsl { self =>
 
   implicit inline def anyValEncoder[Cls <: AnyVal]: Encoder[Cls] =
     MappedEncoderMaker[Encoder, Cls](new AnyValEncoderContext[Encoder, Cls] {
-      def mappedBaseEncoder[Base](mapped: MappedEncoding[Cls, Base], encoder: Encoder[Base]): Encoder[Cls] =
+      override def mappedEncoder[Base](mapped: MappedEncoding[Cls, Base], encoder: Encoder[Base]): Encoder[Cls] =
         self.mappedEncoder(mapped, encoder)
     })
 
   implicit inline def anyValDecoder[Cls <: AnyVal]: Decoder[Cls] =
-    MappedEncoderMaker[Decoder, Cls](new AnyValEncoderContext[Decoder, Cls] {
-      def mappedBaseDecoder[Base](mapped: MappedEncoding[Base, Cls], decoder: Decoder[Base]): Decoder[Cls] =
+    MappedDecoderMaker[Decoder, Cls](new AnyValDecoderContext[Decoder, Cls] {
+      override def mappedDecoder[Base](mapped: MappedEncoding[Base, Cls], decoder: Decoder[Base]): Decoder[Cls] =
         self.mappedDecoder(mapped, decoder)
     })
 
