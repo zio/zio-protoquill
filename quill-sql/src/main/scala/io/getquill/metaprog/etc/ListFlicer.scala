@@ -1,18 +1,16 @@
 package io.getquill.metaprog.etc
 
 import scala.quoted._
-import io.getquill.metaprog.ExtractorsBundle
+import io.getquill.metaprog.Extractors._
 
 // I.e. List-Folding-Splicer since it recursively spliced clauses into a map
 object ListFlicer {
   inline def index[T](inline list: List[T], index:Int): T = ${ indexImpl('list, 'index) }
   def indexImpl[T: Type](list: Expr[List[T]], index: Expr[Int])(using Quotes): Expr[T] = {
     import quotes.reflect._
-    val tm = new ExtractorsBundle
-    import tm._
     val indexValue = index match { case  Expr(i: Int) => i }
-    val exprs = UntypeExpr(list.asTerm.underlyingArgument.asExpr) match { 
-      case '{ scala.List.apply[T](${Varargs(args)}: _*) } => args  
+    val exprs = UntypeExpr(list.asTerm.underlyingArgument.asExpr) match {
+      case '{ scala.List.apply[T](${Varargs(args)}: _*) } => args
       case _ => report.throwError("Does not match: " + Printer.TreeStructure.show(list.asTerm))
     }
     exprs.apply(indexValue)
@@ -21,10 +19,8 @@ object ListFlicer {
   inline def tail[T](inline list: List[T]): List[T] = ${ tailImpl('list) }
   def tailImpl[T: Type](list: Expr[List[T]])(using Quotes): Expr[List[T]] = {
     import quotes.reflect._
-    val tm = new ExtractorsBundle
-    import tm._
-    val exprs = UntypeExpr(list.asTerm.underlyingArgument.asExpr) match { 
-      case '{ scala.List.apply[T](${Varargs(args)}: _*) } => args  
+    val exprs = UntypeExpr(list.asTerm.underlyingArgument.asExpr) match {
+      case '{ scala.List.apply[T](${Varargs(args)}: _*) } => args
     }
     Expr.ofList(exprs.drop(1).toList)
   }
@@ -33,7 +29,7 @@ object ListFlicer {
   def isNillImpl[T: Type](list: Expr[List[T]])(using Quotes): Expr[Boolean] = {
     import quotes.reflect._
     val output =
-      list match { 
+      list match {
         case '{ scala.List.apply[T](${Varargs(args)}: _*) } if (args.length == 0) => true
         case '{ scala.Nil } => true
         case _ => false
@@ -53,7 +49,7 @@ object ListFlicer {
   def lengthImpl[T: Type](list: Expr[List[T]])(using Quotes): Expr[Int] = {
     import quotes.reflect._
     val output =
-      list match { 
+      list match {
         case '{ scala.List.apply[T](${Varargs(args)}: _*) } => args.length
         case '{ scala.Nil } => 0
       }

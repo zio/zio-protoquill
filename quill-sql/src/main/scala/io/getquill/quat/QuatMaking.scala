@@ -24,7 +24,7 @@ inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
 
 object QuatMaking {
   private class SimpleQuatMaker(using override val qctx: Quotes) extends QuatMakingBase(using qctx), QuatMaking
-  private def quatMaker(using qctx: Quotes) = new SimpleQuatMaker
+  private def quatMaker(using Quotes) = new SimpleQuatMaker
 
   inline def inferQuat[T](value: T): Quat = ${ inferQuatImpl('value) }
   def inferQuatImpl[T: TType](value: Expr[T])(using quotes: Quotes): Expr[Quat] = {
@@ -49,7 +49,7 @@ object QuatMaking {
     computeEncodeable()
     // val lookup = encodeableCache.get(tpe)
     // lookup match
-    //   case Some(value) => 
+    //   case Some(value) =>
     //     value
     //   case None =>
     //     val encodeable = computeEncodeable()
@@ -61,7 +61,7 @@ object QuatMaking {
     computeQuat()
     // val lookup = quatCache.get(tpe)
     // lookup match
-    //   case Some(value) => 
+    //   case Some(value) =>
     //     //println(s"---------------- SUCESSFULL LOOKUP OF: ${tpe}: ${value}")
     //     value
     //   case None =>
@@ -73,7 +73,7 @@ object QuatMaking {
 
 trait QuatMaking extends QuatMakingBase {
   import qctx.reflect._
-  override def existsEncoderFor(tpe: TypeRepr): Boolean =  
+  override def existsEncoderFor(tpe: TypeRepr): Boolean =
     // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
     def encoderComputation() = {
       tpe.asType match
@@ -90,7 +90,7 @@ trait QuatMaking extends QuatMakingBase {
 
 
 trait QuatMakingBase(using val qctx: Quotes) {
-  import qctx.reflect._
+  import quotes.reflect._
 
   // TODO Either can summon an Encoder[T] or quill 'Value[T]' so that we know it's a quat value and not a case class
   def existsEncoderFor(tpe: TypeRepr): Boolean
@@ -103,7 +103,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
 
       def nonGenericMethods(tpe: TypeRepr) = {
         tpe.classSymbol.get.memberFields
-          .filter(m => m.owner.name.toString != "Any" && m.owner.name.toString != "Object").map { param => 
+          .filter(m => m.owner.name.toString != "Any" && m.owner.name.toString != "Object").map { param =>
             (
               param.name.toString,
               tpe.memberType(param).simplified
@@ -154,7 +154,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
           // [Option[t]]  will yield 'Nothing if is pulled out of a non optional value'
           if (tpe.is[Option[_]])
             tpe.asType match
-              case '[Option[t]] => 
+              case '[Option[t]] =>
                 //println(s"**************** Pulling Out Inner Value: ${TypeRepr.of[t]}")
                 Some(TypeRepr.of[t])
               case _ => None
@@ -181,7 +181,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
         // TODO What about abstract classes? What does Flags.Abstract do?
         tpe.typeSymbol.isTypeParam || tpe.typeSymbol.isAliasType || tpe.typeSymbol.isAbstractType || tpe.typeSymbol.flags.is(Flags.Trait) || tpe.typeSymbol.flags.is(Flags.Abstract) || tpe.typeSymbol.flags.is(Flags.Param)
       }
-      
+
       object Param {
         def unapply(tpe: TypeRepr) =
           if (isGeneric(tpe))
@@ -288,7 +288,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
           // def is80Prof[T <: Spirit] = quote { (spirit: Query[Spirit]) => spirit.filter(_.grade == 80) }
           // run(is80Proof(query[Gin]))
           // When processing is80Prof, we assume that Spirit is actually a base class to be extended
-          
+
           // TODO any way in dotty to find out if a class is final?
           case Param(Signature(RealTypeBounds(lower, Deoption(upper)))) if (/*!upper.typeSymbol.isFinal &&*/ !existsEncoderFor(tpe)) =>
             //println("========> TOP LEVEL Type Bound")
@@ -411,7 +411,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
         // If you don't widen the exception happens: "Could not match on type: Type.of[...]
         val tpe = tpeRepr.widen.asType
         tpe match {
-          case '[t] => 
+          case '[t] =>
             val typedTpe = tpe.asInstanceOf[Type[t]]
             computeCoproduct[t](using typedTpe)
           case _ =>
@@ -437,7 +437,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
               }
             Quat.Product(newFields)
 
-          case (firstQuat, secondQuat) => 
+          case (firstQuat, secondQuat) =>
             firstQuat.leastUpperType(secondQuat) match
               case Some(value) => value
               // TODO Get field names for these quats if they are inside something else?
@@ -456,7 +456,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
       def unapply(tpe: TypeRepr) =
         if (isType[Query[_]](tpe))
           tpe.asType match
-            case '[Query[t]] => 
+            case '[Query[t]] =>
               val out = TypeRepr.of[t]
               //println(s"&&&&&&&&&&& DeQuery: ${out}")
               //println(s"Subtype of bool: ${out <:< TypeRepr.of[Boolean]}")

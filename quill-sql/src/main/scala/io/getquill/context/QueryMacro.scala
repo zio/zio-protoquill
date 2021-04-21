@@ -3,14 +3,12 @@ package io.getquill.context
 import scala.quoted._
 import io.getquill.Query
 import io.getquill.EntityQuery
-import io.getquill.metaprog.ExtractorsBundle
+import io.getquill.metaprog.Extractors._
 import io.getquill.SchemaMeta
 
 object QueryMacro {
   def apply[T: Type](using Quotes): Expr[EntityQuery[T]] = {
     import quotes.reflect._
-    val tmc = new ExtractorsBundle
-    import tmc._
     import scala.quoted.Expr.summon
     import io.getquill.metaprog.QuotationLotExpr
     import io.getquill.metaprog.QuotationLotExpr._
@@ -27,7 +25,7 @@ object QueryMacro {
           // I am not sure this has use cases.
           case QuotationLotExpr(Pluckable(_, _, _)) =>
             '{ $meta.unquote }
-              
+
           // In case it's only pointable, need to synthesize a new UID for the quotation
           case QuotationLotExpr(Pointable(_)) =>
             UnquoteMacro('{$meta.entity})
@@ -35,7 +33,7 @@ object QueryMacro {
           case _ => report.throwError("Invalid Quotation:\n" + meta.show, meta)
         }
 
-      case None => 
+      case None =>
         '{ EntityQuery.apply[T] }
     }
   }

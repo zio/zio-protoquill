@@ -17,7 +17,7 @@ object Lifter {
   def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = newLifter(ast).liftableAssignment(ast)
   def entity(ast: Entity): Quotes ?=> Expr[Entity] = newLifter(ast).liftableEntity(ast)
   def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = newLifter(ast).liftableTuple(ast)
-  def quat(quat: Quat): Quotes ?=> Expr[Quat] = 
+  def quat(quat: Quat): Quotes ?=> Expr[Quat] =
     (new Lifter(quat.countFields > Messages.maxQuatFields) {}).liftableQuat(quat)
 
   def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] = 
@@ -28,7 +28,7 @@ object Lifter {
  * Convert constructs of Quill Ast into Expr[Ast]. This allows them to be passed
  * back an fourth between inline Quotation blocks during compile-time which should eventually
  * be bassed into a run-call-site where they will be evaluated into SQL.
- * 
+ *
  * Note that liftable List is already taken care of by the Dotty implicits
  */
 trait Lifter(serializeQuats: Boolean) {
@@ -39,7 +39,7 @@ trait Lifter(serializeQuats: Boolean) {
   trait NiceLiftable[T: ClassTag] extends ToExpr[T]:
     // TODO Can we Change to 'using Quotes' without changing all the signitures? Would be simplier to extend
     def lift: Quotes ?=> PartialFunction[T, Expr[T]]
-    def apply(t: T)(using Quotes): Expr[T] = 
+    def apply(t: T)(using Quotes): Expr[T] =
       lift.lift(t).getOrElse { throw new IllegalArgumentException(s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element ${pprint.apply(t)} into the Quill Abstract Syntax Tree") }
     def unapply(t: T)(using Quotes) = Some(apply(t))
 
@@ -74,7 +74,7 @@ trait Lifter(serializeQuats: Boolean) {
     def lift = {
       // Don't need the other case since Property.Opinionated will match the object
       // Note: don't declare variable called 'ast' since it is used internally
-      case Property.Opinionated(core: Ast, name: String, renameable: Renameable, visibility: Visibility) => 
+      case Property.Opinionated(core: Ast, name: String, renameable: Renameable, visibility: Visibility) =>
         '{ Property.Opinionated(${core.expr}, ${name.expr}, ${renameable.expr}, ${visibility.expr}) }
     }
   }
@@ -106,7 +106,7 @@ trait Lifter(serializeQuats: Boolean) {
     def lift =
       // If we are in the JVM, use Kryo to serialize our Quat due to JVM 64KB method limit that we will run into of the Quat Constructor
       // if plainly lifted into the method created by our macro (i.e. the 'ast' method).
-      //case quat: Quat.Product if (serializeQuats)                                       => 
+      //case quat: Quat.Product if (serializeQuats)                                       =>
       //  println("(((((((((((((( Serializing Quat: " + quat)
       //  '{ io.getquill.quat.Quat.Product.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
       case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) => '{ io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${tpe.expr})(${fields.toList.spliceVarargs}: _*)(${values.toList.spliceVarargs}: _*)(${renamesFrom.toList.spliceVarargs}: _*)(${renamesTo.toList.spliceVarargs}: _*) }
@@ -117,7 +117,7 @@ trait Lifter(serializeQuats: Boolean) {
 
   given liftableQuat : NiceLiftable[Quat] with {
     def lift =
-      //case quat: Quat.Product if (serializeQuats) => 
+      //case quat: Quat.Product if (serializeQuats) =>
       //  println("(((((((((((((( Serializing Quat: " + quat)
       //  '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
       case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) => '{ io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${tpe.expr})(${fields.toList.spliceVarargs}: _*)(${values.toList.spliceVarargs}: _*)(${renamesFrom.toList.spliceVarargs}: _*)(${renamesTo.toList.spliceVarargs}: _*) }
@@ -153,11 +153,11 @@ trait Lifter(serializeQuats: Boolean) {
   }
 
   given liftableEntity : NiceLiftable[Entity] with
-    def lift = 
+    def lift =
       case Entity(name: String, list, quat) => '{ Entity(${name.expr}, ${list .expr}, ${quat.expr})  }
 
   given liftableTuple: NiceLiftable[Tuple] with
-    def lift = 
+    def lift =
       case Tuple(values) => '{ Tuple(${values.expr}) }
 
   given orderingLiftable: NiceLiftable[Ordering] with
@@ -173,7 +173,7 @@ trait Lifter(serializeQuats: Boolean) {
 
   given liftableAst : NiceLiftable[Ast] with {
     def lift =
-      case Constant(tmc.ConstantValue(v), quat) => '{ Constant(${tmc.ConstantExpr(v)}, ${quat.expr}) }
+      case Constant(ConstantValue(v), quat) => '{ Constant(${ConstantExpr(v)}, ${quat.expr}) }
       case Function(params: List[AIdent], body: Ast) => '{ Function(${params.expr}, ${body.expr}) }
       case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.expr}, ${values.expr}) }
       case v: Entity => liftableEntity(v)

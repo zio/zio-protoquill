@@ -33,7 +33,7 @@ import io.getquill.Query
 import io.getquill.Action
 import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
-import io.getquill.metaprog.Extractors
+import io.getquill.metaprog.Extractors._
 import io.getquill.BatchAction
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.QuotationLotExpr._
@@ -51,17 +51,16 @@ object BatchQueryExecution:
   class RunQuery[
     T: Type,
     A <: Action[_] with QAC[_, _]: Type,
-    ResultRow: Type, 
-    PrepareRow: Type, 
-    D <: Idiom: Type, 
-    N <: NamingStrategy: Type, 
+    ResultRow: Type,
+    PrepareRow: Type,
+    D <: Idiom: Type,
+    N <: NamingStrategy: Type,
     Res: Type
   ](quotedRaw: Expr[Quoted[BatchAction[A]]],
-    batchContextOperation: Expr[BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes) 
-  extends Extractors:
+    batchContextOperation: Expr[BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes):
     import quotes.reflect._
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
-    def apply(): Expr[Res] = 
+    def apply(): Expr[Res] =
       Uninline(UntypeExpr(quoted)) match
         case QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), planters) =>
           val iterableExpr =
@@ -78,7 +77,7 @@ object BatchQueryExecution:
           }
 
           import io.getquill.metaprog.InjectableEagerPlanterExpr
-          
+
           // Use some custom functionality in the lift macro to prepare the case class an injectable lifts
           // e.g. if T is Person(name: String, age: Int) and we do liftQuery(people:List[Person]).foreach(p => query[Person].insert(p))
           // ast = CaseClass(name -> lift(UUID1), age -> lift(UUID2))
@@ -88,27 +87,27 @@ object BatchQueryExecution:
           val injectableLifts =
             rawLifts.map {
               case PlanterExpr.Uprootable(expr @ InjectableEagerPlanterExpr(_, _, _)) => expr
-              case PlanterExpr.Uprootable(expr) => 
+              case PlanterExpr.Uprootable(expr) =>
                 report.throwError(s"wrong kind of uprootable ${(expr)}")
               case other => report.throwError(s"The lift expression ${Format.Expr(other)} is not valid for batch queries because it is not injectable")
             }
 
           // Once we have that, use the Insert macro to generate a correct insert clause. The insert macro
-          // should summon a schemaMeta if needed (and account for querySchema age) 
+          // should summon a schemaMeta if needed (and account for querySchema age)
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
-          val insertQuotation = InsertUpdateMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts) 
-          StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation) match 
+          val insertQuotation = InsertUpdateMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts)
+          StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation) match
             case Some(StaticState(queryString, _, _)) =>
               val prepares =
                 '{ $iterableExpr.map(elem => ${
                   val injectedLifts = injectableLifts.map(lift => lift.inject('elem))
                   val injectedLiftsExpr = Expr.ofList(injectedLifts)
-                  val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($injectedLiftsExpr, row) }  
+                  val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($injectedLiftsExpr, row) }
                   prepare
-                }) }              
+                }) }
               '{ $batchContextOperation.execute(${Expr(queryString)}, $prepares.toList, ExecutionType.Static) }
-          
-            case None => 
+
+            case None =>
               report.throwError(s"Could not create static state from the query: ${Format.Expr(insertQuotation)}")
 
         case _ =>
@@ -117,23 +116,23 @@ object BatchQueryExecution:
   end RunQuery
 
   inline def apply[
-    T, 
+    T,
     A <: Action[_] with QAC[_, _],
-    ResultRow, 
-    PrepareRow, 
-    D <: Idiom, 
-    N <: NamingStrategy, 
+    ResultRow,
+    PrepareRow,
+    D <: Idiom,
+    N <: NamingStrategy,
     Res
-  ](inline quoted: Quoted[BatchAction[A]], ctx: BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]) = 
+  ](inline quoted: Quoted[BatchAction[A]], ctx: BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]) =
     ${ applyImpl[T, A, ResultRow, PrepareRow, D, N, Res]('quoted, 'ctx) }
-  
+
   def applyImpl[
     T: Type,
     A <: Action[_] with QAC[_, _]: Type,
     ResultRow: Type,
-    PrepareRow: Type, 
-    D <: Idiom: Type, 
-    N <: NamingStrategy: Type, 
+    PrepareRow: Type,
+    D <: Idiom: Type,
+    N <: NamingStrategy: Type,
     Res: Type
   ](quoted: Expr[Quoted[BatchAction[A]]],
     ctx: Expr[BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]])(using qctx: Quotes): Expr[Res] =

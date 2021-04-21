@@ -6,7 +6,7 @@ import scala.reflect.classTag
 import scala.quoted._
 import scala.deriving._
 import scala.compiletime.{erasedValue, constValue, summonFrom, summonInline}
-import io.getquill.metaprog.TypeExtensions
+import io.getquill.metaprog.TypeExtensions._
 import io.getquill.util.Format
 
 trait GenericColumnResolver[ResultRow] {
@@ -29,7 +29,7 @@ object GenericDecoder {
       case Some(resolver) => '{ $resolver($resultRow, ${Expr(fieldName)}) }
       case None => originalIndex
 
-  def summonAndDecode[ResultRow: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[T] = 
+  def summonAndDecode[ResultRow: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[T] =
     import quotes.reflect.{Term => QTerm, _}
     Expr.summon[GenericDecoder[ResultRow, T]] match
       case Some(decoder) => '{ $decoder($index, $resultRow) }
@@ -37,8 +37,6 @@ object GenericDecoder {
 
   def flatten[ResultRow: Type, Fields: Type, Types: Type](index: Expr[Int], resultRow: Expr[ResultRow])(fieldsTup: Type[Fields], typesTup: Type[Types])(using Quotes): List[(Type[_], Expr[_])] = {
     import quotes.reflect.{Term => QTerm, _}
-    val ext = new TypeExtensions
-    import ext._
 
     (fieldsTup, typesTup) match {
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct =>
@@ -61,14 +59,14 @@ object GenericDecoder {
       case (_, '[EmptyTuple]) => Nil
 
       case _ => report.throwError("Cannot Derive Product during Type Flattening of Expression:\n" + typesTup)
-    } 
+    }
   }
 
   def selectMatchingElementAndDecode[Types: Type, ResultRow: Type, T: Type](rawIndex: Expr[Int], resultRow: Expr[ResultRow], rowTypeClassTag: Expr[ClassTag[_]])(typesTup: Type[Types])(using Quotes): Expr[T] =
     import quotes.reflect._
     typesTup match
       case ('[tpe *: types]) =>
-        val possibleElementClass = 
+        val possibleElementClass =
           Expr.summon[ClassTag[tpe]] match
             case Some(cls) => '{ $cls.runtimeClass }
             case None => report.throwError(s"Cannot summon a ClassTag for the type ${Format.TypeOf[tpe]}")
@@ -90,7 +88,7 @@ object GenericDecoder {
         // because the inlining has to explore every possibility. Therefore we return a runtime error here.
         val msg = s"Cannot resolve coproduct type for '${Format.TypeOf[T]}'"
         '{ throw new IllegalArgumentException(${Expr(msg)}) }
-        
+
 
 
   def decode[T: Type, ResultRow: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[T] = {
@@ -101,13 +99,13 @@ object GenericDecoder {
         // Otherwise, recursively summon fields
         ev match {
           case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-            // First make sure there is a column resolver, otherwise we can't look up fields by name which 
+            // First make sure there is a column resolver, otherwise we can't look up fields by name which
             // means we can't get specific fields which means we can't decode co-products
             // Technically this should be an error but if I make it into one, the user will have zero feedback as to what is going on and
             // the output will be "Decoder could not be summoned during query execution". At least in this situation
             // the user actually has actionable information on how to resolve the problem.
             Expr.summon[GenericColumnResolver[ResultRow]] match
-              case None => 
+              case None =>
                 report.warning(
                   s"Need column resolver for in order to be able to decode a coproduct but none exists for ${Format.TypeOf[ResultRow]}. " +
                   s"\nHave you extended the a MirrorContext and made sure to `import ctx.{given, _}`." +
@@ -117,18 +115,18 @@ object GenericDecoder {
               case _ =>
                 // Then summon a 'row typer' which will get us the ClassTag of the actual type (from the list of coproduct types) that we are supposed to decode into
                 Expr.summon[GenericRowTyper[ResultRow, T]] match
-                  case Some(rowTyper) => 
+                  case Some(rowTyper) =>
                     val rowTypeClassTag = '{ $rowTyper($resultRow) }
                     // then go through the elementTypes and match the one that the rowClass refers to. Then decode it (i.e. recurse on the GenericDecoder with it)
-                    selectMatchingElementAndDecode[elementTypes, ResultRow, T](index, resultRow, rowTypeClassTag)(Type.of[elementTypes])      
-                  case None => 
+                    selectMatchingElementAndDecode[elementTypes, ResultRow, T](index, resultRow, rowTypeClassTag)(Type.of[elementTypes])
+                  case None =>
                     // Technically this should be an error but if I make it into one, the user will have zero feedback as to what is going on and
                     // the output will be "Decoder could not be summoned during query execution". At least in this situation
                     // the user actually has actionable information on how to resolve the problem.
                     report.warning(s"Need a RowTyper for ${Format.TypeOf[T]}. Have you implemented a RowTyper for it? Otherwise the decoder will fail at runtime if this type is encountered")
                     val msg = Expr(s"Cannot summon RowTyper for type: ${Format.TypeOf[T]}")
-                    '{ throw new IllegalArgumentException($msg) }  
-        
+                    '{ throw new IllegalArgumentException($msg) }
+
           case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
             val children = flatten(index, resultRow)(Type.of[elementLabels], Type.of[elementTypes])
             val types = children.map(_._1)
@@ -154,11 +152,11 @@ object GenericDecoder {
                 )
               }
             construct.asExprOf[T]
-            
+
           case _ => report.throwError("Tuple decoder could not be summoned")
         }
-      
-      case _ => 
+
+      case _ =>
         report.throwError("Tuple decoder could not be summoned")
   }
 

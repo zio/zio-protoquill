@@ -12,7 +12,7 @@ import io.getquill.parser.Lifter
 import io.getquill.quat.Quat
 import io.getquill.ast.{Map => AMap, _}
 import io.getquill.generic.ElaborateStructure.Term
-import io.getquill.metaprog.Extractors
+import io.getquill.metaprog.Extractors._
 
 object DeconstructElaboratedEntity {
   def apply(elaboration: Term, entity: Expr[_])(using qctx: Quotes) =
@@ -20,19 +20,19 @@ object DeconstructElaboratedEntity {
 }
 
 // TODO Explain this is a specific elaborator used for Case Class Lifts
-private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) extends Extractors {
-  import qctx.reflect._
+private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) {
   import io.getquill.generic.ElaborateStructure.Term
 
-  private[getquill] def flattenOptions(expr: Expr[_]): Expr[_] = {
+  private[getquill] def flattenOptions(expr: Expr[_])(using Quotes): Expr[_] = {
+    import quotes.reflect._
     expr.asTerm.tpe.asType match {
-      case '[Option[Option[t]]] => 
+      case '[Option[Option[t]]] =>
         //println(s"~~~~~~~~~~~~~ Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
         flattenOptions('{ ${expr.asExprOf[Option[Option[t]]]}.flatten[t] })
       case _ =>
         //println(s"~~~~~~~~~~~~~ Non-Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
         expr
-    }    
+    }
   }
 
   def apply(elaboration: Term, entity: Expr[_]): List[(Expr[_], String)] = {
@@ -49,7 +49,10 @@ private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) exte
 
   // Note: Not sure if always appending name + childName is right to do. When looking
   // up fields by name with sub-sub Embedded things going to need to look into that
-  private[getquill] def elaborateObjectRecurse(node: Term, expr: Expr[_], topLevel: Boolean = false): List[(Expr[_], String)] = {
+  private[getquill] def elaborateObjectRecurse(node: Term, expr: Expr[_], topLevel: Boolean = false)(using Quotes): List[(Expr[_], String)] = {
+    import quotes.reflect._
+    import io.getquill.generic.ElaborateStructure.Term
+
     def emptyIfTop(str: String) = if(topLevel) "" else str
 
     (expr, node) match {
@@ -58,15 +61,15 @@ private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) exte
         List((expr, name))
 
       // Product node not inside an option
-      // T( a, [T(b), T(c)] ) => [ a.b, a.c ] 
-      // (done?)         => [ P(a, b), P(a, c) ] 
+      // T( a, [T(b), T(c)] ) => [ a.b, a.c ]
+      // (done?)         => [ P(a, b), P(a, c) ]
       // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
       // where T is Term and P is Property (in Ast) and [] is a list
       case (field, Term(name, _, childProps, false)) =>
         // TODO For coproducts need to check that the childName method actually exists on the type and
         // exclude it if it does not
         val output =
-          childProps.flatMap { 
+          childProps.flatMap {
             childTerm =>
               val expr = field `.` (childTerm.name)
               elaborateObjectRecurse(childTerm, expr)
@@ -74,8 +77,8 @@ private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) exte
         output.map((expr, childName) => (expr, emptyIfTop(name) + childName))
 
       // Production node inside an Option
-      // T-Opt( a, [T(b), T(c)] ) => 
-      // [ a.map(v => v.b), a.map(v => v.c) ] 
+      // T-Opt( a, [T(b), T(c)] ) =>
+      // [ a.map(v => v.b), a.map(v => v.c) ]
       // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
       // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
 
@@ -87,12 +90,12 @@ private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) exte
 
         // val innerType = innerType[outerT]
 
-        
+
         val output =
           // TODO For coproducts need to check that the childName method actually exists on the type and
           // exclude it if it does not
-          childProps.flatMap { 
-            childTerm => 
+          childProps.flatMap {
+            childTerm =>
               // In order to be able to flatten optionals in the flattenOptionals later, we need ot make
               // sure that the method-type in the .map function below is 100% correct. That means we
               // need to lookup what the type of the field of this particular member should actually be.
