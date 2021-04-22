@@ -1,19 +1,19 @@
-package io.getquill
+// package io.getquill
 
-case class Blah(value: String, value2: Int)
-case class Rec(value: Blah, otherValue: String) // helloooooooooo
-case class Name(value: String) extends AnyVal
+// case class Blah(value: String, value2: Int)
+// case class Rec(value: Blah, otherValue: String) // helloooooooooo
+// case class Name(value: String) extends AnyVal
 
-class AnyValEncodingSpec extends Spec {
+// class AnyValEncodingSpec extends Spec {
 
-  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-  import ctx._
-  case class Person(name: Name, age:Int)
+//   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+//   import ctx._
+//   case class Person(name: Name, age:Int)
 
-  "simple anyval should encode and decode" in {
-    //val id = Rec(Blah("Joe", 123), "Bloggs")
-    val name = Name("Joe")
-    val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
-    println(mirror)
-  }
-}
+//   "simple anyval should encode and decode" in {
+//     //val id = Rec(Blah("Joe", 123), "Bloggs")
+//     val name = Name("Joe")
+//     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
+//     println(mirror)
+//   }
+// }

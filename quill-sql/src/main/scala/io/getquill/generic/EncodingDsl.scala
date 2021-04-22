@@ -7,23 +7,23 @@ import scala.deriving._
 import scala.compiletime.{erasedValue, summonFrom}  
 import io.getquill.MappedEncoding
 
-trait LowPriorityImplicits { self: EncodingDsl =>
-  def encoderContext[Cls] = new AnyValEncoderContext[Encoder, Cls] {
-    override def makeMappedEncoder[Base](mapped: MappedEncoding[Cls, Base], encoder: Encoder[Base]): Encoder[Cls] =
-      self.mappedEncoder(mapped, encoder)
-  }
+// trait LowPriorityImplicits { self: EncodingDsl =>
+//   def encoderContext[Cls] = new AnyValEncoderContext[Encoder, Cls] {
+//     override def makeMappedEncoder[Base](mapped: MappedEncoding[Cls, Base], encoder: Encoder[Base]): Encoder[Cls] =
+//       self.mappedEncoder(mapped, encoder)
+//   }
 
-  implicit inline def anyValEncoder[Cls <: AnyVal]: Encoder[Cls] =
-    MappedEncoderMaker[Encoder, Cls](encoderContext[Cls])
+//   implicit inline def anyValEncoder[Cls <: AnyVal]: Encoder[Cls] =
+//     MappedEncoderMaker[Encoder, Cls](encoderContext[Cls])
 
-  implicit inline def anyValDecoder[Cls <: AnyVal]: Decoder[Cls] =
-    MappedDecoderMaker[Decoder, Cls](new AnyValDecoderContext[Decoder, Cls] {
-      override def makeMappedDecoder[Base](mapped: MappedEncoding[Base, Cls], decoder: Decoder[Base]): Decoder[Cls] =
-        self.mappedDecoder(mapped, decoder)
-    })
-}
+//   implicit inline def anyValDecoder[Cls <: AnyVal]: Decoder[Cls] =
+//     MappedDecoderMaker[Decoder, Cls](new AnyValDecoderContext[Decoder, Cls] {
+//       override def makeMappedDecoder[Base](mapped: MappedEncoding[Base, Cls], decoder: Decoder[Base]): Decoder[Cls] =
+//         self.mappedDecoder(mapped, decoder)
+//     })
+// }
 
-trait EncodingDsl extends LowPriorityImplicits { self =>
+trait EncodingDsl { self => //extends LowPriorityImplicits
   type PrepareRow
   type ResultRow
   //type Index = Int
