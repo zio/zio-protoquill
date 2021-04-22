@@ -24,20 +24,26 @@ inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
 
 object QuatMaking {
   private class SimpleQuatMaker(using override val qctx: Quotes) extends QuatMakingBase(using qctx), QuatMaking
-  private def quatMaker(using qctx: Quotes) = new SimpleQuatMaker
+  private def quatMaker(behavior: AnyValBehavior = AnyValBehavior.TreatAsValue)(using qctx: Quotes) = 
+    new SimpleQuatMaker {
+      override def anyValBehavior = behavior
+    }
 
   inline def inferQuat[T](value: T): Quat = ${ inferQuatImpl('value) }
   def inferQuatImpl[T: TType](value: Expr[T])(using quotes: Quotes): Expr[Quat] = {
-    val quat = quatMaker.InferQuat.of[T]
+    val quat = quatMaker().InferQuat.of[T]
     println(io.getquill.util.Messages.qprint(quat))
     Lifter.quat(quat)
   }
 
   def ofType[T: TType](using quotes: Quotes): Quat =
-   quatMaker.InferQuat.of[T]
+   quatMaker().InferQuat.of[T]
+
+  def ofType[T: TType](anyValBehavior: AnyValBehavior)(using quotes: Quotes): Quat =
+   quatMaker(anyValBehavior).InferQuat.of[T]
 
   def quatOfImpl[T: TType](using quotes: Quotes): Expr[Quat] = {
-    val quat = quatMaker.InferQuat.of[T]
+    val quat = quatMaker().InferQuat.of[T]
     println(io.getquill.util.Messages.qprint(quat))
     Lifter.quat(quat)
   }
@@ -69,10 +75,15 @@ object QuatMaking {
     //     val quat = computeQuat()
     //     quatCache.put(tpe, quat)
     //     quat
+  
+  enum AnyValBehavior:
+    case TreatAsValue
+    case TreatAsClass
 }
 
 trait QuatMaking extends QuatMakingBase {
   import qctx.reflect._
+
   override def existsEncoderFor(tpe: TypeRepr): Boolean =  
     // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
     def encoderComputation() = {
@@ -88,9 +99,11 @@ trait QuatMaking extends QuatMakingBase {
         //quotes.reflect.report.throwError(s"No type for: ${tpe}")
 }
 
-
 trait QuatMakingBase(using val qctx: Quotes) {
   import qctx.reflect._
+  import QuatMaking.AnyValBehavior
+
+  def anyValBehavior: AnyValBehavior = AnyValBehavior.TreatAsValue
 
   // TODO Either can summon an Encoder[T] or quill 'Value[T]' so that we know it's a quat value and not a case class
   def existsEncoderFor(tpe: TypeRepr): Boolean
@@ -155,7 +168,6 @@ trait QuatMakingBase(using val qctx: Quotes) {
           if (tpe.is[Option[_]])
             tpe.asType match
               case '[Option[t]] => 
-                //println(s"**************** Pulling Out Inner Value: ${TypeRepr.of[t]}")
                 Some(TypeRepr.of[t])
               case _ => None
           else
@@ -173,12 +185,6 @@ trait QuatMakingBase(using val qctx: Quotes) {
       }
 
       def isGeneric(tpe: TypeRepr) = {
-        // Note that things like String are alias types so can't
-        // use this functionality when checking against constants
-        // if (tpe.typeSymbol.isTypeParam) println(s"((((( ${tpe} is a Type Param")
-        // if (tpe.typeSymbol.isAliasType) println(s"((((( ${tpe} is a Alias Type")
-        // if (tpe.typeSymbol.isAbstractType) println(s"((((( ${tpe} is a Abstract Type")
-        // TODO What about abstract classes? What does Flags.Abstract do?
         tpe.typeSymbol.isTypeParam || tpe.typeSymbol.isAliasType || tpe.typeSymbol.isAbstractType || tpe.typeSymbol.flags.is(Flags.Trait) || tpe.typeSymbol.flags.is(Flags.Abstract) || tpe.typeSymbol.flags.is(Flags.Param)
       }
       
@@ -196,8 +202,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
           // so it doesn't blow up compilation
           try {
             tpe match {
-              case TypeBounds(lower, upper)  => //if (upper != null && !(upper =:= TypeRepr.of[Any]))
-                //println(s"@@@@@@@@@@@@@@@ Type Bounds ${lower} <:< ${upper}")
+              case TypeBounds(lower, upper) =>
                 Some((lower, upper))
               case _ =>
                 None
@@ -236,16 +241,12 @@ trait QuatMakingBase(using val qctx: Quotes) {
         def unapply(tpe: TypeRepr): Option[TypeRepr] = {
           // UDTs (currently only used by cassandra) are created as tables even though there is an encoder for them.
           if (isConstantType(tpe))
-            //println(s"------------> ${tpe} Is constant type ")
             Some(tpe)
           else if (tpe <:< TypeRepr.of[Udt])
-            //println(s"------------> ${tpe} Is UDT (not definite value) ")
             None
-          else if (isType[AnyVal](tpe))
-            //println(s"------------> ${tpe} Is AnyValue")
+          else if (isType[AnyVal](tpe) && tpe.widen.typeSymbol.isCaseClass && anyValBehavior == AnyValBehavior.TreatAsValue)
             Some(tpe)
           else if (existsEncoderFor(tpe))
-            //println(s"------------> ${tpe} Has Encoder")
             Some(tpe)
           else
             None
