@@ -101,7 +101,9 @@ object Unlifter {
       case '{ OptionTableMap.apply($a, $b, $c) } => OptionTableMap(a.unexpr, b.unexpr, c.unexpr)
       case '{ OptionTableFlatMap.apply($a, $b, $c) } => OptionTableFlatMap(a.unexpr, b.unexpr, c.unexpr)
       case '{ OptionExists.apply($a, $b, $c) } => OptionExists(a.unexpr, b.unexpr, c.unexpr)
+      case '{ OptionForall.apply($a, $b, $c) } => OptionForall(a.unexpr, b.unexpr, c.unexpr)
       case '{ OptionTableExists.apply($a, $b, $c) } => OptionTableExists(a.unexpr, b.unexpr, c.unexpr)
+      case '{ OptionTableForall.apply($a, $b, $c) } => OptionTableForall(a.unexpr, b.unexpr, c.unexpr)
   }
 
   def constString(expr: Expr[String])(using Quotes): String = expr match

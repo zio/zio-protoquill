@@ -5,17 +5,17 @@ import java.util.{ Date, UUID }
 import io.getquill.context.Context
 import io.getquill._
 
-case class EncodingTestType(value: String)
+//case class EncodingTestType(value: String)
 
-//case class Number(value: String) extends AnyVal
+case class Number(value: String) extends AnyVal
 
-// object Number {
-//   def withValidation(value: String): Option[Number] =
-//     if (value.forall(_.isDigit))
-//       Some(Number(value))
-//     else
-//       None
-// }
+object Number {
+  def withValidation(value: String): Option[Number] =
+    if (value.forall(_.isDigit))
+      Some(Number(value))
+    else
+      None
+}
 
 trait EncodingSpec extends Spec {
 
@@ -35,9 +35,9 @@ trait EncodingSpec extends Spec {
     v9:  Double,
     v10: Array[Byte],
     v11: Date,
-    v12: EncodingTestType,
+    //v12: EncodingTestType,
     v13: LocalDate,
-    //v14: UUID,
+    v14: UUID,
     o1:  Option[String],
     o2:  Option[BigDecimal],
     o3:  Option[Boolean],
@@ -49,21 +49,21 @@ trait EncodingSpec extends Spec {
     o9:  Option[Double],
     o10: Option[Array[Byte]],
     o11: Option[Date],
-    o12: Option[EncodingTestType],
+    //o12: Option[EncodingTestType],
     o13: Option[LocalDate],
-    //o14: Option[UUID],
-    //o15: Option[Number]
+    o14: Option[UUID],
+    o15: Option[Number]
   )
 
-  val delete = quote {
+  inline def delete = quote {
     query[EncodingTestEntity].delete
   }
 
-  val insert = quote {
+  inline def insert = quote {
     (e: EncodingTestEntity) => query[EncodingTestEntity].insert(e)
   }
 
-  val insertValues =
+  inline def insertValues =
     Seq(
       EncodingTestEntity(
         "s",
@@ -77,9 +77,9 @@ trait EncodingSpec extends Spec {
         42d,
         Array(1.toByte, 2.toByte),
         new Date(31200000),
-        EncodingTestType("s"),
+        //EncodingTestType("s"),
         LocalDate.of(2013, 11, 23),
-        //UUID.randomUUID(),
+        UUID.randomUUID(),
         Some("s"),
         Some(BigDecimal(1.1)),
         Some(true),
@@ -91,10 +91,10 @@ trait EncodingSpec extends Spec {
         Some(42d),
         Some(Array(1.toByte, 2.toByte)),
         Some(new Date(31200000)),
-        Some(EncodingTestType("s")),
+        //Some(EncodingTestType("s")),
         Some(LocalDate.of(2013, 11, 23)),
-        //Some(UUID.randomUUID()),
-        //Some(Number("0"))
+        Some(UUID.randomUUID()),
+        Some(Number("0"))
       ),
       EncodingTestEntity(
         "",
@@ -108,10 +108,9 @@ trait EncodingSpec extends Spec {
         0D,
         Array[Byte](), // In ProtoQuill, Dotty requires this to be typed
         new Date(0),
-        EncodingTestType(""),
+        //EncodingTestType(""),
         LocalDate.ofEpochDay(0),
-        //UUID.randomUUID(),
-        None,
+        UUID.randomUUID(),
         None,
         None,
         None,
@@ -125,7 +124,8 @@ trait EncodingSpec extends Spec {
         None,
         None,
         //None,
-        //None
+        None,
+        None
       )
     )
 
@@ -144,9 +144,9 @@ trait EncodingSpec extends Spec {
         e1.v9 mustEqual e2.v9
         e1.v10 mustEqual e2.v10
         e1.v11 mustEqual e2.v11
-        e1.v12 mustEqual e2.v12
+        //e1.v12 mustEqual e2.v12
         e1.v13 mustEqual e2.v13
-        //e1.v14 mustEqual e2.v14
+        e1.v14 mustEqual e2.v14
 
         e1.o1 mustEqual e2.o1
         e1.o2 mustEqual e2.o2
@@ -160,10 +160,10 @@ trait EncodingSpec extends Spec {
         // For Protoquill, array needs to be explicitly typed as [Byte] or "No ClassTag available for Nothing" error occurs
         e1.o10.getOrElse(Array[Byte]()) mustEqual e2.o10.getOrElse(Array[Byte]())
         e1.o11 mustEqual e2.o11
-        e1.o12 mustEqual e2.o12
+        //e1.o12 mustEqual e2.o12
         e1.o13 mustEqual e2.o13
-        //e1.o14 mustEqual e2.o14
-        //e1.o15 mustEqual e2.o15
+        e1.o14 mustEqual e2.o14
+        e1.o15 mustEqual e2.o15
     }
   }
 
@@ -173,8 +173,7 @@ trait EncodingSpec extends Spec {
   //val insertBarCode = quote((b: BarCode) => query[BarCode].insert(b).returningGenerated(_.uuid))
   val barCodeEntry = BarCode("returning UUID")
 
-  //def findBarCodeByUuid(uuid: UUID) = quote(query[BarCode].filter(_.uuid.forall(_ == lift(uuid))))
-  def findBarCodeByUuid(uuid: UUID) = quote(query[BarCode].filter(_.description == lift(uuid.toString)))
+  inline def findBarCodeByUuid(uuid: UUID) = quote(query[BarCode].filter(_.uuid.forall(_ == lift(uuid))))
 
   def verifyBarcode(barCode: BarCode) = barCode.description mustEqual "returning UUID"
 }

@@ -149,7 +149,9 @@ trait Lifter(serializeQuats: Boolean) {
       case OptionTableMap(a, b, c) => '{ OptionTableMap(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionTableFlatMap(a, b, c) => '{ OptionTableFlatMap(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionExists(a, b, c) => '{ OptionExists(${a.expr}, ${b.expr}, ${c.expr}) }
+      case OptionForall(a, b, c) => '{ OptionForall(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionTableExists(a, b, c) => '{ OptionTableExists(${a.expr}, ${b.expr}, ${c.expr}) }
+      case OptionTableForall(a, b, c) => '{ OptionTableForall(${a.expr}, ${b.expr}, ${c.expr}) }
   }
 
   given liftableEntity : NiceLiftable[Entity] with

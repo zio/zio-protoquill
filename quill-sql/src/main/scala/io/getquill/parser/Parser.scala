@@ -468,6 +468,11 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       if (is[Product](o)) OptionTableExists(astParse(o), cleanIdent(id, idType), astParse(body))
       else OptionExists(astParse(o), cleanIdent(id, idType), astParse(body))
 
+    case '{ ($o: Option[t]).forall(${Lambda1(id, idType, body)}) } =>
+      // TODO If is embedded warn about no checking? Investigate that case
+      if (is[Product](o)) OptionTableForall(astParse(o), cleanIdent(id, idType), astParse(body))
+      else OptionForall(astParse(o), cleanIdent(id, idType), astParse(body))
+
     case '{ type t; ($o: Option[`t`]).getOrElse($body: `t`) } =>
       OptionGetOrElse(astParse(o), astParse(body))
 
