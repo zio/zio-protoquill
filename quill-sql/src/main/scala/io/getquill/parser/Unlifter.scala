@@ -120,11 +120,18 @@ object Unlifter {
       case '{ io.getquill.ast.AscNullsLast } => AscNullsLast
       case '{ io.getquill.ast.DescNullsLast } => DescNullsLast
 
+  class Is[T: TType]:
+    def unapply(expr: Expr[Any])(using Quotes) =
+      import quotes.reflect._
+      if (expr.asTerm.tpe <:< TypeRepr.of[T])
+        Some(expr)
+      else
+        None
 
   given unliftAst: NiceUnliftable[Ast] with {
     // TODO have a typeclass like Splicer to translate constant to strings
     def unlift =
-      case '{ Constant(${Expr(b: Double)}: Double, $quat) } => 
+      case Is[Constant]('{ Constant(${Expr(b: Double)}: Double, $quat) }) => 
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
       case '{ Constant(${Expr(b: Boolean)}: Boolean, $quat) } => 
@@ -140,36 +147,33 @@ object Unlifter {
         // Performance optimization, same as for Ident. Entity.quat is by-name so make sure to do unexper once here.
         val unliftedQuat = quat.unexpr
         Entity(b, elems.unexpr, unliftedQuat)
-      case '{ Function($params, $body) } => Function(params.unexpr, body.unexpr)
-      case '{ FunctionApply($function, $values) } => FunctionApply(function.unexpr, values.unexpr)
-      case '{ Aggregation(${operator}, ${query}) } => Aggregation(operator.unexpr, query.unexpr)
-      case '{ Map(${query}, ${alias}, ${body}: Ast) } => Map(query.unexpr, alias.unexpr, body.unexpr)
-      case '{ FlatMap(${query}, ${alias}, ${body}: Ast) } => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
-      case '{ Filter(${query}, ${alias}, ${body}: Ast) } => Filter(query.unexpr, alias.unexpr, body.unexpr)
-      case '{ SortBy(${query}, ${alias}, ${criterias}, ${ordering}) } => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
-      case '{ Foreach(${query}, ${alias}, ${body}: Ast) } => Foreach(query.unexpr, alias.unexpr, body.unexpr)
-      case '{ UnaryOperation(${operator}, ${a}: Ast) } => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
-      case '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
-      case '{ Property(${ast}, ${name}) } =>
-        Property(ast.unexpr, constString(name))
-      case '{ScalarTag(${uid})} => 
-        ScalarTag(constString(uid))
-      case '{ QuotationTag($uid) } =>
-        QuotationTag(constString(uid))
-      case '{ Union($a, $b) } => Union(a.unexpr, b.unexpr)
-      case '{ Insert($query, $assignments) } => Insert(query.unexpr, assignments.unexpr)
-      case '{ Update($query, $assignments) } => Update(query.unexpr, assignments.unexpr)
-      case '{ Delete($query) } => Delete(query.unexpr)
-      case '{ Returning(${action}, ${alias}, ${body}: Ast) } => Returning(action.unexpr, alias.unexpr, body.unexpr)
-      case '{ ReturningGenerated(${action}, ${alias}, ${body}: Ast) } => ReturningGenerated(action.unexpr, alias.unexpr, body.unexpr)
-      case '{ Infix($parts, $params, $pure, $quat) } => Infix(parts.unexpr, params.unexpr, pure.unexpr, quat.unexpr)
-      case '{ Tuple.apply($values) } => Tuple(values.unexpr)
-      case '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
-      case '{ FlatJoin($typ, $a, $aliasA, $on) } => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
-      case '{ Take($query, $num)} => Take(query.unexpr, num.unexpr)
-      case '{ Drop($query, $num)} => Drop(query.unexpr, num.unexpr)
-      case '{ ConcatMap(${query}, ${alias}, ${body}: Ast) } => ConcatMap(query.unexpr, alias.unexpr, body.unexpr)
-      case '{ CaseClass($values) } => CaseClass(values.unexpr)
+      case Is[Function]( '{ Function($params, $body) }) => Function(params.unexpr, body.unexpr)
+      case Is[FunctionApply]( '{ FunctionApply($function, $values) }) => FunctionApply(function.unexpr, values.unexpr)
+      case Is[Aggregation]( '{ Aggregation(${operator}, ${query}) }) => Aggregation(operator.unexpr, query.unexpr)
+      case Is[Map]( '{ Map(${query}, ${alias}, ${body}: Ast) }) => Map(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[FlatMap]( '{ FlatMap(${query}, ${alias}, ${body}: Ast) }) => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Filter]( '{ Filter(${query}, ${alias}, ${body}: Ast) }) => Filter(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[SortBy]( '{ SortBy(${query}, ${alias}, ${criterias}, ${ordering}) }) => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
+      case Is[Foreach]( '{ Foreach(${query}, ${alias}, ${body}: Ast) }) => Foreach(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[UnaryOperation]( '{ UnaryOperation(${operator}, ${a}: Ast) }) => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
+      case Is[BinaryOperation]( '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) }) => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
+      case Is[Property]( '{ Property(${ast}, ${name}) }) => Property(ast.unexpr, constString(name))
+      case Is[ScalarTag]( '{ScalarTag(${uid})}) => ScalarTag(constString(uid))
+      case Is[QuotationTag]( '{ QuotationTag($uid) }) => QuotationTag(constString(uid))
+      case Is[Union]( '{ Union($a, $b) }) => Union(a.unexpr, b.unexpr)
+      case Is[Insert]( '{ Insert($query, $assignments) }) => Insert(query.unexpr, assignments.unexpr)
+      case Is[Update]( '{ Update($query, $assignments) }) => Update(query.unexpr, assignments.unexpr)
+      case Is[Delete]( '{ Delete($query) }) => Delete(query.unexpr)
+      case Is[Returning]( '{ Returning(${action}, ${alias}, ${body}: Ast) }) => Returning(action.unexpr, alias.unexpr, body.unexpr)
+      case Is[ReturningGenerated]( '{ ReturningGenerated(${action}, ${alias}, ${body}: Ast) }) => ReturningGenerated(action.unexpr, alias.unexpr, body.unexpr)
+      case Is[Infix]( '{ Infix($parts, $params, $pure, $quat) }) => Infix(parts.unexpr, params.unexpr, pure.unexpr, quat.unexpr)
+      case Is[Tuple]( '{ Tuple.apply($values) }) => Tuple(values.unexpr)
+      case Is[Join]( '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) }) => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
+      case Is[FlatJoin]( '{ FlatJoin($typ, $a, $aliasA, $on) }) => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
+      case Is[Take]( '{ Take($query, $num)}) => Take(query.unexpr, num.unexpr)
+      case Is[Drop]( '{ Drop($query, $num)}) => Drop(query.unexpr, num.unexpr)
+      case Is[ConcatMap]( '{ ConcatMap(${query}, ${alias}, ${body}: Ast) }) => ConcatMap(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[CaseClass]( '{ CaseClass($values) }) => CaseClass(values.unexpr)
       case '{ NullValue } => NullValue
       case '{ $p: Property } => unliftProperty(p)
       case '{ $id: AIdent } => unliftIdent(id)

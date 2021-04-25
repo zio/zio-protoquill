@@ -18,16 +18,19 @@ class PostgresAsyncEncodingSpec extends EncodingSpec {
   import testContext._
 
   "encodes and decodes types" in {
-    val r =
-      for {
-        _ <- testContext.run(delete) //helloooooooooooooo
-        _ <- testContext.run(liftQuery(insertValues).foreach(e => insert(e)))
-        result <- testContext.run(query[EncodingTestEntity])
-      } yield result
+    // val r =
+    //   for {
+    //     _ <- testContext.run(delete) //helloooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+    //     _ <- testContext.run(liftQuery(insertValues).foreach(e => insert(e)))
+    //     result <- testContext.run(query[EncodingTestEntity])
+    //   } yield result
 
-    val q = quote { liftQuery(insertValues).foreach(e => insert(e)) }
+    // val q = quote { liftQuery(insertValues).foreach(e => insert(e)) }
 
-    println(io.getquill.util.Messages.qprint(q))
+
+    val result = testContext.run(liftQuery(insertValues).foreach(e => insert(e)))
+    println(result)
+    //println(io.getquill.util.Messages.qprint(q))
 
     //verify(Await.result(r, Duration.Inf).toList)
   }

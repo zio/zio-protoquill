@@ -63,6 +63,15 @@ case class EagerEntitiesPlanterExpr[T, PrepareRow: Type](uid: String, expr: Expr
     '{ EagerEntitiesPlanter[T, PrepareRow]($expr, ${Expr(uid)}) }
 
 object PlanterExpr {
+
+  class Is[T: Type]:
+    def unapply(expr: Expr[Any])(using Quotes) =
+      import quotes.reflect._
+      if (expr.asTerm.tpe <:< TypeRepr.of[T])
+        Some(expr)
+      else
+        None
+
   object Uprootable {
     def unapply(expr: Expr[Any])(using Quotes): Option[PlanterExpr[_, _]] = 
       import quotes.reflect._
@@ -72,13 +81,13 @@ object PlanterExpr {
       //println("@@@@@@@@@@@ Trying to match: " + Printer.TreeStructure.show(e.asTerm))
 
       UntypeExpr(expr) match {
-        case '{ EagerPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } =>
+        case Is[EagerPlanter[_, _]]( '{ EagerPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
           Some(EagerPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
-        case '{ InjectableEagerPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } =>
+        case Is[InjectableEagerPlanter[_, _]]( '{ InjectableEagerPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
           Some(InjectableEagerPlanterExpr[qt, prep](uid, liftValue, encoder))
-        case '{ LazyPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } =>
+        case Is[LazyPlanter[_, _]]( '{ LazyPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } ) =>
           Some(LazyPlanterExpr[qt, prep](uid, liftValue).asInstanceOf[PlanterExpr[_, _]])
-        case '{ EagerEntitiesPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } =>
+        case Is[EagerEntitiesPlanter[_, _]]( '{ EagerEntitiesPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } ) =>
           Some(EagerEntitiesPlanterExpr[qt, prep](uid, liftValue).asInstanceOf[EagerEntitiesPlanterExpr[_, _]])
         case _ => 
           None
