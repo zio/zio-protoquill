@@ -103,11 +103,11 @@ with Closeable
 
   type DatasourceContextBehavior <: DatasourceContextInjection
 
-  //implicit inline def autoDecoder[T]: BaseDecoder[T] = GenericDecoder.generic
+  implicit inline def autoDecoder[T]: BaseDecoder[T] = GenericDecoder.generic
   // inline given dec[T](using dec: DecodeAlternate[T, ResultRow]): GenericDecoder[T, ResultRow] with
   //   inline def decode(t: T) = ${ DecodeAlternate[T, ResultRow] }
 
-  implicit inline def dec[T]: GenericDecoder[ResultRow, T] = ${ GenericDecoder[T, ResultRow] }
+  //implicit inline def dec[T]: GenericDecoder[ResultRow, T] = ${ GenericDecoder[T, ResultRow] }
     
 
   //def probe(statement: String): Try[_]
