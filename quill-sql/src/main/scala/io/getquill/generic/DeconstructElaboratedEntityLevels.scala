@@ -50,13 +50,25 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
     println(s">>>>> Going through term: ${node}")
     elaborateObjectOneLevel[Cls](node).flatMap { (fieldTerm, fieldGetter, returnTpe) =>
       returnTpe.asType match
-        case '[tt] => // e.g. where tt is Name
-          val output = 
-            recurseNest[tt](fieldTerm).map { nextField =>
-              '{ ${fieldGetter.asExprOf[Cls => tt]}.andThen(ttValue => $nextField(ttValue)) }
-            }
-          println(s"====== Nested recurse yield: ${output}")
-          output
+        case '[tt] =>
+          val childFields = recurseNest[tt](fieldTerm)
+          childFields match
+            // On a child field e.g. Person.age return the getter that we previously found for it since 
+            // it will not have any children on the nextlevel
+            case Nil => 
+              println(s"====== Leaf recurse yield: ${fieldGetter}")
+              List(fieldGetter)
+
+            // If there are fields on the next level e.g. Person.Name then go from:
+            // Person => Name to Person => Name.first, Person => Name.last by swapping in Person
+            // i.e. p: Person => (Person => Name)(p).first, p: Person => (Person => Name)(p).last
+            case _ =>
+              val output = 
+                recurseNest[tt](fieldTerm).map { nextField =>
+                  '{ ${fieldGetter.asExprOf[Cls => tt]}.andThen(ttValue => $nextField(ttValue)) }
+                }
+              println(s"====== Nested recurse yield: ${output}")
+              output
     }
   }
 

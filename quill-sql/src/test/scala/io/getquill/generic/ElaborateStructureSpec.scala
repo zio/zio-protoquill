@@ -20,11 +20,9 @@ class ElaborateProductValueStructureSpec extends Spec {
   "lambda elaborate construction should work for" - {
     "simple class" in {
       case class Person(name: String, age: Int)
-      val lambdas = ElaborateStructureExt.entityValuesLambda[Person]  //helloooooooooo
+      val lambdas = ElaborateStructureExt.entityValuesLambda[Person]  //hellooooooooooooo
       val values = lambdas.map(l => l(Person("Joe", 123)))
-      // ast mustEqual CaseClass(List(("name", ScalarTag("name")), ("age", ScalarTag("age"))))
-      // lifts mustEqual List(("name","Joe"), ("age",123))
-      println(values)
+      values mustEqual List("Joe", 123)
     }
   }
 
