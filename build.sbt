@@ -43,8 +43,8 @@ lazy val `quill-sql` =
         //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
         //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
 
-        "org.scalatest" % "scalatest_3.0.0-RC2" % "3.2.7" % "test",
-        "org.scalatest" % "scalatest-mustmatchers_3.0.0-RC2" % "3.2.7" % "test"
+        "org.scalatest" % "scalatest_3.0.0-RC3" % "3.2.8" % "test",
+        "org.scalatest" % "scalatest-mustmatchers_3.0.0-RC3" % "3.2.8" % "test"
       ),
       libraryDependencies ++= {
         if (true) 
@@ -115,7 +115,7 @@ lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
 )
 
 lazy val basicSettings = Seq(
-  scalaVersion := "3.0.0-RC2", // "0.21.0-RC1", //"0.22.0-bin-20200114-193f7de-NIGHTLY", //dottyLatestNightlyBuild.get,
+  scalaVersion := "3.0.0-RC3", // "0.21.0-RC1", //"0.22.0-bin-20200114-193f7de-NIGHTLY", //dottyLatestNightlyBuild.get,
   scalacOptions ++= Seq(
     "-language:implicitConversions"
   )
