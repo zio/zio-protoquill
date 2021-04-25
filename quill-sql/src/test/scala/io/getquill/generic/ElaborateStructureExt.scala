@@ -31,7 +31,7 @@ object ElaborateStructureExt {
     val schema = ElaborateStructure.base[T](Term("x", Branch))
     println(s"==== Schema: ${schema} ====")
     val fieldGetters = DeconstructElaboratedEntityLevels[T](schema)
-    println(s"==== Getters: ${fieldGetters} ====")
+    println(s"==== Getters: ${fieldGetters.map(_.show)} ====")
     Expr.ofList(fieldGetters)
   }
 

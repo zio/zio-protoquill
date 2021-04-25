@@ -35,20 +35,22 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
     }    
   }
 
-  def apply[ProductCls: Type](elaboration: Term): List[(Expr[ProductCls => _])] = {
-    recurseNest[ProductCls](elaboration)
+  def apply[ProductCls: Type](elaboration: Term): List[Expr[ProductCls => _]] = {
+    recurseNest[ProductCls](elaboration).asInstanceOf[List[Expr[ProductCls => _]]]
   }
 
   // TODO Need to include flattenOptions
   // Given Person(name: String, age: Int)
   // Type TypeRepr[Person] and then List(Expr[Person => Person.name], Expr[Person => Person.age])
-  def recurseNest[Cls: Type](node: Term): List[Expr[Cls => _]] = {
+  def recurseNest[Cls: Type](node: Term): List[Expr[Any => Any]] = {
     // For example (given Person(name: String, age: Int)):
     // (Term(Person.name), Person => Person.name, String)
     // Or for nested entities (given Person(name: Name, age: Int))
     // (Term(Person.name), Person => Name, Name)
-    println(s">>>>> Going through term: ${node}")
-    elaborateObjectOneLevel[Cls](node).flatMap { (fieldTerm, fieldGetter, returnTpe) =>
+    println(s"---------------> Entering: ${node} <----------------")
+    val elaborations = elaborateObjectOneLevel[Cls](node)
+    println(s"Elaborations: ${elaborations.map(_._3).map(io.getquill.util.Format.TypeRepr(_))}")
+    elaborations.flatMap { (fieldTerm, fieldGetter, returnTpe) =>
       returnTpe.asType match
         case '[tt] =>
           val childFields = recurseNest[tt](fieldTerm)
@@ -56,19 +58,29 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
             // On a child field e.g. Person.age return the getter that we previously found for it since 
             // it will not have any children on the nextlevel
             case Nil => 
-              println(s"====== Leaf recurse yield: ${fieldGetter}")
-              List(fieldGetter)
+              println(s"====== Leaf Getter: ${fieldGetter.show}")
+              List(fieldGetter).asInstanceOf[List[Expr[Any => Any]]]
 
             // If there are fields on the next level e.g. Person.Name then go from:
             // Person => Name to Person => Name.first, Person => Name.last by swapping in Person
             // i.e. p: Person => (Person => Name)(p).first, p: Person => (Person => Name)(p).last
+            // This will recursive over these products a second time and then merge the field gets
             case _ =>
+              // Note that getting the types to line up here is very trickey. Leaving printline
+              // statements in for now
               val output = 
                 recurseNest[tt](fieldTerm).map { nextField =>
-                  '{ ${fieldGetter.asExprOf[Cls => tt]}.andThen(ttValue => $nextField(ttValue)) }
+                  val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any => Any]]
+                  val castNextField = nextField.asInstanceOf[Expr[Any => Any]]
+                  val sub = '{ $castFieldGetter.andThen[Any](ttValue => ${
+                    //println(s"ttValue is: ${'ttValue.asTerm.underlyingArgument.show}")
+                    castNextField
+                  }(ttValue.asInstanceOf[tt])) }
+                  //println(s"~~~~~~~~~~~ Recurse Expr: ${io.getquill.util.Format.Expr(sub)}")
+                  sub
                 }
-              println(s"====== Nested recurse yield: ${output}")
-              output
+              //println(s"====== Nested Getters: ${output.map(_.show)}")
+              output.asInstanceOf[List[Expr[Any => Any]]]
     }
   }
 
@@ -79,6 +91,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
     node match {
       // If leaf node, don't need to do anything since high levels have already returned this field
       case term @ Term(name, _, Nil, _) =>
+        println(s"For Term: ${name} - Elaborate Object into Empty List")
         List()
 
       // Product node not inside an option
@@ -101,7 +114,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
                 }
               )
           }
-        println(s"Yielding: ${output.map(_._3).map(io.getquill.util.Format.TypeRepr(_))}")
+        println(s"For Term: ${name} - Elaborate Object Into: ${output.map(_._3).map(io.getquill.util.Format.TypeRepr(_))}")
         output
 
       // Production node inside an Option

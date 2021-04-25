@@ -18,11 +18,20 @@ class ElaborateProductValueStructureSpec extends Spec {
     def pullout: (Ast, List[(String, Any)]) = (tscc.ast, tscc.lifts)
 
   "lambda elaborate construction should work for" - {
-    "simple class" in {
-      case class Person(name: String, age: Int)
-      val lambdas = ElaborateStructureExt.entityValuesLambda[Person]  //hellooooooooooooo
-      val values = lambdas.map(l => l(Person("Joe", 123)))
-      values mustEqual List("Joe", 123)
+    // "simple class" in {
+    //   case class Person(name: String, age: Int)
+    //   val lambdas = ElaborateStructureExt.entityValuesLambda[Person]  //hellooooooooooooo
+    //   val values = lambdas.map(l => l(Person("Joe", 123)))
+    //   values mustEqual List("Joe", 123)
+    // }
+    "Entity with Nested" in {
+      case class Name(first: String, last: String)
+      case class Person(age: Int, name: Name)
+      inline def lambdas = ElaborateStructureExt.entityValuesLambda[Person]
+      //io.getquill.util.debug.PrintMac(lambdas)
+      println(lambdas.map(l => l(Person(123, Name("Joe", "Bloggs")))))
+      //val values = lambdas.map(l => l(Entity("foo", Nested(1, 2L))))
+      //println(values) //mustEqual List(("a", "foo"), ("bi", 1), ("bl", 2)) //hello
     }
   }
 
