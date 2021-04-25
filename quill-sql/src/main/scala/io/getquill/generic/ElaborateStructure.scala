@@ -400,11 +400,19 @@ object ElaborateStructure {
     TaggedLiftedCaseClass(nestedAst, lifts)
   }
 
+  def decomposedProductValue[T: Type](using Quotes): List[Expr[T => _]] = {
+    val elaborated = elaborationOfProductValue[T]
+    decomposedLiftsOfProductValue(elaborated)
+  }
+
   private[getquill] def elaborationOfProductValue[T: Type](using Quotes) =
     base[T](Term("notused", Branch))
 
   private[getquill] def liftsOfProductValue[T: Type](elaboration: Term, productValue: Expr[T])(using Quotes) =
     DeconstructElaboratedEntity(elaboration, productValue).map((k,v) => (v,k))
+
+  private[getquill] def decomposedLiftsOfProductValue[T: Type](elaboration: Term)(using Quotes): List[Expr[T => _]] =
+    DeconstructElaboratedEntityLevels(elaboration)
 
   /** 
    * Flatten the elaboration from 'node' into a completely flat product type

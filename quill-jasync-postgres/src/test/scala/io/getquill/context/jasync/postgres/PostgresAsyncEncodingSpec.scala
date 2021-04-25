@@ -20,7 +20,7 @@ class PostgresAsyncEncodingSpec extends EncodingSpec {
   "encodes and decodes types" in {
     val r =
       for {
-        _ <- testContext.run(delete) //hellooo
+        _ <- testContext.run(delete) //helloooooooooooooo
         _ <- testContext.run(liftQuery(insertValues).foreach(e => insert(e)))
         result <- testContext.run(query[EncodingTestEntity])
       } yield result

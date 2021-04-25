@@ -36,7 +36,7 @@ object MappedDecoderMaker:
     val firstParamField = tpe.typeSymbol.memberField(firstParam.name)
     val firstParamType = tpe.memberType(firstParamField)
 
-    println(s"========== First Param Type ${Format.TypeRepr(firstParamType)} of: ${Format.TypeRepr(tpe)} =========")
+    //println(s"========== First Param Type ${Format.TypeRepr(firstParamType)} of: ${Format.TypeRepr(tpe)} =========")
     //
     // Try to summon an encoder from the first param type
     firstParamType.asType match
@@ -112,7 +112,7 @@ object AnyValToValMacro:
     val firstParam = tpe.typeSymbol.primaryConstructor.paramSymss(0)(0)
     val firstParamField = tpe.typeSymbol.memberField(firstParam.name)
     val firstParamType = tpe.memberType(firstParamField)
-    println("Member type of 1st param: " + io.getquill.util.Format.TypeRepr(firstParamType))
+    //println("Member type of 1st param: " + io.getquill.util.Format.TypeRepr(firstParamType))
     '{ MappedEncoding((v:Cls) => ${ Select('v.asTerm, firstParamField).asExprOf[V] }) }
 
 object ValToAnyValMacro:

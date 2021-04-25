@@ -23,7 +23,7 @@ object DeconstructElaboratedEntityLevels {
 // and the labels can be generated separately and zipped in the case oc DeconstructElaboratedEntity
 private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes) extends Extractors {
   import qctx.reflect._
-  import io.getquill.generic.ElaborateStructure.Term
+  import io.getquill.generic.ElaborateStructure.Term //helloooo
 
   def apply[ProductCls: Type](elaboration: Term): List[Expr[ProductCls => _]] = {
     recurseNest[ProductCls](elaboration).asInstanceOf[List[Expr[ProductCls => _]]]
@@ -39,7 +39,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
     // (Term(Person.name), Person => Name, Name)
     //println(s"---------------> Entering: ${node} <----------------")
     val elaborations = elaborateObjectOneLevel[Cls](node)
-    println(s"Elaborations: ${elaborations.map(_._3).map(io.getquill.util.Format.TypeRepr(_))}")
+    //println(s"Elaborations: ${elaborations.map(_._3).map(io.getquill.util.Format.TypeRepr(_))}")
     elaborations.flatMap { (fieldTerm, fieldGetter, returnTpe) =>
       returnTpe.asType match
         case '[tt] =>
@@ -60,15 +60,15 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
               // statements in for now
               val output = 
                 recurseNest[tt](fieldTerm).map { nextField =>
-                  val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any => Any]]
-                  val castNextField = nextField.asInstanceOf[Expr[Any => Any]]
-                  val sub = '{ $castFieldGetter.andThen[Any](ttValue => ${
-                    //println(s"ttValue is: ${'ttValue.asTerm.underlyingArgument.show}")
-                    castNextField
-                  }(ttValue.asInstanceOf[tt])) }
-                  //println(s"~~~~~~~~~~~ Recurse Expr: ${io.getquill.util.Format.Expr(sub)}")
-                  sub
-                }
+                  val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any => Any]] // e.g. Person => Person.name (where name is a case class Name(first: String, last: String))
+                  val castNextField = nextField.asInstanceOf[Expr[Any => Any]]     // e.g. Name => Name.first
+                    // e.g. nest Person => Person.name into Name => Name.first to get Person => Person.name.first
+                  '{  (input: Cls) =>
+                    $castNextField.apply(${
+                      Expr.betaReduce('{ $castFieldGetter.apply(input) }).asInstanceOf[Expr[tt]]
+                    })
+                  }
+                } 
               //println(s"====== Nested Getters: ${output.map(_.show)}")
               output.asInstanceOf[List[Expr[Any => Any]]]
     }

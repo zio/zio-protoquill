@@ -28,7 +28,7 @@ class ElaborateProductValueStructureSpec extends Spec {
       case class Name(first: String, last: String)
       case class Person(age: Int, name: Name)
       inline def lambdas = ElaborateStructureExt.entityValuesLambda[Person]
-      val values = lambdas.map(l => l(Person(123, Name("Joe", "Bloggs"))))
+      val values = lambdas.map(l => l(Person(123, Name("Joe", "Bloggs")))) //hello
       values mustEqual List(123, "Joe", "Bloggs")
     }
     "Nested with optional fields" in {
@@ -53,7 +53,7 @@ class ElaborateProductValueStructureSpec extends Spec {
       case class Entity(a: String, b: Option[Nested])
       inline def lambdas = ElaborateStructureExt.entityValuesLambda[Entity]
       val values = lambdas.map(l => l(Entity("foo", Some(Nested(1, Some(ReallyNested(2, 3)))))))
-      values mustEqual List("foo", Some(1), Some(2), Some(3))
+      values mustEqual List("foo", Some(1), Some(2), Some(3)) //hello
     }
 
     "Quadruple-nested with optional fields" in {

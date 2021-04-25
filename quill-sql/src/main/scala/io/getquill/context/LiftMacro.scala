@@ -125,24 +125,11 @@ object LiftMacro {
     // ...
     // and the respectively pull out lift(singleArg.foo), lift(singleArg.bar), etc... from that clause turning it into
     // (singleArg) => lift(singleArg.foo), (singleArg) => lift(singleArg.bar), (singleArg) => etc... so that everything remains phase consistent
-
-    // Note that this can be quite compile-time inefficient for large values since for every element
-    // this entire thing needs to be re-computed. The alternative would be to pass the index
-    // as a runtime parameter and compute this only once (i.e. ( val liftCombo = (elementIndex: Int) => (entity: T) => ${ ... } ))
-    // but that means that the splice itself would have every single element over and over again which would make
-    // the runtime code inefficient and could run into java's method limit size
-    // A true optimization would be to actually produce the whole method once and then parse the body
-    // pulling out all the needed content. This is currently out of scope but may be needed at some point
-
-    // One relatively optimization I have wrote about next to DeconstructElaborateEntity.elaborateObjectRecurse
-    // where we could pre-compute the list of flattened paths in advance and just follow the path of a particular
-    // sub-path of entity:T down to the children.
+    val liftLambdas = ElaborateStructure.decomposedProductValue[T]
     def liftCombo[Output: Type](index: Int) =
-      '{ (entity: T) => ${
-        val lifts = ElaborateStructure.liftsOfProductValue[T](elaborated, 'entity)
-        val liftsExprs = lifts.map((caseClass, liftValue) => liftValue)
-        '{ ${liftsExprs(index)}.asInstanceOf[Output] }
-      } }
+      '{ (entity: T) =>
+        ${liftLambdas(index)}.apply(entity).asInstanceOf[Output]  
+      }
 
     
     
