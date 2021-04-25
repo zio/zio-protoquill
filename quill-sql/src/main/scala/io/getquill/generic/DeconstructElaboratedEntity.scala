@@ -24,6 +24,8 @@ private[getquill] class DeconstructElaboratedEntity(using val qctx: Quotes) exte
   import qctx.reflect._
   import io.getquill.generic.ElaborateStructure.Term
 
+  // TODO I don't think this is needed because elaborateObjectRecurse flattens optionals. See if it can be remvoed
+  // (make tests for it in ElaborateStructureSpec?)
   private[getquill] def flattenOptions(expr: Expr[_]): Expr[_] = {
     expr.asTerm.tpe.asType match {
       case '[Option[Option[t]]] => 

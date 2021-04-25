@@ -19,21 +19,11 @@ object DeconstructElaboratedEntityLevels {
     new DeconstructElaboratedEntityLevels(using qctx).apply[ProductCls](elaboration)
 }
 
-// TODO Explain this is a specific elaborator used for Case Class Lifts
+// TODO Unify this with DeconstructElaboratedEntities. This will generate the fields
+// and the labels can be generated separately and zipped in the case oc DeconstructElaboratedEntity
 private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes) extends Extractors {
   import qctx.reflect._
   import io.getquill.generic.ElaborateStructure.Term
-
-  private[getquill] def flattenOptions(expr: Expr[_]): Expr[_] = {
-    expr.asTerm.tpe.asType match {
-      case '[Option[Option[t]]] => 
-        //println(s"~~~~~~~~~~~~~ Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
-        flattenOptions('{ ${expr.asExprOf[Option[Option[t]]]}.flatten[t] })
-      case _ =>
-        //println(s"~~~~~~~~~~~~~ Non-Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
-        expr
-    }    
-  }
 
   def apply[ProductCls: Type](elaboration: Term): List[Expr[ProductCls => _]] = {
     recurseNest[ProductCls](elaboration).asInstanceOf[List[Expr[ProductCls => _]]]
@@ -47,7 +37,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
     // (Term(Person.name), Person => Person.name, String)
     // Or for nested entities (given Person(name: Name, age: Int))
     // (Term(Person.name), Person => Name, Name)
-    println(s"---------------> Entering: ${node} <----------------")
+    //println(s"---------------> Entering: ${node} <----------------")
     val elaborations = elaborateObjectOneLevel[Cls](node)
     println(s"Elaborations: ${elaborations.map(_._3).map(io.getquill.util.Format.TypeRepr(_))}")
     elaborations.flatMap { (fieldTerm, fieldGetter, returnTpe) =>
@@ -58,7 +48,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
             // On a child field e.g. Person.age return the getter that we previously found for it since 
             // it will not have any children on the nextlevel
             case Nil => 
-              println(s"====== Leaf Getter: ${fieldGetter.show}")
+              //println(s"====== Leaf Getter: ${fieldGetter.show}")
               List(fieldGetter).asInstanceOf[List[Expr[Any => Any]]]
 
             // If there are fields on the next level e.g. Person.Name then go from:
@@ -91,7 +81,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
     node match {
       // If leaf node, don't need to do anything since high levels have already returned this field
       case term @ Term(name, _, Nil, _) =>
-        println(s"For Term: ${name} - Elaborate Object into Empty List")
+        //println(s"For Term: ${name} - Elaborate Object into Empty List")
         List()
 
       // Product node not inside an option
@@ -114,7 +104,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
                 }
               )
           }
-        println(s"For Term: ${name} - Elaborate Object Into: ${output.map(_._3).map(io.getquill.util.Format.TypeRepr(_))}")
+        //println(s"For Term: ${name} - Elaborate Object Into: ${output.map(_._3).map(io.getquill.util.Format.TypeRepr(_))}")
         output
 
       // Production node inside an Option
