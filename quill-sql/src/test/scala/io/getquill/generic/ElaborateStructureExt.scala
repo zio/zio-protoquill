@@ -25,6 +25,16 @@ object ElaborateStructureExt {
     Expr.ofList(outExpr)
   }
 
+  inline def entityValuesLambda[T <: Product]: List[T => Any] = ${ entityValuesLambdaImpl[T] }
+  def entityValuesLambdaImpl[T <: Product: Type](using qctx: Quotes): Expr[List[T => Any]] = {
+    import ElaborateStructure._
+    val schema = ElaborateStructure.base[T](Term("x", Branch))
+    println(s"==== Schema: ${schema} ====")
+    val fieldGetters = DeconstructElaboratedEntityLevels[T](schema)
+    println(s"==== Getters: ${fieldGetters} ====")
+    Expr.ofList(fieldGetters)
+  }
+
   def ofProductValueExternalImpl[T: Type](productValue: Expr[T])(using qctx: Quotes): Expr[TaggedSplicedCaseClass] = {
     import qctx.reflect._
     val tlcc = ElaborateStructure.ofProductValue[T](productValue)
