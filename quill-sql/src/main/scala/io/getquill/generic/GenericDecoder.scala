@@ -55,7 +55,7 @@ object GenericDecoder {
   //     case _ => 0
   //   }
 
-  type IsProduct[T <: Product] = T
+  type IsProduct[T <: io.getquill.Embedded] = T
 
   // If a columnName -> columns index is available, use that. It is necessary for coproducts
   inline def resolveIndexOrFallback[ResultRow](originalIndex: Int, resultRow: ResultRow, fieldName: String) =
@@ -79,7 +79,8 @@ object GenericDecoder {
         else
             selectAndDecode[tpes, ResultRow, Co](rawIndex, resultRow, rowClassTag)
         
-      case _: EmptyTuple => throw new IllegalArgumentException(s"Cannot resolve coproduct type for ${showType[Co]}")
+      case _: EmptyTuple => 
+        throw new IllegalArgumentException(s"Cannot resolve coproduct type for ${showType[Co]}")
     }
   }
 
@@ -93,13 +94,17 @@ object GenericDecoder {
         val index = resolveIndexOrFallback(rawIndex, resultRow, constValue[field].toString)
         val decodedHead = summonAndDecode[head, ResultRow](index, resultRow)
         val air = decodedHead.asInstanceOf[Product].productArity
+        WarnMac[field, head]("===== Decoded Product")
         (decodedHead *: decodeChildern[fields, tail, ResultRow](index + air, resultRow)) 
 
       case (_: (field *: fields), _: (head *: tail)) =>
         val index = resolveIndexOrFallback(rawIndex, resultRow, constValue[field].toString)
+        WarnMac[field, head]("===== Decoded Field")
         (summonAndDecode[head, ResultRow](index, resultRow) *: decodeChildern[fields, tail, ResultRow](index + 1, resultRow))
 
-      case (_, _: EmptyTuple) => EmptyTuple
+      case (_, _: EmptyTuple) => 
+        WarnMac[Any, Any]("===== Decoded Done")
+        EmptyTuple
     }
 
   inline def decode[T, ResultRow](index: Int, resultRow: ResultRow) =
