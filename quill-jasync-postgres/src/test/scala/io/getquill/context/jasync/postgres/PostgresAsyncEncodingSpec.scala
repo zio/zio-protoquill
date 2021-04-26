@@ -30,7 +30,7 @@ class PostgresAsyncEncodingSpec extends EncodingSpec {
 
     //val result = testContext.run(liftQuery(insertValues).foreach(e => insert(e)))
 
-    val result = testContext.run(query[SimpleEncodingTestEntity]) //hellooooooooooooooooooooooooooo
+    val result = testContext.run(query[SimpleEncodingTestEntity]) //hellooooooooooooooooooooooooooooooooo
 
     println(result) //hello
     //println(io.getquill.util.Messages.qprint(q))

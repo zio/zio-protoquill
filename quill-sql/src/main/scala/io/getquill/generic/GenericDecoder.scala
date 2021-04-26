@@ -44,8 +44,12 @@ object GenericDecoder {
 
   inline def summonAndDecode[T, ResultRow](index: Int, resultRow: ResultRow): T =
     summonFrom {
-        case dec: GenericDecoder[ResultRow, T] => dec(index, resultRow)
-        case _ => throw new IllegalArgumentException(s"Cannot find decoder for type: ${showType[T]}")
+        case dec: GenericDecoder[ResultRow, T] => 
+          WarnMac[T, T, T]("GOT decoder for type")         
+          dec(index, resultRow)
+        case _ => 
+          WarnMac[T, T, T]("Cannot find decoder for type")
+          throw new IllegalArgumentException(s"Cannot find decoder for type: ${showType[T]}")
         // TODO Better error via report.throwError if cant find it (or return None and error later?)
     }
 
@@ -91,19 +95,21 @@ object GenericDecoder {
       case (_: (field *: fields), _: (IsProduct[head] *: tail)) =>
         // TODO With embedded objects the parent-field-name is tacked onto the column name so need
         // to get that from the parent traversal. Need to have a test for that
+        WarnMac[field, head, tail]("===== Begin Decode Product")
         val index = resolveIndexOrFallback(rawIndex, resultRow, constValue[field].toString)
         val decodedHead = summonAndDecode[head, ResultRow](index, resultRow)
         val air = decodedHead.asInstanceOf[Product].productArity
-        WarnMac[field, head]("===== Decoded Product")
+        WarnMac[field, head, tail]("===== Decoded Product")
         (decodedHead *: decodeChildern[fields, tail, ResultRow](index + air, resultRow)) 
 
       case (_: (field *: fields), _: (head *: tail)) =>
-        val index = resolveIndexOrFallback(rawIndex, resultRow, constValue[field].toString)
-        WarnMac[field, head]("===== Decoded Field")
+        WarnMac[field, head, tail]("===== Begin Decode Field")
+        val index = rawIndex // resolveIndexOrFallback(rawIndex, resultRow, constValue[field].toString)
+        WarnMac[field, head, tail]("===== Decoded Field")
         (summonAndDecode[head, ResultRow](index, resultRow) *: decodeChildern[fields, tail, ResultRow](index + 1, resultRow))
 
       case (_, _: EmptyTuple) => 
-        WarnMac[Any, Any]("===== Decoded Done")
+        WarnMac[Any, Any, Any]("===== Decoded Done")
         EmptyTuple
     }
 
