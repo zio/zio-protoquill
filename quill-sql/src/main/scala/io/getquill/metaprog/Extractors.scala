@@ -21,6 +21,14 @@ object Extractors {
   inline def tmc(using Quotes) = new ExtractorsBundle
 }
 
+class Is[T: Type]:
+  def unapply(expr: Expr[Any])(using Quotes) =
+    import quotes.reflect._
+    if (expr.asTerm.tpe <:< TypeRepr.of[T])
+      Some(expr)
+    else
+      None
+
 trait Extractors {
   implicit val qctx: Quotes
   import qctx.reflect._

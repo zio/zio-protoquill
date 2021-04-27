@@ -27,6 +27,7 @@ import io.getquill._
 import io.getquill.MetaDsl
 import io.getquill.Ord
 import io.getquill.Embedded
+import io.getquill.metaprog.Is
 
 type Parser[R] = PartialFunction[quoted.Expr[_], R]
 type SealedParser[R] = (quoted.Expr[_] => R)
@@ -92,6 +93,16 @@ object Parser {
     import qctx.reflect._
     override def isDefinedAt(expr: Expr[_]): Boolean =
       expr.asTerm.tpe <:< TypeRepr.of[Criteria] && delegate.isDefinedAt(expr)
+  }
+
+  /** Optimizes 'Clause' by allowing a more efficient 'prematch' criteria to be used */
+  trait PrematchClause[R](using override val qctx: Quotes) extends Clause[R] {
+    import qctx.reflect._
+
+    def prematch(expr: Expr[_]): Boolean
+
+    override def isDefinedAt(expr: Expr[_]): Boolean =
+      prematch(expr) && delegate.isDefinedAt(expr)
   }
 
   abstract class Clause[+R](using override val qctx: Quotes) extends Delegated[R] with Extractors with Idents with QuatMaking with QuatMakingBase(using qctx) { base =>
@@ -187,11 +198,15 @@ case class FunctionApplyParser(root: Parser[Ast] = Parser.empty)(override implic
 }
 
 
-case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.PrematchClause[Ast] {
   import quotes.reflect._
   import Parser.Implicits._
   import io.getquill.norm.capture.AvoidAliasConflict
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  // TODO Find out what is type signature of things that need to go into here
+  // maybe the type just needs to be widened?
+  def prematch(expr: Expr[_]) = true //expr.asTerm.tpe.typeSymbol.fullName.contains("scala.Function")
 
   //case q"new { def apply[..t1](...$params) = $body }" =>
   //  c.fail("Anonymous classes aren't supported for function declaration anymore. Use a method with a type parameter instead. " +

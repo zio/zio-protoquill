@@ -25,9 +25,9 @@ import scala.reflect.classTag
 
 object GenericDecoderCoproductTestAdditional {
   // TODO Resore this when moving back to original way of doing generic decoders
-  implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.generic
+  //implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.generic
 
-  //implicit inline def autoDecoder[T]: GenericDecoder[MyResult, T] = ${ GenericDecoder[T, MyResult] }
+  implicit inline def autoDecoder[T]: GenericDecoder[MyResult, T] = ${ GenericDecoder[T, MyResult] }
 
   case class MyResult(values: (String, Any)*) {
     lazy val list = LinkedHashMap[String, Any](values.toList: _*)

@@ -5,7 +5,7 @@ import scala.reflect.ClassTag
 import scala.reflect.classTag;
 import io.getquill.quat.Quat
 import io.getquill.ast.{Ident => AIdent, Query => Qry, _}
-
+import io.getquill.metaprog.Is
 
 object UnlifterType {
   type Unlift[T] = PartialFunction[Expr[T], T]
@@ -119,14 +119,6 @@ object Unlifter {
       case '{ io.getquill.ast.DescNullsFirst } => DescNullsFirst
       case '{ io.getquill.ast.AscNullsLast } => AscNullsLast
       case '{ io.getquill.ast.DescNullsLast } => DescNullsLast
-
-  class Is[T: TType]:
-    def unapply(expr: Expr[Any])(using Quotes) =
-      import quotes.reflect._
-      if (expr.asTerm.tpe <:< TypeRepr.of[T])
-        Some(expr)
-      else
-        None
 
   given unliftAst: NiceUnliftable[Ast] with {
     // TODO have a typeclass like Splicer to translate constant to strings
