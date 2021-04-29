@@ -5,7 +5,7 @@ import java.util.{ Date, UUID }
 import io.getquill.context.Context
 import io.getquill._
 
-//case class EncodingTestType(value: String)
+case class EncodingTestType(value: String)
 
 case class Number(value: String) extends AnyVal
 
@@ -23,49 +23,6 @@ trait EncodingSpec extends Spec {
 
   import context._
 
-  case class SimpleEncodingTestEntity(
-    v1:  String,
-    v2:  BigDecimal,
-    v3:  Boolean,
-    v4:  Byte,
-    v5:  Short,
-    v6:  Int,
-    v7:  Long,
-    v8:  Float,
-    v9:  Double,
-    o1:  Option[String],
-    o2:  Option[BigDecimal],
-    o3:  Option[Boolean],
-    av9:  Double,
-    ao1:  Option[String],
-    //ao2:  Option[BigDecimal],
-    //ao3:  Option[Boolean],
-    // o4:  Option[Byte],
-    // o5:  Option[Short],
-    // o6:  Option[Int],
-    o7:  Option[Long],
-    o8:  Option[Float],
-    o9:  Option[Double],
-    vv1:  String,
-    vv2:  BigDecimal,
-    vv3:  Boolean,
-    vv4:  Byte,
-    vv5:  Short,
-    vv6:  Int,
-    vv7:  Long,
-    blah:  Int,
-    vv9:  Double,
-    // vo1:  Option[String],
-    // vo2:  Option[BigDecimal],
-    // vo3:  Option[Boolean],
-    // vo4:  Option[Byte],
-    // vo5:  Option[Short],
-    // vo6:  Option[Int],
-    // vo7:  Option[Long],
-    vo8:  Option[Float],
-    vo9:  Option[Double]
-  )
-
   case class EncodingTestEntity(
     v1:  String,
     v2:  BigDecimal,
@@ -78,7 +35,7 @@ trait EncodingSpec extends Spec {
     v9:  Double,
     v10: Array[Byte],
     v11: Date,
-    //v12: EncodingTestType,
+    v12: EncodingTestType,
     v13: LocalDate,
     v14: UUID,
     o1:  Option[String],
@@ -92,7 +49,7 @@ trait EncodingSpec extends Spec {
     o9:  Option[Double],
     o10: Option[Array[Byte]],
     o11: Option[Date],
-    //o12: Option[EncodingTestType],
+    o12: Option[EncodingTestType],
     o13: Option[LocalDate],
     o14: Option[UUID],
     o15: Option[Number]
@@ -120,7 +77,7 @@ trait EncodingSpec extends Spec {
         42d,
         Array(1.toByte, 2.toByte),
         new Date(31200000),
-        //EncodingTestType("s"),
+        EncodingTestType("s"),
         LocalDate.of(2013, 11, 23),
         UUID.randomUUID(),
         Some("s"),
@@ -134,7 +91,7 @@ trait EncodingSpec extends Spec {
         Some(42d),
         Some(Array(1.toByte, 2.toByte)),
         Some(new Date(31200000)),
-        //Some(EncodingTestType("s")),
+        Some(EncodingTestType("s")),
         Some(LocalDate.of(2013, 11, 23)),
         Some(UUID.randomUUID()),
         Some(Number("0"))
@@ -151,7 +108,7 @@ trait EncodingSpec extends Spec {
         0D,
         Array[Byte](), // In ProtoQuill, Dotty requires this to be typed
         new Date(0),
-        //EncodingTestType(""),
+        EncodingTestType(""),
         LocalDate.ofEpochDay(0),
         UUID.randomUUID(),
         None,
@@ -166,7 +123,7 @@ trait EncodingSpec extends Spec {
         None,
         None,
         None,
-        //None,
+        None,
         None,
         None
       )
@@ -187,7 +144,7 @@ trait EncodingSpec extends Spec {
         e1.v9 mustEqual e2.v9
         e1.v10 mustEqual e2.v10
         e1.v11 mustEqual e2.v11
-        //e1.v12 mustEqual e2.v12
+        e1.v12 mustEqual e2.v12
         e1.v13 mustEqual e2.v13
         e1.v14 mustEqual e2.v14
 
@@ -201,9 +158,10 @@ trait EncodingSpec extends Spec {
         e1.o8 mustEqual e2.o8
         e1.o9 mustEqual e2.o9
         // For Protoquill, array needs to be explicitly typed as [Byte] or "No ClassTag available for Nothing" error occurs
+        // TODO this should probably be mentioned in the Docs somewhere? Might have some user impact.
         e1.o10.getOrElse(Array[Byte]()) mustEqual e2.o10.getOrElse(Array[Byte]())
         e1.o11 mustEqual e2.o11
-        //e1.o12 mustEqual e2.o12
+        e1.o12 mustEqual e2.o12
         e1.o13 mustEqual e2.o13
         e1.o14 mustEqual e2.o14
         e1.o15 mustEqual e2.o15

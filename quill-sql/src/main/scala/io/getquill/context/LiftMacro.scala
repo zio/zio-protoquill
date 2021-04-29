@@ -84,7 +84,7 @@ object LiftMacro {
   private[getquill] def liftInjectedProduct[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): (CaseClass, List[Expr[InjectableEagerPlanter[_, PrepareRow]]]) = {
     import qctx.reflect._
     val (caseClassAstInitial, liftsInitial) = liftInjectedProductComponents[T, PrepareRow]
-    println("========= CaseClass Initial =========\n" + io.getquill.util.Messages.qprint(caseClassAstInitial))
+    //println("========= CaseClass Initial =========\n" + io.getquill.util.Messages.qprint(caseClassAstInitial))
     val TaggedLiftedCaseClass(caseClassAst, lifts) = TaggedLiftedCaseClass(caseClassAstInitial, liftsInitial).reKeyWithUids()
     val liftPlanters = 
       lifts.map(
@@ -107,7 +107,7 @@ object LiftMacro {
 
     // Get the elaboration and AST once so that it will not have to be parsed out of the liftedCombo (since they are normally returned by ElaborateStructure.ofProductValue)
     val elaborated = ElaborateStructure.elaborationOfProductValue[T](ElaborationSide.Encoding)
-    println("========= Elaboration =========\n" + io.getquill.util.Messages.qprint(elaborated))
+    //println("========= Elaboration =========\n" + io.getquill.util.Messages.qprint(elaborated))
     val (_, caseClassAst) = ElaborateStructure.productValueToAst[T](elaborated)
     val caseClass = caseClassAst.asInstanceOf[io.getquill.ast.CaseClass]
     

@@ -1,6 +1,5 @@
 package io.getquill.generic
 
-
 import scala.reflect.ClassTag
 import scala.reflect.classTag
 import scala.quoted._
@@ -37,9 +36,16 @@ object GenericDecoder {
 
   def summonAndDecode[ResultRow: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[T] = 
     import quotes.reflect.{Term => QTerm, _}
-    Expr.summon[GenericDecoder[ResultRow, T, _]] match
-      case Some(decoder) => '{ $decoder($index, $resultRow) }
-      case _ => report.throwError(s"Cannot find decoder for the type: ${Format.TypeOf[T]}")
+    // Try to summon a specific decoder, if it's not there, summon a generic one
+    Expr.summon[GenericDecoder[ResultRow, T, DecodingType.Specific]] match
+      case Some(decoder) => 
+        '{ $decoder($index, $resultRow) }
+      case None =>
+        Expr.summon[GenericDecoder[ResultRow, T, DecodingType.Generic]] match
+          case Some(decoder) => '{ $decoder($index, $resultRow) }
+          case _ => 
+            println(s"WARNING Could not summon a decoder for the type: ${io.getquill.util.Format.TypeOf[T]}")
+            report.throwError(s"Cannot find decoder for the type: ${Format.TypeOf[T]}")
 
   def flatten[ResultRow: Type, Fields: Type, Types: Type](index: Expr[Int], resultRow: Expr[ResultRow])(fieldsTup: Type[Fields], typesTup: Type[Types])(using Quotes): List[(Type[_], Expr[_])] = {
     import quotes.reflect.{Term => QTerm, _}
@@ -107,33 +113,50 @@ object GenericDecoder {
         // Otherwise, recursively summon fields
         ev match {
           case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-            // First make sure there is a column resolver, otherwise we can't look up fields by name which 
-            // means we can't get specific fields which means we can't decode co-products
-            // Technically this should be an error but if I make it into one, the user will have zero feedback as to what is going on and
-            // the output will be "Decoder could not be summoned during query execution". At least in this situation
-            // the user actually has actionable information on how to resolve the problem.
-            Expr.summon[GenericColumnResolver[ResultRow]] match
-              case None => 
-                report.warning(
-                  s"Need column resolver for in order to be able to decode a coproduct but none exists for ${Format.TypeOf[ResultRow]}. " +
-                  s"\nHave you extended the a MirrorContext and made sure to `import ctx.{given, _}`." +
-                  s"\nOtherwise a failure will occur with the encoder at runtime")
-                val msg = Expr(s"Cannot Column Resolver does not exist for ${Format.TypeOf[ResultRow]}")
-                '{ throw new IllegalArgumentException($msg) }
-              case _ =>
-                // Then summon a 'row typer' which will get us the ClassTag of the actual type (from the list of coproduct types) that we are supposed to decode into
-                Expr.summon[GenericRowTyper[ResultRow, T]] match
-                  case Some(rowTyper) => 
-                    val rowTypeClassTag = '{ $rowTyper($resultRow) }
-                    // then go through the elementTypes and match the one that the rowClass refers to. Then decode it (i.e. recurse on the GenericDecoder with it)
-                    selectMatchingElementAndDecode[elementTypes, ResultRow, T](index, resultRow, rowTypeClassTag)(Type.of[elementTypes])      
-                  case None => 
-                    // Technically this should be an error but if I make it into one, the user will have zero feedback as to what is going on and
-                    // the output will be "Decoder could not be summoned during query execution". At least in this situation
-                    // the user actually has actionable information on how to resolve the problem.
-                    report.warning(s"Need a RowTyper for ${Format.TypeOf[T]}. Have you implemented a RowTyper for it? Otherwise the decoder will fail at runtime if this type is encountered")
-                    val msg = Expr(s"Cannot summon RowTyper for type: ${Format.TypeOf[T]}")
-                    '{ throw new IllegalArgumentException($msg) }  
+            // do not treat optional objects as coproduts, a Specific (i.e. EncodingType.Specific) Option-decoder
+            // is defined in the EncodingDsl
+            if (TypeRepr.of[T] <:< TypeRepr.of[Option[Any]])
+              // Try to summon a specific optional from the context, this may not exist since
+              // some optionDecoder implementations themselves rely on the context-speicific Decoder[T] which is actually
+              // GenericDecoder[ResultRow, T, DecodingType.Specific] since they are Specific, they cannot surround Product types.
+              Expr.summon[GenericDecoder[ResultRow, T, DecodingType.Specific]] match
+                // TODO Summoning twice in this case (both here and in summonAndDecode, can optimize that)
+                case Some(_) => summonAndDecode[ResultRow, T](index, resultRow)
+                case None =>
+                  // TODO warn about how it can't be "Some[T]" or None for a row-type here?
+                  Type.of[T] match
+                    case '[Option[t]] =>
+                      val decoded = summonAndDecode[ResultRow, t](index, resultRow)
+                      '{ Option($decoded) }.asExprOf[T]
+            
+            else
+              // First make sure there is a column resolver, otherwise we can't look up fields by name which 
+              // means we can't get specific fields which means we can't decode co-products
+              // Technically this should be an error but if I make it into one, the user will have zero feedback as to what is going on and
+              // the output will be "Decoder could not be summoned during query execution". At least in this situation
+              // the user actually has actionable information on how to resolve the problem.
+              Expr.summon[GenericColumnResolver[ResultRow]] match
+                case None => 
+                  report.warning(
+                    s"Need column resolver for in order to be able to decode a coproduct but none exists for ${Format.TypeOf[T]} (row type: ${Format.TypeOf[ResultRow]}). " +
+                    s"\nHave you extended the a MirrorContext and made sure to `import ctx.{given, _}`." +
+                    s"\nOtherwise a failure will occur with the encoder at runtime")
+                  val msg = Expr(s"Cannot Column Resolver does not exist for ${Format.TypeOf[ResultRow]}")
+                  '{ throw new IllegalArgumentException($msg) }
+                case _ =>
+                  // Then summon a 'row typer' which will get us the ClassTag of the actual type (from the list of coproduct types) that we are supposed to decode into
+                  Expr.summon[GenericRowTyper[ResultRow, T]] match
+                    case Some(rowTyper) => 
+                      val rowTypeClassTag = '{ $rowTyper($resultRow) }
+                      // then go through the elementTypes and match the one that the rowClass refers to. Then decode it (i.e. recurse on the GenericDecoder with it)
+                      selectMatchingElementAndDecode[elementTypes, ResultRow, T](index, resultRow, rowTypeClassTag)(Type.of[elementTypes])      
+                    case None => 
+                      // Technically this should be an error but if I make it into one, the user will have zero feedback as to what is going on and
+                      // the output will be "Decoder could not be summoned during query execution". At least in this situation
+                      // the user actually has actionable information on how to resolve the problem.
+                      report.warning(s"Need a RowTyper for ${Format.TypeOf[T]}. Have you implemented a RowTyper for it? Otherwise the decoder will fail at runtime if this type is encountered")
+                      val msg = Expr(s"Cannot summon RowTyper for type: ${Format.TypeOf[T]}")
+                      '{ throw new IllegalArgumentException($msg) }
         
           case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
             val children = flatten(index, resultRow)(Type.of[elementLabels], Type.of[elementTypes])

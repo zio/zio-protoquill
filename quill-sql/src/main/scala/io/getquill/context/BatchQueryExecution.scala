@@ -85,7 +85,7 @@ object BatchQueryExecution:
           // ast = CaseClass(name -> lift(UUID1), age -> lift(UUID2))
           // lifts = List(InjectableEagerLift(p.name, UUID1), InjectableEagerLift(p.age, UUID2))
           val (caseClassAst, rawLifts) = LiftMacro.liftInjectedProduct[T, PrepareRow]
-          println("========= CaseClass =========\n" + io.getquill.util.Messages.qprint(caseClassAst))
+          //println("========= CaseClass =========\n" + io.getquill.util.Messages.qprint(caseClassAst))
           // Assuming that all lifts of the batch query are injectable
           val injectableLifts =
             rawLifts.map {
