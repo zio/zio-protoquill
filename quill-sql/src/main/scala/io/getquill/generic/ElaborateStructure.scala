@@ -12,6 +12,11 @@ import io.getquill.parser.Lifter
 import io.getquill.quat.Quat
 import io.getquill.ast.{Map => AMap, _}
 import io.getquill.metaprog.TypeExtensions
+import io.getquill.generic.DecodingType
+
+enum ElaborationSide:
+  case Encoding
+  case Decoding
 
 /**
  * Based on valueComputation and materializeQueryMeta from the old Quill
@@ -80,9 +85,11 @@ object ElaborateStructure {
   case object Leaf extends TermType
   case object Branch extends TermType
 
+  // TODO Rename typeType to termType
   case class Term(name: String, typeType: TermType, children: List[Term] = List(), optional: Boolean = false) {
     def withChildren(children: List[Term]) = this.copy(children = children)
     def toAst = Term.toAstTop(this)
+    def asLeaf = this.copy(typeType = Leaf, children = List())
 
     // Used by coproducts, merges all fields of a term with another if this is valid
     // Note that T is only needed for the error message. Maybe take it out once we store Types inside of Term
@@ -224,20 +231,20 @@ object ElaborateStructure {
   }
 
   /** Go through all possibilities that the element might be and collect their fields */
-  def collectFields[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(using Quotes): List[Term] = {
+  def collectFields[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide)(using Quotes): List[Term] = {
     import quotes.reflect.{Term => QTerm, _}
     val ext = new TypeExtensions
     import ext._
     
     (fieldsTup, typesTup) match {
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct =>
-        base[tpe](node) :: collectFields(node, Type.of[fields], Type.of[types])
+        base[tpe](node, side) :: collectFields(node, Type.of[fields], Type.of[types], side)
       case (_, '[EmptyTuple]) => Nil
       case _ => report.throwError("Cannot Derive Sum during Type Flattening of Expression:\n" + (fieldsTup, typesTup))
     }
   }
 
-  def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types])(using Quotes): List[Term] = {
+  def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide)(using Quotes): List[Term] = {
     import quotes.reflect.{Term => QTerm, _}
     val ext = new TypeExtensions
     import ext._
@@ -256,22 +263,22 @@ object ElaborateStructure {
       case ('[field *: fields], '[Option[tpe] *: types]) if Type.of[tpe].isProduct =>
         val childTerm = Term(Type.of[field].constValue, Branch, optional = true)
         //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
-        base[tpe](childTerm) :: flatten(node, Type.of[fields], Type.of[types])
+        base[tpe](childTerm, side) :: flatten(node, Type.of[fields], Type.of[types], side)
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct && Type.of[tpe].notOption  =>
         val childTerm = Term(Type.of[field].constValue, Branch)
         //println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
-        base[tpe](childTerm) :: flatten(node, Type.of[fields], Type.of[types])
+        base[tpe](childTerm, side) :: flatten(node, Type.of[fields], Type.of[types], side)
 
       case ('[field *: fields], '[Option[tpe] *: types]) =>
         val childTerm = Term(Type.of[field].constValue, Leaf, optional = true)
         //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
-        childTerm :: flatten(node, Type.of[fields], Type.of[types])
+        childTerm :: flatten(node, Type.of[fields], Type.of[types], side)
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].notOption =>
         val childTerm = Term(Type.of[field].constValue, Leaf)
         //println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
-        childTerm :: flatten(node, Type.of[fields], Type.of[types])
+        childTerm :: flatten(node, Type.of[fields], Type.of[types], side)
 
       case (_, '[EmptyTuple]) => Nil
 
@@ -279,45 +286,76 @@ object ElaborateStructure {
     } 
   }
 
-  def base[T: Type](term: Term)(using Quotes): Term = {
+  /** 
+   * Expand the structure of base term into series of terms for a given type 
+   * e.g. for Term(x) elaborate Person (case class Person(name: String, age: Int))
+   * will be Term(name, Term(x, Branch), Leaf), Term(age, Term(x, Branch), Leaf)
+   * Note that this could potentially be different if we are on the encoding or the
+   * decoding side. For example, someone could create something like:
+   * {{
+   *   case class VerifiedName(val name: String) { ... }
+   *   val decoding = MappedDecoding ...
+   * }}
+   * Since we only have decoders, we need to know that VerifiedName is an actual value
+   * type as opposed to an embedded case class (since ProtoQuill does not require presence
+   * of the 'Embedded' type). So we need to know that VerifiedName is going to be:
+   * {{ Term(x, Leaf)) }}
+   * as opposed what we would generically have thought:
+   * {{ Term(name, Term(x, Branch), Leaf)) }}.
+   * That means that we need to know whether to look for an encoder as opposed to a decoder
+   * when trying to elaborate this type.
+   * 
+   */
+  def base[T: Type](term: Term, side: ElaborationSide)(using Quotes): Term = {
     import quotes.reflect.{Term => QTerm, _}
+
+    val isAutomaticLeaf = side match
+      case ElaborationSide.Encoding => Expr.summon[GenericEncoder[T, _]].isDefined
+      case ElaborationSide.Decoding => Expr.summon[GenericDecoder[_, T, DecodingType.Specific]].isDefined
+
+    // TODO Back here. Should have a input arg that asks whether elaboration is
+    //      on the encoding or on the decoding side.
+    // Expr.summon[GenericDecoder[_, T, DecodingType.Generic]] match
+    //   case Some(v) => println(s"**** Find Generic Decoder for ${io.getquill.util.Format.TypeOf[T]}: ${v.show}")
+    //   case None => println(s"**** Not found Generic Decoder for ${io.getquill.util.Format.TypeOf[T]}")
 
     // See if there is a generic encoder for it. Since there are no derived generic encoders,
     // (only Generic Decoders), it is a good way to tell if something is a value type or not.
-    Expr.summon[GenericEncoder[T, _]] match
-      case Some(_) => term
+    if (isAutomaticLeaf)
+        term.asLeaf
       // Otherwise, summon the mirror and elaborate the value
-      case _ =>
-        // if there is a decoder for the term, just return the term
-        Expr.summon[Mirror.Of[T]] match 
-          case Some(ev) =>
-            // Otherwise, recursively summon fields
-            ev match
-              case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-                val children = flatten(term, Type.of[elementLabels], Type.of[elementTypes])
-                term.withChildren(children)
-              // TODO Make sure you can summon a ColumnResolver if there is a SumMirror, otherwise this kind of decoding should be impossible
-              case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-                // Find field infos (i.e. Term objects) for all potential types that this coproduct could be
-                val alternatives = collectFields(term, Type.of[elementLabels], Type.of[elementTypes])
-                // Then merge them together to get one term representing all of their fields types.
-                // Say you have a coproduct Shape -> (Square(width), Rectangle(width,height), Circle(radius))
-                // You would get Term(width, height, radius)
-                alternatives.reduce((termA, termB) => termA.merge[T](termB))
-              case _ =>
-                report.throwError("Cannot Find Decoder or Expand a Product of the Type:\n" + ev.show)
-          
-          case None =>
-            if (TypeRepr.of[T] <:< TypeRepr.of[AnyVal]) term
-            else
-              Expr.summon[GenericDecoder[_, T]] match {
-                case Some(decoder) => term
-                case None => report.throwError(s"Cannot find derive or summon a decoder for ${Type.show[T]}")
-              }
+    else
+      // if there is a decoder for the term, just return the term
+      Expr.summon[Mirror.Of[T]] match 
+        case Some(ev) =>
+          // Otherwise, recursively summon fields
+          ev match
+            case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+              val children = flatten(term, Type.of[elementLabels], Type.of[elementTypes], side)
+              term.withChildren(children)
+            // TODO Make sure you can summon a ColumnResolver if there is a SumMirror, otherwise this kind of decoding should be impossible
+            case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+              // Find field infos (i.e. Term objects) for all potential types that this coproduct could be
+              val alternatives = collectFields(term, Type.of[elementLabels], Type.of[elementTypes], side)
+              // Then merge them together to get one term representing all of their fields types.
+              // Say you have a coproduct Shape -> (Square(width), Rectangle(width,height), Circle(radius))
+              // You would get Term(width, height, radius)
+              alternatives.reduce((termA, termB) => termA.merge[T](termB))
+            case _ =>
+              report.throwError("Cannot Find Decoder or Expand a Product of the Type:\n" + ev.show)
+        case None =>
+          report.throwError(s"Cannot find derive or summon a decoder for ${Type.show[T]}")
+          // we checked if there was a specific encoder already
+          // if (TypeRepr.of[T] <:< TypeRepr.of[AnyVal]) term.asLeaf
+          // else
+          //   Expr.summon[GenericDecoder[_, T, DecodingType.Specific]] match {
+          //     case Some(decoder) => term.asLeaf
+          //     case None => report.throwError(s"Cannot find derive or summon a decoder for ${Type.show[T]}")
+          //   }
   }
 
-  private def productized[T: Type](baseName: String = "x")(using Quotes): Ast = {
-    val lifted = base[T](Term("x", Branch)).toAst
+  private def productized[T: Type](side: ElaborationSide, baseName: String = "x")(using Quotes): Ast = {
+    val lifted = base[T](Term("x", Branch), side).toAst
     val insert =
       if (lifted.length == 1)
         lifted.head._1
@@ -330,23 +368,27 @@ object ElaborateStructure {
   // ofStaticAst
   /** ElaborateStructure the query AST in a static query **/
   def ontoAst[T](ast: Ast)(using Quotes, Type[T]): AMap = {
-    val bodyAst = productized[T]()
+    // TODO AST transformations turn into the Select clause which is how I know the elaboration is Decoding
+    //      however, this should really be a static argument passed into the method.
+    val bodyAst = productized[T](ElaborationSide.Decoding)
     AMap(ast, Ident("x", Quat.Generic), bodyAst)
   }
 
   /** ElaborateStructure the query AST in a dynamic query **/
   def ontoDynamicAst[T](queryAst: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
-    val bodyAst = productized[T]()
+    // TODO This method is used from the dynamic AST generation during the select clause which is how I know it's a decoding elaboration.
+    //      however, this should really be a static argument passed into the method.
+    val bodyAst = productized[T](ElaborationSide.Decoding)
     '{ AMap($queryAst, Ident("x", Quat.Generic), ${Lifter(bodyAst)}) }
   }
 
-  def ofProductType[T: Type](baseName: String)(using Quotes): List[Ast] = {
-    val expanded = base[T](Term(baseName, Branch))
+  def ofProductType[T: Type](baseName: String, side: ElaborationSide)(using Quotes): List[Ast] = {
+    val expanded = base[T](Term(baseName, Branch), side)
     expanded.toAst.map(_._1)
   }
 
-  def ofAribtraryType[T: Type](baseName: String)(using Quotes): Ast =
-    productized(baseName)
+  def ofAribtraryType[T: Type](baseName: String, side: ElaborationSide)(using Quotes): Ast =
+    productized(side, baseName)
 
 
   /**
@@ -390,8 +432,8 @@ object ElaborateStructure {
   // TODO Should have specific tests for this function indepdendently
   // keep namefirst, namelast etc.... so that testability is easier due to determinism
   // re-key by the UIDs later
-  def ofProductValue[T: Type](productValue: Expr[T])(using Quotes): TaggedLiftedCaseClass[Ast] = {
-    val elaborated = elaborationOfProductValue[T]
+  def ofProductValue[T: Type](productValue: Expr[T], side: ElaborationSide)(using Quotes): TaggedLiftedCaseClass[Ast] = {
+    val elaborated = elaborationOfProductValue[T](side)
     // create a nested AST for the Term nest with the expected scalar tags inside
     val (_, nestedAst) = productValueToAst(elaborated)
     // create the list of (label, lift) for the expanded entities
@@ -400,13 +442,13 @@ object ElaborateStructure {
     TaggedLiftedCaseClass(nestedAst, lifts)
   }
 
-  def decomposedProductValue[T: Type](using Quotes): List[Expr[T => _]] = {
-    val elaborated = elaborationOfProductValue[T]
+  def decomposedProductValue[T: Type](side: ElaborationSide)(using Quotes): List[Expr[T => _]] = {
+    val elaborated = elaborationOfProductValue[T](side)
     decomposedLiftsOfProductValue(elaborated)
   }
 
-  private[getquill] def elaborationOfProductValue[T: Type](using Quotes) =
-    base[T](Term("notused", Branch))
+  private[getquill] def elaborationOfProductValue[T: Type](side: ElaborationSide)(using Quotes) =
+    base[T](Term("notused", Branch), side)
 
   private[getquill] def liftsOfProductValue[T: Type](elaboration: Term, productValue: Expr[T])(using Quotes) =
     DeconstructElaboratedEntity(elaboration, productValue).map((k,v) => (v,k))

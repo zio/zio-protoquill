@@ -28,6 +28,7 @@ import io.getquill.MetaDsl
 import io.getquill.Ord
 import io.getquill.Embedded
 import io.getquill.metaprog.Is
+import io.getquill.generic.ElaborationSide
 
 type Parser[R] = PartialFunction[quoted.Expr[_], R]
 type SealedParser[R] = (quoted.Expr[_] => R)
@@ -425,7 +426,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       case (true , IsActionType()) =>
         val newBody =
           actionType match
-            case '[at] => ElaborateStructure.ofAribtraryType[at](ident.name)
+            case '[at] => ElaborateStructure.ofAribtraryType[at](ident.name, ElaborationSide.Decoding) // elaboration side is Decoding since this is for entity being returned from the Quill query
         newBody
       case (true, _) =>
         report.throwError("Could not process whole-record 'returning' clause. Consider trying to return individual columns.")

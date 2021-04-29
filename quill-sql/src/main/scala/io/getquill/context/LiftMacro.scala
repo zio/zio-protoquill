@@ -84,6 +84,7 @@ object LiftMacro {
   private[getquill] def liftInjectedProduct[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): (CaseClass, List[Expr[InjectableEagerPlanter[_, PrepareRow]]]) = {
     import qctx.reflect._
     val (caseClassAstInitial, liftsInitial) = liftInjectedProductComponents[T, PrepareRow]
+    println("========= CaseClass Initial =========\n" + io.getquill.util.Messages.qprint(caseClassAstInitial))
     val TaggedLiftedCaseClass(caseClassAst, lifts) = TaggedLiftedCaseClass(caseClassAstInitial, liftsInitial).reKeyWithUids()
     val liftPlanters = 
       lifts.map(
@@ -105,7 +106,8 @@ object LiftMacro {
     import io.getquill.util.Format
 
     // Get the elaboration and AST once so that it will not have to be parsed out of the liftedCombo (since they are normally returned by ElaborateStructure.ofProductValue)
-    val elaborated = ElaborateStructure.elaborationOfProductValue[T]
+    val elaborated = ElaborateStructure.elaborationOfProductValue[T](ElaborationSide.Encoding)
+    println("========= Elaboration =========\n" + io.getquill.util.Messages.qprint(elaborated))
     val (_, caseClassAst) = ElaborateStructure.productValueToAst[T](elaborated)
     val caseClass = caseClassAst.asInstanceOf[io.getquill.ast.CaseClass]
     
@@ -125,7 +127,7 @@ object LiftMacro {
     // ...
     // and the respectively pull out lift(singleArg.foo), lift(singleArg.bar), etc... from that clause turning it into
     // (singleArg) => lift(singleArg.foo), (singleArg) => lift(singleArg.bar), (singleArg) => etc... so that everything remains phase consistent
-    val liftLambdas = ElaborateStructure.decomposedProductValue[T]
+    val liftLambdas = ElaborateStructure.decomposedProductValue[T](ElaborationSide.Encoding) // Elaboration side is 'Encoding' since we are in the lift macro
     def liftCombo[Output: Type](index: Int) =
       '{ (entity: T) =>
         ${liftLambdas(index)}.apply(entity).asInstanceOf[Output]  
@@ -155,7 +157,8 @@ object LiftMacro {
   
   private[getquill] def liftProduct[T, PrepareRow](productEntity: Expr[T])(using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[CaseClassLift[T]] = {
     import qctx.reflect._
-    val TaggedLiftedCaseClass(caseClassAst, lifts) = ElaborateStructure.ofProductValue[T](productEntity).reKeyWithUids()
+    // Elaborate the entity and get it's lift. Since we are in the lifter, the elabration side is the encoding side (i.e. since lifts are doing Encoding).
+    val TaggedLiftedCaseClass(caseClassAst, lifts) = ElaborateStructure.ofProductValue[T](productEntity, ElaborationSide.Encoding).reKeyWithUids()
     val liftPlanters = 
       lifts.map(
         (liftKey, lift) => 

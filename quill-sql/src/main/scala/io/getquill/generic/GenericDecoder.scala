@@ -13,7 +13,13 @@ trait GenericColumnResolver[ResultRow] {
   def apply(resultRow: ResultRow, columnName: String): Int
 }
 
-trait GenericDecoder[ResultRow, T] extends ((Int, ResultRow) => T) {
+sealed trait DecodingType
+object DecodingType {
+  sealed trait Generic extends DecodingType
+  sealed trait Specific extends DecodingType
+}
+
+trait GenericDecoder[ResultRow, T, +DecType <: DecodingType] extends ((Int, ResultRow) => T) {
   def apply(i: Int, rr: ResultRow): T
 }
 
@@ -31,7 +37,7 @@ object GenericDecoder {
 
   def summonAndDecode[ResultRow: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[T] = 
     import quotes.reflect.{Term => QTerm, _}
-    Expr.summon[GenericDecoder[ResultRow, T]] match
+    Expr.summon[GenericDecoder[ResultRow, T, _]] match
       case Some(decoder) => '{ $decoder($index, $resultRow) }
       case _ => report.throwError(s"Cannot find decoder for the type: ${Format.TypeOf[T]}")
 
@@ -162,10 +168,10 @@ object GenericDecoder {
         report.throwError("Tuple decoder could not be summoned")
   }
 
-  def apply[T: Type, ResultRow: Type](using quotes: Quotes): Expr[GenericDecoder[ResultRow, T]] =
+  def summon[T: Type, ResultRow: Type](using quotes: Quotes): Expr[GenericDecoder[ResultRow, T, DecodingType.Generic]] =
     import quotes.reflect._
     '{
-      new GenericDecoder[ResultRow, T] {
+      new GenericDecoder[ResultRow, T, DecodingType.Generic] {
         def apply(index: Int, resultRow: ResultRow) = ${GenericDecoder.decode[T, ResultRow]('index, 'resultRow)}
       }
     }

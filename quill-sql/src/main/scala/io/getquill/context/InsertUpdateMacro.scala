@@ -28,6 +28,7 @@ import io.getquill.Planter
 import io.getquill.Insert
 import io.getquill.Update
 import io.getquill.util.Format
+import io.getquill.generic.ElaborationSide
 
 /**
  * TODO Right now this is just insert but we can easily extend to update and delete
@@ -246,7 +247,7 @@ object InsertUpdateMacro {
      * all the right values are plugged in correctly.
      */
     def deduceAssignmentsFromIdent(insertee: AIdent) = {
-      val expansionList = ElaborateStructure.ofProductType[T](VIdent.name)
+      val expansionList = ElaborateStructure.ofProductType[T](VIdent.name, ElaborationSide.Encoding) // Elaboration side is Encoding since this is for an entity being inserted
       def mapping(path: Ast) =
         val reduction = BetaReduction(path, VIdent -> insertee)
         Assignment(VIdent, path, reduction)
@@ -258,7 +259,7 @@ object InsertUpdateMacro {
     def deduceAssignmentsFromCaseClass(insertee: CaseClass) = {
       // Expand into a AST
       // T:Person(name:Str, age:Option[Age]) Age(value: Int) -> Ast: List(v.name, v.age.map(v => v.value))
-      val expansionList = ElaborateStructure.ofProductType[T](VIdent.name)
+      val expansionList = ElaborateStructure.ofProductType[T](VIdent.name, ElaborationSide.Encoding)  // Elaboration side is Encoding since this is for an entity being inserted
 
       // Now synthesize (v) => vAssignmentProperty -> assignmentValue
       // e.g. (v:Person) => v.firstName -> "Joe"

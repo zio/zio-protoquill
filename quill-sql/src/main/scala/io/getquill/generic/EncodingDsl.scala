@@ -6,6 +6,7 @@ import scala.quoted._
 import scala.deriving._
 import scala.compiletime.{erasedValue, summonFrom}  
 import io.getquill.MappedEncoding
+import io.getquill.generic.DecodingType
 
 trait LowPriorityImplicits { self: EncodingDsl =>
 
@@ -36,12 +37,12 @@ trait EncodingDsl extends LowPriorityImplicits { self => //extends LowPriorityIm
   // need to by subtypes GenericEncoder for encoder summoning to work from SqlContext where Encoders/Decoders
   // are defined only abstractly.
   type Encoder[T] <: GenericEncoder[T, PrepareRow]
-  type Decoder[T] <: GenericDecoder[ResultRow, T]
+  type Decoder[T] <: GenericDecoder[ResultRow, T, DecodingType.Specific]
 
   // Initial Encoder/Decoder classes that Context implementations will subclass for their
   // respective Encoder[T]/Decoder[T] implementations e.g. JdbcEncoder[T](...) extends BaseEncoder[T]
   type BaseEncoder[T] = GenericEncoder[T, PrepareRow]
-  type BaseDecoder[T] = GenericDecoder[ResultRow, T]
+  type BaseDecoder[T] = GenericDecoder[ResultRow, T, DecodingType.Specific]
 
   type ColumnResolver = GenericColumnResolver[ResultRow]
   type RowTyper[T] = GenericRowTyper[ResultRow, T]

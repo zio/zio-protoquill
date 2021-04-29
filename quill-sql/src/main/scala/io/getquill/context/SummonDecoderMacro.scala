@@ -25,7 +25,7 @@ import io.getquill.QuotationLot
 import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
-
+import io.getquill.generic.DecodingType
 
 
 object SummonDecoderMacro {
@@ -33,11 +33,13 @@ object SummonDecoderMacro {
   import scala.quoted._ // Expr.summon is actually from here
   import io.getquill.Planter
 
-  def apply[T: Type, ResultRow: Type](using Quotes): Expr[GenericDecoder[ResultRow, T]] = {
+  def apply[T: Type, ResultRow: Type](using Quotes): Expr[GenericDecoder[ResultRow, T, DecodingType]] = {
     import quotes.reflect._
-    Expr.summon[GenericDecoder[ResultRow, T]] match {
+    Expr.summon[GenericDecoder[ResultRow, T, DecodingType.Specific]] match
       case Some(decoder) => decoder
-      case None => report.throwError(s"Cannot Find decoder for ${Type.show[T]}")
-    }
+      case None =>
+        Expr.summon[GenericDecoder[ResultRow, T, DecodingType.Generic]] match
+          case Some(decoder) => decoder
+          case None => report.throwError(s"Cannot Find decoder for ${Type.show[T]}")
   }  
 }

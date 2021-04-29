@@ -13,6 +13,7 @@ import io.getquill.generic._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.generic.GenericDecoder
+import io.getquill.generic.DecodingType
 import io.getquill.Planter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
@@ -108,7 +109,7 @@ with Closeable
   // inline given dec[T](using dec: DecodeAlternate[T, ResultRow]): GenericDecoder[T, ResultRow] with
   //   inline def decode(t: T) = ${ DecodeAlternate[T, ResultRow] }
 
-  implicit inline def dec[T]: GenericDecoder[ResultRow, T] = ${ GenericDecoder[T, ResultRow] }
+  implicit inline def dec[T]: GenericDecoder[ResultRow, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, ResultRow] }
     
 
   //def probe(statement: String): Try[_]

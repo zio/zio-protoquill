@@ -64,9 +64,10 @@ object BatchQueryExecution:
     def apply(): Expr[Res] = 
       Uninline(UntypeExpr(quoted)) match
         case QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), planters) =>
-          val iterableExpr =
+          // isolate the list that went into the liftQuery i.e. the liftQuery(liftedList)
+          val liftedList =
             planters match
-              case List(EagerEntitiesPlanterExpr(_, iterableExpr)) => iterableExpr
+              case List(EagerEntitiesPlanterExpr(_, liftedList)) => liftedList
               case _ => report.throwError(s"Invalid liftQuery clause: ${planters}. Must be a single EagerEntitiesPlanter", quoted)
 
           val insertEntity = {
@@ -84,6 +85,7 @@ object BatchQueryExecution:
           // ast = CaseClass(name -> lift(UUID1), age -> lift(UUID2))
           // lifts = List(InjectableEagerLift(p.name, UUID1), InjectableEagerLift(p.age, UUID2))
           val (caseClassAst, rawLifts) = LiftMacro.liftInjectedProduct[T, PrepareRow]
+          println("========= CaseClass =========\n" + io.getquill.util.Messages.qprint(caseClassAst))
           // Assuming that all lifts of the batch query are injectable
           val injectableLifts =
             rawLifts.map {
@@ -100,7 +102,7 @@ object BatchQueryExecution:
           StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation) match 
             case Some(StaticState(queryString, _, _)) =>
               val prepares =
-                '{ $iterableExpr.map(elem => ${
+                '{ $liftedList.map(elem => ${
                   val injectedLifts = injectableLifts.map(lift => lift.inject('elem))
                   val injectedLiftsExpr = Expr.ofList(injectedLifts)
                   val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($injectedLiftsExpr, row) }  

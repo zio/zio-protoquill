@@ -16,6 +16,7 @@ import io.getquill.generic._
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.generic.GenericDecoder
+import io.getquill.generic.DecodingType
 import io.getquill.generic.GenericEncoder
 import io.getquill.Planter
 import io.getquill.EagerPlanter
@@ -52,11 +53,14 @@ object QueryExecution:
     import qctx.reflect._
 
     /** Summon decoder for a given Type and Row type (ResultRow) */
-    def summonDecoderOrThrow[DecoderT: Type](): Expr[GenericDecoder[ResultRow, DecoderT]] = {
-      Expr.summon[GenericDecoder[ResultRow, DecoderT]] match {
+    def summonDecoderOrThrow[DecoderT: Type](): Expr[GenericDecoder[ResultRow, DecoderT, DecodingType]] = {
+      // First try summoning a specific encoder, if that doesn't work, summon the generic one
+      Expr.summon[GenericDecoder[ResultRow, DecoderT, DecodingType.Specific]] match
         case Some(decoder) => decoder
-        case None => report.throwError(s"Decoder could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
-      }
+        case None =>
+          Expr.summon[GenericDecoder[ResultRow, DecoderT, DecodingType.Generic]] match
+            case Some(decoder) => decoder
+            case None => report.throwError(s"Decoder could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
     }
   }
 

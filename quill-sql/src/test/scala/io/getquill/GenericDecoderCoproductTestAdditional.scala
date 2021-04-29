@@ -22,12 +22,13 @@ import scala.compiletime.{erasedValue, constValue, summonFrom}
 import scala.collection.mutable.LinkedHashMap
 import scala.reflect.ClassTag
 import scala.reflect.classTag
+import io.getquill.generic.DecodingType
 
 object GenericDecoderCoproductTestAdditional {
   // TODO Resore this when moving back to original way of doing generic decoders
   //implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.generic
 
-  implicit inline def autoDecoder[T]: GenericDecoder[MyResult, T] = ${ GenericDecoder[T, MyResult] }
+  implicit inline def autoDecoder[T]: GenericDecoder[MyResult, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, MyResult] }
 
   case class MyResult(values: (String, Any)*) {
     lazy val list = LinkedHashMap[String, Any](values.toList: _*)
@@ -36,10 +37,10 @@ object GenericDecoderCoproductTestAdditional {
     def resolve(key: String): Int = list.keysIterator.toList.indexOf(key) + 1
   }
 
-  given GenericDecoder[MyResult, String] with
+  given GenericDecoder[MyResult, String, DecodingType.Specific] with
     def apply(index: Int, row: MyResult): String = row.get(index).toString
 
-  given GenericDecoder[MyResult, Int] with
+  given GenericDecoder[MyResult, Int, DecodingType.Specific] with
     def apply(index: Int, row: MyResult): Int = row.get(index).toString.toInt
   
   // TODO automatically provide this in 'context'
