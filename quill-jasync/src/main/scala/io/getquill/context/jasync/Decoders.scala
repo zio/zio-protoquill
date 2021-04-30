@@ -3,6 +3,7 @@ package io.getquill.context.jasync
 import java.math.{ BigDecimal => JavaBigDecimal }
 import java.time._
 import java.util.Date
+import com.github.jasync.sql.db.RowData
 
 // Need to import for Protoquill. Not sure why
 import io.getquill.MappedEncoding
@@ -33,7 +34,7 @@ trait Decoders {
     sqlType: DecoderSqlType
   ): Decoder[T] =
     AsyncDecoder[T](sqlType)(new BaseDecoder[T] {
-      def apply(index: Index, row: ResultRow) = {
+      def apply(index: Int, row: RowData) = {
         row.get(index) match {
           case value: T                      => value
           case value if f.isDefinedAt(value) => f(value)

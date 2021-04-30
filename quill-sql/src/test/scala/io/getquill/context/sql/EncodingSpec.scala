@@ -63,10 +63,10 @@ trait EncodingSpec extends Spec {
     (e: EncodingTestEntity) => query[EncodingTestEntity].insert(e)
   }
 
-  inline def insertValues =
+  val insertValues =
     Seq(
       EncodingTestEntity(
-        "s",
+        "s1",
         BigDecimal(1.1),
         true,
         11.toByte,
@@ -77,10 +77,10 @@ trait EncodingSpec extends Spec {
         42d,
         Array(1.toByte, 2.toByte),
         new Date(31200000),
-        EncodingTestType("s"),
+        EncodingTestType("s2"),
         LocalDate.of(2013, 11, 23),
         UUID.randomUUID(),
-        Some("s"),
+        Some("s3"),
         Some(BigDecimal(1.1)),
         Some(true),
         Some(11.toByte),
@@ -91,7 +91,7 @@ trait EncodingSpec extends Spec {
         Some(42d),
         Some(Array(1.toByte, 2.toByte)),
         Some(new Date(31200000)),
-        Some(EncodingTestType("s")),
+        Some(EncodingTestType("s4")),
         Some(LocalDate.of(2013, 11, 23)),
         Some(UUID.randomUUID()),
         Some(Number("0"))

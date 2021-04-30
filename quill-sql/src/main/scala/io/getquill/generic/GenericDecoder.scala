@@ -53,8 +53,15 @@ object GenericDecoder {
     import ext._
 
     (fieldsTup, typesTup) match {
-      case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct =>
+      // Check if the field has a specific user-defined encoder for it e.g. Person(name: String) (i.e. since there is a String encoder)
+      // or if it is an embedded entity e.g. Person(name: Name, age: Int) where Name is `case class Name(first: String, last: String)`.
+      // TODO summoning `GenericDecoder[ResultRow, T, DecodingType.Specific]` here twice, once in the if statement,
+      // then later in summonAndDecode. This can potentially be improved i.e. it can be summoned just once and reused.
+      case ('[field *: fields], '[tpe *: types]) if Expr.summon[GenericDecoder[ResultRow, tpe, DecodingType.Specific]].isEmpty =>
+        // If it is a generic inner class, find out by how many columns we have to move forward
+        // An alternative to this is the decoder returning the index incremented after the last thing it decoded
        val air = TypeRepr.of[tpe].classSymbol.get.caseFields.length
+       if (air == 0) println(s"[WARNING] Arity of product column ${Format.TypeOf[field]} type ${Format.TypeOf[tpe]} was 0. This is not valid.")
        // Get the field class as an actual string, on the mirror itself it's stored as a type
        val fieldValue = Type.of[field].constValue
        // In certain cases we want to lookup a column not by it's index but by it's name. Most database APIs can do this in general so we add a secondary mechanism
@@ -65,7 +72,6 @@ object GenericDecoder {
        (Type.of[tpe], summonAndDecode[ResultRow, tpe](resolvedIndex, resultRow)) :: flatten[ResultRow, fields, types]('{$index + ${Expr(air)}}, resultRow)(Type.of[fields], Type.of[types])
 
       case ('[field *: fields], '[tpe *: types]) =>
-        val air = TypeRepr.of[tpe].classSymbol.get.caseFields.length
         val fieldValue = Type.of[field].constValue
         val resolvedIndex = resolveIndexOrFallback[ResultRow](index, resultRow, fieldValue)
         (Type.of[tpe], summonAndDecode[ResultRow, tpe](resolvedIndex, resultRow)) :: flatten[ResultRow, fields, types]('{$index + 1}, resultRow)(Type.of[fields], Type.of[types])
