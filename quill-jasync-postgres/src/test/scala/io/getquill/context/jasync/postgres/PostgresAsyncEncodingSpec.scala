@@ -79,15 +79,15 @@ class PostgresAsyncEncodingSpec extends EncodingSpec {
   // //   verify(Await.result(fut, Duration.Inf).toList)
   // // }
 
-  // // "returning UUID" in {
-  // //   val success = for {
-  // //     uuid <- Await.result(testContext.run(insertBarCode(lift(barCodeEntry))), Duration.Inf)
-  // //     barCode <- Await.result(testContext.run(findBarCodeByUuid(uuid)), Duration.Inf).headOption
-  // //   } yield {
-  // //     verifyBarcode(barCode)
-  // //   }
-  // //   success must not be empty
-  // // }
+  // "returning UUID" in {
+  //   val success = for {
+  //     uuid <- Await.result(testContext.run(insertBarCode(lift(barCodeEntry))), Duration.Inf)
+  //     barCode <- Await.result(testContext.run(findBarCodeByUuid(uuid)), Duration.Inf).headOption
+  //   } yield {
+  //     verifyBarcode(barCode)
+  //   }
+  //   success must not be empty
+  // }
 
   "decodes joda DateTime, LocalDate and LocalDateTime types" in {
     case class DateEncodingTestEntity(v1: JodaLocalDate, v2: JodaLocalDateTime, v3: JodaDateTime)

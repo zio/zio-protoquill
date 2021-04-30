@@ -97,13 +97,14 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
     withConnection(_.sendPreparedStatement(sql, values.asJava)).map(_.getRowsAffected)
   }
 
-  // def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningAction: ReturnAction)(implicit ec: ExecutionContext): Future[T] = {
-  //   val expanded = expandAction(sql, returningAction)
-  //   val (params, values) = prepare(Nil)
-  //   logger.logQuery(sql, params)
-  //   withConnection(_.sendPreparedStatement(expanded, values.asJava))
-  //     .map(extractActionResult(returningAction, extractor))
-  // }
+  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningAction: ReturnAction)(executionType: ExecutionType, dc: ExecutionContext): Future[T] = {
+    implicit val ec = dc // implicitly define the execution context that will be passed in
+    val expanded = expandAction(sql, returningAction)
+    val (params, values) = prepare(Nil)
+    logger.logQuery(sql, params)
+    withConnection(_.sendPreparedStatement(expanded, values.asJava))
+      .map(extractActionResult(returningAction, extractor))
+  }
 
   def executeBatchAction(groups: List[BatchGroup])(executionType: ExecutionType, dc: ExecutionContext): Future[List[Long]] =
     implicit val ec = dc // implicitly define the execution context that will be passed in
@@ -131,8 +132,6 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
   //         }.map(_.result())
   //     }
   //   }.map(_.flatten.toList)
-
-  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionReturningResult[T]] = ???
 
   // Used for TranslateContext. The functionality of context.translate is not in Protoquill yet.
   //override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] =
