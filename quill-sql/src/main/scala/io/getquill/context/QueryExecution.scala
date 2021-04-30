@@ -1,6 +1,6 @@
 package io.getquill.context
 
-
+import io.getquill.norm.BetaReduction
 import scala.language.higherKinds
 import scala.language.experimental.macros
 //import io.getquill.generic.Dsl
@@ -139,9 +139,9 @@ object QueryExecution:
     def applyActionReturning(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
       StaticTranslationMacro.applyInner[I, T, D, N](quoted) match 
         case Some(staticState) =>
-          executeStatic[T](staticState, idConvert, ExtractBehavior.Extract)
+          executeStatic[T](staticState, idConvert, ExtractBehavior.ExtractWithReturnAction)
         case None => 
-          executeDynamic(quoted, idConvert, ExtractBehavior.Extract, ElaborationBehavior.Skip)
+          executeDynamic(quoted, idConvert, ExtractBehavior.ExtractWithReturnAction, ElaborationBehavior.Skip)
 
     /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to T */
     def runWithQueryMeta[RawT: Type](quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
@@ -321,7 +321,11 @@ object RunDynamicExecution:
     // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
     // which means that the compiler has not done the splicing for us. We need to do this ourselves. 
     // So we need to go through all the QuotationTags in the AST and splice in the corresponding QuotationVase into it's place.
-    val splicedAst = spliceQuotations(quoted)
+    // (also, we need to tell if ReturningGenerated is the top-level element in order to know that the
+    // extraction type is Extraction.Returning by in some cases the AST will be 
+    // FunctionApply(Function(ident, ReturningGenerated(...))), stuff). In those cases, we need
+    // to do a beta-reduction first.
+    val splicedAst = BetaReduction(spliceQuotations(quoted))
 
     // TODO Should make this enable-able via a logging configuration
     //println("=============== Dynamic Expanded Ast Is ===========\n" + io.getquill.util.Messages.qprint(splicedAst))

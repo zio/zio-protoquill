@@ -167,7 +167,8 @@ with Closeable
         val Extraction.Returning(extract, returningBehavior) = 
           // Just match on the type and throw an exception. The outside val right above will do the deconstruction
           extraction match
-            case _: Extraction.Returning[ResultRow, T] => extraction
+            // Can't check types inside Returning[_, _] during runtime due to type-erasure so scala will give a warning
+            case _: Extraction.Returning[_, _] => extraction
             case _ => throw new IllegalArgumentException("Returning Extractor required")
 
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
