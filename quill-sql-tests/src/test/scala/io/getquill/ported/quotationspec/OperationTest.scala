@@ -13,7 +13,7 @@ import io.getquill.ast.Implicits._
 import io.getquill.norm.NormalizeStringConcat
 import io.getquill._
 
-class OperationTest extends Spec with Inside {
+class OperationTest extends Spec with TestEntities with Inside {
 
   extension (ast: Ast)
     def body: Ast = ast match
@@ -334,46 +334,66 @@ class OperationTest extends Spec with Inside {
     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), NumericOperator.`%`, Ident("b"))
   }
 
-  // don't have contains yet
-  // "contains" - {
-  //   "query" in {
-  //     inline def q = quote {
-  //       (a: Query[TestEntity], b: TestEntity) =>
-  //         a.contains(b)
-  //     }
-  //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), SetOperator.`contains`, Ident("b"))
-  //   }
-  //   "within option operation" - {
-  //     "forall" in {
-  //       inline def q = quote { (a: Query[Int], b: Option[Int]) =>
-  //         b.forall(a.contains)
-  //       }
-  //       quote(unquote(q)).ast.body mustBe an[OptionOperation]
-  //     }
-  //     "exists" in {
-  //       inline def q = quote { (a: Query[Int], b: Option[Int]) =>
-  //         b.exists(a.contains)
-  //       }
-  //       quote(unquote(q)).ast.body mustBe an[OptionOperation]
-  //     }
-  //     "map" in {
-  //       inline def q = quote { (a: Query[Int], b: Option[Int]) =>
-  //         b.map(a.contains)
-  //       }
-  //       quote(unquote(q)).ast.body mustBe an[OptionOperation]
-  //     }
-  //   }
-  //   "split" in {
-  //     inline def q = quote {
-  //       (s: String) => s.split(" ")
-  //     }
-  //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("s"), StringOperator.`split`, Constant.auto(" "))
-  //   }
-  //   "startsWith" in {
-  //     inline def q = quote {
-  //       (s: String) => s.startsWith(" ")
-  //     }
-  //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("s"), StringOperator.`startsWith`, Constant.auto(" "))
-  //   }
-  // }
+  "contains" - {
+    "query" in {
+      inline def q = quote {
+        (a: Query[TestEntity], b: TestEntity) =>
+          a.contains(b)
+      }
+      quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), SetOperator.`contains`, Ident("b"))
+    }
+    "within option operation" - {
+      "forall" in {
+        inline def q = quote { (a: Query[Int], b: Option[Int]) =>
+          b.forall(a.contains)
+        }
+        quote(unquote(q)).ast.body mustBe an[OptionOperation]
+      }
+      "exists" in {
+        inline def q = quote { (a: Query[Int], b: Option[Int]) =>
+          b.exists(a.contains)
+        }
+        quote(unquote(q)).ast.body mustBe an[OptionOperation]
+      }
+      "map" in {
+        inline def q = quote { (a: Query[Int], b: Option[Int]) =>
+          b.map(a.contains)
+        }
+        quote(unquote(q)).ast.body mustBe an[OptionOperation]
+      }
+    }
+    // "split" in {
+    //   inline def q = quote {
+    //     (s: String) => s.split(" ")
+    //   }
+    //   quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("s"), StringOperator.`split`, Constant.auto(" "))
+    // }
+    // "startsWith" in {
+    //   inline def q = quote {
+    //     (s: String) => s.startsWith(" ")
+    //   }
+    //   quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("s"), StringOperator.`startsWith`, Constant.auto(" "))
+    // }
+  }
+
+  "traversable operations" - {
+    "map.contains" in {
+      inline def q = quote {
+        (m: collection.Map[Int, String], k: Int) => m.contains(k)
+      }
+      quote(unquote(q)).ast.body mustEqual MapContains(Ident("m"), Ident("k"))
+    }
+    "set.contains" in {
+      inline def q = quote {
+        (s: Set[Int], v: Int) => s.contains(v)
+      }
+      quote(unquote(q)).ast.body mustEqual SetContains(Ident("s"), Ident("v"))
+    }
+    "list.contains" in {
+      inline def q = quote {
+        (l: List[Int], v: Int) => l.contains(v)
+      }
+      quote(unquote(q)).ast.body mustEqual ListContains(Ident("l"), Ident("v"))
+    }
+  }
 }

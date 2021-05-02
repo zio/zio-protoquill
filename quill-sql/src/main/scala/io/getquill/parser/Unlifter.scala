@@ -83,6 +83,13 @@ object Unlifter {
       case '{ PropertyAlias($paths, $b) } => PropertyAlias(paths.unexpr, b.unexpr)
   }
 
+  given unliftTraversableOperation: NiceUnliftable[IterableOperation] with {
+    def unlift =
+      case '{ MapContains($a, $b) } => MapContains(a.unexpr, b.unexpr)
+      case '{ SetContains($a, $b) } => SetContains(a.unexpr, b.unexpr)
+      case '{ ListContains($a, $b) } => ListContains(a.unexpr, b.unexpr)
+  }
+
   given unliftOptionOperation: NiceUnliftable[OptionOperation] with {
     def unlift =
       case '{ OptionApply.apply($a) } => OptionApply(a.unexpr)
@@ -98,6 +105,8 @@ object Unlifter {
       case '{ OptionGetOrElse.apply($a, $b) } => OptionGetOrElse(a.unexpr, b.unexpr)
       case '{ OptionContains.apply($a, $b) } => OptionContains(a.unexpr, b.unexpr)
       case '{ OptionMap.apply($a, $b, $c) } => OptionMap(a.unexpr, b.unexpr, c.unexpr)
+      case '{ OptionFlatMap.apply($a, $b, $c) } => OptionFlatMap(a.unexpr, b.unexpr, c.unexpr)
+      case '{ OptionFlatten.apply($a) } => OptionFlatten(a.unexpr)
       case '{ OptionTableMap.apply($a, $b, $c) } => OptionTableMap(a.unexpr, b.unexpr, c.unexpr)
       case '{ OptionTableFlatMap.apply($a, $b, $c) } => OptionTableFlatMap(a.unexpr, b.unexpr, c.unexpr)
       case '{ OptionExists.apply($a, $b, $c) } => OptionExists(a.unexpr, b.unexpr, c.unexpr)
@@ -170,12 +179,16 @@ object Unlifter {
       case '{ $p: Property } => unliftProperty(p)
       case '{ $id: AIdent } => unliftIdent(id)
       case '{ $o: Ordering } => unliftOrdering(o)
+      case '{ $o: IterableOperation } => unliftTraversableOperation(o)
       // TODO Is the matching covariant? In that case can do "case '{ $oo: OptionOperation } and then strictly throw an error"
       case unliftOptionOperation(ast) => ast
   }
 
   given unliftOperator: NiceUnliftable[Operator] with {
     def unlift =
+      case '{ SetOperator.contains } => SetOperator.contains
+      case '{ SetOperator.nonEmpty } => SetOperator.nonEmpty
+      case '{ SetOperator.isEmpty } => SetOperator.isEmpty
       case '{ NumericOperator.+ } =>  NumericOperator.+
       case '{ NumericOperator.- } =>  NumericOperator.-
       case '{ NumericOperator.* } =>  NumericOperator.*

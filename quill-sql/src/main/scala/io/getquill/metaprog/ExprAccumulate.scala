@@ -34,13 +34,11 @@ object ExprAccumulate {
 
         } catch {
           case e if e.getMessage.startsWith("Expr cast exception:") => //hello
-            println(
-              s"============== Could not transform over expression:\n" +
-              s"${io.getquill.util.Format.Expr(expr)}\n" +
-              s"${e.getMessage}\n" +
-              s"\n===========")
-            //e.printStackTrace
-            //printer.lnf(expr.asTerm)
+            // println(
+            //   s"============== Could not transform over expression:\n" +
+            //   s"${io.getquill.util.Format.Expr(expr)}\n" +
+            //   s"${e.getMessage}\n" +
+            //   s"\n===========")
             expr
         }
       }

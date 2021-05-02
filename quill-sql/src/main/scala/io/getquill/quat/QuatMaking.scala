@@ -393,6 +393,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
       import scala.quoted._
 
       def computeCoproduct[T](using tpe: Type[T]): Option[Quat] = {
+        println(s"====== Computing Coproduct of: ${io.getquill.util.Format.TypeOf[T]} ======")
         Expr.summon[Mirror.Of[T]] match
           case Some(ev) =>
             ev match
@@ -407,10 +408,20 @@ trait QuatMakingBase(using val qctx: Quotes) {
             None
       }
 
+      def isSealedTraitOrEnum(tpe: TypeRepr) =
+        val flags = tpe.typeSymbol.flags
+        (flags.is(Flags.Trait) && flags.is(Flags.Sealed)) || flags.is(Flags.Enum)
+
       def unapply(tpeRepr: TypeRepr) =
         // If you don't widen the exception happens: "Could not match on type: Type.of[...]
         val tpe = tpeRepr.widen.asType
         tpe match {
+          // Skip optional types, they have a special case
+          case _ if (tpeRepr <:< TypeRepr.of[Option[_]]) =>
+            None
+          // Only allow coproducts that are enums or sealed traits
+          case _ if !isSealedTraitOrEnum(tpeRepr.widen) =>
+            None
           case '[t] => 
             val typedTpe = tpe.asInstanceOf[Type[t]]
             computeCoproduct[t](using typedTpe)
@@ -421,6 +432,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
       def traverseCoproduct[Types](types: Type[Types]): List[Quat] =
         types match
           case '[tpe *: tpes] =>
+            println(s"Traversing coproducts: ${io.getquill.util.Format.TypeOf[tpe]}, and ${io.getquill.util.Format.TypeOf[tpes]}")
             InferQuat.of[tpe] :: traverseCoproduct[tpes](Type.of[tpes])
           case '[EmptyTuple] =>
             Nil

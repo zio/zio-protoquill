@@ -140,21 +140,23 @@ trait ParserLibrary extends ParserFactory {
 
   // TODO add a before everything identity parser, 
   // a after everything except Inline recurse parser
-  def quotationParser(using qctx: Quotes)          = Series.single(new QuotationParser)
-  def queryParser(using qctx: Quotes)              = Series.single(new QueryParser)
-  def queryScalarsParser(using qctx: Quotes)       = Series.single(new QueryScalarsParser)
-  def patMatchParser(using qctx: Quotes)           = Series.single(new CasePatMatchParser)
-  def functionParser(using qctx: Quotes)           = Series.single(new FunctionParser)
-  def functionApplyParser(using qctx: Quotes)      = Series.single(new FunctionApplyParser)
-  def valParser(using qctx: Quotes)                = Series.single(new ValParser)
-  def blockParser(using qctx: Quotes)              = Series.single(new BlockParser)
-  def operationsParser(using qctx: Quotes)         = Series.single(new OperationsParser)
-  def orderingParser(using qctx: Quotes)           = Series.single(new OrderingParser)
-  def genericExpressionsParser(using qctx: Quotes) = Series.single(new GenericExpressionsParser)
-  def actionParser(using qctx: Quotes)             = Series.single(new ActionParser)
-  def batchActionParser(using qctx: Quotes)        = Series.single(new BatchActionParser)
-  def optionParser(using qctx: Quotes)             = Series.single(new OptionParser)
-  def valueParser(using qctx: Quotes)              = Series.single(new ValueParser)
+  def quotationParser(using qctx: Quotes)            = Series.single(new QuotationParser)
+  def queryParser(using qctx: Quotes)                = Series.single(new QueryParser)
+  def setOperationsParser(using qctx: Quotes)        = Series.single(new SetOperationsParser)
+  def queryScalarsParser(using qctx: Quotes)         = Series.single(new QueryScalarsParser)
+  def traversableOperationParser(using qctx: Quotes) = Series.single(new TraversableOperationParser)
+  def patMatchParser(using qctx: Quotes)             = Series.single(new CasePatMatchParser)
+  def functionParser(using qctx: Quotes)             = Series.single(new FunctionParser)
+  def functionApplyParser(using qctx: Quotes)        = Series.single(new FunctionApplyParser)
+  def valParser(using qctx: Quotes)                  = Series.single(new ValParser)
+  def blockParser(using qctx: Quotes)                = Series.single(new BlockParser)
+  def operationsParser(using qctx: Quotes)           = Series.single(new OperationsParser)
+  def orderingParser(using qctx: Quotes)             = Series.single(new OrderingParser)
+  def genericExpressionsParser(using qctx: Quotes)   = Series.single(new GenericExpressionsParser)
+  def actionParser(using qctx: Quotes)               = Series.single(new ActionParser)
+  def batchActionParser(using qctx: Quotes)          = Series.single(new BatchActionParser)
+  def optionParser(using qctx: Quotes)               = Series.single(new OptionParser)
+  def valueParser(using qctx: Quotes)                = Series.single(new ValueParser)
 
   // def userDefined(using qctxInput: Quotes) = Series(new Glosser[Ast] {
   //   val qctx = qctxInput
@@ -166,6 +168,8 @@ trait ParserLibrary extends ParserFactory {
     quotationParser
         .combine(queryParser)
         .combine(queryScalarsParser)
+        .combine(setOperationsParser)
+        .combine(traversableOperationParser)
         .combine(optionParser)
         .combine(orderingParser)
         .combine(actionParser)
@@ -264,6 +268,22 @@ case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implici
 
   def delegate: PartialFunction[Expr[_], Ast] = {
     case Unseal(PatMatchTerm(ast)) => ast
+  }
+}
+
+/** Same as traversableOperationParser, pre-filters that the result-type is a boolean */
+case class TraversableOperationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Boolean, Ast] with PatternMatchingValues {
+  import quotes.reflect._
+  import Parser.Implicits._
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case '{ ($col: collection.Map[k, v]).contains($body) } =>
+      MapContains(astParse(col), astParse(body))
+    case '{ ($col: collection.Set[v]).contains($body) } =>
+      SetContains(astParse(col), astParse(body))
+    case '{ ($col: collection.Seq[v]).contains($body) } =>
+      ListContains(astParse(col), astParse(body))
   }
 }
 
@@ -376,6 +396,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     case '{ ($action: Insert[t]).returning[r](${Lambda1(id, tpe, body)}) } =>
       val ident = cleanIdent(id, tpe)
       val bodyAst = reprocessReturnClause(ident, astParse(body), action, Type.of[t])
+      // // TODO Verify that the idiom supports this type of returning clause
       // idiomReturnCapability match {
       //   case ReturningMultipleFieldSupported | ReturningClauseSupported | OutputClauseSupported =>
       //   case ReturningSingleFieldSupported =>
@@ -390,7 +411,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     case '{ ($action: Insert[t]).returningGenerated[r](${Lambda1(id, tpe, body)}) } =>
       val ident = cleanIdent(id, tpe)
       val bodyAst = reprocessReturnClause(ident, astParse(body), action, Type.of[t])
-      // // Verify that the idiom supports this type of returning clause
+      // // TODO Verify that the idiom supports this type of returning clause
       // idiomReturnCapability match {
       //   case ReturningNotSupported =>
       //     c.fail(s"The 'returning' or 'returningGenerated' clauses are not supported by the ${currentIdiom.getOrElse("specified")} idiom.")
@@ -434,8 +455,8 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
         originalBody
 
   object IsActionType {
-    def unapply(term: Term): Boolean =
-      isType[Insert[_]](term) || isType[Update[_]](term) || isType[Delete[_]](term)
+    def unapply(term: TypeRepr): Boolean =
+      term <:< TypeRepr.of[Insert[_]] || term <:< TypeRepr.of[Update[_]] || term <:< TypeRepr.of[Delete[_]]
   }
 }
 
@@ -460,6 +481,9 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   import qctx.reflect.{Constant => TConstantant, _}
   import Parser.Implicits._
 
+  extension (quat: Quat)
+    def isProduct = quat.isInstanceOf[Quat.Product]
+
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
@@ -472,22 +496,29 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     case '{ ($o: Option[t]).isDefined } => 
       OptionIsDefined(astParse(o))
 
+    case '{ ($o: Option[t]).flatten($impl) } => 
+      OptionFlatten(astParse(o))
+
     case '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } => 
-      if (is[Product](o)) OptionTableMap(astParse(o), cleanIdent(id, idType), astParse(body))
-      else OptionMap(astParse(o), cleanIdent(id, idType), astParse(body))
+      val queryAst = astParse(o)
+      if (queryAst.quat.isProduct) OptionTableMap(astParse(o), cleanIdent(id, idType), astParse(body))
+      else OptionMap(queryAst, cleanIdent(id, idType), astParse(body))
 
     case '{ ($o: Option[t]).flatMap(${Lambda1(id, idType, body)}) } => 
-      if (is[Product](o)) OptionTableFlatMap(astParse(o), cleanIdent(id, idType), astParse(body))
-      else OptionMap(astParse(o), cleanIdent(id, idType), astParse(body))
+      val queryAst = astParse(o)
+      if (queryAst.quat.isProduct) OptionTableFlatMap(astParse(o), cleanIdent(id, idType), astParse(body))
+      else OptionFlatMap(queryAst, cleanIdent(id, idType), astParse(body))
 
     case '{ ($o: Option[t]).exists(${Lambda1(id, idType, body)}) } =>
-      if (is[Product](o)) OptionTableExists(astParse(o), cleanIdent(id, idType), astParse(body))
-      else OptionExists(astParse(o), cleanIdent(id, idType), astParse(body))
+      val queryAst = astParse(o)
+      if (queryAst.quat.isProduct) OptionTableExists(astParse(o), cleanIdent(id, idType), astParse(body))
+      else OptionExists(queryAst, cleanIdent(id, idType), astParse(body))
 
     case '{ ($o: Option[t]).forall(${Lambda1(id, idType, body)}) } =>
       // TODO If is embedded warn about no checking? Investigate that case
-      if (is[Product](o)) OptionTableForall(astParse(o), cleanIdent(id, idType), astParse(body))
-      else OptionForall(astParse(o), cleanIdent(id, idType), astParse(body))
+      val queryAst = astParse(o)
+      if (queryAst.quat.isProduct) OptionTableForall(astParse(o), cleanIdent(id, idType), astParse(body))
+      else OptionForall(queryAst, cleanIdent(id, idType), astParse(body))
 
     case '{ type t; ($o: Option[`t`]).getOrElse($body: `t`) } =>
       OptionGetOrElse(astParse(o), astParse(body))
@@ -550,9 +581,26 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
 
+/** Query contains, nonEmpty, etc... Pre-filters for a boolean output type */
+case class SetOperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Boolean, Ast] with PropertyAliases {
+  import qctx.reflect.{Constant => TConstant, Ident => TIdent, _}
+  import Parser.Implicits._
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).nonEmpty } =>
+      UnaryOperation(SetOperator.`nonEmpty`, astParse(q))
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).isEmpty } =>
+      UnaryOperation(SetOperator.`isEmpty`, astParse(q))
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).contains[`u`]($b) } =>
+      BinaryOperation(astParse(q), SetOperator.`contains`, astParse(b))
+  }
+
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+}
+
 /** 
  * Since QueryParser only matches things that output Query[_], make a separate parser that
- * parses things like query.sum, query.size etc... when needed
+ * parses things like query.sum, query.size etc... when needed. 
  */
 case class QueryScalarsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PropertyAliases {
   import qctx.reflect.{Constant => TConstant, Ident => TIdent, _}
@@ -591,20 +639,6 @@ case class QueryScalarsParser(root: Parser[Ast] = Parser.empty)(override implici
 // case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with Assignments {
 //   import quotes.reflect.{Constant => TConstant, _}
 //   import Parser.Implicits._
-
-//   object Stuff {
-//     trait InfixValue {
-//       def as[T]: T
-//       def asCondition: Boolean
-//       def pure: InfixValue
-//       def generic: InfixValue
-//     }
-
-//     implicit class InfixInterpolator(val sc: StringContext) {
-//       def infix(args: Any*): InfixValue = ???
-//     }
-//   }
-//   import Stuff._
 
 //   def delegate: PartialFunction[Expr[_], Ast] = {
     

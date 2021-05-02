@@ -135,6 +135,13 @@ trait Lifter(serializeQuats: Boolean) {
       case Quat.Product.Type.Abstract => '{ io.getquill.quat.Quat.Product.Type.Abstract }
   }
 
+  given liftableTraversableOperation: NiceLiftable[IterableOperation] with {
+    def lift =
+      case MapContains(a, b) => '{ MapContains(${a.expr}, ${b.expr}) }
+      case SetContains(a, b) => '{ SetContains(${a.expr}, ${b.expr}) }
+      case ListContains(a, b) => '{ ListContains(${a.expr}, ${b.expr}) }
+  }
+
   given liftableOptionOperation : NiceLiftable[OptionOperation] with {
     def lift =
       case OptionApply(a) => '{ OptionApply(${a.expr}) }
@@ -146,6 +153,8 @@ trait Lifter(serializeQuats: Boolean) {
       case OptionGetOrElse(a, b) => '{ OptionGetOrElse(${a.expr}, ${b.expr}) }
       case OptionContains(a, b) => '{ OptionContains(${a.expr}, ${b.expr}) }
       case OptionMap(a, b, c) => '{ OptionMap(${a.expr}, ${b.expr}, ${c.expr}) }
+      case OptionFlatMap(a, b, c) => '{ OptionFlatMap(${a.expr}, ${b.expr}, ${c.expr}) }
+      case OptionFlatten(a) => '{ OptionFlatten(${a.expr}) }
       case OptionTableMap(a, b, c) => '{ OptionTableMap(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionTableFlatMap(a, b, c) => '{ OptionTableFlatMap(${a.expr}, ${b.expr}, ${c.expr}) }
       case OptionExists(a, b, c) => '{ OptionExists(${a.expr}, ${b.expr}, ${c.expr}) }
@@ -207,6 +216,7 @@ trait Lifter(serializeQuats: Boolean) {
       case CaseClass(lifts) => '{ CaseClass(${lifts.expr}) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
       case v: Property => liftableProperty(v)
       case v: AIdent => liftableIdent(v)
+      case v: IterableOperation => liftableTraversableOperation(v)
       case v: OptionOperation => liftableOptionOperation(v)
   }
 
@@ -214,6 +224,9 @@ trait Lifter(serializeQuats: Boolean) {
 
   given liftOperator : NiceLiftable[Operator] with {
     def lift =
+      case SetOperator.contains => '{ SetOperator.contains }
+      case SetOperator.nonEmpty => '{ SetOperator.nonEmpty }
+      case SetOperator.isEmpty => '{ SetOperator.isEmpty }
       case NumericOperator.+ => '{ NumericOperator.+ }
       case NumericOperator.- => '{ NumericOperator.- }
       case NumericOperator.* => '{ NumericOperator.* }

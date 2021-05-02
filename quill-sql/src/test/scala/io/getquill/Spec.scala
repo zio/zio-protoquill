@@ -71,6 +71,8 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         case (ep: EagerPlanter[String, PrepareRow], idx) => ep.encoder(idx, ep.value, row)
       }
   
+  extension (ast: Ast)
+    def asFunction = ast.asInstanceOf[Function]
 
   object ShortAst {
     object Id {
