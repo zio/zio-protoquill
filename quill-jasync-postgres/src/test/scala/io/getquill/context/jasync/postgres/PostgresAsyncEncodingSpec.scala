@@ -63,21 +63,21 @@ class PostgresAsyncEncodingSpec extends EncodingSpec {
     }
   }
 
-  // // "encodes sets" in {
-  // //   val q = quote {
-  // //     (set: Query[Int]) =>
-  // //       query[EncodingTestEntity].filter(t => set.contains(t.v6))
-  // //   }
-  // //   val fut =
-  // //     for {
-  // //       _ <- testContext.run(query[EncodingTestEntity].delete)
-  // //       _ <- testContext.run(liftQuery(insertValues).foreach(e => query[EncodingTestEntity].insert(e)))
-  // //       r <- testContext.run(q(liftQuery(insertValues.map(_.v6))))
-  // //     } yield {
-  // //       r
-  // //     }
-  // //   verify(Await.result(fut, Duration.Inf).toList)
-  // // }
+  // "encodes sets" in {
+  //   inline def q = quote {
+  //     (set: Query[Int]) =>
+  //       query[EncodingTestEntity].filter(t => set.contains(t.v6))
+  //   }
+  //   val fut =
+  //     for {
+  //       _ <- testContext.run(query[EncodingTestEntity].delete)
+  //       _ <- testContext.run(liftQuery(insertValues).foreach(e => query[EncodingTestEntity].insert(e)))
+  //       r <- testContext.run(q(liftQuery(insertValues.map(_.v6))))
+  //     } yield {
+  //       r
+  //     }
+  //   verify(Await.result(fut, Duration.Inf).toList)
+  // }
 
   "returning UUID" in {
     val success = for {
