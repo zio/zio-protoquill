@@ -11,6 +11,7 @@ import scala.concurrent.duration.Duration
 import java.util.Date
 import java.util.UUID
 import io.getquill._
+import org.scalatest._
 
 class PostgresAsyncEncodingSpec extends EncodingSpec {
 
