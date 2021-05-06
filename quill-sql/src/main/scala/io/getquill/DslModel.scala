@@ -39,6 +39,11 @@ case class InjectableEagerPlanter[T, PrepareRow](inject: _ => T, encoder: Generi
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
 
+case class EagerListPlanter[T, PrepareRow](values: List[T], encoder: GenericEncoder[T, PrepareRow], uid: String) extends Planter[List[T], PrepareRow] {
+  def unquote: List[T] =
+    throw new RuntimeException("Unquotation can only be done from a quoted block.")
+}
+
 case class EagerPlanter[T, PrepareRow](value: T, encoder: GenericEncoder[T, PrepareRow], uid: String) extends Planter[T, PrepareRow] {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
