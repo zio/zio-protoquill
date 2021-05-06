@@ -200,7 +200,7 @@ object QueryExecution:
             '{ Extraction.None }
 
       // Plug in the components and execute
-      '{ $contextOperation.execute(${Expr(query)}, $prepare, $extractor, ExecutionType.Static) }
+      '{ $contextOperation.execute(${Expr(query.basicQuery)}, $prepare, $extractor, ExecutionType.Static) }
     end executeStatic
 
     /**

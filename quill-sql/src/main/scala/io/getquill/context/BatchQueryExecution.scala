@@ -100,7 +100,7 @@ object BatchQueryExecution:
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
           val insertQuotation = InsertUpdateMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts) 
           StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation) match 
-            case Some(StaticState(queryString, _, _)) =>
+            case Some(StaticState(query, _, _)) =>
               val prepares =
                 '{ $liftedList.map(elem => ${
                   val injectedLifts = injectableLifts.map(lift => lift.inject('elem))
@@ -108,7 +108,7 @@ object BatchQueryExecution:
                   val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($injectedLiftsExpr, row) }  
                   prepare
                 }) }              
-              '{ $batchContextOperation.execute(${Expr(queryString)}, $prepares.toList, ExecutionType.Static) }
+              '{ $batchContextOperation.execute(${Expr(query.basicQuery)}, $prepares.toList, ExecutionType.Static) }
           
             case None => 
               report.throwError(s"Could not create static state from the query: ${Format.Expr(insertQuotation)}")
