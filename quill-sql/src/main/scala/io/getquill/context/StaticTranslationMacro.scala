@@ -29,6 +29,62 @@ import io.getquill.QAC
 import io.getquill.NamingStrategy
 
 
+
+object Unparticular:
+  import io.getquill.ast._
+  import io.getquill.util.Interleave
+  import io.getquill.idiom.StatementInterpolator._
+  import scala.annotation.tailrec
+  import io.getquill.idiom._
+
+  /** 
+   * Query with potentially non enumerate liftQuery(...) statements where set operations
+   * that look like this: `query[Person].filter(p => liftQuery(scalars).contains(p.name))`
+   * will look like this "WHERE p.name in (?)" (this is the basicQuery). 
+   * This last "?" actually needs to be expanded
+   * into a comma separated list coming from the lifted list which is actualy Expr[List[T]]
+   * but that will be done in the Particularizee(r). The `realQuery` is a tokenized representation
+   * of the query that can be turned into what it actually will need to look like by the
+   * Particularize(r)
+   */
+  case class Query(basicQuery: String, realQuery: Statement)
+  object Query:
+    def fromStatement(stmt: Statement, liftingPlaceholder: Int => String) =
+      val (basicQuery, lifts) = token2string(stmt, liftingPlaceholder)
+      (Query(basicQuery, stmt), lifts)
+
+  def translateNaive(stmt: Statement, liftingPlaceholder: Int => String): String =
+    token2string(stmt, liftingPlaceholder)._1
+
+  private def token2string(token: Token, liftingPlaceholder: Int => String): (String, List[External]) = {
+    @tailrec
+    def apply(
+      workList:      List[Token],
+      sqlResult:     Seq[String],
+      liftingResult: Seq[External],
+      liftingSize:   Int
+    ): (String, List[External]) = workList match {
+      case Nil => sqlResult.reverse.mkString("") -> liftingResult.reverse.toList
+      case head :: tail =>
+        head match {
+          case StringToken(s2)            => apply(tail, s2 +: sqlResult, liftingResult, liftingSize)
+          case SetContainsToken(a, op, b) => apply(stmt"$a $op ($b)" +: tail, sqlResult, liftingResult, liftingSize)
+          case ScalarTagToken(tag)        => apply(tail, liftingPlaceholder(liftingSize) +: sqlResult, tag +: liftingResult, liftingSize + 1)
+          case Statement(tokens)          => apply(tokens.foldRight(tail)(_ +: _), sqlResult, liftingResult, liftingSize)
+          case _: ScalarLiftToken =>
+            throw new UnsupportedOperationException("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
+          case _: QuotationTagToken =>
+            throw new UnsupportedOperationException("Quotation Tags must be resolved before a reification.")
+        }
+    }
+
+    apply(List(token), Seq(), Seq(), 0)
+  }
+
+
+end Unparticular
+
+
 object StaticTranslationMacro {
   import io.getquill.parser._
   import scala.quoted._ // Expr.summon is actually from here
@@ -41,7 +97,7 @@ object StaticTranslationMacro {
   import io.getquill.NamingStrategy
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(String, List[External], Option[ReturnAction])] = {
+  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(Unparticular.Query, List[External], Option[ReturnAction])] =
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
@@ -62,16 +118,9 @@ object StaticTranslationMacro {
         case _ => unliftedAst
 
       val (ast, stmt) = idiom.translate(expandedAst)(using naming)
-
-      def reifyStatements(ast: Ast, stmt: Statement) =
-        ReifyStatement(
-          idiom.liftingPlaceholder,
-          idiom.emptySetContainsToken,
-          stmt,
-          forProbing = false
-        )
-      def reifyStatementsFirst(ast: Ast, stmt: Statement) =
-        reifyStatements(ast, stmt)._1
+      
+      val liftColumns =
+        (ast: Ast, stmt: Statement) => Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
 
       val returningAction = expandedAst match
         // If we have a returning action, we need to compute some additional information about how to return things.
@@ -79,16 +128,16 @@ object StaticTranslationMacro {
         // return from the query. Others compute this information from the query data directly. This information is stored
         // in the dialect and therefore is computed here.
         case r: ReturningAction =>
-          Some(io.getquill.norm.ExpandReturning.applyMap(r)(reifyStatementsFirst)(idiom, naming))
+          Some(io.getquill.norm.ExpandReturning.applyMap(r)(liftColumns)(idiom, naming))
         case _ =>
           None
 
-      val (query, externals) = reifyStatements(ast, stmt)
-      Some((query, externals, returningAction))
+      val (unparticularQuery, externals) = Unparticular.Query.fromStatement(stmt, idiom.liftingPlaceholder)
+      Some((unparticularQuery, externals, returningAction))
     } else {
       None
     }
-  }
+  end processAst
 
   // Process compile-time lifts, return `None` if that can't be done.
   // liftExprs = Lifts that were put into planters during the quotation. They are
@@ -172,19 +221,24 @@ object StaticTranslationMacro {
         (idiom, naming)                        <- idiomAndNamingStatic.toOption.errPrint("Could not parse Idiom/Naming")
         // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
         quotedExpr                             <- QuotedExpr.uprootableOpt(quoted).errPrint("Could not uproot the quote") 
-        (queryString, externals, returnAction) <- processAst[T](quotedExpr.ast, idiom, naming).errPrint("Could not process the ASt")
+        (query, externals, returnAction)       <- processAst[T](quotedExpr.ast, idiom, naming).errPrint("Could not process the ASt")
         encodedLifts                           <- processLifts(quotedExpr.lifts, externals).errPrint("Could not process the lifts")
       } yield {
-        report.info(
-          "Compile Time Query Is: " + 
-            (if (System.getProperty("quill.macro.log.pretty", "false") == "true") idiom.format(queryString)
-            else queryString)
-        )
+        if (io.getquill.util.Messages.debugEnabled)
+          report.info(
+            "Compile Time Query Is: " + 
+              (
+                if (io.getquill.util.Messages.prettyPrint) 
+                  idiom.format(query.basicQuery)
+                else 
+                  query.basicQuery
+              )
+          )
 
         // What about a missing decoder?
         // need to make sure that that kind of error happens during compile time
         // (also need to propagate the line number, talk to Li Houyi about that)
-        StaticState(queryString, encodedLifts, returnAction)
+        StaticState(query, encodedLifts, returnAction)
       }
 
     if (tryStatic.isEmpty)
