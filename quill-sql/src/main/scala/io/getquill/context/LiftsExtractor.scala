@@ -9,14 +9,19 @@ import io.getquill.LazyPlanter
 import io.getquill.Planter
 import io.getquill.ast.Ast
 
-object LiftsExtractor {
-  def withLazy[PrepareRowTemp](allLifts: List[Planter[_, _]], row: PrepareRowTemp) =
-    val lifts = allLifts.map {
-      case e: EagerPlanter[_, _] => e
-      case l: LazyPlanter[_, _] => 
-        throw new IllegalArgumentException(s"The value ${l.value} has a lazy lift which was spliced into a Dynamic Query. Lazy Lifts are only allowed for Compile-Time queries.")
-    }
-    apply(lifts, row)
+object LiftsExtractor:
+  /** For Dynamic queries, lazy lifts are not allowed. If one is encountered, fail */
+  object Dynamic:
+    def apply[PrepareRowTemp](allLifts: List[Planter[_, _]], row: PrepareRowTemp) =
+      val lifts = allLifts.map {
+        case e: EagerPlanter[_, _] => e
+        case e: EagerListPlanter[_, _] => e
+        case l: LazyPlanter[_, _] => 
+          throw new IllegalArgumentException(s"The value ${l.value} has a lazy lift which was spliced into a Dynamic Query. Lazy Lifts are only allowed for Compile-Time queries.")
+        case other =>
+          throw new IllegalStateException(s"Found an illegal lift planter ${other} during lift extraction. All injectable and lazy lifts must have been resolved at this point.")
+      }
+      LiftsExtractor.apply(lifts, row)
 
   def apply[PrepareRowTemp](lifts: List[Planter[_, _]], row: PrepareRowTemp) = {
 
@@ -57,4 +62,4 @@ object LiftsExtractor {
       }
     (values, prepare)
   }
-}
+end LiftsExtractor

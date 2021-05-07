@@ -101,10 +101,10 @@ object Particularize:
 
   object Dynamic:
     /** Convenience constructor for doing particularization from an Unparticular.Query */
-    def apply[PrepareRowTemp: Type](query: Unparticular.Query, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String): String =
+    def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String): String =
       raw(query.realQuery, lifts, liftingPlaceholder)
     
-    private[getquill] def raw[PrepareRowTemp: Type](statements: Statement, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String): String = {
+    private[getquill] def raw[PrepareRowTemp](statements: Statement, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String): String = {
       enum LiftChoice:
         case ListLift(value: EagerListPlanter[Any, PrepareRowTemp])
         case SingleLift(value: EagerPlanter[Any, PrepareRowTemp])
@@ -137,7 +137,7 @@ object Particularize:
           sqlResult: Seq[String],
           placeholderIndex: Int // I.e. the index of the '?' that is inserted in the query (that represents a lift)
         ): String = workList match {
-          case Nil => sqlResult.reverse.foldLeft(Expr(""))((concatonation, nextExpr) => '{ $concatonation + $nextExpr })
+          case Nil => sqlResult.reverse.foldLeft("")((concatonation, nextExpr) => concatonation + nextExpr)
           case head :: tail =>
             head match {
               case StringToken(s2)            => apply(tail, s2 +: sqlResult, placeholderIndex)

@@ -379,7 +379,7 @@ object RunDynamicExecution:
         case None => throw new IllegalArgumentException(s"Could not lookup value for the tag: ${tag}")
     }
     // Use the sortedLifts to prepare the method that will prepare the SQL statement
-    val prepare = (row: PrepareRow) => LiftsExtractor.withLazy[PrepareRow](sortedLifts, row)
+    val prepare = (row: PrepareRow) => LiftsExtractor.Dynamic[PrepareRow](sortedLifts, row)
 
     // Exclute the SQL Statement
     ctx.execute(queryString, prepare, extractor, ExecutionType.Dynamic)

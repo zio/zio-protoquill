@@ -44,7 +44,7 @@ sealed trait PlanterExpr[T: Type, PrepareRow: Type]:
   def uid: String
   def plant(using Quotes): Expr[Planter[T, PrepareRow]] // TODO Change to 'replant' ?
 
-case class EagerListPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[List[T]], encoder: Expr[GenericEncoder[T, PrepareRow]])(using Type[List[T]]) extends PlanterExpr[List[T], PrepareRow]:
+case class EagerListPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[List[T]], encoder: Expr[GenericEncoder[T, PrepareRow]])(using Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow]:
   def plant(using Quotes): Expr[EagerListPlanter[T, PrepareRow]] =
     '{ EagerListPlanter[T, PrepareRow]($expr, $encoder, ${Expr(uid)}) }
 
