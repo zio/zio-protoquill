@@ -155,9 +155,10 @@ object QueryExecution:
           executeDynamic[RawT](queryRawT.asExprOf[Quoted[QAC[I, RawT]]], converter, ExtractBehavior.Extract, ElaborationBehavior.Elaborate)
       }
     
-    def resolveLazyLifts(lifts: List[Expr[Planter[?, ?]]]): List[Expr[EagerPlanter[?, ?]]] =
+    def resolveLazyLifts(lifts: List[Expr[Planter[?, ?]]]): List[Expr[Planter[?, ?]]] =
       lifts.map {
         case '{ ($e: EagerPlanter[a, b]) } => e
+        case '{ ($e: EagerListPlanter[a, b]) } => e
         case '{ $l: LazyPlanter[a, b] } =>
           val tpe = l.asTerm.tpe
           tpe.asType match
@@ -168,6 +169,12 @@ object QueryExecution:
                   '{ EagerPlanter[t, ResultRow]($l.value.asInstanceOf[t], $decoder, $l.uid) }
                 case None => 
                   report.throwError("Encoder could not be summoned during lazy-lift resolution")
+        case other =>
+          report.throwError(s"""|
+            |Invalid planter found during lazy lift resolution:
+            |${io.getquill.util.Format.Expr(other)} 
+            |All injectable planters should already have been elaborated into separate components.
+            """.stripMargin)
       }
 
     def makeDecoder[RawT: Type]() = summonDecoderOrThrow[RawT]()
