@@ -35,7 +35,7 @@ class LiftProductSpec extends Spec with Inside {
     // TODO Tests for more complex cases
   }
 
-  "run function for lifted case class should work" - {
+  "run function for lifted case class should work" - { //helloooooooooooo
     "simple class" in {
       case class Person(name: String, age: Int)
       val v = Person("Joe", 123)

@@ -25,9 +25,9 @@ object LiftsExtractor:
 
   def apply[PrepareRowTemp](lifts: List[Planter[_, _]], row: PrepareRowTemp) = {
 
-    def encodeSingleElement(lift: EagerPlanter[_, _], idx: Int): (Int, PrepareRowTemp, Any) =
-      val prep = lift.asInstanceOf[EagerPlanter[Any, PrepareRowTemp]].encoder(idx, lift.value, row).asInstanceOf[PrepareRowTemp]
-      (1, prep, lift.value)
+    def encodeSingleElement(lift: EagerPlanter[_, _], idx: Int, row: PrepareRowTemp): (Int, PrepareRowTemp, Any) =
+      val prepRow = lift.asInstanceOf[EagerPlanter[Any, PrepareRowTemp]].encoder(idx, lift.value, row).asInstanceOf[PrepareRowTemp]
+      (1, prepRow, lift.value)
 
     // Since we have already expanded list-lifts into separate question marks in the Particularizer, now we
     // just need to individually encode the elements and set them on the PrepareRow
@@ -36,13 +36,19 @@ object LiftsExtractor:
     // since the number of Question marks is already expanded (i.e. from the Unparticular.Query where it's just
     // one for the IN clause "WHERE p.name IN (?)" to the particular query where it's the number of elements
     // in the list i.e. "WHERE p.name IN (?, ?)")
-    def encodeElementList(lift: EagerListPlanter[_, _], idx: Int): (Int, PrepareRowTemp, Any) =
+    def encodeElementList(lift: EagerListPlanter[_, _], idx: Int, row: PrepareRowTemp): (Int, PrepareRowTemp, Any) =
       val listPlanter = lift.asInstanceOf[EagerListPlanter[Any, PrepareRowTemp]]
-      val prep =
-        listPlanter.values.foldLeft(row)((newRow, value) => 
-          listPlanter.encoder(idx, value, newRow).asInstanceOf[PrepareRowTemp]
-        )
-      (listPlanter.values.length, prep, lift.values)
+      val prepRow =
+        listPlanter.values.zipWithIndex.foldLeft(row) { case (newRow, (value, listIndex)) => 
+          // If we have query[Person].filter(p => p.name == lift("Joe") && liftQuery(List(33,44)).contains(p.age))
+          // We will be on index 1 (since index of the 1st lift "Joe" is 0) so then we encoder 33 at index 2
+          // and 44 at index 3. Everything is incremented by 1 since we had a lift before the liftQuery.
+          // Then in the next line when we return we will return 2 since the liftQuery list has two values and
+          // idx + increment below will bring it up to 3 when we are done with all the lifts. If there is another
+          // lift afterward, that will be the index at which it will be decoded.
+          listPlanter.encoder(idx + listIndex, value, newRow).asInstanceOf[PrepareRowTemp]
+        }
+      (listPlanter.values.length, prepRow, lift.values)
 
     // start with (0, List(), PrepareRow) and List( a: Planter(encoder("foo")), b: Planter(encoder("bar")) )
     // You get: a.encoder(0, a.value [i.e. "foo"], row) -> (0, "foo" :: Nil, row)
@@ -53,12 +59,12 @@ object LiftsExtractor:
         case ((idx, values, row), lift) =>
           val (increment, newRow, value) =
             lift match
-              case eager: EagerPlanter[_, _] => encodeSingleElement(eager, idx)
-              case eagerList: EagerListPlanter[_, _] => encodeElementList(eagerList, idx)
+              case eager: EagerPlanter[_, _] => encodeSingleElement(eager, idx, row)
+              case eagerList: EagerListPlanter[_, _] => encodeElementList(eagerList, idx, row)
               case _ => 
                 throw new IllegalArgumentException(s"Lifts must be extracted from EagerLift or EagerList Lift but ${lift} found")
             
-          (idx + 1, value :: values, newRow)
+          (idx + increment, value :: values, newRow)
       }
     (values, prepare)
   }

@@ -169,19 +169,27 @@ object MiniQuillTest {
     // hellooooooooooooo
 
     liftSetExamples()
+    liftSetExamplesDynamic()
   }
 
   def liftSetExamples() = {
+    // case class Person(name: String, age: Int)
+    // val names = List("Joe", "Jack")
+    // inline def q = quote {
+    //   query[Person].filter(p => liftQuery(names).contains(p.name))
+    // }
+
+    // println(run(q))
+  }
+
+  def liftSetExamplesDynamic() = {
     case class Person(name: String, age: Int)
     val names = List("Joe", "Jack")
-    inline def q = quote {
+    val q = quote {
       query[Person].filter(p => liftQuery(names).contains(p.name))
     }
-    // TODO Test the expected expression and AST of this
-    println(io.getquill.util.Messages.qprint(q))
 
-    val r = run(q)
-    println(r)
+    println(run(q))
   }
 
   // def insertExamples() = {
