@@ -141,7 +141,25 @@ object Unlifter {
       case '{ Constant(${Expr(b: String)}: String, $quat) } => 
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Char)}: Char, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
       case '{ Constant(${Expr(b: Int)}: Int, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Long)}: Long, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Short)}: Short, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Float)}: Float, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Double)}: Double, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Byte)}: Byte, $quat) } => 
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
       case '{ Entity.apply(${Expr(b: String)}, $elems, $quat)  } =>
