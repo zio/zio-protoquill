@@ -244,6 +244,7 @@ trait Lifter(serializeQuats: Boolean) {
       case StringOperator.toUpperCase => '{ StringOperator.toUpperCase }
       case StringOperator.toLowerCase => '{ StringOperator.toLowerCase }
       case StringOperator.toLong => '{ StringOperator.toLong }
+      case StringOperator.toInt => '{ StringOperator.toInt }
       case StringOperator.startsWith => '{ StringOperator.startsWith }
       case StringOperator.split => '{ StringOperator.split }
       case _: ee.type => '{ EqualityOperator.== }    // if you don't do it this way, complains about 'stable identifier error'

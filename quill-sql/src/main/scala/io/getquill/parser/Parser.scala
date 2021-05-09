@@ -741,7 +741,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
     // Unary minus symbol i.e. val num: Int = 4; quote { -lift(num) }.
     // This is done term-level or we would have to do it for every numeric type
-    case Unseal(Select(num, "unary_-")) if isNumeric(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "unary_-")) if isNumeric(num.tpe) => UnaryOperation(NumericOperator.-, astParse(num.asExpr))
 
     // In the future a casting system should be implemented to handle these cases.
     // Until then, let the SQL dialect take care of the auto-conversion. 
@@ -769,6 +769,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     case '{ ($str:String).toUpperCase } => UnaryOperation(StringOperator.toUpperCase, astParse(str))
     case '{ ($str:String).toLowerCase } => UnaryOperation(StringOperator.toLowerCase, astParse(str))
     case '{ ($str:String).toLong } => UnaryOperation(StringOperator.toLong, astParse(str))
+    case '{ ($str:String).toInt } => UnaryOperation(StringOperator.toInt, astParse(str))
     case '{ ($left:String).startsWith($right) } => BinaryOperation(astParse(left), StringOperator.startsWith, astParse(right))
     case '{ ($left:String).split($right:String) } => BinaryOperation(astParse(left), StringOperator.split, astParse(right))
 

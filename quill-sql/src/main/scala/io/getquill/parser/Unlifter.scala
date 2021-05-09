@@ -206,12 +206,14 @@ object Unlifter {
       case '{ StringOperator.toUpperCase } =>  StringOperator.toUpperCase
       case '{ StringOperator.toLowerCase } =>  StringOperator.toLowerCase
       case '{ StringOperator.toLong } =>  StringOperator.toLong
+      case '{ StringOperator.toInt } =>  StringOperator.toInt
       case '{ StringOperator.startsWith } =>  StringOperator.startsWith
       case '{ StringOperator.split } =>  StringOperator.split
       case '{ EqualityOperator.== } =>  EqualityOperator.==
       case '{ EqualityOperator.!= } =>  EqualityOperator.!=
       case '{ BooleanOperator.|| } =>  BooleanOperator.||
       case '{ BooleanOperator.&& } =>  BooleanOperator.&&
+      case '{ BooleanOperator.! } =>  BooleanOperator.!
   }
 
   given quatProductTypeUnliftable: NiceUnliftable[Quat.Product.Type] with {

@@ -7,8 +7,6 @@ import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.quat.Quat
 import io.getquill._
 
-class ActionTest extends Spec with TestEntities {
+class FunctionTest extends Spec with TestEntities {
   
 }
-
-
