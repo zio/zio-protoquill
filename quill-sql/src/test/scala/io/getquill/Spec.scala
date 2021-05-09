@@ -92,4 +92,12 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   }
 
   def await[T](f: Future[T]): T = Await.result(f, Duration.Inf)
+
+  extension (quat: Quat) {
+    def productOrFail() =
+      quat match {
+        case p: Quat.Product => p
+        case _               => throw new IllegalArgumentException(s"The quat ${quat} is expected to be a product but is not")
+      }
+  }
 }

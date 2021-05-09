@@ -559,11 +559,13 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       ConcatMap(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
     case '{ ($a: Query[t]).union($b) } => Union(astParse(a), astParse(b))
+    case '{ ($a: Query[t]).unionAll($b) } => UnionAll(astParse(a), astParse(b))
+    case '{ ($a: Query[t]).++($b) } => UnionAll(astParse(a), astParse(b))
 
     case '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
+    case '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(LeftJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
+    case '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(RightJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
+    case '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(FullJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
 
     case '{ type t1; ($q1: Query[`t1`]).join[`t1`](${Lambda1(ident1, tpe, on)}) } => 
       FlatJoin(InnerJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
@@ -573,9 +575,38 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case '{ type t; ($q: Query[`t`]).take($n: Int) } => Take(astParse(q),astParse(n))
     case '{ type t; ($q: Query[`t`]).drop($n: Int) } => Drop(astParse(q),astParse(n))
 
-    // TODO need to test if this is sufficient for implicit ordering cases or if need to specify the other variation in parser as well
     case '{ type r; ($q: Query[t]).sortBy[`r`](${Lambda1(ident1, tpe, body)})($ord: Ord[`r`]) } =>
       SortBy(astParse(q), cleanIdent(ident1, tpe), astParse(body), astParse(ord))
+
+    case '{ type r; ($q: Query[t]).groupBy[`r`](${Lambda1(ident1, tpe, body)}) } =>
+      GroupBy(astParse(q), cleanIdent(ident1, tpe), astParse(body))
+
+    case '{ ($q: Query[t]).distinct } =>
+      astParse(q) match
+        case fj: FlatJoin => throw new IllegalArgumentException(
+          """
+            |The .distinct cannot be placed after a join clause in a for-comprehension. Put it before.
+            |For example. Change:
+            |  for { a <- query[A]; b <- query[B].join(...).distinct } to:
+            |  for { a <- query[A]; b <- query[B].distinct.join(...) }
+            |""".stripMargin
+        )
+        case other =>
+          Distinct(other)
+
+    case '{ ($q: Query[t]).nested } =>
+      astParse(q) match
+        case fj: FlatJoin => throw new IllegalArgumentException(
+          """
+            |The .nested cannot be placed after a join clause in a for-comprehension. Put it before.
+            |For example. Change:
+            |  for { a <- query[A]; b <- query[B].join(...).nested } to:
+            |  for { a <- query[A]; b <- query[B].nested.join(...) }
+            |""".stripMargin
+        )
+        case other =>
+          io.getquill.ast.Nested(other)
+      
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)

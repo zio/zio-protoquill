@@ -194,13 +194,17 @@ trait Lifter(serializeQuats: Boolean) {
       case Map(query: Ast, alias: AIdent, body: Ast) => '{ Map(${query.expr}, ${alias.expr}, ${body.expr})  }
       case FlatMap(query: Ast, alias: AIdent, body: Ast) => '{ FlatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
       case Filter(query: Ast, alias: AIdent, body: Ast) => '{ Filter(${query.expr}, ${alias.expr}, ${body.expr})  }
+      case GroupBy(query: Ast, alias: AIdent, body: Ast) => '{ GroupBy(${query.expr}, ${alias.expr}, ${body.expr})  }
       case SortBy(query: Ast, alias: AIdent, criterias: Ast, ordering: Ast) => '{ SortBy(${query.expr}, ${alias.expr}, ${criterias.expr}, ${ordering.expr})  }
+      case Distinct(a: Ast) => '{ Distinct(${a.expr}) }
+      case Nested(a: Ast) => '{ Nested(${a.expr}) }
       case Foreach(query: Ast, alias: AIdent, body: Ast) => '{ Foreach(${query.expr}, ${alias.expr}, ${body.expr})  }
       case UnaryOperation(operator: UnaryOperator, a: Ast) => '{ UnaryOperation(${liftOperator(operator).asInstanceOf[Expr[UnaryOperator]]}, ${a.expr})  }
       case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${a.expr}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${b.expr})  }
       case ScalarTag(uid: String) => '{ScalarTag(${uid.expr})}
       case QuotationTag(uid: String) => '{QuotationTag(${uid.expr})}
       case Union(a, b) => '{ Union(${a.expr}, ${b.expr}) }
+      case UnionAll(a, b) => '{ UnionAll(${a.expr}, ${b.expr}) }
       case Insert(query: Ast, assignments: List[Assignment]) => '{ Insert(${query.expr}, ${assignments.expr}) }
       case Update(query: Ast, assignments: List[Assignment]) => '{ Update(${query.expr}, ${assignments.expr}) }
       case Delete(query: Ast) => '{ Delete(${query.expr}) }
