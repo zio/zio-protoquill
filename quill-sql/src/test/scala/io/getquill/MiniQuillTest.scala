@@ -168,29 +168,36 @@ object MiniQuillTest {
 
     // hellooooooooooooo
 
-    liftSetExamples()
-    liftSetExamplesDynamic()
+    infixExample()
   }
 
-  def liftSetExamples() = {
-    // case class Person(name: String, age: Int)
-    // val names = List("Joe", "Jack")
-    // inline def q = quote {
-    //   query[Person].filter(p => liftQuery(names).contains(p.name))
-    // }
-
-    // println(run(q))
-  }
-
-  def liftSetExamplesDynamic() = {
+  def infixExample() = {
     case class Person(name: String, age: Int)
-    val names = List("Joe", "Jack")
-    val q = quote {
-      query[Person].filter(p => liftQuery(names).contains(p.name))
+    inline def q = quote {
+      query[Person].filter(p => infix"fun(${p.name})".pure.as[Boolean])
     }
-
     println(run(q))
   }
+
+  // def liftSetExamples() = {
+  //   case class Person(name: String, age: Int)
+  //   val names = List("Joe", "Jack")
+  //   inline def q = quote {
+  //     query[Person].filter(p => liftQuery(names).contains(p.name))
+  //   }
+
+  //   println(run(q))
+  // }
+
+  // def liftSetExamplesDynamic() = {
+  //   case class Person(name: String, age: Int)
+  //   val names = List("Joe", "Jack")
+  //   val q = quote {
+  //     query[Person].filter(p => liftQuery(names).contains(p.name))
+  //   }
+
+  //   println(run(q))
+  // }
 
   // def insertExamples() = {
   //   case class Person(name: String, age: Int)

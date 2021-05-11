@@ -43,12 +43,25 @@ type SealedParser[R] = (quoted.Expr[_] => R)
 object Parser {
   val empty: Parser[Ast] = PartialFunction.empty[Expr[_], Ast]
 
-  //Error check
-  def throwExpressionError(expr: Expr[_], astClass: Class[_])(using Quotes) =
+  enum ThrowInfo:
+    case AstClass(astClass: Class[_])
+    case Message(msg: String)
+
+  def throwExpressionError(expr: Expr[_], astClass: Class[_])(using Quotes): Nothing =
+    throwExpressionError(expr, ThrowInfo.AstClass(astClass))
+
+  def throwExpressionError(expr: Expr[_], msg: String)(using Quotes): Nothing =
+    throwExpressionError(expr, ThrowInfo.Message(msg))
+  
+  def throwExpressionError(expr: Expr[_], throwInfo: ThrowInfo)(using Quotes): Nothing =
     import quotes.reflect._
     val term = expr.asTerm
+    val message = 
+      throwInfo match
+        case ThrowInfo.Message(msg) => msg
+        case ThrowInfo.AstClass(astClass) => s"Tree cannot be parsed to '${astClass.getSimpleName}'"
     report.throwError(s"""|
-      |s"==== Tree cannot be parsed to '${astClass.getSimpleName}' ===
+      |s"==== ${message} ====
       |  ${Format(Printer.TreeShortCode.show(term)) /* Or Maybe just expr? */}
       |==== Extractors ===
       |  ${Format(Printer.TreeStructure.show(term))}
@@ -142,6 +155,7 @@ trait ParserLibrary extends ParserFactory {
   // a after everything except Inline recurse parser
   def quotationParser(using qctx: Quotes)            = Series.single(new QuotationParser)
   def queryParser(using qctx: Quotes)                = Series.single(new QueryParser)
+  def infixParser(using qctx: Quotes)                = Series.single(new InfixParser)
   def setOperationsParser(using qctx: Quotes)        = Series.single(new SetOperationsParser)
   def queryScalarsParser(using qctx: Quotes)         = Series.single(new QueryScalarsParser)
   def traversableOperationParser(using qctx: Quotes) = Series.single(new TraversableOperationParser)
@@ -168,6 +182,7 @@ trait ParserLibrary extends ParserFactory {
     quotationParser
         .combine(queryParser)
         .combine(queryScalarsParser)
+        .combine(infixParser)
         .combine(setOperationsParser)
         .combine(traversableOperationParser)
         .combine(optionParser)
@@ -675,19 +690,36 @@ case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val q
   import Parser.Implicits._
   import io.getquill.dsl.InfixDsl
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
-    case InfixComponents(parts, params) =>
-      report.throwError("=========== Got out of Infix Parser ===========")
-  }
+  def delegate: PartialFunction[Expr[_], Ast] =
+    case '{ ($i: InfixValue).pure.asCondition } => genericInfix(i)(true, Quat.BooleanExpression)
+    case '{ ($i: InfixValue).asCondition } => genericInfix(i)(false, Quat.BooleanExpression)
+    case '{ ($i: InfixValue).generic.pure.as[t] } => genericInfix(i)(true, Quat.Generic)
+    case '{ ($i: InfixValue).pure.as[t] } => genericInfix(i)(true, InferQuat.of[t])
+    case '{ ($i: InfixValue).as[t] } => genericInfix(i)(false, InferQuat.of[t])
 
-  object InfixComponents {
-    def unapply(expr: Expr[_]): Option[(Expr[String], Expr[Any])] = expr match
-      case '{ ($dsl: InfixDsl).InfixInterpolator(StringContext.apply($parts)).infix($params) } =>
+  def genericInfix(i: Expr[_])(isPure: Boolean, quat: Quat) =
+    val (parts, paramsExprs) = InfixComponents.unapply(i).getOrElse { Parser.throwExpressionError(i, classOf[Infix]) }
+    Infix(parts.toList, paramsExprs.map(astParse(_)).toList, isPure, quat)
+
+
+  object StringContextExpr:
+    def staticOrFail(expr: Expr[String]) =
+      expr match
+        case Expr(str: String) => str
+        case _ => Parser.throwExpressionError(expr, "All String-parts of a 'infix' statement must be static strings")
+    def unapply(expr: Expr[_]) =
+      expr match
+        case '{ StringContext.apply(${Varargs(parts)}: _*) } =>
+          Some(parts.map(staticOrFail(_)))
+        case _ => None
+
+  object InfixComponents:
+    def unapply(expr: Expr[_]): Option[(Seq[String], Seq[Expr[Any]])] = expr match
+      case '{ InfixInterpolator($partsExpr).infix(${Varargs(params)}: _*) } =>
+        val parts = StringContextExpr.unapply(partsExpr).getOrElse { Parser.throwExpressionError(partsExpr, "Cannot parse a valid StringContext") }
         Some((parts, params))
-        report.throwError("=========== Got to Infix Parser ===========")
-      case _ => None
-
-  }
+      case _ => 
+        None
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
