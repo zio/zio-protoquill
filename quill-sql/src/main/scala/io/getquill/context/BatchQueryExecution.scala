@@ -42,9 +42,10 @@ import io.getquill.context.LiftMacro
 import io.getquill.parser.Unlifter
 import io.getquill._
 import io.getquill.QAC
+import io.getquill.parser.Lifter
 
 trait BatchContextOperation[T, A <: Action[_], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
-  def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], executionType: ExecutionType): Res
+  def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], executionInfo: ExecutionInfo): Res
 }
 
 object BatchQueryExecution:
@@ -100,7 +101,7 @@ object BatchQueryExecution:
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
           val insertQuotation = InsertUpdateMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts) 
           StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation) match 
-            case Some(StaticState(query, _, _)) =>
+            case Some(state @ StaticState(query, _, _)) =>
               val prepares =
                 '{ $liftedList.map(elem => ${
                   val injectedLifts = injectableLifts.map(lift => lift.inject('elem))
@@ -108,7 +109,7 @@ object BatchQueryExecution:
                   val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($injectedLiftsExpr, row) }  
                   prepare
                 }) }              
-              '{ $batchContextOperation.execute(${Expr(query.basicQuery)}, $prepares.toList, ExecutionType.Static) }
+              '{ $batchContextOperation.execute(${Expr(query.basicQuery)}, $prepares.toList, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)})) }
           
             case None => 
               report.throwError(s"Could not create static state from the query: ${Format.Expr(insertQuotation)}")

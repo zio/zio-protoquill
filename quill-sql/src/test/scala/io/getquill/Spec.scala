@@ -29,7 +29,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
               r.data.toList.map(_._2)
           }
         }, 
-        m.executionType
+        m.info.executionType
       )
 
   extension [T](m: MirrorContext[_, _]#ActionMirror)
@@ -40,7 +40,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
           case r: io.getquill.context.mirror.Row => 
             r.data.toList.map(_._2)
         }, 
-        m.executionType
+        m.info.executionType
       )
 
   extension [T](m: MirrorContext[_, _]#QueryMirror[_])
@@ -51,7 +51,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
           case r: io.getquill.context.mirror.Row => 
             r.data.toList.map(_._2)
         }, 
-        m.executionType
+        m.info.executionType
       )
 
   extension [T, D <: Idiom, N <: NamingStrategy](ctx: MirrorContext[D, N])
@@ -62,7 +62,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
           case r: io.getquill.context.mirror.Row => 
             r.data.toList.map(_._2)
         }, 
-        r.executionType
+        r.info.executionType
       )
 
   extension [T, PrepareRow](q: Quoted[T])

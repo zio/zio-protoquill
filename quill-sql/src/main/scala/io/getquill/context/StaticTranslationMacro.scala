@@ -40,7 +40,7 @@ object StaticTranslationMacro {
   import io.getquill.NamingStrategy
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(Unparticular.Query, List[External], Option[ReturnAction])] =
+  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
@@ -76,7 +76,7 @@ object StaticTranslationMacro {
           None
 
       val (unparticularQuery, externals) = Unparticular.Query.fromStatement(stmt, idiom.liftingPlaceholder)
-      Some((unparticularQuery, externals, returningAction))
+      Some((unparticularQuery, externals, returningAction, expandedAst))
     } else {
       None
     }
@@ -164,7 +164,7 @@ object StaticTranslationMacro {
         (idiom, naming)                        <- idiomAndNamingStatic.toOption.errPrint("Could not parse Idiom/Naming")
         // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
         quotedExpr                             <- QuotedExpr.uprootableOpt(quoted).errPrint("Could not uproot the quote") 
-        (query, externals, returnAction)       <- processAst[T](quotedExpr.ast, idiom, naming).errPrint("Could not process the ASt")
+        (query, externals, returnAction, ast)  <- processAst[T](quotedExpr.ast, idiom, naming).errPrint("Could not process the ASt")
         encodedLifts                           <- processLifts(quotedExpr.lifts, externals).errPrint("Could not process the lifts")
       } yield {
         if (io.getquill.util.Messages.debugEnabled)
@@ -177,7 +177,7 @@ object StaticTranslationMacro {
                   query.basicQuery
               )
           )
-        StaticState(query, encodedLifts, returnAction)
+        StaticState(query, encodedLifts, returnAction)(ast)
       }
 
     if (tryStatic.isEmpty)

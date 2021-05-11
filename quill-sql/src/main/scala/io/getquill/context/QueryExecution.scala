@@ -38,9 +38,10 @@ import io.getquill.NamingStrategy
 import io.getquill.metaprog.Extractors
 import io.getquill.BatchAction
 import io.getquill._
+import io.getquill.parser.Lifter
 
 trait ContextOperation[I, T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
-  def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: Extraction[ResultRow, T], executionType: ExecutionType): Res
+  def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: Extraction[ResultRow, T], executionInfo: ExecutionInfo): Res
 }
 
 /**
@@ -194,9 +195,8 @@ object QueryExecution:
      * Execute static query via ctx.executeQuery method given we have the ability to do so 
      * i.e. have a staticState 
      */
-    def executeStatic[RawT: Type](staticState: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior): Expr[Res] =    
-      val StaticState(query, allLifts, returnActionOpt) = staticState
-      val lifts = resolveLazyLifts(allLifts)
+    def executeStatic[RawT: Type](state: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior): Expr[Res] =
+      val lifts = resolveLazyLifts(state.lifts)
       
       // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
       // and the extractor to read out the results (e.g. ResultSet)
@@ -209,14 +209,14 @@ object QueryExecution:
             '{ Extraction.Simple($extractor) }
           case ExtractBehavior.ExtractWithReturnAction =>
             val extractor = makeExtractorFrom[RawT](converter)
-            val returnAction = returnActionOpt.getOrElse { throw new IllegalArgumentException(s"Return action could not be found in the Query: ${query}") }
+            val returnAction = state.returnAction.getOrElse { throw new IllegalArgumentException(s"Return action could not be found in the Query: ${query}") }
             '{ Extraction.Returning($extractor, ${io.getquill.parser.Lifter.returnAction(returnAction)}) }
           case ExtractBehavior.Skip =>    
             '{ Extraction.None }
 
-      val particularQuery = Particularize.Static(query, lifts, '{ $contextOperation.idiom.liftingPlaceholder })
+      val particularQuery = Particularize.Static(state.query, lifts, '{ $contextOperation.idiom.liftingPlaceholder })
       // Plug in the components and execute
-      '{ $contextOperation.execute($particularQuery, $prepare, $extractor, ExecutionType.Static) }
+      '{ $contextOperation.execute($particularQuery, $prepare, $extractor, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)})) }
     end executeStatic
 
     /**
@@ -397,7 +397,7 @@ object RunDynamicExecution:
     val prepare = (row: PrepareRow) => LiftsExtractor.Dynamic[PrepareRow](sortedLifts, row)
 
     // Exclute the SQL Statement
-    ctx.execute(queryString, prepare, extractor, ExecutionType.Dynamic)
+    ctx.execute(queryString, prepare, extractor, ExecutionInfo(ExecutionType.Dynamic, outputAst))
   }
 
 end RunDynamicExecution

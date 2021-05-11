@@ -102,7 +102,7 @@ class LiftProductSpec extends Spec with Inside {
         List(("_1","foo"), ("_2",Some(("_1",1))), ("_3",Some(("_1",2))), ("_4",Some(("_1",3))))
       result.string mustEqual 
         "INSERT INTO Entity (a,i,one,two) VALUES (?, ?, ?, ?)"
-      result.executionType mustEqual
+      result.info.executionType mustEqual
         ExecutionType.Static
     }
 
