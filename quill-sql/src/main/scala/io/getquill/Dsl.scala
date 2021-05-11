@@ -25,6 +25,7 @@ import io.getquill.context.QuoteMacro
 import io.getquill.context.UnquoteMacro
 import io.getquill.context.LiftMacro
 import io.getquill._
+import io.getquill.dsl.InfixDsl
 
 // trait Quoter {
 //   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???
@@ -47,7 +48,7 @@ import io.getquill._
 
 object Dsl extends Dsl[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
-trait Dsl[Parser <: ParserFactory] extends QuoteDsl[Parser] with QueryDsl[Parser] with MetaDsl[Parser]
+trait Dsl[Parser <: ParserFactory] extends QuoteDsl[Parser] with QueryDsl[Parser] with MetaDsl[Parser] with InfixDsl
 
 trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
 

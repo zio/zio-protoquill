@@ -669,23 +669,28 @@ case class QueryScalarsParser(root: Parser[Ast] = Parser.empty)(override implici
 
 
 
-// case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with Assignments {
-//   import quotes.reflect.{Constant => TConstant, _}
-//   import Parser.Implicits._
 
-//   def delegate: PartialFunction[Expr[_], Ast] = {
-    
-//   }
+case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with Assignments {
+  import quotes.reflect.{Constant => TConstant, _}
+  import Parser.Implicits._
+  import io.getquill.dsl.InfixDsl
 
-//   object InfixComponents {
-//     def unapply(expr: Expr[_]) = expr match
-//       case '{ InfixInterpolator(StringContext.apply($parts)).infix($params) } =>
-//         report.throwError("=========== Got to Infix Parser ===========")
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case InfixComponents(parts, params) =>
+      report.throwError("=========== Got out of Infix Parser ===========")
+  }
 
-//   }
+  object InfixComponents {
+    def unapply(expr: Expr[_]): Option[(Expr[String], Expr[Any])] = expr match
+      case '{ ($dsl: InfixDsl).InfixInterpolator(StringContext.apply($parts)).infix($params) } =>
+        Some((parts, params))
+        report.throwError("=========== Got to Infix Parser ===========")
+      case _ => None
 
-//   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
-// }
+  }
+
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+}
 
 case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with ComparisonTechniques {
   import quotes.reflect._
