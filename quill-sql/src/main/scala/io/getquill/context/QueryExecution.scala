@@ -108,8 +108,16 @@ object QueryExecution:
       QAC match
         case '[QAC[Nothing, T]] => applyQuery(quotedOp)
         case '[QAC[I, Nothing]] => applyAction(quotedOp)
-        case '[QAC[I, T]] => applyActionReturning(quotedOp) // ReturningAction is also a subtype of Action so check it before Action
-        case _ => report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.Type(QAC)}")
+        case '[QAC[I, T]] => 
+          if (!(TypeRepr.of[T] =:= TypeRepr.of[Any]))
+            applyActionReturning(quotedOp) // ReturningAction is also a subtype of Action so check it before Action
+          else
+            // In certain situations (i.e. if a user does infix"stuff".as[Actoin[Stuff]] something will be directly specified
+            // as an Action[T] without there being a `& QAC[T, Nothing]` as part of the type. In that case, the `ModificationEntity`
+            // will just be `Any`. We need to manually detect that case since it requires no return type)
+            applyAction(quotedOp)
+        case _ => 
+          report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.Type(QAC)}")
 
         // Simple ID function that we use in a couple of places
     private val idConvert = '{ (t:T) => t }
@@ -201,7 +209,7 @@ object QueryExecution:
             '{ Extraction.Simple($extractor) }
           case ExtractBehavior.ExtractWithReturnAction =>
             val extractor = makeExtractorFrom[RawT](converter)
-            val returnAction = returnActionOpt.getOrElse { throw new IllegalArgumentException(s"Return action could not be found from the Query: ${query}") }
+            val returnAction = returnActionOpt.getOrElse { throw new IllegalArgumentException(s"Return action could not be found in the Query: ${query}") }
             '{ Extraction.Returning($extractor, ${io.getquill.parser.Lifter.returnAction(returnAction)}) }
           case ExtractBehavior.Skip =>    
             '{ Extraction.None }

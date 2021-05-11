@@ -38,17 +38,20 @@ class InfixSpec extends Spec {
       testContext.run(q).string mustEqual
         "SELECT a.i FROM (SELECT 1 i FROM DUAL) AS a"
     }
-    // Not sure why this is not working as expected
-    // "full infix query" in {
-    //   testContext.run(infix"SELECT * FROM TestEntity".as[Query[TestEntity]]).string mustEqual
-    //     "SELECT x.s, x.i, x.l, x.o, x.b FROM (SELECT * FROM TestEntity) AS x"
-    // }
-    // Difficult because QAC types don't line up. Need to look into it
-    // "full infix action" in {
-    //   testContext.run(infix"DELETE FROM TestEntity".as[Action[TestEntity]]).string mustEqual
-    //     "DELETE FROM TestEntity"
+    "full infix query" in {
+      testContext.run(infix"SELECT * FROM TestEntity".as[Query[TestEntity]]).string mustEqual
+        "SELECT x.s, x.i, x.l, x.o, x.b FROM (SELECT * FROM TestEntity) AS x"
+    }
+    // Not supported yet by regular quill either
+    // "full infix action returning" in {
+    //   testContext.run(infix"INSERT INTO TestEntity (foo) VALUES (bar) RETURNING baz".as[ActionReturning[String, TestEntity]]).string mustEqual
+    //     "INSERT INTO TestEntity (foo) VALUES (bar) RETURNING baz"
     // }
     "full infix action" in {
+      testContext.run(infix"DELETE FROM TestEntity".as[Action[TestEntity]]).string mustEqual
+        "DELETE FROM TestEntity"
+    }
+    "full infix action - delete" in {
       testContext.run(infix"DELETE FROM TestEntity".as[Delete[TestEntity]]).string mustEqual
         "DELETE FROM TestEntity"
     }
