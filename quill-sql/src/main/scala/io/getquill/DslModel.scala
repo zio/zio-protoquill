@@ -34,6 +34,18 @@ sealed trait Planter[T, PrepareRow] extends Unquoteable {
   def uid: String
 }
 
+private[getquill] trait InfixValue {
+  def as[T]: T
+  def asCondition: Boolean
+  def pure: InfixValue
+  private[getquill] def generic: InfixValue
+}
+
+implicit class InfixInterpolator(val sc: StringContext) {
+  //@compileTimeOnly(NonQuotedException.message)
+  def infix(args: Any*): InfixValue = NonQuotedException()
+}
+
 case class InjectableEagerPlanter[T, PrepareRow](inject: _ => T, encoder: GenericEncoder[T, PrepareRow], uid: String) extends Planter[T, PrepareRow] {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")

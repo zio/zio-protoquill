@@ -184,7 +184,7 @@ object QuotedExpr {
       val tmc = new ExtractorsBundle
       import tmc._
 
-      Uninline(expr) match {
+      expr match {
         /* No runtime lifts allowed for inline quotes so quotationPouches.length must be 0 */
         case exprr @  '{ Quoted.apply[qt]($ast, $v, Nil) } =>  //List.apply[ttt](${GenericSeq(args)}: _*) if (args.length == 0)
           Some(QuotedExpr(ast, v, '{ Nil }))
@@ -200,7 +200,7 @@ object QuotedExpr {
     def unapply(expr: Expr[Any])(using Quotes): Option[(QuotedExpr, List[PlanterExpr[_, _]])] =
       val tm = new ExtractorsBundle
       import tm._
-      Uninline(expr) match {
+      expr match {
         case QuotedExpr.Uprootable(quotedExpr @ QuotedExpr(ast, PlanterExpr.UprootableList(lifts), _)) => 
           Some((quotedExpr, lifts))
         case _ => 
@@ -266,7 +266,7 @@ object QuotationLotExpr {
       import quotes.reflect._
       val tm = new ExtractorsBundle
       import tm._
-      Uninline(UntypeExpr(expr)) match {
+      UntypeExpr(expr) match {
         // Extract the entity, the uid and any other expressions the qutation bin may have 
         // (e.g. the extractor if the QuotationLot is a QueryMeta). That `Uninline`
         // is needed because in some cases, the `underlyingArgument` call (that gets called somewhere before here)
@@ -331,7 +331,7 @@ object QuotationLotExpr {
     import quotes.reflect._
     val tmc = new ExtractorsBundle
     import tmc._
-    Uninline(expr) match {
+    expr match {
       case vase @ `QuotationLot.apply`(quoted @ QuotedExpr.Uprootable(ast, PlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
         Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
 

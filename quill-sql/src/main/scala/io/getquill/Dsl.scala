@@ -48,7 +48,7 @@ import io.getquill.dsl.InfixDsl
 
 object Dsl extends Dsl[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
-trait Dsl[Parser <: ParserFactory] extends QuoteDsl[Parser] with QueryDsl[Parser] with MetaDsl[Parser] with InfixDsl
+trait Dsl[Parser <: ParserFactory] extends QuoteDsl[Parser] with QueryDsl[Parser] with MetaDsl[Parser]
 
 trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
 

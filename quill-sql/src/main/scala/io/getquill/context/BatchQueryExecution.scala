@@ -62,7 +62,7 @@ object BatchQueryExecution:
     import quotes.reflect._
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
     def apply(): Expr[Res] = 
-      Uninline(UntypeExpr(quoted)) match
+      UntypeExpr(quoted) match
         case QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), planters) =>
           // isolate the list that went into the liftQuery i.e. the liftQuery(liftedList)
           val liftedList =
