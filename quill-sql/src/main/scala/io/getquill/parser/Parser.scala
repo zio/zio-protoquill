@@ -371,12 +371,14 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 
   def del: PartialFunction[Expr[_], Ast] = {
     case '{ type t; ($query: EntityQueryModel[`t`]).insert(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-      val insertAssignments = first.asTerm +: others.map(_.asTerm)
-      val assignments = insertAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
+      val insertAssignments = (first.asTerm +: others.map(_.asTerm)).filterNot(isNil(_))
+      insertAssignments.foreach(term => AssignmentTerm.verifyTypesSame(term.asExpr))
+      val assignments = insertAssignments.map(a => AssignmentTerm.OrFail(a.asExpr))
       AInsert(astParse(query), assignments.toList)
     case '{ type t; ($query: EntityQueryModel[`t`]).update(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-      val updateAssignments = first.asTerm +: others.map(_.asTerm)
-      val assignments = updateAssignments.filterNot(isNil(_)).map(a => AssignmentTerm.OrFail(a))
+      val updateAssignments = (first.asTerm +: others.map(_.asTerm)).filterNot(isNil(_))
+      updateAssignments.foreach(term => AssignmentTerm.verifyTypesSame(term.asExpr))
+      val assignments = updateAssignments.map(a => AssignmentTerm.OrFail(a.asExpr))
       AUpdate(astParse(query), assignments.toList)
     case '{ type t; ($query: EntityQueryModel[`t`]).delete } =>
       ADelete(astParse(query))

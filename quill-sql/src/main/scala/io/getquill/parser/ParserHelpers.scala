@@ -38,15 +38,30 @@ object ParserHelpers {
     def astParse: SealedParser[Ast]
 
     object AssignmentTerm {
-      def OrFail(term: Term) =
-        unapply(term).getOrElse { Parser.throwExpressionError(term.asExpr, classOf[Assignment]) }
+      object Components:
+        def unapply(expr: Expr[_]) =
+          UntypeExpr(expr) match
+            case Lambda1(ident, identTpe, '{ type v; ($prop: Any).->[`v`](($value: `v`)) }) => Some((ident, identTpe, prop, value))
+            case _ => None
 
-      def unapply(term: Term): Option[Assignment] =
-        UntypeExpr(term.asExpr) match {
-          case Lambda1(ident, identTpe, '{ type v; ($prop: Any).->[`v`](($value: `v`)) }) => 
+      def verifyTypesSame(expr: Expr[_]) =
+        expr match
+          case Components(_, _, prop, value) =>
+            val valueTpe = value.asTerm.tpe.widen
+            val propTpe = prop.asTerm.tpe.widen
+            if (!(valueTpe <:< propTpe))
+              report.throwError(s"The ${Format.TypeRepr(valueTpe)} value ${Format.Expr(value)} cannot be assigned to the ${Format.TypeRepr(propTpe)} property ${Format.Expr(prop)} because they are not the same type (or a subtype).", expr)
+          case other =>
+            report.throwError(s"The assignment statement ${Format.Expr(expr)} is invalid.")
+
+      def OrFail(expr: Expr[_]) =
+        unapply(expr).getOrElse { Parser.throwExpressionError(expr, classOf[Assignment]) }
+
+      def unapply(expr: Expr[_]): Option[Assignment] =
+        UntypeExpr(expr) match
+          case Components(ident, identTpe, prop, value) => 
             Some(Assignment(cleanIdent(ident, identTpe), astParse(prop), astParse(value)))
           case _ => None
-        }
     }
   }
 

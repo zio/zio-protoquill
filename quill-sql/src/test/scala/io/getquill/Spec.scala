@@ -100,4 +100,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         case _               => throw new IllegalArgumentException(s"The quat ${quat} is expected to be a product but is not")
       }
   }
+
+  case class NameChangeIdent(nameChange: PartialFunction[String, String]) extends StatelessTransformer:
+    override def applyIdent(id: Ident) = id.copy(name = nameChange.lift(id.name).getOrElse(id.name))
 }
