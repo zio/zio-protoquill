@@ -43,6 +43,10 @@ sealed trait PlanterExpr[T: Type, PrepareRow: Type]:
   def uid: String
   def plant(using Quotes): Expr[Planter[T, PrepareRow]] // TODO Change to 'replant' ?
 
+case class EagerListPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[List[T]], encoder: Expr[GenericEncoder[T, PrepareRow]])(using Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow]:
+  def plant(using Quotes): Expr[EagerListPlanter[T, PrepareRow]] =
+    '{ EagerListPlanter[T, PrepareRow]($expr, $encoder, ${Expr(uid)}) }
+
 case class EagerPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T], encoder: Expr[GenericEncoder[T, PrepareRow]]) extends PlanterExpr[T, PrepareRow]:
   def plant(using Quotes): Expr[EagerPlanter[T, PrepareRow]] =
     '{ EagerPlanter[T, PrepareRow]($expr, $encoder, ${Expr(uid)}) }
@@ -80,6 +84,8 @@ object PlanterExpr {
       UntypeExpr(expr) match {
         case Is[EagerPlanter[_, _]]( '{ EagerPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
           Some(EagerPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
+        case Is[EagerListPlanter[_, _]]( '{ EagerListPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
+          Some(EagerListPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
         case Is[InjectableEagerPlanter[_, _]]( '{ InjectableEagerPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
           Some(InjectableEagerPlanterExpr[qt, prep](uid, liftValue, encoder))
         case Is[LazyPlanter[_, _]]( '{ LazyPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } ) =>

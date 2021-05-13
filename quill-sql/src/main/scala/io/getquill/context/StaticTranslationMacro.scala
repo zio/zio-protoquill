@@ -27,7 +27,7 @@ import scala.util.{Success, Failure}
 import io.getquill.idiom.Statement
 import io.getquill.QAC
 import io.getquill.NamingStrategy
-
+import io.getquill.context.QueryExecution.ElaborationBehavior
 
 object StaticTranslationMacro {
   import io.getquill.parser._
@@ -41,7 +41,7 @@ object StaticTranslationMacro {
   import io.getquill.NamingStrategy
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(String, List[External], Option[ReturnAction])] = {
+  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], elaborate: ElaborationBehavior, idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
@@ -53,25 +53,18 @@ object StaticTranslationMacro {
     val unliftedAst = Unlifter.apply(astExpr)
 
     if (noRuntimeQuotations(unliftedAst)) {      
-      val expandedAst = unliftedAst match
+      val expandedAst = elaborate match
         // if the AST is a Query, e.g. Query(Entity[Person], ...) we expand it out until something like
         // Map(Query(Entity[Person], ...), x, CaseClass(name: x.name, age: x.age)). This was based on the Scala2-Quill
         // flatten method in ValueProjection.scala. Technically this can be performed in the SqlQuery from the Quat info
         // but the old mechanism is still used because the Quat information might not be there.
-        case _: AQuery => ElaborateStructure.ontoAst[T](unliftedAst)
-        case _ => unliftedAst
+        case ElaborationBehavior.Elaborate => ElaborateStructure.ontoAst[T](unliftedAst)
+        case ElaborationBehavior.Skip => unliftedAst
 
       val (ast, stmt) = idiom.translate(expandedAst)(using naming)
-
-      def reifyStatements(ast: Ast, stmt: Statement) =
-        ReifyStatement(
-          idiom.liftingPlaceholder,
-          idiom.emptySetContainsToken,
-          stmt,
-          forProbing = false
-        )
-      def reifyStatementsFirst(ast: Ast, stmt: Statement) =
-        reifyStatements(ast, stmt)._1
+      
+      val liftColumns =
+        (ast: Ast, stmt: Statement) => Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
 
       val returningAction = expandedAst match
         // If we have a returning action, we need to compute some additional information about how to return things.
@@ -79,16 +72,16 @@ object StaticTranslationMacro {
         // return from the query. Others compute this information from the query data directly. This information is stored
         // in the dialect and therefore is computed here.
         case r: ReturningAction =>
-          Some(io.getquill.norm.ExpandReturning.applyMap(r)(reifyStatementsFirst)(idiom, naming))
+          Some(io.getquill.norm.ExpandReturning.applyMap(r)(liftColumns)(idiom, naming))
         case _ =>
           None
 
-      val (query, externals) = reifyStatements(ast, stmt)
-      Some((query, externals, returningAction))
+      val (unparticularQuery, externals) = Unparticular.Query.fromStatement(stmt, idiom.liftingPlaceholder)
+      Some((unparticularQuery, externals, returningAction, expandedAst))
     } else {
       None
     }
-  }
+  end processAst
 
   // Process compile-time lifts, return `None` if that can't be done.
   // liftExprs = Lifts that were put into planters during the quotation. They are
@@ -137,18 +130,9 @@ object StaticTranslationMacro {
       namingStrategy <- LoadNaming.static[N]
     } yield (idiom, namingStrategy)
 
-  
-  // def apply[T: Type, D <: Idiom, N <: NamingStrategy](
-  //   quotedRaw: Expr[Quoted[Query[T]]]
-  // )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Expr[Option[( String, List[Planter[_, _]] )]] = {
-  //   applyInner(quotedRaw) match {
-  //     case Some((query, lifts)) => '{ Some(${Expr(query)}, ${lifts}) }
-  //     case None => '{ None }
-  //   }
-  // }
-
   def applyInner[I: Type, T: Type, D <: Idiom, N <: NamingStrategy](
-    quotedRaw: Expr[Quoted[QAC[I, T]]]
+    quotedRaw: Expr[Quoted[QAC[I, T]]],
+    elaborate: ElaborationBehavior
   )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[StaticState] = 
   {
     import quotes.reflect.{Try => TTry, _}
@@ -172,19 +156,20 @@ object StaticTranslationMacro {
         (idiom, naming)                        <- idiomAndNamingStatic.toOption.errPrint("Could not parse Idiom/Naming")
         // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
         quotedExpr                             <- QuotedExpr.uprootableOpt(quoted).errPrint("Could not uproot the quote") 
-        (queryString, externals, returnAction) <- processAst[T](quotedExpr.ast, idiom, naming).errPrint("Could not process the ASt")
+        (query, externals, returnAction, ast)  <- processAst[T](quotedExpr.ast, elaborate, idiom, naming).errPrint("Could not process the ASt")
         encodedLifts                           <- processLifts(quotedExpr.lifts, externals).errPrint("Could not process the lifts")
       } yield {
-        report.info(
-          "Compile Time Query Is: " + 
-            (if (System.getProperty("quill.macro.log.pretty", "false") == "true") idiom.format(queryString)
-            else queryString)
-        )
-
-        // What about a missing decoder?
-        // need to make sure that that kind of error happens during compile time
-        // (also need to propagate the line number, talk to Li Houyi about that)
-        StaticState(queryString, encodedLifts, returnAction)
+        if (io.getquill.util.Messages.debugEnabled)
+          report.info(
+            "Compile Time Query Is: " + 
+              (
+                if (io.getquill.util.Messages.prettyPrint) 
+                  idiom.format(query.basicQuery)
+                else 
+                  query.basicQuery
+              )
+          )
+        StaticState(query, encodedLifts, returnAction)(ast)
       }
 
     if (tryStatic.isEmpty)

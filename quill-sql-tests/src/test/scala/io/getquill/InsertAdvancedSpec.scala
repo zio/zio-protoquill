@@ -71,7 +71,7 @@ class InsertAdvancedSpec extends Spec with Inside {
     "auto-quote" in {
       val result = ctx.run(query[Person].insert(Person("Joe", 123)))
       result.string mustEqual "INSERT INTO Person (name,age) VALUES ('Joe', 123)"
-      result.executionType mustEqual ExecutionType.Static
+      result.info.executionType mustEqual ExecutionType.Static
       result.prepareRow.data.toList mustEqual List()
     }
 
@@ -136,7 +136,7 @@ class InsertAdvancedSpec extends Spec with Inside {
     "auto-quote" in {
       val result = ctx.run(query[Person].update(Person("Joe", 123)))
       result.string mustEqual "UPDATE Person SET name = 'Joe', age = 123"
-      result.executionType mustEqual ExecutionType.Static
+      result.info.executionType mustEqual ExecutionType.Static
       result.prepareRow.data.toList mustEqual List()
     }
 

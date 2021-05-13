@@ -9,6 +9,45 @@ import io.getquill.context.ExecutionType
 import io.getquill.context.mirror.Row
 import io.getquill._
 
+class LiftScalarSpec extends Spec {
+  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+  import ctx._
+
+  case class Person(name: String, age: Int)
+
+  "lift of scalar list should work for" - {
+    val names = List("Joe", "Jack")
+    "static case" in {
+      inline def q = quote {
+        query[Person].filter(p => liftQuery(names).contains(p.name))
+      }
+      ctx.run(q).triple mustEqual ("SELECT p.name, p.age FROM Person p WHERE p.name IN (?, ?)", List("Joe", "Jack"), ExecutionType.Static)
+    }
+
+    val otherNames = List("John", "James")
+    "static case with other lifts" in {
+      inline def q = quote {
+        query[Person].filter(p => liftQuery(names).contains(p.name) || p.name == lift("Randal") || liftQuery(otherNames).contains(p.name) || p.name == lift("Ronald"))
+      }
+      ctx.run(q).triple mustEqual ("SELECT p.name, p.age FROM Person p WHERE p.name IN (?, ?) OR p.name = ? OR p.name IN (?, ?) OR p.name = ?", List("Joe", "Jack", "Randal", "John", "James", "Ronald"), ExecutionType.Static)
+    }
+
+    "dynamic case" in {
+      val q = quote {
+        query[Person].filter(p => liftQuery(names).contains(p.name))
+      }
+      ctx.run(q).triple mustEqual ("SELECT p.name, p.age FROM Person p WHERE p.name IN (?, ?)", List("Joe", "Jack"), ExecutionType.Dynamic)
+    }
+
+    "dynamic case with other lifts" in {
+      val q = quote {
+        query[Person].filter(p => liftQuery(names).contains(p.name) || p.name == lift("Randal") || liftQuery(otherNames).contains(p.name) || p.name == lift("Ronald"))
+      }
+      ctx.run(q).triple mustEqual ("SELECT p.name, p.age FROM Person p WHERE p.name IN (?, ?) OR p.name = ? OR p.name IN (?, ?) OR p.name = ?", List("Joe", "Jack", "Randal", "John", "James", "Ronald"), ExecutionType.Dynamic)
+    }
+  }
+}
+
 class LiftProductSpec extends Spec with Inside {
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
@@ -32,7 +71,6 @@ class LiftProductSpec extends Spec with Inside {
           idB mustEqual idB1
       }
     }
-    // TODO Tests for more complex cases
   }
 
   "run function for lifted case class should work" - {
@@ -64,7 +102,7 @@ class LiftProductSpec extends Spec with Inside {
         List(("_1","foo"), ("_2",Some(("_1",1))), ("_3",Some(("_1",2))), ("_4",Some(("_1",3))))
       result.string mustEqual 
         "INSERT INTO Entity (a,i,one,two) VALUES (?, ?, ?, ?)"
-      result.executionType mustEqual
+      result.info.executionType mustEqual
         ExecutionType.Static
     }
 

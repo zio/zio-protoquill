@@ -29,7 +29,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
               r.data.toList.map(_._2)
           }
         }, 
-        m.executionType
+        m.info.executionType
       )
 
   extension [T](m: MirrorContext[_, _]#ActionMirror)
@@ -40,7 +40,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
           case r: io.getquill.context.mirror.Row => 
             r.data.toList.map(_._2)
         }, 
-        m.executionType
+        m.info.executionType
       )
 
   extension [T](m: MirrorContext[_, _]#QueryMirror[_])
@@ -51,7 +51,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
           case r: io.getquill.context.mirror.Row => 
             r.data.toList.map(_._2)
         }, 
-        m.executionType
+        m.info.executionType
       )
 
   extension [T, D <: Idiom, N <: NamingStrategy](ctx: MirrorContext[D, N])
@@ -62,7 +62,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
           case r: io.getquill.context.mirror.Row => 
             r.data.toList.map(_._2)
         }, 
-        r.executionType
+        r.info.executionType
       )
 
   extension [T, PrepareRow](q: Quoted[T])
@@ -92,4 +92,15 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   }
 
   def await[T](f: Future[T]): T = Await.result(f, Duration.Inf)
+
+  extension (quat: Quat) {
+    def productOrFail() =
+      quat match {
+        case p: Quat.Product => p
+        case _               => throw new IllegalArgumentException(s"The quat ${quat} is expected to be a product but is not")
+      }
+  }
+
+  case class NameChangeIdent(nameChange: PartialFunction[String, String]) extends StatelessTransformer:
+    override def applyIdent(id: Ident) = id.copy(name = nameChange.lift(id.name).getOrElse(id.name))
 }

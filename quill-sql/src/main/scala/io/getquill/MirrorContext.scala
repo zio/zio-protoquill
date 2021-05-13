@@ -18,7 +18,7 @@ trait MirrorColumnResolving[Dialect <: Idiom, Naming <: NamingStrategy] { self: 
 }
 
 class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming) 
-extends MirrorContextBase[Dialect, Naming]
+extends MirrorContextBase[Dialect, Naming] with AstSplicing
 
 trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
 extends Context[Dialect, Naming] 
@@ -37,7 +37,7 @@ with MirrorDecoders with MirrorEncoders { self =>
   // TODO Not needed, get rid of this
   implicit val d: Dummy = DummyInst
 
-  case class QueryMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], executionType: ExecutionType) {
+  case class QueryMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], info: ExecutionInfo) {
     def string(pretty: Boolean): String =
       if (pretty)
         idiom.format(string)
@@ -45,26 +45,26 @@ with MirrorDecoders with MirrorEncoders { self =>
         string
   }
 
-  case class ActionMirror(string: String, prepareRow: PrepareRow, executionType: ExecutionType)
-  case class ActionReturningMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], returningBehavior: ReturnAction, executionType: ExecutionType)
-  case class BatchActionMirror(groups: List[(String, List[Row])], executionType: ExecutionType)
+  case class ActionMirror(string: String, prepareRow: PrepareRow, info: ExecutionInfo)
+  case class ActionReturningMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], returningBehavior: ReturnAction, info: ExecutionInfo)
+  case class BatchActionMirror(groups: List[(String, List[Row])], info: ExecutionInfo)
 
-  override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionType: ExecutionType, dc: DatasourceContext) =
-    QueryMirror(string, prepare(Row())._2, extractor, executionType)
+  override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: DatasourceContext) =
+    QueryMirror(string, prepare(Row())._2, extractor, info)
 
-  override def executeAction[T](string: String, prepare: Prepare = identityPrepare)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionResult] =
-    ActionMirror(string, prepare(Row())._2, executionType)
+  override def executeAction[T](string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext): Result[RunActionResult] =
+    ActionMirror(string, prepare(Row())._2, info)
 
-  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionType: ExecutionType, dc: DatasourceContext): Result[RunActionReturningResult[T]] =
-    ActionReturningMirror[T](sql, prepare(Row())._2, extractor, returningBehavior, executionType)
+  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: DatasourceContext): Result[RunActionReturningResult[T]] =
+    ActionReturningMirror[T](sql, prepare(Row())._2, extractor, returningBehavior, info)
 
-  override def executeBatchAction(groups: List[BatchGroup])(executionType: ExecutionType, dc: DatasourceContext): Result[RunBatchActionResult] =
+  override def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionResult] =
     BatchActionMirror(
       groups.map {
         case BatchGroup(string, prepare) =>
           (string, prepare.map(_(Row())._2))
       },
-      executionType
+      info
     )
     
 }

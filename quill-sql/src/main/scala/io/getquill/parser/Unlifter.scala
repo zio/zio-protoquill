@@ -141,7 +141,25 @@ object Unlifter {
       case '{ Constant(${Expr(b: String)}: String, $quat) } => 
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Char)}: Char, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
       case '{ Constant(${Expr(b: Int)}: Int, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Long)}: Long, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Short)}: Short, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Float)}: Float, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Double)}: Double, $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant(b, unliftedQuat)
+      case '{ Constant(${Expr(b: Byte)}: Byte, $quat) } => 
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
       case '{ Entity.apply(${Expr(b: String)}, $elems, $quat)  } =>
@@ -154,7 +172,10 @@ object Unlifter {
       case Is[Map]( '{ Map(${query}, ${alias}, ${body}: Ast) }) => Map(query.unexpr, alias.unexpr, body.unexpr)
       case Is[FlatMap]( '{ FlatMap(${query}, ${alias}, ${body}: Ast) }) => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
       case Is[Filter]( '{ Filter(${query}, ${alias}, ${body}: Ast) }) => Filter(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[GroupBy]( '{ GroupBy(${query}, ${alias}, ${body}: Ast) }) => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
       case Is[SortBy]( '{ SortBy(${query}, ${alias}, ${criterias}, ${ordering}) }) => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
+      case Is[Distinct]( '{ Distinct(${a}) } ) => Distinct(a.unexpr)
+      case Is[Nested]( '{ Nested(${a}) } ) => Nested(a.unexpr)
       case Is[Foreach]( '{ Foreach(${query}, ${alias}, ${body}: Ast) }) => Foreach(query.unexpr, alias.unexpr, body.unexpr)
       case Is[UnaryOperation]( '{ UnaryOperation(${operator}, ${a}: Ast) }) => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
       case Is[BinaryOperation]( '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) }) => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
@@ -162,6 +183,7 @@ object Unlifter {
       case Is[ScalarTag]( '{ScalarTag(${uid})}) => ScalarTag(constString(uid))
       case Is[QuotationTag]( '{ QuotationTag($uid) }) => QuotationTag(constString(uid))
       case Is[Union]( '{ Union($a, $b) }) => Union(a.unexpr, b.unexpr)
+      case Is[UnionAll]( '{ UnionAll($a, $b) }) => UnionAll(a.unexpr, b.unexpr)
       case Is[Insert]( '{ Insert($query, $assignments) }) => Insert(query.unexpr, assignments.unexpr)
       case Is[Update]( '{ Update($query, $assignments) }) => Update(query.unexpr, assignments.unexpr)
       case Is[Delete]( '{ Delete($query) }) => Delete(query.unexpr)
@@ -202,12 +224,14 @@ object Unlifter {
       case '{ StringOperator.toUpperCase } =>  StringOperator.toUpperCase
       case '{ StringOperator.toLowerCase } =>  StringOperator.toLowerCase
       case '{ StringOperator.toLong } =>  StringOperator.toLong
+      case '{ StringOperator.toInt } =>  StringOperator.toInt
       case '{ StringOperator.startsWith } =>  StringOperator.startsWith
       case '{ StringOperator.split } =>  StringOperator.split
       case '{ EqualityOperator.== } =>  EqualityOperator.==
       case '{ EqualityOperator.!= } =>  EqualityOperator.!=
       case '{ BooleanOperator.|| } =>  BooleanOperator.||
       case '{ BooleanOperator.&& } =>  BooleanOperator.&&
+      case '{ BooleanOperator.! } =>  BooleanOperator.!
   }
 
   given quatProductTypeUnliftable: NiceUnliftable[Quat.Product.Type] with {

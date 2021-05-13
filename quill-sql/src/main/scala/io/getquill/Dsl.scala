@@ -25,6 +25,7 @@ import io.getquill.context.QuoteMacro
 import io.getquill.context.UnquoteMacro
 import io.getquill.context.LiftMacro
 import io.getquill._
+import io.getquill.dsl.InfixDsl
 
 // trait Quoter {
 //   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???

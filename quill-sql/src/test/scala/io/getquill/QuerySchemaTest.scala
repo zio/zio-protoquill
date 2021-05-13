@@ -30,7 +30,7 @@ class QuerySchemaTest extends Spec with Inside {
   // }
 
   implicit class QueryMirrorExt[T](qm: QueryMirror[T]) {
-    def strAndExec = (qm.string, qm.executionType)
+    def strAndExec = (qm.string, qm.info.executionType)
   }
 
   case class EmbValue(i: Int) extends Embedded

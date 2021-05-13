@@ -15,7 +15,7 @@ import scala.concurrent.duration.Duration
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.util.Try
-import io.getquill.context.ExecutionType
+import io.getquill.context.ExecutionInfo
 import io.getquill.context.DatasourceContextInjection
 
 abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteConnection](val idiom: D, val naming: N, pool: ConnectionPool[C])
@@ -79,7 +79,7 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
   // TODO Remove from all contexts
   override def context: DatasourceContext = throw new IllegalStateException("DatasourceContext (ExecutionContext) of JAsyncContext is summoned implicitly, the member is unused.")
 
-  def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionType: ExecutionType, dc: ExecutionContext): Future[List[T]] = {
+  def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[T]] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
     val (params, values) = prepare(Nil)
     logger.logQuery(sql, params)
@@ -90,14 +90,14 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
   // def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(implicit ec: ExecutionContext): Future[T] =
   //   executeQuery(sql, prepare, extractor).map(handleSingleResult)
 
-  def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionType: ExecutionType, dc: ExecutionContext): Future[Long] = {
+  def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[Long] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
     val (params, values) = prepare(Nil)
     logger.logQuery(sql, params)
     withConnection(_.sendPreparedStatement(sql, values.asJava)).map(_.getRowsAffected)
   }
 
-  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningAction: ReturnAction)(executionType: ExecutionType, dc: ExecutionContext): Future[T] = {
+  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningAction: ReturnAction)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[T] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
     val expanded = expandAction(sql, returningAction)
     val (params, values) = prepare(Nil)
@@ -106,7 +106,7 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
       .map(extractActionResult(returningAction, extractor))
   }
 
-  def executeBatchAction(groups: List[BatchGroup])(executionType: ExecutionType, dc: ExecutionContext): Future[List[Long]] =
+  def executeBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[Long]] =
     implicit val ec = dc // implicitly define the execution context that will be passed in
     Future.sequence {
       groups.map {
@@ -114,7 +114,7 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
           prepare.foldLeft(Future.successful(List.newBuilder[Long])) {
             case (acc, prepare) =>
               acc.flatMap { list =>
-                executeAction(sql, prepare)(executionType, dc).map(list += _)
+                executeAction(sql, prepare)(executionInfo, dc).map(list += _)
               }
           }.map(_.result())
       }

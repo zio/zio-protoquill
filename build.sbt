@@ -40,12 +40,12 @@ lazy val `quill-sql` =
         // .excludeAll(ExclusionRule(organization="com.trueaccord.scalapb")
         ("com.lihaoyi" %% "pprint" % "0.5.6").withDottyCompat(scalaVersion.value),
         ("io.getquill" %% "quill-core-portable" % "3.7.1").withDottyCompat(scalaVersion.value),
-        ("io.getquill" %% "quill-sql-portable" % "3.7.1").withDottyCompat(scalaVersion.value)
+        ("io.getquill" %% "quill-sql-portable" % "3.7.1").withDottyCompat(scalaVersion.value),
         //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
         //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
 
-        //"org.scalatest" % "scalatest_3.0.0-RC3" % "3.2.8" % "test",
-        //"org.scalatest" % "scalatest-mustmatchers_3.0.0-RC3" % "3.2.8" % "test"
+        "org.scalatest" % "scalatest_3.0.0-RC3" % "3.2.8" % "test",
+        "org.scalatest" % "scalatest-mustmatchers_3.0.0-RC3" % "3.2.8" % "test"
       ),
       libraryDependencies ++= {
         if (true) 

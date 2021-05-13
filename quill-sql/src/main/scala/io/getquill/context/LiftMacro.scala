@@ -48,7 +48,8 @@ object LiftQueryMacro {
         // Not sure why cast back to iterable is needed here but U param is not needed once it is inside of the planter
         '{ EagerEntitiesPlanter($entity.asInstanceOf[Iterable[T]], ${Expr(newUuid)}).unquote } // [T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
       case _ => 
-        report.throwError("Scalar liftQuery not implemented yet", entity)
+        val encoder = LiftMacro.summonEncoderOrFail[T, PrepareRow](entity)
+        '{ EagerListPlanter($entity.asInstanceOf[Iterable[T]].toList, $encoder, ${Expr(newUuid)}).unquote }
   }
 }
 
@@ -174,13 +175,15 @@ object LiftMacro {
     '{ CaseClassLift[T]($quotation, ${Expr(java.util.UUID.randomUUID.toString)}) } // NOTE UUID technically not needed here. Can try to remove it later
   }
 
+  private[getquill] def summonEncoderOrFail[T: Type, PrepareRow: Type](loggingEntity: Expr[_])(using Quotes) =
+    import quotes.reflect._
+    Expr.summon[GenericEncoder[T, PrepareRow]] match
+        case Some(enc) => enc
+        case None => report.throwError(s"Cannot Find a '${Printer.TypeReprCode.show(TypeRepr.of[T])}' Encoder of ${Printer.TreeShortCode.show(loggingEntity.asTerm)}", loggingEntity)
+
   private[getquill] def liftValue[T: Type, PrepareRow: Type](valueEntity: Expr[T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
     import quotes.reflect._
-    val encoder = 
-      Expr.summon[GenericEncoder[T, PrepareRow]] match
-        case Some(enc) => enc
-        case None => report.throwError(s"Cannot Find a '${Printer.TypeReprCode.show(TypeRepr.of[T])}' Encoder of ${Printer.TreeShortCode.show(valueEntity.asTerm)}", valueEntity)
-
+    val encoder = summonEncoderOrFail[T, PrepareRow](valueEntity)
     '{ EagerPlanter($valueEntity, $encoder, ${Expr(uuid)}) } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 

@@ -42,9 +42,11 @@ import io.getquill.context.LiftMacro
 import io.getquill.parser.Unlifter
 import io.getquill._
 import io.getquill.QAC
+import io.getquill.parser.Lifter
+import io.getquill.context.QueryExecution.ElaborationBehavior
 
 trait BatchContextOperation[T, A <: Action[_], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
-  def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], executionType: ExecutionType): Res
+  def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], executionInfo: ExecutionInfo): Res
 }
 
 object BatchQueryExecution:
@@ -60,8 +62,8 @@ object BatchQueryExecution:
     batchContextOperation: Expr[BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes):
     import quotes.reflect._
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
-    def apply(): Expr[Res] =
-      Uninline(UntypeExpr(quoted)) match
+    def apply(): Expr[Res] = 
+      UntypeExpr(quoted) match
         case QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), planters) =>
           // isolate the list that went into the liftQuery i.e. the liftQuery(liftedList)
           val liftedList =
@@ -97,19 +99,19 @@ object BatchQueryExecution:
           // Once we have that, use the Insert macro to generate a correct insert clause. The insert macro
           // should summon a schemaMeta if needed (and account for querySchema age)
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
-          val insertQuotation = InsertUpdateMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts)
-          StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation) match
-            case Some(StaticState(queryString, _, _)) =>
+          val insertQuotation = InsertUpdateMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts) 
+          StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation, ElaborationBehavior.Skip) match 
+            case Some(state @ StaticState(query, _, _)) =>
               val prepares =
                 '{ $liftedList.map(elem => ${
                   val injectedLifts = injectableLifts.map(lift => lift.inject('elem))
                   val injectedLiftsExpr = Expr.ofList(injectedLifts)
                   val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($injectedLiftsExpr, row) }
                   prepare
-                }) }
-              '{ $batchContextOperation.execute(${Expr(queryString)}, $prepares.toList, ExecutionType.Static) }
-
-            case None =>
+                }) }              
+              '{ $batchContextOperation.execute(${Expr(query.basicQuery)}, $prepares.toList, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)})) }
+          
+            case None => 
               report.throwError(s"Could not create static state from the query: ${Format.Expr(insertQuotation)}")
 
         case _ =>

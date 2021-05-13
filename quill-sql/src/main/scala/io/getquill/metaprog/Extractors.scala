@@ -440,21 +440,26 @@ object Extractors {
     import quotes.reflect._
     inputs.forall(input => input.asTerm.tpe <:< TypeRepr.of[T])
 
+  /** 
+   * Uninline the term no matter what (TODO should reove the unapply case) that pattern always matches
+   * and is too confusing
+   */
   object Uninline {
     def unapply[T: Type](using Quotes)(any: Expr[T]): Option[Expr[T]] =
-      import quotes.reflect.asTerm
+      import quotes.reflect.{ Term => _, _ }
       Some(Term.apply(any.asTerm).asExprOf[T])
     def apply[T: Type](using Quotes)(any: Expr[T]): Expr[T] =
-      import quotes.reflect.asTerm
+      import quotes.reflect.{ Term => _, _ }
       Term.apply(any.asTerm).asExprOf[T]
 
     object Term:
       def unapply(using Quotes)(any: quotes.reflect.Term): Option[quotes.reflect.Term] =
         Some(Term.apply(any))
-      def apply(using Quotes)(any: quotes.reflect.Term) =
+      def apply(using Quotes)(any: quotes.reflect.Term): quotes.reflect.Term =
         import quotes.reflect._
         any match
-          case Inlined(_, _, v) => v
+          // Just take the value if it is inlined. Since there could be multiple inline layers, keep un-inlining until the term is not an inline
+          case Inlined(_, _, v) => Uninline.Term(v)
           case _ => any
   }
 
