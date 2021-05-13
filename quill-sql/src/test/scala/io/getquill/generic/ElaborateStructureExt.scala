@@ -31,9 +31,7 @@ object ElaborateStructureExt {
   def entityValuesLambdaImpl[T <: Product: Type](using qctx: Quotes): Expr[List[T => Any]] = {
     import ElaborateStructure._
     val schema = ElaborateStructure.base[T](Term("x", Branch), ElaborationSide.Decoding)
-    println(s"==== Schema: ${schema} ====")
     val fieldGetters = DeconstructElaboratedEntityLevels[T](schema)
-    println(s"==== Getters: ${fieldGetters.map(_.show)} ====")
     Expr.ofList(fieldGetters)
   }
 

@@ -87,6 +87,7 @@ trait ProtoContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.Nam
   // Cannot implement 'run' here because it's parameter needs to be inline, and we can't override a non-inline parameter with an inline one
 }
 
+trait AstSplicing
 
 sealed trait DatasourceContextInjection
 object DatasourceContextInjection {
@@ -113,6 +114,7 @@ with EncodingDsl
 with Closeable
 { self =>
 
+  
   type DatasourceContextBehavior <: DatasourceContextInjection
 
   // TODO Go back to this when implementing GenericDecoder using standard method
@@ -147,7 +149,7 @@ with Closeable
   // the regular context can be non inline
   @targetName("runQuery")
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
-    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, Result[RunQueryResult[T]]](self.idiom, self.naming) {
+    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, this.type, Result[RunQueryResult[T]]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo) =
         val extract = extraction match
           case Extraction.Simple(extract) => extract
@@ -162,7 +164,7 @@ with Closeable
 
   @targetName("runAction")
   inline def run[E](inline quoted: Quoted[Action[E]]): Result[RunActionResult] = {
-    val ca = new ContextOperation[E, Any, Dialect, Naming, PrepareRow, ResultRow, Result[RunActionResult]](self.idiom, self.naming) {
+    val ca = new ContextOperation[E, Any, Dialect, Naming, PrepareRow, ResultRow, this.type, Result[RunActionResult]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Any], executionInfo: ExecutionInfo) =
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
         self.executeAction(sql, prepare)(executionInfo, runContext)
@@ -172,7 +174,7 @@ with Closeable
 
   @targetName("runActionReturning")
   inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): Result[RunActionReturningResult[T]] = {
-    val ca = new ContextOperation[E, T, Dialect, Naming, PrepareRow, ResultRow, Result[RunActionReturningResult[T]]](self.idiom, self.naming) {
+    val ca = new ContextOperation[E, T, Dialect, Naming, PrepareRow, ResultRow, this.type, Result[RunActionReturningResult[T]]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo) =
         // Need an extractor with special information that helps with the SQL returning specifics
         val Extraction.Returning(extract, returningBehavior) = 

@@ -393,7 +393,6 @@ trait QuatMakingBase(using val qctx: Quotes) {
       import scala.quoted._
 
       def computeCoproduct[T](using tpe: Type[T]): Option[Quat] = {
-        println(s"====== Computing Coproduct of: ${io.getquill.util.Format.TypeOf[T]} ======")
         Expr.summon[Mirror.Of[T]] match
           case Some(ev) =>
             ev match

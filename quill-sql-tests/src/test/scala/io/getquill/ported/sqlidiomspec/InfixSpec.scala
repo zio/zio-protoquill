@@ -38,10 +38,11 @@ class InfixSpec extends Spec {
       testContext.run(q).string mustEqual
         "SELECT a.i FROM (SELECT 1 i FROM DUAL) AS a"
     }
-    // "full infix query" in {
-    //   testContext.run(infix"SELECT * FROM TestEntity".as[Query[TestEntity]]).string mustEqual
-    //     "SELECT x.s, x.i, x.l, x.o, x.b FROM (SELECT * FROM TestEntity) AS x"
-    // }
+    "full infix query" in {
+      val result = testContext.run(infix"SELECT * FROM TestEntity".as[Query[TestEntity]])
+      result.string mustEqual
+        "SELECT x.s, x.i, x.l, x.o, x.b FROM (SELECT * FROM TestEntity) AS x"
+    }
     // Not supported yet by regular quill either
     // "full infix action returning" in {
     //   testContext.run(infix"INSERT INTO TestEntity (foo) VALUES (bar) RETURNING baz".as[ActionReturning[String, TestEntity]]).string mustEqual

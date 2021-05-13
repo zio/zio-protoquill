@@ -43,6 +43,7 @@ import io.getquill.parser.Unlifter
 import io.getquill._
 import io.getquill.QAC
 import io.getquill.parser.Lifter
+import io.getquill.context.QueryExecution.ElaborationBehavior
 
 trait BatchContextOperation[T, A <: Action[_], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], executionInfo: ExecutionInfo): Res
@@ -100,7 +101,7 @@ object BatchQueryExecution:
           // should summon a schemaMeta if needed (and account for querySchema age) 
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
           val insertQuotation = InsertUpdateMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts) 
-          StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation) match 
+          StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation, ElaborationBehavior.Skip) match 
             case Some(state @ StaticState(query, _, _)) =>
               val prepares =
                 '{ $liftedList.map(elem => ${
