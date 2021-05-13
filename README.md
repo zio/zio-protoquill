@@ -21,7 +21,7 @@ For further information, watch:
 In Proto-Quill you can get started with just the following code:
 ```scala
 // With just this import you can use quote, query, insert/update/delete and lazyLift
-import io.getquill.lib._
+import io.getquill._
 
 // Use inline-def to compose queries during compile time. Non inline-def queries
 // will be dynamically evaluated.
@@ -117,10 +117,8 @@ run(q)
    all people whose name starts with 'j' and ends with 'e'.
 
 ### Major Features Not Yet Implemented
- - liftQuery and Batch functionality
+ - On-Conflict for Postgres
+ - Batch Updates and Deletes
  - query-single (i.e. `run(scalar)`)
- - Shareable testing (i.e. with Quill 3)
- - JDBC, NDBC, Cassandra and all other effect-based contexts
-  - Hopefully it will be possible to share this code from Quill 3 in the future.
- - Build and release functionality
+ - NDBC, Cassandra and all other effect-based contexts
 
