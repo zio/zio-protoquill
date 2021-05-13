@@ -5,7 +5,7 @@ import scala.reflect.classTag
 import scala.quoted._
 import scala.deriving._
 import scala.compiletime.{erasedValue, constValue, summonFrom, summonInline}
-import io.getquill.metaprog.TypeExtensions
+import io.getquill.metaprog.TypeExtensions._
 import io.getquill.util.Format
 
 trait GenericColumnResolver[ResultRow] {
@@ -34,7 +34,7 @@ object GenericDecoder {
       case Some(resolver) => '{ $resolver($resultRow, ${Expr(fieldName)}) }
       case None => originalIndex
 
-  def summonAndDecode[ResultRow: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[T] = 
+  def summonAndDecode[ResultRow: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[T] =
     import quotes.reflect.{Term => QTerm, _}
     // Try to summon a specific decoder, if it's not there, summon a generic one
     Expr.summon[GenericDecoder[ResultRow, T, DecodingType.Specific]] match
@@ -49,8 +49,6 @@ object GenericDecoder {
 
   def flatten[ResultRow: Type, Fields: Type, Types: Type](index: Expr[Int], resultRow: Expr[ResultRow])(fieldsTup: Type[Fields], typesTup: Type[Types])(using Quotes): List[(Type[_], Expr[_])] = {
     import quotes.reflect.{Term => QTerm, _}
-    val ext = new TypeExtensions
-    import ext._
 
     (fieldsTup, typesTup) match {
       // Check if the field has a specific user-defined encoder for it e.g. Person(name: String) (i.e. since there is a String encoder)
@@ -79,14 +77,14 @@ object GenericDecoder {
       case (_, '[EmptyTuple]) => Nil
 
       case _ => report.throwError("Cannot Derive Product during Type Flattening of Expression:\n" + typesTup)
-    } 
+    }
   }
 
   def selectMatchingElementAndDecode[Types: Type, ResultRow: Type, T: Type](rawIndex: Expr[Int], resultRow: Expr[ResultRow], rowTypeClassTag: Expr[ClassTag[_]])(typesTup: Type[Types])(using Quotes): Expr[T] =
     import quotes.reflect._
     typesTup match
       case ('[tpe *: types]) =>
-        val possibleElementClass = 
+        val possibleElementClass =
           Expr.summon[ClassTag[tpe]] match
             case Some(cls) => '{ $cls.runtimeClass }
             case None => report.throwError(s"Cannot summon a ClassTag for the type ${Format.TypeOf[tpe]}")
@@ -108,7 +106,7 @@ object GenericDecoder {
         // because the inlining has to explore every possibility. Therefore we return a runtime error here.
         val msg = s"Cannot resolve coproduct type for '${Format.TypeOf[T]}'"
         '{ throw new IllegalArgumentException(${Expr(msg)}) }
-        
+
 
 
   def decode[T: Type, ResultRow: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[T] = {
@@ -189,11 +187,11 @@ object GenericDecoder {
                 )
               }
             construct.asExprOf[T]
-            
+
           case _ => report.throwError("Tuple decoder could not be summoned")
         }
-      
-      case _ => 
+
+      case _ =>
         report.throwError("Tuple decoder could not be summoned")
   }
 

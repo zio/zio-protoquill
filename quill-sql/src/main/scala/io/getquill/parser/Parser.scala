@@ -21,7 +21,7 @@ import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.Uprootable
 import io.getquill.metaprog.Pluckable
 import io.getquill.metaprog.Pointable
-import io.getquill.metaprog.Extractors
+import io.getquill.metaprog.Extractors._
 import io.getquill.util.printer
 import io.getquill._
 import io.getquill.MetaDsl
@@ -52,28 +52,19 @@ object Parser {
       |  ${Format(Printer.TreeShortCode.show(term)) /* Or Maybe just expr? */}
       |==== Extractors ===
       |  ${Format(Printer.TreeStructure.show(term))}
-      |""".stripMargin, 
+      |""".stripMargin,
       expr
     )
-  
 
   object Implicits {
-
-    //https://docs.scala-lang.org/overviews/core/implicit-classes.html
-    //This keyword makes the class’s primary constructor available for implicit conversions when the class is in scope.
-    implicit class ParserExtensions[R](parser: Parser[R])(implicit val qctx: Quotes, ct: ClassTag[R]) {
-      import quotes.reflect._
-
-      def seal: SealedParser[R] = 
+    extension [R](parser: Parser[R])(using ct: ClassTag[R])
+      def seal(using Quotes): SealedParser[R] =
         (expr: Expr[_]) => parser.lift(expr).getOrElse {
           throwExpressionError(expr, ct.runtimeClass)
-        }        
-    }
-
+        }
   }
 
-  trait Delegated[+R] extends Parser[R] with Extractors {
-    override implicit val qctx: Quotes
+  trait Delegated[+R] extends Parser[R] {
     def delegate: PartialFunction[Expr[_], R]
 
     //apply() is an abstract member of PartialFunction
@@ -91,7 +82,7 @@ object Parser {
 
   /** Optimizes 'Clause' by checking if it is some given type first. Otherwise can early-exit */
   trait SpecificClause[Criteria: Type, R](using override val qctx: Quotes) extends Clause[R] {
-    import qctx.reflect._
+    import quotes.reflect._
     override def isDefinedAt(expr: Expr[_]): Boolean =
       expr.asTerm.tpe <:< TypeRepr.of[Criteria] && delegate.isDefinedAt(expr)
   }
@@ -106,7 +97,7 @@ object Parser {
       prematch(expr) && delegate.isDefinedAt(expr)
   }
 
-  abstract class Clause[+R](using override val qctx: Quotes) extends Delegated[R] with Extractors with Idents with QuatMaking with QuatMakingBase(using qctx) { base =>
+  abstract class Clause[+R](using override val qctx: Quotes) extends Delegated[R] with Idents with QuatMaking with QuatMakingBase(using qctx) { base =>
     import Implicits._
 
     def root: Parser[Ast]
@@ -114,13 +105,13 @@ object Parser {
     def reparent(root: Parser[Ast]): Clause[R]
   }
 
-  case class Series private (children: List[Clause[Ast]] = List())(override implicit val qctx: Quotes) extends Delegated[Ast] { self =>
-    
+  case class Series private (children: List[Clause[Ast]] = List())(implicit val qctx: Quotes) extends Delegated[Ast] { self =>
+
     def delegate = composite
-    
+
     def composite: PartialFunction[Expr[_], Ast] =
       children.map(child => child.reparent(this)).foldRight(PartialFunction.empty[Expr[_], Ast])(_ orElse _)
-    
+
     //Is this to chain parsers?
     def combine(other: Series): Series =
       Series(self.children ++ other.children)
@@ -138,7 +129,7 @@ trait ParserLibrary extends ParserFactory {
   import Parser._
 
 
-  // TODO add a before everything identity parser, 
+  // TODO add a before everything identity parser,
   // a after everything except Inline recurse parser
   def quotationParser(using qctx: Quotes)            = Series.single(new QuotationParser)
   def queryParser(using qctx: Quotes)                = Series.single(new QueryParser)
@@ -252,7 +243,7 @@ case class BlockParser(root: Parser[Ast] = Parser.empty)(override implicit val q
         parts.map {
           case term: Term => astParse(term.asExpr)
           case ValDefTerm(ast) => ast
-          case other => 
+          case other =>
             // TODO Better site-description in error (does other.show work?)
             report.throwError(s"Illegal statement ${other.show} in block ${block.show}")
         }
@@ -298,7 +289,7 @@ case class OrderingParser(root: Parser[Ast] = Parser.empty)(override implicit va
     case '{ implicitOrd } => AscNullsFirst
 
     // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
-    case Unseal(Apply(TypeApply(Select(Ident("Ord"), "apply"), _), args)) => 
+    case Unseal(Apply(TypeApply(Select(Ident("Ord"), "apply"), _), args)) =>
       // parse all sub-orderings if this is a composite
       val subOrderings = args.map(_.asExpr).map(ordExpression => delegate.seal(ordExpression))
       TupleOrdering(subOrderings)
@@ -339,7 +330,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
     // // TODO Document this?
     // case Apply(TypeApply(Select(TIdent("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Select(TIdent("p"), "name"), Select(TIdent("p"), "age"))) =>
     //   report.throwError("Matched here!")
-    
+
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
         case Uprootable(uid, astTree, _, _, _, _) => Unlifter(astTree)
@@ -351,20 +342,20 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
       ScalarTag(expr.uid) // TODO Want special scalar tag for an encodeable scalar
 
     // A inline quotation can be parsed if it is directly inline. If it is not inline, a error
-    // must happen (specifically have a check for it or just fail to parse?) 
+    // must happen (specifically have a check for it or just fail to parse?)
     // since we would not know the UID since it is not inside of a bin. This situation
     // should only be encountered to a top-level quote passed to the 'run' function and similar situations.
     case QuotedExpr.Uprootable(quotedExpr) => // back here
-      Unlifter(quotedExpr.ast) 
+      Unlifter(quotedExpr.ast)
   }
 }
 
-// As a performance optimization, ONLY Matches things returning Action[_] UP FRONT. 
+// As a performance optimization, ONLY Matches things returning Action[_] UP FRONT.
 // All other kinds of things rejected
 case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Action[_], Ast] with Assignments {
   import quotes.reflect.{Constant => TConstantant, _}
   import Parser.Implicits._
-  
+
   def delegate: PartialFunction[Expr[_], Ast] = {
     del
   }
@@ -381,7 +372,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     case '{ type t; ($query: EntityQueryModel[`t`]).delete } =>
       ADelete(astParse(query))
 
-    // Returning generated 
+    // Returning generated
     // summon an idiom if one can be summoned (make sure when doing import ctx._ it is provided somewhere)
     // (for dialect-specific behavior, try to summon a dialect implicitly, it may not exist since a dialect may
     // not be supported. If one exists then check the type of returning thing. If not then dont.
@@ -451,7 +442,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
         newBody
       case (true, _) =>
         report.throwError("Could not process whole-record 'returning' clause. Consider trying to return individual columns.")
-      case _ => 
+      case _ =>
         originalBody
 
   object IsActionType {
@@ -460,7 +451,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   }
 }
 
-// As a performance optimization, ONLY Matches things returning BatchAction[_] UP FRONT. 
+// As a performance optimization, ONLY Matches things returning BatchAction[_] UP FRONT.
 // All other kinds of things rejected
 case class BatchActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[BatchAction[_], Ast] with Assignments {
   import quotes.reflect.{Constant => TConstant, _}
@@ -476,7 +467,7 @@ case class BatchActionParser(root: Parser[Ast] = Parser.empty)(override implicit
 
 // We can't use SpecificClause[Option[_]] here since the types of quotations that need to match
 // are not necessarily an Option[_] e.g. Option[t].isEmpty needs to match on a clause whose type is Boolean
-// That's why we need to use the 'Is' object and optimize it that way here 
+// That's why we need to use the 'Is' object and optimize it that way here
 case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
   import qctx.reflect.{Constant => TConstantant, _}
   import Parser.Implicits._
@@ -487,13 +478,13 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-    case '{ ($o: Option[t]).isEmpty } => 
+    case '{ ($o: Option[t]).isEmpty } =>
       OptionIsEmpty(astParse(o))
 
-    case '{ ($o: Option[t]).nonEmpty } => 
+    case '{ ($o: Option[t]).nonEmpty } =>
       OptionNonEmpty(astParse(o))
 
-    case '{ ($o: Option[t]).isDefined } => 
+    case '{ ($o: Option[t]).isDefined } =>
       OptionIsDefined(astParse(o))
 
     case '{ ($o: Option[t]).flatten($impl) } => 
@@ -528,7 +519,7 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   }
 }
 
-// As a performance optimization, ONLY Matches things returning Query[_] UP FRONT. 
+// As a performance optimization, ONLY Matches things returning Query[_] UP FRONT.
 // All other kinds of things rejected
 case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Query[_], Ast] with PropertyAliases {
   import qctx.reflect.{Constant => TConstant, Ident => TIdent, _}
@@ -543,18 +534,18 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case '{ querySchema[t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
       Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), InferQuat.of[t].probit, Renameable.Fixed)
 
-    case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, tpe, body)}) } => 
+    case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, tpe, body)}) } =>
       Map(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    case '{ ($q:Query[qt]).flatMap[mt](${Lambda1(ident, tpe, body)}) } => 
+    case '{ ($q:Query[qt]).flatMap[mt](${Lambda1(ident, tpe, body)}) } =>
       FlatMap(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    case '{ ($q:Query[qt]).filter(${Lambda1(ident, tpe, body)}) } => 
+    case '{ ($q:Query[qt]).filter(${Lambda1(ident, tpe, body)}) } =>
       Filter(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    case '{ ($q:Query[qt]).withFilter(${Lambda1(ident, tpe, body)}) } => 
+    case '{ ($q:Query[qt]).withFilter(${Lambda1(ident, tpe, body)}) } =>
       Filter(astParse(q), cleanIdent(ident, tpe), astParse(body))
-    
+
     case '{type t1; type t2; ($q:Query[qt]).concatMap[`t1`, `t2`](${Lambda1(ident, tpe, body)})($unknown_stuff) } => //ask Alex why is concatMap like this? what's unkonwn_stuff?
       ConcatMap(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
@@ -565,11 +556,11 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
     case '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
 
-    case '{ type t1; ($q1: Query[`t1`]).join[`t1`](${Lambda1(ident1, tpe, on)}) } => 
+    case '{ type t1; ($q1: Query[`t1`]).join[`t1`](${Lambda1(ident1, tpe, on)}) } =>
       FlatJoin(InnerJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
-    case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, tpe, on)}) } => 
+    case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, tpe, on)}) } =>
       FlatJoin(LeftJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
-    
+
     case '{ type t; ($q: Query[`t`]).take($n: Int) } => Take(astParse(q),astParse(n))
     case '{ type t; ($q: Query[`t`]).drop($n: Int) } => Drop(astParse(q),astParse(n))
 
@@ -624,14 +615,14 @@ case class QueryScalarsParser(root: Parser[Ast] = Parser.empty)(override implici
 //   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
 //   //  case q"$query.map[mt]((x) => y) }"
-//   //case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, body)}) } => 
+//   //case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, body)}) } =>
 
 //   def delegate: PartialFunction[Expr[_], Ast] = {
 //     // case q"$query.onConflictIgnore" =>
-//     //  OnConflict(astParser(query), OnConflict.NoTarget, OnConflict.Ignore) 
+//     //  OnConflict(astParser(query), OnConflict.NoTarget, OnConflict.Ignore)
 //     case '{ ($query:Insert[qt]).onConflictIgnore } =>
-//       OnConflict(astParse(query), OnConflict.NoTarget, OnConflict.Ignore) 
-//   }  
+//       OnConflict(astParse(query), OnConflict.NoTarget, OnConflict.Ignore)
+//   }
 // }
 
 
@@ -641,7 +632,7 @@ case class QueryScalarsParser(root: Parser[Ast] = Parser.empty)(override implici
 //   import Parser.Implicits._
 
 //   def delegate: PartialFunction[Expr[_], Ast] = {
-    
+
 //   }
 
 //   object InfixComponents {
@@ -673,9 +664,9 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   object NamedOp1 {
     def unapply(expr: Expr[_]): Option[(Expr[_], String, Expr[_])] =
       UntypeExpr(expr) match {
-        case Unseal(Apply(Select(Untype(left), op: String), Untype(right) :: Nil)) => 
+        case Unseal(Apply(Select(Untype(left), op: String), Untype(right) :: Nil)) =>
           Some(left.asExpr, op, right.asExpr)
-        case _ => 
+        case _ =>
           None
       }
   }
@@ -691,7 +682,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   // }
 
   def del: PartialFunction[Expr[_], Ast] = {
-    case '{ ($str:String).like($other) } => 
+    case '{ ($str:String).like($other) } =>
       Infix(List(""," like ",""), List(astParse(str), astParse(other)), true, Quat.Value)
 
     case expr @ NamedOp1(left, "==", right) =>
@@ -713,7 +704,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     case Unseal(Select(num, "unary_-")) if isNumeric(num.tpe) => astParse(num.asExpr)
 
     // In the future a casting system should be implemented to handle these cases.
-    // Until then, let the SQL dialect take care of the auto-conversion. 
+    // Until then, let the SQL dialect take care of the auto-conversion.
     // This is done term-level or we would have to do it for every numeric type
     // toString is automatically converted into the Apply form i.e. foo.toString automatically becomes foo.toString()
     // so we need to parse it as an Apply. The others don't take arg parens so they are not in apply-form.
@@ -746,7 +737,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     case '{ ($set:String).contains() } =>
       Conso le.printl("Wow you actually did it!")
     */
-    
+
     // 1 + 1
     // Apply(Select(Lit(1), +), Lit(1))
     // Expr[_] => BinaryOperation
@@ -765,7 +756,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   }
 
   object NumericOpLabel {
-    def unapply(str: String): Option[BinaryOperator] = 
+    def unapply(str: String): Option[BinaryOperator] =
       str match {
         case "+" => Some(NumericOperator.`+`)
         case "-" => Some(NumericOperator.-)
@@ -799,15 +790,15 @@ case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case '{ Option.empty[t] } => OptionNone(InferQuat.of[t])
 
     // Parse tuples
-    case Unseal(Apply(TypeApply(Select(TupleIdent(), "apply"), types), values)) => 
+    case Unseal(Apply(TypeApply(Select(TupleIdent(), "apply"), types), values)) =>
       Tuple(values.map(v => astParse(v.asExpr)))
-    
+
     case CaseClassCreation(ccName, fields, args) =>
-      if (fields.length != args.length) 
+      if (fields.length != args.length)
         throw new IllegalArgumentException(s"In Case Class ${ccName}, does not have the same number of fields (${fields.length}) as it does arguments ${args.length} (fields: ${fields}, args: ${args.map(_.show)})")
       val argsAst = args.map(astParse(_))
       CaseClass(fields.zip(argsAst))
-      
+
     case id @ Unseal(i @ TIdent(x)) =>
       cleanIdent(i.symbol.name, InferQuat.ofType(i.tpe))
   }
@@ -822,7 +813,7 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
   def delegate: PartialFunction[Expr[_], Ast] = {
 
     case Unseal(value @ Select(Seal(prefix), member)) =>
-      if (value.tpe <:< TypeRepr.of[Embedded]) { 
+      if (value.tpe <:< TypeRepr.of[Embedded]) {
         Property.Opinionated(astParse(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
       } else {
         //println(s"========= Parsing Property ${prefix.show}.${member} =========")
@@ -837,5 +828,3 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
       astParse(v.asExpr)
   }
 }
-
-

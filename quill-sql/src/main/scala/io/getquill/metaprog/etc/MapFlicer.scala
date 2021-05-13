@@ -10,31 +10,29 @@ import io.getquill.ast.Visibility.{ Hidden, Visible }
 import scala.deriving._
 import scala.quoted._
 import io.getquill.context.LiftMacro
-import io.getquill.metaprog.TypeExtensions
+import io.getquill.metaprog.TypeExtensions._
 
 // I.e. Map-Folding-Splicer since it recursively spliced clauses into a map
 object MapFlicer {
   inline def apply[T, PrepareRow](inline entity: T, inline map: Map[String, String], inline default:String, inline eachField: (String, String) => Boolean): Boolean = ${ applyImpl[T, PrepareRow]('entity, 'map, 'default, 'eachField) }
-  def applyImpl[T: Type, PrepareRow: Type](entity: Expr[T], map: Expr[Map[String, String]], default: Expr[String], eachField: Expr[(String, String) => Boolean])(using qctx: Quotes): Expr[Boolean] = {
+  private def applyImpl[T: Type, PrepareRow: Type](entity: Expr[T], map: Expr[Map[String, String]], default: Expr[String], eachField: Expr[(String, String) => Boolean])(using Quotes): Expr[Boolean] = {
     val mp = new MapFlicerMacro
     val ret = mp.base[T, PrepareRow](entity, map, default, eachField)
     ret
   }
 }
 
-class MapFlicerMacro(using qctx: Quotes) {
-  val ext = new TypeExtensions
-  import ext._
+class MapFlicerMacro {
 
-  import qctx.reflect.{TypeRepr => TType, Term => TTerm, Ident => TIdent, _}
+  def isProduct(using Quotes)(tpe: Type[_]): Boolean =
+    import quotes.reflect._
+    TypeRepr.of(using tpe) <:< TypeRepr.of[Product]
 
-  def isProduct(tpe: Type[_]): Boolean =
-      TType.of(using tpe) <:< TType.of[Product]
-
-  private def recurse[T, PrepareRow, Fields, Types](id: TTerm, fieldsTup: Type[Fields], typesTup: Type[Types])(eachField: Expr[(String, String) => Boolean], map: Expr[Map[String, String]], default: Expr[String])(using baseType: Type[T], pr: Type[PrepareRow]): Expr[Boolean] = {
+  private def recurse[T, PrepareRow, Fields, Types](using Quotes)(id: quotes.reflect.Term, fieldsTup: Type[Fields], typesTup: Type[Types])(eachField: Expr[(String, String) => Boolean], map: Expr[Map[String, String]], default: Expr[String])(using baseType: Type[T], pr: Type[PrepareRow]): Expr[Boolean] = {
+    import quotes.reflect._
     (fieldsTup, typesTup) match {
       case ('[field *: fields], '[tpe *: types]) =>
-        val unsealedClassSymbol = TType.of(using baseType).widen.classSymbol
+        val unsealedClassSymbol = TypeRepr.of(using baseType).widen.classSymbol
         //println(s"Symbol: ${unsealedClassSymbol.get.show}")
         //println(s"Fields: ${unsealedClassSymbol.get.caseFields.map(_.show).toList}")
         // String representing the field being summoned e.g. "firstName" of Person
@@ -46,17 +44,19 @@ class MapFlicerMacro(using qctx: Quotes) {
         val mapSplice = '{ $map.getOrElse(${Expr[String](fieldString)}, $default) }
         // construction of the comparison term:
         // firstName == func(Map[String, String].getOrElse("firstName",null))
-        val expr = '{ 
+        val expr = '{
           $eachField( $childTTerm, ${LiftMacro.apply[String, PrepareRow]( mapSplice )} )
         }
-        '{ ${expr} && ${recurse[T, PrepareRow, fields, types](id, Type.of[fields], Type.of[types])(eachField, map, default)(using baseType)} }
+        val rec = recurse[T, PrepareRow, fields, types](id, Type.of[fields], Type.of[types])(eachField, map, default)(using baseType)
+        '{ $expr && $rec }
 
       case (_, '[EmptyTuple]) => '{ true }
       case _ => report.throwError("Cannot Types In Expression Expression:\n" + (fieldsTup, typesTup))
     }
   }
 
-  def base[T, PrepareRow](expr: Expr[T], map: Expr[Map[String, String]], default: Expr[String], eachField: Expr[(String, String) => Boolean])(using tpe: Type[T], pr: Type[PrepareRow]): Expr[Boolean] = {
+  def base[T, PrepareRow](using Quotes)(expr: Expr[T], map: Expr[Map[String, String]], default: Expr[String], eachField: Expr[(String, String) => Boolean])(using tpe: Type[T], pr: Type[PrepareRow]): Expr[Boolean] = {
+    import quotes.reflect._
     Expr.summon[Mirror.Of[T]] match {
       case Some(ev) => {
         // Otherwise, recursively summon fields
@@ -68,7 +68,7 @@ class MapFlicerMacro(using qctx: Quotes) {
             report.throwError(s"Mirror for ${Type.of[T]} is not a product")
         }
       }
-      case None => 
+      case None =>
         report.throwError(s"Cannot derive a mirror for ${Type.of[T]}")
     }
   }

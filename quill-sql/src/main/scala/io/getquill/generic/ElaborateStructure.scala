@@ -12,8 +12,16 @@ import io.getquill.parser.Lifter
 import io.getquill.quat.Quat
 import io.getquill.ast.{Map => AMap, _}
 import io.getquill.metaprog.TypeExtensions
+import io.getquill.metaprog.TypeExtensions._
 import io.getquill.generic.DecodingType
 
+/** 
+ * Elaboration can be different whether we are encoding or decoding because we could have
+ * decoders for certain things that we don't have encoders for and vice versa. That means
+ * that the potentially something encoded as a value would be decoded as a case-class
+ * or vice versa. Therefore, we need to differentiate whether elaboration is used on the
+ * encoding side or the decoding side.
+ */
 enum ElaborationSide:
   case Encoding
   case Decoding
@@ -37,16 +45,16 @@ enum ElaborationSide:
  * {{{
  * // We needed to convert something that looks like this:
  * query[Person].map(p => p) // i.e. Map(EntityQuery("Person"), Id("p"), Id("p"))
- * 
+ *
  * // Into something that looks like this:
- * query[Person].map(p => p).map(p => (p.name, p.age)) 
+ * query[Person].map(p => p).map(p => (p.name, p.age))
  * // i.e. Map(Map(EntityQuery("Person"), Ident("p"), Ident("p")), Tuple(Prop(Id("p"),"name"), Prop(Id("p"),"age")))
  * }}}
  * This makes it easier to translate the above information into the finalized form
  * {{{
  * SELECT p.name, p.age FROM (SELECT p.* from Person p) AS p
  * }}}
- * (Note that redudant map would typically be flattened out since it is extraneous and the inner 
+ * (Note that redudant map would typically be flattened out since it is extraneous and the inner
  * SELECT would no longer be present)
  *
  * Some special provisions were made for fields inside optional objects:
@@ -58,7 +66,7 @@ enum ElaborationSide:
  * // Would become this:
  * query[Person].map(p => (p.name, p.address.map(_.street), p.address.map(_.zip)))
  * }}}
- * 
+ *
  * Now, since Quats were introduced into Quill since 3.6.0 (technically since 3.5.3), this step is not necessarily needed
  * for query expansion since `Ident("p")` is now understood to expand into it's corresponding SelectValue fields so for queries,
  * this stage could technically be elimiated. However, this logic is also useful for ActionMeta where we have
@@ -71,7 +79,7 @@ enum ElaborationSide:
  * query[Person].insert(_.name -> "Joe", _.age -> 44)
  * // Which is actually:
  * EntityQuery("Person").insert(
- *   Assignment(Id("x1"), Prop(Id("x1"), "name"), Constant("Joe")), 
+ *   Assignment(Id("x1"), Prop(Id("x1"), "name"), Constant("Joe")),
  *   Assignment(Id("x1"), Prop(Id("x1"), "name"), Constant(44))
  * )
  * }}}
@@ -119,7 +127,7 @@ object ElaborateStructure {
           val distinctValues = values.distinct
           if (distinctValues.length > 1)
             report.throwError(s"Invalid coproduct at: ${TypeRepr.of[T].widen.typeSymbol.name}.${term} detected multiple kinds of values: ${distinctValues}")
-          
+
           // TODO Check if there are zero?
           distinctValues.head
         }).toList
@@ -134,7 +142,7 @@ object ElaborateStructure {
 
     // Not sure if Branch Terms should have hidden properties
     def property(parent: Ast, name: String, termType: TermType) =
-      Property.Opinionated(parent, name, Renameable.neutral, 
+      Property.Opinionated(parent, name, Renameable.neutral,
         termType match {
           case Leaf => Visible
           case Branch => Hidden
@@ -151,14 +159,14 @@ object ElaborateStructure {
           // Add field name to the output: x.width -> (x.width, width)
           output.map(ast => (ast, name))
 
-        
+
         case Term(name, tt, list, false) =>
-          val output = 
-            list.flatMap(elem => 
+          val output =
+            list.flatMap(elem =>
               toAst(elem, property(parent, name, tt)))
           // Add field name to the output
           output.map((ast, childName) => (ast, name + childName))
-          
+
         // Leaflnode in an option
         case Term(name, Leaf, list, true) =>
           val idV = Ident("v", Quat.Generic) // TODO Specific quat inference
@@ -173,7 +181,7 @@ object ElaborateStructure {
         // Product node in a option
         case Term(name, Branch, list, true) =>
           val idV = Ident("v", Quat.Generic)
-          val output = 
+          val output =
             for {
               elem <- list
               (newAst, subName) <- toAst(elem, idV)
@@ -185,9 +193,9 @@ object ElaborateStructure {
 
     /**
      * Top-Level expansion of a Term is slighly different the later levels. A the top it's always ident.map(id => ...)
-     * if Ident is an option as opposed to OptionMap which it would be, in lower layers.  
+     * if Ident is an option as opposed to OptionMap which it would be, in lower layers.
      *
-     * Legend: 
+     * Legend:
      *   T(x, [y,z])      := Term(x=name, children=List(y,z)), T-Opt=OptionalTerm I.e. term where optional=true
      *   P(a, b)          := Property(a, b) i.e. a.b
      *   M(a, v, P(v, b)) := Map(a, v, P(v, b)) or m.map(v => P(v, b))
@@ -201,9 +209,9 @@ object ElaborateStructure {
           // For a single-element field, add field name to the output
           output.map(ast => (ast, name))
 
-        // Product node not inside an option. 
-        // T( a, [T(b), T(c)] ) => [ a.b, a.c ] 
-        // (done?)         => [ P(a, b), P(a, c) ] 
+        // Product node not inside an option.
+        // T( a, [T(b), T(c)] ) => [ a.b, a.c ]
+        // (done?)         => [ P(a, b), P(a, c) ]
         // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
         // where T is Term and P is Property (in Ast) and [] is a list
         case Term(name, _, list, false) =>
@@ -212,13 +220,13 @@ object ElaborateStructure {
           output
 
         // Production node inside an Option
-        // T-Opt( a, [T(b), T(c)] ) => 
-        // [ a.map(v => v.b), a.map(v => v.c) ] 
+        // T-Opt( a, [T(b), T(c)] ) =>
+        // [ a.map(v => v.b), a.map(v => v.c) ]
         // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
         // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
         case Term(name, _, list, true) =>
           val idV = Ident("v", Quat.Generic)
-          val output = 
+          val output =
             for {
               elem <- list
               (newAst, name) <- toAst(elem, idV)
@@ -233,9 +241,7 @@ object ElaborateStructure {
   /** Go through all possibilities that the element might be and collect their fields */
   def collectFields[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide)(using Quotes): List[Term] = {
     import quotes.reflect.{Term => QTerm, _}
-    val ext = new TypeExtensions
-    import ext._
-    
+
     (fieldsTup, typesTup) match {
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct =>
         base[tpe](node, side) :: collectFields(node, Type.of[fields], Type.of[types], side)
@@ -246,8 +252,6 @@ object ElaborateStructure {
 
   def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide)(using Quotes): List[Term] = {
     import quotes.reflect.{Term => QTerm, _}
-    val ext = new TypeExtensions
-    import ext._
 
     def constValue[T: Type]: String =
       TypeRepr.of[T] match {
@@ -283,7 +287,7 @@ object ElaborateStructure {
       case (_, '[EmptyTuple]) => Nil
 
       case _ => report.throwError("Cannot Derive Product during Type Flattening of Expression:\n" + (fieldsTup, typesTup))
-    } 
+    }
   }
 
   /** 
@@ -364,7 +368,7 @@ object ElaborateStructure {
       }
     insert
   }
-  
+
   // ofStaticAst
   /** ElaborateStructure the query AST in a static query **/
   def ontoAst[T](ast: Ast)(using Quotes, Type[T]): AMap = {
@@ -392,41 +396,41 @@ object ElaborateStructure {
 
 
   /**
-   * 
-   * 
+   *
+   *
    * Example:
    *   case class Person(name: String, age: Option[Int])
    *   val p = Person("Joe")
    *   lift(p)
-   * Output: 
+   * Output:
    *   Quote(ast: CaseClass("name" -> ScalarTag(name), lifts: EagerLift(p.name, name))
-   * 
+   *
    * Example:
    *   case class Name(first: String, last: String)
    *   case class Person(name: Name)
    *   val p = Person(Name("Joe", "Bloggs"))
    *   lift(p)
-   * Output: 
-   *   Quote(ast: CaseClass("name" -> CaseClass("first" -> ScalarTag(namefirst), "last" -> ScalarTag(last)), 
+   * Output:
+   *   Quote(ast: CaseClass("name" -> CaseClass("first" -> ScalarTag(namefirst), "last" -> ScalarTag(last)),
    *         lifts: EagerLift(p.name.first, namefirst), EagerLift(p.name.last, namelast))
-   * 
+   *
    * Note for examples below:
    *  idA := "namefirst"
    *  idB := "namelast"
-   * 
+   *
    * Example:
    *   case class Name(first: String, last: String)
    *   case class Person(name: Option[Name])
    *   val p = Person(Some(Name("Joe", "Bloggs")))
    *   lift(p)
-   * Output: 
-   *   Quote(ast:   CaseClass("name" -> OptionSome(CaseClass("first" -> ScalarTag(idA), "last" -> ScalarTag(idB))), 
+   * Output:
+   *   Quote(ast:   CaseClass("name" -> OptionSome(CaseClass("first" -> ScalarTag(idA), "last" -> ScalarTag(idB))),
    *         lifts: EagerLift(p.name.map(_.first), namefirst), EagerLift(p.name.map(_.last), namelast))
-   * 
+   *
    * Alternatively, the case where it is:
    *   val p = Person(None) the AST and lifts remain the same, only they effectively become None for every value:
    *         lifts: EagerLift(None               , idA), EagerLift(None              , idB))
-   * 
+   *
    * Legend: x:a->b := Assignment(Ident("x"), a, b)
    */
   // TODO Should have specific tests for this function indepdendently
@@ -489,11 +493,11 @@ object ElaborateStructure {
     def reKeyWithUids(): TaggedLiftedCaseClass[A] = {
       def replaceKeys(newKeys: Map[String, String]): Ast =
         Transform(caseClass) {
-          case ScalarTag(keyName) => 
+          case ScalarTag(keyName) =>
             lazy val msg = s"Cannot find key: '${keyName}' in the list of replacements: ${newKeys}"
             ScalarTag(newKeys.get(keyName).getOrThrow(msg))
         }
-      
+
       val oldAndNewKeys = lifts.map((key, expr) => (key, uuid(), expr))
       val keysToNewKeys = oldAndNewKeys.map((key, newKey, _) => (key, newKey)).toMap
       val newNewKeysToLifts = oldAndNewKeys.map((_, newKey, lift) => (newKey, lift))

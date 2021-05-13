@@ -24,6 +24,7 @@ inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
 
 object QuatMaking {
   private class SimpleQuatMaker(using override val qctx: Quotes) extends QuatMakingBase(using qctx), QuatMaking
+  // TODO I don't think anyValBehavior is used anymore, try to remove it
   private def quatMaker(behavior: AnyValBehavior = AnyValBehavior.TreatAsValue)(using qctx: Quotes) = 
     new SimpleQuatMaker {
       override def anyValBehavior = behavior
@@ -55,7 +56,7 @@ object QuatMaking {
     computeEncodeable()
     // val lookup = encodeableCache.get(tpe)
     // lookup match
-    //   case Some(value) => 
+    //   case Some(value) =>
     //     value
     //   case None =>
     //     val encodeable = computeEncodeable()
@@ -99,7 +100,7 @@ trait QuatMaking extends QuatMakingBase {
 }
 
 trait QuatMakingBase(using val qctx: Quotes) {
-  import qctx.reflect._
+  import quotes.reflect._
   import QuatMaking.AnyValBehavior
 
   def anyValBehavior: AnyValBehavior = AnyValBehavior.TreatAsValue
@@ -115,7 +116,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
 
       def nonGenericMethods(tpe: TypeRepr) = {
         tpe.classSymbol.get.memberFields
-          .filter(m => m.owner.name.toString != "Any" && m.owner.name.toString != "Object").map { param => 
+          .filter(m => m.owner.name.toString != "Any" && m.owner.name.toString != "Object").map { param =>
             (
               param.name.toString,
               tpe.memberType(param).simplified
@@ -186,7 +187,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
       def isGeneric(tpe: TypeRepr) = {
         tpe.typeSymbol.isTypeParam || tpe.typeSymbol.isAliasType || tpe.typeSymbol.isAbstractType || tpe.typeSymbol.flags.is(Flags.Trait) || tpe.typeSymbol.flags.is(Flags.Abstract) || tpe.typeSymbol.flags.is(Flags.Param)
       }
-      
+
       object Param {
         def unapply(tpe: TypeRepr) =
           if (isGeneric(tpe))
@@ -288,7 +289,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
           // def is80Prof[T <: Spirit] = quote { (spirit: Query[Spirit]) => spirit.filter(_.grade == 80) }
           // run(is80Proof(query[Gin]))
           // When processing is80Prof, we assume that Spirit is actually a base class to be extended
-          
+
           // TODO any way in dotty to find out if a class is final?
           case Param(Signature(RealTypeBounds(lower, Deoption(upper)))) if (/*!upper.typeSymbol.isFinal &&*/ !existsEncoderFor(tpe)) =>
             //println("========> TOP LEVEL Type Bound")
@@ -449,7 +450,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
               }
             Quat.Product(newFields)
 
-          case (firstQuat, secondQuat) => 
+          case (firstQuat, secondQuat) =>
             firstQuat.leastUpperType(secondQuat) match
               case Some(value) => value
               // TODO Get field names for these quats if they are inside something else?
@@ -468,7 +469,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
       def unapply(tpe: TypeRepr) =
         if (isType[Query[_]](tpe))
           tpe.asType match
-            case '[Query[t]] => 
+            case '[Query[t]] =>
               val out = TypeRepr.of[t]
               //println(s"&&&&&&&&&&& DeQuery: ${out}")
               //println(s"Subtype of bool: ${out <:< TypeRepr.of[Boolean]}")

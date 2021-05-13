@@ -17,18 +17,18 @@ import io.getquill.util.Format
 import io.getquill.parser.ParserHelpers._
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
-import io.getquill.metaprog.Extractors
+import io.getquill.metaprog.Extractors._
 
 object ParserHelpers {
 
-  trait Idents extends Extractors with QuatMaking {
+  trait Idents extends QuatMaking {
     import qctx.reflect.{Ident => TIdent, ValDef => TValDef, _}
 
     def cleanIdent(name: String, quat: Quat): AIdent = AIdent(name.replace("_$", "x"), quat)
     def cleanIdent(name: String, tpe: TypeRepr): AIdent = AIdent(name.replace("_$", "x"), InferQuat.ofType(tpe))
   }
-  
-  trait Assignments extends Idents with Extractors {
+
+  trait Assignments extends Idents {
     import qctx.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import Parser.Implicits._
     import io.getquill.util.Interpolator
@@ -43,7 +43,7 @@ object ParserHelpers {
 
       def unapply(term: Term): Option[Assignment] =
         UntypeExpr(term.asExpr) match {
-          case Lambda1(ident, identTpe, '{ type v; ($prop: Any).->[`v`](($value: `v`)) }) => 
+          case Lambda1(ident, identTpe, '{ type v; ($prop: Any).->[`v`](($value: `v`)) }) =>
             Some(Assignment(cleanIdent(ident, identTpe), astParse(prop), astParse(value)))
           case _ => None
         }
@@ -51,7 +51,7 @@ object ParserHelpers {
   }
 
 
-  trait PropertyAliases(implicit val qctx: Quotes) extends Extractors {
+  trait PropertyAliases(implicit val qctx: Quotes) {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import Parser.Implicits._
     import io.getquill.util.Interpolator
@@ -69,17 +69,17 @@ object ParserHelpers {
         case Lambda1(_, _, '{ ($prop: Any).->[v](${ConstExpr(alias: String)}) } ) =>
           def path(tree: Expr[_]): List[String] =
             tree match
-              case a`.`b => 
+              case a`.`b =>
                 path(a) :+ b
               case '{ (${a`.`b}: Option[t]).map[r](${Lambda1(arg, tpe, body)}) } =>
                 path(a) ++ (b :: path(body))
-              case _ => 
+              case _ =>
                 Nil
           end path
           Some(PropertyAlias(path(prop), alias))
-        case _ => 
+        case _ =>
           None
-    }    
+    }
   }
 
 
@@ -88,21 +88,21 @@ object ParserHelpers {
    * of different equality paradigms across ANSI-SQL and Scala for objects that may be Optional or not. Several
    * techniques are implemented to resolve these inconsistencies.
    */
-  trait ComparisonTechniques(implicit override val qctx: Quotes) extends Extractors {
+  trait ComparisonTechniques(implicit val qctx: Quotes) {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import Parser.Implicits._
 
     // To be able to access the external parser the extends this
     def astParse: SealedParser[Ast]
-    
+
     sealed trait EqualityBehavior { def operator: BinaryOperator }
     case object Equal extends EqualityBehavior { def operator: BinaryOperator = EqualityOperator.`==` }
     case object NotEqual extends EqualityBehavior { def operator: BinaryOperator = EqualityOperator.`!=` }
 
-    /** 
+    /**
      * Taken from the identically named method in Parser.scala in Scala2-Quill. Much of this logic
      * is not macro specific so a good deal of it can be refactored out into the quill-sql-portable module.
-     * Do equality checking on the database level with the same truth-table as idiomatic scala 
+     * Do equality checking on the database level with the same truth-table as idiomatic scala
      */
     def equalityWithInnerTypechecksIdiomatic(left: Term, right: Term)(equalityBehavior: EqualityBehavior) = {
       import io.getquill.ast.Implicits._
@@ -126,9 +126,9 @@ object ParserHelpers {
       }
     }
 
-    /** 
+    /**
      * (not used yet but will be used when support for 'extras' dsl functionality is added)
-     * Do equality checking on the database level with the ansi-style truth table (i.e. always false if one side is null) 
+     * Do equality checking on the database level with the ansi-style truth table (i.e. always false if one side is null)
      */
     def equalityWithInnerTypechecksAnsi(left: Term, right: Term)(equalityBehavior: EqualityBehavior) = {
       import io.getquill.ast.Implicits._
@@ -161,7 +161,7 @@ object ParserHelpers {
       val leftType = lhs.tpe
       val rightType = rhs.tpe
       // Note that this only goes inside the optional one level i.e. Option[T] => T. If we have Option[Option[T]] it will return the inside Option[T].
-      // This is by design. If the types do not match, even if we normally don't care about the outer layer 
+      // This is by design. If the types do not match, even if we normally don't care about the outer layer
       // (i.e. for equalityWithInnerTypechecksAnsi where Option[T] == T is allowed (that's in the 'extras' modules which uses ===))
       // we still want to fail with an exception that the types are identical if the user does Option[Option[T]] == Option[T] since that is a serious
       // typing error.
@@ -199,14 +199,14 @@ object ParserHelpers {
       a.widen =:= b.widen || a.widen <:< b.widen || b.widen <:< a.widen || (isNumeric(a.widen) && isNumeric(b.widen))
 
     def innerOptionParam(tpe: TypeRepr): TypeRepr =
-      if (tpe <:< TypeRepr.of[Option[_]]) 
+      if (tpe <:< TypeRepr.of[Option[_]])
         tpe.asType match
           case '[Option[t]] => TypeRepr.of[t]
       else
         tpe
   }
 
-  trait PatternMatchingValues(implicit override val qctx: Quotes) extends Extractors with QuatMaking {
+  trait PatternMatchingValues(implicit override val qctx: Quotes) extends QuatMaking {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import Parser.Implicits._
     import io.getquill.util.Interpolator
@@ -269,12 +269,12 @@ object ParserHelpers {
           case other => None
         }
     }
-    
+
     protected def patMatchParser(tupleTree: Term, fieldsTree: Tree, bodyTree: Term): Ast = {
       val tuple = astParse(tupleTree.asExpr)
       val body = astParse(bodyTree.asExpr)
 
-      /* 
+      /*
       Get a list of all the paths of all the identifiers inside the tuple. E.g:
       foo match { case ((a,b),c) => bar } would yield something like:
       List((a,List(_1, _1)), (b,List(_1, _2)), (c,List(_2)))
@@ -282,7 +282,7 @@ object ParserHelpers {
       def tupleBindsPath(field: Tree, path: List[String] = List()): List[(AIdent, List[String])] = {
         UntypeTree(field) match {
           case Bind(name, TIdent(_)) => List(AIdent(name) -> path)
-          case Unapply(Method0(TupleIdent(), "unapply"), something, binds) => 
+          case Unapply(Method0(TupleIdent(), "unapply"), something, binds) =>
             binds.zipWithIndex.flatMap { case (bind, idx) =>
               tupleBindsPath(bind, path :+ s"_${idx + 1}")
             }
@@ -290,7 +290,7 @@ object ParserHelpers {
         }
       }
 
-      /* Take the list found in the tupleBindsPath method above and match up each match-tuple element 
+      /* Take the list found in the tupleBindsPath method above and match up each match-tuple element
       from the original tuple we found. For example, if we had: foo match { case ((a,b),c) => bar }
       we get something like List((a,List(_1, _1)), (b,List(_1, _2)), (c,List(_2))). If 'foo'
       is ((f,b),z) then we want to get: List(((f,b),z)._1._1, ((f,b),z)._1._2, ((f,b),z)._2)

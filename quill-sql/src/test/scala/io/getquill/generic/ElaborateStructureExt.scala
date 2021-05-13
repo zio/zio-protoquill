@@ -12,12 +12,12 @@ object ElaborateStructureExt {
   /** An external hook to run the Elaboration with a given AST during runtime (mostly for testing). */
   inline def external[T](ast: Ast): AMap = ${ ElaborateStructure.ontoDynamicAst[T]('ast) }
 
-  inline def ofProductValueExternal[T](productValue: T): TaggedSplicedCaseClass = 
+  inline def ofProductValueExternal[T](productValue: T): TaggedSplicedCaseClass =
     ${ ElaborateStructureExt.ofProductValueExternalImpl('productValue) }
 
-  
+
   inline def entityValues[T <: Product](entity: T): List[(String, Any)] = ${ entityValuesImpl('entity) }
-  def entityValuesImpl[T <: Product: Type](entity: Expr[T])(using qctx: Quotes): Expr[List[(String, Any)]] = {
+  private def entityValuesImpl[T <: Product: Type](entity: Expr[T])(using Quotes): Expr[List[(String, Any)]] = {
     import ElaborateStructure._
     // elaboration side is decoding although we might want to add tests to see it from the other side too
     val schema = ElaborateStructure.base[T](Term("x", Branch), ElaborationSide.Decoding)
@@ -37,12 +37,12 @@ object ElaborateStructureExt {
     Expr.ofList(fieldGetters)
   }
 
-  def ofProductValueExternalImpl[T: Type](productValue: Expr[T])(using qctx: Quotes): Expr[TaggedSplicedCaseClass] = {
-    import qctx.reflect._
-    // TODO Should test both encoding and decoding side of the elaboration
+  // TODO Should test both encoding and decoding side of the elaboration
+  // For now this just used on the encoding side in the tests
+  private def ofProductValueExternalImpl[T: Type](productValue: Expr[T])(using Quotes): Expr[TaggedSplicedCaseClass] = { 
     val tlcc = ElaborateStructure.ofProductValue[T](productValue, ElaborationSide.Encoding)
     val liftedLifts = tlcc.lifts.map((str, lift) => '{ ((${Expr(str)}, $lift)) })
-    '{ TaggedSplicedCaseClass(${Lifter(tlcc.caseClass)}, ${Expr.ofList(liftedLifts)}) }    
+    '{ TaggedSplicedCaseClass(${Lifter(tlcc.caseClass)}, ${Expr.ofList(liftedLifts)}) }
   }
 
   case class TaggedSplicedCaseClass(ast: Ast, lifts: List[(String, Any)])

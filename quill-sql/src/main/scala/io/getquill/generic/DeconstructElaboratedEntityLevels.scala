@@ -21,9 +21,10 @@ object DeconstructElaboratedEntityLevels {
 
 // TODO Unify this with DeconstructElaboratedEntities. This will generate the fields
 // and the labels can be generated separately and zipped in the case oc DeconstructElaboratedEntity
-private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes) extends Extractors {
+private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes) {
   import qctx.reflect._
-  import io.getquill.generic.ElaborateStructure.Term //helloooo
+  import io.getquill.metaprog.Extractors._
+  import io.getquill.generic.ElaborateStructure.Term
 
   def apply[ProductCls: Type](elaboration: Term): List[Expr[ProductCls => _]] = {
     recurseNest[ProductCls](elaboration).asInstanceOf[List[Expr[ProductCls => _]]]
