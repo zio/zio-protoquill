@@ -38,6 +38,13 @@ class ElaborateProductValueStructureSpec extends Spec {
       val values = lambdas.map(l => l(Entity("foo", Some(Nested(1, 2L)))))
       values mustEqual List("foo", Some(1), Some(2))
     }
+    "Nested with double option" in {
+      case class Nested(i: Int, l: Long)
+      case class Entity(a: String, b: Option[Option[Nested]])
+      inline def lambdas = ElaborateStructureExt.entityValuesLambda[Entity]
+      val values = lambdas.map(l => l(Entity("foo", Some(Some(Nested(1, 2L))))))
+      values mustEqual List("foo", Some(1), Some(2))
+    }
 
     "Nested with optional fields (None)" in {
       case class Nested(i: Int, l: Long)

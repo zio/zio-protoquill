@@ -167,20 +167,21 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
             // In order to be able to flatten optionals in the flattenOptionals later, we need to make
             // sure that the method-type in the .map function below is 100% correct. That means we
             // need to lookup what the type of the field of this particular member should actually be.
-            val tpe = 
-              Type.of[Cls] match
-                case '[Option[t]] => TypeRepr.of[t]
-            //println(s"Get member '${childTerm.name}' of ${Printer.TypeReprShortCode.show(tpe)}")
-            val memField = tpe.classSymbol.get.memberField(childTerm.name)
-            val memeType = tpe.memberType(memField).widen
+            val rootType = `Option[...[t]...]`.innerT(Type.of[Cls])
+            val rootTypeRepr = 
+               rootType match
+                case '[t] => TypeRepr.of[t]
+            println(s"Get member '${childTerm.name}' of ${Format.TypeRepr(rootTypeRepr)}")
+            val memField = rootTypeRepr.classSymbol.get.memberField(childTerm.name)
+            val memeType = rootTypeRepr.memberType(memField).widen
             //println(s"(Option) MemField of ${childTerm.name} is ${memField}: ${Printer.TypeReprShortCode.show(memeType)}")
 
-            Type.of[Cls] match
-              case '[Option[t]] =>
+            (Type.of[Cls], rootType) match
+              case ('[cls], '[root]) =>
                 memeType.asType match
                   // If the nested field is itself optional, need to account for immediate flattening
                   case '[Option[mt]] =>
-                    val expr = '{ (optField: Option[t]) => optField.flatMap[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[Option[mt]]}) }
+                    val expr = '{ (optField: cls) => ${flattenOptions('optField).asExprOf[Option[root]]}.flatMap[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[Option[mt]]}) }
                     //println(s"Mapping: asExprOf ${childTerm.name} into ${Format.TypeOf[Option[mt]]} in ${Format.Expr(expr)}")
                     (
                       childTerm, 
@@ -188,7 +189,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
                       memeType
                     )
                   case '[mt] =>
-                    val expr = '{ (optField: Option[t]) => optField.map[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[mt]}) }
+                    val expr = '{ (optField: cls) => ${flattenOptions('optField).asExprOf[Option[root]]}.map[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[mt]}) }
                     //println(s"Mapping: asExprOf ${childTerm.name} into ${Format.TypeOf[mt]} in ${Format.Expr(expr)}")
                     (
                       childTerm, 

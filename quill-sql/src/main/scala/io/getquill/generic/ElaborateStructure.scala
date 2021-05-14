@@ -271,24 +271,29 @@ object ElaborateStructure {
         // Macro error
       }
 
+    import io.getquill.metaprog.Extractors._
+
     (fieldsTup, typesTup) match {
       // TODO These calls are expensive
       // do this first '[field *: fields], then do '[Option[tpe] *: types] internally
 
-      case ('[field *: fields], '[Option[tpe] *: types]) if Type.of[tpe].isProduct =>
-        val childTerm = Term(Type.of[field].constValue, Branch, optional = true)
-        //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
-        base[tpe](childTerm, side) :: flatten(node, Type.of[fields], Type.of[types], side)
+      case ('[field *: fields], '[Option[firstInnerTpe] *: types]) =>
+        // Option[firstInnerTpe] could be Option[tpe] or Option[Option[tpe]] etc... so we need to find the most inner type
+        `Option[...[t]...]`.innerOrTopLevelT(Type.of[firstInnerTpe]) match
+          case '[tpe] =>
+            if (Type.of[tpe].isProduct)
+              val childTerm = Term(Type.of[field].constValue, Branch, optional = true)
+              //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
+              base[tpe](childTerm, side) :: flatten(node, Type.of[fields], Type.of[types], side)
+            else
+              val childTerm = Term(Type.of[field].constValue, Leaf, optional = true)
+              //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
+              childTerm :: flatten(node, Type.of[fields], Type.of[types], side)
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct && Type.of[tpe].notOption  =>
         val childTerm = Term(Type.of[field].constValue, Branch)
         //println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
         base[tpe](childTerm, side) :: flatten(node, Type.of[fields], Type.of[types], side)
-
-      case ('[field *: fields], '[Option[tpe] *: types]) =>
-        val childTerm = Term(Type.of[field].constValue, Leaf, optional = true)
-        //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
-        childTerm :: flatten(node, Type.of[fields], Type.of[types], side)
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].notOption =>
         val childTerm = Term(Type.of[field].constValue, Leaf)

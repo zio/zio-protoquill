@@ -3,6 +3,7 @@ package io.getquill.metaprog
 import scala.quoted._
 import scala.quoted.Varargs
 import io.getquill.util.printer
+import io.getquill.util.Format
 
 class Is[T: Type]:
   def unapply(expr: Expr[Any])(using Quotes) =
@@ -439,6 +440,17 @@ object Extractors {
   def is[T: Type](using Quotes)(inputs: Expr[_]*): Boolean =
     import quotes.reflect._
     inputs.forall(input => input.asTerm.tpe <:< TypeRepr.of[T])
+
+  object `Option[...[t]...]`:
+    def innerOrTopLevelT(tpe: Type[_])(using Quotes): Type[_] =
+      tpe match
+        case '[Option[t]] => innerOrTopLevelT(Type.of[t])
+        case '[t] => Type.of[t]
+    def innerT(tpe: Type[_])(using Quotes) =
+      import quotes.reflect._
+      tpe match
+        case '[Option[t]] => innerOrTopLevelT(Type.of[t])
+        case '[t] => report.throwError(s"The Type ${Format.TypeOf[t]} is not an Option")
 
   /** 
    * Uninline the term no matter what (TODO should reove the unapply case) that pattern always matches
