@@ -22,19 +22,18 @@ object DeconstructElaboratedEntityLevels {
 
 // TODO Unify this with DeconstructElaboratedEntities. This will generate the fields
 // and the labels can be generated separately and zipped in the case oc DeconstructElaboratedEntity
-private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes) {
+private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes):
   import qctx.reflect._
   import io.getquill.metaprog.Extractors._
   import io.getquill.generic.ElaborateStructure.Term
 
-  def apply[ProductCls: Type](elaboration: Term): List[(Expr[ProductCls => _], Type[_])] = {
+  def apply[ProductCls: Type](elaboration: Term): List[(Expr[ProductCls => _], Type[_])] =
     recurseNest[ProductCls](elaboration).asInstanceOf[List[(Expr[ProductCls => _], Type[_])]]
-  }
 
   // TODO Do we need to include flattenOptions?
   // Given Person(name: String, age: Int)
   // Type TypeRepr[Person] and then List(Expr[Person => Person.name], Expr[Person => Person.age])
-  def recurseNest[Cls: Type](node: Term): List[(Expr[_ => _], Type[_])] = {
+  def recurseNest[Cls: Type](node: Term): List[(Expr[_ => _], Type[_])] =
     // For example (given Person(name: String, age: Int)):
     // (Term(Person.name), Person => Person.name, String)
     // Or for nested entities (given Person(name: Name, age: Int))
@@ -92,32 +91,27 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
               //println(s"====== Nested Getters: ${output.map(_.show)}")
               output.asInstanceOf[List[(Expr[Any => _], Type[_])]]
     }
-  }
+  end recurseNest
 
   private[getquill] def optionalize(tpe: Type[_]) =
     tpe match
       case '[t] => Type.of[Option[t]]
 
-  private[getquill] def flattenOptions(expr: Expr[_])(using Quotes): Expr[_] = {
+  private[getquill] def flattenOptions(expr: Expr[_])(using Quotes): Expr[_] =
     import quotes.reflect._
-    expr.asTerm.tpe.asType match {
+    expr.asTerm.tpe.asType match
       case '[Option[Option[t]]] =>
         //println(s"~~~~~~~~~~~~~ Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
         flattenOptions('{ ${expr.asExprOf[Option[Option[t]]]}.flatten[t] })
       case _ =>
         //println(s"~~~~~~~~~~~~~ Non-Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
         expr
-    }
-  }
 
-  // Note: Not sure if always appending name + childName is right to do. When looking
-  // up fields by name with sub-sub Embedded things going to need to look into that
   private[getquill] def elaborateObjectOneLevel[Cls: Type](node: Term): List[(Term, Expr[Cls => _], TypeRepr)] = {
     val clsType = TypeRepr.of[Cls]
-    node match {
+    node match
       // If leaf node, don't need to do anything since high levels have already returned this field
       case term @ Term(name, _, Nil, _) =>
-        //println(s"For Term: ${name} - Elaborate Object into Empty List")
         List()
 
       // Product node not inside an option
@@ -128,38 +122,26 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
       case (Term(name, _, childProps, false)) =>
         // TODO For coproducts need to check that the childName method actually exists on the type and
         // exclude it if it does not
-        val output = 
-          childProps.map { childTerm =>
-            val memberSymbol = clsType.widen.classSymbol.get.memberField(childTerm.name)  // for Person, Person.name.type
-            val memberType = clsType.memberType(memberSymbol).widen
-            println(s"(Non-Option) MemField of ${childTerm.name} is ${memberSymbol}: ${Printer.TypeReprShortCode.show(memberType)}")
-            memberType.asType match
-              case '[t] =>
-                val expr = '{ (field: Cls) => ${ ('field `.` (childTerm.name)).asExprOf[t] }  }
-                (
-                  childTerm, 
-                  expr, // for Person, Person.name
-                  memberType
-                )
-          }
-        //println(s"For Term: ${name} - Elaborate Object Into: ${output.map(_._3).map(io.getquill.util.Format.TypeRepr(_))}")
-        output
+        childProps.map { childTerm =>
+          val memberSymbol = clsType.widen.classSymbol.get.memberField(childTerm.name)  // for Person, Person.name.type
+          val memberType = clsType.memberType(memberSymbol).widen
+          println(s"(Non-Option) MemField of ${childTerm.name} is ${memberSymbol}: ${Printer.TypeReprShortCode.show(memberType)}")
+          memberType.asType match
+            case '[t] =>
+              val expr = '{ (field: Cls) => ${ ('field `.` (childTerm.name)).asExprOf[t] }  }
+              (
+                childTerm, 
+                expr, // for Person, Person.name
+                memberType
+              )
+        }
 
       // Production node inside an Option
       // T-Opt( a, [T(b), T(c)] ) => 
       // [ a.map(v => v.b), a.map(v => v.c) ] 
       // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
       // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
-
       case Term(name, _, childProps, true) if TypeRepr.of[Cls] <:< TypeRepr.of[Option[Any]] =>
-        // def innerType[IT: Type]: Type[_] =
-        //   Type.of[IT] match
-        //     case '[Option[t]] => Type.of[t]
-        //     case _ => tpe
-
-        // val innerType = innerType[outerT]
-
-        
         // TODO For coproducts need to check that the childName method actually exists on the type and
         // exclude it if it does not
         childProps.map { 
@@ -174,8 +156,6 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
             println(s"Get member '${childTerm.name}' of ${Format.TypeRepr(rootTypeRepr)}")
             val memField = rootTypeRepr.classSymbol.get.memberField(childTerm.name)
             val memeType = rootTypeRepr.memberType(memField).widen
-            //println(s"(Option) MemField of ${childTerm.name} is ${memField}: ${Printer.TypeReprShortCode.show(memeType)}")
-
             (Type.of[Cls], rootType) match
               case ('[cls], '[root]) =>
                 memeType.asType match
@@ -200,7 +180,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
 
       case _ =>
           report.throwError(s"Illegal state during reducing expression term: '${node}' and type: '${io.getquill.util.Format.TypeRepr(clsType)}'")
-    }
+    end match
   }
 
-}
+end DeconstructElaboratedEntityLevels
