@@ -476,7 +476,7 @@ object ElaborateStructure {
         case '[t] =>
           if (TypeRepr.of[t] =:= TypeRepr.of[Any])
             report.warning(s"The following the expression was typed `Any`: ${Format.Expr(exprPath)}. Will likely not be able to summon an encoder for this (the actual type was: ${Format.TypeOf[T]} in ${Format.TypeRepr(exprPath.asTerm.tpe)})  (the other param was ${Format.TypeOf[T]}.")
-          Expr.betaReduce('{ $exprPath($productValue) }).asExprOf[t]
+          '{ ${Expr.betaReduce('{ $exprPath($productValue) }) }.asInstanceOf[t] }
     }
     if (labels.length != pathLambdas.length)
       report.throwError(s"List of (${labels.length}) labels: ${labels} does not match list of (${paths.length}) paths that they represent: ${paths.map(Format.Expr(_))}")
