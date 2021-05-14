@@ -118,9 +118,7 @@ object LiftMacro {
     // since we need to manually type the lift T=>element-of-T functions e.g. we need to type
     // (p:Person=>p.name) manually as String which we will do below in determining the output.
     // otherwise scala will just think they are 'Any' and we won't be able to summon encoders for them later
-    val elems = ElaborateStructure.liftsOfProductValue[T](elaborated, '{???.asInstanceOf[T]})
-    val labels = elems.map(_._1)
-    val exprTypes = elems.map(_._2.asTerm.tpe.widen.asType)
+    val labels = elaborated.paths
 
     // Need to parse lifts out of a lambda method and then isolate the clauses later. Need to do it like this
     // instead of just making a fake-variable because doing the latter would violate phase-consistency (i.e. since we would)
@@ -128,13 +126,13 @@ object LiftMacro {
     // ...
     // and the respectively pull out lift(singleArg.foo), lift(singleArg.bar), etc... from that clause turning it into
     // (singleArg) => lift(singleArg.foo), (singleArg) => lift(singleArg.bar), (singleArg) => etc... so that everything remains phase consistent
-    val liftLambdas = ElaborateStructure.decomposedProductValue[T](ElaborationSide.Encoding) // Elaboration side is 'Encoding' since we are in the lift macro
+    val liftLambdasAndTypes = ElaborateStructure.decomposedProductValue[T](ElaborationSide.Encoding) // Elaboration side is 'Encoding' since we are in the lift macro
+    val liftLambdas = liftLambdasAndTypes.map(_._1)
+    val exprTypes = liftLambdasAndTypes.map(_._2)
     def liftCombo[Output: Type](index: Int) =
       '{ (entity: T) =>
         ${liftLambdas(index)}.apply(entity).asInstanceOf[Output]  
       }
-
-    
     
     val output = 
       labels.zipWithIndex.map((label, index) => {

@@ -14,6 +14,7 @@ import io.getquill.ast.{Map => AMap, _}
 import io.getquill.metaprog.TypeExtensions
 import io.getquill.metaprog.TypeExtensions._
 import io.getquill.generic.DecodingType
+import io.getquill.util.Format
 
 /** 
  * Elaboration can be different whether we are encoding or decoding because we could have
@@ -98,6 +99,16 @@ object ElaborateStructure {
     def withChildren(children: List[Term]) = this.copy(children = children)
     def toAst = Term.toAstTop(this)
     def asLeaf = this.copy(typeType = Leaf, children = List())
+    def paths =
+      def pathsRecurse(node: Term, topLevel: Boolean = false): List[String] =
+        def emptyIfTop(str: String) = if(topLevel) "" else str
+        node match
+          case Term(name, _, Nil, _) => List(name)
+          case Term(name, _, childProps, _) =>
+            childProps
+              .flatMap(childTerm => pathsRecurse(childTerm))
+              .map(childName => emptyIfTop(name) + childName)
+      pathsRecurse(this, true)
 
     // Used by coproducts, merges all fields of a term with another if this is valid
     // Note that T is only needed for the error message. Maybe take it out once we store Types inside of Term
@@ -446,7 +457,7 @@ object ElaborateStructure {
     TaggedLiftedCaseClass(nestedAst, lifts)
   }
 
-  def decomposedProductValue[T: Type](side: ElaborationSide)(using Quotes): List[Expr[T => _]] = {
+  def decomposedProductValue[T: Type](side: ElaborationSide)(using Quotes) = {
     val elaborated = elaborationOfProductValue[T](side)
     decomposedLiftsOfProductValue(elaborated)
   }
@@ -455,10 +466,29 @@ object ElaborateStructure {
     base[T](Term("notused", Branch), side)
 
   private[getquill] def liftsOfProductValue[T: Type](elaboration: Term, productValue: Expr[T])(using Quotes) =
-    DeconstructElaboratedEntity(elaboration, productValue).map((k,v) => (v,k))
+    import quotes.reflect._
+    // for t:T := Person(name: String, age: Int) it will be paths := List[Expr](t.name, t.age) (labels: List("name", "age"))
+    // for t:T := Person(name: Name, age: Int), Name(first:String, last: String) it will be paths := List[Expr](t.name.first, t.name.last, t.age) (labels: List(namefirst, namelast, age))
+    val labels = elaboration.paths
+    val pathLambdas = DeconstructElaboratedEntityLevels[T](elaboration)
+    val paths: List[Expr[_]] = pathLambdas.map { (exprPath, exprType) =>  
+      exprType match
+        case '[t] =>
+          if (TypeRepr.of[t] =:= TypeRepr.of[Any])
+            report.warning(s"The following the expression was typed `Any`: ${Format.Expr(exprPath)}. Will likely not be able to summon an encoder for this (the actual type was: ${Format.TypeOf[T]} in ${Format.TypeRepr(exprPath.asTerm.tpe)})  (the other param was ${Format.TypeOf[T]}.")
+          Expr.betaReduce('{ $exprPath($productValue) }).asExprOf[t]
+    }
+    if (labels.length != pathLambdas.length)
+      report.throwError(s"List of (${labels.length}) labels: ${labels} does not match list of (${paths.length}) paths that they represent: ${paths.map(Format.Expr(_))}")
+    val outputs = labels.zip(paths)
+    outputs.foreach { (label, exprPath) =>
+      if (exprPath.asTerm.tpe =:= TypeRepr.of[Any])
+        report.warning(s"`Any` value found for the path ${label} at the expression ${Format.Expr(exprPath)}. Will likely not be able to summon an encoder for this.")
+    }
+    outputs
 
-  private[getquill] def decomposedLiftsOfProductValue[T: Type](elaboration: Term)(using Quotes): List[Expr[T => _]] =
-    DeconstructElaboratedEntityLevels(elaboration)
+  private[getquill] def decomposedLiftsOfProductValue[T: Type](elaboration: Term)(using Quotes): List[(Expr[T => _], Type[_])] =
+    DeconstructElaboratedEntityLevels[T](elaboration)
 
   /** 
    * Flatten the elaboration from 'node' into a completely flat product type

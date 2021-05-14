@@ -319,20 +319,6 @@ case class OrderingParser(root: Parser[Ast] = Parser.empty)(override implicit va
 }
 
 
-
-// Can potentially use this to optimize by doing per-expression type checking before matching an expression
-// e.g. case Is[String]( '{ (i: Int).toString } ). It would only try to match the expression if it knows
-// the whole clause is typed as a string
-// object Is {
-//   def unapply[T](expr: Expr[_])(using tpe: Type[T], qctx: Quotes): Option[Expr[_]] =
-//     import qctx.reflect._
-//     if (expr.asTerm.tpe <:< TypeRepr.of[T])
-//       Some(expr)
-//     else
-//       None
-// }
-
-
 // TODO Pluggable-in unlifter via implicit? Quotation generic should have it in the root?
 case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
   import quotes.reflect.{ Ident => TIdent, _}
@@ -360,7 +346,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
     // must happen (specifically have a check for it or just fail to parse?)
     // since we would not know the UID since it is not inside of a bin. This situation
     // should only be encountered to a top-level quote passed to the 'run' function and similar situations.
-    case QuotedExpr.Uprootable(quotedExpr) => // back here
+    case QuotedExpr.Uprootable(quotedExpr) =>
       Unlifter(quotedExpr.ast)
   }
 }
@@ -672,16 +658,6 @@ case class QueryScalarsParser(root: Parser[Ast] = Parser.empty)(override implici
 //       OnConflict(astParse(query), OnConflict.NoTarget, OnConflict.Ignore)
 //   }
 // }
-
-
-
-// case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with Assignments {
-//   import quotes.reflect.{Constant => TConstant, _}
-//   import Parser.Implicits._
-
-//   def delegate: PartialFunction[Expr[_], Ast] = {
-
-//   }
 
 case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with Assignments {
   import quotes.reflect.{Constant => TConstant, _}

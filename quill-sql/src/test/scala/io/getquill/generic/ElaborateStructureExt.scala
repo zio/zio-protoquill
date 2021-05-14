@@ -21,8 +21,7 @@ object ElaborateStructureExt {
     import ElaborateStructure._
     // elaboration side is decoding although we might want to add tests to see it from the other side too
     val schema = ElaborateStructure.base[T](Term("x", Branch), ElaborationSide.Decoding)
-    val elaboration = DeconstructElaboratedEntity(schema, entity)
-    val out = elaboration.map((v, k) => (k, v))
+    val out = ElaborateStructure.liftsOfProductValue[T](schema, entity)
     val outExpr = out.map((str, expr) => '{ (${Expr(str)}, $expr) })
     Expr.ofList(outExpr)
   }
@@ -31,7 +30,7 @@ object ElaborateStructureExt {
   def entityValuesLambdaImpl[T <: Product: Type](using qctx: Quotes): Expr[List[T => Any]] = {
     import ElaborateStructure._
     val schema = ElaborateStructure.base[T](Term("x", Branch), ElaborationSide.Decoding)
-    val fieldGetters = DeconstructElaboratedEntityLevels[T](schema)
+    val fieldGetters = DeconstructElaboratedEntityLevels[T](schema).map(_._1)
     Expr.ofList(fieldGetters)
   }
 
