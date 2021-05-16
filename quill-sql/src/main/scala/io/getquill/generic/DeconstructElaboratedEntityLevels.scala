@@ -64,13 +64,19 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
                   val castNextField = nextField.asInstanceOf[Expr[Any => _]]     // e.g. Name => Name.first
                     // e.g. nest Person => Person.name into Name => Name.first to get Person => Person.name.first
                   val pathToField =
+                    // When Cls := Person(name: Name) and Name(first: String, last: String) ...
                     '{ (input: Cls) =>
-                      $castNextField.apply(${
-                        val out = '{ $castFieldGetter.apply(input).asInstanceOf[tt] }.asInstanceOf[Expr[tt]]
-                        //println(s"Full output type ${Format.TypeRepr(out.asTerm.tpe)} as instance of ${Format.TypeOf[tt]} of expression ${Format.Expr(out)})")
-                        out
-                      })
+                      ${
+                        // ... then (Name => Name.first)(person.name) beta-reduces to person.name.first
+                        Expr.betaReduce('{
+                          $castNextField(${
+                            // .. then (Person => Person.name)(person) beta-reduces to person.name
+                            Expr.betaReduce('{ $castFieldGetter(input) })
+                          })
+                        })
+                      }
                     }
+                  //println(s"Path to field '${nextField}' is: ${Format.Expr(pathToField)}")
                   // if you have Person(name: Option[Name]), Name(first: String, last: String) then the fieldTypeRepr is going to be Option[Name]
                   // that means that the child type (which is going to be person.name.map(_.first)) needs to be Option[String] instead of [String]
                   val childType =
@@ -125,7 +131,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
         childProps.map { childTerm =>
           val memberSymbol = clsType.widen.classSymbol.get.memberField(childTerm.name)  // for Person, Person.name.type
           val memberType = clsType.memberType(memberSymbol).widen
-          println(s"(Non-Option) MemField of ${childTerm.name} is ${memberSymbol}: ${Printer.TypeReprShortCode.show(memberType)}")
+          //println(s"(Non-Option) MemField of ${childTerm.name} is ${memberSymbol}: ${Printer.TypeReprShortCode.show(memberType)}")
           memberType.asType match
             case '[t] =>
               val expr = '{ (field: Cls) => ${ ('field `.` (childTerm.name)).asExprOf[t] }  }
@@ -153,7 +159,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
             val rootTypeRepr = 
                rootType match
                 case '[t] => TypeRepr.of[t]
-            println(s"Get member '${childTerm.name}' of ${Format.TypeRepr(rootTypeRepr)}")
+            //println(s"Get member '${childTerm.name}' of ${Format.TypeRepr(rootTypeRepr)}")
             val memField = rootTypeRepr.classSymbol.get.memberField(childTerm.name)
             val memeType = rootTypeRepr.memberType(memField).widen
             (Type.of[Cls], rootType) match

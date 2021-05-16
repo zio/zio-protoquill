@@ -13,7 +13,7 @@ object Blah {
   case class Circle(radius: Int) extends Shape
 }
 
-class ElaborateProductValueStructureSpec extends Spec {
+class ElaborateProductValueStructureSpec extends Spec { //helloooo
   extension (tscc: TaggedSplicedCaseClass)
     def pullout: (Ast, List[(String, Any)]) = (tscc.ast, tscc.lifts)
 
