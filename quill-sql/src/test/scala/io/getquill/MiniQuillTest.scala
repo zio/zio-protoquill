@@ -173,15 +173,15 @@ object MiniQuillTest {
 
   def infixAndLiftQuery() = {
 
+    //hellooooooooo
 
 
 
 
-
-    case class Person(name: String, age: Int)
+    case class Person[T](name: String, age: Int)
     val names = List("Joe", "Jack")
     inline def q = quote {
-      query[Person].filter(p => 
+      query[Person[String]].filter(p => 
         liftQuery(names).contains(p.name) && infix"fun(${p.name})".pure.as[Boolean]
       )
     }
