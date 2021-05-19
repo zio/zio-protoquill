@@ -300,7 +300,7 @@ case class OrderingParser(root: Parser[Ast] = Parser.empty)(override implicit va
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ordering] = {
-    case '{ ($ordDsl: MetaDsl[_]).implicitOrd } => AscNullsFirst
+    case '{ ($ordDsl: MetaDsl).implicitOrd } => AscNullsFirst
     case '{ implicitOrd } => AscNullsFirst
 
     // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
@@ -705,14 +705,6 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
-    del.compose(PartialFunction.fromFunction(
-      (expr: Expr[_]) => {
-        expr
-      }
-    ))
-  }
-
   //Handles named operations, ie Argument Operation Argument
   object NamedOp1 {
     def unapply(expr: Expr[_]): Option[(Expr[_], String, Expr[_])] =
@@ -724,17 +716,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
       }
   }
 
-  // TODO Is there any way to check if Numeric[T] exists if you don't know the type T
-  // but know the type of the term?
-  // def isNumeric(expr: Expr[Any]) = {
-  //   val tpe = expr.unseal.tpe.seal
-  //   Expr.summon(using tpe) match {
-  //     case Some(_) => true
-  //     case _ => false
-  //   }
-  // }
-
-  def del: PartialFunction[Expr[_], Ast] = {
+  def delegate: PartialFunction[Expr[_], Ast] = {
     case '{ ($str:String).like($other) } =>
       Infix(List(""," like ",""), List(astParse(str), astParse(other)), true, Quat.Value)
 

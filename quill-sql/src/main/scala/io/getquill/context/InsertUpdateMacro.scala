@@ -29,6 +29,7 @@ import io.getquill.Insert
 import io.getquill.Update
 import io.getquill.util.Format
 import io.getquill.generic.ElaborationSide
+import io.getquill.metaprog.SummonParser
 
 /**
  * TODO Right now this is just insert but we can easily extend to update and delete
@@ -198,7 +199,7 @@ object InsertUpdateMacro {
      * For batch queries liftQuery(people).foreach(p => query[Person].insert(p))
      * it will be just the ast Ident("p")
      */
-    def parseInsertee[Parser <: ParserFactory: Type](insertee: Expr[Any]): CaseClass | AIdent = {
+    def parseInsertee(insertee: Expr[Any]): CaseClass | AIdent = {
       insertee match
         // The case: query[Person].insert(lift(Person("Joe", "Bloggs")))
         case QuotationLotExpr(exprType) =>
@@ -215,14 +216,14 @@ object InsertUpdateMacro {
         // Otherwise the inserted element (i.e. the insertee) is static and should be parsed as an ordinary case class
         // i.e. the case query[Person].insert(Person("Joe", "Bloggs")) (or the batch case)
         case _ =>
-          parseStaticInsertee[Parser](insertee)
+          parseStaticInsertee(insertee)
     }
 
     /**
      * Parse the input to of query[Person].insert(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs")
      */
-    def parseStaticInsertee[Parser <: ParserFactory: Type](insertee: Expr[_]): CaseClass | AIdent = {
-      val parserFactory = LoadObject[Parser].get
+    def parseStaticInsertee(insertee: Expr[_]): CaseClass | AIdent = {
+      val parserFactory = SummonParser()
       val rawAst = parserFactory.apply.seal.apply(insertee)
       val ast = BetaReduction(rawAst)
       ast match
@@ -302,7 +303,7 @@ object InsertUpdateMacro {
      * Note that the only reason Parser is needed here is to pass it into parseInsertee.
      * The batch pipeline driven by createFromPremade currently doesn't need it.
      */
-    def apply[Parser <: ParserFactory: Type](schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T]) = {
+    def apply(schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T]) = {
       val insertee = inserteeRaw.asTerm.underlyingArgument.asExpr
       val assignmentOfEntity =
         parseInsertee(insertee) match
@@ -384,8 +385,8 @@ object InsertUpdateMacro {
 
   end Pipeline
 
-  def apply[T: Type, A[T] <: Insert[T] | Update[T]: Type, Parser <: ParserFactory: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[A[T]] =
-    new Pipeline[T, A]().apply[Parser](entityRaw, bodyRaw)
+  def apply[T: Type, A[T] <: Insert[T] | Update[T]: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[A[T]] =
+    new Pipeline[T, A]().apply(entityRaw, bodyRaw)
 
   /**
    * If you have a pre-created entity, a case class, and lifts (as is the case for the Batch queries in BatchQueryExecution)

@@ -13,7 +13,7 @@ import io.getquill.context.ExecutionType
 import org.scalatest._
 import io.getquill.util.printer
 
-class QuerySchemaTest extends Spec with Inside {
+class QuerySchemaTest extends Spec with Inside { //hello
 
   case class TestEntity(s: String, i: Int, l: Long, o: Option[Int])
   case class TestEntity2(s: String, i: Int, l: Long, o: Option[Int])

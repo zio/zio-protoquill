@@ -45,18 +45,19 @@ import io.getquill.dsl.InfixDsl
 
 //export io.getquill.Dsl._
 //export io.getquill.Model._
+implicit val defaultParser: ParserLibrary = ParserLibrary
 
-object Dsl extends Dsl[ParserLibrary] // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
+object Dsl extends Dsl // BaseParserFactory.type doesn't seem to work with the LoadObject used in quoteImpl
 
-trait Dsl[Parser <: ParserFactory] extends QuoteDsl[Parser] with QueryDsl[Parser] with MetaDsl[Parser]
+trait Dsl extends QuoteDsl with QueryDsl with MetaDsl
 
-trait MetaDsl[Parser <: ParserFactory] extends QueryDsl[Parser] {
+trait MetaDsl extends QueryDsl {
 
   inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] = 
-    ${ SchemaMetaMacro[T, Parser]('this, 'entity, 'columns) }
+    ${ SchemaMetaMacro[T]('this, 'entity, 'columns) }
 
   inline def queryMeta[T, R](inline expand: Quoted[Query[T] => Query[R]])(inline extract: R => T): QueryMeta[T, R] =
-    ${ QueryMetaMacro.embed[T, R, Parser]('this, 'expand, 'extract) }
+    ${ QueryMetaMacro.embed[T, R]('this, 'expand, 'extract) }
 
   /** Automatic implicit ordering DSL for: `query[Person].sortBy(_.field)(<here>)` */
   implicit def implicitOrd[T]: Ord[T] = Ord.ascNullsFirst
@@ -68,34 +69,34 @@ object QueryDsl {
   }
 }
 
-trait QueryDsl[Parser <: ParserFactory] {
+trait QueryDsl {
   inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
   inline def select[T]: Query[T] = ${ QueryMacro[T] }
 }
 
-trait QuoteDsl[Parser <: ParserFactory] {
+trait QuoteDsl {
   import scala.language.implicitConversions
 
-  inline def insertMeta[T](inline exclude: (T => Any)*): InsertMeta[T] = ${ InsertMetaMacro[T, Parser]('exclude) }
+  inline def insertMeta[T](inline exclude: (T => Any)*): InsertMeta[T] = ${ InsertMetaMacro[T]('exclude) }
 
-  inline def updateMeta[T](inline exclude: (T => Any)*): UpdateMeta[T] = ${ UpdateMetaMacro[T, Parser]('exclude) }
+  inline def updateMeta[T](inline exclude: (T => Any)*): UpdateMeta[T] = ${ UpdateMetaMacro[T]('exclude) }
 
   inline def lazyLift[T](inline vv: T): T = ${ LiftMacro.applyLazy[T, Nothing]('vv) }
 
-  inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteMacro[T, Parser]('bodyExpr) }
+  inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteMacro[T]('bodyExpr) }
 
-  inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteMacro[T, Parser]('bodyExpr) }
+  inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteMacro[T]('bodyExpr) }
 
   // TODO Should also probably name a method for this so don't need to enable explicit conversion
   inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ UnquoteMacro[T]('quoted) }
 
-  inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteMacro[T, Parser]('body) }
+  inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteMacro[T]('body) }
 
   extension [T](inline entity: EntityQuery[T])
     // Note that although this is in the static DSL if you lift a case class inside the insert or anything else, it will try to do a standard lift for that
     // requiring a context to be present
-    inline def insert(inline value: T): Insert[T] = ${ InsertUpdateMacro[T, Insert, Parser]('entity, 'value) }
-    inline def update(inline value: T): Update[T] = ${ InsertUpdateMacro[T, Update, Parser]('entity, 'value) }
+    inline def insert(inline value: T): Insert[T] = ${ InsertUpdateMacro[T, Insert]('entity, 'value) }
+    inline def update(inline value: T): Update[T] = ${ InsertUpdateMacro[T, Update]('entity, 'value) }
 
   // Doing:          val p = quote { query[Person] }
   // and then doing: val q = quote { p.insert(_.name -> "blah") }

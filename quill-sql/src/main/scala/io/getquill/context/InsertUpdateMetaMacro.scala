@@ -20,11 +20,11 @@ import io.getquill.UpdateMeta
 import io.getquill.Insert
 import io.getquill.Update
 import io.getquill.parser.ParserFactory
-
+import io.getquill.metaprog.SummonParser
 
 object MetaMacro:
-  def apply[T: Type, P <: ParserFactory: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): (Tuple, Expr[String]) =
-    val parserFactory = LoadObject[P].get
+  def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): (Tuple, Expr[String]) =
+    val parserFactory = SummonParser()
 
     // Pull out individual args from the apply
     val excludes = excludesRaw match
@@ -52,11 +52,11 @@ object MetaMacro:
 end MetaMacro
 
 object InsertMetaMacro:
-  def apply[T: Type, P <: ParserFactory: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[InsertMeta[T]] =
-    val (excludeTuple, uuid) = MetaMacro[T, P](excludesRaw)
+  def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[InsertMeta[T]] =
+    val (excludeTuple, uuid) = MetaMacro[T](excludesRaw)
     '{ InsertMeta(Quoted[T](${Lifter.tuple(excludeTuple)}, Nil, Nil), $uuid) }
 
 object UpdateMetaMacro:
-  def apply[T: Type, P <: ParserFactory: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[UpdateMeta[T]] =
-    val (excludeTuple, uuid) = MetaMacro[T, P](excludesRaw)
+  def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[UpdateMeta[T]] =
+    val (excludeTuple, uuid) = MetaMacro[T](excludesRaw)
     '{ UpdateMeta(Quoted[T](${Lifter.tuple(excludeTuple)}, Nil, Nil), $uuid) }

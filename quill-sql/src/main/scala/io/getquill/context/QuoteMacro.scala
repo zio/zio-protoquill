@@ -12,6 +12,7 @@ import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.Pluckable
 import io.getquill.metaprog.Pointable
 import io.getquill.Quoted
+import io.getquill.metaprog.SummonParser
 
 
 object ExtractLifts {
@@ -57,12 +58,12 @@ object ExtractLifts {
 
 object QuoteMacro {
 
-  def apply[T, Parser <: ParserFactory](bodyRaw: Expr[T])(using Quotes, Type[T], Type[Parser]): Expr[Quoted[T]] = {
+  def apply[T](bodyRaw: Expr[T])(using Quotes, Type[T], Type[Parser]): Expr[Quoted[T]] = {
     import quotes.reflect._
     // NOTE Can disable underlyingArgument here if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val body = bodyRaw.asTerm.underlyingArgument.asExpr
 
-    val parserFactory = LoadObject[Parser].get
+    val parserFactory = SummonParser()
 
     import Parser._
 

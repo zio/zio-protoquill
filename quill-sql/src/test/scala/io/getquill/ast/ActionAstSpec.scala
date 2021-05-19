@@ -18,6 +18,7 @@ import io.getquill.Literal
 import io.getquill.quote
 import io.getquill.query
 import io.getquill.EagerPlanter
+import io.getquill.defaultParser
 
 class ActionAstSpec extends Spec with Inside {
   import ShortAst._
