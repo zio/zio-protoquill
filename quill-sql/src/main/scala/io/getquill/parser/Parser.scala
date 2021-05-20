@@ -273,8 +273,16 @@ case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implici
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-    case Unseal(PatMatchTerm(ast)) => ast
+    case Unseal(PatMatchTerm(patMatch)) =>
+      patMatch match
+        case PatMatch.SimpleClause(ast) => ast
+        case PatMatch.MultiClause(clauses: List[PatMatchClause]) => nestedIfs(clauses)
   }
+
+  def nestedIfs(clauses: List[PatMatchClause]): Ast =
+    clauses match
+      case PatMatchClause(body, guard) :: tail => ast.If(guard, body, nestedIfs(tail))
+      case Nil => ast.NullValue
 }
 
 /** Same as traversableOperationParser, pre-filters that the result-type is a boolean */

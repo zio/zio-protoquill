@@ -162,10 +162,14 @@ object Unlifter {
       case '{ Constant(${Expr(b: Byte)}: Byte, $quat) } => 
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
+      case '{ Constant((), $quat) } => 
+        val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
+        Constant((), unliftedQuat)
       case '{ Entity.apply(${Expr(b: String)}, $elems, $quat)  } =>
         // Performance optimization, same as for Ident. Entity.quat is by-name so make sure to do unexper once here.
         val unliftedQuat = quat.unexpr
         Entity(b, elems.unexpr, unliftedQuat)
+      case Is[If]( '{ If($cond, $thenStmt, $elseStmt) }) => If(cond.unexpr, thenStmt.unexpr, elseStmt.unexpr)
       case Is[Function]( '{ Function($params, $body) }) => Function(params.unexpr, body.unexpr)
       case Is[FunctionApply]( '{ FunctionApply($function, $values) }) => FunctionApply(function.unexpr, values.unexpr)
       case Is[Aggregation]( '{ Aggregation(${operator}, ${query}) }) => Aggregation(operator.unexpr, query.unexpr)

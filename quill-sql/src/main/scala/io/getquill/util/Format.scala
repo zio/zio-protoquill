@@ -22,6 +22,16 @@ object Format {
       Printer.TypeReprShortCode.show(typeRepr.asInstanceOf[qctx.reflect.TypeRepr])
   }
 
+  object Term:
+    def apply(term: Quotes#reflectModule#Term)(using qctx: Quotes) =
+      import qctx.reflect._
+      Printer.TreeShortCode.show(term.asInstanceOf[qctx.reflect.Term])
+
+  object Tree:
+    def apply(tree: Quotes#reflectModule#Tree)(using qctx: Quotes) =
+      import qctx.reflect._
+      Printer.TreeShortCode.show(tree.asInstanceOf[qctx.reflect.Tree])
+
   /** Same as TypeRepr but also widens the type since frequently types are singleton i.e. 'person.name' has the type 'name' as opposed to String */
   object TypeReprW {
     def apply(typeRepr: Quotes#reflectModule#TypeRepr)(using qctx: Quotes) =
@@ -33,7 +43,7 @@ object Format {
     def apply(tpe: scala.quoted.Type[_])(using Quotes) =
       import quotes.reflect._
       tpe match
-        case '[tt] => Printer.TypeReprShortCode.show(quotes.reflect.TypeRepr.of[tt]) //hello
+        case '[tt] => Printer.TypeReprShortCode.show(quotes.reflect.TypeRepr.of[tt])
   }
 
   object Expr {

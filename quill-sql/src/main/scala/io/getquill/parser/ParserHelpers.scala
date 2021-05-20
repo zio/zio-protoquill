@@ -3,7 +3,6 @@ package io.getquill.parser
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 
 import scala.quoted._
-import scala.quoted._
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
@@ -18,6 +17,7 @@ import io.getquill.parser.ParserHelpers._
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
 import io.getquill.metaprog.Extractors._
+import io.getquill.ast
 
 object ParserHelpers {
 
@@ -234,7 +234,7 @@ object ParserHelpers {
     object ValDefTerm {
       def unapply(tree: Tree): Option[Ast] =
         tree match {
-          case TValDef(name, tpe, Some(t @ PatMatchTerm(ast))) =>
+          case TValDef(name, tpe, Some(t @ PatMatchTerm.SimpleClause(ast))) =>
             println(s"====== Parsing Val Def ${name} = ${t.show}")
             Some(Val(AIdent(name, InferQuat.ofType(tpe.tpe)), ast))
 
@@ -271,23 +271,53 @@ object ParserHelpers {
         }
     }
 
-    object PatMatchTerm {
-      def unapply(term: Term): Option[Ast] =
-        term match {
-          case Match(expr, List(CaseDef(fields, guard, body))) =>
-            guard match {
-              case Some(guardTerm) => report.throwError("Guards in case- match are not supported", guardTerm.asExpr)
-              case None =>
-            }
-            Some(patMatchParser(expr, fields, body))
+    case class PatMatchClause(body: Ast, guard: Ast)
+    enum PatMatch:
+      // Represents a variable assignment pattern match i.e. single clause with no guards e.g.
+      // ptups.map { case (name, age) => ... } where ptups := people.map(p => (p.name, p.age))
+      case SimpleClause(body: Ast) extends PatMatch
+      case MultiClause(clauses: List[PatMatchClause]) extends PatMatch
+
+    object PatMatchTerm:
+      object SimpleClause:
+        def unapply(term: Term): Option[Ast] =
+          PatMatchTerm.unapply(term) match
+            case Some(PatMatch.SimpleClause(ast)) => Some(ast)
+            case _ => None
+
+      def unapply(root: Term): Option[PatMatch] =
+        root match
+          case Match(expr, List(CaseDef(fields, None, body))) =>
+            Some(PatMatch.SimpleClause(betaReduceTupleFields(expr, fields)(body)))
+
+          case Match(expr, caseDefs) =>
+            val clauses =
+              caseDefs.map {
+                case CaseDef(fields, guard, body) =>
+                  val bodyAst = betaReduceTupleFields(expr, fields, Some(root))(body)
+                  val guardAst = guard.map(betaReduceTupleFields(expr, fields)(_)).getOrElse(ast.Constant(true, Quat.BooleanValue))
+                  PatMatchClause(bodyAst, guardAst)
+              }
+            Some(PatMatch.MultiClause(clauses))
 
           case other => None
-        }
-    }
+      end unapply
 
-    protected def patMatchParser(tupleTree: Term, fieldsTree: Tree, bodyTree: Term): Ast = {
+    /**
+     * Beta-reduces out tuple members that have been pattern matched to their corresponding components
+     * For example:
+     * given: ptups := people.map(p => (p.name, p.age))
+     * ptups.map { case (name, age) => fun(name, age) }
+     * becomes reduced to:
+     * ptups.map { x => fun(x.name, x.age) }
+     */
+    protected def betaReduceTupleFields(tupleTree: Term, fieldsTree: Tree, messageExpr: Option[Term] = None)(bodyTree: Term): Ast = {
+      // TODO Need to verify that this is actually a tuple?
       val tuple = astParse(tupleTree.asExpr)
-      val body = astParse(bodyTree.asExpr)
+      val bodyRaw = astParse(bodyTree.asExpr)
+      // In some cases the body expression itself is so complex it needs to be beta-reduced before we start
+      // beta reducing the pat match tuples otherwise some issues can happen. This was discovered in the DepartmentsSpec tests
+      val body = BetaReduction(bodyRaw)
 
       /*
       Get a list of all the paths of all the identifiers inside the tuple. E.g:
@@ -301,7 +331,15 @@ object ParserHelpers {
             binds.zipWithIndex.flatMap { case (bind, idx) =>
               tupleBindsPath(bind, path :+ s"_${idx + 1}")
             }
-          case other => report.throwError(s"Invalid Pattern Matching Term: ${Printer.TreeStructure.show(other)}")
+          // If it's a "case _ => ..." then that just translates into the body expression so we don't
+          // need a clause to beta reduction over the entire partial-function
+          case TIdent("_") =>
+            List()
+          case other => 
+            val addition = messageExpr match
+              case Some(expr) => s" in the expression: ${Format.Tree(expr)}"
+              case None => ""
+            report.throwError(s"Invalid Pattern Matching Term: ${Format.Tree(other)}${addition}")
         }
       }
 
@@ -324,7 +362,9 @@ object ParserHelpers {
       trace"Pat Match Parsing: ${body}".andLog()
       trace"Reductions: ${reductionTuples}".andLog()
       // Do not care about types here because pat-match body does not necessarily have correct typing in the Parsing phase
-      BetaReduction(body, reductionTuples: _*)
+      val result = BetaReduction(body, io.getquill.norm.TypeBehavior.ReplaceWithReduction, reductionTuples: _*)
+      trace"Result: ${result}".andLog()
+      result
     }
   }
 

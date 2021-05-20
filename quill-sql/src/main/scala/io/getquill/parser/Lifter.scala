@@ -185,11 +185,13 @@ trait Lifter(serializeQuats: Boolean) {
   given liftableAst : NiceLiftable[Ast] with {
     def lift =
       case Constant(ConstantValue(v), quat) => '{ Constant(${ConstantExpr(v)}, ${quat.expr}) }
+      case Constant((), quat) => '{ Constant((), ${quat.expr}) }
       case Function(params: List[AIdent], body: Ast) => '{ Function(${params.expr}, ${body.expr}) }
       case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.expr}, ${values.expr}) }
       case v: Entity => liftableEntity(v)
       case v: Tuple => liftableTuple(v)
       case v: Ordering => orderingLiftable(v)
+      case If(cond, thenStmt, elseStmt) => '{ If(${cond.expr}, ${thenStmt.expr}, ${elseStmt.expr}) }
       case Aggregation(operator, query) => '{ Aggregation(${operator.expr}, ${query.expr}) }
       case Map(query: Ast, alias: AIdent, body: Ast) => '{ Map(${query.expr}, ${alias.expr}, ${body.expr})  }
       case FlatMap(query: Ast, alias: AIdent, body: Ast) => '{ FlatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
