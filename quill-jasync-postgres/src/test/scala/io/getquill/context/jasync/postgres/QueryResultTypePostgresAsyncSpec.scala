@@ -5,8 +5,9 @@
 // import scala.concurrent.ExecutionContext.Implicits.global
 // import scala.math.BigDecimal.int2bigDecimal
 // import io.getquill.context.sql.QueryResultTypeSpec
-// import zio.ZIO
+// import io.getquill._
 
+// TODO Need to implement batch action returning for this to work
 // class QueryResultTypePostgresAsyncSpec extends QueryResultTypeSpec {
 
 //   val context = testContext

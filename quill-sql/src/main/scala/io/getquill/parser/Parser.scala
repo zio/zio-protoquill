@@ -792,7 +792,7 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   object NumericOperation {
     def unapply(expr: Expr[_]): Option[BinaryOperation] = {
       UntypeExpr(expr) match {
-        case NamedOp1(left, NumericOpLabel(binaryOp), right) if (is[Int](left, right)) =>
+        case NamedOp1(left, NumericOpLabel(binaryOp), right) if (isNumeric(left.asTerm.tpe) && isNumeric(right.asTerm.tpe)) =>
           Some(BinaryOperation(astParse(left), binaryOp, astParse(right)))
         case _ => None
       }
