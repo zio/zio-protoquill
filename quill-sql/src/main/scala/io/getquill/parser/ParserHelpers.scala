@@ -49,8 +49,17 @@ object ParserHelpers {
           case Components(_, _, prop, value) =>
             val valueTpe = value.asTerm.tpe.widen
             val propTpe = prop.asTerm.tpe.widen
-            if (!(valueTpe <:< propTpe))
+            // If both numbers are numeric and primitive e.g. `_.age -> 22.toShort` (in: `query[Person].insert(_.age -> 22.toShort)`)
+            // then check if one can fit into another. If it can the assignment is valid
+            if (isNumericPrimitive(propTpe) && isNumericPrimitive(valueTpe)) {
+              if (!(numericPrimitiveFitsInto(propTpe, valueTpe))) {
+                report.throwError(s"The primitive numeric value ${Format.TypeRepr(valueTpe)} in ${Format.Expr(value)} is to large to fit into the ${Format.TypeRepr(propTpe)} in ${Format.Expr(prop)}.", expr)
+              }
+            }
+            // Otherwise check if the property is a subtype of the value that is being assigned to it
+            else if (!(valueTpe <:< propTpe)) {
               report.throwError(s"The ${Format.TypeRepr(valueTpe)} value ${Format.Expr(value)} cannot be assigned to the ${Format.TypeRepr(propTpe)} property ${Format.Expr(prop)} because they are not the same type (or a subtype).", expr)
+            }
           case other =>
             report.throwError(s"The assignment statement ${Format.Expr(expr)} is invalid.")
 

@@ -436,6 +436,29 @@ object Extractors {
     tpe <:< TypeRepr.of[scala.math.BigDecimal] ||
     tpe <:< TypeRepr.of[java.math.BigDecimal]
 
+  def isNumericPrimitive(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+    isNumeric(tpe) && isPrimitive(tpe)
+
+  /**
+   * Check whether one numeric `from` can be primitively assigned to a variable of another `into`
+   * i.e. short can fit into a int, int can fit into a long. Same with float into a double.
+   * This is used to determine what can be assigned into what (e.g. in a insert(_.age -> 4.toShort) statement)
+   * and still be considered a valid transpilation.
+   */
+  def numericPrimitiveFitsInto(using Quotes)(into: quotes.reflect.TypeRepr, from: quotes.reflect.TypeRepr) =
+    import quotes.reflect._
+    def score(tpe: TypeRepr) =
+      if(tpe <:< TypeRepr.of[Short]) 1
+      else if(tpe <:< TypeRepr.of[Int]) 3
+      else if(tpe <:< TypeRepr.of[Long]) 7 // short fits into float fits into long
+      else if(tpe <:< TypeRepr.of[Float]) 16
+      else if(tpe <:< TypeRepr.of[Double]) 24 // float fits into double
+      else 0
+    val fromScore = score(from)
+    val intoScore = score(into)
+    (intoScore & fromScore) != 0 && intoScore >= fromScore
+
+
   // TODO Change to 'are'
   def is[T: Type](using Quotes)(inputs: Expr[_]*): Boolean =
     import quotes.reflect._
