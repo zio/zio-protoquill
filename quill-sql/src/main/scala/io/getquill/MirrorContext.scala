@@ -29,6 +29,7 @@ with MirrorDecoders with MirrorEncoders { self =>
   override type ResultRow = Row
   override type RunActionResult = ActionMirror
   override type RunActionReturningResult[T] = ActionReturningMirror[T]
+  override type RunBatchActionReturningResult[T] = BatchActionReturningMirror[T]
   override type RunBatchActionResult = BatchActionMirror
 
   override type DatasourceContext = Unit
@@ -48,6 +49,7 @@ with MirrorDecoders with MirrorEncoders { self =>
   case class ActionMirror(string: String, prepareRow: PrepareRow, info: ExecutionInfo)
   case class ActionReturningMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], returningBehavior: ReturnAction, info: ExecutionInfo)
   case class BatchActionMirror(groups: List[(String, List[Row])], info: ExecutionInfo)
+  case class BatchActionReturningMirror[T](groups: List[(String, ReturnAction, List[PrepareRow])], extractor: Extractor[T], info: ExecutionInfo)
 
   override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: DatasourceContext) =
     QueryMirror(string, prepare(Row())._2, extractor, info)
@@ -66,5 +68,13 @@ with MirrorDecoders with MirrorEncoders { self =>
       },
       info
     )
-    
+  
+  override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionReturningResult[T]] =
+    BatchActionReturningMirror[T](
+      groups.map {
+        case BatchGroupReturning(string, returningBehavior, prepare) =>
+          (string, returningBehavior, prepare.map(_(Row())._2))
+      }, extractor,
+      info
+    )
 }

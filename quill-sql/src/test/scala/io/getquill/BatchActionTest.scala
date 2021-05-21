@@ -25,32 +25,59 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   val ctx: Context[D, N] 
   import ctx._
 
-  case class Person(name: String, age: Int)
+  case class Person(id: Int, name: String, age: Int)
   inline def insertPeople = quote((p: Person) => query[Person].insert(p))
 }
 
-class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialect, Literal] {
-  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect, Literal] {
+  // Need to fully type this otherwise scala compiler thinks it's still just 'Context' from the super-class
+  // and the extensions (m: MirrorContext[_, _]#BatchActionMirror) etc... classes in Spec don't match their types correctly
+  val ctx: MirrorContext[PostgresDialect, Literal] = new MirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
   import ctx._
 
+  val people = List(Person(1, "Joe", 123), Person(2, "Jill", 456))
+
+  "batch insert with returning should work with" - {
+    "simple case - returning" in {
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p).returning(p => p.id)) }
+
+      mirror.triple mustEqual (
+        "INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id",
+        List(List(1, "Joe", 123), List(2, "Jill", 456)),
+        Static
+      )
+    }
+
+    "simple case - returningGenerated" in {
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p).returningGenerated(p => p.id)) }
+
+      mirror.triple mustEqual (
+        "INSERT INTO Person (name,age) VALUES (?, ?) RETURNING id",
+        List(List(1, "Joe", 123), List(2, "Jill", 456)),
+        Static
+      )
+    }
+  }
+
   "batch insert should work with" - {
-    val people = List(Person("Joe", 123), Person("Jill", 456))
+    "simple case" in {
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p)) }
 
-    // "simple case" in {
-    //   val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p)) }
-
-    //   mirror.triple mustEqual (
-    //     "INSERT INTO Person (name,age) VALUES (?, ?)",
-    //     List(List("Joe", 123), List("Jill", 456)),
-    //     Static
-    //   )
-    // }
+      mirror.triple mustEqual (
+        "INSERT INTO Person (id,name,age) VALUES (?, ?, ?)",
+        List(List(1, "Joe", 123), List(2, "Jill", 456)),
+        Static
+      )
+    }
 
     "simple case from super" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => insertPeople(p)) }
 
-      //import io.getquill.util.debug.PrintMac
-      //PrintMac { liftQuery(people).foreach(p => insertPeople(p)) }
-    } //hello
+      mirror.triple mustEqual (
+        "INSERT INTO Person (id,name,age) VALUES (?, ?, ?)",
+        List(List(1, "Joe", 123), List(2, "Jill", 456)),
+        Static
+      )
+    }
   }
 }

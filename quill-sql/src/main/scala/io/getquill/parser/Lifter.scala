@@ -17,6 +17,7 @@ object Lifter {
   def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = newLifter(ast).liftableAssignment(ast)
   def entity(ast: Entity): Quotes ?=> Expr[Entity] = newLifter(ast).liftableEntity(ast)
   def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = newLifter(ast).liftableTuple(ast)
+  def ident(ast: AIdent): Quotes ?=> Expr[AIdent] = newLifter(ast).liftableIdent(ast)
   def quat(quat: Quat): Quotes ?=> Expr[Quat] =
     (new Lifter(quat.countFields > Messages.maxQuatFields) {}).liftableQuat(quat)
 

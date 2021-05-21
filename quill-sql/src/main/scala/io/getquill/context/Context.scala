@@ -83,8 +83,7 @@ trait ProtoContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.Nam
   def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunActionResult]
   def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunActionReturningResult[T]]
   def executeBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionResult]
-
-  // Cannot implement 'run' here because it's parameter needs to be inline, and we can't override a non-inline parameter with an inline one
+  def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionReturningResult[T]]
 }
 
 trait AstSplicing
@@ -198,6 +197,24 @@ with Closeable
         // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
         val group = BatchGroup(sql, prepares)
         self.executeBatchAction(List(group))(executionInfo, runContext)
+    }
+    BatchQueryExecution.apply(quoted, ca)
+  }
+
+  @targetName("runBatchActionReturning")
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionReturningResult[T]] = {
+    val ca = new BatchContextOperation[I, T, A, Dialect, Naming, PrepareRow, ResultRow, Result[RunBatchActionReturningResult[T]]](self.idiom, self.naming) {
+      def execute(sql: String, prepares: List[PrepareRow => (List[Any], PrepareRow)], extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo) =
+        val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
+
+        val Extraction.Returning(extract, returningBehavior) = 
+          extraction match
+            case _: Extraction.Returning[_, _] => extraction
+            case _ => throw new IllegalArgumentException("Returning Extractor required")
+
+        // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
+        val group = BatchGroupReturning(sql, returningBehavior, prepares)
+        self.executeBatchActionReturning[T](List(group), extract)(executionInfo, runContext)
     }
     BatchQueryExecution.apply(quoted, ca)
   }

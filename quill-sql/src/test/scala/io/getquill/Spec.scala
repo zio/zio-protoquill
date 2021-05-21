@@ -15,8 +15,24 @@ import io.getquill.idiom.Idiom
 import io.getquill.Query
 
 abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
+
+  extension (m: MirrorContext[_, _]#BatchActionReturningMirror[_])
+    def triple = 
+      if (m.groups.length != 1) fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
+      val (queryString, returnAction, prepares) = m.groups(0)
+      (
+        queryString, 
+        prepares.map { prep =>
+          // being explicit here about the fact that this is done per prepare element i.e. all of them are supposed to be Row instances
+          prep match {
+            case r: io.getquill.context.mirror.Row => 
+              r.data.toList.map(_._2)
+          }
+        }, 
+        m.info.executionType
+      )
   
-  extension [T](m: MirrorContext[_, _]#BatchActionMirror)
+  extension (m: MirrorContext[_, _]#BatchActionMirror)
     def triple = 
       if (m.groups.length != 1) fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
       val (queryString, prepares) = m.groups(0)
@@ -32,7 +48,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.info.executionType
       )
 
-  extension [T](m: MirrorContext[_, _]#ActionMirror)
+  extension (m: MirrorContext[_, _]#ActionMirror)
     def triple = 
       (
         m.string, 

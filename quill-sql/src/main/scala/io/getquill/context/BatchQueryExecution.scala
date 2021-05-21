@@ -20,6 +20,8 @@ import io.getquill.Planter
 import io.getquill.EagerPlanter
 import io.getquill.LazyPlanter
 import io.getquill.ast.Ast
+import io.getquill.ast.Insert
+import io.getquill.ast.Entity
 import io.getquill.ast.ScalarTag
 import scala.quoted._
 import io.getquill.ast.{Transform, QuotationTag}
@@ -43,6 +45,7 @@ import io.getquill.parser.Unlifter
 import io.getquill._
 import io.getquill.QAC
 import io.getquill.parser.Lifter
+import io.getquill.context.InsertUpdateMacro.AdditionalWrappingBehavior
 
 trait BatchContextOperation[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], extractor: Extraction[ResultRow, T], executionInfo: ExecutionInfo): Res
@@ -73,13 +76,36 @@ object BatchQueryExecution:
               case List(EagerEntitiesPlanterExpr(_, liftedList)) => liftedList
               case _ => report.throwError(s"Invalid liftQuery clause: ${planters}. Must be a single EagerEntitiesPlanter", quoted)
 
-          val insertEntity = {
+          val extractionBehavior: ExtractBehavior.Skip.type | ExtractBehavior.ExtractWithReturnAction.type =
+            Type.of[A] match
+              case '[QAC[I, Nothing]] => ExtractBehavior.Skip
+              case '[QAC[I, T]] => 
+                if (!(TypeRepr.of[T] =:= TypeRepr.of[Any]))
+                  ExtractBehavior.ExtractWithReturnAction
+                else
+                  ExtractBehavior.Skip
+              case _ => 
+                report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.TypeOf[A]}")
+
+          val (insertEntity, wrappingBehavior) = {
             // putting this in a block since I don't want to externally import these packages
             import io.getquill.ast._
-            Unlifter(ast) match
-              case Foreach(_, _, Insert(entity: Entity, _)) => entity
-              case other => report.throwError(s"Malformed batch entity: ${other}. Batch insertion entities must have the form Insert(Entity, Nil: List[Assignment])")
+            val unliftedAst = Unlifter(ast)
+            extractionBehavior match
+              case ExtractBehavior.Skip =>
+                unliftedAst match
+                  case Foreach(_, _, Insert(entity: Entity, _)) => (entity, AdditionalWrappingBehavior.Skip)
+                  case other => report.throwError(s"Malformed batch entity: ${other}. Batch insertion entities must have the form Insert(Entity, Nil: List[Assignment])")
+
+              case ExtractBehavior.ExtractWithReturnAction =>
+                unliftedAst match
+                  case Foreach(_, _, ret @ ReturningAction(Insert(entity: Entity, _), id, body)) => 
+                    ret match
+                      case _: Returning =>  (entity, AdditionalWrappingBehavior.AddReturning(id, body))
+                      case _: ReturningGenerated =>  (entity, AdditionalWrappingBehavior.AddReturningGenerated(id, body))
+                  case other => report.throwError(s"Malformed batch entity: ${other}. Batch insertion entities must have the form Returning/ReturningGenerated(Insert(Entity, Nil: List[Assignment]), _, _)")
           }
+
 
           import io.getquill.metaprog.InjectableEagerPlanterExpr
 
@@ -97,22 +123,11 @@ object BatchQueryExecution:
                 report.throwError(s"wrong kind of uprootable ${(expr)}")
               case other => report.throwError(s"The lift expression ${Format.Expr(other)} is not valid for batch queries because it is not injectable")
             }
-          
-          val extractionBehavior =
-            Type.of[A] match
-              case '[QAC[I, Nothing]] => ExtractBehavior.Skip
-              case '[QAC[I, T]] => 
-                if (!(TypeRepr.of[T] =:= TypeRepr.of[Any]))
-                  ExtractBehavior.ExtractWithReturnAction
-                else
-                  ExtractBehavior.Skip
-              case _ => 
-                report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.TypeOf[A]}")
 
           // Once we have that, use the Insert macro to generate a correct insert clause. The insert macro
           // should summon a schemaMeta if needed (and account for querySchema age)
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
-          val insertQuotation = InsertUpdateMacro.createFromPremade[I](insertEntity, caseClassAst, rawLifts) 
+          val insertQuotation = InsertUpdateMacro.createFromPremade[I](insertEntity, caseClassAst, rawLifts, wrappingBehavior) 
           StaticTranslationMacro.applyInner[I, T, D, N](insertQuotation, ElaborationBehavior.Skip) match 
             case Some(state @ StaticState(query, _, _)) =>
               // create an extractor for returning actions
