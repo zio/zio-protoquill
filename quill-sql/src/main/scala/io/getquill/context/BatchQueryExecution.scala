@@ -43,24 +43,26 @@ import io.getquill.parser.Unlifter
 import io.getquill._
 import io.getquill.QAC
 import io.getquill.parser.Lifter
-import io.getquill.context.QueryExecution.ElaborationBehavior
 
-trait BatchContextOperation[T, A <: Action[_], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
-  def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], executionInfo: ExecutionInfo): Res
+trait BatchContextOperation[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
+  def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], extractor: Extraction[ResultRow, T], executionInfo: ExecutionInfo): Res
 }
 
 object BatchQueryExecution:
   class RunQuery[
+    I: Type,
     T: Type,
-    A <: Action[_] with QAC[_, _]: Type,
+    A <: QAC[I, T] with Action[I]: Type,
     ResultRow: Type,
     PrepareRow: Type,
     D <: Idiom: Type,
     N <: NamingStrategy: Type,
     Res: Type
   ](quotedRaw: Expr[Quoted[BatchAction[A]]],
-    batchContextOperation: Expr[BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes):
+    batchContextOperation: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes):
     import quotes.reflect._
+    import Execution._
+
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
     def apply(): Expr[Res] = 
       UntypeExpr(quoted) match
@@ -85,7 +87,7 @@ object BatchQueryExecution:
           // e.g. if T is Person(name: String, age: Int) and we do liftQuery(people:List[Person]).foreach(p => query[Person].insert(p))
           // ast = CaseClass(name -> lift(UUID1), age -> lift(UUID2))
           // lifts = List(InjectableEagerLift(p.name, UUID1), InjectableEagerLift(p.age, UUID2))
-          val (caseClassAst, rawLifts) = LiftMacro.liftInjectedProduct[T, PrepareRow]
+          val (caseClassAst, rawLifts) = LiftMacro.liftInjectedProduct[I, PrepareRow]
           //println("========= CaseClass =========\n" + io.getquill.util.Messages.qprint(caseClassAst))
           // Assuming that all lifts of the batch query are injectable
           val injectableLifts =
@@ -95,13 +97,27 @@ object BatchQueryExecution:
                 report.throwError(s"wrong kind of uprootable ${(expr)}")
               case other => report.throwError(s"The lift expression ${Format.Expr(other)} is not valid for batch queries because it is not injectable")
             }
+          
+          val extractionBehavior =
+            Type.of[A] match
+              case '[QAC[I, Nothing]] => ExtractBehavior.Skip
+              case '[QAC[I, T]] => 
+                if (!(TypeRepr.of[T] =:= TypeRepr.of[Any]))
+                  ExtractBehavior.ExtractWithReturnAction
+                else
+                  ExtractBehavior.Skip
+              case _ => 
+                report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.TypeOf[A]}")
 
           // Once we have that, use the Insert macro to generate a correct insert clause. The insert macro
           // should summon a schemaMeta if needed (and account for querySchema age)
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
-          val insertQuotation = InsertUpdateMacro.createFromPremade[T](insertEntity, caseClassAst, rawLifts) 
-          StaticTranslationMacro.applyInner[T, Nothing, D, N](insertQuotation, ElaborationBehavior.Skip) match 
+          val insertQuotation = InsertUpdateMacro.createFromPremade[I](insertEntity, caseClassAst, rawLifts) 
+          StaticTranslationMacro.applyInner[I, T, D, N](insertQuotation, ElaborationBehavior.Skip) match 
             case Some(state @ StaticState(query, _, _)) =>
+              // create an extractor for returning actions
+              val extractor = MakeExtractor[ResultRow, T, T].static(state, identityConverter, extractionBehavior)
+
               val prepares =
                 '{ $liftedList.map(elem => ${
                   val injectedLifts = injectableLifts.map(lift => lift.inject('elem))
@@ -109,7 +125,7 @@ object BatchQueryExecution:
                   val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($injectedLiftsExpr, row) }
                   prepare
                 }) }              
-              '{ $batchContextOperation.execute(${Expr(query.basicQuery)}, $prepares.toList, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)})) }
+              '{ $batchContextOperation.execute(${Expr(query.basicQuery)}, $prepares.toList, $extractor, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)})) }
           
             case None => 
               report.throwError(s"Could not create static state from the query: ${Format.Expr(insertQuotation)}")
@@ -120,26 +136,28 @@ object BatchQueryExecution:
   end RunQuery
 
   inline def apply[
+    I,
     T,
-    A <: Action[_] with QAC[_, _],
+    A <: QAC[I, T] with Action[I],
     ResultRow,
     PrepareRow,
     D <: Idiom,
     N <: NamingStrategy,
     Res
-  ](inline quoted: Quoted[BatchAction[A]], ctx: BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]) =
-    ${ applyImpl[T, A, ResultRow, PrepareRow, D, N, Res]('quoted, 'ctx) }
+  ](inline quoted: Quoted[BatchAction[A]], ctx: BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Res]) =
+    ${ applyImpl[I, T, A, ResultRow, PrepareRow, D, N, Res]('quoted, 'ctx) }
 
   def applyImpl[
+    I: Type,
     T: Type,
-    A <: Action[_] with QAC[_, _]: Type,
+    A <: QAC[I, T] with Action[I]: Type,
     ResultRow: Type,
     PrepareRow: Type,
     D <: Idiom: Type,
     N <: NamingStrategy: Type,
     Res: Type
   ](quoted: Expr[Quoted[BatchAction[A]]],
-    ctx: Expr[BatchContextOperation[T, A, D, N, PrepareRow, ResultRow, Res]])(using qctx: Quotes): Expr[Res] =
-    new RunQuery[T, A, ResultRow, PrepareRow, D, N, Res](quoted, ctx).apply()
+    ctx: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Res]])(using qctx: Quotes): Expr[Res] =
+    new RunQuery[I, T, A, ResultRow, PrepareRow, D, N, Res](quoted, ctx).apply()
 
 end BatchQueryExecution

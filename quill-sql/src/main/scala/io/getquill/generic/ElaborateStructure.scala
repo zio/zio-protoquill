@@ -329,6 +329,11 @@ object ElaborateStructure {
   def base[T: Type](term: Term, side: ElaborationSide)(using Quotes): Term = {
     import quotes.reflect.{Term => QTerm, _}
 
+    // for errors/warnings
+    def encDecText = side match
+      case ElaborationSide.Encoding => "encodeable"
+      case ElaborationSide.Decoding => "decodeable"
+
     val isAutomaticLeaf = side match
       case ElaborationSide.Encoding => Expr.summon[GenericEncoder[T, _]].isDefined
       case ElaborationSide.Decoding => Expr.summon[GenericDecoder[_, T, DecodingType.Specific]].isDefined
@@ -362,16 +367,9 @@ object ElaborateStructure {
               // You would get Term(width, height, radius)
               alternatives.reduce((termA, termB) => termA.merge[T](termB))
             case _ =>
-              report.throwError("Cannot Find Decoder or Expand a Product of the Type:\n" + ev.show)
+              report.throwError(s"Althought a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator. It's mirror is ${Format.Expr(ev)}")
         case None =>
-          report.throwError(s"Cannot find derive or summon a decoder for ${Type.show[T]}")
-          // we checked if there was a specific encoder already
-          // if (TypeRepr.of[T] <:< TypeRepr.of[AnyVal]) term.asLeaf
-          // else
-          //   Expr.summon[GenericDecoder[_, T, DecodingType.Specific]] match {
-          //     case Some(decoder) => term.asLeaf
-          //     case None => report.throwError(s"Cannot find derive or summon a decoder for ${Type.show[T]}")
-          //   }
+          report.throwError(s"A mirror of the type ${Format.TypeOf[T]} cannot be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator.")
   }
 
   private def productized[T: Type](side: ElaborationSide, baseName: String = "x")(using Quotes): Ast = {

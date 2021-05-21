@@ -26,7 +26,7 @@ import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill._
-import io.getquill.context.QueryExecution.ElaborationBehavior
+import io.getquill.context.Execution.ElaborationBehavior
 
 /**
 * A QueryMeta allows contra-mapping some Query[T] to a combination of a Query[R] and then

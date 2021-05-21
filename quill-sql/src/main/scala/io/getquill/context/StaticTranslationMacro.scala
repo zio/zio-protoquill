@@ -27,7 +27,7 @@ import scala.util.{Success, Failure}
 import io.getquill.idiom.Statement
 import io.getquill.QAC
 import io.getquill.NamingStrategy
-import io.getquill.context.QueryExecution.ElaborationBehavior
+import io.getquill.context.Execution.ElaborationBehavior
 
 object StaticTranslationMacro {
   import io.getquill.parser._

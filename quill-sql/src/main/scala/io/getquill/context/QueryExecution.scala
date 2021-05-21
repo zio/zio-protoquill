@@ -44,47 +44,87 @@ trait ContextOperation[I, T, D <: Idiom, N <: NamingStrategy, PrepareRow, Result
   def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: Extraction[ResultRow, T], executionInfo: ExecutionInfo): Res
 }
 
+/** Enums and helper methods for QueryExecution and BatchQueryExecution */
+object Execution:
+
+  enum ExtractBehavior:
+    case Extract
+    case ExtractWithReturnAction
+    case Skip
+
+  enum ElaborationBehavior:
+    case Elaborate
+    case Skip
+
+  // Simple ID function that we use in a couple of places
+  def identityConverter[T: Type](using Quotes) = '{ (t:T) => t }
+
+  /** Summon decoder for a given Type and Row type (ResultRow) */
+  def summonDecoderOrThrow[ResultRow: Type, DecoderT: Type]()(using Quotes): Expr[GenericDecoder[ResultRow, DecoderT, DecodingType]] =
+    import quotes.reflect._
+    // First try summoning a specific encoder, if that doesn't work, summon the generic one
+    Expr.summon[GenericDecoder[ResultRow, DecoderT, DecodingType.Specific]] match
+      case Some(decoder) => decoder
+      case None =>
+        Expr.summon[GenericDecoder[ResultRow, DecoderT, DecodingType.Generic]] match
+          case Some(decoder) => decoder
+          case None => report.throwError(s"Decoder could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
+
+  /** See if there there is a QueryMeta mapping T to some other type RawT */
+  def summonQueryMetaIfExists[T: Type]()(using Quotes) =
+    Expr.summon[QueryMeta[T, _]] match
+      case Some(expr) =>
+        // println("Summoned! " + expr.show)
+        UntypeExpr(expr) match
+          case '{ QueryMeta.apply[k, n]($one, $two, $uid) } => Some(Type.of[n])
+          case _ =>
+            quotes.reflect.report.throwError("Summoned Query Meta But Could Not Get Type")
+      case None => None
+
+  def makeDecoder[ResultRow: Type, RawT: Type](using Quotes)() = summonDecoderOrThrow[ResultRow, RawT]()
+
+  class MakeExtractor[ResultRow: Type, T: Type, RawT: Type]:
+    def makeExtractorFrom(contramap: Expr[RawT => T])(using Quotes) =
+      val decoder = makeDecoder[ResultRow, RawT]()
+      '{ (r: ResultRow) => $contramap.apply(${decoder}.apply(0, r)) }
+
+    def static(state: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior)(using Quotes): Expr[io.getquill.context.Extraction[ResultRow, T]] =
+      extract match
+        // TODO Allow passing in a starting index here?
+        case ExtractBehavior.Extract =>
+          val extractor = makeExtractorFrom(converter)
+          '{ Extraction.Simple($extractor) }
+        case ExtractBehavior.ExtractWithReturnAction =>
+          val extractor = makeExtractorFrom(converter)
+          val returnAction = state.returnAction.getOrElse { throw new IllegalArgumentException(s"Return action could not be found in the Query: ${query}") }
+          '{ Extraction.Returning($extractor, ${io.getquill.parser.Lifter.returnAction(returnAction)}) }
+        case ExtractBehavior.Skip =>
+          '{ Extraction.None }
+    
+    def dynamic(converter: Expr[RawT => T], extract: ExtractBehavior)(using Quotes): Expr[io.getquill.context.Extraction[ResultRow, T]] =
+      extract match
+        case ExtractBehavior.Extract =>
+          val extractor = makeExtractorFrom(converter)
+          '{ Extraction.Simple( $extractor ) }
+        // if a return action is needed, that ReturnAction will be calculated later in the dynamic context
+        // therefore here, all we do is to pass in a extractor. We will compute the Extraction.ReturningLater
+        case ExtractBehavior.ExtractWithReturnAction =>
+          val extractor = makeExtractorFrom(converter)
+          '{ Extraction.Simple( $extractor ) }
+        case ExtractBehavior.Skip =>
+          '{ Extraction.None }
+
+    
+  end MakeExtractor
+
+end Execution
+
 /**
  * Drives execution of Quoted blocks i.e. Queries etc... from the context.
  */
 object QueryExecution:
 
-  trait SummonHelper[ResultRow: Type] {
-    /** Summon decoder for a given Type and Row type (ResultRow) */
-    def summonDecoderOrThrow[DecoderT: Type]()(using Quotes): Expr[GenericDecoder[ResultRow, DecoderT, DecodingType]] =
-      import quotes.reflect._
-      // First try summoning a specific encoder, if that doesn't work, summon the generic one
-      Expr.summon[GenericDecoder[ResultRow, DecoderT, DecodingType.Specific]] match
-        case Some(decoder) => decoder
-        case None =>
-          Expr.summon[GenericDecoder[ResultRow, DecoderT, DecodingType.Generic]] match
-            case Some(decoder) => decoder
-            case None => report.throwError(s"Decoder could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
-  }
-
-  trait QueryMetaHelper[T: Type] {
-    // See if there there is a QueryMeta mapping T to some other type RawT
-    def summonQueryMetaIfExists()(using Quotes) =
-      Expr.summon[QueryMeta[T, _]] match {
-        case Some(expr) =>
-          // println("Summoned! " + expr.show)
-          UntypeExpr(expr) match {
-            case '{ QueryMeta.apply[k, n]($one, $two, $uid) } => Some(Type.of[n])
-            case _ =>
-              quotes.reflect.report.throwError("Summoned Query Meta But Could Not Get Type")
-          }
-        case None => None
-      }
-  }
-
-  enum ExtractBehavior:
-      case Extract
-      case ExtractWithReturnAction
-      case Skip
-
-  enum ElaborationBehavior:
-      case Elaborate
-      case Skip
+  
 
   class RunQuery[
     I: Type,
@@ -96,11 +136,9 @@ object QueryExecution:
     Ctx <: Context[_, _]: Type,
     Res: Type
   ](quotedOp: Expr[Quoted[QAC[I, T]]], 
-    contextOperation: Expr[ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res]])(using val qctx: Quotes, QAC: Type[QAC[I, T]]) 
-  extends SummonHelper[ResultRow] 
-    with QueryMetaHelper[T]:
-
+    contextOperation: Expr[ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res]])(using val qctx: Quotes, QAC: Type[QAC[I, T]]):
     import qctx.reflect._
+    import Execution._
 
     def apply() =
       QAC match
@@ -117,12 +155,9 @@ object QueryExecution:
         case _ => 
           report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.Type(QAC)}")
 
-        // Simple ID function that we use in a couple of places
-    private val idConvert = '{ (t:T) => t }
-
     /** Summon all needed components and run executeQuery method */
     def applyQuery(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
-      summonQueryMetaIfExists() match
+      summonQueryMetaIfExists[T]() match
         // Can we get a QueryMeta? Run that pipeline if we can
         case Some(queryMeta) =>
           queryMeta match { case '[rawT] => runWithQueryMeta[rawT](quoted) }
@@ -131,23 +166,23 @@ object QueryExecution:
           StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Elaborate) match 
             // Can we re-create needed info to construct+tokenize the query statically?
             case Some(staticState) =>
-              executeStatic[T](staticState, idConvert, ExtractBehavior.Extract) // Yes we can, do it!
+              executeStatic[T](staticState, identityConverter, ExtractBehavior.Extract) // Yes we can, do it!
             case None =>
-              executeDynamic(quoted, idConvert, ExtractBehavior.Extract, ElaborationBehavior.Elaborate) // No we can't. Do dynamic
+              executeDynamic(quoted, identityConverter, ExtractBehavior.Extract, ElaborationBehavior.Elaborate) // No we can't. Do dynamic
 
     def applyAction(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
       StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Skip) match 
         case Some(staticState) =>
-          executeStatic[T](staticState, idConvert, ExtractBehavior.Skip)
+          executeStatic[T](staticState, identityConverter, ExtractBehavior.Skip)
         case None =>
-          executeDynamic(quoted, idConvert, ExtractBehavior.Skip, ElaborationBehavior.Skip)
+          executeDynamic(quoted, identityConverter, ExtractBehavior.Skip, ElaborationBehavior.Skip)
 
     def applyActionReturning(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
       StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Skip) match 
         case Some(staticState) =>
-          executeStatic[T](staticState, idConvert, ExtractBehavior.ExtractWithReturnAction)
+          executeStatic[T](staticState, identityConverter, ExtractBehavior.ExtractWithReturnAction)
         case None => 
-          executeDynamic(quoted, idConvert, ExtractBehavior.ExtractWithReturnAction, ElaborationBehavior.Skip)
+          executeDynamic(quoted, identityConverter, ExtractBehavior.ExtractWithReturnAction, ElaborationBehavior.Skip)
 
     /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to T */
     def runWithQueryMeta[RawT: Type](quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
@@ -183,11 +218,6 @@ object QueryExecution:
             """.stripMargin)
       }
 
-    def makeDecoder[RawT: Type]() = summonDecoderOrThrow[RawT]()
-    def makeExtractorFrom[RawT: Type](contramap: Expr[RawT => T]) =
-      val decoder = makeDecoder()
-      '{ (r: ResultRow) => $contramap.apply(${decoder}.apply(0, r)) }
-
     /**
      * Execute static query via ctx.executeQuery method given we have the ability to do so
      * i.e. have a staticState
@@ -198,18 +228,7 @@ object QueryExecution:
       // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
       // and the extractor to read out the results (e.g. ResultSet)
       val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow](${Expr.ofList(lifts)}, row) }
-      val extractor: Expr[io.getquill.context.Extraction[ResultRow, T]] = 
-        extract match
-          // TODO Allow passing in a starting index here?
-          case ExtractBehavior.Extract =>
-            val extractor = makeExtractorFrom[RawT](converter)
-            '{ Extraction.Simple($extractor) }
-          case ExtractBehavior.ExtractWithReturnAction =>
-            val extractor = makeExtractorFrom[RawT](converter)
-            val returnAction = state.returnAction.getOrElse { throw new IllegalArgumentException(s"Return action could not be found in the Query: ${query}") }
-            '{ Extraction.Returning($extractor, ${io.getquill.parser.Lifter.returnAction(returnAction)}) }
-          case ExtractBehavior.Skip =>
-            '{ Extraction.None }
+      val extractor = MakeExtractor[ResultRow, T, RawT].static(state, converter, extract)
 
       val particularQuery = Particularize.Static(state.query, lifts, '{ $contextOperation.idiom.liftingPlaceholder })
       // Plug in the components and execute
@@ -238,21 +257,7 @@ object QueryExecution:
         case ElaborationBehavior.Skip => '{ $quote.ast }
 
       val elaboratedAstQuote = '{ $quote.copy(ast = $elaboratedAst) }
-
-      // TODO Allow passing in a starting index here?
-      // Move this prepare down into RunDynamicExecution since need to use ReifyStatement to know what lifts to call when?
-      val extractor: Expr[io.getquill.context.Extraction[ResultRow, T]] =
-        extract match
-          case ExtractBehavior.Extract =>
-            val extractor = makeExtractorFrom[RawT](converter)
-            '{ Extraction.Simple( $extractor ) }
-          // if a return action is needed, that ReturnAction will be calculated later in the dynamic context
-          // therefore here, all we do is to pass in a extractor. We will compute the Extraction.ReturningLater
-          case ExtractBehavior.ExtractWithReturnAction =>
-            val extractor = makeExtractorFrom[RawT](converter)
-            '{ Extraction.Simple( $extractor ) }
-          case ExtractBehavior.Skip =>
-            '{ Extraction.None }
+      val extractor: Expr[io.getquill.context.Extraction[ResultRow, T]] = MakeExtractor[ResultRow, T, RawT].dynamic(converter, extract)
 
       // TODO What about when an extractor is not neededX
       val spliceAsts = TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]

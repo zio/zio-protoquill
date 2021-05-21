@@ -191,9 +191,9 @@ with Closeable
   }
 
   @targetName("runBatchAction")
-  inline def run[T, A <: Action[T] & QAC[T, Nothing]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
-    val ca = new BatchContextOperation[T, A, Dialect, Naming, PrepareRow, ResultRow, Result[RunBatchActionResult]](self.idiom, self.naming) {
-      def execute(sql: String, prepares: List[PrepareRow => (List[Any], PrepareRow)], executionInfo: ExecutionInfo) =
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
+    val ca = new BatchContextOperation[I, Nothing, A, Dialect, Naming, PrepareRow, ResultRow, Result[RunBatchActionResult]](self.idiom, self.naming) {
+      def execute(sql: String, prepares: List[PrepareRow => (List[Any], PrepareRow)], extraction: Extraction[ResultRow, Nothing], executionInfo: ExecutionInfo) =
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
         // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
         val group = BatchGroup(sql, prepares)
