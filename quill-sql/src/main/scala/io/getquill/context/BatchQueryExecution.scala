@@ -129,13 +129,16 @@ object BatchQueryExecution:
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
           val insertQuotation = InsertUpdateMacro.createFromPremade[I](insertEntity, caseClassAst, rawLifts, wrappingBehavior) 
           StaticTranslationMacro.applyInner[I, T, D, N](insertQuotation, ElaborationBehavior.Skip) match 
-            case Some(state @ StaticState(query, _, _)) =>
+            case Some(state @ StaticState(query, filteredLists, _)) =>
               // create an extractor for returning actions
               val extractor = MakeExtractor[ResultRow, T, T].static(state, identityConverter, extractionBehavior)
 
               val prepares =
                 '{ $liftedList.map(elem => ${
-                  val injectedLifts = injectableLifts.map(lift => lift.inject('elem))
+                  // Since things like returningGenerated can exclude lifts (e.g. query[Person].insert(_.id -> lift(0), _.name -> lift("Joe")).returningGenerated(_.id))
+                  // we need a pre-filtered list of lifts. The StaticTranslationMacro interanally has done that so we can take the lifts from there although they need to be casted.
+                  // This is safe because they are just the lifts taht we have already had from the `injectableLifts` list
+                  val injectedLifts = filteredLists.asInstanceOf[List[InjectableEagerPlanterExpr[_, _]]].map(lift => lift.inject('elem))
                   val injectedLiftsExpr = Expr.ofList(injectedLifts)
                   val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($injectedLiftsExpr, row) }
                   prepare

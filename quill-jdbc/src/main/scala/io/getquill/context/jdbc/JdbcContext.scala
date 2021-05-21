@@ -40,12 +40,12 @@ abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
     super.executeQuery(sql, prepare, extractor)(executionInfo, dc)
   // override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor): T =
   //   super.executeQuerySingle(sql, prepare, extractor)
-  // override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction): O =
-  //   super.executeActionReturning(sql, prepare, extractor, returningBehavior)
+  override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, dc: DatasourceContext): O =
+    super.executeActionReturning(sql, prepare, extractor, returningBehavior)(executionInfo, dc)
   override def executeBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: DatasourceContext): List[Long] =
     super.executeBatchAction(groups)(executionInfo, dc)
-  // override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T]): List[T] =
-  //   super.executeBatchActionReturning(groups, extractor)
+  override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: DatasourceContext): List[T] =
+   super.executeBatchActionReturning(groups, extractor)(executionInfo, dc)
 
   protected val currentConnection = new DynamicVariable[Option[Connection]](None)
 

@@ -120,18 +120,19 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
       }
     }.map(_.flatten.toList)
 
-  // def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(implicit ec: ExecutionContext): Future[List[T]] =
-  //   Future.sequence {
-  //     groups.map {
-  //       case BatchGroupReturning(sql, column, prepare) =>
-  //         prepare.foldLeft(Future.successful(List.newBuilder[T])) {
-  //           case (acc, prepare) =>
-  //             acc.flatMap { list =>
-  //               executeActionReturning(sql, prepare, extractor, column).map(list += _)
-  //             }
-  //         }.map(_.result())
-  //     }
-  //   }.map(_.flatten.toList)
+  def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[T]] =
+    implicit val ec = dc // implicitly define the execution context that will be passed in
+    Future.sequence {
+      groups.map {
+        case BatchGroupReturning(sql, column, prepare) =>
+          prepare.foldLeft(Future.successful(List.newBuilder[T])) {
+            case (acc, prepare) =>
+              acc.flatMap { list =>
+                executeActionReturning(sql, prepare, extractor, column)(executionInfo, dc).map(list += _)
+              }
+          }.map(_.result())
+      }
+    }.map(_.flatten.toList)
 
   // Used for TranslateContext. The functionality of context.translate is not in Protoquill yet.
   //override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] =

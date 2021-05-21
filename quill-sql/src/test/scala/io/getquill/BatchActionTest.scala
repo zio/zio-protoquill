@@ -53,7 +53,8 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
 
       mirror.triple mustEqual (
         "INSERT INTO Person (name,age) VALUES (?, ?) RETURNING id",
-        List(List(1, "Joe", 123), List(2, "Jill", 456)),
+        // The ids should be removed from the lifts list since their corresponding columns are removed (i.e. in the expanded insert assignments)
+        List(List(/*1,*/ "Joe", 123), List(/*2,*/ "Jill", 456)),
         Static
       )
     }

@@ -28,6 +28,7 @@ import io.getquill.idiom.Statement
 import io.getquill.QAC
 import io.getquill.NamingStrategy
 import io.getquill.context.Execution.ElaborationBehavior
+import io.getquill.util.Format
 
 object StaticTranslationMacro {
   import io.getquill.parser._
@@ -89,7 +90,7 @@ object StaticTranslationMacro {
   // matchingExternals = the matching placeholders (i.e 'lift tags') in the AST 
   // that contains the UUIDs of lifted elements. We check against list to make
   // sure that that only needed lifts are used and in the right order.
-  private[getquill] def processLifts(liftExprs: Expr[List[Planter[_, _]]], matchingExternals: List[External])(using Quotes): Option[List[Expr[Planter[_, _]]]] = {
+  private[getquill] def processLifts(liftExprs: Expr[List[Planter[_, _]]], matchingExternals: List[External])(using Quotes): Option[List[PlanterExpr[_, _]]] = {
     import quotes.reflect.report
 
     val extractedEncodeables =
@@ -104,24 +105,36 @@ object StaticTranslationMacro {
           None
       }
 
-    extractedEncodeables.map { encodeables => 
+    val uidsOfScalarTags = 
       matchingExternals.collect {
-        case tag: ScalarTag =>
-          encodeables.get(tag.uid) match {
-            case Some(encodeable) => encodeable
-            case None =>
-              report.throwError(s"Invalid Transformations Encountered. Cannot find lift with ID: ${tag.uid}.")
-              // TODO Throw an error here or attempt to resolve encoders during runtime?
-              // maybe the user has hand-modified a quoted block and only the
-              // lifts are modified with some runtime values?
-              // If throwing an error (or maybe even not?) need to tell the user which lifted ids cannot be found
-              // should probably add some info to the reifier to "highlight" the question marks that
-              // cannot be plugged in. It would also be really nice to show the user which lift-statements
-              // are wrong but that requires a bit more thought (maybe match them somehow into the original AST
-              // from quotedRow via the UUID???)
+        case tag: ScalarTag => tag.uid
+      }
+
+    extractedEncodeables match
+      case None => None
+      case Some(encodeables) =>
+        val sortedEncodeables =
+          uidsOfScalarTags.map { uid => 
+            encodeables.get(uid) match
+              case Some(encodeable) => encodeable
+              case None =>
+                report.throwError(s"Invalid Transformations Encountered. Cannot find lift with ID: ${uid}.")
+                // TODO Throw an error here or attempt to resolve encoders during runtime?
+                // maybe the user has hand-modified a quoted block and only the
+                // lifts are modified with some runtime values?
+                // If throwing an error (or maybe even not?) need to tell the user which lifted ids cannot be found
+                // should probably add some info to the reifier to "highlight" the question marks that
+                // cannot be plugged in. It would also be really nice to show the user which lift-statements
+                // are wrong but that requires a bit more thought (maybe match them somehow into the original AST
+                // from quotedRow via the UUID???)
           }
-      }.map(_.plant) // todo dedupe here?
-    }
+          
+        // TODO This should be logged if some fine-grained debug logging is enabled. Maybe as part of some phase that can be enabled via -Dquill.trace.types config
+        //val remaining = encodeables.removedAll(uidsOfScalarTags)
+        //if (!remaining.isEmpty)
+        //  println(s"Ignoring the following lifts: [${remaining.map((_, v) => Format.Expr(v.plant)).mkString(", ")}]")
+
+        Some(sortedEncodeables)
   }
 
   def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using Quotes, Type[D], Type[N]): Try[(Idiom, NamingStrategy)] =

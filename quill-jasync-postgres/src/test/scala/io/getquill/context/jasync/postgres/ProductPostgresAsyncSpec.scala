@@ -6,7 +6,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import io.getquill.context.sql.ProductSpec
 import io.getquill.context.sql.Id
 import io.getquill._
-
 class ProductPostgresAsyncSpec extends ProductSpec {
 
   val context = testContext

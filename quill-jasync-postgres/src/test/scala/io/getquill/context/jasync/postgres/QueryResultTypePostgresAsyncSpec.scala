@@ -1,71 +1,71 @@
-// package io.getquill.context.jasync.postgres
+package io.getquill.context.jasync.postgres
 
-// import java.util.concurrent.ConcurrentLinkedQueue
-// import scala.jdk.CollectionConverters._
-// import scala.concurrent.ExecutionContext.Implicits.global
-// import scala.math.BigDecimal.int2bigDecimal
-// import io.getquill.context.sql.QueryResultTypeSpec
-// import io.getquill._
+import java.util.concurrent.ConcurrentLinkedQueue
+import scala.jdk.CollectionConverters._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.math.BigDecimal.int2bigDecimal
+import io.getquill.context.sql.QueryResultTypeSpec
+import io.getquill._
 
-// TODO Need to implement batch action returning for this to work
-// class QueryResultTypePostgresAsyncSpec extends QueryResultTypeSpec {
+class QueryResultTypePostgresAsyncSpec extends QueryResultTypeSpec {
 
-//   val context = testContext
-//   import testContext._
+  val context = testContext
+  import testContext._
 
-//   val insertedProducts = new ConcurrentLinkedQueue[Product]
+  val insertedProducts = new ConcurrentLinkedQueue[Product]
 
-//   override def beforeAll = {
-//     await(testContext.run(deleteAll))
-//     val ids = await(testContext.run(liftQuery(productEntries).foreach(e => productInsert(e))))
-//     val inserted = (ids zip productEntries).map {
-//       case (id, prod) => prod.copy(id = id)
-//     }
-//     insertedProducts.addAll(inserted.asJava)
-//     ()
-//   }
+  override def beforeAll() = {
+    await(testContext.run(deleteAll))
+    val ids = await(testContext.run(liftQuery(productEntries).foreach(e => productInsert(e))))
+    val inserted = (ids zip productEntries).map {
+      case (id, prod) => prod.copy(id = id)
+    }
+    insertedProducts.addAll(inserted.asJava)
+    ()
+  }
 
-//   def products = insertedProducts.asScala.toList
+  def products = insertedProducts.asScala.toList
 
-//   "return list" - {
-//     "select" in {
-//       await(testContext.run(selectAll)) must contain theSameElementsAs (products)
-//     }
-//     "map" in {
-//       await(testContext.run(map)) must contain theSameElementsAs (products.map(_.id))
-//     }
-//     "filter" in {
-//       await(testContext.run(filter)) must contain theSameElementsAs (products)
-//     }
-//     "withFilter" in {
-//       await(testContext.run(withFilter)) must contain theSameElementsAs (products)
-//     }
-//     "sortBy" in {
-//       await(testContext.run(sortBy)) must contain theSameElementsInOrderAs (products)
-//     }
-//     "take" in {
-//       await(testContext.run(take)) must contain theSameElementsAs (products)
-//     }
-//     "drop" in {
-//       await(testContext.run(drop)) must contain theSameElementsAs (products.drop(1))
-//     }
-//     "++" in {
-//       await(testContext.run(`++`)) must contain theSameElementsAs (products ++ products)
-//     }
-//     "unionAll" in {
-//       await(testContext.run(unionAll)) must contain theSameElementsAs (products ++ products)
-//     }
-//     "union" in {
-//       await(testContext.run(union)) must contain theSameElementsAs (products)
-//     }
-//     "join" in {
-//       await(testContext.run(join)) must contain theSameElementsAs (products zip products)
-//     }
-//     "distinct" in {
-//       await(testContext.run(distinct)) must contain theSameElementsAs (products.map(_.id).distinct)
-//     }
-//   }
+  "return list" - {
+    "select" in {
+      await(testContext.run(selectAll)) must contain theSameElementsAs (products)
+    }
+    "map" in {
+      await(testContext.run(map)) must contain theSameElementsAs (products.map(_.id))
+    }
+    "filter" in {
+      await(testContext.run(filter)) must contain theSameElementsAs (products)
+    }
+    "withFilter" in {
+      await(testContext.run(withFilter)) must contain theSameElementsAs (products)
+    }
+    "sortBy" in {
+      await(testContext.run(sortBy)) must contain theSameElementsInOrderAs (products)
+    }
+    "take" in {
+      await(testContext.run(take)) must contain theSameElementsAs (products)
+    }
+    "drop" in {
+      await(testContext.run(drop)) must contain theSameElementsAs (products.drop(1))
+    }
+    "++" in {
+      await(testContext.run(`++`)) must contain theSameElementsAs (products ++ products)
+    }
+    "unionAll" in {
+      await(testContext.run(unionAll)) must contain theSameElementsAs (products ++ products)
+    }
+    "union" in {
+      await(testContext.run(union)) must contain theSameElementsAs (products)
+    }
+    "join" in {
+      await(testContext.run(join)) must contain theSameElementsAs (products zip products)
+    }
+    "distinct" in {
+      await(testContext.run(distinct)) must contain theSameElementsAs (products.map(_.id).distinct)
+    }
+  }
 
+// QuerySingle is not implemented yet
 //   "return single result" - {
 //     "min" - {
 //       "some" in {
@@ -104,4 +104,4 @@
 //       await(testContext.run(isEmpty)) mustEqual false
 //     }
 //   }
-// }
+}
