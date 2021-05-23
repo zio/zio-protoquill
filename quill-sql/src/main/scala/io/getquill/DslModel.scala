@@ -19,7 +19,10 @@ def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[
 
 sealed trait Unquoteable
 
-trait EntityQuery[T] extends EntityQueryModel[T] with Unquoteable
+trait EntityQuery[T] extends EntityQueryModel[T] with Unquoteable:
+  override def withFilter(f: T => Boolean): EntityQuery[T] = NonQuotedException()
+  override def filter(f: T => Boolean): EntityQuery[T] = NonQuotedException()
+  override def map[R](f: T => R): EntityQuery[R] = NonQuotedException()
 
 case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _]], runtimeQuotes: List[QuotationVase]) {
   override def toString = io.getquill.util.Messages.qprint(this).plainText

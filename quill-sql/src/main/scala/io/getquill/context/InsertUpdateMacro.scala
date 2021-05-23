@@ -137,7 +137,7 @@ object InsertUpdateMacro {
               case _ =>
                 report.throwError(s"Quotation Lot of InsertMeta either pluckable or uprootable from: '${unquotation}'")
           case _ =>
-            report.throwError(s"Cannot process illegal insert meta: ${schema}")
+            report.throwError(s"Cannot process illegal insert meta: ${Format.Expr(schema)}")
               // TODO Make an option to ignore dynamic entity schemas and return the plain entity?
               //println("WARNING: Only inline schema-metas are supported for insertions so far. Falling back to a plain entity.")
               //plainEntity
