@@ -50,6 +50,7 @@ import io.getquill.QAC
 import io.getquill.parser.Lifter
 import io.getquill.context.InsertUpdateMacro.AdditionalWrappingBehavior
 import io.getquill.metaprog.InjectableEagerPlanterExpr
+import _root_.io.getquill.norm.BetaReduction
 
 trait BatchContextOperation[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], extractor: Extraction[ResultRow, T], executionInfo: ExecutionInfo): Res
@@ -114,24 +115,24 @@ object BatchQueryExecution:
               case _ => 
                 report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.TypeOf[A]}")
 
-          val (actionEntity, batchActionType, wrappingBehavior) = {
+          val (foreachIdent, actionQueryAstRaw, batchActionType) = {
             // putting this in a block since I don't want to externally import these packages
             import io.getquill.ast._
             val unliftedAst = Unlifter(quoteAst)
             extractionBehavior match
               case ExtractBehavior.Skip =>
                 unliftedAst match
-                  case Foreach(_, _, ActionEntity(entity: Entity, bType)) => (entity, bType, AdditionalWrappingBehavior.Skip)
+                  case Foreach(_, foreachIdent, actionQueryAst @ ActionEntity(entity: Entity, bType)) => (foreachIdent, actionQueryAst, bType)
                   case other => report.throwError(s"Malformed batch entity: ${io.getquill.util.Messages.qprint(other)}. Batch insertion entities must have the form Insert(Entity, Nil: List[Assignment])")
 
               case ExtractBehavior.ExtractWithReturnAction =>
                 unliftedAst match
                   // This ONLY supports:      liftQuery(...).foreach(p => query[Person].insert(...)), it does not support
                   // more complex stuff like: liftQuery(...).foreach(p => query[Person].filter(...).insert(...)), it does not support
-                  case Foreach(_, _, ret @ ReturningAction(ActionEntity(entity: Entity, bType), id, body)) => 
-                    ret match
-                      case _: Returning =>           (entity, bType, AdditionalWrappingBehavior.AddReturning(id, body))
-                      case _: ReturningGenerated =>  (entity, bType, AdditionalWrappingBehavior.AddReturningGenerated(id, body))
+                  case Foreach(_, foreachIdent, actionQueryAst @ ReturningAction(ActionEntity(entity: Entity, bType), id, body)) => 
+                    actionQueryAst match
+                      case _: Returning =>           (foreachIdent, actionQueryAst, bType)
+                      case _: ReturningGenerated =>  (foreachIdent, actionQueryAst, bType)
                   case other => report.throwError(s"Malformed batch entity: ${other}. Batch insertion entities must have the form Returning/ReturningGenerated(Insert(Entity, Nil: List[Assignment]), _, _)")
           }
 
@@ -143,6 +144,20 @@ object BatchQueryExecution:
           println(s"Case class AST: ${io.getquill.util.Messages.qprint(caseClassAst)}")
           //println("========= CaseClass =========\n" + io.getquill.util.Messages.qprint(caseClassAst))
           // Assuming that all lifts of the batch query are injectable
+
+          // The primary idea that drives batch query execution is the realization that you 
+          // can beta reduce out the foreach identifier replacing it with lift tags.
+          // For example if we have something like:
+          // actionQueryAstRaw: liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(_.name == p.name))
+          // where Person(id: Int, name: String, age: Int)
+          // all we need do do is to take the caseClassAst which is ast.CaseClass(p.id -> ScalarTag(A), p.name -> ScalarTag(B), p.age -> ScalarTag(C))
+          // (and corresponding rawLifts (EagerPlanter(A), EagerPlanter(B), EagerPlanter(C)))
+          // then do a beta reduction which will turn our actionQueryAstRaw into:
+          // actionQueryAstRaw: liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == ScalarTag(A)).update(_.name == ScalarTag(B)))
+          // this will ultimately yield a query that looks like: UPDATE Person SET name = ? WHERE id = ? and for each person entity
+          // the corresponding values will be plugged in.
+          val actionQueryAst = BetaReduction(actionQueryAstRaw, foreachIdent -> caseClassAst)
+          println(s"==== Reduced AST: ${io.getquill.util.Messages.qprint(actionQueryAst)}")
 
           // Verify that all of the lists are InjectableEagerPlanterExpr
           // TODO Need to examine this assumption
@@ -159,26 +174,15 @@ object BatchQueryExecution:
           // should summon a schemaMeta if needed (and account for querySchema age)
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
 
-          def deleteQuotation() =
-            def deleteQuotationExpr(deleteAst: Ast) =
-              '{ Quoted[Delete[I]](${Lifter(deleteAst)}, ${Expr.ofList(rawLifts)}, Nil) }
-            wrappingBehavior match
-              case AdditionalWrappingBehavior.Skip => 
-                deleteQuotationExpr(ast.Delete(actionEntity))
-              case AdditionalWrappingBehavior.AddReturning(id, body) =>
-                deleteQuotationExpr(Returning(ast.Delete(actionEntity), id, body))
-              case AdditionalWrappingBehavior.AddReturningGenerated(id, body) =>
-                deleteQuotationExpr(ReturningGenerated(ast.Delete(actionEntity), id, body))
-
           // Create a quotation with the elaborated entity 
           // e.g. given    liftQuery(people).foreach(p => query[Person].insert[Person](p))
           // then create a liftQuery(people).foreach(p => query[Person].insert[Person](_.name -> lift(p.name), _.age -> lift(p.age)))
           val quotation =
             batchActionType match
-              case BatchActionType.Insert => InsertUpdateMacro.createFromPremade[I, io.getquill.Insert](actionEntity, caseClassAst, rawLifts, wrappingBehavior) 
-              case BatchActionType.Update => InsertUpdateMacro.createFromPremade[I, io.getquill.Update](actionEntity, caseClassAst, rawLifts, wrappingBehavior) 
-              // Deleteion does not have an property-list (that needs to be elaborated) so we haven't written a special macro for it
-              case BatchActionType.Delete => deleteQuotation()
+              case BatchActionType.Insert => '{ Quoted[Insert[I]](${Lifter(actionQueryAst)}, ${Expr.ofList(rawLifts)}, Nil) }
+              case BatchActionType.Update => '{ Quoted[Update[I]](${Lifter(actionQueryAst)}, ${Expr.ofList(rawLifts)}, Nil) }
+              // We need lifts for 'Delete' because it could have a WHERE clause
+              case BatchActionType.Delete => '{ Quoted[Delete[I]](${Lifter(actionQueryAst)}, ${Expr.ofList(rawLifts)}, Nil) }
 
           StaticTranslationMacro.applyInner[I, T, D, N](quotation, ElaborationBehavior.Skip) match 
             case Some(state @ StaticState(query, filteredLists, _)) =>
