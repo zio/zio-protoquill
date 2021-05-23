@@ -37,48 +37,51 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
 
   val people = List(Person(1, "Joe", 123), Person(2, "Jill", 456))
 
-  "batch insert with returning should work with" - {
-    "simple case - returning" in {
-      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p).returning(p => p.id)) }
-
-      mirror.triple mustEqual (
-        "INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id",
-        List(List(1, "Joe", 123), List(2, "Jill", 456)),
-        Static
-      )
+  "batch action with returning should work with" - {
+    // "insert - returning" in {
+    //   val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p).returning(p => p.id)) }
+    //   mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+    // }
+    // // Batch Update retunring, the most basic kind but not very useful
+    // "update - returning" in {
+    //   val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].update(p).returning(p => p.id)) }
+    //   mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+    // }
+    // more useful variant
+    "update - returning" in {
+      //val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(_.name -> p.name).returning(p => p.id)) }
+      //val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].update(_.name -> p.name).returning(p => p.id)) }
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].update(p)) }
+      //val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.name == p.name).update(_.name -> p.name)) }
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
     }
+    // "update - returning" in {
+    //   val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].delete.returning(p => p.id)) }
+    //   mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+    // }
 
-    "simple case - returningGenerated" in {
-      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p).returningGenerated(p => p.id)) }
+    // "insert - returningGenerated" in {
+    //   val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p).returningGenerated(p => p.id)) }
+    //   mirror.triple mustEqual (
+    //     "INSERT INTO Person (name,age) VALUES (?, ?) RETURNING id",
+    //     // The ids should be removed from the lifts list since their corresponding columns are removed (i.e. in the expanded insert assignments)
+    //     List(List(/*1,*/ "Joe", 123), List(/*2,*/ "Jill", 456)),
+    //     Static
+    //   )
+    // }
 
-      mirror.triple mustEqual (
-        "INSERT INTO Person (name,age) VALUES (?, ?) RETURNING id",
-        // The ids should be removed from the lifts list since their corresponding columns are removed (i.e. in the expanded insert assignments)
-        List(List(/*1,*/ "Joe", 123), List(/*2,*/ "Jill", 456)),
-        Static
-      )
-    }
+
   }
 
-  "batch insert should work with" - {
-    "simple case" in {
-      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p)) }
+  // "batch insert should work with" - {
+  //   "simple case" in {
+  //     val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p)) }
+  //     mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)),Static)
+  //   }
 
-      mirror.triple mustEqual (
-        "INSERT INTO Person (id,name,age) VALUES (?, ?, ?)",
-        List(List(1, "Joe", 123), List(2, "Jill", 456)),
-        Static
-      )
-    }
-
-    "simple case from super" in {
-      val mirror = ctx.run { liftQuery(people).foreach(p => insertPeople(p)) }
-
-      mirror.triple mustEqual (
-        "INSERT INTO Person (id,name,age) VALUES (?, ?, ?)",
-        List(List(1, "Joe", 123), List(2, "Jill", 456)),
-        Static
-      )
-    }
-  }
+  //   "simple case from super" in {
+  //     val mirror = ctx.run { liftQuery(people).foreach(p => insertPeople(p)) }
+  //     mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+  //   }
+  // }
 }

@@ -394,6 +394,11 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     // Example: ( query[Person].insert(lift(joe))).returning[Something]
     case '{ ($action: Insert[t]).returning[r] } =>
       report.throwError(s"A 'returning' clause must have arguments.")
+    // NOTE: Need to make copies for Insert/Update/Delete because presently `Action` does not have a .returning method
+    case '{ ($action: Update[t]).returning[r] } =>
+      report.throwError(s"A 'returning' clause must have arguments.")
+    case '{ ($action: Delete[t]).returning[r] } =>
+      report.throwError(s"A 'returning' clause must have arguments.")
 
     case '{ ($action: Insert[t]).returning[r](${Lambda1(id, tpe, body)}) } =>
       val ident = cleanIdent(id, tpe)
@@ -408,6 +413,16 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       // }
       // // Verify that the AST in the returning-body is valid
       // idiomReturnCapability.verifyAst(bodyAst)
+      Returning(astParse(action), ident, bodyAst)
+
+    // Need to make copies because presently `Action` does not have a .returning method
+    case '{ ($action: Update[t]).returning[r](${Lambda1(id, tpe, body)}) } =>
+      val ident = cleanIdent(id, tpe)
+      val bodyAst = reprocessReturnClause(ident, astParse(body), action, Type.of[t])
+      Returning(astParse(action), ident, bodyAst)
+    case '{ ($action: Delete[t]).returning[r](${Lambda1(id, tpe, body)}) } =>
+      val ident = cleanIdent(id, tpe)
+      val bodyAst = reprocessReturnClause(ident, astParse(body), action, Type.of[t])
       Returning(astParse(action), ident, bodyAst)
 
     case '{ ($action: Insert[t]).returningGenerated[r](${Lambda1(id, tpe, body)}) } =>

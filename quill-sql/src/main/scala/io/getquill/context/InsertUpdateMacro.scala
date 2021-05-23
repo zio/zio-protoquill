@@ -408,10 +408,10 @@ object InsertUpdateMacro {
    * is if there is a existing schemaMeta that needs to be injected (i.e. to make a Entity(T, fieldMappings))
    * object (i.e. the AST form of querySchema[T](...)).
    */
-  def createFromPremade[T: Type](entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]], wrapping: AdditionalWrappingBehavior)(using Quotes) =
+  def createFromPremade[T: Type, A[T] <: Insert[T] | Update[T]: Type](entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]], wrapping: AdditionalWrappingBehavior)(using Quotes) =
     // unlike in 'apply', types here need to be manually specified for Pipeline, it seems that since they're in arguments, in the
     // 'apply' variation, the scala compiler can figure them out but not here
-    new Pipeline[T, Insert]().createFromPremade(entity, caseClass, lifts, wrapping)
+    new Pipeline[T, A]().createFromPremade(entity, caseClass, lifts, wrapping)
 
   enum AdditionalWrappingBehavior:
     case AddReturning(id: AIdent, returningBody: Ast) extends AdditionalWrappingBehavior
