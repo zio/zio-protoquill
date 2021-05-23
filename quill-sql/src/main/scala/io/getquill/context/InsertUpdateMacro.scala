@@ -333,24 +333,11 @@ object InsertUpdateMacro {
       UnquoteMacro(quotation)
     }
 
-    /** used in BatchQueryExecution */
-    def createFromPremade(entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]], wrapping: AdditionalWrappingBehavior): Expr[Quoted[A[T]]] =
-      val assignments = deduceAssignmentsFromCaseClass(caseClass)
-      val wrappingFunction =
-        wrapping match
-          case AdditionalWrappingBehavior.AddReturning(id, body) =>
-            (action: Expr[Ast]) => '{ Returning($action, ${Lifter.ident(id)}, ${Lifter(body)}) }
-          case AdditionalWrappingBehavior.AddReturningGenerated(id, body) =>
-            (action: Expr[Ast]) => '{ ReturningGenerated($action, ${Lifter.ident(id)}, ${Lifter(body)}) }
-          case AdditionalWrappingBehavior.Skip => 
-            (action: Expr[Ast]) => action
-      createQuotation(SummonState.Static(entity), assignments, lifts, List(), wrappingFunction)
-
     /** 
      * Create a static or dynamic quotation based on the state. Wrap the expr using some additional functions if we need to.
      * This is used for the createFromPremade if we need to wrap it into insertReturning which is used for batch-returning query execution.
      */
-    def createQuotation(summonState: SummonState[Entity], assignmentOfEntity: List[Assignment], lifts: List[Expr[Planter[?, ?]]], pluckedUnquotes: List[Expr[QuotationVase]], additionalWrapping: Expr[Ast] => Expr[Ast] = t => t) = {
+    def createQuotation(summonState: SummonState[Entity], assignmentOfEntity: List[Assignment], lifts: List[Expr[Planter[?, ?]]], pluckedUnquotes: List[Expr[QuotationVase]]) = {
       //println("******************* TOP OF APPLY **************")
       // Processed Assignments AST plus any lifts that may have come from the assignments AST themsevles.
       // That is usually the case when
@@ -361,13 +348,12 @@ object InsertUpdateMacro {
         // If we can get a static entity back
         case SummonState.Static(entity) =>
           // Lift it into an `Insert` ast, put that into a `quotation`, then return that `quotation.unquote` i.e. ready to splice into the quotation from which this `.insert` macro has been called
-          val actionRaw = MacroType.ofThis() match
+          val action = MacroType.ofThis() match
               case MacroType.Insert =>
                 '{ AInsert(${Lifter.entity(entity)}, ${assignmentsAst}) }
               case MacroType.Update =>
                 '{ AUpdate(${Lifter.entity(entity)}, ${assignmentsAst}) }
 
-          val action = additionalWrapping(actionRaw)
           val quotation = '{ Quoted[A[T]](${action}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
           // Unquote the quotation and return
           quotation
@@ -401,21 +387,5 @@ object InsertUpdateMacro {
 
   def apply[T: Type, A[T] <: Insert[T] | Update[T]: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[A[T]] =
     new Pipeline[T, A]().apply(entityRaw, bodyRaw)
-
-  /**
-   * If you have a pre-created entity, a case class, and lifts (as is the case for the Batch queries in BatchQueryExecution)
-   * then you can create an insert assignments clause without the need for parsing etc. The only thing that needs to be checked
-   * is if there is a existing schemaMeta that needs to be injected (i.e. to make a Entity(T, fieldMappings))
-   * object (i.e. the AST form of querySchema[T](...)).
-   */
-  def createFromPremade[T: Type, A[T] <: Insert[T] | Update[T]: Type](entity: Entity, caseClass: CaseClass, lifts: List[Expr[Planter[?, ?]]], wrapping: AdditionalWrappingBehavior)(using Quotes) =
-    // unlike in 'apply', types here need to be manually specified for Pipeline, it seems that since they're in arguments, in the
-    // 'apply' variation, the scala compiler can figure them out but not here
-    new Pipeline[T, A]().createFromPremade(entity, caseClass, lifts, wrapping)
-
-  enum AdditionalWrappingBehavior:
-    case AddReturning(id: AIdent, returningBody: Ast) extends AdditionalWrappingBehavior
-    case AddReturningGenerated(id: AIdent, returningBody: Ast) extends AdditionalWrappingBehavior
-    case Skip extends AdditionalWrappingBehavior
 }
 

@@ -48,7 +48,6 @@ import io.getquill.parser.Unlifter
 import io.getquill._
 import io.getquill.QAC
 import io.getquill.parser.Lifter
-import io.getquill.context.InsertUpdateMacro.AdditionalWrappingBehavior
 import io.getquill.metaprog.InjectableEagerPlanterExpr
 import _root_.io.getquill.norm.BetaReduction
 
