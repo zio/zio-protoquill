@@ -99,6 +99,8 @@ object BatchQueryExecution:
 
               case ExtractBehavior.ExtractWithReturnAction =>
                 unliftedAst match
+                  // This ONLY supports:      liftQuery(...).foreach(p => query[Person].insert(...)), it does not support
+                  // more complex stuff like: liftQuery(...).foreach(p => query[Person].filter(...).insert(...)), it does not support
                   case Foreach(_, _, ret @ ReturningAction(Insert(entity: Entity, _), id, body)) => 
                     ret match
                       case _: Returning =>  (entity, AdditionalWrappingBehavior.AddReturning(id, body))
@@ -135,8 +137,14 @@ object BatchQueryExecution:
 
               val prepares =
                 '{ $liftedList.map(elem => ${
-                  // Since things like returningGenerated can exclude lifts (e.g. query[Person].insert(_.id -> lift(0), _.name -> lift("Joe")).returningGenerated(_.id))
-                  // we need a pre-filtered list of lifts. The StaticTranslationMacro interanally has done that so we can take the lifts from there although they need to be casted.
+                  // Since things like returningGenerated can exclude lifts...
+                  //   For example:
+                  //   query[Person].insert(_.id -> lift(1), _.name -> lift("Joe")).returningGenerated(_.id))
+                  //   becomes something like Quoted(query[Person].insert(_.id -> lift(A), _.name -> lift(B)).returningGenerated(_.id)), lifts: List(ScalarTag(A, 1), ScalarTag(B, "Joe")))
+                  //   but since we are excluding the person.id column (this is done in the transformation phase NormalizeReturning which is in SqlNormalization in the quill-sql-portable module)
+                  //   actually we only want only the ScalarTag(B) so we need to get the list of lift tags (in tokens) once the Dialect has serialized the query
+                  //   which correctly order the list of lifts.
+                  // we need a pre-filtered, and ordered list of lifts. The StaticTranslationMacro interanally has done that so we can take the lifts from there although they need to be casted.
                   // This is safe because they are just the lifts taht we have already had from the `injectableLifts` list
                   val injectedLifts = filteredLists.asInstanceOf[List[InjectableEagerPlanterExpr[_, _]]].map(lift => lift.inject('elem))
                   val injectedLiftsExpr = Expr.ofList(injectedLifts)
