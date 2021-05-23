@@ -52,16 +52,17 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
       )
     }
 
-    // Batch Update returning with filter. Does not work yet
+    // update returning with filter, not very useful but good baseline
     "update - returning" in {
-      //val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(p).returning(p => p.id)) }
-      //mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(p).returning(p => p.id)) }
+      mirror.triple mustEqual ("UPDATE Person SET id = ?, name = ?, age = ? WHERE id = ? RETURNING id", List(List(1, "Joe", 123, 1), List(2, "Jill", 456, 2)), Static)
     }
 
-    
-    
-
-
+    // TODO dsl does not support this yet but would be quite useful
+    //"update - returningGenerated" in {
+    //  val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(p).returningGenerated(p => p.id)) }
+    //  //mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+    //}
   }
 
   "batch action should work with" - {

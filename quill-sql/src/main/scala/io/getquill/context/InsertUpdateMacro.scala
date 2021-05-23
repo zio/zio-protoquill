@@ -113,7 +113,7 @@ object InsertUpdateMacro {
         val entityName = TypeRepr.of[T].classSymbol.get.name
         Entity(entityName, List(), InferQuat.of[T].probit)
 
-      def summon: SummonState[Entity] =
+      def summon: SummonState[Ast] =
         val schema = schemaRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]
         UntypeExpr(schema) match
           // Case 1: query[Person].insert(...)
@@ -136,6 +136,13 @@ object InsertUpdateMacro {
                 SummonState.Dynamic(uid, quotation)
               case _ =>
                 report.throwError(s"Quotation Lot of InsertMeta either pluckable or uprootable from: '${unquotation}'")
+
+          // parse this
+          case '{ ($q: EntityQuery[t]) } =>
+            val parserFactory = SummonParser()
+            val ast = parserFactory.apply.seal.apply(q)
+            SummonState.Static(ast)
+
           case _ =>
             report.throwError(s"Cannot process illegal insert meta: ${Format.Expr(schema)}")
               // TODO Make an option to ignore dynamic entity schemas and return the plain entity?
@@ -337,7 +344,7 @@ object InsertUpdateMacro {
      * Create a static or dynamic quotation based on the state. Wrap the expr using some additional functions if we need to.
      * This is used for the createFromPremade if we need to wrap it into insertReturning which is used for batch-returning query execution.
      */
-    def createQuotation(summonState: SummonState[Entity], assignmentOfEntity: List[Assignment], lifts: List[Expr[Planter[?, ?]]], pluckedUnquotes: List[Expr[QuotationVase]]) = {
+    def createQuotation(summonState: SummonState[Ast], assignmentOfEntity: List[Assignment], lifts: List[Expr[Planter[?, ?]]], pluckedUnquotes: List[Expr[QuotationVase]]) = {
       //println("******************* TOP OF APPLY **************")
       // Processed Assignments AST plus any lifts that may have come from the assignments AST themsevles.
       // That is usually the case when
@@ -350,9 +357,9 @@ object InsertUpdateMacro {
           // Lift it into an `Insert` ast, put that into a `quotation`, then return that `quotation.unquote` i.e. ready to splice into the quotation from which this `.insert` macro has been called
           val action = MacroType.ofThis() match
               case MacroType.Insert =>
-                '{ AInsert(${Lifter.entity(entity)}, ${assignmentsAst}) }
+                '{ AInsert(${Lifter(entity)}, ${assignmentsAst}) }
               case MacroType.Update =>
-                '{ AUpdate(${Lifter.entity(entity)}, ${assignmentsAst}) }
+                '{ AUpdate(${Lifter(entity)}, ${assignmentsAst}) }
 
           val quotation = '{ Quoted[A[T]](${action}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
           // Unquote the quotation and return
