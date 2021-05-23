@@ -134,7 +134,7 @@ object BatchQueryExecution:
           // ast = CaseClass(name -> lift(UUID1), age -> lift(UUID2))
           // lifts = List(InjectableEagerLift(p.name, UUID1), InjectableEagerLift(p.age, UUID2))
           val (caseClassAst, rawLifts) = LiftMacro.liftInjectedProduct[I, PrepareRow]
-          println(s"Case class AST: ${io.getquill.util.Messages.qprint(caseClassAst)}")
+          //println(s"Case class AST: ${io.getquill.util.Messages.qprint(caseClassAst)}")
           //println("========= CaseClass =========\n" + io.getquill.util.Messages.qprint(caseClassAst))
           // Assuming that all lifts of the batch query are injectable
 
@@ -150,7 +150,7 @@ object BatchQueryExecution:
           // this will ultimately yield a query that looks like: UPDATE Person SET name = ? WHERE id = ? and for each person entity
           // the corresponding values will be plugged in.
           val actionQueryAst = BetaReduction(actionQueryAstRaw, foreachIdent -> caseClassAst)
-          println(s"==== Reduced AST: ${io.getquill.util.Messages.qprint(actionQueryAst)}")
+          //println(s"==== Reduced AST: ${io.getquill.util.Messages.qprint(actionQueryAst)}")
 
           // Verify that all of the lists are InjectableEagerPlanterExpr
           // TODO Need to examine this assumption
