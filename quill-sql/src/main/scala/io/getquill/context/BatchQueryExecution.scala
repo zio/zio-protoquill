@@ -64,20 +64,11 @@ object BatchQueryExecution:
     case Delete
 
   private[getquill] object ActionEntity:
-    def unapply(actionAst: Ast): Option[(Ast, BatchActionType)] =
+    def unapply(actionAst: Ast): Option[BatchActionType] =
       actionAst match
-        case ast.Insert(entity, _) => Some((entity, BatchActionType.Insert))
-
-        // Must be before the more generic update since that one always matches
-        case ast.Update(Filter(entity, fid, ffun), assignments) => 
-          println(s"The ast is: ${io.getquill.util.Messages.qprint(actionAst)}")
-          Some((entity, BatchActionType.Update))
-
-        case ast.Update(entity, assignments) => 
-          println(s"The assignments are: ${io.getquill.util.Messages.qprint(assignments)}")
-          Some((entity, BatchActionType.Update))
-        
-        case io.getquill.ast.Delete(entity) => Some((entity, BatchActionType.Delete))
+        case ast.Insert(entity, _) => Some(BatchActionType.Insert)
+        case ast.Update(entity, assignments) => Some(BatchActionType.Update)
+        case ast.Delete(entity) => Some(BatchActionType.Delete)
         case _ => None
 
   private[getquill] class RunQuery[
@@ -122,14 +113,17 @@ object BatchQueryExecution:
             extractionBehavior match
               case ExtractBehavior.Skip =>
                 unliftedAst match
-                  case Foreach(_, foreachIdent, actionQueryAst @ ActionEntity(entity: Entity, bType)) => (foreachIdent, actionQueryAst, bType)
+                  // TODO In the actionQueryAst should we make sure to verify that an Entity exists?
+                  case Foreach(_, foreachIdent, actionQueryAst @ ActionEntity(bType)) => (foreachIdent, actionQueryAst, bType)
                   case other => report.throwError(s"Malformed batch entity: ${io.getquill.util.Messages.qprint(other)}. Batch insertion entities must have the form Insert(Entity, Nil: List[Assignment])")
 
               case ExtractBehavior.ExtractWithReturnAction =>
                 unliftedAst match
-                  // This ONLY supports:      liftQuery(...).foreach(p => query[Person].insert(...)), it does not support
-                  // more complex stuff like: liftQuery(...).foreach(p => query[Person].filter(...).insert(...)), it does not support
-                  case Foreach(_, foreachIdent, actionQueryAst @ ReturningAction(ActionEntity(entity: Entity, bType), id, body)) => 
+                  // Designed to Match:          liftQuery(...).foreach(p => query[Person].insert(...))
+                  // Also Matches:               liftQuery(...).foreach(p => query[Person].filter(...).insert(...))
+                  // but more generally matches: liftQuery(...).foreach(p => {stuff})
+                  // TODO In the actionQueryAst should we make sure to verify that an Entity exists?
+                  case Foreach(_, foreachIdent, actionQueryAst @ ReturningAction(ActionEntity(bType), id, body)) => 
                     actionQueryAst match
                       case _: Returning =>           (foreachIdent, actionQueryAst, bType)
                       case _: ReturningGenerated =>  (foreachIdent, actionQueryAst, bType)
