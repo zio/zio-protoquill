@@ -148,7 +148,7 @@ object BatchQueryExecution:
           // then do a beta reduction which will turn our actionQueryAstRaw into:
           // actionQueryAstRaw: liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == ScalarTag(A)).update(_.name == ScalarTag(B)))
           // this will ultimately yield a query that looks like: UPDATE Person SET name = ? WHERE id = ? and for each person entity
-          // the corresponding values will be plugged in.
+          // the corresponding values will be plugged in
           val actionQueryAst = BetaReduction(actionQueryAstRaw, foreachIdent -> caseClassAst)
           //println(s"==== Reduced AST: ${io.getquill.util.Messages.qprint(actionQueryAst)}")
 
@@ -190,7 +190,7 @@ object BatchQueryExecution:
                   //   becomes something like Quoted(query[Person].insert(_.id -> lift(A), _.name -> lift(B)).returningGenerated(_.id)), lifts: List(ScalarTag(A, 1), ScalarTag(B, "Joe")))
                   //   but since we are excluding the person.id column (this is done in the transformation phase NormalizeReturning which is in SqlNormalization in the quill-sql-portable module)
                   //   actually we only want only the ScalarTag(B) so we need to get the list of lift tags (in tokens) once the Dialect has serialized the query
-                  //   which correctly order the list of lifts.
+                  //   which correctly order the list of lifts. A similar issue happens with insertMeta and updateMeta.
                   // we need a pre-filtered, and ordered list of lifts. The StaticTranslationMacro interanally has done that so we can take the lifts from there although they need to be casted.
                   // This is safe because they are just the lifts taht we have already had from the `injectableLifts` list
                   // TODO If all the lists are not InjectableEagerPlanterExpr, then we need to find out which ones are not and not inject them

@@ -80,6 +80,16 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(_.name -> p.name, _.age -> p.age)) }
       mirror.triple mustEqual ("UPDATE Person SET name = ?, age = ? WHERE id = ?", List(List("Joe", 123, 1), List("Jill", 456, 2)), Static)
     }
+
+    "update - object with meta" in {
+      inline given UpdateMeta[Person] = updateMeta(_.id)
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(p)) }
+      mirror.triple mustEqual (
+        "UPDATE Person SET name = ?, age = ? WHERE id = ?", 
+        List(List("Joe", 123, 1), List("Jill", 456, 2)), 
+        Static
+      )
+    }
     
     "delete" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).delete) }
