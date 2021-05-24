@@ -128,10 +128,14 @@ trait QuatMakingBase(using val qctx: Quotes) {
       }
 
       def caseClassConstructorArgs(tpe: TypeRepr) = {
+        import io.getquill.util.Format
+        //println(s"For: ${Format.TypeRepr(tpe)} case fields are: ${tpe.classSymbol.get.caseFields.map(p => s"'${p}'").toList}")
         // Note. One one constructor param list is supported due to Quat Generation Specifics. This is already the case in most situations.
         tpe.classSymbol.get.caseFields.map { param =>
           (
-            param.name.toString,
+            // Not sure why some tuple case methods have spaces... but they do!
+            // For: Tuple2[Foo, Ent] case fields are: List('method _1', 'val _1 ', 'method _2', 'val _2 ')
+            param.name.toString.trim,
             tpe.memberType(param).simplified
             //if (!param.isParameter) param.typeSignature else param.typeSignature.asSeenFrom(tpe, tpe.typeSymbol)
           )
@@ -358,8 +362,9 @@ trait QuatMakingBase(using val qctx: Quotes) {
           // For other types of case classes (and if there does not exist an encoder for it)
           // the exception to that is a cassandra UDT that we treat like an encodeable entity even if it has a parsed type
           case CaseClassBaseType(name, fields) if !existsEncoderFor(tpe) || tpe <:< TypeRepr.of[Udt] =>
-            //println("=========> Is CaseClassBased")
-            Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
+            val cc = Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
+            //println(s"=========> Is CaseClassBased: ${cc.fields.toList}")
+            cc
 
           // If we are already inside a bounded type, treat an arbitrary type as a interface list
           case ArbitraryBaseType(name, fields) if (boundedInterfaceType) =>

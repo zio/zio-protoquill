@@ -88,6 +88,10 @@ object InsertUpdateMacro {
   // Using this ident since it is replaced in cleanIdent so user will not create something conflicting with it
   private[getquill] val VIdent = AIdent("_$V", Quat.Generic)
 
+  def foo = {
+    Tuple2
+  }
+
   object DynamicUtil {
     def retrieveAssignmentTuple(quoted: Quoted[_]): Set[Ast] =
       quoted.ast match
