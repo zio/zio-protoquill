@@ -18,7 +18,7 @@ class OperationTest extends Spec with TestEntities with Inside {
   extension (ast: Ast)
     def body: Ast = ast match
       case f: Function => f.body
-      case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+      case _ => fail(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
 
   "binary operation" - {
     "==" - {

@@ -1,6 +1,7 @@
 package io.getquill.parser
 
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, Action => AAction, Insert => AInsert, Update => AUpdate, Delete => ADelete, _}
+import io.getquill.ast
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.metaprog.QuotedExpr
 import scala.quoted._
@@ -52,11 +53,11 @@ object Parser {
 
   def throwExpressionError(expr: Expr[_], msg: String)(using Quotes): Nothing =
     throwExpressionError(expr, ThrowInfo.Message(msg))
-  
+
   def throwExpressionError(expr: Expr[_], throwInfo: ThrowInfo)(using Quotes): Nothing =
     import quotes.reflect._
     val term = expr.asTerm
-    val message = 
+    val message =
       throwInfo match
         case ThrowInfo.Message(msg) => msg
         case ThrowInfo.AstClass(astClass) => s"Tree cannot be parsed to '${astClass.getSimpleName}'"
@@ -161,6 +162,7 @@ trait ParserLibrary extends ParserFactory {
   def actionParser(using qctx: Quotes)               = Series.single(new ActionParser)
   def batchActionParser(using qctx: Quotes)          = Series.single(new BatchActionParser)
   def optionParser(using qctx: Quotes)               = Series.single(new OptionParser)
+  def ifElseParser(using qctx: Quotes)               = Series.single(new IfElseParser)
   def valueParser(using qctx: Quotes)                = Series.single(new ValueParser)
 
   // def userDefined(using qctxInput: Quotes) = Series(new Glosser[Ast] {
@@ -185,6 +187,7 @@ trait ParserLibrary extends ParserFactory {
         .combine(valParser)
         .combine(blockParser)
         .combine(operationsParser)
+        .combine(ifElseParser)
         .combine(valueParser) // must go before functionApplyParser since valueParser parsers '.apply on case class' and the functionApply would take that
         .combine(functionApplyParser) // must go before genericExpressionsParser otherwise that will consume the 'apply' clauses
         .combine(genericExpressionsParser)
@@ -491,6 +494,16 @@ case class BatchActionParser(root: Parser[Ast] = Parser.empty)(override implicit
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
 
+case class IfElseParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+  import qctx.reflect.{Constant => TConstantant, _}
+  import Parser.Implicits._
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] =
+    case '{ if ($cond) { $thenClause } else { $elseClause } } =>
+      ast.If(astParse(cond), astParse(thenClause), astParse(elseClause))
+}
+
 // We can't use SpecificClause[Option[_]] here since the types of quotations that need to match
 // are not necessarily an Option[_] e.g. Option[t].isEmpty needs to match on a clause whose type is Boolean
 // That's why we need to use the 'Is' object and optimize it that way here
@@ -513,15 +526,15 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     case '{ ($o: Option[t]).isDefined } =>
       OptionIsDefined(astParse(o))
 
-    case '{ ($o: Option[t]).flatten($impl) } => 
+    case '{ ($o: Option[t]).flatten($impl) } =>
       OptionFlatten(astParse(o))
 
-    case '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } => 
+    case '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } =>
       val queryAst = astParse(o)
       if (queryAst.quat.isProduct) OptionTableMap(astParse(o), cleanIdent(id, idType), astParse(body))
       else OptionMap(queryAst, cleanIdent(id, idType), astParse(body))
 
-    case '{ ($o: Option[t]).flatMap(${Lambda1(id, idType, body)}) } => 
+    case '{ ($o: Option[t]).flatMap(${Lambda1(id, idType, body)}) } =>
       val queryAst = astParse(o)
       if (queryAst.quat.isProduct) OptionTableFlatMap(astParse(o), cleanIdent(id, idType), astParse(body))
       else OptionFlatMap(queryAst, cleanIdent(id, idType), astParse(body))
@@ -623,7 +636,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
         )
         case other =>
           io.getquill.ast.Nested(other)
-      
+
   }
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -646,9 +659,9 @@ case class SetOperationsParser(root: Parser[Ast] = Parser.empty)(override implic
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }
 
-/** 
+/**
  * Since QueryParser only matches things that output Query[_], make a separate parser that
- * parses things like query.sum, query.size etc... when needed. 
+ * parses things like query.sum, query.size etc... when needed.
  */
 case class QueryScalarsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PropertyAliases {
   import qctx.reflect.{Constant => TConstant, Ident => TIdent, _}
@@ -715,7 +728,7 @@ case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       case '{ InfixInterpolator($partsExpr).infix(${Varargs(params)}: _*) } =>
         val parts = StringContextExpr.unapply(partsExpr).getOrElse { Parser.throwExpressionError(partsExpr, "Cannot parse a valid StringContext") }
         Some((parts, params))
-      case _ => 
+      case _ =>
         None
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
