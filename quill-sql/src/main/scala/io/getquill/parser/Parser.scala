@@ -510,6 +510,7 @@ case class IfElseParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
   import qctx.reflect.{Constant => TConstantant, _}
   import Parser.Implicits._
+  import MatchingOptimizers._
 
   extension (quat: Quat)
     def isProduct = quat.isInstanceOf[Quat.Product]
@@ -517,43 +518,43 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-    case '{ ($o: Option[t]).isEmpty } =>
+    case "isEmpty" --> '{ ($o: Option[t]).isEmpty } =>
       OptionIsEmpty(astParse(o))
 
-    case '{ ($o: Option[t]).nonEmpty } =>
+    case "nonEmpty" --> '{ ($o: Option[t]).nonEmpty } =>
       OptionNonEmpty(astParse(o))
 
-    case '{ ($o: Option[t]).isDefined } =>
+    case "isDefined" --> '{ ($o: Option[t]).isDefined } =>
       OptionIsDefined(astParse(o))
 
-    case '{ ($o: Option[t]).flatten($impl) } =>
+    case "flatten" -@> '{ ($o: Option[t]).flatten($impl) } =>
       OptionFlatten(astParse(o))
 
-    case '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } =>
+    case "map" -@> '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } =>
       val queryAst = astParse(o)
       if (queryAst.quat.isProduct) OptionTableMap(astParse(o), cleanIdent(id, idType), astParse(body))
       else OptionMap(queryAst, cleanIdent(id, idType), astParse(body))
 
-    case '{ ($o: Option[t]).flatMap(${Lambda1(id, idType, body)}) } =>
+    case "flatMap" -@> '{ ($o: Option[t]).flatMap(${Lambda1(id, idType, body)}) } =>
       val queryAst = astParse(o)
       if (queryAst.quat.isProduct) OptionTableFlatMap(astParse(o), cleanIdent(id, idType), astParse(body))
       else OptionFlatMap(queryAst, cleanIdent(id, idType), astParse(body))
 
-    case '{ ($o: Option[t]).exists(${Lambda1(id, idType, body)}) } =>
+    case "exists" -@> '{ ($o: Option[t]).exists(${Lambda1(id, idType, body)}) } =>
       val queryAst = astParse(o)
       if (queryAst.quat.isProduct) OptionTableExists(astParse(o), cleanIdent(id, idType), astParse(body))
       else OptionExists(queryAst, cleanIdent(id, idType), astParse(body))
 
-    case '{ ($o: Option[t]).forall(${Lambda1(id, idType, body)}) } =>
+    case "forall" -@> '{ ($o: Option[t]).forall(${Lambda1(id, idType, body)}) } =>
       // TODO If is embedded warn about no checking? Investigate that case
       val queryAst = astParse(o)
       if (queryAst.quat.isProduct) OptionTableForall(astParse(o), cleanIdent(id, idType), astParse(body))
       else OptionForall(queryAst, cleanIdent(id, idType), astParse(body))
 
-    case '{ type t; ($o: Option[`t`]).getOrElse($body: `t`) } =>
+    case "getOrElse" -@> '{ type t; ($o: Option[`t`]).getOrElse($body: `t`) } =>
       OptionGetOrElse(astParse(o), astParse(body))
 
-    case '{ type t; ($o: Option[`t`]).contains($body: `t`) } =>
+    case "contains" -@> '{ type t; ($o: Option[`t`]).contains($body: `t`) } =>
       OptionContains(astParse(o), astParse(body))
   }
 }
@@ -563,28 +564,7 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Query[_], Ast] with PropertyAliases {
   import qctx.reflect.{Constant => TConstant, Ident => TIdent, _}
   import Parser.Implicits._
-
-  object --> :
-    def unapply(expr: Expr[_]) =
-      expr.asTerm match
-        case Select(_, methodName) =>
-          Some((methodName, expr))
-        case _ => None
-
-  object -@> :
-    def unapply(expr: Expr[_]) =
-      expr.asTerm match
-        case SelectApplyN.Term(_, methodName, _) =>
-          Some((methodName, expr))
-        case _ => None
-
-  object -@@> :
-    def unapply(expr: Expr[_]) =
-      expr.asTerm match
-        case Applys(SelectApplyN.Term(_, methodName, _), _) =>
-          Some((methodName, expr))
-        case _ => None
-
+  import MatchingOptimizers._
 
   def delegate: PartialFunction[Expr[_], Ast] = {
     case '{ type t; EntityQuery.apply[`t`] } =>
@@ -607,7 +587,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case "withFilter" -@> '{ ($q:Query[qt]).withFilter(${Lambda1(ident, tpe, body)}) } =>
       Filter(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    case '{type t1; type t2; ($q:Query[qt]).concatMap[`t1`, `t2`](${Lambda1(ident, tpe, body)})($unknown_stuff) } => //ask Alex why is concatMap like this? what's unkonwn_stuff?
+    case "concatMap" -@@> '{type t1; type t2; ($q:Query[qt]).concatMap[`t1`, `t2`](${Lambda1(ident, tpe, body)})($unknown_stuff) } => //ask Alex why is concatMap like this? what's unkonwn_stuff?
       ConcatMap(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
     case "union"    -@> '{ ($a: Query[t]).union($b) } => Union(astParse(a), astParse(b))
@@ -628,7 +608,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case "drop" -@> '{ type t; ($q: Query[`t`]).drop($n: Int) } => Drop(astParse(q),astParse(n))
 
     // 2-level so we don't care to select-apply it now
-    case '{ type r; ($q: Query[t]).sortBy[`r`](${Lambda1(ident1, tpe, body)})($ord: Ord[`r`]) } =>
+    case "sortBy" -@@> '{ type r; ($q: Query[t]).sortBy[`r`](${Lambda1(ident1, tpe, body)})($ord: Ord[`r`]) } =>
       SortBy(astParse(q), cleanIdent(ident1, tpe), astParse(body), astParse(ord))
 
     case "groupBy" -@> '{ type r; ($q: Query[t]).groupBy[`r`](${Lambda1(ident1, tpe, body)}) } =>

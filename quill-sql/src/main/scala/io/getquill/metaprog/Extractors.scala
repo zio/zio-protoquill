@@ -559,4 +559,30 @@ object Extractors {
       rec(expr.asTerm)
     }
   }
+
+  object MatchingOptimizers:
+    object --> :
+      def unapply(using Quotes)(expr: Expr[_]) =
+        import quotes.reflect._
+        expr.asTerm match
+          case Select(_, methodName) =>
+            Some((methodName, expr))
+          case _ => None
+
+    object -@> :
+      def unapply(using Quotes)(expr: Expr[_]) =
+        import quotes.reflect._
+        expr.asTerm match
+          case SelectApplyN.Term(_, methodName, _) =>
+            Some((methodName, expr))
+          case _ => None
+
+    object -@@> :
+      def unapply(using Quotes)(expr: Expr[_]) =
+        import quotes.reflect._
+        expr.asTerm match
+          case Applys(SelectApplyN.Term(_, methodName, _), _) =>
+            Some((methodName, expr))
+          case _ => None
+  end MatchingOptimizers
 }
