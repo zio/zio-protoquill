@@ -4,7 +4,7 @@ import io.getquill.{ Literal, MirrorSqlDialect, Spec, SqlMirrorContext }
 import io.getquill.context.sql.util.StringOps._
 import io.getquill._
 
-class NestedDistinctSpec extends Spec { //hellooooooooooooo
+class NestedDistinctSpec extends Spec {
   val v = "foo"
 
   "nested distinct clauses should" - {

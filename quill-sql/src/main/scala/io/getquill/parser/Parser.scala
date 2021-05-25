@@ -517,6 +517,10 @@ case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
+  /**
+   * Note: The -->, -@> etc.. clauses are just to optimize the match by doing an early-exit if possible.
+   * they don't actaully do any application-relevant logic
+   */
   def delegate: PartialFunction[Expr[_], Ast] = {
     case "isEmpty" --> '{ ($o: Option[t]).isEmpty } =>
       OptionIsEmpty(astParse(o))

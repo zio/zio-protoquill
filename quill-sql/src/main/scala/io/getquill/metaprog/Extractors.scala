@@ -560,10 +560,28 @@ object Extractors {
     }
   }
 
+  /**
+   * Since things like the QueryParser slow are because Quoted matching is slow (or at least slower then I'd like them to be),
+   * a simple performance optimization is to check if there's a single-method being matched and if so, what is it's name.
+   * Since Scala matches unapply causes left-to-right (nested and recursively),  we can add a unapply clause
+   * that will grab the name of the method (if it is a single one being matched which in most cases of the
+   * QueryParser is exaclty what we're looking for) and then match it to a name that we expect it to have.
+   * For example, if we're trying to match this:
+   * {{
+   *   case '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } =>
+   * }}
+   * We can do the following:
+   * {{
+   *   case "map" -@> '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } =>
+   * }}
+   * This will check that there's a `Apply(TypeApply(Select(_, "map"), _), _)` being called
+   * and then only proceecd into the quoted-matcher if that is the case.
+   */
   object MatchingOptimizers:
     object --> :
       def unapply(using Quotes)(expr: Expr[_]) =
         import quotes.reflect._
+        // Doing UntypeExpr will make this match foo.bar as well as foo.bar[T] but it might be slower
         expr.asTerm match
           case Select(_, methodName) =>
             Some((methodName, expr))
