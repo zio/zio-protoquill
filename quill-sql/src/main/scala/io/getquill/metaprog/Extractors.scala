@@ -34,12 +34,40 @@ object Extractors {
       import quotes.reflect._
       expr.asTerm.underlyingArgument.asExprOf[T]
 
+  object SelectApplyN {
+    def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String, List[Expr[_]])] =
+      import quotes.reflect._
+      SelectApplyN.Term.unapply(term.asTerm).map((sub, method, obj) => (sub.asExpr, method, obj.map(_.asExpr)))
+
+    object Term:
+      def unapply(using Quotes)(term: quotes.reflect.Term): Option[(quotes.reflect.Term, String, List[quotes.reflect.Term])] =
+        import quotes.reflect._
+        term match
+          //case Apply(Select(body, method), args) => Some((body, method, args))
+          //case Apply(TypeApply(Select(body, method), _), args) => Some((body, method, args))
+          case Applys(Select(body, method), args) => Some((body, method, args))
+          case _ => None
+  }
+
+  /**
+   * Matches predicate(bar) or predicate[T](bar)
+   * where predicate can be a simple method or something selected from something else e.g:
+   * foo.method(bar) or foo.method[T](bar)
+   */
+  object Applys:
+    def unapply(using Quotes)(term: quotes.reflect.Term) =
+      import quotes.reflect._
+      term match
+        // TypeApply predicate has to be first because the 2nd one with match everything
+        case Apply(TypeApply(predicate, _), args) => Some((predicate, args))
+        case Apply(predicate, args) => Some((predicate, args))
+        case _ => None
+
   object SelectApply1 {
     def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String, Expr[_])] =
       import quotes.reflect._
       term match {
-        case Unseal(Apply(Select(body, method), List(arg))) => Some((body.asExpr, method, arg.asExpr))
-        case Unseal(Apply(TypeApply(Select(body, method), _), List(arg))) => Some((body.asExpr, method, arg.asExpr))
+        case Unseal(Applys(Select(body, method), List(arg))) => Some((body.asExpr, method, arg.asExpr))
         case _ => None
       }
   }
@@ -475,7 +503,7 @@ object Extractors {
         case '[Option[t]] => innerOrTopLevelT(Type.of[t])
         case '[t] => report.throwError(s"The Type ${Format.TypeOf[t]} is not an Option")
 
-  /** 
+  /**
    * Uninline the term no matter what (TODO should reove the unapply case) that pattern always matches
    * and is too confusing
    */

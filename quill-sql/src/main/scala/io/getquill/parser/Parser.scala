@@ -564,54 +564,77 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
   import qctx.reflect.{Constant => TConstant, Ident => TIdent, _}
   import Parser.Implicits._
 
+  object --> :
+    def unapply(expr: Expr[_]) =
+      expr.asTerm match
+        case Select(_, methodName) =>
+          Some((methodName, expr))
+        case _ => None
+
+  object -@> :
+    def unapply(expr: Expr[_]) =
+      expr.asTerm match
+        case SelectApplyN.Term(_, methodName, _) =>
+          Some((methodName, expr))
+        case _ => None
+
+  object -@@> :
+    def unapply(expr: Expr[_]) =
+      expr.asTerm match
+        case Applys(SelectApplyN.Term(_, methodName, _), _) =>
+          Some((methodName, expr))
+        case _ => None
+
+
   def delegate: PartialFunction[Expr[_], Ast] = {
     case '{ type t; EntityQuery.apply[`t`] } =>
       val tpe = TypeRepr.of[t]
       val name: String = tpe.classSymbol.get.name
-      Entity(name, List(), InferQuat.ofType(tpe).probit)
+        Entity(name, List(), InferQuat.ofType(tpe).probit)
 
     case '{ querySchema[t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
       Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), InferQuat.of[t].probit, Renameable.Fixed)
 
-    case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, tpe, body)}) } =>
+    case "map" -@> '{ ($q:Query[qt]).map[mt](${Lambda1(ident, tpe, body)}) } =>
       Map(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    case '{ ($q:Query[qt]).flatMap[mt](${Lambda1(ident, tpe, body)}) } =>
+    case "flatMap" -@> '{ ($q:Query[qt]).flatMap[mt](${Lambda1(ident, tpe, body)}) } =>
       FlatMap(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    case '{ ($q:Query[qt]).filter(${Lambda1(ident, tpe, body)}) } =>
+    case "filter" -@> '{ ($q:Query[qt]).filter(${Lambda1(ident, tpe, body)}) } =>
       Filter(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    case '{ ($q:Query[qt]).withFilter(${Lambda1(ident, tpe, body)}) } =>
+    case "withFilter" -@> '{ ($q:Query[qt]).withFilter(${Lambda1(ident, tpe, body)}) } =>
       Filter(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
     case '{type t1; type t2; ($q:Query[qt]).concatMap[`t1`, `t2`](${Lambda1(ident, tpe, body)})($unknown_stuff) } => //ask Alex why is concatMap like this? what's unkonwn_stuff?
       ConcatMap(astParse(q), cleanIdent(ident, tpe), astParse(body))
 
-    case '{ ($a: Query[t]).union($b) } => Union(astParse(a), astParse(b))
-    case '{ ($a: Query[t]).unionAll($b) } => UnionAll(astParse(a), astParse(b))
-    case '{ ($a: Query[t]).++($b) } => UnionAll(astParse(a), astParse(b))
+    case "union"    -@> '{ ($a: Query[t]).union($b) } => Union(astParse(a), astParse(b))
+    case "unionAll" -@> '{ ($a: Query[t]).unionAll($b) } => UnionAll(astParse(a), astParse(b))
+    case "++"       -@> '{ ($a: Query[t]).++($b) } => UnionAll(astParse(a), astParse(b))
 
-    case '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(LeftJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(RightJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
-    case '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } => Join(FullJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
+    case ("join"      -@> '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])) })      withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
+    case ("leftJoin"  -@> '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])) })  withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(LeftJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
+    case ("rightJoin" -@> '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])) }) withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(RightJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
+    case ("fullJoin"  -@> '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])) })  withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(FullJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
 
-    case '{ type t1; ($q1: Query[`t1`]).join[`t1`](${Lambda1(ident1, tpe, on)}) } =>
+    case "join" -@> '{ type t1; ($q1: Query[`t1`]).join[`t1`](${Lambda1(ident1, tpe, on)}) } =>
       FlatJoin(InnerJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
-    case '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, tpe, on)}) } =>
+    case "leftJoin" -@> '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, tpe, on)}) } =>
       FlatJoin(LeftJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
 
-    case '{ type t; ($q: Query[`t`]).take($n: Int) } => Take(astParse(q),astParse(n))
-    case '{ type t; ($q: Query[`t`]).drop($n: Int) } => Drop(astParse(q),astParse(n))
+    case "take" -@> '{ type t; ($q: Query[`t`]).take($n: Int) } => Take(astParse(q),astParse(n))
+    case "drop" -@> '{ type t; ($q: Query[`t`]).drop($n: Int) } => Drop(astParse(q),astParse(n))
 
+    // 2-level so we don't care to select-apply it now
     case '{ type r; ($q: Query[t]).sortBy[`r`](${Lambda1(ident1, tpe, body)})($ord: Ord[`r`]) } =>
       SortBy(astParse(q), cleanIdent(ident1, tpe), astParse(body), astParse(ord))
 
-    case '{ type r; ($q: Query[t]).groupBy[`r`](${Lambda1(ident1, tpe, body)}) } =>
+    case "groupBy" -@> '{ type r; ($q: Query[t]).groupBy[`r`](${Lambda1(ident1, tpe, body)}) } =>
       GroupBy(astParse(q), cleanIdent(ident1, tpe), astParse(body))
 
-    case '{ ($q: Query[t]).distinct } =>
+    case "distinct" --> '{ ($q: Query[t]).distinct } =>
       astParse(q) match
         case fj: FlatJoin => throw new IllegalArgumentException(
           """
@@ -624,7 +647,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
         case other =>
           Distinct(other)
 
-    case '{ ($q: Query[t]).nested } =>
+    case "nested" --> '{ ($q: Query[t]).nested } =>
       astParse(q) match
         case fj: FlatJoin => throw new IllegalArgumentException(
           """
@@ -638,6 +661,17 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
           io.getquill.ast.Nested(other)
 
   }
+
+  import io.getquill.JoinQuery
+
+  case class OnClause(ident1: String, tpe1: quotes.reflect.TypeRepr, ident2: String, tpe2: quotes.reflect.TypeRepr, on: quoted.Expr[_])
+  object withOnClause:
+    def unapply(jq: Expr[_]) =
+      jq match
+        case '{ ($q: JoinQuery[a,b,r]).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } =>
+          Some((UntypeExpr(q), OnClause(ident1, tpe1, ident2, tpe2, on)))
+        case _ =>
+          None
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 }

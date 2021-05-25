@@ -4,7 +4,7 @@ import io.getquill.{ Literal, MirrorSqlDialect, Spec, SqlMirrorContext }
 import io.getquill.context.sql.util.StringOps._
 import io.getquill._
 
-class NestedDistinctSpec extends Spec {
+class NestedDistinctSpec extends Spec { //hellooooooooooooo
   val v = "foo"
 
   "nested distinct clauses should" - {
@@ -690,6 +690,7 @@ class NestedDistinctSpec extends Spec {
       case class Two(name: String, id: Int) extends Embedded
       case class Dual(one: One, two: Two)
 
+      //helloo
       // Try parent and embedded children with same name, schema on parent
       "schema on parent should not override children" in {
         inline given parentSchema: SchemaMeta[Parent] = schemaMeta[Parent]("ParentEnt", _.name -> "theName")

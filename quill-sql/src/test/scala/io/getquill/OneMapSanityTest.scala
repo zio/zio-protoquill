@@ -7,7 +7,7 @@ import io.getquill.ast._
 import io.getquill.Quoted
 import io.getquill.quat.quatOf
 
-class OneMapSanityTest extends Spec {
+class OneMapSanityTest extends Spec { //hellooo
   case class SanePerson(name: String, age: Int)
 
   "simple test for inline query and map" in {
