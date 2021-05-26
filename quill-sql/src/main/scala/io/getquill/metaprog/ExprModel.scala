@@ -39,7 +39,8 @@ class ExprModel {
 
 // This is the mirror of `Planter`. It holds types of
 // Planters and allows planting them back into the Scala AST
-sealed trait PlanterExpr[T: Type, PrepareRow: Type]:
+// (need scala.quoted.Type here i.e. full name or incremental recompile breaks)
+sealed trait PlanterExpr[T: scala.quoted.Type, PrepareRow: scala.quoted.Type]:
   def uid: String
   def plant(using Quotes): Expr[Planter[T, PrepareRow]] // TODO Change to 'replant' ?
 
@@ -260,22 +261,22 @@ object QuotationLotExpr {
         // See https://gist.github.com/deusaquilus/29bffed4abcb8a90fccd7db61227a992#file-example-scala
         // for a example of what happens in Uninline is not here.
         case '{ Unquote.apply[t]($quotation, ${Expr(uid: String)}) } =>
-          Some((Uninline(quotation), uid, List()))
+          Some((quotation, uid, List()))
 
         case '{ SchemaMeta.apply[t]($quotation, ${Expr(uid: String)}) } =>
-          Some((Uninline(quotation), uid, List()))
+          Some((quotation, uid, List()))
 
         case '{ InsertMeta.apply[t]($quotation, ${Expr(uid: String)}) } =>
-          Some((Uninline(quotation), uid, List()))
+          Some((quotation, uid, List()))
 
         case '{ UpdateMeta.apply[t]($quotation, ${Expr(uid: String)}) } =>
-          Some((Uninline(quotation), uid, List()))
+          Some((quotation, uid, List()))
 
         case '{ CaseClassLift.apply[t]($quotation, ${Expr(uid: String)}) } =>
-          Some((Uninline(quotation), uid, List()))
+          Some((quotation, uid, List()))
 
         case '{ QueryMeta.apply[t, r]($quotation, ${Expr(uid: String)}, $extractor) } =>
-          Some((Uninline(quotation), uid, List(extractor)))
+          Some((quotation, uid, List(extractor)))
 
         case other =>
           None
@@ -316,11 +317,16 @@ object QuotationLotExpr {
   def unapply(expr: Expr[Any])(using Quotes): Option[QuotationLotExpr] = {
     import quotes.reflect._
     expr match {
-      case vase @ `QuotationLot.apply`(quoted @ QuotedExpr.Uprootable(ast, PlanterExpr.UprootableList(lifts), _), uid, rest) => // TODO Also match .unapply?
-        Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
+      case vase @ `QuotationLot.apply`(quotation, uid, rest) =>
+        quotation match
+          case SealedInline(parent, defs, quoted @ QuotedExpr.Uprootable(ast, PlanterExpr.UprootableList(lifts), _)) =>
+            Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
 
-      case ql @ `QuotationLot.apply`(quotation, uid, rest) =>
-        Some(Pluckable(uid, quotation, rest))
+          case quoted @ QuotedExpr.Uprootable(ast, PlanterExpr.UprootableList(lifts), _) =>
+            Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
+
+          case _ =>
+            Some(Pluckable(uid, quotation, rest))
 
       // If it's a QuotationLot but we can't extract it at all, need to throw an error
       case '{ ($qb: QuotationLot[t]) } =>
@@ -331,7 +337,12 @@ object QuotationLotExpr {
     }
   }
 
-  case class Pointable(expr: Expr[QuotationLot[Any]]) extends QuotationLotExpr
+  // Not sure why this is needed by incremental compile breaks without it e.g. gives:
+  // case class Pointable(expr: Expr[QuotationLot[Any]]) extends QuotationLotExpr
+  import scala.quoted.Expr
+  import scala.quoted.Type
+
+  case class Pointable(expr: scala.quoted.Expr[QuotationLot[Any]]) extends QuotationLotExpr
 
   /**
    * QuotationLots that have runtime values hance cannot be re-planted into the scala AST and

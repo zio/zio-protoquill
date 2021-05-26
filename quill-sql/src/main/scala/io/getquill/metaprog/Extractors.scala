@@ -503,6 +503,14 @@ object Extractors {
         case '[Option[t]] => innerOrTopLevelT(Type.of[t])
         case '[t] => report.throwError(s"The Type ${Format.TypeOf[t]} is not an Option")
 
+
+  object SealedInline:
+    def unapply[T: Type](using Quotes)(expr: Expr[T]) =
+      import quotes.reflect._
+      expr.asTerm match
+        case Inlined(parent, defs, v) => Some((parent, defs, v.asExprOf[T]))
+        case _ => None
+
   /**
    * Uninline the term no matter what (TODO should reove the unapply case) that pattern always matches
    * and is too confusing
@@ -521,8 +529,13 @@ object Extractors {
       def apply(using Quotes)(any: quotes.reflect.Term): quotes.reflect.Term =
         import quotes.reflect._
         any match
-          // Just take the value if it is inlined. Since there could be multiple inline layers, keep un-inlining until the term is not an inline
-          case Inlined(_, _, v) => Uninline.Term(v)
+          //
+          case i @ Inlined(_, pv, v) =>
+            // TODO File a bug for this? Try exprMap to fill in the variables
+            // println Format(Printer.TreeStructure.show(i.underlyingArgument))
+            report.warning(s"Ran into an inline on a clause: ${Format(Printer.TreeStructure.show(i.underlyingArgument))}. Proxy variables will be discarded: ${pv}")
+            //report.warning(s"Ran into an inline on a clause: ${Format.Term(i)}. Proxy variables will be discarded: ${pv}")
+            v.underlyingArgument
           case _ => any
   }
 

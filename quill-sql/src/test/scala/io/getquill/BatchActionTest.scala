@@ -18,11 +18,11 @@ import io.getquill.query
 trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   // Need SqlContext here otherwise there will be encoder-not-found issues in 'insertPeople' since that does lifting
   // Also note that the context needs to be typed. As an example of how to do that, we passed typing parameters
-  // through the class. If the parameters are removed (i.e. used `val ctx: Context[_, _]`), the LoadObject will try to 
-  // load the base-object `Idiom` because that is the minimal thing that the Dialect parameter needs 
+  // through the class. If the parameters are removed (i.e. used `val ctx: Context[_, _]`), the LoadObject will try to
+  // load the base-object `Idiom` because that is the minimal thing that the Dialect parameter needs
   // (and it seems LoadObject in BatchQueryExecution does not yet know what the values of the _, _ in Context[_, _]
   // are supposed to be)
-  val ctx: Context[D, N] 
+  val ctx: Context[D, N]
   import ctx._
 
   case class Person(id: Int, name: String, age: Int)
@@ -85,12 +85,12 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
       inline given UpdateMeta[Person] = updateMeta(_.id)
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(p)) }
       mirror.triple mustEqual (
-        "UPDATE Person SET name = ?, age = ? WHERE id = ?", 
-        List(List("Joe", 123, 1), List("Jill", 456, 2)), 
+        "UPDATE Person SET name = ?, age = ? WHERE id = ?",
+        List(List("Joe", 123, 1), List("Jill", 456, 2)),
         Static
       )
     }
-    
+
     "delete" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).delete) }
       mirror.triple mustEqual ("DELETE FROM Person WHERE id = ?", List(List(1), List(2)), Static)
