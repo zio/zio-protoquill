@@ -18,7 +18,7 @@ trait ArrayOpsSpec extends Spec { //hello
     ArrayOps(3, List(1, 4, 6))
   )
 
-  inline def entity = quote(query[ArrayOps]) //hellooooooooooooo
+  inline def entity = quote(query[ArrayOps])
 
   inline def insertEntries = quote {
     liftQuery(entriesList).foreach(e => entity.insert(e))

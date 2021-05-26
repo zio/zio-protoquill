@@ -6,7 +6,9 @@ import io.getquill.generic.ArrayEncoding
 import io.getquill.context.sql.SqlContext
 
 class JdbcArrayOpsSpec extends ArrayOpsSpec {
-  val ctx: SqlContext[PostgresDialect, Literal] with ArrayEncoding = testContext
+  // Need to cast the context to get PostgresDialect, Literal working otherwise it will try to summon 'Idiom'
+  // maybe there should be a fallback for that actually
+  val ctx: testContext.type = testContext //: SqlContext[PostgresDialect, Literal] with ArrayEncoding
   import ctx._
 
   "contains" in {

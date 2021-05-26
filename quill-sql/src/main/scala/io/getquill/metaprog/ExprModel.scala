@@ -103,8 +103,7 @@ object PlanterExpr {
 
     def unapply(expr: Expr[Any])(using Quotes): Option[PlanterExpr[_, _]] =
       import quotes.reflect._
-      //val e = UntypeExpr(expr)
-      //println("@@@@@@@@@@@ Trying to match: " + Printer.TreeStructure.show(e.asTerm))
+      // underlyingArgument application is needed on expr otherwise the InjectableEagerPlanter matchers won't work no mater how you configure them
       UntypeExpr(expr.asTerm.underlyingArgument.asExpr) match {
         case Is[EagerPlanter[_, _]]( '{ EagerPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
           Some(EagerPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
@@ -112,29 +111,26 @@ object PlanterExpr {
           Some(EagerListPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
 
 
+        // If you uncomment this instead of '{ InjectableEagerPlanter.apply... it will also work but expr.asTerm.underlyingArgument.asExpr on top is needed
+        // case Unseal(Inlined(call, defs, MatchInjectableEager(qtType, prepType, liftValue, encoder, uid))) =>
+        //   (qtType.tpe.asType, prepType.tpe.asType) match
+        //     case ('[qtt], '[prep]) =>
+        //       encoder.tpe.asType match
+        //         case '[enc] =>
+        //           Some(InjectableEagerPlanterExpr[qtt, prep](uid, Inlined(call, defs, liftValue).asExpr.asInstanceOf[Expr[_ => qtt]], Inlined(call, defs, encoder).asExpr.asInstanceOf[Expr[enc & GenericEncoder[qtt, prep]]]))
 
-        case Unseal(Inlined(call, defs, MatchInjectableEager(qtType, prepType, liftValue, encoder, uid))) =>
-          println("<<<<<<<<<<<< Matches here >>>>>>>>>>>>>")
-          (qtType.tpe.asType, prepType.tpe.asType) match
-            case ('[qtt], '[prep]) =>
-              encoder.tpe.asType match
-                case '[enc] =>
-                  println("<<<<<<<<<<<< SPLICING here >>>>>>>>>>>>>")
-                  Some(InjectableEagerPlanterExpr[qtt, prep](uid, Inlined(call, defs, liftValue).asExpr.asInstanceOf[Expr[_ => qtt]], Inlined(call, defs, encoder).asExpr.asInstanceOf[Expr[enc & GenericEncoder[qtt, prep]]]))
 
+        // You can't just do '{ InjectableEagerPlanter... below but also have to do this. I'm not sure why. Also you can't
+        // JUST do this. You either need the clause above or the clause below otherwise it won't work
         case Unseal(MatchInjectableEager(qtType, prepType, liftValue, encoder, uid)) =>
-          println("<<<<<<<<<<<< Matches here >>>>>>>>>>>>>")
           (qtType.tpe.asType, prepType.tpe.asType) match
             case ('[qtt], '[prep]) =>
               encoder.tpe.asType match
                 case '[enc] =>
-                  println("<<<<<<<<<<<< SPLICING here >>>>>>>>>>>>>")
                   Some(InjectableEagerPlanterExpr[qtt, prep](uid, liftValue.asExpr.asInstanceOf[Expr[_ => qtt]], encoder.asExpr.asInstanceOf[Expr[enc & GenericEncoder[qtt, prep]]]))
 
-
-        // case ( '{ InjectableEagerPlanter.apply[qta, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
-        //   println("<<<<<<<<<<<< Matches original >>>>>>>>>>>>>")
-        //   Some(InjectableEagerPlanterExpr[qta, prep](uid, liftValue, encoder))
+        case ( '{ InjectableEagerPlanter.apply[qta, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
+          Some(InjectableEagerPlanterExpr[qta, prep](uid, liftValue, encoder))
 
         case Is[LazyPlanter[_, _]]( '{ LazyPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } ) =>
           Some(LazyPlanterExpr[qt, prep](uid, liftValue).asInstanceOf[PlanterExpr[_, _]])
@@ -209,10 +205,10 @@ object PlanterExpr {
           val scalarValues =
             elems.map {
               case other @ PlanterExpr.Uprootable(vaseExpr) =>
-                println(s"The Planter IS uprootable `${Format(Printer.TreeStructure.show(other.asTerm))}`")
+                //println(s"The Planter IS uprootable `${Format(Printer.TreeStructure.show(other.asTerm))}`")
                 Some(vaseExpr)
               case other =>
-                println(s"The Planter is not uprootable `${Format(Printer.TreeStructure.show(other.asTerm))}`")
+                //println(s"The Planter is not uprootable `${Format(Printer.TreeStructure.show(other.asTerm))}`")
                 None
             }.collect {
               case Some(value) => value
