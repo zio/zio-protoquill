@@ -2,6 +2,7 @@
 
 // import io.getquill.context.sql.OptionQuerySpec
 // import org.scalatest.matchers.should.Matchers._
+// import io.getquill._
 
 // class OptionJdbcSpec extends OptionQuerySpec {
 
