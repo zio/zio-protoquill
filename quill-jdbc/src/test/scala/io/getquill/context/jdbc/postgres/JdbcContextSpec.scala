@@ -5,7 +5,7 @@ import io.getquill._
 
 class JdbcContextSpec extends Spec {
 
-  val ctx: testContext.type = testContext
+  val ctx = testContext
   import ctx._
 
   "probes sqls" in {

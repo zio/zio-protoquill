@@ -4,7 +4,7 @@ package io.getquill.generic
 import scala.reflect.ClassTag
 import scala.quoted._
 import scala.deriving._
-import scala.compiletime.{erasedValue, summonFrom}  
+import scala.compiletime.{erasedValue, summonFrom}
 import io.getquill.MappedEncoding
 import io.getquill.generic.DecodingType
 

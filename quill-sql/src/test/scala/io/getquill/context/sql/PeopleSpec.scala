@@ -5,7 +5,7 @@ import io.getquill._
 
 // TODO Move tests for these into quotation package from QuotationSpec
 class PeopleSpecUseCls extends PeopleSpec {
-  
+
   import io.getquill.MirrorContext
   val context: MirrorContext[PostgresDialect, Literal] = new MirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
   import context._
@@ -52,27 +52,27 @@ trait PeopleSpec extends Spec {
   inline def couplesInsert =
     quote((c: Couple) => query[Couple].insert(c))
 
-  inline def couplesEntries = List(
+  val couplesEntries = List(
     Couple("Alex", "Bert"),
     Couple("Cora", "Drew"),
     Couple("Edna", "Fred")
   )
 
-  val `Ex 0.1 simple` =
+  inline def `Ex 0.1 simple` =
     quote {
       query[Person]
     }
 
   val `Ex 0.1 expected result` = peopleEntries
 
-  val `Ex 0.2 simple mapped` =
+  inline def `Ex 0.2 simple mapped` =
     quote {
       query[Person].map(p => (p.name, Option(p.age)))
     }
 
   val `Ex 0.2 expected result` = peopleEntries.map(p => (p.name, Some(p.age)))
 
-  val `Ex 1 differences` =
+  inline def `Ex 1 differences` =
     quote {
       for {
         c <- query[Couple]
@@ -84,7 +84,7 @@ trait PeopleSpec extends Spec {
     }
   val `Ex 1 expected result` = List(("Alex", 5), ("Cora", 2))
 
-  val `Ex 2 rangeSimple` = quote {
+  inline def `Ex 2 rangeSimple` = quote {
     (a: Int, b: Int) =>
       for {
         u <- query[Person] if (a <= u.age && u.age < b)
@@ -96,7 +96,7 @@ trait PeopleSpec extends Spec {
   val `Ex 2 param 2` = 40
   val `Ex 2 expected result` = List(Person("Cora", 33), Person("Drew", 31))
 
-  val satisfies =
+  inline def satisfies =
     quote {
       (p: Int => Boolean) =>
         for {
@@ -105,12 +105,14 @@ trait PeopleSpec extends Spec {
           u
         }
     }
-  val `Ex 3 satisfies` = quote(satisfies((x: Int) => 20 <= x && x < 30))
+  inline def `Ex 3 satisfies` = quote(satisfies((x: Int) => 20 <= x && x < 30))
   val `Ex 3 expected result` = List(Person("Edna", 21))
 
-  val `Ex 4 satisfies` = quote(satisfies((x: Int) => x % 2 == 0))
+  inline def `Ex 4 satisfies` = quote(satisfies((x: Int) => x % 2 == 0))
   val `Ex 4 expected result` = List(Person("Alex", 60), Person("Fred", 60))
 
+  // TODO this one has to be dynamic because you can't have nested inlines
+  // should look into how to make a static equivalent
   val `Ex 5 compose` = {
     val range = quote {
       (a: Int, b: Int) =>
@@ -150,6 +152,7 @@ trait PeopleSpec extends Spec {
   case class Or(a: Predicate, b: Predicate) extends Predicate
   case class Not(p: Predicate) extends Predicate
 
+  // TODO Leaving this dynamic for now. Should look into a static variant later
   def eval(t: Predicate): Quoted[Int => Boolean] =
     t match {
       case Above(n)    => quote((x: Int) => x > lift(n))
@@ -165,15 +168,11 @@ trait PeopleSpec extends Spec {
   val `Ex 7 predicate` = Not(Or(Below(20), Above(30)))
   val `Ex 7 expected result` = List(Person("Edna", 21))
 
-  // Don't have a parser for set-contains yet
-  // val `Ex 8 and 9 contains` =
-  //   quote {
-  //     (set: Query[Int]) =>
-  //       query[Person].filter(p => set.contains(p.age))
-  //   }
-
-
-  
+  inline def `Ex 8 and 9 contains` =
+    quote {
+      (set: Query[Int]) =>
+        query[Person].filter(p => set.contains(p.age))
+    }
 
   val `Ex 8 param` = Set.empty[Int]
   val `Ex 8 expected result` = List.empty[Person]
@@ -181,11 +180,11 @@ trait PeopleSpec extends Spec {
   val `Ex 9 param` = Set(55, 33)
   val `Ex 9 expected result` = List(Person("Bert", 55), Person("Cora", 33))
 
-  val `Ex 10 page 1 query` = quote {
+  inline def `Ex 10 page 1 query` = quote {
     query[Person].sortBy(p => p.name)(Ord.asc).drop(0).take(3)
   }
   val `Ex 10 page 1 expected` = peopleEntries.sortBy(_.name).slice(0, 3)
-  val `Ex 10 page 2 query` = quote {
+  inline def `Ex 10 page 2 query` = quote {
     query[Person].sortBy(p => p.name)(Ord.asc).drop(3).take(3)
   }
   val `Ex 10 page 2 expected` = peopleEntries.sortBy(_.name).slice(3, 6)

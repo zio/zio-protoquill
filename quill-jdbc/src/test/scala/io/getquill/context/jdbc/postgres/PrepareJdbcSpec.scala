@@ -1,3 +1,4 @@
+// TODO Prepare is not implemented yet
 // package io.getquill.context.jdbc.postgres
 
 // import java.sql.ResultSet

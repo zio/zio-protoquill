@@ -7,7 +7,7 @@ import io.getquill._
 
 class JdbcEncodingSpec extends EncodingSpec {
 
-  val context: testContext.type = testContext
+  val context = testContext
   import testContext._
 
   "encodes and decodes types" in {
