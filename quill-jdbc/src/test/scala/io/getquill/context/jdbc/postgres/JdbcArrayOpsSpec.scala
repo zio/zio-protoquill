@@ -6,7 +6,7 @@ import io.getquill.generic.ArrayEncoding
 import io.getquill.context.sql.SqlContext
 
 class JdbcArrayOpsSpec extends ArrayOpsSpec {
-  inline val ctx: SqlContext[PostgresDialect, Literal] with ArrayEncoding = testContext
+  val ctx: SqlContext[PostgresDialect, Literal] with ArrayEncoding = testContext
   import ctx._
 
   "contains" in {
@@ -18,7 +18,7 @@ class JdbcArrayOpsSpec extends ArrayOpsSpec {
 
   override protected def beforeAll(): Unit = {
     ctx.run(entity.delete)
-    ctx.run(insertEntries)
+    ctx.run(insertEntries) //hello
     ()
   }
 }

@@ -4,7 +4,7 @@ import io.getquill.Spec
 import io.getquill.generic.ArrayEncoding
 import io.getquill._
 
-trait ArrayOpsSpec extends Spec {
+trait ArrayOpsSpec extends Spec { //hello
 
   val ctx: SqlContext[_, _] with ArrayEncoding
 
@@ -18,7 +18,7 @@ trait ArrayOpsSpec extends Spec {
     ArrayOps(3, List(1, 4, 6))
   )
 
-  val entity = quote(query[ArrayOps])
+  inline def entity = quote(query[ArrayOps]) //hellooooooooooooo
 
   inline def insertEntries = quote {
     liftQuery(entriesList).foreach(e => entity.insert(e))

@@ -8,7 +8,7 @@ import java.{ sql, util }
 // Needed as an import in Protoquill but not in Scala2 Quill. Not sure why
 import io.getquill.MappedEncoding
 
-// Need to add this to extend EncodingDsl which now defines Encoder[T] and Decoder[T] 
+// Need to add this to extend EncodingDsl which now defines Encoder[T] and Decoder[T]
 // in terms of GenericEncoder/GenericDecoder. Will need to add GenericEncoder to quill-core-portable
 // and redefine encoders in this way to get cross-portability
 import io.getquill.generic._

@@ -85,7 +85,7 @@ object BatchQueryExecution:
     import Execution._
 
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
-    def apply(): Expr[Res] = 
+    def apply(): Expr[Res] =
       UntypeExpr(quoted) match
         case QuotedExpr.UprootableWithLifts(QuotedExpr(quoteAst, _, _), planters) =>
           // isolate the list that went into the liftQuery i.e. the liftQuery(liftedList)
@@ -97,12 +97,12 @@ object BatchQueryExecution:
           val extractionBehavior: ExtractBehavior.Skip.type | ExtractBehavior.ExtractWithReturnAction.type =
             Type.of[A] match
               case '[QAC[I, Nothing]] => ExtractBehavior.Skip
-              case '[QAC[I, T]] => 
+              case '[QAC[I, T]] =>
                 if (!(TypeRepr.of[T] =:= TypeRepr.of[Any]))
                   ExtractBehavior.ExtractWithReturnAction
                 else
                   ExtractBehavior.Skip
-              case _ => 
+              case _ =>
                 report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.TypeOf[A]}")
 
           val (foreachIdent, actionQueryAstRaw, batchActionType) = {
@@ -122,7 +122,7 @@ object BatchQueryExecution:
                   // Also Matches:               liftQuery(...).foreach(p => query[Person].filter(...).insert(...))
                   // but more generally matches: liftQuery(...).foreach(p => {stuff})
                   // TODO In the actionQueryAst should we make sure to verify that an Entity exists?
-                  case Foreach(_, foreachIdent, actionQueryAst @ ReturningAction(ActionEntity(bType), id, body)) => 
+                  case Foreach(_, foreachIdent, actionQueryAst @ ReturningAction(ActionEntity(bType), id, body)) =>
                     actionQueryAst match
                       case _: Returning =>           (foreachIdent, actionQueryAst, bType)
                       case _: ReturningGenerated =>  (foreachIdent, actionQueryAst, bType)
@@ -138,7 +138,7 @@ object BatchQueryExecution:
           //println("========= CaseClass =========\n" + io.getquill.util.Messages.qprint(caseClassAst))
           // Assuming that all lifts of the batch query are injectable
 
-          // The primary idea that drives batch query execution is the realization that you 
+          // The primary idea that drives batch query execution is the realization that you
           // can beta reduce out the foreach identifier replacing it with lift tags.
           // For example if we have something like:
           // actionQueryAstRaw: liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(_.name == p.name))
@@ -160,14 +160,14 @@ object BatchQueryExecution:
             case PlanterExpr.Uprootable(expr @ InjectableEagerPlanterExpr(_, _, _)) => expr
             case PlanterExpr.Uprootable(expr) =>
               report.throwError(s"wrong kind of uprootable ${(expr)}")
-            case other => report.throwError(s"The lift expression ${Format.Expr(other)} is not valid for batch queries because it is not injectable")
+            case other => report.throwError(s"The lift expression ${Format(Printer.TreeStructure.show(other.asTerm))} is not valid for batch queries because it is not injectable")
           }
 
           // Once we have that, use the Insert macro to generate a correct insert clause. The insert macro
           // should summon a schemaMeta if needed (and account for querySchema age)
           // (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
 
-          // Create a quotation with the elaborated entity 
+          // Create a quotation with the elaborated entity
           // e.g. given    liftQuery(people).foreach(p => query[Person].insert[Person](p))
           // then create a liftQuery(people).foreach(p => query[Person].insert[Person](_.name -> lift(p.name), _.age -> lift(p.age)))
           val quotation =
@@ -177,7 +177,7 @@ object BatchQueryExecution:
               // We need lifts for 'Delete' because it could have a WHERE clause
               case BatchActionType.Delete => '{ Quoted[Delete[I]](${Lifter(actionQueryAst)}, ${Expr.ofList(rawLifts)}, Nil) }
 
-          StaticTranslationMacro.applyInner[I, T, D, N](quotation, ElaborationBehavior.Skip) match 
+          StaticTranslationMacro.applyInner[I, T, D, N](quotation, ElaborationBehavior.Skip) match
             case Some(state @ StaticState(query, filteredLists, _)) =>
               // create an extractor for returning actions
               val extractor = MakeExtractor[ResultRow, T, T].static(state, identityConverter, extractionBehavior)
@@ -198,10 +198,10 @@ object BatchQueryExecution:
                   val injectedLiftsExpr = Expr.ofList(injectedLifts)
                   val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($injectedLiftsExpr, row) }
                   prepare
-                }) }              
+                }) }
               '{ $batchContextOperation.execute(${Expr(query.basicQuery)}, $prepares.toList, $extractor, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)})) }
-          
-            case None => 
+
+            case None =>
               report.throwError(s"Could not create static state from the query: ${Format.Expr(quotation)}")
 
         case _ =>

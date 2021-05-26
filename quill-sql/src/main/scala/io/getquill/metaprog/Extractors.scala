@@ -573,6 +573,10 @@ object Extractors {
     }
   }
 
+  def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], defs: List[quotes.reflect.Definition])(expr: Expr[_]): Expr[_] =
+    import quotes.reflect._
+    Inlined(call, defs, expr.asTerm).asExpr
+
   /**
    * Since things like the QueryParser slow are because Quoted matching is slow (or at least slower then I'd like them to be),
    * a simple performance optimization is to check if there's a single-method being matched and if so, what is it's name.

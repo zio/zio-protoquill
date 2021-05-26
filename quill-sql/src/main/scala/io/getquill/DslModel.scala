@@ -30,7 +30,7 @@ case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _]], 
 
 // Planters contain trees that can be re-inserted into compile-time code.
 // For example, a ScalarPlanter is re-inserted into the PrepareRow sequence
-// Note that we cannot assume the unquote is just T since unquoted values can be 
+// Note that we cannot assume the unquote is just T since unquoted values can be
 // different e.g. in EagerEntityListPlaner
 sealed trait Planter[T, PrepareRow] extends Unquoteable {
   def unquote: T
@@ -82,7 +82,7 @@ case class QuotationVase(quoted: Quoted[Any], uid: String) extends Unquoteable
 
 // Quotations go from a QuotationLot directly inline into the tree or put into a QuotationVase
 // to be added into the runtime inlining later
-// NOTE: Don't want to include quoted: Quoted[T] since the inner stored type might be different that the thing returned. 
+// NOTE: Don't want to include quoted: Quoted[T] since the inner stored type might be different that the thing returned.
 //       currently there's no use-case for that but perhaps in future.
 sealed trait QuotationLot[+T](uid: String) extends Unquoteable {
   // TODO I think we should get rid of this operator. Unquote should be put on this via an implicit class which causes
@@ -108,7 +108,7 @@ case class UpdateMeta[T](val entity: Quoted[T], uid: String) extends QuotationLo
 // case class InsertMeta[T](val entity: Quoted[T], uid: String) extends ActionMeta[T, Insert] with QuotationLot[T](entity, uid)
 
 // Then ActionMacro will take a MT (i.e. MetaType) generic argument that will control what to summon and what kind of AST
-// element Ast.Insert or Ast.Update to return (also there should probably be 'Delete' meta type which does not summon a column-excluding meta) 
+// element Ast.Insert or Ast.Update to return (also there should probably be 'Delete' meta type which does not summon a column-excluding meta)
 
 case class QueryMeta[T, R](val entity: Quoted[Query[T] => Query[R]], uid: String, extract: R => T) extends QuotationLot[Query[T] => Query[R]](uid)
 
