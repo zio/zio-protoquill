@@ -48,12 +48,12 @@ object StaticTranslationMacro {
     def noRuntimeQuotations(ast: Ast) =
       CollectAst.byType[QuotationTag](ast).isEmpty
 
-    // val queryMeta = 
+    // val queryMeta =
     //   Expr.summon[QueryMeta]
 
     val unliftedAst = Unlifter.apply(astExpr)
 
-    if (noRuntimeQuotations(unliftedAst)) {      
+    if (noRuntimeQuotations(unliftedAst)) {
       val expandedAst = elaborate match
         // if the AST is a Query, e.g. Query(Entity[Person], ...) we expand it out until something like
         // Map(Query(Entity[Person], ...), x, CaseClass(name: x.name, age: x.age)). This was based on the Scala2-Quill
@@ -63,7 +63,7 @@ object StaticTranslationMacro {
         case ElaborationBehavior.Skip => unliftedAst
 
       val (ast, stmt) = idiom.translate(expandedAst)(using naming)
-      
+
       val liftColumns =
         (ast: Ast, stmt: Statement) => Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
 
@@ -96,45 +96,34 @@ object StaticTranslationMacro {
    * Process compile-time lifts, return `None` if that can't be done.
    * liftExprs = Lifts that were put into planters during the quotation. They are
    * 're-planted' back into the PreparedStatement vars here.
-   * matchingExternals = the matching placeholders (i.e 'lift tags') in the AST 
+   * matchingExternals = the matching placeholders (i.e 'lift tags') in the AST
    * that contains the UUIDs of lifted elements. We check against list to make
    * sure that that only needed lifts are used and in the right order.
    */
-  private[getquill] def processLifts(liftExprs: Expr[List[Planter[_, _]]], matchingExternals: List[External])(using Quotes): Option[List[PlanterExpr[_, _]]] =
+  private[getquill] def processLifts(lifts: List[PlanterExpr[_, _]], matchingExternals: List[External])(using Quotes): Option[List[PlanterExpr[_, _]]] =
     import quotes.reflect.report
 
-    val extractedEncodeables =
-      liftExprs match {
-        case PlanterExpr.UprootableList(lifts) =>
-          // get all existing expressions that can be encoded
-          Some(lifts.map(e => (e.uid, e)).toMap)
-        case _ => 
-          report.warning(s"Lifts could not be extracted during compile-time: `${Format.Expr(liftExprs)}` are they 'inline def'?"); 
-          None
-      }
+    val encodeablesMap =
+      lifts.map(e => (e.uid, e)).toMap
 
-    val uidsOfScalarTags = 
+    val uidsOfScalarTags =
       matchingExternals.collect {
         case tag: ScalarTag => tag.uid
       }
 
-    extractedEncodeables match
-      case None => None
-      case Some(encodeables) =>
-        val sortedEncodeables =
-          uidsOfScalarTags.map { uid => 
-            encodeables.get(uid) match
-              case Some(encodeable) => encodeable
-              case None =>
-                report.throwError(s"Invalid Transformations Encountered. Cannot find lift with ID: ${uid}.")
-          }
-          
-        // TODO This should be logged if some fine-grained debug logging is enabled. Maybe as part of some phase that can be enabled via -Dquill.trace.types config
-        // val remaining = encodeables.removedAll(uidsOfScalarTags)
-        // if (!remaining.isEmpty)
-        //   println(s"Ignoring the following lifts: [${remaining.map((_, v) => Format.Expr(v.plant)).mkString(", ")}]")
+    val sortedEncodeables =
+      uidsOfScalarTags.map { uid =>
+        encodeablesMap.get(uid) match
+          case Some(encodeable) => encodeable
+          case None =>
+            report.throwError(s"Invalid Transformations Encountered. Cannot find lift with ID: ${uid}.")
+      }
 
-        Some(sortedEncodeables)
+    // TODO This should be logged if some fine-grained debug logging is enabled. Maybe as part of some phase that can be enabled via -Dquill.trace.types config
+    // val remaining = encodeables.removedAll(uidsOfScalarTags)
+    // if (!remaining.isEmpty)
+    //   println(s"Ignoring the following lifts: [${remaining.map((_, v) => Format.Expr(v.plant)).mkString(", ")}]")
+    Some(sortedEncodeables)
   end processLifts
 
   def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using Quotes, Type[D], Type[N]): Try[(Idiom, NamingStrategy)] =
@@ -146,7 +135,7 @@ object StaticTranslationMacro {
   def applyInner[I: Type, T: Type, D <: Idiom, N <: NamingStrategy](
     quotedRaw: Expr[Quoted[QAC[I, T]]],
     elaborate: ElaborationBehavior
-  )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[StaticState] = 
+  )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[StaticState] =
   {
     import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
@@ -157,7 +146,7 @@ object StaticTranslationMacro {
     }
 
     extension [T](opt: Option[T]) {
-      def errPrint(str: String) = 
+      def errPrint(str: String) =
         opt match {
           case s: Some[T] => s
           case None => println(str); None
@@ -168,17 +157,17 @@ object StaticTranslationMacro {
       for {
         (idiom, naming)                        <- idiomAndNamingStatic.toOption.errPrint("Could not parse Idiom/Naming")
         // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
-        quotedExpr                             <- QuotedExpr.uprootableOpt(quoted).errPrint("Could not uproot the quote") 
+        (quotedExpr, lifts)                    <- QuotedExpr.uprootableWithLiftsOpt(quoted).errPrint("Could not uproot the quote")
         (query, externals, returnAction, ast)  <- processAst[T](quotedExpr.ast, elaborate, idiom, naming).errPrint("Could not process the ASt")
-        encodedLifts                           <- processLifts(quotedExpr.lifts, externals).errPrint("Could not process the lifts")
+        encodedLifts                           <- processLifts(lifts, externals).errPrint("Could not process the lifts")
       } yield {
         if (io.getquill.util.Messages.debugEnabled)
           report.info(
-            "Compile Time Query Is: " + 
+            "Compile Time Query Is: " +
               (
-                if (io.getquill.util.Messages.prettyPrint) 
+                if (io.getquill.util.Messages.prettyPrint)
                   idiom.format(query.basicQuery)
-                else 
+                else
                   query.basicQuery
               )
           )
@@ -186,7 +175,9 @@ object StaticTranslationMacro {
       }
 
     if (tryStatic.isEmpty)
-      report.info("Dynamic Query Detected")
+      // TODO Only if a high trace level is enabled
+      def additionalMessage = Format.Expr(quotedRaw)
+      report.info(s"Dynamic Query Detected${additionalMessage}")
 
     tryStatic
   }

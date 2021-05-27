@@ -18,7 +18,7 @@ object QueryMacro {
       case Some(meta) =>
         meta.reseal match {
           // If it is uprootable, unquote the meta and pass it on
-          case QuotationLotExpr(Uprootable(_, _, _, _, _, _)) =>
+          case QuotationLotExpr(Uprootable(_, _, _, _)) =>
             '{ $meta.unquote }
 
           // If it's pluckabke can also return that because the parser/Expr accumulate in Context will find it.

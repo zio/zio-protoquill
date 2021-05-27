@@ -357,7 +357,10 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
     // must happen (specifically have a check for it or just fail to parse?)
     // since we would not know the UID since it is not inside of a bin. This situation
     // should only be encountered to a top-level quote passed to the 'run' function and similar situations.
-    case QuotedExpr.Uprootable(quotedExpr) =>
+    // NOTE: Technically we only need to uproot the AST here, not the lifts, but using UprootableWithLifts
+    // since that's the only construct in QuotedExpr that checks if there is an Inline block at the front.
+    // If needed for performance reasons, a Inlined checking extractor can be made in QuotedExpr that ignores lifts
+    case QuotedExpr.UprootableWithLifts(quotedExpr, _) =>
       Unlifter(quotedExpr.ast)
   }
 }

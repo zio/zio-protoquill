@@ -131,7 +131,7 @@ object InsertUpdateMacro {
           case QuotationLotExpr.Unquoted(unquotation) =>
             unquotation match
               // The {querySchema[Person]} part is static (i.e. fully known at compile-time)
-              case Uprootable(_, ast, _, _, _, _) =>
+              case Uprootable(_, ast, _, _) =>
                 Unlifter(ast) match
                   case ent: Entity => SummonState.Static(ent)
                   case other       => report.throwError(s"Unlifted insertion Entity '${qprint(other).plainText}' is not a Query.")
@@ -179,7 +179,7 @@ object InsertUpdateMacro {
           case Some(actionMeta) =>
             QuotationLotExpr(actionMeta.asTerm.underlyingArgument.asExpr) match
               // if the meta is inline i.e. 'inline given meta: InsertMeta[Person] = ...' (or UpdateMeta[Person])
-              case Uprootable(_, ast, _, _, _, _) =>
+              case Uprootable(_, ast, _, _) =>
                 Unlifter(ast) match
                   case Tuple(values) if (values.forall(_.isInstanceOf[Property])) =>
                     SummonState.Static(values.toSet)
@@ -218,7 +218,7 @@ object InsertUpdateMacro {
           exprType match
             // If clause is uprootable, pull it out. Note that any lifts inside don't need to be extracted here
             // since they will be extracted later in ExtractLifts
-            case Uprootable(_, astExpr, _, _, _, _) =>
+            case Uprootable(_, astExpr, _, _) =>
               val ast = Unlifter(astExpr)
               if (!ast.isInstanceOf[CaseClass])
                 report.throwError(s"The lifted insertion element needs to be parsed as a Ast CaseClass but it is: ${ast}")
@@ -344,7 +344,7 @@ object InsertUpdateMacro {
       UnquoteMacro(quotation)
     }
 
-    /** 
+    /**
      * Create a static or dynamic quotation based on the state. Wrap the expr using some additional functions if we need to.
      * This is used for the createFromPremade if we need to wrap it into insertReturning which is used for batch-returning query execution.
      */
@@ -399,4 +399,3 @@ object InsertUpdateMacro {
   def apply[T: Type, A[T] <: Insert[T] | Update[T]: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[A[T]] =
     new Pipeline[T, A]().apply(entityRaw, bodyRaw)
 }
-

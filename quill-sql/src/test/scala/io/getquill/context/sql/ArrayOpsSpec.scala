@@ -4,7 +4,7 @@ import io.getquill.Spec
 import io.getquill.generic.ArrayEncoding
 import io.getquill._
 
-trait ArrayOpsSpec extends Spec { //hello
+trait ArrayOpsSpec extends Spec {
 
   val ctx: SqlContext[_, _] with ArrayEncoding
 
@@ -24,8 +24,17 @@ trait ArrayOpsSpec extends Spec { //hello
     liftQuery(entriesList).foreach(e => entity.insert(e))
   }
 
-  object `contains` {
+  object `blah` {
     inline def idByContains(x: Int) = quote(entity.filter(_.numbers.contains(lift(x))).map(_.id))
+    inline def `Foo bar` = quote(idByContains(1))
+    inline def `Ex 1 return all` = quote(idByContains(1))
+    val `Ex 1 expected` = List(1, 2, 3)
+  }
+
+  object `bin` {
+    inline def idByContains(x: Int) = quote(entity.filter(_.numbers.contains(lift(x))).map(_.id))
+
+    inline def `Foo bar` = quote(idByContains(1))
 
     inline def `Ex 1 return all` = quote(idByContains(1))
     val `Ex 1 expected` = List(1, 2, 3)

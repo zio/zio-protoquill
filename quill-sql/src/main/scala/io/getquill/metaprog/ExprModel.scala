@@ -231,11 +231,9 @@ object PlanterExpr {
 
 case class QuotedExpr(ast: Expr[Ast], lifts: Expr[List[Planter[_, _]]], runtimeQuotes: Expr[List[QuotationVase]])
 object QuotedExpr {
-    //object `EmptyQuotationPouchList`
 
-  // back here
-  // Note, the quotation is not considered to be inline if there are any runtime lifts
-  object Uprootable {
+  /** To be used internally only since it does not account for inlines that could appear in front of it */
+  private object `Quoted.apply` {
     def unapply(expr: Expr[Any])(using Quotes): Option[QuotedExpr] = {
       import quotes.reflect.{Term => QTerm, _}
 
@@ -244,7 +242,7 @@ object QuotedExpr {
         case exprr @  '{ Quoted.apply[qt]($ast, $lifts, Nil) } =>
           Some(QuotedExpr(ast, lifts, '{ Nil }))
         case TypedMatroshka(tree) =>
-          Uprootable.unapply(tree)
+          `Quoted.apply`.unapply(tree)
         case _ =>
           None
       }
@@ -258,10 +256,10 @@ object QuotedExpr {
         It is possible that there are inlines, if so they cannot be in the AST since that is re-syntheized on every quote call so any references they
         use have to be in the lifts/runtimeQuotes. If it is Uprootable there are no runtimeQuotes so we just have to do the nesting in the
         */
-        case SealedInline(parent, defs, QuotedExpr.Uprootable(quotedExpr @ QuotedExpr(ast, PlanterExpr.UprootableList(lifts), _))) =>
+        case SealedInline(parent, defs, `Quoted.apply`(quotedExpr @ QuotedExpr(ast, PlanterExpr.UprootableList(lifts), _))) =>
           val nestInlineLifts = lifts.map(_.nestInline(parent, defs))
           Some((quotedExpr, nestInlineLifts))
-        case QuotedExpr.Uprootable(quotedExpr @ QuotedExpr(ast, PlanterExpr.UprootableList(lifts), _)) =>
+        case `Quoted.apply`(quotedExpr @ QuotedExpr(ast, PlanterExpr.UprootableList(lifts), _)) =>
           Some((quotedExpr, lifts))
         case _ =>
           None
@@ -274,18 +272,6 @@ object QuotedExpr {
       case QuotedExpr.UprootableWithLifts(quotedExpr) => Some(quotedExpr)
       case _ =>
         println("Quotations with Lifts do not meet compiletime criteria: " + Printer.TreeShortCode.show(quoted.asTerm));
-        None
-    }
-
-  // Does the Quoted expression match the correct format needed for it to
-  // be inlineable i.e. transpileable into a Query during Compile-Time.
-  def uprootableOpt(quoted: Expr[Any])(using Quotes): Option[QuotedExpr] =
-    import quotes.reflect._
-    quoted match {
-      case QuotedExpr.Uprootable(quotedExpr) => Some(quotedExpr)
-      case _ =>
-        // TODO formatter should kick-in here and format the printed code so that pattern is understandable to the user
-        //println("Quotations do not meet compiletime criteria: " + Printer.TreeShortCode.show(quoted.asTerm));
         None
     }
 }
@@ -388,15 +374,8 @@ object QuotationLotExpr {
     expr match {
       case vase @ `QuotationLot.apply`(quotation, uid, rest) =>
         quotation match
-          case SealedInline(parent, defs, quoted @ QuotedExpr.Uprootable(ast, PlanterExpr.UprootableList(lifts), _)) =>
-            // Since ASTs are reparsed every time the only place the inline needs to be is in the lifts and the "rest"
-            // in the lifts we just embed it. In the 'rest' we just put it into the whole clause.
-            val nestInlinedLifts = lifts.map(_.nestInline(parent, defs))
-            val nestInlinedRest = rest.map(nestInline(parent, defs)(_))
-            Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, nestInlinedLifts, nestInlinedRest))
-
-          case quoted @ QuotedExpr.Uprootable(ast, PlanterExpr.UprootableList(lifts), _) =>
-            Some(Uprootable(uid, ast, vase.asInstanceOf[Expr[QuotationLot[Any]]], quoted, lifts, rest))
+          case quoted @ QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), lifts) =>
+            Some(Uprootable(uid, ast, nestInlinedLifts)(quoted, vase.asInstanceOf[Expr[QuotationLot[Any]]]))
 
           case _ =>
             Some(Pluckable(uid, quotation, rest))
@@ -460,14 +439,21 @@ object QuotationLotExpr {
   //   }
   // }
 
-  case class Uprootable(
+  class Uprootable(
     uid: String,
     ast: Expr[Ast],
-    bin: Expr[QuotationLot[Any]],
+    inlineLifts: List[PlanterExpr[_, _]]
+  )(
     quotation: Expr[Quoted[Any]],
-    inlineLifts: List[PlanterExpr[_, _]],
-    rest: List[Expr[_]]
+    bin: Expr[QuotationLot[Any]]
   ) extends QuotationLotExpr
+
+  object Uprootable:
+    def unapply(up: Uprootable): Option[(String, Expr[Ast], List[PlanterExpr[_, _]])] =
+      Some(up.uid, up.ast, up.inlineLifts)
+    object Ast:
+      def unappy(up: Uprootable): Option[Ast] =
+        SOme(up.ast)
 }
 
 // This allows anyone who imports io.getquill automatically bring in QuotationLot subclasses
