@@ -25,8 +25,8 @@ trait ArrayOpsSpec extends Spec { //hello
   }
 
   inline def personEntity = quote(query[Person]) //hello
-  case class Person(name: String, age: Int, stuff: List[Int])
-  val peopleList = List(Person("Joe", 123, List(1,2,3)), Person("Jack", 456, List(1,2,3)))
+  case class Person(name: String, age: Int, stuff: Seq[Int])
+  val peopleList = List(Person("Joe", 123, Seq(1,2,3)), Person("Jack", 456, Seq(1,2,3)))
   inline def peopleEntries = quote {
     liftQuery(peopleList).foreach(p => personEntity.insert(p))
   }
