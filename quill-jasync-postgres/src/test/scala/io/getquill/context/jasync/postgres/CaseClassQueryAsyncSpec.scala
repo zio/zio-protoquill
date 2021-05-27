@@ -4,6 +4,7 @@ import scala.concurrent.ExecutionContext.Implicits.{ global => ec }
 import io.getquill.context.sql.CaseClassQuerySpec
 import org.scalatest.matchers.should.Matchers._
 import io.getquill._
+import org.scalatest._ // needed for shim
 
 class CaseClassQueryAsyncSpec extends CaseClassQuerySpec {
 

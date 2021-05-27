@@ -4,6 +4,7 @@ import io.getquill.Spec
 import io.getquill.context.sql.{ testContext => ctx }
 import io.getquill.MappedEncoding
 import io.getquill._
+import org.scalatest._ // Needed for the shims to work
 
 class ArrayEncodingSpec extends Spec {
   import ctx._

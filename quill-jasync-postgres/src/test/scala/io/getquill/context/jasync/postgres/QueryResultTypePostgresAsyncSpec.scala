@@ -6,6 +6,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.math.BigDecimal.int2bigDecimal
 import io.getquill.context.sql.QueryResultTypeSpec
 import io.getquill._
+import org.scalatest._ // needed for shim
 
 class QueryResultTypePostgresAsyncSpec extends QueryResultTypeSpec {
 

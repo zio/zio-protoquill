@@ -1,3 +1,5 @@
+val isCommunityBuild =
+  sys.props.getOrElse("community", "true").toBoolean
 
 lazy val baseModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-sql`
@@ -27,7 +29,11 @@ lazy val `quill` = {
 }
 
 
-lazy val `quill-sql` = 
+lazy val `scalatest-shim` =
+  (project in file("scalatest-shim"))
+    .settings(basicSettings: _*)
+
+lazy val `quill-sql` =
   (project in file("quill-sql"))
     .settings(commonSettings: _*)
     .settings(
@@ -43,17 +49,33 @@ lazy val `quill-sql` =
         ("io.getquill" %% "quill-sql-portable" % "3.7.1").withDottyCompat(scalaVersion.value),
         //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
         //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
-
-        "org.scalatest" % "scalatest_3" % "3.2.9" % "test",
-        "org.scalatest" % "scalatest-mustmatchers_3" % "3.2.9" % "test"
       ),
+      // If it's a community-build we're using a scala incremental version so there's no scalatest for that
       libraryDependencies ++= {
-        if (true) 
-          Seq(("org.scalameta" %% "scalafmt-cli" % "2.7.5" ).excludeAll(ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")).withDottyCompat(scalaVersion.value))
-        else
+        if (isCommunityBuild)
           Seq()
+        else
+          Seq(
+            "org.scalatest" % "scalatest_3" % "3.2.9" % "test",
+            "org.scalatest" % "scalatest-mustmatchers_3" % "3.2.9" % "test"
+          )
+      },
+      // If it's a community-build we're using a scala incremental and scalafmt doesn't seem to work well with that
+      libraryDependencies ++= {
+        if (isCommunityBuild)
+          Seq()
+        else
+          Seq(("org.scalameta" %% "scalafmt-cli" % "2.7.5" ).excludeAll(ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")).withDottyCompat(scalaVersion.value))
       }
-    )
+    ).dependsOn({
+      // If it's a community build, we cannot include scalatest since the scalatest for the corresponding
+      // incremental scala version does not exist. So we need to include this module that "shims-it-out" so we can just be able
+      // to compile stuff (i.e. on an incremental scala version)
+      if (isCommunityBuild)
+        Seq(`scalatest-shim` % "compile->compile;test->test")
+      else
+        Seq()
+    }: _*)
 
 // Moving heavy tests to separate module so it can be compiled in parallel with others
 lazy val `quill-sql-tests` =
@@ -91,7 +113,7 @@ lazy val `quill-jasync-postgres` =
       )
     )
     .dependsOn(`quill-jasync` % "compile->compile;test->test")
-    
+
 // Include scalafmt formatter for pretty printing failed queries
 val includeFormatter =
   sys.props.getOrElse("formatScala", "false").toBoolean
@@ -116,9 +138,10 @@ lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
 )
 
 lazy val basicSettings = Seq(
-  scalaVersion := "3.0.0", // "0.21.0-RC1", //"0.22.0-bin-20200114-193f7de-NIGHTLY", //dottyLatestNightlyBuild.get,
+  scalaVersion := {
+    if (isCommunityBuild) dottyLatestNightlyBuild.get else "3.0.0"
+  },
   scalacOptions ++= Seq(
     "-language:implicitConversions"
   )
 )
-

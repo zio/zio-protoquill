@@ -4,6 +4,7 @@ import io.getquill.Spec
 import org.scalatest.BeforeAndAfter
 import io.getquill.Ord
 import io.getquill._
+import org.scalatest._
 
 class ComplexQuerySpec extends Spec with BeforeAndAfter {
 
