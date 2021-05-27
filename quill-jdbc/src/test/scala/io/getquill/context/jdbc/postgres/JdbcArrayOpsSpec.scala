@@ -11,6 +11,8 @@ class JdbcArrayOpsSpec extends ArrayOpsSpec {
   val ctx: testContext.type = testContext //: SqlContext[PostgresDialect, Literal] with ArrayEncoding
   import ctx._
 
+  // hello
+
   "contains" in {
     ctx.run(`contains`.`Ex 1 return all`) mustBe `contains`.`Ex 1 expected`
     ctx.run(`contains`.`Ex 2 return 1`) mustBe `contains`.`Ex 2 expected`
@@ -20,7 +22,8 @@ class JdbcArrayOpsSpec extends ArrayOpsSpec {
 
   override protected def beforeAll(): Unit = {
     ctx.run(entity.delete)
-    ctx.run(insertEntries) //hello
+    //ctx.run(insertEntries)
+    ctx.run(peopleEntries)
     ()
   }
 }

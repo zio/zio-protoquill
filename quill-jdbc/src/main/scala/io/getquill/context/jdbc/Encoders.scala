@@ -18,7 +18,7 @@ trait Encoders extends EncodingDsl {
 
   // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
   // type Index = Int (Defined in JdbcRunContext)
-  type Encoder[T] = JdbcEncoder[T]
+  type Encoder[T] = JdbcEncoder[T] & GenericEncoder[T, PrepareRow]
 
   private val dateTimeZone = TimeZone.getDefault
 

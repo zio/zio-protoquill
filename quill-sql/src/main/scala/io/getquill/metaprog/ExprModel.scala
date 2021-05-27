@@ -122,14 +122,14 @@ object PlanterExpr {
 
         // You can't just do '{ InjectableEagerPlanter... below but also have to do this. I'm not sure why. Also you can't
         // JUST do this. You either need the clause above or the clause below otherwise it won't work
-        case Unseal(MatchInjectableEager(qtType, prepType, liftValue, encoder, uid)) =>
-          (qtType.tpe.asType, prepType.tpe.asType) match
-            case ('[qtt], '[prep]) =>
-              encoder.tpe.asType match
-                case '[enc] =>
-                  Some(InjectableEagerPlanterExpr[qtt, prep](uid, liftValue.asExpr.asInstanceOf[Expr[_ => qtt]], encoder.asExpr.asInstanceOf[Expr[enc & GenericEncoder[qtt, prep]]]))
+        // case Unseal(MatchInjectableEager(qtType, prepType, liftValue, encoder, uid)) =>
+        //   (qtType.tpe.asType, prepType.tpe.asType) match
+        //     case ('[qtt], '[prep]) =>
+        //       encoder.tpe.asType match
+        //         case '[enc] =>
+        //           Some(InjectableEagerPlanterExpr[qtt, prep](uid, liftValue.asExpr.asInstanceOf[Expr[_ => qtt]], encoder.asExpr.asInstanceOf[Expr[enc & GenericEncoder[qtt, prep]]]))
 
-        case ( '{ InjectableEagerPlanter.apply[qta, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
+        case '{ InjectableEagerPlanter.apply[qta, prep]($liftValue, $encoder, ${Expr(uid: String)}) } =>
           Some(InjectableEagerPlanterExpr[qta, prep](uid, liftValue, encoder))
 
         case Is[LazyPlanter[_, _]]( '{ LazyPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } ) =>

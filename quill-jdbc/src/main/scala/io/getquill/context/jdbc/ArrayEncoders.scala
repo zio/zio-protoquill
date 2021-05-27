@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.util.Date
 
 import io.getquill.generic.ArrayEncoding
+import io.getquill.generic.GenericEncoder
 import scala.collection.compat._
 
 trait ArrayEncoders extends ArrayEncoding {
@@ -35,7 +36,7 @@ trait ArrayEncoders extends ArrayEncoding {
    * @tparam Col seq type
    * @return JDBC array encoder
    */
-  def arrayEncoder[T, Col <: Seq[T]](jdbcType: String, mapper: T => AnyRef): Encoder[Col] = {
+  def arrayEncoder[T, Col <: Seq[T]](jdbcType: String, mapper: T => AnyRef): Encoder[Col] & GenericEncoder[Col, PrepareRow] = {
     encoder[Col](ARRAY, (idx: Index, seq: Col, row: PrepareRow) => {
       val bf = implicitly[CBF[AnyRef, Array[AnyRef]]]
       row.setArray(
@@ -56,7 +57,7 @@ trait ArrayEncoders extends ArrayEncoding {
    * @tparam Col seq type
    * @return JDBC array encoder
    */
-  def arrayRawEncoder[T, Col <: Seq[T]](jdbcType: String): Encoder[Col] =
+  def arrayRawEncoder[T, Col <: Seq[T]](jdbcType: String): Encoder[Col] & GenericEncoder[Col, PrepareRow] =
     arrayEncoder[T, Col](jdbcType, _.asInstanceOf[AnyRef])
 
   /**
