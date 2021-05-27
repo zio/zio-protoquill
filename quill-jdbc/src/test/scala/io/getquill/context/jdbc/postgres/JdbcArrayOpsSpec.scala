@@ -23,7 +23,7 @@ class JdbcArrayOpsSpec extends ArrayOpsSpec {
   override protected def beforeAll(): Unit = {
     ctx.run(entity.delete)
     //ctx.run(insertEntries)
-    ctx.run(peopleEntries)
+    //ctx.run(peopleEntries)
     //ctx.run(personInsert) // works!
     ()
   }
