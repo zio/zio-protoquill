@@ -12,18 +12,18 @@ import scala.collection.compat._
 trait ArrayEncoders extends ArrayEncoding {
   self: JdbcRunContext[_, _] =>
 
-  implicit def arrayStringEncoder[Col <: Seq[String]]: Encoder[Col] = arrayRawEncoder[String, Col](VARCHAR)
-  implicit def arrayBigDecimalEncoder[Col <: Seq[BigDecimal]]: Encoder[Col] = arrayEncoder[BigDecimal, Col](parseJdbcType(NUMERIC), _.bigDecimal)
-  implicit def arrayBooleanEncoder[Col <: Seq[Boolean]]: Encoder[Col] = arrayRawEncoder[Boolean, Col](BOOLEAN)
-  implicit def arrayByteEncoder[Col <: Seq[Byte]]: Encoder[Col] = arrayRawEncoder[Byte, Col](TINYINT)
-  implicit def arrayShortEncoder[Col <: Seq[Short]]: Encoder[Col] = arrayRawEncoder[Short, Col](SMALLINT)
-  implicit def arrayIntEncoder[Col <: Seq[Int]]: Encoder[Col] = arrayRawEncoder[Int, Col](INTEGER)
-  implicit def arrayLongEncoder[Col <: Seq[Long]]: Encoder[Col] = arrayRawEncoder[Long, Col](BIGINT)
-  implicit def arrayFloatEncoder[Col <: Seq[Float]]: Encoder[Col] = arrayRawEncoder[Float, Col](FLOAT)
-  implicit def arrayDoubleEncoder[Col <: Seq[Double]]: Encoder[Col] = arrayRawEncoder[Double, Col](DOUBLE)
-  implicit def arrayDateEncoder[Col <: Seq[Date]]: Encoder[Col] = arrayRawEncoder[Date, Col](TIMESTAMP)
-  implicit def arrayTimestampEncoder[Col <: Seq[Timestamp]]: Encoder[Col] = arrayRawEncoder[Timestamp, Col](TIMESTAMP)
-  implicit def arrayLocalDateEncoder[Col <: Seq[LocalDate]]: Encoder[Col] = arrayEncoder[LocalDate, Col](parseJdbcType(DATE), SqlDate.valueOf)
+  implicit def arrayStringEncoder[Col <: Iterable[String]]: Encoder[Col] = arrayRawEncoder[String, Col](VARCHAR)
+  implicit def arrayBigDecimalEncoder[Col <: Iterable[BigDecimal]]: Encoder[Col] = arrayEncoder[BigDecimal, Col](parseJdbcType(NUMERIC), _.bigDecimal)
+  implicit def arrayBooleanEncoder[Col <: Iterable[Boolean]]: Encoder[Col] = arrayRawEncoder[Boolean, Col](BOOLEAN)
+  implicit def arrayByteEncoder[Col <: Iterable[Byte]]: Encoder[Col] = arrayRawEncoder[Byte, Col](TINYINT)
+  implicit def arrayShortEncoder[Col <: Iterable[Short]]: Encoder[Col] = arrayRawEncoder[Short, Col](SMALLINT)
+  implicit def arrayIntEncoder[Col <: Iterable[Int]]: Encoder[Col] = arrayRawEncoder[Int, Col](INTEGER)
+  implicit def arrayLongEncoder[Col <: Iterable[Long]]: Encoder[Col] = arrayRawEncoder[Long, Col](BIGINT)
+  implicit def arrayFloatEncoder[Col <: Iterable[Float]]: Encoder[Col] = arrayRawEncoder[Float, Col](FLOAT)
+  implicit def arrayDoubleEncoder[Col <: Iterable[Double]]: Encoder[Col] = arrayRawEncoder[Double, Col](DOUBLE)
+  implicit def arrayDateEncoder[Col <: Iterable[Date]]: Encoder[Col] = arrayRawEncoder[Date, Col](TIMESTAMP)
+  implicit def arrayTimestampEncoder[Col <: Iterable[Timestamp]]: Encoder[Col] = arrayRawEncoder[Timestamp, Col](TIMESTAMP)
+  implicit def arrayLocalDateEncoder[Col <: Iterable[LocalDate]]: Encoder[Col] = arrayEncoder[LocalDate, Col](parseJdbcType(DATE), SqlDate.valueOf)
 
   /**
    * Generic encoder for JDBC arrays.
@@ -33,17 +33,17 @@ trait ArrayEncoders extends ArrayEncoding {
    *               If input type of an element of collection is not comfortable with jdbcType
    *               then use this mapper to transform to appropriate type before casting to AnyRef
    * @tparam T element type
-   * @tparam Col seq type
+   * @tparam Col Iterable type
    * @return JDBC array encoder
    */
-  def arrayEncoder[T, Col <: Seq[T]](jdbcType: String, mapper: T => AnyRef): Encoder[Col] & GenericEncoder[Col, PrepareRow] = {
-    encoder[Col](ARRAY, (idx: Index, seq: Col, row: PrepareRow) => {
+  def arrayEncoder[T, Col <: Iterable[T]](jdbcType: String, mapper: T => AnyRef): Encoder[Col] & GenericEncoder[Col, PrepareRow] = {
+    encoder[Col](ARRAY, (idx: Index, Iterable: Col, row: PrepareRow) => {
       val bf = implicitly[CBF[AnyRef, Array[AnyRef]]]
       row.setArray(
         idx,
         row.getConnection.createArrayOf(
           jdbcType,
-          seq.foldLeft(bf.newBuilder)((b, x) => b += mapper(x)).result()
+          Iterable.foldLeft(bf.newBuilder)((b, x) => b += mapper(x)).result()
         )
       )
     })
@@ -54,10 +54,10 @@ trait ArrayEncoders extends ArrayEncoding {
    *
    * @param jdbcType JDBC specific type identification, may be various regarding to JDBC driver
    * @tparam T element type
-   * @tparam Col seq type
+   * @tparam Col Iterable type
    * @return JDBC array encoder
    */
-  def arrayRawEncoder[T, Col <: Seq[T]](jdbcType: String): Encoder[Col] & GenericEncoder[Col, PrepareRow] =
+  def arrayRawEncoder[T, Col <: Iterable[T]](jdbcType: String): Encoder[Col] & GenericEncoder[Col, PrepareRow] =
     arrayEncoder[T, Col](jdbcType, _.asInstanceOf[AnyRef])
 
   /**
@@ -67,6 +67,6 @@ trait ArrayEncoders extends ArrayEncoding {
    * @see arrayRawEncoder(jdbcType: String)
    * @see JdbcContext#parseJdbcType(jdbcType: String)
    */
-  def arrayRawEncoder[T, Col <: Seq[T]](jdbcType: Int): Encoder[Col] =
+  def arrayRawEncoder[T, Col <: Iterable[T]](jdbcType: Int): Encoder[Col] =
     arrayRawEncoder[T, Col](parseJdbcType(jdbcType))
 }

@@ -13,8 +13,8 @@ class ArrayEncodingSpec extends Spec {
   case class Decor(raw: Raw)
 
   object impl {
-    implicit def encodeRaw[Col <: Seq[Raw]]: Encoder[Col] = encoder[Col]
-    implicit def decodeRaw[Col <: Seq[Raw]]: Decoder[Col] = decoderUnsafe[Col]
+    implicit def encodeRaw[Col <: Iterable[Raw]]: Encoder[Col] = encoder[Col]
+    implicit def decodeRaw[Col <: Iterable[Raw]]: Decoder[Col] = decoderUnsafe[Col]
     implicit val encodeDecor: MappedEncoding[Decor, Raw] = MappedEncoding(_.raw)
     implicit val decodeDecor: MappedEncoding[Raw, Decor] = MappedEncoding(Decor.apply)
   }
