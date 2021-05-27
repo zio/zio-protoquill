@@ -131,7 +131,7 @@ object InsertUpdateMacro {
           case QuotationLotExpr.Unquoted(unquotation) =>
             unquotation match
               // The {querySchema[Person]} part is static (i.e. fully known at compile-time)
-              case Uprootable(_, ast, _, _) =>
+              case Uprootable.Ast(ast) =>
                 Unlifter(ast) match
                   case ent: Entity => SummonState.Static(ent)
                   case other       => report.throwError(s"Unlifted insertion Entity '${qprint(other).plainText}' is not a Query.")
@@ -179,7 +179,7 @@ object InsertUpdateMacro {
           case Some(actionMeta) =>
             QuotationLotExpr(actionMeta.asTerm.underlyingArgument.asExpr) match
               // if the meta is inline i.e. 'inline given meta: InsertMeta[Person] = ...' (or UpdateMeta[Person])
-              case Uprootable(_, ast, _, _) =>
+              case Uprootable.Ast(ast) =>
                 Unlifter(ast) match
                   case Tuple(values) if (values.forall(_.isInstanceOf[Property])) =>
                     SummonState.Static(values.toSet)
@@ -218,7 +218,7 @@ object InsertUpdateMacro {
           exprType match
             // If clause is uprootable, pull it out. Note that any lifts inside don't need to be extracted here
             // since they will be extracted later in ExtractLifts
-            case Uprootable(_, astExpr, _, _) =>
+            case Uprootable.Ast(astExpr) =>
               val ast = Unlifter(astExpr)
               if (!ast.isInstanceOf[CaseClass])
                 report.throwError(s"The lifted insertion element needs to be parsed as a Ast CaseClass but it is: ${ast}")

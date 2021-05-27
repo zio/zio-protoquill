@@ -345,7 +345,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
-        case Uprootable(uid, astTree, _, _, _, _) => Unlifter(astTree)
+        case Uprootable(uid, astTree, _) => Unlifter(astTree)
         case Pluckable(uid, astTree, _) => QuotationTag(uid)
         case Pointable(quote) => report.throwError(s"Quotation is invalid for compile-time or processing: ${quote.show}", quote)
       }

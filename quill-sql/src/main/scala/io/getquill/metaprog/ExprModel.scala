@@ -375,7 +375,12 @@ object QuotationLotExpr {
       case vase @ `QuotationLot.apply`(quotation, uid, rest) =>
         quotation match
           case quoted @ QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), lifts) =>
-            Some(Uprootable(uid, ast, nestInlinedLifts)(quoted, vase.asInstanceOf[Expr[QuotationLot[Any]]]))
+            // Note: If the `Quoted.apply` is inside an Inline, would we need to do the same thing that we do
+            // to the lifts (i.e. nesting the Inline inside them) to the 'rest' element? I don't think so
+            // because the Inline would be around `Quoted.apply` which is already inside of `QuotationLot.apply`
+            // i.e. it would be QuotationLot.apply(Inline(Quoted.apply(...)), ..., rest) so I don't see how 'rest'
+            // could get the contents of this Inner inline
+            Some(Uprootable(uid, ast, lifts)(quoted, vase.asInstanceOf[Expr[QuotationLot[Any]]], rest))
 
           case _ =>
             Some(Pluckable(uid, quotation, rest))
@@ -440,20 +445,21 @@ object QuotationLotExpr {
   // }
 
   class Uprootable(
-    uid: String,
-    ast: Expr[Ast],
-    inlineLifts: List[PlanterExpr[_, _]]
+    val uid: String,
+    val ast: Expr[Ast],
+    val inlineLifts: List[PlanterExpr[_, _]]
   )(
-    quotation: Expr[Quoted[Any]],
-    bin: Expr[QuotationLot[Any]]
+    val quotation: Expr[Quoted[Any]],
+    val bin: Expr[QuotationLot[Any]],
+    val extra: List[Expr[_]]
   ) extends QuotationLotExpr
 
   object Uprootable:
     def unapply(up: Uprootable): Option[(String, Expr[Ast], List[PlanterExpr[_, _]])] =
       Some(up.uid, up.ast, up.inlineLifts)
     object Ast:
-      def unappy(up: Uprootable): Option[Ast] =
-        SOme(up.ast)
+      def unapply(up: Uprootable): Option[Expr[Ast]] =
+        Some(up.ast)
 }
 
 // This allows anyone who imports io.getquill automatically bring in QuotationLot subclasses
