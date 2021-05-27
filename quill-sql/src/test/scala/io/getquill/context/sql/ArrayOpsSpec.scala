@@ -31,6 +31,11 @@ trait ArrayOpsSpec extends Spec { //hello
     liftQuery(peopleList).foreach(p => personEntity.insert(p))
   }
 
+  val p = Person("Joe", 123, Seq(1,2,3))
+  inline def personInsert = quote {
+    personEntity.insert(lift(p))
+  }
+
   object `contains` {
     inline def idByContains(x: Int) = quote(entity.filter(_.numbers.contains(lift(x))).map(_.id))
 

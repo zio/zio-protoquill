@@ -24,6 +24,7 @@ class JdbcArrayOpsSpec extends ArrayOpsSpec {
     ctx.run(entity.delete)
     //ctx.run(insertEntries)
     ctx.run(peopleEntries)
+    //ctx.run(personInsert) // works!
     ()
   }
 }
