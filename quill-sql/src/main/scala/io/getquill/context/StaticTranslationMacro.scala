@@ -176,7 +176,8 @@ object StaticTranslationMacro {
 
     if (tryStatic.isEmpty)
       // TODO Only if a high trace level is enabled
-      def additionalMessage = Format.Expr(quotedRaw)
+      //def additionalMessage = Format.Expr(quotedRaw)
+      def additionalMessage = ""
       report.info(s"Dynamic Query Detected${additionalMessage}")
 
     tryStatic

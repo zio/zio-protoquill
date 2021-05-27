@@ -24,17 +24,8 @@ trait ArrayOpsSpec extends Spec {
     liftQuery(entriesList).foreach(e => entity.insert(e))
   }
 
-  object `blah` {
+  object `contains` {
     inline def idByContains(x: Int) = quote(entity.filter(_.numbers.contains(lift(x))).map(_.id))
-    inline def `Foo bar` = quote(idByContains(1))
-    inline def `Ex 1 return all` = quote(idByContains(1))
-    val `Ex 1 expected` = List(1, 2, 3)
-  }
-
-  object `bin` {
-    inline def idByContains(x: Int) = quote(entity.filter(_.numbers.contains(lift(x))).map(_.id))
-
-    inline def `Foo bar` = quote(idByContains(1))
 
     inline def `Ex 1 return all` = quote(idByContains(1))
     val `Ex 1 expected` = List(1, 2, 3)
