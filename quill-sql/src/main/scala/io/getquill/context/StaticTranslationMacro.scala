@@ -109,7 +109,9 @@ object StaticTranslationMacro {
           // get all existing expressions that can be encoded
           Some(lifts.map(e => (e.uid, e)).toMap)
         case _ =>
-          report.warning(s"Lifts could not be extracted during compile-time: `${Format.Expr(liftExprs)}` are they 'inline def'?\n======== Full Expression======\n${io.getquill.util.Messages.qprint(liftExprs.asTerm)}");
+          // TODO Only enable if there is a trace-debugging on
+          val fullExpression = s"\n======== Full Expression======\n${io.getquill.util.Messages.qprint(liftExprs.asTerm)}"
+          report.warning(s"Lifts could not be extracted during compile-time: `${Format.Expr(liftExprs)}` are they 'inline def'?${fullExpression}");
           None
       }
 

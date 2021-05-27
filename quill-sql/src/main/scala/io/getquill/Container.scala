@@ -6,15 +6,26 @@ import scala.quoted._
 case class Container[T, PrepareRow](encoder: GenericEncoder[T, PrepareRow])
 
 object Macro {
+  object SealedInline:
+    def unapply[T: Type](using Quotes)(expr: Expr[T]) =
+      import quotes.reflect._
+      expr.asTerm match
+        case Inlined(parent, defs, v) => Some((parent, defs, v.asExprOf[T]))
+        case _ => None
+
   inline def matchContainer[T, PrepareRow](inline c: Container[T, PrepareRow]): Unit = ${ matchContainerImpl[T, PrepareRow]('c) }
   def matchContainerImpl[T: Type, PrepareRow: Type](c: Expr[Container[T, PrepareRow]])(using Quotes): Expr[Unit] = {
     import quotes.reflect._
     // c.asTerm.underlyingArgument.asExpr doesn't work either
-    c match
+    c.asTerm.underlyingArgument.asExpr match
+      case SealedInline(_, _, '{ Container.apply[t, pr]($encoder) }) =>
+        println(s"Matched and found inline: ${encoder.show}")
       case '{ Container.apply[t, pr]($encoder) } =>
         println(s"Matched and found: ${encoder.show}")
+      case SealedInline(_, _, v) =>
+        println(s"Not Matched! Found Inlined: ${v.show}")
       case _ =>
-        println(s"Not Matched! Found: ${pprint.apply(c.asTerm)}")
+        println(s"Not Matched! Found: ${c.show}")
 
     '{ () }
   }
