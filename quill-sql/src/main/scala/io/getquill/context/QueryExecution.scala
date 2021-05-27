@@ -225,7 +225,6 @@ object QueryExecution:
      */
     def executeStatic[RawT: Type](state: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior): Expr[Res] =
       val lifts = resolveLazyLiftsStatic(state.lifts)
-      println(s"Lifts have been resolved to: ${lifts.map(io.getquill.util.Format.Expr(_))}")
 
       // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
       // and the extractor to read out the results (e.g. ResultSet)
