@@ -72,7 +72,7 @@ lazy val `quill-sql` =
       // incremental scala version does not exist. So we need to include this module that "shims-it-out" so we can just be able
       // to compile stuff (i.e. on an incremental scala version)
       if (isCommunityBuild)
-        Seq(`scalatest-shim` % "compile->compile;test->test")
+        Seq(`scalatest-shim` % "test->test")
       else
         Seq()
     }: _*)

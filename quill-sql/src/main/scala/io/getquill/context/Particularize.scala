@@ -4,6 +4,7 @@ import io.getquill.EagerPlanter
 import io.getquill.EagerListPlanter
 import io.getquill.metaprog.EagerListPlanterExpr
 import io.getquill.metaprog.EagerPlanterExpr
+import io.getquill.metaprog.LazyPlanterExpr
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.LazyPlanter
 import io.getquill.Planter
@@ -16,7 +17,7 @@ import io.getquill.idiom._
 import scala.quoted._
 
 /**
- * For a query that has a filter(p => liftQuery(List("Joe","Jack")).contains(p.name)) we need to turn 
+ * For a query that has a filter(p => liftQuery(List("Joe","Jack")).contains(p.name)) we need to turn
  * the "WHERE p.name in (?)" into WHERE p.name in (?, ?) i.e. to "Particularize" the query
  * to the number of elements in the query lift. In Scala2-Quill we could just access the values
  * of the liftQuery list directly since the lift was an 'Any' value directly in the AST.
@@ -49,14 +50,14 @@ object Particularize:
             planterExpr.asInstanceOf[EagerPlanterExpr[Any, PrepareRowTemp]]
         }.map(lift => (lift.uid, lift)).toMap
 
-      def getLifts(uid: String): LiftChoice = 
+      def getLifts(uid: String): LiftChoice =
         listLifts.get(uid).map(LiftChoice.ListLift(_))
           .orElse(singleLifts.get(uid).map(LiftChoice.SingleLift(_)))
-          .getOrElse { 
-            throw new IllegalArgumentException(s"Cannot find list-lift with UID ${uid} (from all the lifts ${lifts})")
+          .getOrElse {
+            throw new IllegalArgumentException(s"Cannot find list-lift with UID ${uid} (from all the lifts ${lifts.map(io.getquill.util.Format.Expr(_))})")
           }
 
-      /** 
+      /**
        * Actual go from a liftQuery(List("Joe", "Jack")) to "?, ?" using the lifting placeholder.
        * Also return how much the index should be incremented
        */
@@ -83,7 +84,7 @@ object Particularize:
             head match {
               case StringToken(s2)            => apply(tail, Expr(s2) +: sqlResult, placeholderIndex)
               case SetContainsToken(a, op, b) => apply(stmt"$a $op ($b)" +: tail, sqlResult, placeholderIndex)
-              case ScalarTagToken(tag)        => 
+              case ScalarTagToken(tag)        =>
                 val (liftsLength, liftsExpr) = placeholders(tag.uid, placeholderIndex)
                 apply(tail, liftsExpr +: sqlResult, '{ $placeholderIndex + $liftsLength })
               case Statement(tokens)          => apply(tokens.foldRight(tail)(_ +: _), sqlResult, placeholderIndex)
@@ -103,7 +104,7 @@ object Particularize:
     /** Convenience constructor for doing particularization from an Unparticular.Query */
     def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String): String =
       raw(query.realQuery, lifts, liftingPlaceholder)
-    
+
     private[getquill] def raw[PrepareRowTemp](statements: Statement, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String): String = {
       enum LiftChoice:
         case ListLift(value: EagerListPlanter[Any, PrepareRowTemp])
@@ -112,10 +113,10 @@ object Particularize:
       val listLifts = lifts.collect { case e: EagerListPlanter[_, _] => e.asInstanceOf[EagerListPlanter[Any, PrepareRowTemp]] }.map(lift => (lift.uid, lift)).toMap
       val singleLifts = lifts.collect { case e: EagerPlanter[_, _] => e.asInstanceOf[EagerPlanter[Any, PrepareRowTemp]] }.map(lift => (lift.uid, lift)).toMap
 
-      def getLifts(uid: String): LiftChoice = 
+      def getLifts(uid: String): LiftChoice =
         listLifts.get(uid).map(LiftChoice.ListLift(_))
           .orElse(singleLifts.get(uid).map(LiftChoice.SingleLift(_)))
-          .getOrElse { 
+          .getOrElse {
             throw new IllegalArgumentException(s"Cannot find list-lift with UID ${uid} (from all the lifts ${lifts})")
           }
 
@@ -142,7 +143,7 @@ object Particularize:
             head match {
               case StringToken(s2)            => apply(tail, s2 +: sqlResult, placeholderIndex)
               case SetContainsToken(a, op, b) => apply(stmt"$a $op ($b)" +: tail, sqlResult, placeholderIndex)
-              case ScalarTagToken(tag)        => 
+              case ScalarTagToken(tag)        =>
                 val (liftsLength, lifts) = placeholders(tag.uid, placeholderIndex)
                 apply(tail, lifts +: sqlResult, placeholderIndex + liftsLength)
               case Statement(tokens)          => apply(tokens.foldRight(tail)(_ +: _), sqlResult, placeholderIndex)

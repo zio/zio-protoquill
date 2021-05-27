@@ -8,7 +8,7 @@ import io.getquill.context.sql.testContext
 import io.getquill.context.sql.testContext._
 import io.getquill._
 
-class ActionSpec extends Spec {
+class IfSpec extends Spec {
   "if" - {
     "simple" in {
       inline def q = quote {
@@ -22,7 +22,10 @@ class ActionSpec extends Spec {
         qr1.map(t => if (true) true else false)
       }
       testContext.run(q).string mustEqual
-        "SELECT CASE WHEN true THEN true ELSE false END FROM TestEntity t"
+        // Originally was this:
+        //"SELECT CASE WHEN true THEN true ELSE false END FROM TestEntity t"
+        // But scala itself beta reduces the booleans
+        "SELECT true FROM TestEntity t"
     }
     "nested" in {
       inline def q = quote {
@@ -35,8 +38,20 @@ class ActionSpec extends Spec {
       inline def q = quote {
         qr1.map(t => if (true) true else if (true) true else false)
       }
-      testContext.run(q).string mustEqual
-        "SELECT CASE WHEN true THEN true WHEN true THEN true ELSE false END FROM TestEntity t"
+      testContext.run(q).string mustEqual (
+        // Originally was this
+        //"SELECT CASE WHEN true THEN true WHEN true THEN true ELSE false END FROM TestEntity t"
+        // but scala beta reduces to this:
+        "SELECT true FROM TestEntity t"
+      )
+    }
+    "nested booleans inline" in {
+      inline def q = quote {
+        qr1.map(t => if (lazyLift(true)) true else if (lift(true)) true else false)
+      }
+      testContext.run(q).string mustEqual (
+        "SELECT CASE WHEN ? THEN true WHEN ? THEN true ELSE false END FROM TestEntity t"
+      )
     }
   }
 }

@@ -100,7 +100,7 @@ object Execution:
           '{ Extraction.Returning($extractor, ${io.getquill.parser.Lifter.returnAction(returnAction)}) }
         case ExtractBehavior.Skip =>
           '{ Extraction.None }
-    
+
     def dynamic(converter: Expr[RawT => T], extract: ExtractBehavior)(using Quotes): Expr[io.getquill.context.Extraction[ResultRow, T]] =
       extract match
         case ExtractBehavior.Extract =>
@@ -114,7 +114,7 @@ object Execution:
         case ExtractBehavior.Skip =>
           '{ Extraction.None }
 
-    
+
   end MakeExtractor
 
 end Execution
@@ -124,18 +124,18 @@ end Execution
  */
 object QueryExecution:
 
-  
+
 
   class RunQuery[
     I: Type,
     T: Type,
-    ResultRow: Type, 
-    PrepareRow: Type, 
-    D <: Idiom: Type, 
-    N <: NamingStrategy: Type, 
+    ResultRow: Type,
+    PrepareRow: Type,
+    D <: Idiom: Type,
+    N <: NamingStrategy: Type,
     Ctx <: Context[_, _]: Type,
     Res: Type
-  ](quotedOp: Expr[Quoted[QAC[I, T]]], 
+  ](quotedOp: Expr[Quoted[QAC[I, T]]],
     contextOperation: Expr[ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res]])(using val qctx: Quotes, QAC: Type[QAC[I, T]]):
     import qctx.reflect._
     import Execution._
@@ -144,7 +144,7 @@ object QueryExecution:
       QAC match
         case '[QAC[Nothing, T]] => applyQuery(quotedOp)
         case '[QAC[I, Nothing]] => applyAction(quotedOp)
-        case '[QAC[I, T]] => 
+        case '[QAC[I, T]] =>
           if (!(TypeRepr.of[T] =:= TypeRepr.of[Any]))
             applyActionReturning(quotedOp) // ReturningAction is also a subtype of Action so check it before Action
           else
@@ -152,7 +152,7 @@ object QueryExecution:
             // as an Action[T] without there being a `& QAC[T, Nothing]` as part of the type. In that case, the `ModificationEntity`
             // will just be `Any`. We need to manually detect that case since it requires no return type)
             applyAction(quotedOp)
-        case _ => 
+        case _ =>
           report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.Type(QAC)}")
 
     /** Summon all needed components and run executeQuery method */
@@ -163,7 +163,7 @@ object QueryExecution:
           queryMeta match { case '[rawT] => runWithQueryMeta[rawT](quoted) }
         case None =>
           // Otherwise the regular pipeline
-          StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Elaborate) match 
+          StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Elaborate) match
             // Can we re-create needed info to construct+tokenize the query statically?
             case Some(staticState) =>
               executeStatic[T](staticState, identityConverter, ExtractBehavior.Extract) // Yes we can, do it!
@@ -171,17 +171,17 @@ object QueryExecution:
               executeDynamic(quoted, identityConverter, ExtractBehavior.Extract, ElaborationBehavior.Elaborate) // No we can't. Do dynamic
 
     def applyAction(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
-      StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Skip) match 
+      StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Skip) match
         case Some(staticState) =>
           executeStatic[T](staticState, identityConverter, ExtractBehavior.Skip)
         case None =>
           executeDynamic(quoted, identityConverter, ExtractBehavior.Skip, ElaborationBehavior.Skip)
 
     def applyActionReturning(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
-      StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Skip) match 
+      StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Skip) match
         case Some(staticState) =>
           executeStatic[T](staticState, identityConverter, ExtractBehavior.ExtractWithReturnAction)
-        case None => 
+        case None =>
           executeDynamic(quoted, identityConverter, ExtractBehavior.ExtractWithReturnAction, ElaborationBehavior.Skip)
 
     /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to T */
@@ -195,25 +195,26 @@ object QueryExecution:
           // TODO refacotry QueryMetaExtractor to use QAC[I, T] => QAC[I, RawT] then use that
           executeDynamic[RawT](queryRawT.asExprOf[Quoted[QAC[I, RawT]]], converter, ExtractBehavior.Extract, ElaborationBehavior.Elaborate)
       }
-    
-    def resolveLazyLifts(lifts: List[Expr[Planter[?, ?]]]): List[Expr[Planter[?, ?]]] =
+
+    def resolveLazyLiftsStatic(lifts: List[Expr[Planter[?, ?]]]): List[Expr[Planter[?, ?]]] =
+      import io.getquill.metaprog.{ LazyPlanterExpr, EagerPlanterExpr }
       lifts.map {
         case '{ ($e: EagerPlanter[a, b]) } => e
         case '{ ($e: EagerListPlanter[a, b]) } => e
-        case '{ $l: LazyPlanter[a, b] } =>
-          val tpe = l.asTerm.tpe
+        case l @ PlanterExpr.Uprootable(expr @ LazyPlanterExpr(uid, value)) =>
+          val tpe = l.asTerm.tpe.widen
           tpe.asType match
             case '[LazyPlanter[t, row]] =>
               println(s"Summoning type: ${TypeRepr.of[t].show}")
               Expr.summon[GenericEncoder[t, ResultRow]] match
                 case Some(decoder) =>
-                  '{ EagerPlanter[t, ResultRow]($l.value.asInstanceOf[t], $decoder, $l.uid) }
+                  EagerPlanterExpr(uid, value.asInstanceOf[Expr[t]], decoder).plant
                 case None =>
                   report.throwError("Encoder could not be summoned during lazy-lift resolution")
         case other =>
           report.throwError(s"""|
             |Invalid planter found during lazy lift resolution:
-            |${io.getquill.util.Format.Expr(other)} 
+            |${io.getquill.util.Format.Expr(other)}
             |All injectable planters should already have been elaborated into separate components.
             """.stripMargin)
       }
@@ -223,8 +224,9 @@ object QueryExecution:
      * i.e. have a staticState
      */
     def executeStatic[RawT: Type](state: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior): Expr[Res] =
-      val lifts = resolveLazyLifts(state.lifts)
-      
+      val lifts = resolveLazyLiftsStatic(state.lifts)
+      println(s"Lifts have been resolved to: ${lifts.map(io.getquill.util.Format.Expr(_))}")
+
       // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
       // and the extractor to read out the results (e.g. ResultSet)
       val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow](${Expr.ofList(lifts)}, row) }
@@ -269,26 +271,26 @@ object QueryExecution:
 
   inline def apply[
     I,
-    T, 
-    ResultRow, 
-    PrepareRow, 
-    D <: Idiom, 
-    N <: NamingStrategy, 
+    T,
+    ResultRow,
+    PrepareRow,
+    D <: Idiom,
+    N <: NamingStrategy,
     Ctx <: Context[_, _],
     Res
-  ](inline quotedOp: Quoted[QAC[I, T]], ctx: ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res]) = 
+  ](inline quotedOp: Quoted[QAC[I, T]], ctx: ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res]) =
     ${ applyImpl('quotedOp, 'ctx) }
 
   def applyImpl[
     I: Type,
-    T: Type, 
-    ResultRow: Type, 
-    PrepareRow: Type, 
-    D <: Idiom: Type, 
-    N <: NamingStrategy: Type, 
+    T: Type,
+    ResultRow: Type,
+    PrepareRow: Type,
+    D <: Idiom: Type,
+    N <: NamingStrategy: Type,
     Ctx <: Context[_, _]: Type,
     Res: Type
-  ](quotedOp: Expr[Quoted[QAC[I, T]]], 
+  ](quotedOp: Expr[Quoted[QAC[I, T]]],
     ctx: Expr[ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res]])(using qctx: Quotes): Expr[Res] =
     new RunQuery[I, T, ResultRow, PrepareRow, D, N, Ctx, Res](quotedOp, ctx).apply()
 
@@ -310,18 +312,18 @@ object RunDynamicExecution:
   def apply[
     I,
     T,
-    RawT, 
-    D <: Idiom, 
-    N <: NamingStrategy, 
-    PrepareRow, 
-    ResultRow, 
+    RawT,
+    D <: Idiom,
+    N <: NamingStrategy,
+    PrepareRow,
+    ResultRow,
     Ctx <: Context[_, _],
     Res
-  ](quoted: Quoted[QAC[I, RawT]], 
+  ](quoted: Quoted[QAC[I, RawT]],
     ctx: ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res],
     rawExtractor: Extraction[ResultRow, T],
     spliceAst: Boolean
-  ): Res = 
+  ): Res =
   {
     def gatherLifts(quoted: Quoted[_]): List[Planter[_, _]] =
       quoted.lifts ++ quoted.runtimeQuotes.flatMap(vase => gatherLifts(vase.quoted))
@@ -348,7 +350,7 @@ object RunDynamicExecution:
     // which means that the compiler has not done the splicing for us. We need to do this ourselves.
     // So we need to go through all the QuotationTags in the AST and splice in the corresponding QuotationVase into it's place.
     // (also, we need to tell if ReturningGenerated is the top-level element in order to know that the
-    // extraction type is Extraction.Returning by in some cases the AST will be 
+    // extraction type is Extraction.Returning by in some cases the AST will be
     // FunctionApply(Function(ident, ReturningGenerated(...))), stuff). In those cases, we need
     // to do a beta-reduction first.
     val splicedAst = BetaReduction(spliceQuotations(quoted))
