@@ -25,7 +25,7 @@ inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
 object QuatMaking {
   private class SimpleQuatMaker(using override val qctx: Quotes) extends QuatMakingBase(using qctx), QuatMaking
   // TODO I don't think anyValBehavior is used anymore, try to remove it
-  private def quatMaker(behavior: AnyValBehavior = AnyValBehavior.TreatAsValue)(using qctx: Quotes) = 
+  private def quatMaker(behavior: AnyValBehavior = AnyValBehavior.TreatAsValue)(using qctx: Quotes) =
     new SimpleQuatMaker {
       override def anyValBehavior = behavior
     }
@@ -67,7 +67,7 @@ object QuatMaking {
   def lookupCache(tpe: QuotesTypeRepr)(computeQuat: () => Quat) =
     val lookup = quatCache.get(tpe)
     lookup match
-      case Some(value) => 
+      case Some(value) =>
         //println(s"---------------- SUCESSFULL LOOKUP OF: ${tpe}: ${value}")
         value
       case None =>
@@ -75,7 +75,7 @@ object QuatMaking {
         val quat = computeQuat()
         quatCache.put(tpe, quat)
         quat
-  
+
   enum AnyValBehavior:
     case TreatAsValue
     case TreatAsClass
@@ -84,7 +84,7 @@ object QuatMaking {
 trait QuatMaking extends QuatMakingBase {
   import qctx.reflect._
 
-  override def existsEncoderFor(tpe: TypeRepr): Boolean =  
+  override def existsEncoderFor(tpe: TypeRepr): Boolean =
     // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
     def encoderComputation() = {
       tpe.asType match
@@ -171,7 +171,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
           // [Option[t]]  will yield 'Nothing if is pulled out of a non optional value'
           if (tpe.is[Option[_]])
             tpe.asType match
-              case '[Option[t]] => 
+              case '[Option[t]] =>
                 Some(TypeRepr.of[t])
               case _ => None
           else
@@ -427,7 +427,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
           // Only allow coproducts that are enums or sealed traits
           case _ if !isSealedTraitOrEnum(tpeRepr.widen) =>
             None
-          case '[t] => 
+          case '[t] =>
             val typedTpe = tpe.asInstanceOf[Type[t]]
             computeCoproduct[t](using typedTpe)
           case _ =>

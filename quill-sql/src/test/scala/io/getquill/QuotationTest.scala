@@ -82,6 +82,15 @@ class QuotationTest extends Spec with Inside {
         case Quoted(ScalarTag(tagUid), List(LazyPlanter("hello", vaseUid)), List()) if (tagUid == vaseUid) =>
       }
     }
+    "run lazy lift" in {
+      case class Person(name: String)
+      inline def q = quote { query[Person].filter(p => p.name == lazyLift("Joe")) }
+      val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+      import ctx._
+      ctx.run(q).triple mustEqual (
+        "SELECT p.name FROM Person p WHERE p.name = ?", List("Joe"), ExecutionType.Static
+      )
+    }
     "two level query with a lift and plus operator" in {
       case class Address(street:String, zip:Int) extends Embedded
       case class Person(name: String, age: Int, address: Address)
@@ -133,7 +142,7 @@ class QuotationTest extends Spec with Inside {
       inline def q = quote { query[Person] }
       val ctx = new MirrorContext(PostgresDialect, Literal)
       import ctx._
-      
+
       inline def qq = quote { q.map(p => p.name + lazyLift("hello")) }
       qq must matchPattern {
         case Quoted(
@@ -188,7 +197,7 @@ class QuotationTest extends Spec with Inside {
       val qq = quote { q }
       qq must matchPattern {
         case Quoted(
-            QuotationTag(quotationTagId), 
+            QuotationTag(quotationTagId),
             Nil,
             List(QuotationVase(Quoted(ScalarTag(scalarTagId), List(EagerPlanter("hello", encoder, planterId)), Nil), quotationVaseId))
           ) if (quotationTagId == quotationVaseId && scalarTagId == planterId && encoder.eq(summon[Encoder[String]])) =>
@@ -290,12 +299,12 @@ class QuotationTest extends Spec with Inside {
             Nil
           ) if (tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
       }
-      
+
       val r = ctx.run(qq)
       ctx.pull(qq) mustEqual (List("hello"), ExecutionType.Dynamic)
     }
 
-    
+
 
     "compile-time -> runtime -> compile-time" in {
       case class Address(street:String, zip:Int) extends Embedded
@@ -315,7 +324,6 @@ class QuotationTest extends Spec with Inside {
       }
 
       inline def qqq = quote { qq.map(s => s + lift("are you")) }
-      println(io.getquill.util.Messages.qprint(qqq))
       // Should not match this pattern, should be spliced directly from the inline def
       qqq must matchPattern {
         case Quoted(
@@ -382,7 +390,7 @@ class QuotationTest extends Spec with Inside {
       assertThrows[IllegalArgumentException] { ctx.run(q) }
     }
 
-    "pull quote from unavailable context - only inlines" in {
+    "pull quote from unavailable context - only inlines - with map" in {
       val ctx = new MirrorContext(PostgresDialect, Literal)
       import ctx._
 
@@ -396,24 +404,47 @@ class QuotationTest extends Spec with Inside {
         }
       }
       inline def q = quote { new Outer().qqq }
-      println(ctx.run(q))
+      ctx.run(q).triple mustEqual (
+        "SELECT (p.name || ?) || ? FROM Person p", List("how", "are you"), ExecutionType.Static
+      )
     }
 
-    // "pull quote from unavailable context" in {
-    //   val ctx = new MirrorContext(PostgresDialect, Literal)
-    //   import ctx._
+    "pull quote from unavailable context - only inlines - with map and lazy lift" in {
+      val ctx = new MirrorContext(PostgresDialect, Literal)
+      import ctx._
 
-    //   class Outer {
-    //     inline def qqq = quote { new Inner().qq }
-    //     class Inner {
-    //       inline def qq = quote { new Core().q }
-    //       class Core {
-    //         inline def q = quote { query[Person] }
-    //       }
-    //     }
-    //   }
-    //   inline def qry = quote { new Outer().qqq }
-    //   println(ctx.run(qry))
-    // }
+      class Outer {
+        inline def qqq = new Inner().qq.map(s => s + lift("are you"))
+        class Inner {
+          inline def qq = new Core().q.map(p => p.name + lazyLift("how"))
+          class Core {
+            inline def q = query[Person]
+          }
+        }
+      }
+      inline def q = quote { new Outer().qqq }
+      ctx.run(q).triple mustEqual (
+        "SELECT (p.name || ?) || ? FROM Person p", List("how", "are you"), ExecutionType.Static
+      )
+    }
+
+    "pull quote from unavailable context - only inlines" in {
+      val ctx = new MirrorContext(PostgresDialect, Literal)
+      import ctx._
+
+      class Outer {
+        inline def qqq = quote { new Inner().qq }
+        class Inner {
+          inline def qq = quote { new Core().q }
+          class Core {
+            inline def q = quote { query[Person] }
+          }
+        }
+      }
+      inline def qry = quote { new Outer().qqq }
+      ctx.run(qry).triple mustEqual (
+        "SELECT x.name, x.age, x.street, x.zip FROM Person x", List(), ExecutionType.Static
+      )
+    }
   }
 }

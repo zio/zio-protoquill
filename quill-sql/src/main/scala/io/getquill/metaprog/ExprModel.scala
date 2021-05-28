@@ -271,7 +271,8 @@ object QuotedExpr {
     quoted match {
       case QuotedExpr.UprootableWithLifts(quotedExpr) => Some(quotedExpr)
       case _ =>
-        println("Quotations with Lifts do not meet compiletime criteria: " + Printer.TreeShortCode.show(quoted.asTerm));
+        // TODO Enable for trace logging
+        //println("Quotations with Lifts do not meet compiletime criteria: " + Printer.TreeShortCode.show(quoted.asTerm));
         None
     }
 }
