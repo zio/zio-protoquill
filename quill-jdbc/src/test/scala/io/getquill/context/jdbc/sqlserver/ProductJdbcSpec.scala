@@ -3,7 +3,7 @@ package io.getquill.context.jdbc.sqlserver
 import io.getquill.context.sql.ProductSpec
 import io.getquill._
 
-class ProductJdbcSpec extends ProductSpec { //hello
+class ProductJdbcSpec extends ProductSpec {
 
   val context = testContext
   import testContext._
@@ -22,60 +22,60 @@ class ProductJdbcSpec extends ProductSpec { //hello
       product.id mustEqual inserted(2)
     }
 
-    // "Single insert product" in {
-    //   val inserted = testContext.run(productSingleInsert)
-    //   val product = testContext.run(productById(lift(inserted))).head
-    //   product.description mustEqual "Window"
-    //   product.id mustEqual inserted
-    // }
+    "Single insert product" in {
+      val inserted = testContext.run(productSingleInsert)
+      val product = testContext.run(productById(lift(inserted))).head
+      product.description mustEqual "Window"
+      product.id mustEqual inserted
+    }
 
-    // "Single insert with inlined free variable" in {
-    //   val prd = Product(0L, "test1", 1L)
-    //   val inserted = testContext.run {
-    //     product.insert(_.sku -> lift(prd.sku), _.description -> lift(prd.description)).returningGenerated(_.id)
-    //   }
-    //   val returnedProduct = testContext.run(productById(lift(inserted))).head
-    //   returnedProduct.description mustEqual "test1"
-    //   returnedProduct.sku mustEqual 1L
-    //   returnedProduct.id mustEqual inserted
-    // }
+    "Single insert with inlined free variable" in {
+      val prd = Product(0L, "test1", 1L)
+      val inserted = testContext.run {
+        product.insert(_.sku -> lift(prd.sku), _.description -> lift(prd.description)).returningGenerated(_.id)
+      }
+      val returnedProduct = testContext.run(productById(lift(inserted))).head
+      returnedProduct.description mustEqual "test1"
+      returnedProduct.sku mustEqual 1L
+      returnedProduct.id mustEqual inserted
+    }
 
-    // "Single insert with free variable and explicit quotation" in {
-    //   val prd = Product(0L, "test2", 2L)
-    //   val q1 = quote {
-    //     product.insert(_.sku -> lift(prd.sku), _.description -> lift(prd.description)).returningGenerated(_.id)
-    //   }
-    //   val inserted = testContext.run(q1)
-    //   val returnedProduct = testContext.run(productById(lift(inserted))).head
-    //   returnedProduct.description mustEqual "test2"
-    //   returnedProduct.sku mustEqual 2L
-    //   returnedProduct.id mustEqual inserted
-    // }
+    "Single insert with free variable and explicit quotation" in {
+      val prd = Product(0L, "test2", 2L)
+      val q1 = quote {
+        product.insert(_.sku -> lift(prd.sku), _.description -> lift(prd.description)).returningGenerated(_.id)
+      }
+      val inserted = testContext.run(q1)
+      val returnedProduct = testContext.run(productById(lift(inserted))).head
+      returnedProduct.description mustEqual "test2"
+      returnedProduct.sku mustEqual 2L
+      returnedProduct.id mustEqual inserted
+    }
 
-    // "Single product insert with a method quotation" in {
-    //   val prd = Product(0L, "test3", 3L)
-    //   val inserted = testContext.run(productInsert(lift(prd)))
-    //   val returnedProduct = testContext.run(productById(lift(inserted))).head
-    //   returnedProduct.description mustEqual "test3"
-    //   returnedProduct.sku mustEqual 3L
-    //   returnedProduct.id mustEqual inserted
-    // }
+    "Single product insert with a method quotation" in {
+      val prd = Product(0L, "test3", 3L)
+      val inserted = testContext.run(productInsert(lift(prd)))
+      val returnedProduct = testContext.run(productById(lift(inserted))).head
+      returnedProduct.description mustEqual "test3"
+      returnedProduct.sku mustEqual 3L
+      returnedProduct.id mustEqual inserted
+    }
 
-    // "supports casts from string to number" - {
-    //   "toInt" in {
-    //     case class Product(id: Long, description: String, sku: Int)
-    //     val queried = testContext.run {
-    //       query[Product].filter(_.sku == lift("1004").toInt)
-    //     }.head
-    //     queried.sku mustEqual 1004L
-    //   }
+    "supports casts from string to number" - {
+      "toInt" in {
+        case class Product(id: Long, description: String, sku: Int)
+        val queried = testContext.run {
+          query[Product].filter(_.sku == lift("1004").toInt)
+        }.head
+        queried.sku mustEqual 1004L
+      }
 
-    //   "toLong" in {
-    //     val queried = testContext.run {
-    //       query[Product].filter(_.sku == lift("1004").toLong)
-    //     }.head
-    //     queried.sku mustEqual 1004L
-    //   }
-    // }
+      "toLong" in {
+        val queried = testContext.run {
+          query[Product].filter(_.sku == lift("1004").toLong)
+        }.head
+        queried.sku mustEqual 1004L
+      }
+    }
   }
 }
