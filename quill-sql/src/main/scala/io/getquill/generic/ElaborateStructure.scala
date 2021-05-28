@@ -16,7 +16,7 @@ import io.getquill.metaprog.TypeExtensions._
 import io.getquill.generic.DecodingType
 import io.getquill.util.Format
 
-/** 
+/**
  * Elaboration can be different whether we are encoding or decoding because we could have
  * decoders for certain things that we don't have encoders for and vice versa. That means
  * that the potentially something encoded as a value would be decoded as a case-class
@@ -306,8 +306,8 @@ object ElaborateStructure {
     }
   }
 
-  /** 
-   * Expand the structure of base term into series of terms for a given type 
+  /**
+   * Expand the structure of base term into series of terms for a given type
    * e.g. for Term(x) elaborate Person (case class Person(name: String, age: Int))
    * will be Term(name, Term(x, Branch), Leaf), Term(age, Term(x, Branch), Leaf)
    * Note that this could potentially be different if we are on the encoding or the
@@ -324,7 +324,7 @@ object ElaborateStructure {
    * {{ Term(name, Term(x, Branch), Leaf)) }}.
    * That means that we need to know whether to look for an encoder as opposed to a decoder
    * when trying to elaborate this type.
-   * 
+   *
    */
   def base[T: Type](term: Term, side: ElaborationSide)(using Quotes): Term = {
     import quotes.reflect.{Term => QTerm, _}
@@ -351,7 +351,7 @@ object ElaborateStructure {
       // Otherwise, summon the mirror and elaborate the value
     else
       // if there is a decoder for the term, just return the term
-      Expr.summon[Mirror.Of[T]] match 
+      Expr.summon[Mirror.Of[T]] match
         case Some(ev) =>
           // Otherwise, recursively summon fields
           ev match
@@ -373,7 +373,7 @@ object ElaborateStructure {
   }
 
   private def productized[T: Type](side: ElaborationSide, baseName: String = "x")(using Quotes): Ast = {
-    val lifted = base[T](Term("x", Branch), side).toAst
+    val lifted = base[T](Term(baseName, Branch), side).toAst
     val insert =
       if (lifted.length == 1)
         lifted.head._1
@@ -474,7 +474,7 @@ object ElaborateStructure {
     // for t:T := Person(name: Name, age: Int), Name(first:String, last: String) it will be paths := List[Expr](t.name.first, t.name.last, t.age) (labels: List(namefirst, namelast, age))
     val labels = elaboration.paths
     val pathLambdas = DeconstructElaboratedEntityLevels[T](elaboration)
-    val paths: List[Expr[_]] = pathLambdas.map { (exprPath, exprType) =>  
+    val paths: List[Expr[_]] = pathLambdas.map { (exprPath, exprType) =>
       exprType match
         case '[t] =>
           if (TypeRepr.of[t] =:= TypeRepr.of[Any])
@@ -493,7 +493,7 @@ object ElaborateStructure {
   private[getquill] def decomposedLiftsOfProductValue[T: Type](elaboration: Term)(using Quotes): List[(Expr[T => _], Type[_])] =
     DeconstructElaboratedEntityLevels[T](elaboration)
 
-  /** 
+  /**
    * Flatten the elaboration from 'node' into a completely flat product type
    * Technicallly don't need Type T but it's very useful to know for errors and it's an internal API so I'll keep it for now
    */

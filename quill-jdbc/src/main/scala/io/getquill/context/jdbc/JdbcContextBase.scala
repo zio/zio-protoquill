@@ -25,16 +25,16 @@ trait JdbcContextSimplified[Dialect <: SqlIdiom, Naming <: NamingStrategy]
 trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   extends SqlContext[Dialect, Naming]
   with Encoders
-  with Decoders 
+  with Decoders
 {
 
   // Dotty doesn't like that this is defined in both Encoders and Decoders.
   // Makes us define it here in order to resolve the conflict.
   type Index = Int
 
-  //private[getquill] val logger = ContextLogger(classOf[JdbcRunContext[_, _]]) // Note this is incorrect in the Scala 2 JdbcRunContext.scala
+  private[getquill] val logger = ContextLogger(classOf[JdbcRunContext[_, _]]) // Note this is incorrect in the Scala 2 JdbcRunContext.scala
 
-  // Not required for JdbcRunContext in Scala2-Quill but it's a typing error. It only works 
+  // Not required for JdbcRunContext in Scala2-Quill but it's a typing error. It only works
   // because executeQuery is not actually defined in Context.scala therefore typing doesn't have
   // to be correct on the base-level. Same issue with RunActionResult and others
   override type Result[T] = T

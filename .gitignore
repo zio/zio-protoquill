@@ -42,3 +42,4 @@ project/.bloop/
 .scalafmt.conf
 project/metals.sbt
 project/project/
+.sbtopts

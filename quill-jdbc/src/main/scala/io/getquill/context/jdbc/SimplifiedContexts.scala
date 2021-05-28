@@ -2,6 +2,7 @@ package io.getquill.context.jdbc
 
 import java.sql.Types
 import io.getquill._
+import io.getquill.context.ExecutionInfo
 
 trait PostgresJdbcContextSimplified[N <: NamingStrategy] extends JdbcContextSimplified[PostgresDialect, N]
   with PostgresJdbcRunContext[N]
@@ -61,13 +62,12 @@ trait SqlServerJdbcRunContext[N <: NamingStrategy] extends JdbcRunContext[SQLSer
 
   val idiom = SQLServerDialect
 
-  // Cannot do returning in Dotty yet
-  // override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction): Result[O] =
-  //   withConnectionWrapped { conn =>
-  //     val (params, ps) = prepare(prepareWithReturning(sql, conn, returningBehavior))
-  //     logger.logQuery(sql, params)
-  //     handleSingleResult(extractResult(ps.executeQuery, extractor))
-  //   }
+  override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[O] =
+    withConnectionWrapped { conn =>
+      val (params, ps) = prepare(prepareWithReturning(sql, conn, returningBehavior))
+      logger.logQuery(sql, params)
+      handleSingleResult(extractResult(ps.executeQuery, extractor))
+    }
 }
 
 trait OracleJdbcContextSimplified[N <: NamingStrategy] extends JdbcContextSimplified[OracleDialect, N]

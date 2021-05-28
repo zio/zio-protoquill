@@ -30,17 +30,16 @@ class ProductJdbcSpec extends ProductSpec {
 
     case class Foo(id: Long, description: String, sku: Long)
 
-    // TODO Not working yet
-    // "Single insert with inlined free variable" in {
-    //   val prd = Product(0L, "test1", 1L)
-    //   val inserted = testContext.run {
-    //     product.insert(_.sku -> lift(prd.sku), _.description -> lift(prd.description)).returning(r => r)
-    //   }
-    //   val returnedProduct = testContext.run(productById(lift(inserted.id))).head
-    //   returnedProduct.description mustEqual "test1"
-    //   returnedProduct.sku mustEqual 1L
-    //   returnedProduct mustEqual inserted
-    // }
+    "Single insert with inlined free variable" in {
+      val prd = Product(0L, "test1", 1L)
+      val inserted = testContext.run {
+        product.insert(_.sku -> lift(prd.sku), _.description -> lift(prd.description)).returning(r => r)
+      }
+      val returnedProduct = testContext.run(productById(lift(inserted.id))).head
+      returnedProduct.description mustEqual "test1"
+      returnedProduct.sku mustEqual 1L
+      returnedProduct mustEqual inserted
+    }
 
     "Single insert with free variable and explicit quotation" in {
       val prd = Product(0L, "test2", 2L)
