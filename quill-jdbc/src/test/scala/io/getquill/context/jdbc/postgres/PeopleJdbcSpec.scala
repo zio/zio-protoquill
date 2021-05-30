@@ -47,10 +47,9 @@ class PeopleJdbcSpec extends PeopleSpec {
     testContext.run(satisfies(eval(`Ex 7 predicate`))) mustEqual `Ex 7 expected result`
   }
 
-  // TODO Need to fix
-  // "Example 8 - contains empty" in {
-  //   testContext.run(`Ex 8 and 9 contains`(liftQuery(`Ex 8 param`))) mustEqual `Ex 8 expected result`
-  // }
+  "Example 8 - contains empty" in {
+    testContext.run(`Ex 8 and 9 contains`(liftQuery(`Ex 8 param`))) mustEqual `Ex 8 expected result`
+  }
 
   "Example 9 - contains non empty" in {
     testContext.run(`Ex 8 and 9 contains`(liftQuery(`Ex 9 param`))) mustEqual `Ex 9 expected result`
