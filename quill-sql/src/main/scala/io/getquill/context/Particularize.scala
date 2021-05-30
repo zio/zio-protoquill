@@ -80,6 +80,39 @@ object Particularize:
         case object Ground extends Ground
         def Bottom = Matrowl(List(), Matrowl.Ground)
 
+      /**
+       * A Matrowl lit. Matroshka + Bowl is essentially a stack where each frame consists of a list of items.
+       * You can add to the list on the top of the stack, pop the current Matrowl, or stack another one on top of it.
+       * This datastructure became necessary in the token2Expr function when I realized in that in the case of:
+       * Work.Token(SetContainsToken(a, op, b @ ScalarTagToken(tag))), the list this tag points to can be empty which means
+       * that the emptySetContainsToken needs to be expanded instead of the Expr[String] that is returned by the placeholders
+       * function. The problem however is that we only know at runtime whether the list is zero or non-zero elements long.
+       * This leads us to the requirement to either make token2Expr on tail recursive and introduce a something like this:
+       * {{
+       *   case Work.Token(SetContainsToken(a, op, b @ ScalarTagToken(tag))) =>
+       *   '{if (list.length != 0)
+       *      token2Expr(...)
+       *     else
+       *      token2Expr(emptySetContainsToken(a), ...)
+       *    }
+       * }}
+       * This of course is no longer tail-recursive and therefore would require a stack-frame for every token
+       * that needs to be Expr[String]'ed. One possible alternative would be to trampoline the entire execution
+       * however, that would likely introduce a significant performance penalty. Instead, a simplification can be made
+       * in which variations of the conditional (i.e. the regular expansion and the emptySetContainsToken one)
+       * are expanded and they are kept separate in the 'done-pile' of token2Expr in some kind of data strucuture
+       * from which they can be picked up later.
+       * The following sequence of steps therefore emerges when running into a
+       * `case Work.Token(SetContainsToken(a, op, b @ ScalarTagToken(tag)))` where `tag` is a list lift:
+       * <li> Take the current done-area of token2Expr and stack a new matrowl above it
+       * <li> Process all the tokens that would be needed to apply a emptySetContainsToken tokenization
+       * <li> Add yet another stack frame on top of the matrowl
+       * <li> Process all the tokens that would be needed to apply a regular tokenization of the list
+       * i.e. `stmt"$a $op (") :: Work.AlreadyDone(liftsExpr) :: Work.Token(stmt")")` etc... and place them
+       * onto a the matrowl we just created.
+       * <li> Pop the two created stack frames into groups (one, two) and splice them into the '{if (list.length != 0) {one} else {two}}`
+       * note that they will come out in the opposite order from which they were put in.
+       */
       case class Matrowl private (doneWorks: List[Expr[String]], below: Matrowl | Matrowl.Ground):
         def dropIn(doneWork: Expr[String]): Matrowl =
           //println(s"Dropping: ${Format.Expr(doneWork)} into ${this.toString}")
@@ -139,6 +172,7 @@ object Particularize:
               case Work.Pop2(finished) =>
                 // we expect left := workIfListNotEmpty and right := workIfListEmpty
                 // this is the logical completion of the SetContainsToken(a, op, ScalarTagToken(tag)) case
+                // (note that these should come off in reversed order from the one they were put in)
                 val (left, right, restOfMatrowl) = matrowl.pop2
                 val finishedExpr = finished(left.reverse.mkStringExpr, right.reverse.mkStringExpr)
                 apply(tail, restOfMatrowl.dropIn(finishedExpr), placeholderCount)
