@@ -437,7 +437,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
       def traverseCoproduct[Types](types: Type[Types]): List[Quat] =
         types match
           case '[tpe *: tpes] =>
-            println(s"Traversing coproducts: ${io.getquill.util.Format.TypeOf[tpe]}, and ${io.getquill.util.Format.TypeOf[tpes]}")
+            //println(s"Traversing coproducts: ${io.getquill.util.Format.TypeOf[tpe]}, and ${io.getquill.util.Format.TypeOf[tpes]}")
             InferQuat.of[tpe] :: traverseCoproduct[tpes](Type.of[tpes])
           case '[EmptyTuple] =>
             Nil

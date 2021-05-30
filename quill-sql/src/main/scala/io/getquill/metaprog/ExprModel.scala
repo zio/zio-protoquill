@@ -445,10 +445,10 @@ object QuotationLotExpr {
   //   }
   // }
 
-  class Uprootable(
-    val uid: String,
-    val ast: Expr[Ast],
-    val inlineLifts: List[PlanterExpr[_, _]]
+  case class Uprootable(
+    uid: String,
+    ast: Expr[Ast],
+    inlineLifts: List[PlanterExpr[_, _]]
   )(
     val quotation: Expr[Quoted[Any]],
     val bin: Expr[QuotationLot[Any]],
@@ -456,8 +456,6 @@ object QuotationLotExpr {
   ) extends QuotationLotExpr
 
   object Uprootable:
-    def unapply(up: Uprootable): Option[(String, Expr[Ast], List[PlanterExpr[_, _]])] =
-      Some(up.uid, up.ast, up.inlineLifts)
     object Ast:
       def unapply(up: Uprootable): Option[Expr[Ast]] =
         Some(up.ast)

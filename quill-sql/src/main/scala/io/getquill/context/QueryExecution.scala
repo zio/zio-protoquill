@@ -394,7 +394,7 @@ object RunDynamicExecution:
     val gatheredLifts = gatherLifts(quoted)
     val lifts = gatheredLifts.map(lift => (lift.uid, lift)).toMap
 
-    val queryString = Particularize.Dynamic(unparticularQuery, gatheredLifts, ctx.idiom.liftingPlaceholder)
+    val queryString = Particularize.Dynamic(unparticularQuery, gatheredLifts, ctx.idiom.liftingPlaceholder, ctx.idiom.emptySetContainsToken)
 
     // Match the ScalarTags we pulled out earlier (in ReifyStatement) with corresponding Planters because
     // the Planters can be out of order (I.e. in a different order then the ?s in the SQL query that they need to be spliced into).

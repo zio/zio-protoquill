@@ -550,13 +550,12 @@ class QuerySpec extends Spec {
         }
         testContext.run(q).string mustEqual "SELECT t.s, t.i, t.l, t.o, t.b FROM TestEntity t WHERE FALSE"
       }
-      // TODO Need to fix up dynamic empty set variation
-      // "empty dynamic" in { // (adding this since dynamic empty set uses different logic then the static one)
-      //   val q = quote {
-      //     qr1.filter(t => liftQuery(Set.empty[Int]).contains(t.i))
-      //   }
-      //   testContext.run(q).string mustEqual "SELECT t.s, t.i, t.l, t.o, t.b FROM TestEntity t WHERE FALSE"
-      // }
+      "empty dynamic" in { // (adding this since dynamic empty set uses different logic then the static one)
+        val q = quote {
+          qr1.filter(t => liftQuery(Set.empty[Int]).contains(t.i))
+        }
+        testContext.run(q).string mustEqual "SELECT t.s, t.i, t.l, t.o, t.b FROM TestEntity t WHERE FALSE"
+      }
     }
   }
 }

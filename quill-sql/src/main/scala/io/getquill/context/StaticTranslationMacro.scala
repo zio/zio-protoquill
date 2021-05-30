@@ -149,7 +149,10 @@ object StaticTranslationMacro {
       def errPrint(str: String) =
         opt match {
           case s: Some[T] => s
-          case None => println(str); None
+          case None =>
+            // TODO Print this when a high level of trace debugging is enabled
+            //println(str);
+            None
         }
     }
 

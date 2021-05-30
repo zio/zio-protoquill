@@ -196,10 +196,10 @@ object Particularize:
 
   object Dynamic:
     /** Convenience constructor for doing particularization from an Unparticular.Query */
-    def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String): String =
-      raw(query.realQuery, lifts, liftingPlaceholder)
+    def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token): String =
+      raw(query.realQuery, lifts, liftingPlaceholder, emptySetContainsToken)
 
-    private[getquill] def raw[PrepareRowTemp](statements: Statement, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String): String = {
+    private[getquill] def raw[PrepareRowTemp](statements: Statement, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token): String = {
       enum LiftChoice:
         case ListLift(value: EagerListPlanter[Any, PrepareRowTemp])
         case SingleLift(value: EagerPlanter[Any, PrepareRowTemp])
@@ -216,15 +216,20 @@ object Particularize:
 
       // TODO Also need to account for empty tokens but since we actually have a reference to the list can do that directly
       def placeholders(uid: String, initialIndex: Int): (Int, String) =
-        val liftType = getLifts(uid)
-        liftType match
+        getLifts(uid) match
           case LiftChoice.ListLift(lifts) =>
             // using index 1 since SQL prepares start with $1 typically
-            val liftsPlaceholder = lifts.values.zipWithIndex.map((_, index) => liftingPlaceholder(index + 1 + initialIndex)).mkString(", ")
+            val liftsPlaceholder =
+              lifts.values.zipWithIndex.map((_, index) => liftingPlaceholder(index + 1 + initialIndex)).mkString(", ")
             val liftsLength = lifts.values.length
             (liftsLength, liftsPlaceholder)
           case LiftChoice.SingleLift(lift) =>
             (1, liftingPlaceholder(initialIndex + 1))
+
+      def isEmptyListLift(uid: String) =
+        getLifts(uid) match
+          case LiftChoice.ListLift(lifts) => lifts.values.isEmpty
+          case _ => false
 
       def token2String(token: Token): String = {
         @tailrec
@@ -237,7 +242,12 @@ object Particularize:
           case head :: tail =>
             head match {
               case StringToken(s2)            => apply(tail, s2 +: sqlResult, placeholderIndex)
-              case SetContainsToken(a, op, b) => apply(stmt"$a $op ($b)" +: tail, sqlResult, placeholderIndex)
+              case SetContainsToken(a, op, b) =>
+                b match
+                  case ScalarTagToken(tag) if isEmptyListLift(tag.uid) =>
+                    apply(emptySetContainsToken(a) +: tail, sqlResult, placeholderIndex)
+                  case _ =>
+                    apply(stmt"$a $op ($b)" +: tail, sqlResult, placeholderIndex)
               case ScalarTagToken(tag)        =>
                 val (liftsLength, lifts) = placeholders(tag.uid, placeholderIndex)
                 apply(tail, lifts +: sqlResult, placeholderIndex + liftsLength)
