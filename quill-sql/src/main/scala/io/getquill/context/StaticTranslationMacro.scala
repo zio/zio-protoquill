@@ -171,7 +171,7 @@ object StaticTranslationMacro {
                   query.basicQuery
               )
           )
-        StaticState(query, encodedLifts, returnAction)(ast)
+        StaticState(query, encodedLifts, returnAction, idiom)(ast)
       }
 
     if (tryStatic.isEmpty)

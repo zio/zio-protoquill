@@ -231,7 +231,7 @@ object QueryExecution:
       val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow](${Expr.ofList(lifts)}, row) }
       val extractor = MakeExtractor[ResultRow, T, RawT].static(state, converter, extract)
 
-      val particularQuery = Particularize.Static(state.query, lifts, '{ $contextOperation.idiom.liftingPlaceholder })
+      val particularQuery = Particularize.Static(state.query, lifts, '{ $contextOperation.idiom.liftingPlaceholder }, state.idiom.emptySetContainsToken)
       // Plug in the components and execute
       val astSplice =
         if (TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]) Lifter(state.ast)

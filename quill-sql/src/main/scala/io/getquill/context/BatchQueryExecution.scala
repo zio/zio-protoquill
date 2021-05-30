@@ -178,7 +178,7 @@ object BatchQueryExecution:
               case BatchActionType.Delete => '{ Quoted[Delete[I]](${Lifter(actionQueryAst)}, ${Expr.ofList(rawLifts)}, Nil) }
 
           StaticTranslationMacro.applyInner[I, T, D, N](quotation, ElaborationBehavior.Skip) match
-            case Some(state @ StaticState(query, filteredLists, _)) =>
+            case Some(state @ StaticState(query, filteredLists, _, _)) =>
               // create an extractor for returning actions
               val extractor = MakeExtractor[ResultRow, T, T].static(state, identityConverter, extractionBehavior)
 

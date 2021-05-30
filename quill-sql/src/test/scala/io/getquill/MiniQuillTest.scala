@@ -11,7 +11,7 @@ import io.getquill.util.debug.PrintMac
 
 object MiniQuillTest {
 
-  val ctx = new MirrorContext(PostgresDialect, Literal)
+  val ctx = new MirrorContext(PostgresDialect, Literal) //hellooo
   import ctx._
 
   def main(args: Array[String]): Unit = {
@@ -23,7 +23,7 @@ object MiniQuillTest {
 
     // implicit inline def qm: QueryMeta[PersonName, String] = {
     //     queryMeta[PersonName, String](
-    //       quote { 
+    //       quote {
     //         (q: Query[PersonName]) => q.map(p => p.name)
     //       }
     //     )((name: String) => PersonName(name))
@@ -33,7 +33,7 @@ object MiniQuillTest {
     //   query[PersonName]
     // }
 
-    
+
 
     // inline def q = quote {
     //   query[Person].filter(p => p.name == lift("joe")) //helooo
@@ -63,7 +63,7 @@ object MiniQuillTest {
     // println( run(q) )
 
     // {
-    //   case class Age(value: Int) extends Embedded  
+    //   case class Age(value: Int) extends Embedded
     //   case class Person(name: String, age: Age)
     //   inline def q = quote {
     //     query[Person].insert(Person("Joe", Age(123)))
@@ -77,7 +77,7 @@ object MiniQuillTest {
     // {
     //   case class Age(value: Int) extends Embedded
     //   case class Person(name: String, age: Option[Age])
-      
+
     //   inline def q = quote {
     //     //query[Person].insert(_.name -> "joe")
     //     query[Person].insert(Person("Joe", Option(Age(123)))) //hello
@@ -93,10 +93,10 @@ object MiniQuillTest {
 
     //   // When using implicit val
     //   // implicit val personSchema: EntityQuery[Person] = querySchema[Person]("tblPerson", _.name -> "colName")
-    //   inline given personSchema: SchemaMeta[Person] = 
+    //   inline given personSchema: SchemaMeta[Person] =
     //     schemaMeta[Person]("tblPerson", _.name -> "colName", _.age.map(_.value) -> "colValue")
     //   PrintMac(personSchema)
-      
+
     //   inline def q = quote {
     //     //query[Person].insert(_.name -> "joe")
     //     query[Person].insert(Person("Joe", Option(Age(Option(123))))) //helloooooooooooooooooooooooooooooooooo
@@ -104,12 +104,12 @@ object MiniQuillTest {
     //   println(q.ast)
     //   run(q)
     // }
-    
+
     // Test regular insert with schema
     // Test insert with entity
     // Test insert with entity with optionals
     // Test Insert with schema and entity and optionls
-    
+
     // Test this
     // {
     //   case class Age(value: Int) extends Embedded
@@ -117,10 +117,10 @@ object MiniQuillTest {
 
     //   // When using implicit val
     //   // implicit val personSchema: EntityQuery[Person] = querySchema[Person]("tblPerson", _.name -> "colName")
-    //   inline given personSchema: SchemaMeta[Person] = 
+    //   inline given personSchema: SchemaMeta[Person] =
     //     schemaMeta[Person]("tblPerson", _.name -> "colName", _.age.map(_.value) -> "colValue")
     //   PrintMac(personSchema)
-      
+
     //   inline def q = quote {
     //     //query[Person].insert(_.name -> "joe")
     //     query[Person].insert(Person("Joe", Option(Age(123)))) //helloooooooooooooooooooooooooo
@@ -131,7 +131,7 @@ object MiniQuillTest {
 
     // {
     //   case class Person(name: String, age: Int)
-    //   inline def q = quote { 
+    //   inline def q = quote {
     //     query[Person].insert(_.name -> "Joe", _.age -> 123) //hello
     //   }
     //   println(run(q))
@@ -150,7 +150,7 @@ object MiniQuillTest {
     //   println( run(q) ) // hello
     // }
 
-    
+
     // TODO Exclude a column (via InsertMeta) from Optional object (i.e and multiple excludes)
     // TODO Exclude a column (via InsertMeta)from Insert meta with Insert Schema (i.e and multiple excludes)
     // TODO Exclude a column (via InsertMeta)from Optional object Insert meta with Insert Schema (i.e and multiple excludes)
@@ -173,22 +173,22 @@ object MiniQuillTest {
 
   def infixAndLiftQuery() = {
 
-    //hellooooooooo
+    //hellooooooooooooooo
 
 
 
 
     case class Person[T](name: String, age: Int)
-    val names = List("Joe", "Jack")
+    val names = List("Joe", "Jack") //List[String]() // List("Joe", "Jack")
     inline def q = quote {
-      query[Person[String]].filter(p => 
+      query[Person[String]].filter(p =>
         liftQuery(names).contains(p.name) && infix"fun(${p.name})".pure.as[Boolean]
       )
     }
-    println(run(q))
+    println(run(q)) //hellooooo
 
 
-    
+
 
 
   }
@@ -229,7 +229,7 @@ object MiniQuillTest {
 
   //   // TODO Make sure that 'v' is not used as an identifier in the insert macro, rather a new id is found
   //   val v = Person("Joe", 123)
-    
+
   //   //PrintMac(lift(p))
   //   println(io.getquill.util.Messages.qprint(quote { lift(v) } )) //helloooooooooooooooooooo
 
