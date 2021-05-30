@@ -15,6 +15,7 @@ import io.getquill.idiom.StatementInterpolator._
 import scala.annotation.tailrec
 import io.getquill.idiom._
 import scala.quoted._
+import io.getquill.util.Format
 
 /**
  * For a query that has a filter(p => liftQuery(List("Joe","Jack")).contains(p.name)) we need to turn
@@ -28,10 +29,10 @@ import scala.quoted._
 object Particularize:
   object Static:
     /** Convenience constructor for doing particularization from an Unparticular.Query */
-    def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Expr[Planter[_, _]]], runtimeLiftingPlaceholder: Expr[Int => String])(using Quotes): Expr[String] =
-      raw(query.realQuery, lifts, runtimeLiftingPlaceholder)
+    def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Expr[Planter[_, _]]], runtimeLiftingPlaceholder: Expr[Int => String], emptySetContainsToken: Token => Token)(using Quotes): Expr[String] =
+      raw(query.realQuery, lifts, runtimeLiftingPlaceholder, emptySetContainsToken)
 
-    private[getquill] def raw[PrepareRowTemp](statement: Statement, lifts: List[Expr[Planter[_, _]]], runtimeLiftingPlaceholder: Expr[Int => String])(using Quotes): Expr[String] = {
+    private[getquill] def raw[PrepareRowTemp](statement: Statement, lifts: List[Expr[Planter[_, _]]], runtimeLiftingPlaceholder: Expr[Int => String], emptySetContainsToken: Token => Token)(using Quotes): Expr[String] = {
       import quotes.reflect._
 
       enum LiftChoice:
@@ -72,33 +73,113 @@ object Particularize:
           case LiftChoice.SingleLift(lift) =>
             (Expr(1), '{ $runtimeLiftingPlaceholder($initialIndex + 1) })
 
+
+      object Matrowl:
+        sealed trait Ground:
+          override def toString = "Gnd"
+        case object Ground extends Ground
+        def Bottom = Matrowl(List(), Matrowl.Ground)
+
+      case class Matrowl private (doneWorks: List[Expr[String]], below: Matrowl | Matrowl.Ground):
+        def dropIn(doneWork: Expr[String]): Matrowl =
+          println(s"Dropping: ${Format.Expr(doneWork)} into ${this.toString}")
+          this.copy(doneWorks = doneWork +: this.doneWorks)
+        def stack: Matrowl =
+          println(s"Stack New Matrowl ():=> ${this.toString}")
+          Matrowl(List(), this)
+        def pop: (List[Expr[String]], Matrowl) =
+          println(s"Pop Top Matrowl: ${this.toString}")
+          below match
+            case m: Matrowl => (doneWorks, m)
+            case e: Matrowl.Ground => report.throwError("Tokenization error, attempted to pop a bottom-level element")
+        def pop2: (List[Expr[String]], List[Expr[String]], Matrowl) =
+          println(s"Pop Two Matrowls...")
+          val (one, firstBelow) = pop
+          val (two, secondBelow) = firstBelow.pop
+          (one, two, secondBelow)
+        def isBottom: Boolean =
+          below match
+            case m: Matrowl => false
+            case e: Matrowl.Ground => true
+        def scoop: List[Expr[String]] =
+          println(s"Scoop From Matrowl: ${this.toString}")
+          doneWorks
+        override def toString = s"(${doneWorks.map(Format.Expr(_)).mkString(", ")}) -> ${below.toString}"
+      end Matrowl
+
+
+      enum Work:
+        case AlreadyDone(expr: Expr[String])
+        case Token(token: io.getquill.idiom.Token)
+        // Stack the Matrowl
+        case Stack
+        // Pop the Matrowl
+        case Pop2(finished: (Expr[String], Expr[String]) => Expr[String])
+      object Work:
+        def StackL = List(Work.Stack)
+
+      extension (stringExprs: Seq[Expr[String]])
+        def mkStringExpr = stringExprs.foldLeft(Expr(""))((concatonation, nextExpr) => '{ $concatonation + $nextExpr })
+
+
       def token2Expr(token: Token): Expr[String] = {
         @tailrec
         def apply(
-          workList: List[Token],
-          sqlResult: Seq[Expr[String]],
-          placeholderIndex:   Expr[Int] // I.e. the index of the '?' that is inserted in the query (that represents a lift)
+          workList: List[Work],
+          matrowl: Matrowl,
+          placeholderCount:   Expr[Int] // I.e. the index of the '?' that is inserted in the query (that represents a lift)
         ): Expr[String] = workList match {
-          case Nil => sqlResult.reverse.foldLeft(Expr(""))((concatonation, nextExpr) => '{ $concatonation + $nextExpr })
+          case Nil =>
+            if (!matrowl.isBottom)
+              report.throwError("Did not get to the bottom of the stack while tokenizing")
+            matrowl.scoop.mkStringExpr
           case head :: tail =>
             head match {
-              case StringToken(s2)            => apply(tail, Expr(s2) +: sqlResult, placeholderIndex)
-              case SetContainsToken(a, op, b) => apply(stmt"$a $op ($b)" +: tail, sqlResult, placeholderIndex)
-              case ScalarTagToken(tag)        =>
-                val (liftsLength, liftsExpr) = placeholders(tag.uid, placeholderIndex)
-                apply(tail, liftsExpr +: sqlResult, '{ $placeholderIndex + $liftsLength })
-              case Statement(tokens)          => apply(tokens.foldRight(tail)(_ +: _), sqlResult, placeholderIndex)
-              case _: ScalarLiftToken =>
+              case Work.Stack => apply(tail, matrowl.stack, placeholderCount)
+              case Work.Pop2(finished) =>
+                // we expect left := workIfListNotEmpty and right := workIfListEmpty
+                // this is the logical completion of the SetContainsToken(a, op, ScalarTagToken(tag)) case
+                val (left, right, restOfMatrowl) = matrowl.pop2
+                val finishedExpr = finished(left.reverse.mkStringExpr, right.reverse.mkStringExpr)
+                apply(tail, restOfMatrowl.dropIn(finishedExpr), placeholderCount)
+
+              case Work.AlreadyDone(expr)       => apply(tail, matrowl.dropIn(expr), placeholderCount)
+              case Work.Token(StringToken(s2))  => apply(tail, matrowl.dropIn(Expr(s2)), placeholderCount)
+              case Work.Token(SetContainsToken(a, op, ScalarTagToken(tag))) =>
+                val (liftsLength, liftsExpr) = placeholders(tag.uid, placeholderCount)
+                val workIfListNotEmpty = Work.Token(stmt"$a $op (") :: Work.AlreadyDone(liftsExpr) :: Work.Token(stmt")") :: Nil
+                val workIfListEmpty = List(Work.Token(emptySetContainsToken(a)))
+                val complete =
+                  (workIfListNotEmpty: Expr[String], workIfListEmpty: Expr[String]) => '{
+                    if ($liftsLength != 0) $workIfListNotEmpty else $workIfListEmpty
+                  }
+                val work = Work.Pop2(complete) :: workIfListNotEmpty ::: Work.StackL ::: workIfListEmpty ::: Work.StackL ::: tail
+                // We can spliced liftsLength combo even if we're not splicing in the array itself (i.e. in cases)
+                // where we're splicing the empty token. That's fine since when we're splicing the empty token, the
+                // array length is zero.
+                apply(work ::: tail, matrowl, '{ $placeholderCount + $liftsLength })
+
+              case Work.Token(SetContainsToken(a, op, b)) => apply(Work.Token(stmt"$a $op ($b)") +: tail, matrowl, placeholderCount)
+
+              case Work.Token(ScalarTagToken(tag))        =>
+                val (liftsLength, liftsExpr) = placeholders(tag.uid, placeholderCount)
+                apply(tail, matrowl.dropIn(liftsExpr), '{ $placeholderCount + $liftsLength })
+              case Work.Token(Statement(tokens))          =>
+                val newTokens = tokens.map(Work.Token(_)) ::: tail
+                apply(newTokens, matrowl, placeholderCount)
+              case Work.Token(_: ScalarLiftToken) =>
                 throw new UnsupportedOperationException("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
-              case _: QuotationTagToken =>
+              case Work.Token(_: QuotationTagToken) =>
                 throw new UnsupportedOperationException("Quotation Tags must be resolved before a reification.")
             }
         }
-        apply(List(token), Seq(), Expr(0))
+        apply(List(Work.Token(token)), Matrowl.Bottom, Expr(0))
       }
       token2Expr(statement)
     }
   end Static
+
+
 
   object Dynamic:
     /** Convenience constructor for doing particularization from an Unparticular.Query */
@@ -120,6 +201,7 @@ object Particularize:
             throw new IllegalArgumentException(s"Cannot find list-lift with UID ${uid} (from all the lifts ${lifts})")
           }
 
+      // TODO Also need to account for empty tokens but since we actually have a reference to the list can do that directly
       def placeholders(uid: String, initialIndex: Int): (Int, String) =
         val liftType = getLifts(uid)
         liftType match
