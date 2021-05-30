@@ -68,7 +68,7 @@ object ParserHelpers {
 
       def unapply(expr: Expr[_]): Option[Assignment] =
         UntypeExpr(expr) match
-          case Components(ident, identTpe, prop, value) => 
+          case Components(ident, identTpe, prop, value) =>
             Some(Assignment(cleanIdent(ident, identTpe), astParse(prop), astParse(value)))
           case _ => None
     }
@@ -286,6 +286,9 @@ object ParserHelpers {
       // ptups.map { case (name, age) => ... } where ptups := people.map(p => (p.name, p.age))
       case SimpleClause(body: Ast) extends PatMatch
       case MultiClause(clauses: List[PatMatchClause]) extends PatMatch
+      // In some cases, scala compiler adds a trivial boolean clause to a tuple pattern match
+      // we detect these and can just spliced TRUE or 1=1 in those cases
+      case AutoAddedTrivialClause
 
     object PatMatchTerm:
       object SimpleClause:
@@ -299,7 +302,14 @@ object ParserHelpers {
           case Match(expr, List(CaseDef(fields, None, body))) =>
             Some(PatMatch.SimpleClause(betaReduceTupleFields(expr, fields)(body)))
 
-          case Match(expr, caseDefs) =>
+          case Match(expr,List(
+                CaseDef(fields, None, Literal(BooleanConstant(true))),
+                CaseDef(TIdent("_"), None, Literal(BooleanConstant(false)))
+              )) =>
+            Some(PatMatch.AutoAddedTrivialClause)
+
+          case m @ Match(expr, caseDefs) =>
+            println(s"Doing Multi-Clause Pat-match: ${Format(Printer.TreeStructure.show(m))}")
             val clauses =
               caseDefs.map {
                 case CaseDef(fields, guard, body) =>
@@ -344,11 +354,14 @@ object ParserHelpers {
           // need a clause to beta reduction over the entire partial-function
           case TIdent("_") =>
             List()
-          case other => 
+          case other =>
             val addition = messageExpr match
               case Some(expr) => s" in the expression: ${Format.Tree(expr)}"
               case None => ""
-            report.throwError(s"Invalid Pattern Matching Term: ${Format.Tree(other)}${addition}")
+            report.throwError(s"Invalid Pattern Matching Term: ${Format.Tree(other)}${addition}.\n" +
+              s"Quill Query Pattern matches must be correctly matching tuples.\n" +
+              s"For example for query[Person].map(p => (p.name, p.age)) you can then do:\n" +
+              s"query[Person].map(p => (p.name, p.age)).map { case (name, age) => ... }")
         }
       }
 

@@ -271,7 +271,7 @@ case class BlockParser(root: Parser[Ast] = Parser.empty)(override implicit val q
 }
 
 case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PatternMatchingValues {
-  import quotes.reflect._
+  import quotes.reflect.{ Constant => TConstant, _ }
   import Parser.Implicits._
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -280,6 +280,7 @@ case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implici
       patMatch match
         case PatMatch.SimpleClause(ast) => ast
         case PatMatch.MultiClause(clauses: List[PatMatchClause]) => nestedIfs(clauses)
+        case PatMatch.AutoAddedTrivialClause => Constant(true, Quat.BooleanValue)
   }
 
   def nestedIfs(clauses: List[PatMatchClause]): Ast =
@@ -368,7 +369,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 // As a performance optimization, ONLY Matches things returning Action[_] UP FRONT.
 // All other kinds of things rejected
 case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Action[_], Ast] with Assignments {
-  import quotes.reflect.{Constant => TConstantant, _}
+  import quotes.reflect.{Constant => TConstant, _}
   import Parser.Implicits._
 
   def delegate: PartialFunction[Expr[_], Ast] = {
@@ -498,7 +499,7 @@ case class BatchActionParser(root: Parser[Ast] = Parser.empty)(override implicit
 }
 
 case class IfElseParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-  import qctx.reflect.{Constant => TConstantant, _}
+  import qctx.reflect.{Constant => TConstant, _}
   import Parser.Implicits._
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -511,7 +512,7 @@ case class IfElseParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 // are not necessarily an Option[_] e.g. Option[t].isEmpty needs to match on a clause whose type is Boolean
 // That's why we need to use the 'Is' object and optimize it that way here
 case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-  import qctx.reflect.{Constant => TConstantant, _}
+  import qctx.reflect.{Constant => TConstant, _}
   import Parser.Implicits._
   import MatchingOptimizers._
 
@@ -701,7 +702,7 @@ case class QueryScalarsParser(root: Parser[Ast] = Parser.empty)(override implici
 }
 
 // case class ConflictParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-//   import quotes.reflect.{Constant => TConstantant, using,  _}
+//   import quotes.reflect.{Constant => TConstant, using,  _}
 //   import Parser.Implicits._
 //   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
@@ -898,7 +899,7 @@ case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val q
 }
 
 case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-  import quotes.reflect.{Constant => TConstantant, Ident => TIdent, _}
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
   import Parser.Implicits._
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
