@@ -22,7 +22,7 @@ class PeopleJdbcSpec extends PeopleSpec {
     testContext.run(`Ex 1 differences`) mustEqual `Ex 1 expected result`
   }
 
-  "Example 2 - range simple" in {
+  "Example 2 - range simple" in { //hello
     testContext.run(`Ex 2 rangeSimple`(lift(`Ex 2 param 1`), lift(`Ex 2 param 2`))) mustEqual `Ex 2 expected result`
   }
 

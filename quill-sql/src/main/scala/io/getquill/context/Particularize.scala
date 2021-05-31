@@ -67,11 +67,11 @@ object Particularize:
         liftType match
           case LiftChoice.ListLift(lifts) =>
             // using index 1 since SQL prepares start with $1 typically
-            val liftsPlaceholder = '{ ${lifts.expr}.zipWithIndex.map((_, index) => $runtimeLiftingPlaceholder(index + 1 + $initialIndex)).mkString(", ") }
+            val liftsPlaceholder = '{ ${lifts.expr}.zipWithIndex.map((_, index) => $runtimeLiftingPlaceholder($initialIndex + index)).mkString(", ") }
             val liftsLength = '{ ${lifts.expr}.length }
             (liftsLength, liftsPlaceholder, liftType)
           case LiftChoice.SingleLift(lift) =>
-            (Expr(1), '{ $runtimeLiftingPlaceholder($initialIndex + 1) }, liftType)
+            (Expr(1), '{ $runtimeLiftingPlaceholder($initialIndex) }, liftType)
 
 
       object Matrowl:
@@ -160,7 +160,7 @@ object Particularize:
         def apply(
           workList: List[Work],
           matrowl: Matrowl,
-          placeholderCount:   Expr[Int] // I.e. the index of the '?' that is inserted in the query (that represents a lift)
+          placeholderCount:   Expr[Int] // I.e. the index of the '?' that is inserted in the query (that represents a lift) or the $N if an actual number is used (e.g. in the H2 context)
         ): Expr[String] = workList match {
           case Nil =>
             if (!matrowl.isBottom)
@@ -254,11 +254,11 @@ object Particularize:
           case LiftChoice.ListLift(lifts) =>
             // using index 1 since SQL prepares start with $1 typically
             val liftsPlaceholder =
-              lifts.values.zipWithIndex.map((_, index) => liftingPlaceholder(index + 1 + initialIndex)).mkString(", ")
+              lifts.values.zipWithIndex.map((_, index) => liftingPlaceholder(index + initialIndex)).mkString(", ")
             val liftsLength = lifts.values.length
             (liftsLength, liftsPlaceholder)
           case LiftChoice.SingleLift(lift) =>
-            (1, liftingPlaceholder(initialIndex + 1))
+            (1, liftingPlaceholder(initialIndex))
 
       def isEmptyListLift(uid: String) =
         getLifts(uid) match

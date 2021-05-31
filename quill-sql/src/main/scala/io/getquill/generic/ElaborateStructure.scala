@@ -15,6 +15,7 @@ import io.getquill.metaprog.TypeExtensions
 import io.getquill.metaprog.TypeExtensions._
 import io.getquill.generic.DecodingType
 import io.getquill.util.Format
+import scala.annotation.tailrec
 
 /**
  * Elaboration can be different whether we are encoding or decoding because we could have
@@ -261,7 +262,8 @@ object ElaborateStructure {
     }
   }
 
-  def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide)(using Quotes): List[Term] = {
+  @tailrec
+  def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide, accum: List[Term] = List())(using Quotes): List[Term] = {
     import quotes.reflect.{Term => QTerm, _}
 
     def constValue[T: Type]: String =
@@ -284,23 +286,25 @@ object ElaborateStructure {
             if (Type.of[tpe].isProduct)
               val childTerm = Term(Type.of[field].constValue, Branch, optional = true)
               //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
-              base[tpe](childTerm, side) :: flatten(node, Type.of[fields], Type.of[types], side)
+              val baseTerm = base[tpe](childTerm, side)
+              flatten(node, Type.of[fields], Type.of[types], side, baseTerm +: accum)
             else
               val childTerm = Term(Type.of[field].constValue, Leaf, optional = true)
               //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
-              childTerm :: flatten(node, Type.of[fields], Type.of[types], side)
+              flatten(node, Type.of[fields], Type.of[types], side, childTerm +: accum)
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct && Type.of[tpe].notOption  =>
         val childTerm = Term(Type.of[field].constValue, Branch)
         //println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
-        base[tpe](childTerm, side) :: flatten(node, Type.of[fields], Type.of[types], side)
+        val baseTerm = base[tpe](childTerm, side)
+        flatten(node, Type.of[fields], Type.of[types], side, baseTerm +: accum)
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].notOption =>
         val childTerm = Term(Type.of[field].constValue, Leaf)
         //println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
-        childTerm :: flatten(node, Type.of[fields], Type.of[types], side)
+        flatten(node, Type.of[fields], Type.of[types], side, childTerm +: accum)
 
-      case (_, '[EmptyTuple]) => Nil
+      case (_, '[EmptyTuple]) => accum.reverse
 
       case _ => report.throwError("Cannot Derive Product during Type Flattening of Expression:\n" + (fieldsTup, typesTup))
     }
