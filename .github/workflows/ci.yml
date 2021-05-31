@@ -1,0 +1,72 @@
+name: Scala CI
+
+on:
+  push:
+    branches:
+      - "**"
+
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        scala: [2.11.12, 2.12.10, 2.13.2]
+        module: [sqltest, db, codegen, async, js, bigdata]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Java and Scala
+      uses: olafurpg/setup-scala@v10
+      with:
+        java-version: 1.8.0
+
+    
+    - name: Scala ${{ matrix.scala }} Building ${{ matrix.module }}
+      uses: nick-invision/retry@v2
+      with:
+        timeout_minutes: 180
+        max_attempts: 3
+        command: |
+          export TRAVIS_SCALA_VERSION=${{ matrix.scala }}
+          echo "TRAVIS_SCALA_VERSION='$TRAVIS_SCALA_VERSION'"
+          ./build/build.sh ${{ matrix.module }}
+    
+  release:
+    runs-on: ubuntu-latest
+    
+    needs: build
+    
+    strategy:
+      matrix:
+        scala: [2.11.12, 2.12.10, 2.13.2]
+        module: [db, js, async, codegen, bigdata]
+        include:
+        - scala: 2.11.12
+          scala_short: 211
+        - scala: 2.12.10
+          scala_short: 212
+        - scala: 2.13.2
+          scala_short: 213
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Java and Scala
+      uses: olafurpg/setup-scala@v10
+      with:
+        java-version: 1.8.0
+
+    - run: |
+        export TRAVIS_PULL_REQUEST=${{ !!github.event.pull_request }}
+        echo "TRAVIS_PULL_REQUEST='$TRAVIS_PULL_REQUEST'"
+        export TRAVIS_SCALA_VERSION=${{ matrix.scala }}
+        echo "TRAVIS_SCALA_VERSION='$TRAVIS_SCALA_VERSION'"
+        export TRAVIS_BRANCH=$(git for-each-ref ${{ github.ref }} --format='%(refname:short)')
+        echo "TRAVIS_BRANCH='$TRAVIS_BRANCH'"
+        ./build/release.sh ${{ matrix.scala_short }} ${{ matrix.module }}
