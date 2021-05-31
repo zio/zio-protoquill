@@ -43,3 +43,6 @@ project/.bloop/
 project/metals.sbt
 project/project/
 .sbtopts
+junits
+testresults
+results.txt

@@ -57,9 +57,12 @@ lazy val `quill-sql` =
         else
           Seq(
             "org.scalatest" % "scalatest_3" % "3.2.9" % "test",
-            "org.scalatest" % "scalatest-mustmatchers_3" % "3.2.9" % "test"
+            "org.scalatest" % "scalatest-mustmatchers_3" % "3.2.9" % "test",
+            "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test
           )
       },
+      // TODO remove this if in community build since there's no scalatest
+      testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oGF"),
       // If it's a community-build we're using a scala incremental and scalafmt doesn't seem to work well with that
       libraryDependencies ++= {
         if (isCommunityBuild)
@@ -141,6 +144,14 @@ lazy val basicSettings = Seq(
   scalaVersion := {
     if (isCommunityBuild) dottyLatestNightlyBuild.get else "3.0.0"
   },
+  // The -e option is the 'error' report of ScalaTest. We want it to only make a log
+  // of the failed tests once all tests are done, the regular -o log shows everything else.
+  testOptions in Test ++= Seq(
+    Tests.Argument(TestFrameworks.ScalaTest, "-oF")
+    //  /*, "-eGNCXEHLOPQRM"*/, "-h", "target/html", "-u", "target/junit"
+    //Tests.Argument(TestFrameworks.ScalaTest, "-u", "junits")
+    //Tests.Argument(TestFrameworks.ScalaTest, "-h", "testresults")
+  ),
   scalacOptions ++= Seq(
     "-language:implicitConversions"
   )
