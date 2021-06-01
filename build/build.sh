@@ -20,7 +20,7 @@ export CASSANDRA_PORT=19042
 export ORIENTDB_HOST=127.0.0.1
 export ORIENTDB_PORT=12424
 
-export JVM_OPTS="-Dquill.macro.log=false -Dquill.scala.version=$TRAVIS_SCALA_VERSION -Xms1024m -Xmx3g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Dquill.scala.version=$TRAVIS_SCALA_VERSION -Xms1024m -Xmx3g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
 
 modules=$1
 
@@ -103,8 +103,8 @@ function wait_for_databases() {
 function wait_for_mysql_postgres() {
     show_mem
 
-    sbt clean scalariformFormat test:scalariformFormat
-    sbt checkUnformattedFiles
+    #sbt clean scalariformFormat test:scalariformFormat
+    #sbt checkUnformattedFiles
 
     # Start sbt compilation and database setup in parallel
     sbt -Dmodules=base $SBT_ARGS test & COMPILE=$!
@@ -165,7 +165,7 @@ function base_build() {
 
 function sqltest_build() {
     # Can use more memory here since not loading any images
-    export JVM_OPTS="-Dquill.macro.log=false -Dquill.scala.version=$TRAVIS_SCALA_VERSION -Xms2g -Xmx5g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+    export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Dquill.scala.version=$TRAVIS_SCALA_VERSION -Xms2g -Xmx5g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
     sbt -Dmodules=sqltest -Doracle=true $SBT_ARGS test
 }
 
