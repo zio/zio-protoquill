@@ -69,8 +69,9 @@ export SBT_ARGS="" #++$TRAVIS_SCALA_VERSION Only building for Scala 3 for now
 function wait_for_databases() {
     show_mem
 
-    sbt clean scalariformFormat test:scalariformFormat
-    sbt checkUnformattedFiles
+    # Scala 3 formatting not supported yet
+    #sbt clean scalariformFormat test:scalariformFormat
+    #sbt checkUnformattedFiles
 
     # Start sbt compilation and database setup in parallel
     sbt -Dmodules=base -Doracle=true $SBT_ARGS test & COMPILE=$!
