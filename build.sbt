@@ -44,6 +44,7 @@ val filteredModules = {
       println("Compiling All Modules")
         allModules
   }
+  println(s"Returning modules list: ${modules.map(_.project)}")
   modules
 }
 
