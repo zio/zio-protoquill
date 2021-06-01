@@ -34,13 +34,16 @@ import io.getquill.Action
 import io.getquill.ActionReturning
 import io.getquill.BatchAction
 import io.getquill.Literal
+import scala.annotation.targetName
+import io.getquill.NamingStrategy
+import io.getquill.idiom.Idiom
 
 sealed trait ExecutionType
 object ExecutionType:
   case object Dynamic extends ExecutionType
   case object Static extends ExecutionType
 
-/** 
+/**
  * Metadata related to query execution. Note that AST should be lazy so as not to be evaluated
  * at runtime (which would happen with a by-value property since `{ ExecutionInfo(stuff, ast) } is spliced
  * into a query-execution site)
@@ -52,7 +55,30 @@ class ExecutionInfo(val executionType: ExecutionType, queryAst: =>Ast):
 object ExecutionInfo:
   def apply(executionType: ExecutionType, ast: =>Ast) = new ExecutionInfo(executionType, ast)
 
-trait ProtoContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy] {
+trait ProtoStreamContext[Dialect <: Idiom, Naming <: NamingStrategy] extends RowContext {
+  type PrepareRow
+  type ResultRow
+
+  type Prepare = PrepareRow => (List[Any], PrepareRow)
+  type Extractor[T] = ResultRow => T
+  type DatasourceContext
+  type StreamResult[T]
+
+  def streamQuery[T](fetchSize: Option[Int], sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): StreamResult[T]
+}
+
+trait RowContext {
+  type PrepareRow
+  type ResultRow
+
+  type Prepare = PrepareRow => (List[Any], PrepareRow)
+  type Extractor[T] = ResultRow => T
+
+  val identityPrepare: Prepare = (Nil, _)
+  val identityExtractor = identity[ResultRow] _
+}
+
+trait ProtoContext[Dialect <: Idiom, Naming <: NamingStrategy] extends RowContext {
   type PrepareRow
   type ResultRow
 
@@ -67,17 +93,11 @@ trait ProtoContext[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.Nam
   /** Future class to hold things like ExecutionContext for Cassandra etc... */
   type DatasourceContext
 
-  type Prepare = PrepareRow => (List[Any], PrepareRow)
-  type Extractor[T] = ResultRow => T
-
   case class BatchGroup(string: String, prepare: List[Prepare])
   case class BatchGroupReturning(string: String, returningBehavior: ReturnAction, prepare: List[Prepare])
 
   def idiom: Dialect
   def naming: Naming
-  
-  val identityPrepare: Prepare = (Nil, _)
-  val identityExtractor = identity[ResultRow] _
 
   def executeQuery[T](sql: String, prepare: Prepare, extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunQueryResult[T]]
   def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunActionResult]
@@ -107,13 +127,13 @@ import io.getquill.generic.DecodeAlternate
 
 
 // TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
-trait Context[Dialect <: io.getquill.idiom.Idiom, Naming <: io.getquill.NamingStrategy]
+trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
 extends ProtoContext[Dialect, Naming]
-with EncodingDsl 
+with EncodingDsl
 with Closeable
 { self =>
 
-  
+
   type DatasourceContextBehavior <: DatasourceContextInjection
 
   // TODO Go back to this when implementing GenericDecoder using standard method
@@ -122,16 +142,16 @@ with Closeable
   //   inline def decode(t: T) = ${ DecodeAlternate[T, ResultRow] }
 
   implicit inline def dec[T]: GenericDecoder[ResultRow, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, ResultRow] }
-    
+
 
   //def probe(statement: String): Try[_]
   // todo add 'prepare' i.e. encoders here
   //def executeAction[T](cql: String, prepare: Prepare = identityPrepare)(implicit executionContext: ExecutionContext): Result[RunActionResult]
 
-  inline def lift[T](inline runtimeValue: T): T = 
+  inline def lift[T](inline runtimeValue: T): T =
     ${ LiftMacro[T, PrepareRow]('runtimeValue) } // Needs PrepareRow in order to be able to summon encoders
 
-  inline def liftQuery[U[_] <: Iterable[_], T](inline runtimeValue: U[T]): Query[T] = 
+  inline def liftQuery[U[_] <: Iterable[_], T](inline runtimeValue: U[T]): Query[T] =
     ${ LiftQueryMacro[T, U, PrepareRow]('runtimeValue) }
 
   extension [T](inline q: Query[T]) {
@@ -140,8 +160,6 @@ with Closeable
   }
 
   protected def context: DatasourceContext = fail(s"DatasourceContext method not implemented for '${this.getClass}' Context")
-
-  import scala.annotation.targetName
 
   // Think I need to implement 'run' here as opposed to in Context because an abstract
   // inline method cannot be called. Should look into this further. E.g. maybe the 'inline' in
@@ -176,7 +194,7 @@ with Closeable
     val ca = new ContextOperation[E, T, Dialect, Naming, PrepareRow, ResultRow, this.type, Result[RunActionReturningResult[T]]](self.idiom, self.naming) {
       def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo) =
         // Need an extractor with special information that helps with the SQL returning specifics
-        val Extraction.Returning(extract, returningBehavior) = 
+        val Extraction.Returning(extract, returningBehavior) =
           // Just match on the type and throw an exception. The outside val right above will do the deconstruction
           extraction match
             // Can't check types inside Returning[_, _] during runtime due to type-erasure so scala will give a warning
@@ -207,7 +225,7 @@ with Closeable
       def execute(sql: String, prepares: List[PrepareRow => (List[Any], PrepareRow)], extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo) =
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
 
-        val Extraction.Returning(extract, returningBehavior) = 
+        val Extraction.Returning(extract, returningBehavior) =
           extraction match
             case _: Extraction.Returning[_, _] => extraction
             case _ => throw new IllegalArgumentException("Returning Extractor required")
@@ -227,4 +245,38 @@ with Closeable
 
   // Can close context. Does nothing by default.
   def close(): Unit = ()
+}
+
+trait StreamingContext[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingStrategy] extends ProtoStreamContext[Dialect, Naming] {
+  self: Context[Dialect, Naming] =>
+
+  @targetName("streamQuery")
+  inline def stream[T](inline quoted: Quoted[Query[T]]): StreamResult[T] = {
+    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, this.type, StreamResult[T]](self.idiom, self.naming) {
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo) =
+        val extract = extraction match
+          case Extraction.Simple(extract) => extract
+          case _ => throw new IllegalArgumentException("Extractor required")
+
+        val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
+        self.streamQuery(None, sql, prepare, extract)(executionInfo, runContext)
+    }
+    // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
+    QueryExecution.apply(quoted, ca)
+  }
+
+  @targetName("streamQueryFetchSize")
+  inline def stream[T](inline quoted: Quoted[Query[T]], fetchSize: Int): StreamResult[T] = {
+    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, this.type, StreamResult[T]](self.idiom, self.naming) {
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo) =
+        val extract = extraction match
+          case Extraction.Simple(extract) => extract
+          case _ => throw new IllegalArgumentException("Extractor required")
+
+        val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
+        self.streamQuery(None, sql, prepare, extract)(executionInfo, runContext)
+    }
+    // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
+    QueryExecution.apply(quoted, ca)
+  }
 }

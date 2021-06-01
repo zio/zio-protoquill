@@ -37,7 +37,7 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   // Not required for JdbcRunContext in Scala2-Quill but it's a typing error. It only works
   // because executeQuery is not actually defined in Context.scala therefore typing doesn't have
   // to be correct on the base-level. Same issue with RunActionResult and others
-  override type Result[T] = T
+  // override type Result[T] = T
   override type RunQueryResult[T] = List[T]
   override type RunQuerySingleResult[T] = T
   override type RunActionResult = Long

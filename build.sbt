@@ -117,6 +117,38 @@ lazy val `quill-jasync-postgres` =
     )
     .dependsOn(`quill-jasync` % "compile->compile;test->test")
 
+lazy val `quill-zio` =
+  (project in file("quill-zio"))
+    .settings(commonSettings: _*)
+    .settings(
+      fork in Test := true,
+      libraryDependencies ++= Seq(
+        "dev.zio" %% "zio" % "1.0.8",
+        "dev.zio" %% "zio-streams" % "1.0.8"
+      )
+    )
+    .dependsOn(`quill-sql` % "compile->compile;test->test")
+
+lazy val `quill-jdbc-zio` =
+  (project in file("quill-jdbc-zio"))
+    .settings(commonSettings: _*)
+    .settings(jdbcTestingLibraries: _*)
+    .settings(
+      testGrouping in Test := {
+        (definedTests in Test).value map { test =>
+          if (test.name endsWith "IntegrationSpec")
+            Tests.Group(name = test.name, tests = Seq(test), runPolicy = Tests.SubProcess(
+              ForkOptions().withRunJVMOptions(Vector("-Xmx200m"))
+            ))
+          else
+            Tests.Group(name = test.name, tests = Seq(test), runPolicy = Tests.SubProcess(ForkOptions()))
+        }
+      }
+    )
+    .dependsOn(`quill-zio` % "compile->compile;test->test")
+    .dependsOn(`quill-sql` % "compile->compile;test->test")
+    .dependsOn(`quill-jdbc` % "compile->compile;test->test")
+
 // Include scalafmt formatter for pretty printing failed queries
 val includeFormatter =
   sys.props.getOrElse("formatScala", "false").toBoolean
