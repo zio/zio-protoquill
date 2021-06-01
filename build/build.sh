@@ -59,11 +59,12 @@ function docker_stats() {
 }
 export -f docker_stats
 
-export SBT_ARGS="++$TRAVIS_SCALA_VERSION"
+export SBT_ARGS="" #++$TRAVIS_SCALA_VERSION Only building for Scala 3 for now
 
-if [[ $TRAVIS_SCALA_VERSION == 2.12* ]]; then
-    export SBT_ARGS="$SBT_ARGS coverage"
-fi
+# Enable coverage of builds when it is possible
+# if [[ $TRAVIS_SCALA_VERSION == 3* ]]; then
+#     export SBT_ARGS="$SBT_ARGS coverage"
+# fi
 
 function wait_for_databases() {
     show_mem

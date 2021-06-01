@@ -5,8 +5,12 @@ lazy val baseModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-sql`
 )
 
+lazy val sqlTestModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
+  `quill-sql-tests`
+)
+
 lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-jdbc`
+  `quill-jdbc`, `quill-jdbc-zio`
 )
 
 lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
@@ -17,8 +21,29 @@ lazy val allModules =
   baseModules ++ dbModules ++ jasyncModules
 
 val filteredModules = {
-  allModules
-}
+  val modulesStr = sys.props.get("modules")
+  println(s"Modules Argument Value: ${modulesStr}")
+
+  val modules = modulesStr match {
+    case Some("base") =>
+      println("Compiling Base Modules")
+      baseModules
+    case Some("sqltest") =>
+      println("Compiling SQL test Modules")
+      sqlTestModules
+    case Some("db") =>
+      println("Compiling Database Modules")
+      dbModules
+    case Some("async") =>
+      println("Compiling Async Database Modules")
+      asyncModules
+    case Some("none") =>
+      println("Invoking Aggregate Project")
+      Seq[sbt.ClasspathDep[sbt.ProjectReference]]()
+    case _ =>
+      println("Compiling All Modules")
+        allModules
+  }
 
 lazy val `quill` = {
   val quill =

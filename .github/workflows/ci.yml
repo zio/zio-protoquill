@@ -15,8 +15,8 @@ jobs:
 
     strategy:
       matrix:
-        scala: [2.11.12, 2.12.10, 2.13.2]
-        module: [sqltest, db, codegen, async, js, bigdata]
+        scala: [3]
+        module: [sqltest, db, async]
 
     steps:
     - uses: actions/checkout@v2
@@ -44,15 +44,8 @@ jobs:
 
     strategy:
       matrix:
-        scala: [2.11.12, 2.12.10, 2.13.2]
-        module: [db, js, async, codegen, bigdata]
-        include:
-        - scala: 2.11.12
-          scala_short: 211
-        - scala: 2.12.10
-          scala_short: 212
-        - scala: 2.13.2
-          scala_short: 213
+        scala: [3.0.0]
+        module: [sqltest, db, async]
 
     steps:
     - uses: actions/checkout@v2
@@ -67,4 +60,4 @@ jobs:
         echo "TRAVIS_PULL_REQUEST='$TRAVIS_PULL_REQUEST'"
         export TRAVIS_BRANCH=$(git for-each-ref ${{ github.ref }} --format='%(refname:short)')
         echo "TRAVIS_BRANCH='$TRAVIS_BRANCH'"
-        ./build/release.sh ${{ matrix.scala_short }} ${{ matrix.module }}
+        ./build/release.sh ${{ matrix.module }}
