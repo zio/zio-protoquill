@@ -36,7 +36,7 @@ val filteredModules = {
       dbModules
     case Some("async") =>
       println("Compiling Async Database Modules")
-      asyncModules
+      jasyncModules
     case Some("none") =>
       println("Invoking Aggregate Project")
       Seq[sbt.ClasspathDep[sbt.ProjectReference]]()
@@ -44,6 +44,8 @@ val filteredModules = {
       println("Compiling All Modules")
         allModules
   }
+  modules
+}
 
 lazy val `quill` = {
   val quill =
