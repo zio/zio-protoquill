@@ -8,7 +8,10 @@ then
     echo "No Artifact Specified"
 fi
 
-echo $SBT_CMD
+SBT_VER="sbt -Dcommunity=false"
+
+echo $SBT_VER
+
 if [[ $TRAVIS_PULL_REQUEST == "false" ]]
 then
     openssl aes-256-cbc -pass pass:$ENCRYPTION_PASSWORD -in ./build/secring.gpg.enc -out local.secring.gpg -d

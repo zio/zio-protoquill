@@ -59,7 +59,7 @@ function docker_stats() {
 }
 export -f docker_stats
 
-export SBT_ARGS="" #++$TRAVIS_SCALA_VERSION Only building for Scala 3 for now
+export SBT_ARGS="-Dcommunity=false" #++$TRAVIS_SCALA_VERSION Only building for Scala 3 for now
 
 # Enable coverage of builds when it is possible
 # if [[ $TRAVIS_SCALA_VERSION == 3* ]]; then
