@@ -167,7 +167,7 @@ with Closeable
   @targetName("runQuery")
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
     val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, this.type, Result[RunQueryResult[T]]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo) =
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
         val extract = extraction match
           case Extraction.Simple(extract) => extract
           case _ => throw new IllegalArgumentException("Extractor required")
@@ -176,23 +176,23 @@ with Closeable
         self.executeQuery(sql, prepare, extract)(executionInfo, runContext)
     }
     // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
-    QueryExecution.apply(quoted, ca)
+    QueryExecution.apply(quoted, ca, None)
   }
 
   @targetName("runAction")
   inline def run[E](inline quoted: Quoted[Action[E]]): Result[RunActionResult] = {
     val ca = new ContextOperation[E, Any, Dialect, Naming, PrepareRow, ResultRow, this.type, Result[RunActionResult]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Any], executionInfo: ExecutionInfo) =
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Any], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
         self.executeAction(sql, prepare)(executionInfo, runContext)
     }
-    QueryExecution.apply(quoted, ca)
+    QueryExecution.apply(quoted, ca, None)
   }
 
   @targetName("runActionReturning")
   inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): Result[RunActionReturningResult[T]] = {
     val ca = new ContextOperation[E, T, Dialect, Naming, PrepareRow, ResultRow, this.type, Result[RunActionReturningResult[T]]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo) =
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
         // Need an extractor with special information that helps with the SQL returning specifics
         val Extraction.Returning(extract, returningBehavior) =
           // Just match on the type and throw an exception. The outside val right above will do the deconstruction
@@ -204,7 +204,7 @@ with Closeable
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
         self.executeActionReturning(sql, prepare, extract, returningBehavior)(executionInfo, runContext)
     }
-    QueryExecution.apply(quoted, ca)
+    QueryExecution.apply(quoted, ca, None)
   }
 
   @targetName("runBatchAction")
@@ -253,30 +253,30 @@ trait StreamingContext[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingStrat
   @targetName("streamQuery")
   inline def stream[T](inline quoted: Quoted[Query[T]]): StreamResult[T] = {
     val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, this.type, StreamResult[T]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo) =
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
         val extract = extraction match
           case Extraction.Simple(extract) => extract
           case _ => throw new IllegalArgumentException("Extractor required")
 
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
-        self.streamQuery(None, sql, prepare, extract)(executionInfo, runContext)
+        self.streamQuery(fetchSize, sql, prepare, extract)(executionInfo, runContext)
     }
     // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
-    QueryExecution.apply(quoted, ca)
+    QueryExecution.apply(quoted, ca, None)
   }
 
-  @targetName("streamQueryFetchSize")
+  @targetName("streamQueryWithFetchSize")
   inline def stream[T](inline quoted: Quoted[Query[T]], fetchSize: Int): StreamResult[T] = {
     val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, this.type, StreamResult[T]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo) =
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
         val extract = extraction match
           case Extraction.Simple(extract) => extract
           case _ => throw new IllegalArgumentException("Extractor required")
 
         val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
-        self.streamQuery(None, sql, prepare, extract)(executionInfo, runContext)
+        self.streamQuery(fetchSize, sql, prepare, extract)(executionInfo, runContext)
     }
     // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
-    QueryExecution.apply(quoted, ca)
+    QueryExecution.apply(quoted, ca, Some(fetchSize))
   }
 }

@@ -21,7 +21,7 @@ object Lifter {
   def quat(quat: Quat): Quotes ?=> Expr[Quat] =
     (new Lifter(quat.countFields > Messages.maxQuatFields) {}).liftableQuat(quat)
 
-  def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] = 
+  def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] =
     (new Lifter(false) {}).liftableReturnAction(returnAction)
 }
 

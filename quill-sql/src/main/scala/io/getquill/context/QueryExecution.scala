@@ -41,7 +41,7 @@ import io.getquill._
 import io.getquill.parser.Lifter
 
 trait ContextOperation[I, T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Ctx <: Context[_, _], Res](val idiom: D, val naming: N) {
-  def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: Extraction[ResultRow, T], executionInfo: ExecutionInfo): Res
+  def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extractor: Extraction[ResultRow, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]): Res
 }
 
 /** Enums and helper methods for QueryExecution and BatchQueryExecution */
@@ -136,7 +136,9 @@ object QueryExecution:
     Ctx <: Context[_, _]: Type,
     Res: Type
   ](quotedOp: Expr[Quoted[QAC[I, T]]],
-    contextOperation: Expr[ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res]])(using val qctx: Quotes, QAC: Type[QAC[I, T]]):
+    contextOperation: Expr[ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res]],
+    fetchSize: Expr[Option[Int]]
+    )(using val qctx: Quotes, QAC: Type[QAC[I, T]]):
     import qctx.reflect._
     import Execution._
 
@@ -236,7 +238,7 @@ object QueryExecution:
       val astSplice =
         if (TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]) Lifter(state.ast)
         else '{ io.getquill.ast.NullValue }
-      '{ $contextOperation.execute($particularQuery, $prepare, $extractor, ExecutionInfo(ExecutionType.Static, $astSplice)) }
+      '{ $contextOperation.execute($particularQuery, $prepare, $extractor, ExecutionInfo(ExecutionType.Static, $astSplice), $fetchSize) }
     end executeStatic
 
     /**
@@ -262,7 +264,7 @@ object QueryExecution:
 
       // TODO What about when an extractor is not neededX
       val spliceAsts = TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]
-      '{ RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Ctx, Res]($elaboratedAstQuote, $contextOperation, $extractor, ${Expr(spliceAsts)}) }
+      '{ RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Ctx, Res]($elaboratedAstQuote, $contextOperation, $extractor, ${Expr(spliceAsts)}, $fetchSize) }
     end executeDynamic
 
   end RunQuery
@@ -277,8 +279,8 @@ object QueryExecution:
     N <: NamingStrategy,
     Ctx <: Context[_, _],
     Res
-  ](inline quotedOp: Quoted[QAC[I, T]], ctx: ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res]) =
-    ${ applyImpl('quotedOp, 'ctx) }
+  ](inline quotedOp: Quoted[QAC[I, T]], ctx: ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res], fetchSize: Option[Int]) =
+    ${ applyImpl('quotedOp, 'ctx, 'fetchSize) }
 
   def applyImpl[
     I: Type,
@@ -290,8 +292,10 @@ object QueryExecution:
     Ctx <: Context[_, _]: Type,
     Res: Type
   ](quotedOp: Expr[Quoted[QAC[I, T]]],
-    ctx: Expr[ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res]])(using qctx: Quotes): Expr[Res] =
-    new RunQuery[I, T, ResultRow, PrepareRow, D, N, Ctx, Res](quotedOp, ctx).apply()
+    ctx: Expr[ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res]],
+    fetchSize: Expr[Option[Int]]
+    )(using qctx: Quotes): Expr[Res] =
+    new RunQuery[I, T, ResultRow, PrepareRow, D, N, Ctx, Res](quotedOp, ctx, fetchSize).apply()
 
 
 
@@ -321,7 +325,8 @@ object RunDynamicExecution:
   ](quoted: Quoted[QAC[I, RawT]],
     ctx: ContextOperation[I, T, D, N, PrepareRow, ResultRow, Ctx, Res],
     rawExtractor: Extraction[ResultRow, T],
-    spliceAst: Boolean
+    spliceAst: Boolean,
+    fetchSize: Option[Int]
   ): Res =
   {
     def gatherLifts(quoted: Quoted[_]): List[Planter[_, _]] =
@@ -409,7 +414,7 @@ object RunDynamicExecution:
 
     // Exclute the SQL Statement
     val executionAst = if (spliceAst) outputAst else io.getquill.ast.NullValue
-    ctx.execute(queryString, prepare, extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst))
+    ctx.execute(queryString, prepare, extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst), fetchSize)
   }
 
 end RunDynamicExecution
