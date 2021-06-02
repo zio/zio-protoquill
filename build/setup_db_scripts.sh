@@ -57,11 +57,11 @@ function setup_mysql() {
     echo "Waiting for MySql"
     # If --protocol not set, --port is silently ignored so need to have it
     until mysql --protocol=tcp --host=$connection --port=$port -u root -e "select 1" &> /dev/null; do
-        echo "** Tapping MySQL Connection rootpass> mysql --protocol=tcp --host=127.0.0.1 --password='root'" --port=$port -u root -e 'select 1'"
+        echo "** Tapping MySQL Connection rootpass> mysql --protocol=tcp --host=127.0.0.1 --password='root' --port=$port -u root -e 'select 1'"
         mysql --protocol=tcp --host=127.0.0.1 --password='root'" --port=$port -u root -e "select 1" || true
         sleep 5;
 
-        echo "** Tapping MySQL Connection blankpass> mysql --protocol=tcp --host=127.0.0.1 --password=''" --port=$port -u root -e 'select 1'"
+        echo "** Tapping MySQL Connection blankpass> mysql --protocol=tcp --host=127.0.0.1 --password='' --port=$port -u root -e 'select 1'"
         mysql --protocol=tcp --host=127.0.0.1 --password=''" --port=$port -u root -e "select 1" || true
         sleep 5;
     done
