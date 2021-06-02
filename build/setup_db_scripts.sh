@@ -49,7 +49,7 @@ function setup_mysql() {
 
     connection=$2
     if [[ "$2" == "mysql" || "$4" == "grant" ]]; then
-       echo "### Trying to set MySQL Credentials ###"
+       echo "### Going to set MySQL Credentials ###"
        connection="$connection --password='root'"
        hacks="mysql --host $connection --port=$port -u root -e \"ALTER USER 'root'@'%' IDENTIFIED BY ''\""
     fi
@@ -57,8 +57,12 @@ function setup_mysql() {
     echo "Waiting for MySql"
     # If --protocol not set, --port is silently ignored so need to have it
     until mysql --protocol=tcp --host=$connection --port=$port -u root -e "select 1" &> /dev/null; do
-        echo "## Tapping MySQL Connection> mysql --protocol=tcp --host=$connection --port=$port -u root -e 'select 1'"
-        mysql --protocol=tcp --host=$connection --port=$port -u root -e "select 1" || true
+        echo "** Tapping MySQL Connection rootpass> mysql --protocol=tcp --host=127.0.0.1 --password='root'" --port=$port -u root -e 'select 1'"
+        mysql --protocol=tcp --host=127.0.0.1 --password='root'" --port=$port -u root -e "select 1" || true
+        sleep 5;
+
+        echo "** Tapping MySQL Connection blankpass> mysql --protocol=tcp --host=127.0.0.1 --password=''" --port=$port -u root -e 'select 1'"
+        mysql --protocol=tcp --host=127.0.0.1 --password=''" --port=$port -u root -e "select 1" || true
         sleep 5;
     done
     echo "Connected to MySql"
