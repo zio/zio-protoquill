@@ -3,7 +3,7 @@
 set -e
 
 echo "### Bringing Up sqlserver and oracle Images ###"
-time docker-compose up -d sqlserver oracle
+time docker-compose up -d sqlserver oracle postgres mysql
 echo "### DONE Bringing Up sqlserver and oracle Images ###"
 
 # import setup functions
