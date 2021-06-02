@@ -49,11 +49,10 @@ val filteredModules = {
 }
 
 lazy val `quill` = {
-  val quill =
-    (project in file("."))
-      .settings(commonSettings: _*)
-      .aggregate(filteredModules.map(_.project): _*)
-      .dependsOn(filteredModules: _*)
+  (project in file("."))
+    .settings(commonSettings: _*)
+    .aggregate(filteredModules.map(_.project): _*)
+    .dependsOn(filteredModules: _*)
 }
 
 
