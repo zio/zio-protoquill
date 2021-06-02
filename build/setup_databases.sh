@@ -11,9 +11,11 @@ echo "### Sourcing DB Scripts ###"
 . build/setup_db_scripts.sh
 
 # run setup scripts for local databases
-echo "### Running Setup for sqlite, mysql, postgres ###"
+echo "### Running Setup for sqlite ###"
 time setup_sqlite $SQLITE_SCRIPT 127.0.0.1
+echo "### Running Setup for mysql ###"
 time setup_mysql $MYSQL_SCRIPT 127.0.0.1
+echo "### Running Setup for postgres ###"
 time setup_postgres $POSTGRES_SCRIPT 127.0.0.1
 
 echo "### Running Setup for sqlserver ###"

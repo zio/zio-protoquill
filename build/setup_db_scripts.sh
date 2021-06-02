@@ -19,9 +19,14 @@ function get_host() {
 
 function setup_sqlite() {
     # DB File in quill-jdbc
+    echo "Creating sqlite DB File"
     DB_FILE=quill-jdbc/quill_test.db
+    echo "Removing Previous sqlite DB File (if any)"
     rm -f $DB_FILE
+    echo "Creating sqlite DB File"
+    echo "(with the $1 script)"
     sqlite3 $DB_FILE < $1
+    echo "Setting permissions on sqlite DB File"
     chmod a+rw $DB_FILE
 
     # # DB File in quill-jdbc-monix
