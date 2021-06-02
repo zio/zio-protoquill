@@ -41,8 +41,10 @@ function setup_sqlite() {
 function setup_mysql() {
     port=$3
     if [ -z "$port" ]; then
-        echo "MySQL Port not defined. Setting to default: 3306"
+        echo "MySQL Port not defined. Setting to default: 3306  "
         port="3306"
+    else
+        echo "MySQL Port specified as $port"
     fi
 
     connection=$2
@@ -74,6 +76,8 @@ function setup_postgres() {
     if [ -z "$port" ]; then
         echo "Postgres Port not defined. Setting to default: 5432"
         port="5432"
+    else
+        echo "Postgres Port specified as $port"
     fi
     echo "Waiting for Postgres"
     until psql --host $2 --port $port --username postgres -c "select 1" &> /dev/null; do
