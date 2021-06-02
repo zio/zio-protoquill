@@ -15,7 +15,7 @@ jobs:
 
     strategy:
       matrix:
-        scala: [3]
+        scala: [3.0.0]
         module: [sqltest, db, async]
 
     steps:
