@@ -5,6 +5,9 @@ set -e
 echo "### Bringing Up postgres, mysql Images ###"
 time docker-compose up -d postgres mysql
 
+echo "### Checking Docker Images"
+docker ps
+
 # import setup functions
 . build/setup_db_scripts.sh
 

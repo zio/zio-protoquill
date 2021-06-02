@@ -6,6 +6,9 @@ echo "### Bringing Up sqlserver, oracle, postgres, mysql Images ###"
 time docker-compose up -d sqlserver oracle postgres mysql
 echo "### DONE Bringing Up sqlserver and oracle Images ###"
 
+echo "### Checking Docker Images"
+docker ps
+
 # import setup functions
 echo "### Sourcing DB Scripts ###"
 . build/setup_db_scripts.sh
