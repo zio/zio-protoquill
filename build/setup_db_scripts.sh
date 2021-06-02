@@ -39,6 +39,8 @@ function setup_sqlite() {
 }
 
 function setup_mysql() {
+    port=$3; : ${port:="3306"} # default to 3306 of no argument
+
     connection=$2
     if [[ "$2" == "mysql" ]]; then
        connection="mysql -proot"
@@ -46,9 +48,9 @@ function setup_mysql() {
     fi
 
     echo "Waiting for MySql"
-    until mysql -h $connection -u root -e "select 1" &> /dev/null; do
-        echo "Tapping MySQL Connection"
-        echo "mysql -h $connection -u root -e 'select 1'"
+    # If --protocol not set, --port is silently ignored so need to have it
+    until mysql --protocol=tcp --host=$connection --port=$port -u root -e "select 1" &> /dev/null; do
+        echo "## Tapping MySQL Connection> mysql --protocol=tcp --host=$connection --port=$port -u root -e 'select 1'"
         mysql -h $connection -u root -e "select 1" || true
         sleep 5;
     done
@@ -64,9 +66,11 @@ function setup_mysql() {
 }
 
 function setup_postgres() {
-    host=$(get_host $2)
+    port=$3; : ${port:="5432"}
     echo "Waiting for Postgres"
-    until psql -h $2 -U postgres -c "select 1" &> /dev/null; do
+    until psql --host $2 --port $port --username postgres -c "select 1" &> /dev/null; do
+        echo "## Tapping Postgres Connection> psql --host $2 --port $port --username postgres -c 'select 1'"
+        psql --host $2 --port $port --username postgres -c "select 1" || true
         sleep 5;
     done
     echo "Connected to Postgres"

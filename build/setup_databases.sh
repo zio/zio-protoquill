@@ -14,9 +14,9 @@ echo "### Sourcing DB Scripts ###"
 echo "### Running Setup for sqlite ###"
 time setup_sqlite $SQLITE_SCRIPT 127.0.0.1
 echo "### Running Setup for mysql ###"
-time setup_mysql $MYSQL_SCRIPT 127.0.0.1:13306
+time setup_mysql $MYSQL_SCRIPT 127.0.0.1 13306
 echo "### Running Setup for postgres ###"
-time setup_postgres $POSTGRES_SCRIPT 127.0.0.1:15432
+time setup_postgres $POSTGRES_SCRIPT 127.0.0.1 15432
 
 echo "### Running Setup for sqlserver ###"
 # setup sqlserver in docker
