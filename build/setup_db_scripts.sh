@@ -48,7 +48,7 @@ function setup_mysql() {
     fi
 
     connection=$2
-    if [[ "$2" == "mysql" || "$3" == "grant" ]]; then
+    if [[ "$2" == "mysql" || "$4" == "grant" ]]; then
        echo "### Trying to set MySQL Credentials ###"
        connection="$connection --password='root'"
        hacks="mysql --host $connection --port=$port -u root -e \"ALTER USER 'root'@'%' IDENTIFIED BY ''\""
