@@ -63,12 +63,12 @@ function setup_mysql() {
     echo "Connected to MySql"
 
     eval $hacks
-    mysql -h $2 -u root -e "CREATE DATABASE codegen_test;"
-    mysql -h $2 -u root -e "CREATE DATABASE quill_test;"
-    mysql -h $2 -u root quill_test < $1
-    mysql -h $2 -u root -e "CREATE USER 'finagle'@'%' IDENTIFIED BY 'finagle';"
-    mysql -h $2 -u root -e "GRANT ALL PRIVILEGES ON * . * TO 'finagle'@'%';"
-    mysql -h $2 -u root -e "FLUSH PRIVILEGES;"
+    mysql -host $2 --port=$port -u root -e "CREATE DATABASE codegen_test;"
+    mysql -host $2 --port=$port -u root -e "CREATE DATABASE quill_test;"
+    mysql -host $2 --port=$port -u root quill_test < $1
+    mysql -host $2 --port=$port -u root -e "CREATE USER 'finagle'@'%' IDENTIFIED BY 'finagle';"
+    mysql -host $2 --port=$port -u root -e "GRANT ALL PRIVILEGES ON * . * TO 'finagle'@'%';"
+    mysql -host $2 --port=$port -u root -e "FLUSH PRIVILEGES;"
 }
 
 function setup_postgres() {
@@ -87,9 +87,9 @@ function setup_postgres() {
     done
     echo "Connected to Postgres"
 
-    psql -h $2 -U postgres -c "CREATE DATABASE codegen_test"
-    psql -h $2 -U postgres -c "CREATE DATABASE quill_test"
-    psql -h $2 -U postgres -d quill_test -a -q -f $1
+    psql --host $2 --port $port -U postgres -c "CREATE DATABASE codegen_test"
+    psql --host $2 --port $port -U postgres -c "CREATE DATABASE quill_test"
+    psql --host $2 --port $port -U postgres -d quill_test -a -q -f $1
 }
 
 # function setup_cassandra() {
