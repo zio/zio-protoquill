@@ -47,6 +47,9 @@ function setup_mysql() {
 
     echo "Waiting for MySql"
     until mysql -h $connection -u root -e "select 1" &> /dev/null; do
+        echo "Tapping MySQL Connection"
+        echo "mysql -h $connection -u root -e 'select 1'"
+        mysql -h $connection -u root -e "select 1"
         sleep 5;
     done
     echo "Connected to MySql"
