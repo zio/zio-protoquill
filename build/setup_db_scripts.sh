@@ -49,7 +49,7 @@ function setup_mysql() {
 
     connection=$2
     if [[ "$2" == "mysql" || "$4" == "grant" ]]; then
-       connection="mysql -proot"
+       connection="$connection -proot"
        hacks="mysql -h $connection -u root -proot -e \"ALTER USER 'root'@'%' IDENTIFIED BY ''\""
     fi
 
