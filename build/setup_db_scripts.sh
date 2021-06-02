@@ -40,6 +40,7 @@ function setup_sqlite() {
 
 function setup_mysql() {
     port=$3
+    password=''
     if [ -z "$port" ]; then
         echo "MySQL Port not defined. Setting to default: 3306  "
         port="3306"
@@ -48,32 +49,32 @@ function setup_mysql() {
     fi
 
     connection=$2
-    if [[ "$2" == "mysql" || "$4" == "grant" ]]; then
-       echo "### Going to set MySQL Credentials ###"
-       connection="$connection --password='root'"
-       hacks="mysql --host $connection --port=$port -u root -e \"ALTER USER 'root'@'%' IDENTIFIED BY ''\""
-    fi
+    password='root'
 
     echo "Waiting for MySql"
     # If --protocol not set, --port is silently ignored so need to have it
-    until mysql --protocol=tcp --host=$connection --port=$port -u root -e "select 1" &> /dev/null; do
-        echo "** Tapping MySQL Connection rootpass> mysql --protocol=tcp --host=127.0.0.1 --password='root' --port=$port -u root -e 'select 1'"
-        mysql --protocol=tcp --host=127.0.0.1 --password='root'" --port=$port -u root -e "select 1" || true
-        sleep 5;
-
-        echo "** Tapping MySQL Connection blankpass> mysql --protocol=tcp --host=127.0.0.1 --password='' --port=$port -u root -e 'select 1'"
-        mysql --protocol=tcp --host=127.0.0.1 --password=''" --port=$port -u root -e "select 1" || true
+    until mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "select 1" &> /dev/null; do
+        echo "**Tapping MySQL Connection> mysql --protocol=tcp --host=$connection --password='$password' --port=$port -u root -e 'select 1'"
+        mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "select 1" || true
         sleep 5;
     done
     echo "Connected to MySql"
 
-    eval $hacks
-    mysql -host $2 --port=$port -u root -e "CREATE DATABASE codegen_test;"
-    mysql -host $2 --port=$port -u root -e "CREATE DATABASE quill_test;"
-    mysql -host $2 --port=$port -u root quill_test < $1
-    mysql -host $2 --port=$port -u root -e "CREATE USER 'finagle'@'%' IDENTIFIED BY 'finagle';"
-    mysql -host $2 --port=$port -u root -e "GRANT ALL PRIVILEGES ON * . * TO 'finagle'@'%';"
-    mysql -host $2 --port=$port -u root -e "FLUSH PRIVILEGES;"
+    echo "**Verifying MySQL Connection> mysql --protocol=tcp --host=$connection --password='$password' --port=$port -u root -e 'select 1'"
+    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "select 1"
+
+    echo "MySql: Create codegen_test"
+    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "CREATE DATABASE codegen_test;"
+    echo "MySql: Create quill_test"
+    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "CREATE DATABASE quill_test;"
+    echo "MySql: Write Schema to quill_test"
+    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root quill_test < $1
+    echo "MySql: Create finagle user"
+    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "CREATE USER 'finagle'@'%' IDENTIFIED BY 'finagle';"
+    echo "MySql: Grant finagle user"
+    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "GRANT ALL PRIVILEGES ON * . * TO 'finagle'@'%';"
+    echo "MySql: Flush the grant"
+    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "FLUSH PRIVILEGES;"
 }
 
 function setup_postgres() {
@@ -92,8 +93,11 @@ function setup_postgres() {
     done
     echo "Connected to Postgres"
 
+    echo "Postgres: Create codegen_test"
     psql --host $2 --port $port -U postgres -c "CREATE DATABASE codegen_test"
+    echo "Postgres: Create quill_test"
     psql --host $2 --port $port -U postgres -c "CREATE DATABASE quill_test"
+    echo "Postgres: Write Schema to quill_test"
     psql --host $2 --port $port -U postgres -d quill_test -a -q -f $1
 }
 

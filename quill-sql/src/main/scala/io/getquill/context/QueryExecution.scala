@@ -207,7 +207,6 @@ object QueryExecution:
           val tpe = l.asTerm.tpe.widen
           tpe.asType match
             case '[LazyPlanter[t, row]] =>
-              println(s"Summoning type: ${TypeRepr.of[t].show}")
               Expr.summon[GenericEncoder[t, ResultRow]] match
                 case Some(decoder) =>
                   EagerPlanterExpr(uid, value.asInstanceOf[Expr[t]], decoder).plant

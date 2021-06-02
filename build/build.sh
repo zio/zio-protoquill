@@ -3,10 +3,10 @@
 set -e
 
 export POSTGRES_HOST=127.0.0.1
-export POSTGRES_PORT=5432
+export POSTGRES_PORT=15432
 
 export MYSQL_HOST=127.0.0.1
-export MYSQL_PORT=3306
+export MYSQL_PORT=13306
 
 export SQL_SERVER_HOST=127.0.0.1
 export SQL_SERVER_PORT=11433
@@ -20,7 +20,7 @@ export CASSANDRA_PORT=19042
 export ORIENTDB_HOST=127.0.0.1
 export ORIENTDB_PORT=12424
 
-export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Dquill.scala.version=$TRAVIS_SCALA_VERSION -Xms1024m -Xmx3g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Xms1024m -Xmx3g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
 
 modules=$1
 
@@ -165,7 +165,7 @@ function base_build() {
 
 function sqltest_build() {
     # Can use more memory here since not loading any images
-    export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Dquill.scala.version=$TRAVIS_SCALA_VERSION -Xms2g -Xmx5g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+    export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Xms2g -Xmx5g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
     sbt -Dmodules=sqltest -Doracle=true $SBT_ARGS test
 }
 
@@ -178,7 +178,7 @@ function db_build() {
 
 # function js_build() {
 #     show_mem
-#     export JVM_OPTS="-Dquill.macro.log=false -Dquill.scala.version=$TRAVIS_SCALA_VERSION -Xms1024m -Xmx4g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+#     export JVM_OPTS="-Dquill.macro.log=false -Xms1024m -Xmx4g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
 #     sbt -Dmodules=js $SBT_ARGS test
 # }
 

@@ -2,6 +2,9 @@
 
 set -e
 
+echo "### Bringing Down Any Docker Containers that May Be Running ###"
+time docker-compose down --rmi all
+
 echo "### Bringing Up sqlserver, oracle, postgres, mysql Images ###"
 time docker-compose up -d sqlserver oracle postgres mysql
 echo "### DONE Bringing Up sqlserver and oracle Images ###"
@@ -17,7 +20,7 @@ echo "### Sourcing DB Scripts ###"
 echo "### Running Setup for sqlite ###"
 time setup_sqlite $SQLITE_SCRIPT 127.0.0.1
 echo "### Running Setup for mysql ###"
-time setup_mysql $MYSQL_SCRIPT 127.0.0.1 13306 grant
+time setup_mysql $MYSQL_SCRIPT 127.0.0.1 13306
 echo "### Running Setup for postgres ###"
 time setup_postgres $POSTGRES_SCRIPT 127.0.0.1 15432
 

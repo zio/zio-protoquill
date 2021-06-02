@@ -13,5 +13,5 @@ while [[ ! -e done.txt ]]; do
   else
     echo "== No Done File Yet =="
   fi
-  sleep 2
+  sleep 10
 done
