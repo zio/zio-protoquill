@@ -50,7 +50,7 @@ function setup_mysql() {
     connection=$2
     if [[ "$2" == "mysql" || "$4" == "grant" ]]; then
        connection="mysql -proot"
-       hacks="mysql -h mysql -u root -proot -e \"ALTER USER 'root'@'%' IDENTIFIED BY ''\""
+       hacks="mysql -h $connection -u root -proot -e \"ALTER USER 'root'@'%' IDENTIFIED BY ''\""
     fi
 
     echo "Waiting for MySql"
