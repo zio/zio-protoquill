@@ -34,6 +34,13 @@ object MiniQuillTest {
     // }
 
 
+    case class Person(name: String, age: Int)
+
+    inline def q = quote {
+      query[Person].map(_.age).sum
+    }
+    println(ctx.run(q))
+
 
     // inline def q = quote {
     //   query[Person].filter(p => p.name == lift("joe")) //helooo
@@ -178,14 +185,7 @@ object MiniQuillTest {
 
 
 
-    case class Person[T](name: String, age: Int)
-    val names = List("Joe", "Jack") //List[String]() // List("Joe", "Jack")
-    inline def q = quote {
-      query[Person[String]].filter(p =>
-        liftQuery(names).contains(p.name) && infix"fun(${p.name})".pure.as[Boolean]
-      )
-    }
-    println(run(q)) //hellooooo
+
 
 
 

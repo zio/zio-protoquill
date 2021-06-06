@@ -12,6 +12,8 @@ import io.getquill.parser.Lifter
 import io.getquill.Udt
 import scala.collection.mutable
 import io.getquill.generic.GenericEncoder
+import io.getquill.generic.GenericDecoder
+import io.getquill.util.Format
 
 // TODO Shuold not be using this 'Quoted', remove it
 case class Quoted[+T](val ast: io.getquill.ast.Ast)
@@ -88,9 +90,27 @@ trait QuatMaking extends QuatMakingBase {
     // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
     def encoderComputation() = {
       tpe.asType match
-        case '[t] => Expr.summon[GenericEncoder[t, _]] match // Pass in PrepareRow as well in order to have things be possibly products in one dialect and values in another???
-          case Some(_) => true
-          case None => false
+         // Question: Should we pass in PrepareRow as well in order to have things be possibly products
+         // in one dialect and values in another???
+        case '[t] => (Expr.summon[GenericEncoder[t, _]], Expr.summon[GenericDecoder[t, _, _]]) match
+          case (Some(_), Some(_)) => true
+          case (Some(enc), None) =>
+            report.warning(
+              s"A Encoder:\n" +
+              s"${Format.Expr(enc)}\n" +
+              s"was found for the type ${Format.TypeOf[t]} but not a decoder so this type will " +
+              s"be treated as a value. To avoid potential problems it is preferable to define " +
+              s"both an encoder and a decoder for all types used in Quill Queries.")
+            true
+          case (None, Some(dec)) =>
+            report.warning(
+              s"A Decoder:\n" +
+              s"${Format.Expr(dec)}\n " +
+              s"was found for the type ${Format.TypeOf[t]} but not a encoder so this type will be " +
+              s"treated as a value. To avoid potential problems it is preferable to define " +
+              s"both an encoder and a decoder for all types used in Quill Queries.")
+            true
+          case (None, None) => false
         case _ =>
           false
     }

@@ -15,7 +15,7 @@ object QuerySingleAsQuery:
   import io.getquill.metaprog.QuotationLotExpr
   import io.getquill.metaprog.QuotationLotExpr._
 
-  inline def apply[T](quoted: Quoted[T]): Quoted[Query[T]] = ${ applyImpl[T]('quoted) }
+  inline def apply[T](inline quoted: Quoted[T]): Quoted[Query[T]] = ${ applyImpl[T]('quoted) }
   def applyImpl[T: Type](quoted: Expr[Quoted[T]])(using Quotes): Expr[Quoted[Query[T]]] =
     import quotes.reflect._
     quoted match

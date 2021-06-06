@@ -1,7 +1,9 @@
-package io.getquill
+package io.getquill.anyval
+
+import io.getquill._
 
 case class Blah(value: String, value2: Int)
-case class Rec(value: Blah, otherValue: String) // helloooooooooo
+case class Rec(value: Blah, otherValue: String)
 case class Name(value: String) extends AnyVal
 
 class AnyValEncodingSpec extends Spec {

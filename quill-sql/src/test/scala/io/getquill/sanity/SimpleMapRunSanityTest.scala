@@ -1,17 +1,21 @@
-package io.getquill
+package io.getquill.sanity
 
+import io.getquill._
 import scala.language.implicitConversions
-
 
 import io.getquill.ast._
 import io.getquill.Quoted
 
+import org.scalatest._
+import io.getquill.quat.Quat
 import io.getquill.quat.quatOf
+import io.getquill.quote
+import io.getquill.query
 
-class SimpleMapSqlSanityTest extends Spec {
+class SimpleMapRunSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)
 
-  "simple test for one inline query converted to sql" in {
+  "simple test for inline query and map translated to the mirror idiom" in {
     inline def q = quote {
       query[SanePerson] // helloo
     }
@@ -20,10 +24,10 @@ class SimpleMapSqlSanityTest extends Spec {
     }
     val quat = quatOf[SanePerson]
     qq.ast mustEqual Map(Entity("SanePerson", List(), quat.probit), Ident("p", quat), Property(Ident("p", quat), "name"))
-    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+    val ctx = new MirrorContext(MirrorIdiom, Literal)
     import ctx._
     val output = ctx.run(qq).string
-     output mustEqual """SELECT p.name FROM SanePerson p"""
+     output mustEqual """querySchema("SanePerson").map(p => p.name)"""
   }
 
 }

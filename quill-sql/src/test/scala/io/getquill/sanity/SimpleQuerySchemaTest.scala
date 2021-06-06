@@ -1,6 +1,6 @@
-package io.getquill
+package io.getquill.sanity
 
-
+import io.getquill._
 import io.getquill.generic._
 
 
@@ -27,7 +27,7 @@ class SimpleQuerySchemaTest extends Spec {
       inline def q = quote {
         querySchema[Person]("tblPerson", _.name -> "colName").filter(p => p.name == "Joe")
       }
-      ctx.run(q).string mustEqual "SELECT p.colName, p.age FROM tblPerson x WHERE p.colName = 'Joe'"
+      ctx.run(q).string mustEqual "SELECT p.colName, p.age FROM tblPerson p WHERE p.colName = 'Joe'"
     }
   }
 }
