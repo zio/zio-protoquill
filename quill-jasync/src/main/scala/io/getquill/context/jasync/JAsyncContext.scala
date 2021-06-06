@@ -20,7 +20,7 @@ import io.getquill.context.DatasourceContextInjection
 
 abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteConnection](val idiom: D, val naming: N, pool: ConnectionPool[C])
   extends JAsyncContextBase[D, N]
-  //with ScalaFutureIOMonad 
+  //with ScalaFutureIOMonad
 {
 
   private val logger = ContextLogger(classOf[JAsyncContext[_, _, _]])
@@ -87,8 +87,9 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
       .map(_.getRows.asScala.iterator.map(extractor).toList)
   }
 
-  // def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(implicit ec: ExecutionContext): Future[T] =
-  //   executeQuery(sql, prepare, extractor).map(handleSingleResult)
+  def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[T] =
+    implicit val ec = dc
+    executeQuery(sql, prepare, extractor)(executionInfo, dc).map(handleSingleResult)
 
   def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[Long] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in

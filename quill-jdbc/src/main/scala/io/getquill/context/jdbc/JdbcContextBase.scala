@@ -78,8 +78,8 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
       extractResult(rs, extractor)
     }
 
-  // def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[T] =
-  //   handleSingleWrappedResult(executeQuery(sql, prepare, extractor))
+  override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[T] =
+    handleSingleWrappedResult(executeQuery(sql, prepare, extractor))
 
   override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[O] =
     withConnectionWrapped { conn =>

@@ -12,7 +12,7 @@ import io.getquill.quat.quatOf
 import io.getquill.quote
 import io.getquill.query
 
-class OneMapRunSanityTest extends Spec {
+class SimpleMapRunSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)
 
   "simple test for inline query and map translated to the mirror idiom" in {

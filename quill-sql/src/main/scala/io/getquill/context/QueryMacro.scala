@@ -5,15 +5,18 @@ import io.getquill.Query
 import io.getquill.EntityQuery
 import io.getquill.metaprog.Extractors._
 import io.getquill.SchemaMeta
+import io.getquill.metaprog.QuotationLotExpr
+import io.getquill.metaprog.QuotedExpr.UprootableWithLifts
+import io.getquill.metaprog.QuotedExpr
 
-object QueryMacro {
+object QueryMacro:
   def apply[T: Type](using Quotes): Expr[EntityQuery[T]] = {
     import quotes.reflect._
     import scala.quoted.Expr.summon
     import io.getquill.metaprog.QuotationLotExpr
     import io.getquill.metaprog.QuotationLotExpr._
 
-
+    // TODO Make QuotationLotExpr(meta.reseal) match Uprootable(_, _, _) for better performance
     Expr.summon[SchemaMeta[T]] match {
       case Some(meta) =>
         meta.reseal match {
@@ -37,4 +40,4 @@ object QueryMacro {
         '{ EntityQuery.apply[T] }
     }
   }
-}
+end QueryMacro

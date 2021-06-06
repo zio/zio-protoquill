@@ -100,6 +100,7 @@ trait ProtoContext[Dialect <: Idiom, Naming <: NamingStrategy] extends RowContex
   def naming: Naming
 
   def executeQuery[T](sql: String, prepare: Prepare, extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunQueryResult[T]]
+  def executeQuerySingle[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunQuerySingleResult[T]]
   def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunActionResult]
   def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunActionReturningResult[T]]
   def executeBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionResult]
@@ -177,6 +178,21 @@ with Closeable
     }
     // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
     QueryExecution.apply(quoted, ca, None)
+  }
+
+  @targetName("runQuerySingle")
+  inline def run[T](inline quoted: Quoted[T]): Result[RunQuerySingleResult[T]] = {
+    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, this.type, Result[RunQuerySingleResult[T]]](self.idiom, self.naming) {
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
+        val extract = extraction match
+          case Extraction.Simple(extract) => extract
+          case _ => throw new IllegalArgumentException("Extractor required")
+
+        val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
+        self.executeQuerySingle(sql, prepare, extract)(executionInfo, runContext)
+    }
+    // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
+    QueryExecution.apply(QuerySingleAsQuery(quoted), ca, None)
   }
 
   @targetName("runAction")

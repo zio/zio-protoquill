@@ -8,7 +8,7 @@ import io.getquill.Quoted
 
 import io.getquill.quat.quatOf
 
-class OneMapSqlSanityTest extends Spec {
+class SimpleMapSqlSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)
 
   "simple test for one inline query converted to sql" in {

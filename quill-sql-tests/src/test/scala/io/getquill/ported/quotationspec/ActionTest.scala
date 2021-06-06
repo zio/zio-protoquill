@@ -88,16 +88,21 @@ class ActionTest extends Spec with TestEntities with Inside {
         }
         quote(unquote(q)).ast mustEqual internalizeVLabel(n.ast)
       }
-      // TODO Batch delete not implemented yet (BTW, why is this in the 'insert' super-test)
-      // "batch delete" in {
-      //   val list = List(1, 2)
-      //   val delete = quote((i: Int) => qr1.filter(_.i == i).delete)
-      //   inline def q = quote {
-      //     liftQuery(list).foreach(i => delete(i))
-      //   }
-      //   quote(unquote(q)).ast mustEqual
-      //     Foreach(ScalarQueryLift("q.list", list, intEncoder, QV), Ident("i"), delete.ast.body)
-      // }
+      "batch delete" in {
+        val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+        import ctx._
+
+        val list = List(1, 2)
+        inline def delete = quote((i: Int) => qr1.filter(_.i == i).delete)
+        inline def q = quote {
+          liftQuery(list).foreach(i => delete(i))
+        }
+        inside(quote(unquote(q)).ast) {
+          case Foreach(ScalarTag(_), Ident("i", quat), body) =>
+            body mustEqual delete.ast.body
+            quat mustEqual Quat.Value
+        }
+      }
       "batch insert" in {
         // liftQuery requires a context since it does lifts
         val ctx = new MirrorContext(MirrorSqlDialect, Literal)
@@ -154,5 +159,3 @@ class ActionTest extends Spec with TestEntities with Inside {
     }
   }
 }
-
-

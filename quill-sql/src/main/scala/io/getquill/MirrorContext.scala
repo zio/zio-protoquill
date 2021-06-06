@@ -17,14 +17,15 @@ trait MirrorColumnResolving[Dialect <: Idiom, Naming <: NamingStrategy] { self: 
   }
 }
 
-class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming) 
+class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming)
 extends MirrorContextBase[Dialect, Naming] with AstSplicing
 
 trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
-extends Context[Dialect, Naming] 
+extends Context[Dialect, Naming]
 with MirrorDecoders with MirrorEncoders { self =>
   override type Result[T] = T
   override type RunQueryResult[T] = QueryMirror[T]
+  override type RunQuerySingleResult[T] = QueryMirror[T]
   override type PrepareRow = Row
   override type ResultRow = Row
   override type RunActionResult = ActionMirror
@@ -54,6 +55,9 @@ with MirrorDecoders with MirrorEncoders { self =>
   override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: DatasourceContext) =
     QueryMirror(string, prepare(Row())._2, extractor, info)
 
+  override def executeQuerySingle[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: DatasourceContext) =
+    QueryMirror(string, prepare(Row())._2, extractor, info)
+
   override def executeAction[T](string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext): Result[RunActionResult] =
     ActionMirror(string, prepare(Row())._2, info)
 
@@ -68,7 +72,7 @@ with MirrorDecoders with MirrorEncoders { self =>
       },
       info
     )
-  
+
   override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionReturningResult[T]] =
     BatchActionReturningMirror[T](
       groups.map {
