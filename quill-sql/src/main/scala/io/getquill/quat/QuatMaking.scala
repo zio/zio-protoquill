@@ -14,6 +14,7 @@ import scala.collection.mutable
 import io.getquill.generic.GenericEncoder
 import io.getquill.generic.GenericDecoder
 import io.getquill.util.Format
+import io.getquill.generic.DecodingType
 
 // TODO Shuold not be using this 'Quoted', remove it
 case class Quoted[+T](val ast: io.getquill.ast.Ast)
@@ -90,9 +91,18 @@ trait QuatMaking extends QuatMakingBase {
     // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
     def encoderComputation() = {
       tpe.asType match
-         // Question: Should we pass in PrepareRow as well in order to have things be possibly products
-         // in one dialect and values in another???
-        case '[t] => (Expr.summon[GenericEncoder[t, _]], Expr.summon[GenericDecoder[t, _, _]]) match
+        // If an identifier in the Quill query is has a Encoder/Decoder pair, we treat it as a value i.e. Quat.Value is assigned as it's Quat.
+        // however, what do we do if there is only one. Say for Name(value: String), Person(name: Name, age: Int) there is a Name-Decoder
+        // but no Name-encoder. It is difficult to know whether to treat p.name in `query[Person].map(p => p.name)` as a Quat Value or Product.
+        // for this reason, we treat it as a quat-value if there is either a encoder or a decoder and warn the user about it.
+        // Furthermore, during various transformation phases, it is possible that a transformation will expect the field of p.name
+        // (i.e. `Name.value`) to exist whereas in fact it does not. The transformations recently have been changed to be more tolerant
+        // of this possibility but all such cases have not yet been covered. Therefore it is possible that if there is a encoder but not a decoder
+        // of a Identifier, an error (e.g. the Quat.Value does not have the field `value` i.e. of `Name.value`) so we warn the user
+        // and ask for them to define a Decoder for Name as well.
+        // Question: Should we pass in PrepareRow as well in order to have things be possibly products
+        // in one dialect and values in another???
+        case '[t] => (Expr.summon[GenericEncoder[t, _]], Expr.summon[GenericDecoder[_, t, DecodingType.Specific]]) match
           case (Some(_), Some(_)) => true
           case (Some(enc), None) =>
             report.warning(
