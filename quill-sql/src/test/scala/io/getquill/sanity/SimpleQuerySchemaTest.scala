@@ -30,4 +30,13 @@ class SimpleQuerySchemaTest extends Spec {
       ctx.run(q).string mustEqual "SELECT p.colName, p.age FROM tblPerson p WHERE p.colName = 'Joe'"
     }
   }
+  "schemaMeta shuold" - {
+    "produce an sql query with a filter and a renamed table and renamed columns" in {
+      inline given SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
+      inline def q = quote {
+        query[Person].filter(p => p.name == "Joe")
+      }
+      ctx.run(q).string mustEqual "SELECT p.colName, p.age FROM tblPerson p WHERE p.colName = 'Joe'"
+    }
+  }
 }
