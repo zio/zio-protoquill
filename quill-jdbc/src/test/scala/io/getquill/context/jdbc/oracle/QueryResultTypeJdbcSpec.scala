@@ -60,37 +60,36 @@ class QueryResultTypeJdbcSpec extends QueryResultTypeSpec {
     }
   }
 
-  // QuerySingle is not supported yet
-  // "return single result" - {
-  //   "min" - {
-  //     "some" in {
-  //       await(context.run(minExists)) mustEqual Some(products.map(_.sku).min)
-  //     }
-  //     "none" in {
-  //       await(context.run(minNonExists)) mustBe None
-  //     }
-  //   }
-  //   "max" - {
-  //     "some" in {
-  //       await(context.run(maxExists)) mustBe Some(products.map(_.sku).max)
-  //     }
-  //     "none" in {
-  //       await(context.run(maxNonExists)) mustBe None
-  //     }
-  //   }
-  //   "avg" - {
-  //     "some" in {
-  //       await(context.run(avgExists)) mustBe Some(BigDecimal(products.map(_.sku).sum) / products.size)
-  //     }
-  //     "none" in {
-  //       await(context.run(avgNonExists)) mustBe None
-  //     }
-  //   }
-  //   "size" in {
-  //     await(context.run(productSize)) mustEqual products.size
-  //   }
-  //   "parametrized size" in {
-  //     await(context.run(parametrizedSize(lift(10000)))) mustEqual 0
-  //   }
-  // }
+  "return single result" - {
+    "min" - {
+      "some" in {
+        await(context.run(minExists)) mustEqual Some(products.map(_.sku).min)
+      }
+      "none" in {
+        await(context.run(minNonExists)) mustBe None
+      }
+    }
+    "max" - {
+      "some" in {
+        await(context.run(maxExists)) mustBe Some(products.map(_.sku).max)
+      }
+      "none" in {
+        await(context.run(maxNonExists)) mustBe None
+      }
+    }
+    "avg" - {
+      "some" in {
+        await(context.run(avgExists)) mustBe Some(BigDecimal(products.map(_.sku).sum) / products.size)
+      }
+      "none" in {
+        await(context.run(avgNonExists)) mustBe None
+      }
+    }
+    "size" in {
+      await(context.run(productSize)) mustEqual products.size
+    }
+    "parametrized size" in {
+      await(context.run(parametrizedSize(lift(10000)))) mustEqual 0
+    }
+  }
 }

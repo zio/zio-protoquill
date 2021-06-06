@@ -79,7 +79,7 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
     }
 
   override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[T] =
-    handleSingleWrappedResult(executeQuery(sql, prepare, extractor))
+    handleSingleWrappedResult(executeQuery(sql, prepare, extractor)(executionInfo, dc))
 
   override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[O] =
     withConnectionWrapped { conn =>

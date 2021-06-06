@@ -66,43 +66,42 @@ class QueryResultTypePostgresAsyncSpec extends QueryResultTypeSpec {
     }
   }
 
-// QuerySingle is not implemented yet
-//   "return single result" - {
-//     "min" - {
-//       "some" in {
-//         await(testContext.run(minExists)) mustEqual Some(products.map(_.sku).min)
-//       }
-//       "none" in {
-//         await(testContext.run(minNonExists)) mustBe None
-//       }
-//     }
-//     "max" - {
-//       "some" in {
-//         await(testContext.run(maxExists)) mustBe Some(products.map(_.sku).max)
-//       }
-//       "none" in {
-//         await(testContext.run(maxNonExists)) mustBe None
-//       }
-//     }
-//     "avg" - {
-//       "some" in {
-//         await(testContext.run(avgExists)) mustBe Some(BigDecimal(products.map(_.sku).sum) / products.size)
-//       }
-//       "none" in {
-//         await(testContext.run(avgNonExists)) mustBe None
-//       }
-//     }
-//     "size" in {
-//       await(testContext.run(productSize)) mustEqual products.size
-//     }
-//     "parametrized size" in {
-//       await(testContext.run(parametrizedSize(lift(10000)))) mustEqual 0
-//     }
-//     "nonEmpty" in {
-//       await(testContext.run(nonEmpty)) mustEqual true
-//     }
-//     "isEmpty" in {
-//       await(testContext.run(isEmpty)) mustEqual false
-//     }
-//   }
+  "return single result" - {
+    "min" - {
+      "some" in {
+        await(testContext.run(minExists)) mustEqual Some(products.map(_.sku).min)
+      }
+      "none" in {
+        await(testContext.run(minNonExists)) mustBe None
+      }
+    }
+    "max" - {
+      "some" in {
+        await(testContext.run(maxExists)) mustBe Some(products.map(_.sku).max)
+      }
+      "none" in {
+        await(testContext.run(maxNonExists)) mustBe None
+      }
+    }
+    "avg" - {
+      "some" in {
+        await(testContext.run(avgExists)) mustBe Some(BigDecimal(products.map(_.sku).sum) / products.size)
+      }
+      "none" in {
+        await(testContext.run(avgNonExists)) mustBe None
+      }
+    }
+    "size" in {
+      await(testContext.run(productSize)) mustEqual products.size
+    }
+    "parametrized size" in {
+      await(testContext.run(parametrizedSize(lift(10000)))) mustEqual 0
+    }
+    "nonEmpty" in {
+      await(testContext.run(nonEmpty)) mustEqual true
+    }
+    "isEmpty" in {
+      await(testContext.run(isEmpty)) mustEqual false
+    }
+  }
 }
