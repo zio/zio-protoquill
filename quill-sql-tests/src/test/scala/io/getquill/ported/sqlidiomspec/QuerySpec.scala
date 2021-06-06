@@ -170,14 +170,13 @@ class QuerySpec extends Spec {
           "SELECT i.i, x2.s, x2.i, x2.l, x2.o FROM (SELECT DISTINCT i.i FROM TestEntity i) AS i INNER JOIN (SELECT x2.s, x2.i, x2.l, x2.o FROM TestEntity2 x2 ORDER BY x2.l ASC NULLS FIRST) AS x2 ON x2.i = i.i"
       }
 
-      // Requires run(QuerySingle) not implemented yet
-      // "followed by aggregation" in {
-      //   inline def q = quote {
-      //     qr1.map(i => i.i).distinct.size
-      //   }
-      //   testContext.run(q).string mustEqual
-      //     "SELECT COUNT(*) FROM (SELECT DISTINCT i.i FROM TestEntity i) AS x"
-      // }
+      "followed by aggregation" in {
+        inline def q = quote {
+          qr1.map(i => i.i).distinct.size
+        }
+        testContext.run(q).string mustEqual
+          "SELECT COUNT(*) FROM (SELECT DISTINCT i.i FROM TestEntity i) AS x"
+      }
     }
     "sorted" - {
       "simple" in {
@@ -303,47 +302,46 @@ class QuerySpec extends Spec {
       }
     }
     "aggregated" - {
-      // Requires run(QuerySingle) not implemented yet
-      // "min" in {
-      //   inline def q = quote {
-      //     qr1.map(t => t.i).min
-      //   }
-      //   testContext.run(q).string mustEqual
-      //     "SELECT MIN(t.i) FROM TestEntity t"
-      // }
-      // Requires run(QuerySingle) not implemented yet
-      // "max" in {
-      //   inline def q = quote {
-      //     qr1.map(t => t.i).max
-      //   }
-      //   testContext.run(q).string mustEqual
-      //     "SELECT MAX(t.i) FROM TestEntity t"
-      // }
-      // Requires run(QuerySingle) not implemented yet
-      // "avg" in {
-      //   inline def q = quote {
-      //     qr1.map(t => t.i).avg
-      //   }
-      //   testContext.run(q).string mustEqual
-      //     "SELECT AVG(t.i) FROM TestEntity t"
-      // }
-      // Requires run(QuerySingle) not implemented yet
-      // "sum" in {
-      //   inline def q = quote {
-      //     qr1.map(t => t.i).sum
-      //   }
-      //   testContext.run(q).string mustEqual
-      //     "SELECT SUM(t.i) FROM TestEntity t"
-      // }
+      "min" in {
+        inline def q = quote {
+          qr1.map(t => t.i).min
+        }
+        testContext.run(q).string mustEqual
+          "SELECT MIN(t.i) FROM TestEntity t"
+      }
+
+      "max" in {
+        inline def q = quote {
+          qr1.map(t => t.i).max
+        }
+        testContext.run(q).string mustEqual
+          "SELECT MAX(t.i) FROM TestEntity t"
+      }
+
+      "avg" in {
+        inline def q = quote {
+          qr1.map(t => t.i).avg
+        }
+        testContext.run(q).string mustEqual
+          "SELECT AVG(t.i) FROM TestEntity t"
+      }
+
+      "sum" in {
+        inline def q = quote {
+          qr1.map(t => t.i).sum
+        }
+        testContext.run(q).string mustEqual
+          "SELECT SUM(t.i) FROM TestEntity t"
+      }
       "size" - {
-        // Requires run(QuerySingle) not implemented yet
-        // "regular" in {
-        //   inline def q = quote {
-        //     qr1.size
-        //   }
-        //   testContext.run(q).string mustEqual
-        //     "SELECT COUNT(*) FROM TestEntity x"
-        // }
+
+        "regular" in {
+          inline def q = quote {
+            qr1.size
+          }
+          testContext.run(q).string mustEqual
+            "SELECT COUNT(*) FROM TestEntity x"
+        }
         "with groupBy" in {
           inline def q = quote {
             qr1.map(t => (t.i, t.s)).groupBy(t => t._1).map {
@@ -354,14 +352,14 @@ class QuerySpec extends Spec {
             "SELECT COUNT(*) FROM TestEntity t GROUP BY t.i"
         }
       }
-      // Requires run(QuerySingle) not implemented yet
-      // "with filter" in {
-      //   inline def q = quote {
-      //     qr1.filter(t => t.i > 1).map(t => t.i).min
-      //   }
-      //   testContext.run(q).string mustEqual
-      //     "SELECT MIN(t.i) FROM TestEntity t WHERE t.i > 1"
-      // }
+
+      "with filter" in {
+        inline def q = quote {
+          qr1.filter(t => t.i > 1).map(t => t.i).min
+        }
+        testContext.run(q).string mustEqual
+          "SELECT MIN(t.i) FROM TestEntity t WHERE t.i > 1"
+      }
       "as select value" in {
         inline def q = quote {
           qr1.take(10).map(a => qr2.filter(t => t.i > a.i).map(t => t.i).min)
@@ -369,14 +367,14 @@ class QuerySpec extends Spec {
         testContext.run(q).string mustEqual
           "SELECT (SELECT MIN(t.i) FROM TestEntity2 t WHERE t.i > a.i) FROM TestEntity a LIMIT 10"
       }
-      // Requires run(QuerySingle) not implemented yet
-      // "after a group by" in {
-      //   inline def q = quote {
-      //     qr1.groupBy(t => t.s).map { case (a, b) => (a, b.size) }.size
-      //   }
-      //   testContext.run(q).string mustEqual
-      //     "SELECT COUNT(*) FROM TestEntity t GROUP BY t.s"
-      // }
+
+      "after a group by" in {
+        inline def q = quote {
+          qr1.groupBy(t => t.s).map { case (a, b) => (a, b.size) }.size
+        }
+        testContext.run(q).string mustEqual
+          "SELECT COUNT(*) FROM TestEntity t GROUP BY t.s"
+      }
       "group by + binary op select" in {
         inline def q = quote {
           qr1.groupBy(t => t.i).map {
@@ -387,17 +385,17 @@ class QuerySpec extends Spec {
           "SELECT t.i, (COUNT(*)) + 1 FROM TestEntity t GROUP BY t.i"
       }
     }
-    // Requires run(QuerySingle) not implemented yet
-    // "unary operation" - {
-    //   "nonEmpty" in {
-    //     testContext.run(qr1.nonEmpty).string mustEqual
-    //       "SELECT EXISTS (SELECT x.s, x.i, x.l, x.o, x.b FROM TestEntity x)"
-    //   }
-    //   "isEmpty" in {
-    //     testContext.run(qr1.isEmpty).string mustEqual
-    //       "SELECT NOT EXISTS (SELECT x.s, x.i, x.l, x.o, x.b FROM TestEntity x)"
-    //   }
-    // }
+
+    "unary operation" - {
+      "nonEmpty" in {
+        testContext.run(qr1.nonEmpty).string mustEqual
+          "SELECT EXISTS (SELECT x.s, x.i, x.l, x.o, x.b FROM TestEntity x)"
+      }
+      "isEmpty" in {
+        testContext.run(qr1.isEmpty).string mustEqual
+          "SELECT NOT EXISTS (SELECT x.s, x.i, x.l, x.o, x.b FROM TestEntity x)"
+      }
+    }
     "limited" - {
       "simple" in {
         inline def q = quote {
@@ -521,14 +519,14 @@ class QuerySpec extends Spec {
         }
       }
     }
-    // TODO Requires run(QuerySingle) which is not implemented yet
-    // "without from" in {
-    //   inline def q = quote {
-    //     qr1.map(t => t.i).size == 1L
-    //   }
-    //   testContext.run(q).string mustEqual
-    //     "SELECT ((SELECT COUNT(t.i) FROM TestEntity t)) = 1"
-    // }
+
+    "without from" in {
+      inline def q = quote {
+        qr1.map(t => t.i).size == 1L
+      }
+      testContext.run(q).string mustEqual
+        "SELECT ((SELECT COUNT(t.i) FROM TestEntity t)) = 1"
+    }
     "contains" in {
       inline def q = quote {
         qr1.filter(t => qr2.map(p => p.i).contains(t.i))
