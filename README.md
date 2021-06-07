@@ -1,6 +1,6 @@
 # Introduction
 
-ProtoQuill is the continuation of [Quill: Free/Libre Compile-time Language Integrated Queries for Scala](https://getquill.io/). Althought is is already considerably feature-full, it is still very-much in beta so please use it carefuly. For those migrating, or exploring migration from Scala2-Quill, most Queries written in Scala2-Quill should work readily in ProtoQuill but they will become Dynamic. Change them to `inline def` expressions and they should once-again be compile-time (see the Rationale section for some info on why I chose to do this). Also see the Migration Notes section.
+ProtoQuill is the continuation of [Quill: Free/Libre Compile-time Language Integrated Queries for Scala](https://getquill.io/). Althought is is already considerably feature-full, it is still very-much in beta so please use it carefuly. For those migrating, or exploring migration from Scala2-Quill, most Queries written in Scala2-Quill should work readily in ProtoQuill but they will become Dynamic. Change them to `inline def` expressions and they should once-again be compile-time (see the [Rationale](#rationale-for-inline) section for some info on why I chose to do this). Also see the [Migration Notes](#migration-notes) section.
 
 Not all Contexts and not all Functionality is Supported yet. Here is a rough list of both:
 
@@ -8,7 +8,7 @@ Currently Supported:
  - Basic Quotation, Querying, Lifting, and Composition (Compile-Time and Dynamic)
  - Inner/Outer, Left/Right joins
  - Query.map/flatMap/concatMap/filter other [query constructs](https://getquill.io/#quotation-queries).
- - Insert, Update, Delete (Actions)[https://getquill.io/#quotation-actions] (Compile-Time and Dynamic)
+ - Insert, Update, Delete [Actions](https://getquill.io/#quotation-actions) (Compile-Time and Dynamic)
  - Batch Insert, Batch Update, and Batch Delete Actions (currently only Compile-Time)
  - ZIO, Synchronous JDBC, and Jasync Postgres contexts.
 
@@ -381,9 +381,75 @@ To use co-product rows do the following:
 
 ## Custom Parsing
 
-TBD
+WARNING: This feature is somewhat experimental and the API is subject to change. Please use with caution.
 
-## Migration Notes
+### Reason for This
+
+In Quill you can define methods (including extension methods) that return quoted sections. This is typically used for user-defined logic:
+```scala
+import io.getquill._
+
+object MyBusinessLogic:
+  extension (inline i: Int)
+    inline def **(exponent: Int) = quote { infix"power($i, $exponent)" }
+
+def main(args: Array[String]) =
+  import MyBusinessLogic._
+  run( query[Person].map(p => p.age ** 2 )
+  // SELECT power(p.age, 2) FROM Person p
+```
+However, it is entirely possible that you might also want to use these Business-Logic constructs in regular Scala code:
+```scala
+object MyBusinessLogicNonQuill: // Need to define a different object that does non-quill logic
+  extension (inline i: Int)
+    inline def **(exponent: Int) = Math.pow(i, exponent)
+val ageSquared = person.age ** 2
+```
+This is cumbersome because multiple objects need to be defined for the two implementations that this power-method (i.e. `**`) needs to be.
+For this reason, ProtoQuill supports an easy extension syntax for custom parsing. It works like this:
+
+### Syntax
+
+1. First, define your business logic and methods as usual:
+   ```scala
+   object MyBusinessLogic: // Be sure that Nothing is inline here!
+     extension (i: Int)
+       def **(exponent: Int) = Math.pow(i, exponent)
+   ```
+2. Then define a parser to handle this construct:
+   ```scala
+   import io.getquill.parser._
+   import io.getquill.ast.{ Ast, Infix }
+   import io.getquill.quat.Quat
+   
+   case class CustomOperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+     import quotes.reflect._
+     import CustomOps._
+     def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+     def delegate: PartialFunction[Expr[_], Ast] =
+       case '{ ($i: Int)**($j: Int) } =>
+         Infix(
+           List("power(", " ,", ")"),
+           List(astParse(i), astParse(j)), true, Quat.Value)
+   }
+   
+   object CustomParser extends ParserLibrary:
+     import Parser._
+     override def operationsParser(using qctx: Quotes) =
+       Series.of(new OperationsParser, new CustomOperationsParser)
+   ```
+   Note that these to steps need to be done in a *separate compilation unit*. That typically means that you
+   need to make a separate SBT project with this logic that is compiled before the rest of your application code.
+3. Now in your application code, you can use the custom parser after defing it as a given (or implicit)
+   ```scala
+   given myParser: CustomParser.type = CustomParser
+   import MyBusinessLogic._
+   case class Person(name: String, age: Int)
+   inline def q = quote { query[Person].map(p => p.age ** 2) }
+   // SELECT power(p.age ,2) FROM Person p
+   ```
+  
+  ## Migration Notes
 
  - Most Scala2-Quill code should either work in ProtoQuill directly or require minimal changes in order to work.
    However, since ProtoQuill compile-time queries rely on `inline def`, these queries must be changed from this:
