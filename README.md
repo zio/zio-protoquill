@@ -338,6 +338,16 @@ run(q)
 //   (p.age = ? OR ? IS NULL) AND
 //   true
 ```
+The way that this works is that in each `?` slot, the corresponding column is looked up from the map.
+```
+// SELECT p.firstName, p.lastName, p.age 
+// FROM Person p 
+// WHERE
+//   (p.firstName = { values("firstName") } OR { values("firstName") } IS NULL) AND
+//   (p.lastName = { values("lastName") } OR { values("lastName") } IS NULL) AND
+//   (p.age = { values("age") } OR { values("age") } IS NULL) AND
+//   true
+```
 
 ## Co-Product Rows
 
