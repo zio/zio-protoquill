@@ -202,7 +202,7 @@ inline def q = quote { query[Person].filter(p => p.name == lift(name)) }
   // TODO Get SQL
 }
 ```
-Note however that for lazy-lifts to work, for some query, all of it's parts need to be `inline def`. That is to say, Dynamic Queries do not work with `lazyLift`.
+Note however that for lazy-lifts to work, for a query, all of it's parts need to be `inline def`. That is to say, Dynamic Queries do not work with `lazyLift`.
 
 
 ### How it Works
@@ -237,6 +237,29 @@ inline def somePeople = quote {
 }
 ```
 
+Unlike `lift`, `lazyLift` does not require a encoder to be imported at the call-site because it delays summoning the encoder until the `run` function.
+```scala
+inline def somePeople = quote {
+  query[Person].filter(p => p.name == lazyLift(runtimeValue))
+}
+
+// Need to import a context only for the `run` function.
+val ctx = new MyDatabaseContext()
+import ctx._
+val result: List[Person] = run(somePeople) // summons Encoder[String] here
+```
+Conceptually, `lazyLift` can be thought of like this:
+```scala
+// Return some kind of information that can be evaluated later when an encoder is summoned
+def lift(value: T) = (encoder: Encoder[T]) => encoder.encode(t)
+
+class MyDatabaseContext:
+  def run(q: Quoted[Query[T]]) =
+     val statement = prepareStatement(q)
+     val t = q.lifts(0)
+     statement.prepare(1, summon[Encoder[T]].encode(t)) // Summon the actual encoder at the `run` site.
+```
+Again, please note that this is not the actual Quill code, this is just a conceptual model of how it works.
 
 ## Filtering Tables by Key/Values
 On typical use-case that ProtoQuill can do (which has been difficult in the past) is to filter a query based on an arbitrary group of column/value pairs. This is typically done with Http-Based systems where URL-parameters `&key=value` are decoded as a map. In ProtoQuill, the `filterByKeys` addresses this use-case.
