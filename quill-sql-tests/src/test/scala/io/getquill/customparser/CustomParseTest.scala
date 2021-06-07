@@ -18,7 +18,7 @@ class CustomParseTest extends Spec with Inside {
     import CustomOps._
     case class Person(name: String, age: Int)
     inline def q = quote { query[Person].map(p => p.age ** 2) }
-    println(ctx.run(q))
+    ctx.run(q).string mustEqual "SELECT power(p.age ,2) FROM Person p"
   }
 
 }

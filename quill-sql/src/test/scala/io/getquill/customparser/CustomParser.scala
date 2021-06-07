@@ -9,9 +9,8 @@ import io.getquill.ast.Infix
 import io.getquill.quat.Quat
 
 object CustomOps {
-  extension (i: Int) {
-    def **(other: Int) = i * other * other
-  }
+  extension (i: Int)
+    def **(exponent: Int) = Math.pow(i, exponent)
 }
 
 object CustomParser extends ParserLibrary:
@@ -26,6 +25,6 @@ case class CustomOperationsParser(root: Parser[Ast] = Parser.empty)(override imp
   def delegate: PartialFunction[Expr[_], Ast] =
     case '{ ($i: Int)**($j: Int) } =>
       Infix(
-        List("ttFunc(", " ,", ")"),
+        List("power(", " ,", ")"),
         List(astParse(i), astParse(j)), true, Quat.Value)
 }
