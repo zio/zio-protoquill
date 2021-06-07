@@ -24,6 +24,11 @@ Currently Not Supported:
  - OrientDB Contexts
  - Spark Context (still waiting on Spark for Scala 2.13)
 
+There are also quite a few new features that ProtoQuill has:
+ - Extensions and Typeclasses Transforming ProtoQuill queries (see [Shareable Code](#shareable-code) and [Advanced Example](#advanced-example)).
+ - Custom Parsing
+ - CoProduct Rows (Highly experimental, use with caution!)
+
 One other note that this documentation is not yet a fully-fledged reference for ProtoQuill features. Have a look at the original [Quill documentation](https://getquill.io/) for basic information about how Quill constructs (e.g. Queries, Joins, Actions, Batch Actions, etc...) are written in lieu of any documentation missing here.
 
 For further information, watch:
