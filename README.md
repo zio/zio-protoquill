@@ -238,7 +238,7 @@ inline def somePeople = quote {
 ```
 
 
-### Filtering table fields with a Map
+## Filtering Tables by Key/Values
 On typical use-case that ProtoQuill can do (which has been difficult in the past) is to filter a query based on an arbitrary group of column/value pairs. This is typically done with Http-Based systems where URL-parameters `&key=value` are decoded as a map. In ProtoQuill, the `filterByKeys` addresses this use-case.
 ```scala
 val values: Map[String, String] = Map("firstName" -> "Joe", "age" -> "22")
@@ -261,10 +261,17 @@ run(q)
 //   true
 ```
 
-### FilterOne
+## FilterOne
 
 TBD
 
+## Co-Product Rows
+
+TBD
+
+## Custom Parsing
+
+TBD
 
 # Migration Notes
 
