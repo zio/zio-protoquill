@@ -139,7 +139,7 @@ object QueryMetaExtractor {
                 (requip, baq, staticTranslation)
 
               case None =>
-                println("WARNING: Query Was Static but Dynamic Meta was found which forced the query to become dynamic!")
+                report.warning(s"Query Was Static but a Dynamic Meta was found: `${io.getquill.util.Format.Expr(quip)}`.This has forced the query to become dynamic!")
 
                 val reappliedAst =
                   '{ FunctionApply($quip.entity.ast, List($quotedArg.ast)) }

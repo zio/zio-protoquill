@@ -19,40 +19,51 @@ class QueryMetaTest extends Spec with Inside {
   val ctx = new MirrorContext(MirrorIdiom, Literal)
   import ctx._
 
-  
-  
-
   "summon schema meta" - {
-    "static meta" - {
-      implicit inline def qm: QueryMeta[PersonName, String] = {
-        queryMeta[PersonName, String](
-          quote { 
+    "static meta - new style" - {
+      inline given QueryMeta[PersonName, String] =
+        queryMeta(
+          quote {
             (q: Query[PersonName]) => q.map(p => p.name)
           }
         )((name: String) => PersonName(name))
-      }
-
-      printer.lnf(qm.entity.ast)
 
       "static query" in {
         inline def people = quote { query[PersonName] }
         val result = ctx.run(people)
         result.string mustEqual """querySchema("PersonName").map(p => p.name)"""
-        result.executionType mustEqual ExecutionType.Static //hello
+        result.info.executionType mustEqual ExecutionType.Static
+      }
+    }
+
+    "static meta" - {
+      implicit inline def qm: QueryMeta[PersonName, String] = {
+        queryMeta[PersonName, String](
+          quote {
+            (q: Query[PersonName]) => q.map(p => p.name)
+          }
+        )((name: String) => PersonName(name))
+      }
+
+      "static query" in {
+        inline def people = quote { query[PersonName] }
+        val result = ctx.run(people)
+        result.string mustEqual """querySchema("PersonName").map(p => p.name)"""
+        result.info.executionType mustEqual ExecutionType.Static //hello
       }
 
       "dynamic query" in {
         val people = quote { query[PersonName] }
         val result = ctx.run(people)
         result.string mustEqual """querySchema("PersonName").map(p => p.name)"""
-        result.executionType mustEqual ExecutionType.Dynamic
+        result.info.executionType mustEqual ExecutionType.Dynamic
       }
     }
 
     "dynamic meta" - {
       implicit val qm: QueryMeta[PersonName, String] = {
         queryMeta[PersonName, String](
-          quote { 
+          quote {
             (q: Query[PersonName]) => q.map(p => p.name)
           }
         )((name: String) => PersonName(name))
@@ -62,14 +73,14 @@ class QueryMetaTest extends Spec with Inside {
         inline def people: Quoted[Query[PersonName]] = quote { query[PersonName] }
         val result = ctx.run[PersonName](people)
         result.string mustEqual """querySchema("PersonName").map(p => p.name)"""
-        result.executionType mustEqual ExecutionType.Dynamic
+        result.info.executionType mustEqual ExecutionType.Dynamic
       }
 
       "dynamic query" in {
-        val people = quote { query[PersonName] } //helloo
+        val people = quote { query[PersonName] }
         val result = ctx.run(people)
         result.string mustEqual """querySchema("PersonName").map(p => p.name)"""
-        result.executionType mustEqual ExecutionType.Dynamic
+        result.info.executionType mustEqual ExecutionType.Dynamic
       }
     }
   }

@@ -71,14 +71,12 @@ object Execution:
           case None => report.throwError(s"Decoder could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
 
   /** See if there there is a QueryMeta mapping T to some other type RawT */
-  def summonQueryMetaIfExists[T: Type]()(using Quotes) =
+  def summonQueryMetaTypeIfExists[T: Type](using Quotes) =
+    import quotes.reflect._
     Expr.summon[QueryMeta[T, _]] match
       case Some(expr) =>
-        // println("Summoned! " + expr.show)
-        UntypeExpr(expr) match
-          case '{ QueryMeta.apply[k, n]($one, $two, $uid) } => Some(Type.of[n])
-          case _ =>
-            quotes.reflect.report.throwError("Summoned Query Meta But Could Not Get Type")
+        expr.asTerm.tpe.asType match
+          case '[QueryMeta[k, n]] => Some(Type.of[n])
       case None => None
 
   def makeDecoder[ResultRow: Type, RawT: Type](using Quotes)() = summonDecoderOrThrow[ResultRow, RawT]()
@@ -159,7 +157,7 @@ object QueryExecution:
 
     /** Summon all needed components and run executeQuery method */
     def applyQuery(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
-      summonQueryMetaIfExists[T]() match
+      summonQueryMetaTypeIfExists[T] match
         // Can we get a QueryMeta? Run that pipeline if we can
         case Some(queryMeta) =>
           queryMeta match { case '[rawT] => runWithQueryMeta[rawT](quoted) }

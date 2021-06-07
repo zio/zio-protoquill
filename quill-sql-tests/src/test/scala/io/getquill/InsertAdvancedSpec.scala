@@ -34,9 +34,13 @@ class InsertAdvancedSpec extends Spec with Inside {
         ctx.run(q).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Static)
         ctx.run(a).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Static)
       }
-      // TODO Doing this with a runtime query should throw an exception (for now)
       "simple with insert meta" in {
         inline given personMeta: InsertMeta[Person] = insertMeta[Person](_.age)
+        ctx.run(q).triple mustEqual ("INSERT INTO Person (name) VALUES ('Joe')", List(), Static)
+        ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
+      }
+      "simple with insert meta - compact" in {
+        inline given InsertMeta[Person] = insertMeta(_.age)
         ctx.run(q).triple mustEqual ("INSERT INTO Person (name) VALUES ('Joe')", List(), Static)
         ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
       }
@@ -167,7 +171,7 @@ class InsertAdvancedSpec extends Spec with Inside {
 
         // For dynamic queries `insert` macro is already evaluated therefore `given sm` will not change the column names
         ctx.run(qdyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
-        ctx.run(adyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)  
+        ctx.run(adyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
       }
     }
   }
@@ -188,7 +192,7 @@ class InsertAdvancedSpec extends Spec with Inside {
 
         // For dynamic queries `insert` macro is already evaluated therefore `given sm` will not change the column names
         ctx.run(qdyn).triple mustEqual ("UPDATE Person SET name = 'Joe', age = 123", List(), Dynamic)
-        ctx.run(adyn).triple mustEqual ("UPDATE Person SET name = 'Joe', age = 123", List(), Dynamic)  
+        ctx.run(adyn).triple mustEqual ("UPDATE Person SET name = 'Joe', age = 123", List(), Dynamic)
       }
     }
   }
@@ -206,7 +210,7 @@ class InsertAdvancedSpec extends Spec with Inside {
       ctx.run(q).triple mustEqual    ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
       ctx.run(a).triple mustEqual    ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
       ctx.run(qdyn).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
-      ctx.run(adyn).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)  
+      ctx.run(adyn).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
     }
   }
 
@@ -223,7 +227,7 @@ class InsertAdvancedSpec extends Spec with Inside {
       ctx.run(q).triple mustEqual    ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
       ctx.run(a).triple mustEqual    ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
       ctx.run(qdyn).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
-      ctx.run(adyn).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)  
+      ctx.run(adyn).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
     }
   }
 
@@ -238,11 +242,11 @@ class InsertAdvancedSpec extends Spec with Inside {
 
 
 
-    
+
 
     // "regular dynamic query shuold work" in {
     //   ctx.run(qdyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
-    //   ctx.run(adyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)  
+    //   ctx.run(adyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
     // }
 
     // TODO add dynamic schema ignore possiblity
@@ -255,4 +259,4 @@ class InsertAdvancedSpec extends Spec with Inside {
 //     inline def people = quote { query[Person] }
 //     def peopleRuntime = quote { query[Person] }
 //   }
-} 
+}
