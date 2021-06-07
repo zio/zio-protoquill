@@ -336,7 +336,33 @@ run(q)
 
 ## Co-Product Rows
 
-TBD
+Co-Product are supported using Enums and sealed traits. Keep in mind that for now, only static-global enums are supported and any sealed traits that are used must be sealed in a *separate object* in order to work. Otherwise a sum-type mirror of them will not be found. In ORM-terms, Quill uses a "Table Per Class-Hierarchy" model of co-product polymorhism in which data for all co-products must be encodeable within a simple row.
+> Note: As a possible avenue of exploration, this approach can be combined with QueryMeta to relax the requirement of having a single table for all coproducts since QueryMeta can be used to produce a set of joins under the facade of being a single table.
+
+
+To use co-product rows do the following:
+
+1. Create the Coproduct
+   ```scala
+   object StaticEnumExample {
+     enum Shape(val id: Int):
+       case Square(override val id: Int, width: Int, height: Int) extends Shape(id)
+       case Circle(override val id: Int, radius: Int) extends Shape(id)
+   }
+   ```
+2. Create an object called a row-typer which will take a Database row and figure out how what element of the coproduct to decode into.
+   ```scala
+   given RowTyper[Shape] with
+     def apply(row: Row) = 
+       row.apply[String]("type") match
+         case "square" => classTag[Shape.Square]
+         case "circle" => classTag[Shape.Circle]
+    ```
+3. Create and run your query:
+   ```scala
+   inline def q = quote { query[Shape].filter(s => s.id == 18) }
+   val result: List[Shape] = ctx.run(q)
+   ```
 
 ## Custom Parsing
 
