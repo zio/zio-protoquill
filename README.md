@@ -366,7 +366,7 @@ To use co-product rows do the following:
    }
    ```
    > Note: Currently all Enums used for Co-Product rows need to be in a static namespace (i.e. in an Object).
-     this is due a [Dotty/Scala3 issue](https://github.com/lampepfl/dotty/issues/11174).
+     This is due a [Dotty/Scala3 issue](https://github.com/lampepfl/dotty/issues/11174).
 2. Create an object called a row-typer which will take a Database row and figure out how what element of the coproduct to decode into.
    ```scala
    given RowTyper[Shape] with
