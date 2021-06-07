@@ -51,7 +51,7 @@ testPostgresDB.dataSource.url=<my-jdbc-url>
 ```
 Have a look at [this list](https://getquill.io/#contexts-quill-jdbc) to see how to configure other databases.
 
-Create a context and a case class representing your table (code generation is also available).
+Create a context and a case class representing your table.
 ```scala
 import io.getquill._
 
