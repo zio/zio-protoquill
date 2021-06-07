@@ -25,7 +25,7 @@ Currently Not Supported:
  - Spark Context (still waiting on Spark for Scala 2.13)
 
 There are also quite a few new features that ProtoQuill has:
- - Extensions and Typeclasses Transforming ProtoQuill queries (see [Shareable Code](#shareable-code) and [Advanced Example](#advanced-example)).
+ - Scala Methods and Typeclasses Transforming ProtoQuill queries (see [Shareable Code](#shareable-code) and [Advanced Example](#advanced-example)).
  - [Custom Parsing](#custom-parsing) (Early API, still subject to change)
  - [Co-Product Rows](#co-product-rows) (Highly experimental, use with caution!)
 
@@ -475,15 +475,25 @@ For this reason, ProtoQuill supports an easy extension syntax for custom parsing
 
 ProtoQuill supports standard Dotty extensions. An inline extension will yield a compile-time query.
 
-```
+```scala
 case class Person(first: String, last: String)
 
 extension (inline p: Person) // make sure this variable is `inline`
-  inline def fullName = first + " " + last
+  inline def fullName = p.first + " " + p.last
 
 run( query[Person].map(p => p.fullName) )
-// TODO Get SQL
+// SELECT p.name || ' ' || p.age FROM Person p
 ```
+In Scala2-Quill, this kind of extension was supported by a hacky use of implicit classes:
+```
+implicit class PersonExpt(p: Person)
+  def fullName = p.first + " " + p.last
+
+run( query[Person].map(p => p.fullName) )
+// SELECT p.name || ' ' || p.age FROM Person p
+```
+This latter kind of extension mechanism is not yet supported and ProtoQuill but will likely be eventually supported
+for backwards-compatibility reasons. The Queries in which it is used will inherently become Dynamic.
 
 # Rationale for Inline
 
