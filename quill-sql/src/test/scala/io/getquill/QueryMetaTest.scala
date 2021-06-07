@@ -36,8 +36,34 @@ class QueryMetaTest extends Spec with Inside {
       }
     }
 
+    "static meta - new style - multi object" - {
+      case class Person(name: String, age: Int, importance: String)
+      case class Vip(name: String, age: Int)
+
+      inline given QueryMeta[Vip, Person] =
+        queryMeta(
+          quote {
+            (q: Query[Vip]) => q.map(v => Person(v.name, v.age, "VeryImportant"))
+          }
+        )((p: Person) => Vip(p.name, p.age))
+
+      "static query" in {
+        inline def people = quote { query[Vip] }
+        val result = ctx.run(people)
+        result.string mustEqual """querySchema("Vip").map(v => CaseClass(name: v.name, age: v.age, importance: "VeryImportant"))"""
+        result.info.executionType mustEqual ExecutionType.Static
+      }
+
+      "dynamic query" in {
+        val people = quote { query[Vip] }
+        val result = ctx.run(people)
+        result.string mustEqual """querySchema("Vip").map(v => CaseClass(name: v.name, age: v.age, importance: "VeryImportant"))"""
+        result.info.executionType mustEqual ExecutionType.Dynamic
+      }
+    }
+
     "static meta" - {
-      implicit inline def qm: QueryMeta[PersonName, String] = {
+      implicit inline def qm: QueryMeta[PersonName, String] = { //hellooo
         queryMeta[PersonName, String](
           quote {
             (q: Query[PersonName]) => q.map(p => p.name)
@@ -45,16 +71,18 @@ class QueryMetaTest extends Spec with Inside {
         )((name: String) => PersonName(name))
       }
 
-      "static query" in {
+      "static query should yield static result" in {
         inline def people = quote { query[PersonName] }
         val result = ctx.run(people)
         result.string mustEqual """querySchema("PersonName").map(p => p.name)"""
-        result.info.executionType mustEqual ExecutionType.Static //hello
+        result.info.executionType mustEqual ExecutionType.Static
       }
 
-      "dynamic query" in {
+      "dynamic query shuold yield dynamic requst" in {
         val people = quote { query[PersonName] }
         val result = ctx.run(people)
+        //println("Result: " + result.string)
+        //println("=== Result: " + io.getquill.util.Messages.qprint(result.info.ast))
         result.string mustEqual """querySchema("PersonName").map(p => p.name)"""
         result.info.executionType mustEqual ExecutionType.Dynamic
       }

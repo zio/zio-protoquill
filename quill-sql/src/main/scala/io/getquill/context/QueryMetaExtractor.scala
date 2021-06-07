@@ -39,13 +39,27 @@ import io.getquill.context.Execution.ElaborationBehavior
 * function to apply to an extractor we call that the 'baq' since it mapps the inner query back
 * from R to T.
 *
-* Once the quip is summoned, it is applied to the original user-create query and then called
+* Once the quip is summoned, it is applied to the original user-created query and then called
 * a requip (i.e. re-applied quip). That it to say the requip is:
 * `FunctionApply(Query[T] => Query[R], Query[R])`
 *
 * Note that since internally, a QueryMeta carries a Quoted instance, the QueryMeta itself
 * is a QuotationLot. For that reason, we call the whole QueryMeta structure a quip-lot.
 * (Metaphorically speaking, a 'lot' meta real-estate containing a quip)
+*
+* Given a PersonName(name: String) we can define a QueryMeta like this:
+* {{
+*   inline given QueryMeta[PersonName, String] =
+*    queryMeta(
+*      quote { (q: Query[PersonName]) => q.map(p => p.name) } // The Quipper
+*    )((name: String) => PersonName(name)) // The Baq
+* }}
+* When we do something like:
+* {{
+*   inline def people = quote { query[PersonName] }
+*   val result = ctx.run(people)
+* }}
+* The Query-Lot AST becomes EntityQuery("Person")
 */
 object QueryMetaExtractor {
   import io.getquill.parser._
@@ -91,10 +105,17 @@ object QueryMetaExtractor {
           }
 
         // Don't need to unlift the ASTs and re-lift them. Just put them into a FunctionApply
-        val astApply =
-          '{FunctionApply($quipperAst, List(${queryLot.ast}))}
+        //import io.getquill.util.Format
+        //import io.getquill.util.Messages.qprint
+        //println(s"=== Quipper Ast: ${(Unlifter(quipperAst))}")
+        //println(s"=== Query Lot Ast: ${(Unlifter(queryLot.ast))}")
 
-        // TODO Dedupe?
+        // E.g. apply quipper ast: `(q) => q.map(p => p.name)` to queryLot.ast which is querySchema("PersonName") (i.e. EntityQuery("PersonName"))
+        // that will become `querySchema("PersonName").map(p => p.name)`
+        val astApply =
+          '{ FunctionApply($quipperAst, List(${queryLot.ast})) }
+
+        // TODO Dedupe the lifts?
         val newLifts = (queryLifts ++ lifts).map(_.plant)
 
         // In the compile-time case, we can synthesize the new quotation

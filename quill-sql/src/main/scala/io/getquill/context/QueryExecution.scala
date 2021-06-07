@@ -253,7 +253,7 @@ object QueryExecution:
       // and then decide to plug in the elaboration or not during runtime (depending on the type of Ast which would be runtime-checked)
       // but that would be less straightforward to do.
       val elaboratedAst = quotationType match
-        case ElaborationBehavior.Elaborate => ElaborateStructure.ontoDynamicAst[T]('{ $quote.ast })
+        case ElaborationBehavior.Elaborate => ElaborateStructure.ontoDynamicAst[RawT]('{ $quote.ast })
         case ElaborationBehavior.Skip => '{ $quote.ast }
 
       val elaboratedAstQuote = '{ $quote.copy(ast = $elaboratedAst) }
@@ -326,6 +326,8 @@ object RunDynamicExecution:
     fetchSize: Option[Int]
   ): Res =
   {
+    //println("===== Passed Ast: " + io.getquill.util.Messages.qprint(quoted.ast))
+
     def gatherLifts(quoted: Quoted[_]): List[Planter[_, _]] =
       quoted.lifts ++ quoted.runtimeQuotes.flatMap(vase => gatherLifts(vase.quoted))
 
