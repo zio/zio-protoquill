@@ -133,6 +133,7 @@ object Parser {
 
   object Series {
     def single(clause: Clause[Ast])(using Quotes): Series = Series(List(clause))
+    def of(clauses: Clause[Ast]*)(using Quotes) = Series(clauses.toList)
   }
 }
 
