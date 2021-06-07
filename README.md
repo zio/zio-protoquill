@@ -120,6 +120,55 @@ run(joes)
 // TODO Warning Dynamic Query
 ```
 
+### Quoted Operations
+
+ProtoQuill supports Quill `query[T]` constructs including:
+ - Outer/Inner, Left/Right Join (both monadic and applicative)
+ - Map, FlatMap, ConcatMap
+ - Union, Union-All
+ - Distinct, Nested
+ - querySchema
+
+Please refer to [quotation-queries](https://getquill.io/#quotation-queries) in the Scala2-Quill documentation for more information.
+Keep in mind that in ProtoQuill for these to generate compile-time queries, they need to be `inline def`.
+
+### Batch Queries
+
+ProtoQuill supports Insert/Update/Delete actions as well as their batch variations.
+Please refer to [quotation-actions](https://getquill.io/#quotation-actions) in the Scala2-Quill documentation for more information.
+Keep in mind that in ProtoQuill for these to generate compile-time queries, they need to be `inline def`.
+The `onConflict` instructions are not yet supported in ProtoQuill.
+
+### Metas
+
+QueryMeta, SchemaMeta, InsertMeta, and UpdateMeta are supported in ProtoQuill.
+Please refer to [meta-dsl](https://getquill.io/#extending-quill-meta-dsl) in the Scala2-Quill documentation for more information.
+Keep in mind that in ProtoQuill for these to generate compile-time queries, they need to be `inline def`.
+
+Additionally, they can be defined using Scala 3 `given` syntax:
+```scala
+// SchemaMeta
+inline given SchemaMeta[Person] = schemaMeta("PersonTable", name -> "nameRow")
+
+// Insert Meta
+inline given InsertMeta[Person] = insertMeta(_.id)
+
+// Update Meta
+inline given UpdateMeta[Person] = updateMeta(_.id)
+```
+This also works with QueryMeta:
+```scala
+inline given QueryMeta[PersonName, String] =
+  queryMeta(
+    quote {
+      (q: Query[PersonName]) => q.map(p => p.name)
+    }
+  )((name: String) => PersonName(name))
+  
+val result = ctx.run(people)
+// TODO Get SQL
+```
+
 ### Shareable Code
 
 Since quotation of `inline def` code is optional, Quill expressions can share code with regular Scala constructs.
@@ -322,7 +371,7 @@ run( query[Person].map(p => p.fullName) )
 For a basic reasoning of why Inline was chosen (instead of Refined-Types on `val` expressions) have a look at the video: [Quill, Dotty, And The Awesome Power of 'Inline'](https://github.com/getquill/protoquill). A more thorough explination is TBD.
 
 
-### Interesting Ideas
+# Interesting Ideas
  - Implement a `lazyFilterByKeys` method using the same logic as filterByKeys but using lazy lifts.
    in order to be able to use this kind of functionality with out having to import a context.
  - Implement a `filterByLikes` which is the same as `filterByKeys` but uses `like` instead of `==`.
