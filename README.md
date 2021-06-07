@@ -333,10 +333,6 @@ run(q)
 //   true
 ```
 
-## FilterOne
-
-TBD
-
 ## Co-Product Rows
 
 TBD
@@ -345,12 +341,27 @@ TBD
 
 TBD
 
-# Migration Notes
+## Migration Notes
 
-TBD
- - Changing to inline def
- - Quotation is now static, impact on imports (i.e. context now always needed)
- - Issues with batch queries (since compile-time only for now)
+ - Most Scala2-Quill code should either work in ProtoQuill directly or require minimal changes in order to work.
+   However, since ProtoQuill compile-time queries rely on `inline def`, these queries must be changed from this:
+   ```scala
+   case class Person(name: String, age: Int)
+   val people = quote { query[Person] }
+   val joes = quote { people.filter(p => p.name == "Joe") }
+   run(joes) // Dynamic Query Detected
+   ```
+   To this:
+   ```scala
+   case class Person(name: String, age: Int)
+   inline def people = quote { query[Person] }
+   inline def joes = quote { people.filter(p => p.name == "Joe") }
+   run(joes) // SELECT p.name, p.age FROM Person p WHERE p.name = 'Joe'
+   ```
+ - If you have not implemented `io.getquill._` or are importing components one by one, you will need to add this import. Unlike in Scala2-Quill where methods such as `query`, `quote`, etc... come from your context (e.g. in `val ctx = new PostgresJdbcContext(...); import ctx._`), in ProtoQuill these methods come from the [Dsl object](https://github.com/getquill/protoquill/blob/master/quill-sql/src/main/scala/io/getquill/Dsl.scala) which is exported to `io.getquill`. If you want to import the minimal amount of components, you will at least need `io.getquill.quote` and `io.getquill.query`.
+ - TBD: Dynamic Batch Queries are not supported, batch queries that have multiple clauses Need to be inline. In order to be able to cross-compile them, make the entire batch-query be in a single run expression (this may be too expensive so I will try to introduce dynamic batch to ProtoQuill based on user-ask).
+ - TBD: Warnings will occur when there are encoders for some type T but not decoders for it. This is due to possible Quat issues.
+ - TBD: The `Embedded` construct is not strictly required in some cases (review cases, Embedded[T] summon is also supported).
 
 # Extensions
 
