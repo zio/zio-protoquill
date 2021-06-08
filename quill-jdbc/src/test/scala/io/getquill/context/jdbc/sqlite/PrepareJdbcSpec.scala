@@ -1,36 +1,34 @@
-// Prepare is not supported yet
-// package io.getquill.context.jdbc.sqlite
+package io.getquill.context.jdbc.sqlite
 
-// import java.sql.ResultSet
-// import io.getquill._
+import java.sql.ResultSet
+import io.getquill._
 
-// import io.getquill.context.jdbc.PrepareJdbcSpecBase
-// import org.scalatest.BeforeAndAfter
+import io.getquill.context.jdbc.PrepareJdbcSpecBase
+import org.scalatest.BeforeAndAfter
 
-// class PrepareJdbcSpec extends PrepareJdbcSpecBase with BeforeAndAfter {
+class PrepareJdbcSpec extends PrepareJdbcSpecBase with BeforeAndAfter {
 
-//   val context = testContext
-//   import testContext._
+  val context: testContext.type = testContext
+  import testContext._
 
-//   before {
-//     testContext.run(query[Product].delete)
-//   }
+  before {
+    testContext.run(query[Product].delete)
+  }
 
-//   def productExtractor = (rs: ResultSet) => materializeQueryMeta[Product].extract(rs)
-//   val prepareQuery = prepare(query[Product])
+  val prepareQuery = prepare(query[Product])
 
-//   "single" in {
-//     val prepareInsert = prepare(query[Product].insert(lift(productEntries.head)))
-//     singleInsert(dataSource.getConnection)(prepareInsert) mustEqual false
-//     extractProducts(dataSource.getConnection)(prepareQuery) === List(productEntries.head)
-//   }
+  "single" in {
+    val prepareInsert = prepare(query[Product].insert(lift(productEntries.head)))
+    singleInsert(dataSource.getConnection)(prepareInsert) mustEqual false
+    extractProducts(dataSource.getConnection)(prepareQuery) === List(productEntries.head)
+  }
 
-//   "batch" in {
-//     val prepareBatchInsert = prepare(
-//       liftQuery(withOrderedIds(productEntries)).foreach(p => query[Product].insert(p))
-//     )
+  "batch" in {
+    val prepareBatchInsert = prepare(
+      liftQuery(withOrderedIds(productEntries)).foreach(p => query[Product].insert(p))
+    )
 
-//     batchInsert(dataSource.getConnection)(prepareBatchInsert).distinct mustEqual List(false)
-//     extractProducts(dataSource.getConnection)(prepareQuery) === withOrderedIds(productEntries)
-//   }
-// }
+    batchInsert(dataSource.getConnection)(prepareBatchInsert).distinct mustEqual List(false)
+    extractProducts(dataSource.getConnection)(prepareQuery) === withOrderedIds(productEntries)
+  }
+}

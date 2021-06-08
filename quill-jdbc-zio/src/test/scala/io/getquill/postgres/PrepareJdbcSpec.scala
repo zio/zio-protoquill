@@ -1,38 +1,36 @@
-// Prepare not supported in ProtoQuill Yet
-// package io.getquill.postgres
+package io.getquill.postgres
 
-// import io.getquill.context.ZioJdbc.Prefix
-// import io.getquill.{ PrepareZioJdbcSpecBase, ZioSpec }
-// import org.scalatest.BeforeAndAfter
-// import io.getquill._
+import io.getquill.context.ZioJdbc.Prefix
+import io.getquill.{ PrepareZioJdbcSpecBase, ZioSpec }
+import org.scalatest.BeforeAndAfter
+import io.getquill._
 
-// import java.sql.ResultSet
+import java.sql.ResultSet
 
-// class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioSpec with BeforeAndAfter {
+class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioSpec with BeforeAndAfter {
 
-//   override def prefix: Prefix = Prefix("testPostgresDB")
-//   val context = testContext
-//   import testContext._
+  override def prefix: Prefix = Prefix("testPostgresDB")
+  val context: testContext.type = testContext
+  import testContext._
 
-//   before {
-//     testContext.run(query[Product].delete).runSyncUnsafe()
-//   }
+  before {
+    testContext.run(query[Product].delete).runSyncUnsafe()
+  }
 
-//   def productExtractor = (rs: ResultSet) => materializeQueryMeta[Product].extract(rs)
-//   val prepareQuery = prepare(query[Product])
+  val prepareQuery = prepare(query[Product])
 
-//   "single" in {
-//     val prepareInsert = prepare(query[Product].insert(lift(productEntries.head)))
-//     singleInsert(prepareInsert) mustEqual false
-//     extractProducts(prepareQuery) === List(productEntries.head)
-//   }
+  "single" in {
+    val prepareInsert = prepare(query[Product].insert(lift(productEntries.head)))
+    singleInsert(prepareInsert) mustEqual false
+    extractProducts(prepareQuery) === List(productEntries.head)
+  }
 
-//   "batch" in {
-//     val prepareBatchInsert = prepare(
-//       liftQuery(withOrderedIds(productEntries)).foreach(p => query[Product].insert(p))
-//     )
+  "batch" in {
+    val prepareBatchInsert = prepare(
+      liftQuery(withOrderedIds(productEntries)).foreach(p => query[Product].insert(p))
+    )
 
-//     batchInsert(prepareBatchInsert).distinct mustEqual List(false)
-//     extractProducts(prepareQuery) === withOrderedIds(productEntries)
-//   }
-// }
+    batchInsert(prepareBatchInsert).distinct mustEqual List(false)
+    extractProducts(prepareQuery) === withOrderedIds(productEntries)
+  }
+}
