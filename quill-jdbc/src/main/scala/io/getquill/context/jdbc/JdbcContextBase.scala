@@ -12,14 +12,58 @@ import io.getquill.generic.EncodingDsl
 import io.getquill.context.sql.SqlContext
 import io.getquill.NamingStrategy
 import io.getquill.ReturnAction
+import io.getquill.context.StagedPrepare
+import io.getquill.context.PrepareContext
 
-trait JdbcContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends JdbcContextSimplified[Dialect, Naming] {
-  // Note: This context has been created for Session Prepare use-cases. Prepare in ProtoQuill is not supported yet.
+trait JdbcContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy]
+extends JdbcContextSimplified[Dialect, Naming]
+with StagedPrepare[Dialect, Naming] {
+  def constructPrepareQuery(f: Connection => Result[PreparedStatement]): Connection => Result[PreparedStatement] = f
+  def constructPrepareAction(f: Connection => Result[PreparedStatement]): Connection => Result[PreparedStatement] = f
+  def constructPrepareBatchAction(f: Connection => Result[List[PreparedStatement]]): Connection => Result[List[PreparedStatement]] = f
 }
 
 trait JdbcContextSimplified[Dialect <: SqlIdiom, Naming <: NamingStrategy]
-  extends JdbcRunContext[Dialect, Naming] {
-  // Note: This context has been created for Session Prepare use-cases. Prepare in ProtoQuill is not supported yet.
+  extends JdbcRunContext[Dialect, Naming]
+  with PrepareContext[Dialect, Naming] {
+
+  override type PrepareQueryResult = Connection => Result[PreparedStatement]
+  override type PrepareActionResult = Connection => Result[PreparedStatement]
+  override type PrepareBatchActionResult = Connection => Result[List[PreparedStatement]]
+
+  import effect._
+  def constructPrepareQuery(f: Connection => Result[PreparedStatement]): PrepareQueryResult
+  def constructPrepareAction(f: Connection => Result[PreparedStatement]): PrepareActionResult
+  def constructPrepareBatchAction(f: Connection => Result[List[PreparedStatement]]): PrepareBatchActionResult
+
+  def prepareQuery(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): PrepareQueryResult =
+    constructPrepareQuery(prepareSingle(sql, prepare)(executionInfo, dc))
+
+  def prepareAction(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): PrepareActionResult =
+    constructPrepareAction(prepareSingle(sql, prepare)(executionInfo, dc))
+
+  def prepareSingle(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): Connection => Result[PreparedStatement] =
+    (conn: Connection) => wrap {
+      val (params, ps) = prepare(conn.prepareStatement(sql))
+      logger.logQuery(sql, params)
+      ps
+    }
+
+  def prepareBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: DatasourceContext): PrepareBatchActionResult =
+    constructPrepareBatchAction {
+      (session: Connection) =>
+        seq {
+          val batches = groups.flatMap {
+            case BatchGroup(sql, prepares) =>
+              prepares.map(sql -> _)
+          }
+          batches.map {
+            case (sql, prepare) =>
+              val prepareSql = prepareSingle(sql, prepare)(executionInfo, dc)
+              prepareSql(session)
+          }
+        }
+    }
 }
 
 trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
@@ -64,8 +108,7 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   override def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[Long] =
     withConnectionWrapped { conn =>
       val (params, ps) = prepare(conn.prepareStatement(sql))
-      // TODO ContextLogger is a macro? Figure out how to inject a logger here
-      //logger.logQuery(sql, params)
+      logger.logQuery(sql, params)
       ps.executeUpdate().toLong
     }
 
@@ -73,7 +116,7 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   override def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[List[T]] =
     withConnectionWrapped { conn =>
       val (params, ps) = prepare(conn.prepareStatement(sql))
-      //logger.logQuery(sql, params)
+      logger.logQuery(sql, params)
       val rs = ps.executeQuery()
       extractResult(rs, extractor)
     }
@@ -84,7 +127,7 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[O] =
     withConnectionWrapped { conn =>
       val (params, ps) = prepare(prepareWithReturning(sql, conn, returningBehavior))
-      //logger.logQuery(sql, params)
+      logger.logQuery(sql, params)
       ps.executeUpdate()
       handleSingleResult(extractResult(ps.getGeneratedKeys, extractor))
     }
@@ -119,7 +162,7 @@ trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
           //logger.underlying.debug("Batch: {}", sql)
           prepare.foreach { f =>
             val (params, _) = f(ps)
-            //logger.logBatchItem(sql, params)
+            logger.logBatchItem(sql, params)
             ps.addBatch()
           }
           ps.executeBatch()

@@ -37,6 +37,8 @@ import io.getquill.Literal
 import scala.annotation.targetName
 import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
+import java.awt.Dialog
+import org.scalafmt.config.ScalafmtRunner.Dialect
 
 sealed trait ExecutionType
 object ExecutionType:
@@ -128,11 +130,7 @@ import io.getquill.generic.DecodeAlternate
 
 
 // TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
-trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
-extends ProtoContext[Dialect, Naming]
-with EncodingDsl
-with Closeable
-{ self =>
+trait Context[Dialect <: Idiom, Naming <: NamingStrategy] extends ProtoContext[Dialect, Naming] with EncodingDsl with Closeable { self =>
 
 
   type DatasourceContextBehavior <: DatasourceContextInjection
@@ -296,3 +294,70 @@ trait StreamingContext[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingStrat
     QueryExecution.apply(quoted, ca, Some(fetchSize))
   }
 }
+
+trait PrepareContext[Dialect <: Idiom, Naming <: NamingStrategy] {
+  self: Context[Dialect, Naming] =>
+
+  type Result[T]
+  type Session
+  type DatasourceContext
+
+  type PrepareQueryResult //Usually: Session => Result[PrepareRow]
+  type PrepareActionResult //Usually: Session => Result[PrepareRow]
+  type PrepareBatchActionResult //Usually: Session => Result[List[PrepareRow]]
+
+  def prepareQuery(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): PrepareQueryResult
+  def prepareSingle(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): PrepareQueryResult
+  def prepareAction(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): PrepareActionResult
+  def prepareBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: DatasourceContext): PrepareBatchActionResult
+
+  @targetName("runPrepareQuery")
+  inline def prepare[T](inline quoted: Quoted[Query[T]]): PrepareQueryResult = {
+    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, this.type, PrepareQueryResult](self.idiom, self.naming) {
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
+        val extract = extraction match
+          case Extraction.Simple(extract) => extract
+          case _ => throw new IllegalArgumentException("Extractor required")
+
+        val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
+        self.prepareQuery(sql, prepare)(executionInfo, runContext)
+    }
+    QueryExecution.apply(quoted, ca, None)
+  }
+
+  @targetName("runPrepareQuerySingle")
+  inline def prepare[T](inline quoted: Quoted[T]): PrepareQueryResult = prepare(QuerySingleAsQuery(quoted))
+
+  @targetName("runPrepareAction")
+  inline def prepare[E](inline quoted: Quoted[Action[E]]): PrepareActionResult = {
+    val ca = new ContextOperation[E, Any, Dialect, Naming, PrepareRow, ResultRow, this.type, PrepareActionResult](self.idiom, self.naming) {
+      def execute(sql: String, prepare: PrepareRow => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Any], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
+        val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
+        self.prepareAction(sql, prepare)(executionInfo, runContext)
+    }
+    QueryExecution.apply(quoted, ca, None)
+  }
+
+  @targetName("runPrepareBatchAction")
+  inline def prepare[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): PrepareBatchActionResult = {
+    val ca = new BatchContextOperation[I, Nothing, A, Dialect, Naming, PrepareRow, ResultRow, PrepareBatchActionResult](self.idiom, self.naming) {
+      def execute(sql: String, prepares: List[PrepareRow => (List[Any], PrepareRow)], extraction: Extraction[ResultRow, Nothing], executionInfo: ExecutionInfo) =
+        val runContext = DatasourceContextInjectionMacro[DatasourceContextBehavior, DatasourceContext, this.type](context)
+        val group = BatchGroup(sql, prepares)
+        self.prepareBatchAction(List(group))(executionInfo, runContext)
+    }
+    BatchQueryExecution.apply(quoted, ca)
+  }
+}
+
+trait StagedPrepare[Dialect <: Idiom, Naming <: NamingStrategy] extends PrepareContext[Dialect, Naming] {
+  self: Context[Dialect, Naming] =>
+
+  type PrepareQueryResult = Session => Result[PrepareRow]
+  type PrepareActionResult = Session => Result[PrepareRow]
+  type PrepareBatchActionResult = Session => Result[List[PrepareRow]]
+}
+
+trait StandardContext[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]
+  extends Context[Idiom, Naming]
+  with StagedPrepare[Idiom, Naming]

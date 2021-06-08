@@ -57,7 +57,7 @@ import scala.reflect.ClassTag
 abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
   with JdbcRunContext[Dialect, Naming]
   with StreamingContext[Dialect, Naming]
-  /* with ZioPrepareContext[Dialect, Naming] Prepare in ProtoQuill not implemented yet */
+  with ZioPrepareContext[Dialect, Naming]
   /* with ZioTranslateContext Translate in ProtoQuill not implemented yet */ {
 
   override private[getquill] val logger = ContextLogger(classOf[ZioJdbcContext[_, _]])

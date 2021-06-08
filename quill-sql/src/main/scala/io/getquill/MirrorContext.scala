@@ -22,7 +22,9 @@ extends MirrorContextBase[Dialect, Naming] with AstSplicing
 
 trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
 extends Context[Dialect, Naming]
-with MirrorDecoders with MirrorEncoders { self =>
+with PrepareContext[Dialect, Naming]
+with MirrorDecoders
+with MirrorEncoders { self =>
   override type Result[T] = T
   override type RunQueryResult[T] = QueryMirror[T]
   override type RunQuerySingleResult[T] = QueryMirror[T]
@@ -79,6 +81,31 @@ with MirrorDecoders with MirrorEncoders { self =>
         case BatchGroupReturning(string, returningBehavior, prepare) =>
           (string, returningBehavior, prepare.map(_(Row())._2))
       }, extractor,
+      info
+    )
+
+  case class PrepareQueryMirror(sql: String, prepare: Prepare, info: ExecutionInfo)
+  case class PrepareBatchMirror(groups: List[(String, List[PrepareRow])], info: ExecutionInfo)
+
+  type PrepareQueryResult = PrepareQueryMirror
+  type PrepareActionResult = PrepareQueryMirror
+  type PrepareBatchActionResult = PrepareBatchMirror
+
+  def prepareSingle(string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext) =
+    PrepareQueryMirror(string, prepare, info)
+
+  def prepareQuery(string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext) =
+    prepareSingle(string, prepare)(info, dc)
+
+  def prepareAction(string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext) =
+    prepareSingle(string, prepare)(info, dc)
+
+  def prepareBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: DatasourceContext) =
+    PrepareBatchMirror(
+      groups.map {
+        case BatchGroup(string, prepare) =>
+          (string, prepare.map(_(Row())._2))
+      },
       info
     )
 }
