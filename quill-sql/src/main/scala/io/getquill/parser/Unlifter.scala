@@ -15,7 +15,9 @@ object UnlifterType {
 object Unlifter {
   import UnlifterType._
 
-  def apply(ast: Expr[Ast]): Quotes ?=> Ast = unliftAst.apply(ast) // can also do ast.lift but this makes some error messages simpler
+  def apply(ast: Expr[Ast]): Quotes ?=> Ast =
+    //println(s"++++++++++++++++ Unlifting: ++++++++++\n${io.getquill.util.Format.Expr(ast)}")
+    unliftAst.apply(ast) // can also do ast.lift but this makes some error messages simpler
 
   extension [T](t: Expr[T])(using FromExpr[T], Quotes)
     def unexpr: T = t.valueOrError
@@ -94,8 +96,8 @@ object Unlifter {
     def unlift =
       case '{ OptionApply.apply($a) } => OptionApply(a.unexpr)
       case '{ OptionSome.apply($a) } => OptionSome(a.unexpr)
-      case '{ OptionNone($quat) } => 
-        // Performance optimization, same as Ident. Do quat.unexper once instead of each time on 
+      case '{ OptionNone($quat) } =>
+        // Performance optimization, same as Ident. Do quat.unexper once instead of each time on
         // OptionNone.quat which would otherwise happen if quat.unexper would be passed directly.
         val unliftedQuat = quat.unexpr
         OptionNone(unliftedQuat)
@@ -132,37 +134,37 @@ object Unlifter {
   given unliftAst: NiceUnliftable[Ast] with {
     // TODO have a typeclass like Splicer to translate constant to strings
     def unlift =
-      case Is[Constant]('{ Constant(${Expr(b: Double)}: Double, $quat) }) => 
+      case Is[Constant]('{ Constant(${Expr(b: Double)}: Double, $quat) }) =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
-      case '{ Constant(${Expr(b: Boolean)}: Boolean, $quat) } => 
+      case '{ Constant(${Expr(b: Boolean)}: Boolean, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
-      case '{ Constant(${Expr(b: String)}: String, $quat) } => 
+      case '{ Constant(${Expr(b: String)}: String, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
-      case '{ Constant(${Expr(b: Char)}: Char, $quat) } => 
+      case '{ Constant(${Expr(b: Char)}: Char, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
-      case '{ Constant(${Expr(b: Int)}: Int, $quat) } => 
+      case '{ Constant(${Expr(b: Int)}: Int, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
-      case '{ Constant(${Expr(b: Long)}: Long, $quat) } => 
+      case '{ Constant(${Expr(b: Long)}: Long, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
-      case '{ Constant(${Expr(b: Short)}: Short, $quat) } => 
+      case '{ Constant(${Expr(b: Short)}: Short, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
-      case '{ Constant(${Expr(b: Float)}: Float, $quat) } => 
+      case '{ Constant(${Expr(b: Float)}: Float, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
-      case '{ Constant(${Expr(b: Double)}: Double, $quat) } => 
+      case '{ Constant(${Expr(b: Double)}: Double, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
-      case '{ Constant(${Expr(b: Byte)}: Byte, $quat) } => 
+      case '{ Constant(${Expr(b: Byte)}: Byte, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
-      case '{ Constant((), $quat) } => 
+      case '{ Constant((), $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant((), unliftedQuat)
       case '{ Entity.apply(${Expr(b: String)}, $elems, $quat)  } =>
@@ -259,7 +261,7 @@ object Unlifter {
       // On JVM, a Quat must be serialized and then lifted from the serialized state i.e. as a FromSerialized using JVM (due to 64KB method limit)
       case '{ Quat.fromSerializedJVM(${Expr(str: String)}) } => Quat.fromSerializedJVM(str)
       case '{ Quat.Product.WithRenamesCompact.apply($tpe)(${Varargs(fields)}: _*)(${Varargs(values)}: _*)(${Varargs(renamesFrom)}: _*)(${Varargs(renamesTo)}: _*) } => Quat.Product.WithRenamesCompact(tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
-      
+
       // TODO Ask Nicolas How do you uniquely identify this?
       //case '{ Quat.Product.apply(${Varargs(fields)}: _*) } => Quat.Product(fields.unexprSeq: _*)
       case '{ Quat.Value } => Quat.Value

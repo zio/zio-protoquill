@@ -12,16 +12,20 @@ import io.getquill.util.Messages
 import io.getquill.ReturnAction
 
 object Lifter {
-  private def newLifter(ast: Ast) = new Lifter(ast.countQuatFields > Messages.maxQuatFields) {}
+  private def newLifter(ast: Ast) =
+    //println(s"++++++++++++++++ Lifting: ++++++++++\n${io.getquill.util.Format(ast.toString)}")
+    new Lifter(ast.countQuatFields > 4) {}
   def apply(ast: Ast): Quotes ?=> Expr[Ast] = newLifter(ast).liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
   def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = newLifter(ast).liftableAssignment(ast)
   def entity(ast: Entity): Quotes ?=> Expr[Entity] = newLifter(ast).liftableEntity(ast)
   def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = newLifter(ast).liftableTuple(ast)
   def ident(ast: AIdent): Quotes ?=> Expr[AIdent] = newLifter(ast).liftableIdent(ast)
   def quat(quat: Quat): Quotes ?=> Expr[Quat] =
-    (new Lifter(quat.countFields > Messages.maxQuatFields) {}).liftableQuat(quat)
+    //println(s"++++++++++++++++ Lifting Quat: ++++++++++\n${io.getquill.util.Format(quat.toString)}")
+    (new Lifter(quat.countFields > 4) {}).liftableQuat(quat)
 
   def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] =
+    //println(s"++++++++++++++++ Lifting Return: ++++++++++\n${io.getquill.util.Format(returnAction.toString)}")
     (new Lifter(false) {}).liftableReturnAction(returnAction)
 }
 
@@ -118,9 +122,8 @@ trait Lifter(serializeQuats: Boolean) {
 
   given liftableQuat : NiceLiftable[Quat] with {
     def lift =
-      //case quat: Quat.Product if (serializeQuats) =>
-      //  println("(((((((((((((( Serializing Quat: " + quat)
-      //  '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
+      case quat: Quat.Product if (serializeQuats) =>
+        '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
       case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) => '{ io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${tpe.expr})(${fields.toList.spliceVarargs}: _*)(${values.toList.spliceVarargs}: _*)(${renamesFrom.toList.spliceVarargs}: _*)(${renamesTo.toList.spliceVarargs}: _*) }
       case Quat.Value => '{ io.getquill.quat.Quat.Value }
       case Quat.Null => '{ io.getquill.quat.Quat.Null }
