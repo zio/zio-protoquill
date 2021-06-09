@@ -213,11 +213,11 @@ object KryoAstSerializer {
       k.register(classOf[Entity],
         new Serializer[Entity]():
           override def write(kryo: Kryo, output: Output, obj: Entity): Unit =
-            println(s"## Writing Entity: ${io.getquill.util.Messages.qprint(obj)}")
+            //println(s"## Writing Entity: ${io.getquill.util.Messages.qprint(obj)}")
             kryo.writeObject(output, EntitySerial(obj.name, obj.properties, obj.quat, obj.renameable))
           override def read(kryo: Kryo, input: Input, tpe: Class[Entity]): Entity =
             val in = kryo.readObject(input, classOf[EntitySerial])
-            println(s"## Reading Entity: ${io.getquill.util.Messages.qprint(in)}")
+            //println(s"## Reading Entity: ${io.getquill.util.Messages.qprint(in)}")
             Entity.Opinionated(in.name, in.properties, in.quat, in.renameable)
       )
       k.register(classOf[OptionNone],

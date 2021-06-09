@@ -105,6 +105,7 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
 
   given liftableIdent : NiceLiftable[AIdent] with {
     def lift =
+      // Problems happen with liftQuery when this is done. Maybe some issue with ListLift from ExprModel
       //case ast if (serializeAst == SerializeAst.All) => tryToSerialize[AIdent](ast)
       case AIdent(name: String, quat) => '{ AIdent(${name.expr}, ${quat.expr})  }
   }
@@ -116,6 +117,7 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
 
   given liftableAssignment : NiceLiftable[Assignment] with {
     def lift =
+      // Problems happen with liftQuery when this is done. Maybe some issue with ListLift from ExprModel
       //case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Assignment](ast)
       case Assignment(ident, property, value) => '{ Assignment(${ident.expr}, ${property.expr}, ${value.expr}) }
   }
@@ -190,7 +192,7 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
 
   given liftableEntity : NiceLiftable[Entity] with
     def lift =
-      //case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Entity](ast)
+      case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Entity](ast)
       case Entity(name: String, list, quat) => '{ Entity(${name.expr}, ${list .expr}, ${quat.expr})  }
 
   given liftableTuple: NiceLiftable[Tuple] with
