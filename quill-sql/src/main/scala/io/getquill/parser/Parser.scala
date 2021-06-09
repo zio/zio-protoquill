@@ -582,7 +582,8 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
         Entity(name, List(), InferQuat.ofType(tpe).probit)
 
     case '{ querySchema[t](${ConstExpr(name: String)}, ${GenericSeq(properties)}: _*) } =>
-      Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), InferQuat.of[t].probit, Renameable.Fixed)
+      val e: Entity = Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), InferQuat.of[t].probit, Renameable.Fixed)
+      e
 
     case "map" -@> '{ ($q:Query[qt]).map[mt](${Lambda1(ident, tpe, body)}) } =>
       Map(astParse(q), cleanIdent(ident, tpe), astParse(body))

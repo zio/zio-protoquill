@@ -10,24 +10,43 @@ import scala.reflect.classTag;
 import io.getquill.quat.Quat
 import io.getquill.util.Messages
 import io.getquill.ReturnAction
+import io.getquill.metaprog.KryoAstSerializer
+import scala.meta.Term.Assign
+import scala.util.Try
+
+
+enum SerializeQuat:
+  case All
+  case None
+
+object SerializeQuat:
+  def If(condition: Boolean) =
+    if (condition) SerializeQuat.All else SerializeQuat.None
+
+enum SerializeAst:
+  case All
+  case None
+
+object SerialHelper:
+  def fromSerializedJVM[T](serial: String): T = KryoAstSerializer.deserialize(serial).asInstanceOf[T]
+  def toSerializedJVM(ast: Ast): String =KryoAstSerializer.serialize(ast)
 
 object Lifter {
   private def newLifter(ast: Ast) =
-    //println(s"++++++++++++++++ Lifting: ++++++++++\n${io.getquill.util.Format(ast.toString)}")
-    new Lifter(ast.countQuatFields > 4) {}
+    Lifter(SerializeQuat.If(ast.countQuatFields > 4), SerializeAst.All)
   def apply(ast: Ast): Quotes ?=> Expr[Ast] = newLifter(ast).liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
   def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = newLifter(ast).liftableAssignment(ast)
   def entity(ast: Entity): Quotes ?=> Expr[Entity] = newLifter(ast).liftableEntity(ast)
   def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = newLifter(ast).liftableTuple(ast)
   def ident(ast: AIdent): Quotes ?=> Expr[AIdent] = newLifter(ast).liftableIdent(ast)
   def quat(quat: Quat): Quotes ?=> Expr[Quat] =
-    //println(s"++++++++++++++++ Lifting Quat: ++++++++++\n${io.getquill.util.Format(quat.toString)}")
-    (new Lifter(quat.countFields > 4) {}).liftableQuat(quat)
+    Lifter(SerializeQuat.If(quat.countFields > 4), SerializeAst.All).liftableQuat(quat)
 
   def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] =
-    //println(s"++++++++++++++++ Lifting Return: ++++++++++\n${io.getquill.util.Format(returnAction.toString)}")
-    (new Lifter(false) {}).liftableReturnAction(returnAction)
+    Lifter(SerializeQuat.None, SerializeAst.None).liftableReturnAction(returnAction)
 }
+
+
 
 /**
  * Convert constructs of Quill Ast into Expr[Ast]. This allows them to be passed
@@ -36,7 +55,7 @@ object Lifter {
  *
  * Note that liftable List is already taken care of by the Dotty implicits
  */
-trait Lifter(serializeQuats: Boolean) {
+case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
 
   extension [T](t: T)(using ToExpr[T], Quotes)
     def expr: Expr[T] = Expr(t)
@@ -86,6 +105,7 @@ trait Lifter(serializeQuats: Boolean) {
 
   given liftableIdent : NiceLiftable[AIdent] with {
     def lift =
+      //case ast if (serializeAst == SerializeAst.All) => tryToSerialize[AIdent](ast)
       case AIdent(name: String, quat) => '{ AIdent(${name.expr}, ${quat.expr})  }
   }
 
@@ -96,6 +116,7 @@ trait Lifter(serializeQuats: Boolean) {
 
   given liftableAssignment : NiceLiftable[Assignment] with {
     def lift =
+      //case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Assignment](ast)
       case Assignment(ident, property, value) => '{ Assignment(${ident.expr}, ${property.expr}, ${value.expr}) }
   }
 
@@ -122,7 +143,7 @@ trait Lifter(serializeQuats: Boolean) {
 
   given liftableQuat : NiceLiftable[Quat] with {
     def lift =
-      case quat: Quat.Product if (serializeQuats) =>
+      case quat: Quat.Product if (serializeQuat == SerializeQuat.All) =>
         '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
       case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) => '{ io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${tpe.expr})(${fields.toList.spliceVarargs}: _*)(${values.toList.spliceVarargs}: _*)(${renamesFrom.toList.spliceVarargs}: _*)(${renamesTo.toList.spliceVarargs}: _*) }
       case Quat.Value => '{ io.getquill.quat.Quat.Value }
@@ -169,10 +190,12 @@ trait Lifter(serializeQuats: Boolean) {
 
   given liftableEntity : NiceLiftable[Entity] with
     def lift =
+      //case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Entity](ast)
       case Entity(name: String, list, quat) => '{ Entity(${name.expr}, ${list .expr}, ${quat.expr})  }
 
   given liftableTuple: NiceLiftable[Tuple] with
     def lift =
+      case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Tuple](ast)
       case Tuple(values) => '{ Tuple(${values.expr}) }
 
   given orderingLiftable: NiceLiftable[Ordering] with
@@ -186,8 +209,29 @@ trait Lifter(serializeQuats: Boolean) {
       case DescNullsLast        => '{ io.getquill.ast.DescNullsLast }
 
 
+  def tryToSerialize[T <: Ast: Type](ast: Ast)(using Quotes): Expr[T] =
+    // Kryo can have issues if 'ast' is a lazy val (e.g. it will attempt to serialize Entity.Opinionated as though
+    // it is an actual object which will fail because it is actually an inner class. Should look into
+    // adding support for inner classes or remove them
+    Try {
+      val serial = SerialHelper.toSerializedJVM(ast)
+      // Needs to be casted directly in here or else the type will not be written by Expr matchers correctly
+      '{ SerialHelper.fromSerializedJVM[T](${Expr(serial)}) }
+    }.recoverWith {
+      case e =>
+        val msg = s"Could not unift-serialize the '${ast.getClass}' ${io.getquill.util.Messages.qprint(ast)}. Performing a regular unlift instead."
+        println(s"WARNING: ${msg}")
+        quotes.reflect.report.warning(msg)
+        Try(Lifter(serializeQuat, SerializeAst.None).liftableAst(ast).asInstanceOf[Expr[T]])
+    }.getOrElse {
+      val msg = s"Could not serialize the '${ast.getClass}' ${io.getquill.util.Messages.qprint(ast)}."
+      println(s"WARNING: ${msg}")
+      quotes.reflect.report.throwError(msg)
+    }
+
   given liftableAst : NiceLiftable[Ast] with {
     def lift =
+      case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Ast](ast)
       case Constant(ConstantValue(v), quat) => '{ Constant(${ConstantExpr(v)}, ${quat.expr}) }
       case Constant((), quat) => '{ Constant((), ${quat.expr}) }
       case Function(params: List[AIdent], body: Ast) => '{ Function(${params.expr}, ${body.expr}) }
@@ -228,6 +272,7 @@ trait Lifter(serializeQuats: Boolean) {
       case v: AIdent => liftableIdent(v)
       case v: IterableOperation => liftableTraversableOperation(v)
       case v: OptionOperation => liftableOptionOperation(v)
+      case a: Assignment => liftableAssignment(a)
   }
 
   import EqualityOperator.{ == => ee, != => nee }
