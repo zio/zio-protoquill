@@ -12,6 +12,10 @@ import io.getquill.util.Messages
 import io.getquill.ReturnAction
 
 object Lifter {
+  // A new parameter should be introduced to replace Messages.maxQuatFields which is far too conservative
+  // for ProtoQuill. The unlifter is so slow that Kryo serialization beats it's performance even for small Quats.
+  // In Scala2-Quill Quat-Serialization was used just to avoid Java Method-Size limits but in ProtoQuill
+  // it also substantially improves performance over quoted-match unlifting.
   private def newLifter(ast: Ast) =
     //println(s"++++++++++++++++ Lifting: ++++++++++\n${io.getquill.util.Format(ast.toString)}")
     new Lifter(ast.countQuatFields > 4) {}
@@ -86,7 +90,7 @@ trait Lifter(serializeQuats: Boolean) {
 
   given liftableIdent : NiceLiftable[AIdent] with {
     def lift =
-      case AIdent(name: String, quat) => '{ AIdent(${name.expr}, ${quat.expr})  }
+      case AIdent.Opinionated(name: String, quat, visibility) => '{ AIdent.Opinionated(${name.expr}, ${quat.expr}, ${visibility.expr})  }
   }
 
   given liftPropertyAlias : NiceLiftable[PropertyAlias] with {
@@ -169,7 +173,7 @@ trait Lifter(serializeQuats: Boolean) {
 
   given liftableEntity : NiceLiftable[Entity] with
     def lift =
-      case Entity(name: String, list, quat) => '{ Entity(${name.expr}, ${list .expr}, ${quat.expr})  }
+      case Entity.Opinionated(name: String, list, quat, renameable) => '{ Entity.Opinionated(${name.expr}, ${list .expr}, ${quat.expr}, ${renameable.expr})  }
 
   given liftableTuple: NiceLiftable[Tuple] with
     def lift =
