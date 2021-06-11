@@ -38,6 +38,7 @@ jobs:
           ./build/build.sh ${{ matrix.module }}
 
   release:
+    if: ${{github.event_name != 'pull_request'}}
     runs-on: ubuntu-latest
     needs: build
     strategy:

@@ -85,6 +85,22 @@ then
 
         # No-Op Publish
         if [[ $ARTIFACT == "publish" ]]; then echo "No-Op Publish for Non Release Master Branch"; fi
+
+    # If we are a branch build publish it. We are assuming this script does NOT become activated in pulls requests
+    # and that condition is done at a higher level then this script
+    elif [[ $TRAVIS_BRANCH != "master" ]]
+    then
+        echo "Branch build for $TRAVIS_BRANCH"
+        echo "version in ThisBuild := \"$TRAVIS_BRANCH-SNAPSHOT\"" > version.sbt
+        if [[ $ARTIFACT == "base" ]]; then    $SBT_VER -Dmodules=base publish; fi
+        if [[ $ARTIFACT == "db" ]]; then      $SBT_VER -Dmodules=db publish; fi
+        if [[ $ARTIFACT == "js" ]]; then      $SBT_VER -Dmodules=js publish; fi
+        if [[ $ARTIFACT == "async" ]]; then   $SBT_VER -Dmodules=async publish; fi
+        if [[ $ARTIFACT == "codegen" ]]; then $SBT_VER -Dmodules=codegen publish; fi
+        if [[ $ARTIFACT == "bigdata" ]]; then $SBT_VER -Dmodules=bigdata publish; fi
+
+        # No-Op Publish
+        if [[ $ARTIFACT == "publish" ]]; then echo "No-Op Publish for Non Release Snapshot Branch"; fi
     else
         VERSION_FILE=$(cat version.sbt)
         echo "Travis branch was: ${$TRAVIS_BRANCH} and version file is $VERSION_FILE. Not Sure what to do."
