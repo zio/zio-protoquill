@@ -4,8 +4,9 @@ import scala.quoted.{ Type => TType, _ }
 import scala.reflect.ClassTag
 import scala.reflect.classTag;
 import io.getquill.quat.Quat
-import io.getquill.ast.{Ident => AIdent, Query => Qry, _}
+import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import io.getquill.metaprog.Is
+import io.getquill.metaprog.Extractors
 
 object UnlifterType {
   type Unlift[T] = PartialFunction[Expr[T], T]
@@ -15,9 +16,7 @@ object UnlifterType {
 object Unlifter {
   import UnlifterType._
 
-  def apply(ast: Expr[Ast]): Quotes ?=> Ast =
-    //println(s"++++++++++++++++ Unlifting: ++++++++++\n${io.getquill.util.Format.Expr(ast)}")
-    unliftAst.apply(ast) // can also do ast.lift but this makes some error messages simpler
+  def apply(ast: Expr[Ast]): Quotes ?=> Ast = unliftAst.apply(ast) // can also do ast.lift but this makes some error messages simpler
 
   extension [T](t: Expr[T])(using FromExpr[T], Quotes)
     def unexpr: T = t.valueOrError
@@ -59,6 +58,9 @@ object Unlifter {
         // it will be done over and over again each time quat.unexpr is called which is extremely wasteful.
         val unliftedQuat = quat.unexpr
         AIdent(name, unliftedQuat)
+      case '{ AIdent.Opinionated(${Expr(name: String)}, $quat, $visibility) } =>
+        val unliftedQuat = quat.unexpr
+        AIdent.Opinionated(name, unliftedQuat, visibility.unexpr)
 
   given unliftJoinType: NiceUnliftable[JoinType] with
     def unlift =
@@ -94,27 +96,27 @@ object Unlifter {
 
   given unliftOptionOperation: NiceUnliftable[OptionOperation] with {
     def unlift =
-      case '{ OptionApply.apply($a) } => OptionApply(a.unexpr)
-      case '{ OptionSome.apply($a) } => OptionSome(a.unexpr)
-      case '{ OptionNone($quat) } =>
+      case Is[OptionApply]( '{ OptionApply.apply($a) } ) => OptionApply(a.unexpr)
+      case Is[OptionSome]( '{ OptionSome.apply($a) } ) => OptionSome(a.unexpr)
+      case Is[OptionNone]( '{ OptionNone($quat) } ) =>
         // Performance optimization, same as Ident. Do quat.unexper once instead of each time on
         // OptionNone.quat which would otherwise happen if quat.unexper would be passed directly.
         val unliftedQuat = quat.unexpr
         OptionNone(unliftedQuat)
-      case '{ OptionIsEmpty.apply($a) } => OptionIsEmpty(a.unexpr)
-      case '{ OptionNonEmpty.apply($a) } => OptionNonEmpty(a.unexpr)
-      case '{ OptionIsDefined.apply($a) } => OptionIsDefined(a.unexpr)
-      case '{ OptionGetOrElse.apply($a, $b) } => OptionGetOrElse(a.unexpr, b.unexpr)
-      case '{ OptionContains.apply($a, $b) } => OptionContains(a.unexpr, b.unexpr)
-      case '{ OptionMap.apply($a, $b, $c) } => OptionMap(a.unexpr, b.unexpr, c.unexpr)
-      case '{ OptionFlatMap.apply($a, $b, $c) } => OptionFlatMap(a.unexpr, b.unexpr, c.unexpr)
-      case '{ OptionFlatten.apply($a) } => OptionFlatten(a.unexpr)
-      case '{ OptionTableMap.apply($a, $b, $c) } => OptionTableMap(a.unexpr, b.unexpr, c.unexpr)
-      case '{ OptionTableFlatMap.apply($a, $b, $c) } => OptionTableFlatMap(a.unexpr, b.unexpr, c.unexpr)
-      case '{ OptionExists.apply($a, $b, $c) } => OptionExists(a.unexpr, b.unexpr, c.unexpr)
-      case '{ OptionForall.apply($a, $b, $c) } => OptionForall(a.unexpr, b.unexpr, c.unexpr)
-      case '{ OptionTableExists.apply($a, $b, $c) } => OptionTableExists(a.unexpr, b.unexpr, c.unexpr)
-      case '{ OptionTableForall.apply($a, $b, $c) } => OptionTableForall(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionIsEmpty]( '{ OptionIsEmpty.apply($a) } ) => OptionIsEmpty(a.unexpr)
+      case Is[OptionNonEmpty]( '{ OptionNonEmpty.apply($a) } ) => OptionNonEmpty(a.unexpr)
+      case Is[OptionIsDefined]( '{ OptionIsDefined.apply($a) } ) => OptionIsDefined(a.unexpr)
+      case Is[OptionGetOrElse]( '{ OptionGetOrElse.apply($a, $b) } ) => OptionGetOrElse(a.unexpr, b.unexpr)
+      case Is[OptionContains]( '{ OptionContains.apply($a, $b) } ) => OptionContains(a.unexpr, b.unexpr)
+      case Is[OptionMap]( '{ OptionMap.apply($a, $b, $c) } ) => OptionMap(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionFlatMap]( '{ OptionFlatMap.apply($a, $b, $c) } ) => OptionFlatMap(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionFlatten]( '{ OptionFlatten.apply($a) } ) => OptionFlatten(a.unexpr)
+      case Is[OptionTableMap]( '{ OptionTableMap.apply($a, $b, $c) } ) => OptionTableMap(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionTableFlatMap]( '{ OptionTableFlatMap.apply($a, $b, $c) } ) => OptionTableFlatMap(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionExists]( '{ OptionExists.apply($a, $b, $c) } ) => OptionExists(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionForall]( '{ OptionForall.apply($a, $b, $c) } ) => OptionForall(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionTableExists]( '{ OptionTableExists.apply($a, $b, $c) } ) => OptionTableExists(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionTableForall]( '{ OptionTableForall.apply($a, $b, $c) } ) => OptionTableForall(a.unexpr, b.unexpr, c.unexpr)
   }
 
   def constString(expr: Expr[String])(using Quotes): String = expr match
@@ -131,10 +133,9 @@ object Unlifter {
       case '{ io.getquill.ast.AscNullsLast } => AscNullsLast
       case '{ io.getquill.ast.DescNullsLast } => DescNullsLast
 
-  given unliftAst: NiceUnliftable[Ast] with {
-    // TODO have a typeclass like Splicer to translate constant to strings
+  given unliftConstant: NiceUnliftable[Constant] with
     def unlift =
-      case Is[Constant]('{ Constant(${Expr(b: Double)}: Double, $quat) }) =>
+      case '{ Constant(${Expr(b: Double)}: Double, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
       case '{ Constant(${Expr(b: Boolean)}: Boolean, $quat) } =>
@@ -167,49 +168,71 @@ object Unlifter {
       case '{ Constant((), $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant((), unliftedQuat)
-      case '{ Entity.apply(${Expr(b: String)}, $elems, $quat)  } =>
+
+  given unliftAction: NiceUnliftable[Action] with
+    def unlift =
+      case Is[Update]( '{ Update($query, $assignments) } ) => Update(query.unexpr, assignments.unexpr)
+      case Is[Insert]( '{ Insert($query, $assignments) } ) => Insert(query.unexpr, assignments.unexpr)
+      case Is[Delete]( '{ Delete($query) } ) => Delete(query.unexpr)
+      case Is[Returning]( '{ Returning(${action}, ${alias}, ${body}: Ast) } ) => Returning(action.unexpr, alias.unexpr, body.unexpr)
+      case Is[ReturningGenerated]( '{ ReturningGenerated(${action}, ${alias}, ${body}: Ast) } ) => ReturningGenerated(action.unexpr, alias.unexpr, body.unexpr)
+      case Is[Foreach]( '{ Foreach(${query}, ${alias}, ${body}: Ast) } ) => Foreach(query.unexpr, alias.unexpr, body.unexpr)
+
+  given unliftQuery: NiceUnliftable[AQuery] with
+    def unlift =
+      case Is[Map]( '{ Map(${query}, ${alias}, ${body}: Ast) } ) => Map(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[FlatMap]( '{ FlatMap(${query}, ${alias}, ${body}: Ast) } ) => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Filter]( '{ Filter(${query}, ${alias}, ${body}: Ast) } ) => Filter(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[GroupBy]( '{ GroupBy(${query}, ${alias}, ${body}: Ast) } ) => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[SortBy]( '{ SortBy(${query}, ${alias}, ${criterias}, ${ordering}) } ) => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
+      case Is[Distinct]( '{ Distinct(${a}) } )  => Distinct(a.unexpr)
+      case Is[Nested]( '{ Nested(${a}) } ) => Nested(a.unexpr)
+      case Is[Union]( '{ Union($a, $b) } ) => Union(a.unexpr, b.unexpr)
+      case Is[UnionAll]( '{ UnionAll($a, $b) } ) => UnionAll(a.unexpr, b.unexpr)
+      case Is[Join]( '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) } ) => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
+      case Is[FlatJoin]( '{ FlatJoin($typ, $a, $aliasA, $on) } ) => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
+      case Is[Take]( '{ Take($query, $num)} ) => Take(query.unexpr, num.unexpr)
+      case Is[Drop]( '{ Drop($query, $num)} ) => Drop(query.unexpr, num.unexpr)
+      case Is[ConcatMap]( '{ ConcatMap(${query}, ${alias}, ${body}: Ast) } ) => ConcatMap(query.unexpr, alias.unexpr, body.unexpr)
+
+  given unliftEntity: NiceUnliftable[Entity] with
+    def unlift =
+      case Is[Entity]( '{ Entity.apply(${Expr(b: String)}, $elems, $quat) } ) =>
         // Performance optimization, same as for Ident. Entity.quat is by-name so make sure to do unexper once here.
         val unliftedQuat = quat.unexpr
         Entity(b, elems.unexpr, unliftedQuat)
-      case Is[If]( '{ If($cond, $thenStmt, $elseStmt) }) => If(cond.unexpr, thenStmt.unexpr, elseStmt.unexpr)
-      case Is[Function]( '{ Function($params, $body) }) => Function(params.unexpr, body.unexpr)
-      case Is[FunctionApply]( '{ FunctionApply($function, $values) }) => FunctionApply(function.unexpr, values.unexpr)
-      case Is[Aggregation]( '{ Aggregation(${operator}, ${query}) }) => Aggregation(operator.unexpr, query.unexpr)
-      case Is[Map]( '{ Map(${query}, ${alias}, ${body}: Ast) }) => Map(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[FlatMap]( '{ FlatMap(${query}, ${alias}, ${body}: Ast) }) => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[Filter]( '{ Filter(${query}, ${alias}, ${body}: Ast) }) => Filter(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[GroupBy]( '{ GroupBy(${query}, ${alias}, ${body}: Ast) }) => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[SortBy]( '{ SortBy(${query}, ${alias}, ${criterias}, ${ordering}) }) => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
-      case Is[Distinct]( '{ Distinct(${a}) } ) => Distinct(a.unexpr)
-      case Is[Nested]( '{ Nested(${a}) } ) => Nested(a.unexpr)
-      case Is[Foreach]( '{ Foreach(${query}, ${alias}, ${body}: Ast) }) => Foreach(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[UnaryOperation]( '{ UnaryOperation(${operator}, ${a}: Ast) }) => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
-      case Is[BinaryOperation]( '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) }) => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
-      case Is[Property]( '{ Property(${ast}, ${name}) }) => Property(ast.unexpr, constString(name))
-      case Is[ScalarTag]( '{ScalarTag(${uid})}) => ScalarTag(constString(uid))
-      case Is[QuotationTag]( '{ QuotationTag($uid) }) => QuotationTag(constString(uid))
-      case Is[Union]( '{ Union($a, $b) }) => Union(a.unexpr, b.unexpr)
-      case Is[UnionAll]( '{ UnionAll($a, $b) }) => UnionAll(a.unexpr, b.unexpr)
-      case Is[Insert]( '{ Insert($query, $assignments) }) => Insert(query.unexpr, assignments.unexpr)
-      case Is[Update]( '{ Update($query, $assignments) }) => Update(query.unexpr, assignments.unexpr)
-      case Is[Delete]( '{ Delete($query) }) => Delete(query.unexpr)
-      case Is[Returning]( '{ Returning(${action}, ${alias}, ${body}: Ast) }) => Returning(action.unexpr, alias.unexpr, body.unexpr)
-      case Is[ReturningGenerated]( '{ ReturningGenerated(${action}, ${alias}, ${body}: Ast) }) => ReturningGenerated(action.unexpr, alias.unexpr, body.unexpr)
-      case Is[Infix]( '{ Infix($parts, $params, $pure, $quat) }) => Infix(parts.unexpr, params.unexpr, pure.unexpr, quat.unexpr)
-      case Is[Tuple]( '{ Tuple.apply($values) }) => Tuple(values.unexpr)
-      case Is[Join]( '{ Join($typ, $a, $b, $aliasA, $aliasB, $on) }) => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
-      case Is[FlatJoin]( '{ FlatJoin($typ, $a, $aliasA, $on) }) => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
-      case Is[Take]( '{ Take($query, $num)}) => Take(query.unexpr, num.unexpr)
-      case Is[Drop]( '{ Drop($query, $num)}) => Drop(query.unexpr, num.unexpr)
-      case Is[ConcatMap]( '{ ConcatMap(${query}, ${alias}, ${body}: Ast) }) => ConcatMap(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[CaseClass]( '{ CaseClass($values) }) => CaseClass(values.unexpr)
-      case '{ NullValue } => NullValue
-      case '{ $p: Property } => unliftProperty(p)
-      case '{ $id: AIdent } => unliftIdent(id)
-      case '{ $o: Ordering } => unliftOrdering(o)
-      case '{ $o: IterableOperation } => unliftTraversableOperation(o)
+      case Is[Entity]( '{ Entity.Opinionated.apply(${Expr(b: String)}, $elems, $quat, $renameable) } ) =>
+        // Performance optimization, same as for Ident. Entity.quat is by-name so make sure to do unexper once here.
+        val unliftedQuat = quat.unexpr
+        Entity.Opinionated(b, elems.unexpr, unliftedQuat, renameable.unexpr)
+
+  given unliftAst: NiceUnliftable[Ast] with {
+    import io.getquill.metaprog.Extractors.MatchingOptimizers._
+    // TODO have a typeclass like Splicer to translate constant to strings
+    def unlift =
+      case Is[AQuery]( unliftQuery(q) ) => q
+      case Is[Constant]( unliftConstant(c) ) => c
+      case Is[Action]( unliftAction(a) ) => a
+      case Is[If]( '{ If($cond, $thenStmt, $elseStmt) } ) => If(cond.unexpr, thenStmt.unexpr, elseStmt.unexpr)
+      case Is[Function]( '{ Function($params, $body) } ) => Function(params.unexpr, body.unexpr)
+      case Is[FunctionApply]( '{ FunctionApply($function, $values) } ) => FunctionApply(function.unexpr, values.unexpr)
+      case Is[Aggregation]( '{ Aggregation(${operator}, ${query}) } ) => Aggregation(operator.unexpr, query.unexpr)
+      case Is[UnaryOperation]( '{ UnaryOperation(${operator}, ${a}: Ast) } ) => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
+      case Is[BinaryOperation]( '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } ) => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
+      case Is[Property]( '{ Property(${ast}, ${name}) } ) => Property(ast.unexpr, constString(name))
+      case Is[ScalarTag]( '{ScalarTag(${uid})} ) => ScalarTag(constString(uid))
+      case Is[QuotationTag]( '{ QuotationTag($uid) } ) => QuotationTag(constString(uid))
+      case Is[Infix]( '{ Infix($parts, $params, $pure, $quat) } ) => Infix(parts.unexpr, params.unexpr, pure.unexpr, quat.unexpr)
+      case Is[Tuple]( '{ Tuple.apply($values) } ) => Tuple(values.unexpr)
+      case Is[CaseClass]( '{ CaseClass($values) } ) => CaseClass(values.unexpr)
+      case Is[Entity]( unliftEntity(p) ) => p
+      case Is[Property]( unliftProperty(p) ) => p
+      case Is[AIdent]( unliftIdent(id) ) => id
+      case Is[Ordering]( unliftOrdering(o) ) => o
+      case Is[IterableOperation]( unliftTraversableOperation(o) ) => o
       // TODO Is the matching covariant? In that case can do "case '{ $oo: OptionOperation } and then strictly throw an error"
-      case unliftOptionOperation(ast) => ast
+      case Is[OptionOperation]( unliftOptionOperation(ast) ) => ast
+      case '{ NullValue } => NullValue
   }
 
   given unliftOperator: NiceUnliftable[Operator] with {
