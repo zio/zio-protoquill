@@ -10,22 +10,8 @@ import scala.reflect.classTag;
 import io.getquill.quat.Quat
 import io.getquill.util.Messages
 import io.getquill.ReturnAction
-import io.getquill.metaprog.KryoAstSerializer
 import scala.meta.Term.Assign
 import scala.util.Try
-
-
-enum SerializeQuat:
-  case All
-  case None
-
-object SerializeQuat:
-  def If(condition: Boolean) =
-    if (condition) SerializeQuat.All else SerializeQuat.None
-
-enum SerializeAst:
-  case All
-  case None
 
 object SerialHelper:
   def fromSerializedJVM[T](serial: String): T = KryoAstSerializer.deserialize(serial).asInstanceOf[T]
@@ -37,14 +23,14 @@ object Lifter {
   // In Scala2-Quill Quat-Serialization was used just to avoid Java Method-Size limits but in ProtoQuill
   // it also substantially improves performance over quoted-match unlifting.
   private def newLifter(ast: Ast) =
-    Lifter(SerializeQuat.If(ast.countQuatFields > 4), SerializeAst.All)
+    Lifter(SerializeQuat.global(ast.countQuatFields), SerializeAst.global)
   def apply(ast: Ast): Quotes ?=> Expr[Ast] = newLifter(ast).liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
   def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = newLifter(ast).liftableAssignment(ast)
   def entity(ast: Entity): Quotes ?=> Expr[Entity] = newLifter(ast).liftableEntity(ast)
   def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = newLifter(ast).liftableTuple(ast)
   def ident(ast: AIdent): Quotes ?=> Expr[AIdent] = newLifter(ast).liftableIdent(ast)
   def quat(quat: Quat): Quotes ?=> Expr[Quat] =
-    Lifter(SerializeQuat.If(quat.countFields > 4), SerializeAst.All).liftableQuat(quat)
+    Lifter(SerializeQuat.global(quat.countFields), SerializeAst.global).liftableQuat(quat)
 
   def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] =
     Lifter(SerializeQuat.None, SerializeAst.None).liftableReturnAction(returnAction)

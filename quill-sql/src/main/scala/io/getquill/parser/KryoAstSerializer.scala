@@ -1,4 +1,4 @@
-package io.getquill.metaprog
+package io.getquill.parser
 
 import java.util.Base64
 import com.esotericsoftware.kryo.io.{ Input, Output }
