@@ -11,7 +11,7 @@ import io.getquill.util.debug.PrintMac
 
 object MiniQuillTest {
 
-  val ctx = new MirrorContext(PostgresDialect, Literal) //hellooo
+  val ctx = new MirrorContext(PostgresDialect, Literal) //helloooooooo
   import ctx._
 
   def main(args: Array[String]): Unit = {

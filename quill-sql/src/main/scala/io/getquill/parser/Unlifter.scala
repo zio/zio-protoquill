@@ -135,6 +135,8 @@ object Unlifter {
 
   given unliftConstant: NiceUnliftable[Constant] with
     def unlift =
+      case '{ SerialHelper.fromSerializedJVM[tt](${Expr(serial: String)}) } =>
+        SerialHelper.fromSerializedJVM[Ast](serial)
       case '{ Constant(${Expr(b: Double)}: Double, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
