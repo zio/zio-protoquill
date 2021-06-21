@@ -9,9 +9,11 @@ import io.getquill.quat._
 import io.getquill.ast.Ast
 
 import scala.collection.mutable
+import io.getquill.ast.Visibility
+import io.getquill.ast.Renameable
 
-case class ExternalIdentSerial(name: String, quat: Quat)
-case class IdentSerial(name: String, quat: Quat)
+case class ExternalIdentSerial(name: String, quat: Quat, renameable: Renameable)
+case class IdentSerial(name: String, quat: Quat, visibility: Visibility)
 case class ConstantSerial(v: Any, quat: Quat)
 case class OptionNoneSerial(quat: Quat)
 case class EntitySerial(name: String, properties: List[io.getquill.ast.PropertyAlias], quat: Quat.Product, renameable: io.getquill.ast.Renameable)
@@ -239,7 +241,7 @@ object KryoAstSerializer {
       k.register(classOf[Ident],
         new Serializer[Ident]():
           override def write(kryo: Kryo, output: Output, obj: Ident): Unit =
-            kryo.writeObject(output, IdentSerial(obj.name, obj.quat))
+            kryo.writeObject(output, IdentSerial(obj.name, obj.quat, obj.visibility))
           override def read(kryo: Kryo, input: Input, tpe: Class[Ident]): Ident =
             val in = kryo.readObject(input, classOf[IdentSerial])
             Ident(in.name, in.quat)
@@ -247,7 +249,7 @@ object KryoAstSerializer {
       k.register(classOf[ExternalIdent],
         new Serializer[ExternalIdent]():
           override def write(kryo: Kryo, output: Output, obj: ExternalIdent): Unit =
-            kryo.writeObject(output, ExternalIdentSerial(obj.name, obj.quat))
+            kryo.writeObject(output, ExternalIdentSerial(obj.name, obj.quat, obj.renameable))
           override def read(kryo: Kryo, input: Input, tpe: Class[ExternalIdent]): ExternalIdent =
             val in = kryo.readObject(input, classOf[ExternalIdentSerial])
             ExternalIdent(in.name, in.quat)

@@ -135,8 +135,6 @@ object Unlifter {
 
   given unliftConstant: NiceUnliftable[Constant] with
     def unlift =
-      case '{ SerialHelper.fromSerializedJVM[tt](${Expr(serial: String)}) } =>
-        SerialHelper.fromSerializedJVM[Ast](serial)
       case '{ Constant(${Expr(b: Double)}: Double, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
@@ -212,6 +210,8 @@ object Unlifter {
     import io.getquill.metaprog.Extractors.MatchingOptimizers._
     // TODO have a typeclass like Splicer to translate constant to strings
     def unlift =
+      case '{ SerialHelper.fromSerializedJVM[tt](${Expr(serial: String)}) } =>
+       SerialHelper.fromSerializedJVM[Ast](serial)
       case Is[AQuery]( unliftQuery(q) ) => q
       case Is[Constant]( unliftConstant(c) ) => c
       case Is[Action]( unliftAction(a) ) => a
