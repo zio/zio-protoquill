@@ -164,6 +164,7 @@ trait ParserLibrary extends ParserFactory {
   def batchActionParser(using qctx: Quotes)          = Series.single(new BatchActionParser)
   def optionParser(using qctx: Quotes)               = Series.single(new OptionParser)
   def ifElseParser(using qctx: Quotes)               = Series.single(new IfElseParser)
+  def complexValueParser(using qctx: Quotes)         = Series.single(new ComplexValueParser)
   def valueParser(using qctx: Quotes)                = Series.single(new ValueParser)
 
   // def userDefined(using qctxInput: Quotes) = Series(new Glosser[Ast] {
@@ -174,6 +175,7 @@ trait ParserLibrary extends ParserFactory {
   //Everything needs to be parsed from a quoted state, and sent to the subsequent parser
   def apply(using Quotes): Parser[Ast] =
     quotationParser
+        .combine(valueParser)
         .combine(queryParser)
         .combine(queryScalarsParser)
         .combine(infixParser)
@@ -189,7 +191,7 @@ trait ParserLibrary extends ParserFactory {
         .combine(blockParser)
         .combine(operationsParser)
         .combine(ifElseParser)
-        .combine(valueParser) // must go before functionApplyParser since valueParser parsers '.apply on case class' and the functionApply would take that
+        .combine(complexValueParser) // must go before functionApplyParser since valueParser parsers '.apply on case class' and the functionApply would take that
         .combine(functionApplyParser) // must go before genericExpressionsParser otherwise that will consume the 'apply' clauses
         .combine(genericExpressionsParser)
 }
@@ -730,6 +732,7 @@ case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case '{ ($i: InfixValue).generic.pure.as[t] } => genericInfix(i)(true, Quat.Generic)
     case '{ ($i: InfixValue).pure.as[t] } => genericInfix(i)(true, InferQuat.of[t])
     case '{ ($i: InfixValue).as[t] } => genericInfix(i)(false, InferQuat.of[t])
+    case '{ ($i: InfixValue) } => genericInfix(i)(false, Quat.Value)
 
   def genericInfix(i: Expr[_])(isPure: Boolean, quat: Quat) =
     val (parts, paramsExprs) = InfixComponents.unapply(i).getOrElse { Parser.throwExpressionError(i, classOf[Infix]) }
@@ -868,6 +871,11 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   }
 }
 
+/**
+ * Should check that something is a null-constant basically before anything else because
+ * null-constant can match anything e.g. a (something: SomeValue) clause. Found this out
+ * when tried to do just '{ (infix: InfixValue) } and 'null' matched it
+ */
 case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
@@ -884,6 +892,16 @@ case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case '{ Option.apply[t]($v) } => OptionApply(astParse(v))
     case '{ None } => OptionNone(Quat.Null)
     case '{ Option.empty[t] } => OptionNone(InferQuat.of[t])
+  }
+}
+
+case class ComplexValueParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
+  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
+  def delegate: PartialFunction[Expr[_], Ast] = {
+    case ArrowFunction(prop, value) =>
+      Tuple(List(astParse(prop), astParse(value)))
 
     // Parse tuples
     case Unseal(Apply(TypeApply(Select(TupleIdent(), "apply"), types), values)) =>

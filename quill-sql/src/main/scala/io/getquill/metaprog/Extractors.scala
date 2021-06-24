@@ -258,6 +258,13 @@ object Extractors {
     }
   }
 
+  object ArrowFunction:
+    def unapply(expr: Expr[_])(using Quotes) =
+      import quotes.reflect._
+      expr match
+        case '{ type v; ($prop: Any).->[`v`](($value: `v`)) } => Some((prop, value))
+        case _ => None
+
   object TupleName {
     def unapply(str: String): Boolean = str.matches("Tuple[0-9]+")
   }

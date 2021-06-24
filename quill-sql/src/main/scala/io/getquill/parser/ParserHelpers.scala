@@ -34,6 +34,7 @@ object ParserHelpers {
     import io.getquill.util.Interpolator
     import io.getquill.util.Messages.TraceType
     import io.getquill.norm.BetaReduction
+    import io.getquill.metaprog.Extractors.ArrowFunction
 
     def astParse: SealedParser[Ast]
 
@@ -41,7 +42,7 @@ object ParserHelpers {
       object Components:
         def unapply(expr: Expr[_]) =
           UntypeExpr(expr) match
-            case Lambda1(ident, identTpe, '{ type v; ($prop: Any).->[`v`](($value: `v`)) }) => Some((ident, identTpe, prop, value))
+            case Lambda1(ident, identTpe, ArrowFunction(prop, value)) => Some((ident, identTpe, prop, value))
             case _ => None
 
       def verifyTypesSame(expr: Expr[_]) =

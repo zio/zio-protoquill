@@ -26,6 +26,12 @@ class InfixTest extends Spec with Inside {
       }
       quote(unquote(q)).ast mustEqual Infix(List("true"), Nil, false, Quat.BooleanValue)
     }
+    "with no `as`" in {
+      inline def q = quote {
+        infix"true"
+      }
+      quote(unquote(q)).ast mustEqual Infix(List("true"), Nil, false, Quat.Value)
+    }
     "with params" in {
       inline def q = quote {
         (a: String, b: String) =>
