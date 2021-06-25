@@ -22,7 +22,7 @@ releaseNextVersion := { ver =>
   println(s"=== Detected original version: ${ver}. Which is ${withoutLast} + ${last}")
   // see if the last group of chars are numeric, if they are, just increment
   val actualLast = scala.util.Try(last.toInt).map(i => (i + 1).toString).getOrElse(last)
-  val newVer = withoutLast + actualLast
+  val newVer = withoutLast + actualLast + "-SNAPSHOT"
   println(s"=== Final computed version is: ${newVer}")
   newVer
 }
