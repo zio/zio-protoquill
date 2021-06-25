@@ -12,6 +12,21 @@ ThisBuild / versionScheme := Some("always")
 // https://github.com/sbt/sbt-pgp/issues/178
 Global / useGpgPinentry := true
 
+releaseVersion     := { ver =>
+  println(s"=== Releasing on initially specified version: ${ver}")
+  ver
+}
+releaseNextVersion := { ver =>
+  val withoutLast = ver.reverse.dropWhile(_.isDigit).reverse
+  val last = ver.reverse.takeWhile(_.isDigit).reverse
+  println(s"=== Detected original version: ${ver}. Which is ${withoutLast} + ${last}")
+  // see if the last group of chars are numeric, if they are, just increment
+  val actualLast = scala.util.Try(last.toInt).map(i => (i + 1).toString).getOrElse(last)
+  val newVer = withoutLast + actualLast
+  println(s"=== Final computed version is: ${newVer}")
+  newVer
+}
+
 val isCommunityBuild =
   sys.props.getOrElse("community", "true").toBoolean
 
