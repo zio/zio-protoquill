@@ -27,6 +27,7 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
 
   case class Person(id: Int, name: String, age: Int)
   inline def insertPeople = quote((p: Person) => query[Person].insert(p))
+  val insertPeopleDynamic = quote((p: Person) => query[Person].insert(p))
 }
 
 class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect, Literal] {
@@ -66,6 +67,14 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
   }
 
   "batch action should work with" - {
+    "dynamic splice" in {
+      val q = quote {
+        liftQuery(people).foreach(p => query[Person].insert(p))
+      }
+      val mirror = ctx.run(q)
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)),Dynamic)
+    }
+
     "insert" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p)) }
       mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)),Static)
@@ -74,6 +83,11 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
     "insert with function splice" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => insertPeople(p)) }
       mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+    }
+
+    "insert with dynamic function splice" in { // I.e. splicing the insertPeopleDynamic segment should make the whole query dynamic... and it should still work
+      val mirror = ctx.run { liftQuery(people).foreach(p => insertPeopleDynamic(p)) }
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Dynamic)
     }
 
     "update" in {

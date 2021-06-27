@@ -28,6 +28,7 @@ object Lifter {
   def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = newLifter(ast).liftableAssignment(ast)
   def entity(ast: Entity): Quotes ?=> Expr[Entity] = newLifter(ast).liftableEntity(ast)
   def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = newLifter(ast).liftableTuple(ast)
+  def caseClass(ast: CaseClass): Quotes ?=> Expr[CaseClass] = newLifter(ast).liftableCaseClass(ast)
   def ident(ast: AIdent): Quotes ?=> Expr[AIdent] = newLifter(ast).liftableIdent(ast)
   def quat(quat: Quat): Quotes ?=> Expr[Quat] =
     Lifter(SerializeQuat.global(quat.countFields), SerializeAst.global).liftableQuat(quat)
@@ -183,6 +184,10 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
       //case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Entity](ast)
       case Entity.Opinionated(name: String, list, quat, renameable) => '{ Entity.Opinionated(${name.expr}, ${list .expr}, ${quat.expr}, ${renameable.expr})  }
 
+  given liftableCaseClass: NiceLiftable[CaseClass] with
+    def lift =
+      case CaseClass(lifts) => '{ CaseClass(${lifts.expr}) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
+
   given liftableTuple: NiceLiftable[Tuple] with
     def lift =
       case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Tuple](ast)
@@ -228,6 +233,7 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
       case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.expr}, ${values.expr}) }
       case v: Entity => liftableEntity(v)
       case v: Tuple => liftableTuple(v)
+      case v: CaseClass => liftableCaseClass(v)
       case v: Ordering => orderingLiftable(v)
       case If(cond, thenStmt, elseStmt) => '{ If(${cond.expr}, ${thenStmt.expr}, ${elseStmt.expr}) }
       case Aggregation(operator, query) => '{ Aggregation(${operator.expr}, ${query.expr}) }
@@ -257,7 +263,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
       case Drop(query: Ast, num: Ast) => '{ Drop(${query.expr}, ${num.expr})}
       case ConcatMap(query: Ast, alias: AIdent, body: Ast) => '{ ConcatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
       case NullValue => '{ NullValue }
-      case CaseClass(lifts) => '{ CaseClass(${lifts.expr}) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
       case v: Property => liftableProperty(v)
       case v: AIdent => liftableIdent(v)
       case v: IterableOperation => liftableTraversableOperation(v)

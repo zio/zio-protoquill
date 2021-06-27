@@ -1,6 +1,7 @@
 package io.getquill.context
 
 import io.getquill.EagerPlanter
+import io.getquill.InjectableEagerPlanter
 import io.getquill.EagerListPlanter
 import io.getquill.metaprog.EagerListPlanterExpr
 import io.getquill.metaprog.EagerPlanterExpr
@@ -236,14 +237,17 @@ object Particularize:
     private[getquill] def raw[PrepareRowTemp](statements: Statement, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token): String = {
       enum LiftChoice:
         case ListLift(value: EagerListPlanter[Any, PrepareRowTemp])
-        case SingleLift(value: EagerPlanter[Any, PrepareRowTemp])
+        case SingleLift(value: Planter[Any, PrepareRowTemp])
 
       val listLifts = lifts.collect { case e: EagerListPlanter[_, _] => e.asInstanceOf[EagerListPlanter[Any, PrepareRowTemp]] }.map(lift => (lift.uid, lift)).toMap
       val singleLifts = lifts.collect { case e: EagerPlanter[_, _] => e.asInstanceOf[EagerPlanter[Any, PrepareRowTemp]] }.map(lift => (lift.uid, lift)).toMap
+      // For dynamic lifts, it is possible that we have injectable lifts that have not yet been resolved
+      val injectableLifts = lifts.collect { case e: InjectableEagerPlanter[_, _] => e.asInstanceOf[InjectableEagerPlanter[Any, PrepareRowTemp]] }.map(lift => (lift.uid, lift)).toMap
 
       def getLifts(uid: String): LiftChoice =
         listLifts.get(uid).map(LiftChoice.ListLift(_))
           .orElse(singleLifts.get(uid).map(LiftChoice.SingleLift(_)))
+          .orElse(injectableLifts.get(uid).map(LiftChoice.SingleLift(_)))
           .getOrElse {
             throw new IllegalArgumentException(s"Cannot find list-lift with UID ${uid} (from all the lifts ${lifts})")
           }
