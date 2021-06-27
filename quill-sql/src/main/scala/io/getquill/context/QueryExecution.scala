@@ -298,6 +298,122 @@ object QueryExecution:
 
 end QueryExecution
 
+object PrepareDynamicExecution:
+  import io.getquill.idiom.{ Idiom => Idiom }
+  import io.getquill.{ NamingStrategy => NamingStrategy }
+  import io.getquill.idiom.Statement
+  import io.getquill.ast.ReturningAction
+
+  def spliceQuotations(quoted: Quoted[_]): Ast =
+    def spliceQuotationsRecurse(quoted: Quoted[_]): Ast =
+        val quotationVases = quoted.runtimeQuotes
+        val ast = quoted.ast
+        // Get all the quotation tags
+        Transform(ast) {
+          // Splice the corresponding vase for every tag, then recurse
+          case v @ QuotationTag(uid) =>
+            // When a quotation to splice has been found, retrieve it and continue
+            // splicing inside since there could be nested sections that need to be spliced
+            quotationVases.find(_.uid == uid) match {
+              case Some(vase) =>
+                spliceQuotationsRecurse(vase.quoted)
+              case None =>
+                throw new IllegalArgumentException(s"Quotation vase with UID ${uid} could not be found!")
+            }
+        }
+    BetaReduction(spliceQuotationsRecurse(quoted))
+  end spliceQuotations
+
+  def gatherLifts(quoted: Quoted[_]): List[Planter[_, _]] =
+    quoted.lifts ++ quoted.runtimeQuotes.flatMap(vase => gatherLifts(vase.quoted))
+
+  enum SpliceBehavior:
+    case NeedsSplice
+    case AlreadySpliced
+
+  def apply[
+    I,
+    T,
+    RawT,
+    D <: Idiom,
+    N <: NamingStrategy,
+    PrepareRow,
+    ResultRow
+  ](
+    quoted: Quoted[QAC[I, RawT]],
+    rawExtractor: Extraction[ResultRow, T],
+    idiom: D,
+    naming: N,
+    spliceBehavior: SpliceBehavior = SpliceBehavior.NeedsSplice
+  ) =
+    // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
+    // which means that the compiler has not done the splicing for us. We need to do this ourselves.
+    // So we need to go through all the QuotationTags in the AST and splice in the corresponding QuotationVase into it's place.
+    // (also, we need to tell if ReturningGenerated is the top-level element in order to know that the
+    // extraction type is Extraction.Returning by in some cases the AST will be
+    // FunctionApply(Function(ident, ReturningGenerated(...))), stuff). In those cases, we need
+    // to do a beta-reduction first.
+    val (splicedAst, gatheredLifts) =
+      spliceBehavior match
+        case SpliceBehavior.NeedsSplice => (spliceQuotations(quoted), gatherLifts(quoted))
+        case SpliceBehavior.AlreadySpliced => (quoted.ast, quoted.lifts) // If already spliced, can skip all runtimeQuotes clauses since their asts have already been spliced, same with lifts
+
+    // Pull out the all the Planter instances (for now they need to be EagerPlanters for Dynamic Queries)
+    val lifts = gatheredLifts.map(lift => (lift.uid, lift)).toMap
+
+    // TODO Should make this enable-able via a logging configuration
+    //println("=============== Dynamic Expanded Ast Is ===========\n" + io.getquill.util.Messages.qprint(splicedAst))
+
+    // Tokenize the spliced AST
+    val (outputAst, stmt) = idiom.translate(splicedAst)(using naming)
+    val naiveQury = Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
+
+    val liftColumns =
+      (ast: Ast, stmt: Statement) => Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
+
+    val returningActionOpt = splicedAst match
+      // If we have a returning action, we need to compute some additional information about how to return things.
+      // Different database dialects handle these things differently. Some allow specifying a list of column-names to
+      // return from the query. Others compute this information from the query data directly. This information is stored
+      // in the dialect and therefore is computed here.
+      case returningActionAst: ReturningAction =>
+        Some(io.getquill.norm.ExpandReturning.applyMap(returningActionAst)(liftColumns)(idiom, naming))
+      case _ =>
+        None
+
+    val extractor = (rawExtractor, returningActionOpt) match
+      case (Extraction.Simple(extract), Some(returningAction)) => Extraction.Returning(extract, returningAction)
+      case (Extraction.Simple(_), None) => rawExtractor
+      case (Extraction.None, None) => rawExtractor
+      case (extractor, returningAction) => throw new IllegalArgumentException(s"Invalid state. Cannot have ${extractor} with a returning action ${returningAction}")
+
+    // Turn the Tokenized AST into an actual string and pull out the ScalarTags (i.e. the lifts)
+    val (unparticularQuery, externals) = Unparticular.Query.fromStatement(stmt, idiom.liftingPlaceholder)
+
+    // Get the UIDs from the lifts, if they are something unexpected (e.g. Lift elements from Quill 2.x) throw an exception
+    val liftTags =
+      externals.map {
+        case ScalarTag(uid) => uid
+        case other => throw new IllegalArgumentException(s"Invalid Lift Tag: ${other}")
+      }
+
+    val queryString = Particularize.Dynamic(unparticularQuery, gatheredLifts, idiom.liftingPlaceholder, idiom.emptySetContainsToken)
+
+    // Match the ScalarTags we pulled out earlier (in ReifyStatement) with corresponding Planters because
+    // the Planters can be out of order (I.e. in a different order then the ?s in the SQL query that they need to be spliced into).
+    // The ScalarTags are comming directly from the tokenized AST however and their order should be correct.
+    // also, some of they may be filtered out
+    val sortedLifts = liftTags.map { tag =>
+      lifts.get(tag) match
+        case Some(lift) => lift
+        case None => throw new IllegalArgumentException(s"Could not lookup value for the tag: ${tag}")
+    }
+
+    (queryString, outputAst, sortedLifts, extractor)
+
+  end apply
+end PrepareDynamicExecution
+
 /**
  * Drives dynamic execution from the Context
  * Note that AST is already elaborated by the time it comes into here
@@ -327,87 +443,9 @@ object RunDynamicExecution:
   ): Res =
   {
     //println("===== Passed Ast: " + io.getquill.util.Messages.qprint(quoted.ast))
+    val (queryString, outputAst, sortedLifts, extractor) =
+      PrepareDynamicExecution[I, T, RawT, D, N, PrepareRow, ResultRow](quoted, rawExtractor, ctx.idiom, ctx.naming)
 
-    def gatherLifts(quoted: Quoted[_]): List[Planter[_, _]] =
-      quoted.lifts ++ quoted.runtimeQuotes.flatMap(vase => gatherLifts(vase.quoted))
-
-    def spliceQuotations(quoted: Quoted[_]): Ast = {
-      val quotationVases = quoted.runtimeQuotes
-      val ast = quoted.ast
-      // Get all the quotation tags
-      Transform(ast) {
-        // Splice the corresponding vase for every tag, then recurse
-        case v @ QuotationTag(uid) =>
-          // When a quotation to splice has been found, retrieve it and continue
-          // splicing inside since there could be nested sections that need to be spliced
-          quotationVases.find(_.uid == uid) match {
-            case Some(vase) =>
-              spliceQuotations(vase.quoted)
-            case None =>
-              throw new IllegalArgumentException(s"Quotation vase with UID ${uid} could not be found!")
-          }
-      }
-    }
-
-    // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
-    // which means that the compiler has not done the splicing for us. We need to do this ourselves.
-    // So we need to go through all the QuotationTags in the AST and splice in the corresponding QuotationVase into it's place.
-    // (also, we need to tell if ReturningGenerated is the top-level element in order to know that the
-    // extraction type is Extraction.Returning by in some cases the AST will be
-    // FunctionApply(Function(ident, ReturningGenerated(...))), stuff). In those cases, we need
-    // to do a beta-reduction first.
-    val splicedAst = BetaReduction(spliceQuotations(quoted))
-
-    // TODO Should make this enable-able via a logging configuration
-    //println("=============== Dynamic Expanded Ast Is ===========\n" + io.getquill.util.Messages.qprint(splicedAst))
-
-    // Tokenize the spliced AST
-    val (outputAst, stmt) = ctx.idiom.translate(splicedAst)(using ctx.naming)
-    val naiveQury = Unparticular.translateNaive(stmt, ctx.idiom.liftingPlaceholder)
-
-    val liftColumns =
-      (ast: Ast, stmt: Statement) => Unparticular.translateNaive(stmt, ctx.idiom.liftingPlaceholder)
-
-    val returningActionOpt = splicedAst match
-      // If we have a returning action, we need to compute some additional information about how to return things.
-      // Different database dialects handle these things differently. Some allow specifying a list of column-names to
-      // return from the query. Others compute this information from the query data directly. This information is stored
-      // in the dialect and therefore is computed here.
-      case returningActionAst: ReturningAction =>
-        Some(io.getquill.norm.ExpandReturning.applyMap(returningActionAst)(liftColumns)(ctx.idiom, ctx.naming))
-      case _ =>
-        None
-
-    val extractor = (rawExtractor, returningActionOpt) match
-      case (Extraction.Simple(extract), Some(returningAction)) => Extraction.Returning(extract, returningAction)
-      case (Extraction.Simple(_), None) => rawExtractor
-      case (Extraction.None, None) => rawExtractor
-      case (extractor, returningAction) => throw new IllegalArgumentException(s"Invalid state. Cannot have ${extractor} with a returning action ${returningAction}")
-
-    // Turn the Tokenized AST into an actual string and pull out the ScalarTags (i.e. the lifts)
-    val (unparticularQuery, externals) = Unparticular.Query.fromStatement(stmt, ctx.idiom.liftingPlaceholder)
-
-    // Get the UIDs from the lifts, if they are something unexpected (e.g. Lift elements from Quill 2.x) throw an exception
-    val liftTags =
-      externals.map {
-        case ScalarTag(uid) => uid
-        case other => throw new IllegalArgumentException(s"Invalid Lift Tag: ${other}")
-      }
-
-    // Pull out the all the Planter instances (for now they need to be EagerPlanters for Dynamic Queries)
-    val gatheredLifts = gatherLifts(quoted)
-    val lifts = gatheredLifts.map(lift => (lift.uid, lift)).toMap
-
-    val queryString = Particularize.Dynamic(unparticularQuery, gatheredLifts, ctx.idiom.liftingPlaceholder, ctx.idiom.emptySetContainsToken)
-
-    // Match the ScalarTags we pulled out earlier (in ReifyStatement) with corresponding Planters because
-    // the Planters can be out of order (I.e. in a different order then the ?s in the SQL query that they need to be spliced into).
-    // The ScalarTags are comming directly from the tokenized AST however and their order should be correct.
-    val sortedLifts = liftTags.map { tag =>
-      lifts.get(tag) match
-        case Some(lift) => lift
-        case None => throw new IllegalArgumentException(s"Could not lookup value for the tag: ${tag}")
-    }
     // Use the sortedLifts to prepare the method that will prepare the SQL statement
     val prepare = (row: PrepareRow) => LiftsExtractor.Dynamic[PrepareRow](sortedLifts, row)
 

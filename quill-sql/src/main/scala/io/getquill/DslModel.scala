@@ -50,6 +50,9 @@ implicit class InfixInterpolator(val sc: StringContext) {
 }
 
 case class InjectableEagerPlanter[T, PrepareRow](inject: _ => T, encoder: GenericEncoder[T, PrepareRow], uid: String) extends Planter[T, PrepareRow] {
+  // This is the equivalent of InjectableEagerPlanterExpr's 'inject' method only for dynamic batch queries
+  // TODO Try changing to Any => T and see if exceptions happen anywhere
+  def withInject(element: Any) = EagerPlanter[T, PrepareRow](inject.asInstanceOf[Any => T](element), encoder, uid)
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
