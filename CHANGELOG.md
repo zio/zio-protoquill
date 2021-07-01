@@ -1,3 +1,7 @@
+# 3.7.2.Beta1.3
+
+* [Implement Dynamic Batch Actions](https://github.com/getquill/protoquill/pull/8)
+
 # 3.7.2.Beta1.2
 
 * Kryo-Serialize entire AST. Further improves performance.
