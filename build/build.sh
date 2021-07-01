@@ -173,7 +173,7 @@ function db_build() {
     echo "=== Waiting for Databases ==="
     wait_for_databases
     echo "=== Building Tests ==="
-    ./build/aware_run.sh "sbt -Dmodules=db $SBT_ARGS test"
+    sbt -Dmodules=db $SBT_ARGS test
 }
 
 # function js_build() {
