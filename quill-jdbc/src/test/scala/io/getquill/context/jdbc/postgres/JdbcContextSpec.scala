@@ -13,6 +13,7 @@ class JdbcContextSpec extends Spec {
   }
 
   "run non-batched action" in {
+    testContext.run(qr1.delete)
     inline def insert = quote {
       qr1.insert(_.i -> lift(1))
     }

@@ -3,6 +3,54 @@ package io.getquill.metaprog
 import scala.quoted._
 
 import scala.collection.mutable.ArrayBuffer
+import scala.tools.nsc.doc.html.HtmlTags.P
+import io.getquill.util.Format
+
+/** Remove all instances of SerialHelper.fromSerializedJVM from a tree (for printing purposes) */
+object DeserializeAstInstances:
+  def apply[T: Type](input: Expr[T])(using Quotes): Expr[T] = {
+    import quotes.reflect._
+    import io.getquill.parser.SerialHelper
+    import io.getquill.parser.Lifter
+    import io.getquill.metaprog.Extractors._
+
+    def isQuat(expr: Expr[_]) =
+        expr.asTerm.tpe <:< TypeRepr.of[io.getquill.quat.Quat]
+
+    class CustomExprMap extends ExprMap {
+      def transform[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] =
+        expr match
+          case '{ SerialHelper.fromSerializedJVM[a](${Expr(serial: String)}) } =>
+            try {
+              val actualAst = SerialHelper.fromSerializedJVM[io.getquill.ast.Ast](serial)
+              val astExpr = Lifter.NotSerializing.liftableAst(actualAst)
+              // Need to cast or may fail on an internal typecheck
+              '{ $astExpr.asInstanceOf[TF] }
+
+            } catch {
+              case e =>
+                ('{ io.getquill.ast.Constant.auto("Could Not Deserialize") }).asExprOf[TF]
+            }
+
+          // Quat.Generic blows this up for some reason
+          case _ if (isQuat(expr)) => expr
+
+          // Otherwise blows up and claims it can type Seq[Stuff] as _*
+          case Varargs(args) =>
+            val mappedArgs = args.map(arg => transformChildren(arg))
+            '{ (${Expr.ofList(mappedArgs)}).asInstanceOf[TF] }
+
+          case other =>
+            transformChildren(other)
+    }
+
+    try {
+      new CustomExprMap().transform(input)
+    } catch {
+      case e => input
+    }
+  }
+end DeserializeAstInstances
 
 object ExprAccumulate {
   def apply[T: Type, ExpectedType](input: Expr[Any])(matcher: PartialFunction[Expr[Any], T])(using Quotes): List[T] = {
@@ -29,7 +77,7 @@ object ExprAccumulate {
               args.foreach(arg => transformChildren(arg))
               // just return the expr, we don't need to dive into it
               expr
-            case _ => 
+            case _ =>
               super.transformChildren(expr)
 
         } catch {
@@ -55,7 +103,7 @@ object ExprAccumulate {
 
         expr.asTerm match
           // Not including this causes execption "scala.tasty.reflect.ExprCastError: Expr: [ : Nothing]" in certain situations
-          case Repeated(Nil, Inferred()) => expr 
+          case Repeated(Nil, Inferred()) => expr
           case _ if (isQuat(expr)) => expr
           case _ => transformChildren[TF](expr)
       }

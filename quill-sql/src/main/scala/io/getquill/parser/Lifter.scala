@@ -18,6 +18,8 @@ object SerialHelper:
   def toSerializedJVM(ast: Ast): String =KryoAstSerializer.serialize(ast)
 
 object Lifter {
+  def NotSerializing = Lifter(SerializeQuat.None, SerializeAst.None)
+
   // A new parameter should be introduced to replace Messages.maxQuatFields which is far too conservative
   // for ProtoQuill. The unlifter is so slow that Kryo serialization beats it's performance even for small Quats.
   // In Scala2-Quill Quat-Serialization was used just to avoid Java Method-Size limits but in ProtoQuill

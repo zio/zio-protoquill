@@ -7,7 +7,7 @@ object Format {
   // import org.scalafmt.interfaces.Scalafmt
   // import org.scalafmt.cli.Scalafmt210
   object TypeOf {
-    def apply[T: Type](using Quotes) = 
+    def apply[T: Type](using Quotes) =
       import quotes.reflect._
       Format.Type(summon[Type[T]])
   }
@@ -26,6 +26,11 @@ object Format {
     def apply(term: Quotes#reflectModule#Term)(using qctx: Quotes) =
       import qctx.reflect._
       Printer.TreeShortCode.show(term.asInstanceOf[qctx.reflect.Term])
+
+  object TermRaw:
+    def apply(term: Quotes#reflectModule#Term)(using qctx: Quotes) =
+      import qctx.reflect._
+      Printer.TreeStructure.show(term.asInstanceOf[qctx.reflect.Term])
 
   object Tree:
     def apply(tree: Quotes#reflectModule#Tree)(using qctx: Quotes) =
@@ -57,14 +62,14 @@ object Format {
   }
 
   def apply(code: String) = {
-      val encosedCode = 
+      val encosedCode =
         s"""|object DummyEnclosure {
             |  ${code}
             |}""".stripMargin
-      
+
       // NOTE: Very ineffifient way to get rid of DummyEnclosure on large blocks of code
       //       use only for debugging purposes!
-      def unEnclose(enclosedCode: String) = 
+      def unEnclose(enclosedCode: String) =
         val lines =
           enclosedCode
             .replaceFirst("^object DummyEnclosure \\{", "")
