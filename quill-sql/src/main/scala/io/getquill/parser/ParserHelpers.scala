@@ -38,31 +38,41 @@ object ParserHelpers {
 
     def astParse: SealedParser[Ast]
 
-    object AssignmentTerm {
+    object AssignmentTerm:
       object Components:
         def unapply(expr: Expr[_]) =
           UntypeExpr(expr) match
             case Lambda1(ident, identTpe, ArrowFunction(prop, value)) => Some((ident, identTpe, prop, value))
             case _ => None
 
-      def verifyTypesSame(expr: Expr[_]) =
-        expr match
-          case Components(_, _, prop, value) =>
-            val valueTpe = value.asTerm.tpe.widen
-            val propTpe = prop.asTerm.tpe.widen
-            // If both numbers are numeric and primitive e.g. `_.age -> 22.toShort` (in: `query[Person].insert(_.age -> 22.toShort)`)
-            // then check if one can fit into another. If it can the assignment is valid
-            if (isNumericPrimitive(propTpe) && isNumericPrimitive(valueTpe)) {
-              if (!(numericPrimitiveFitsInto(propTpe, valueTpe))) {
-                report.throwError(s"The primitive numeric value ${Format.TypeRepr(valueTpe)} in ${Format.Expr(value)} is to large to fit into the ${Format.TypeRepr(propTpe)} in ${Format.Expr(prop)}.", expr)
-              }
+      object TwoComponents:
+        def unapply(expr: Expr[_]) =
+          UntypeExpr(expr) match
+            case Lambda2(ident1, identTpe1, ident2, identTpe2, ArrowFunction(prop, value)) => Some((ident1, identTpe1, ident2, identTpe2, prop, value))
+            case _ => None
+
+      object CheckTypes:
+        def checkPropAndValue(parent: Expr[Any], prop: Expr[Any], value: Expr[Any]) =
+          val valueTpe = value.asTerm.tpe.widen
+          val propTpe = prop.asTerm.tpe.widen
+          // If both numbers are numeric and primitive e.g. `_.age -> 22.toShort` (in: `query[Person].insert(_.age -> 22.toShort)`)
+          // then check if one can fit into another. If it can the assignment is valid
+          if (isNumericPrimitive(propTpe) && isNumericPrimitive(valueTpe)) {
+            if (!(numericPrimitiveFitsInto(propTpe, valueTpe))) {
+              report.throwError(s"The primitive numeric value ${Format.TypeRepr(valueTpe)} in ${Format.Expr(value)} is to large to fit into the ${Format.TypeRepr(propTpe)} in ${Format.Expr(prop)}.", parent)
             }
-            // Otherwise check if the property is a subtype of the value that is being assigned to it
-            else if (!(valueTpe <:< propTpe)) {
-              report.throwError(s"The ${Format.TypeRepr(valueTpe)} value ${Format.Expr(value)} cannot be assigned to the ${Format.TypeRepr(propTpe)} property ${Format.Expr(prop)} because they are not the same type (or a subtype).", expr)
-            }
-          case other =>
-            report.throwError(s"The assignment statement ${Format.Expr(expr)} is invalid.")
+          }
+          // Otherwise check if the property is a subtype of the value that is being assigned to it
+          else if (!(valueTpe <:< propTpe)) {
+            report.throwError(s"The ${Format.TypeRepr(valueTpe)} value ${Format.Expr(value)} cannot be assigned to the ${Format.TypeRepr(propTpe)} property ${Format.Expr(prop)} because they are not the same type (or a subtype).", parent)
+          }
+        def apply(expr: Expr[_]) =
+          expr match
+            case Components(_, _, prop, value) => checkPropAndValue(expr, prop, value)
+            case TwoComponents(_, _, _, _, prop, value) => checkPropAndValue(expr, prop, value)
+            case other =>
+              report.throwError(s"The assignment statement ${Format.Expr(expr)} is invalid.")
+      end CheckTypes
 
       def OrFail(expr: Expr[_]) =
         unapply(expr).getOrElse { Parser.throwExpressionError(expr, classOf[Assignment]) }
@@ -72,7 +82,69 @@ object ParserHelpers {
           case Components(ident, identTpe, prop, value) =>
             Some(Assignment(cleanIdent(ident, identTpe), astParse(prop), astParse(value)))
           case _ => None
-    }
+
+      object Double:
+        def OrFail(expr: Expr[_]) =
+          unapply(expr).getOrElse { Parser.throwExpressionError(expr, classOf[Assignment]) }
+        def unapply(expr: Expr[_]): Option[Assignment] =
+          UntypeExpr(expr) match
+             case TwoComponents(ident1, identTpe1, ident2, identTpe2, prop, value) =>
+                val i1 = cleanIdent(ident1, identTpe1)
+                val i2 = cleanIdent(ident2, identTpe2)
+                val valueAst = Transform(astParse(value)) {
+                  case `i1` => OnConflict.Existing(i1)
+                  case `i2` => OnConflict.Excluded(i2)
+                }
+                Some(Assignment(i1, astParse(prop), valueAst))
+             case _ => None
+
+
+    end AssignmentTerm
+  }
+
+  trait PropertyParser(implicit val qctx: Quotes) {
+    import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
+    import io.getquill.Embedded
+
+    def astParse: SealedParser[Ast]
+
+    // Parses (e:Entity) => e.foo (or e.foo.bar etc...)
+    object LambdaToProperty:
+      object OrFail:
+        def apply(expr: Expr[_]): Property =
+          unapply(expr) match
+            case Some(value) => value
+            case None =>
+              report.throwError(s"Could not parse a (x) => x.property expression from: ${Format.Expr(expr)}", expr)
+
+      def unapply(expr: Expr[_]): Option[Property] =
+        expr match
+          case Lambda1(id, tpe, body) =>
+            val bodyProperty = AnyProperty.OrFail(body)
+            // TODO Get the inner ident and verify that it's the same is 'id'
+            Some(bodyProperty)
+          case _ => None
+    end LambdaToProperty
+
+    object AnyProperty:
+      object OrFail:
+        def apply(expr: Expr[_]): Property =
+          unapply(expr) match
+            case Some(value) => value
+            case None =>
+              report.throwError(s"Could not parse a ast.Property from the expression: ${Format.Expr(expr)}", expr)
+
+      def unapply(expr: Expr[_]): Option[Property] =
+        expr match
+          case Unseal(value @ Select(Seal(prefix), member)) =>
+            if (value.tpe <:< TypeRepr.of[Embedded]) {
+              Some(Property.Opinionated(astParse(prefix), member, Renameable.ByStrategy, Visibility.Hidden))
+            } else {
+              //println(s"========= Parsing Property ${prefix.show}.${member} =========")
+              Some(Property(astParse(prefix), member))
+            }
+          case _ => None
+    end AnyProperty
   }
 
 

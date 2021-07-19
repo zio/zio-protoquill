@@ -56,7 +56,9 @@ object Parser {
 
   def throwExpressionError(expr: Expr[_], throwInfo: ThrowInfo)(using Quotes): Nothing =
     import quotes.reflect._
-    val term = expr.asTerm
+    // When errors are printed, make sure to deserialize parts of the AST that may be serialized,
+    // otherwise in the expression printout there will garbled base46 characters everywhere
+    val term = io.getquill.metaprog.DeserializeAstInstances(expr).asTerm
     val message =
       throwInfo match
         case ThrowInfo.Message(msg) => msg
@@ -371,7 +373,7 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 
 // As a performance optimization, ONLY Matches things returning Action[_] UP FRONT.
 // All other kinds of things rejected
-case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Action[_], Ast] with Assignments {
+case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Action[_], Ast] with Assignments with PropertyParser {
   import quotes.reflect.{Constant => TConstant, _}
   import Parser.Implicits._
 
@@ -379,16 +381,18 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     del
   }
 
+  def combineAndCheckAndParse[T: Type, A <: Ast](first: Expr[T], others: Seq[Expr[T]])(checkClause: Expr[_] => Unit)(parseClause: Expr[_] => A): Seq[A] =
+    val assignments = (first.asTerm +: others.map(_.asTerm).filterNot(isNil(_)))
+    assignments.foreach(term => checkClause(term.asExpr))
+    assignments.map(term => parseClause(term.asExpr))
+
+
   def del: PartialFunction[Expr[_], Ast] = {
     case '{ type t; ($query: EntityQueryModel[`t`]).insert(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-      val insertAssignments = (first.asTerm +: others.map(_.asTerm)).filterNot(isNil(_))
-      insertAssignments.foreach(term => AssignmentTerm.verifyTypesSame(term.asExpr))
-      val assignments = insertAssignments.map(a => AssignmentTerm.OrFail(a.asExpr))
+      val assignments = combineAndCheckAndParse(first, others)(AssignmentTerm.CheckTypes(_))(AssignmentTerm.OrFail(_))
       AInsert(astParse(query), assignments.toList)
     case '{ type t; ($query: EntityQueryModel[`t`]).update(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
-      val updateAssignments = (first.asTerm +: others.map(_.asTerm)).filterNot(isNil(_))
-      updateAssignments.foreach(term => AssignmentTerm.verifyTypesSame(term.asExpr))
-      val assignments = updateAssignments.map(a => AssignmentTerm.OrFail(a.asExpr))
+      val assignments = combineAndCheckAndParse(first, others)(AssignmentTerm.CheckTypes(_))(AssignmentTerm.OrFail(_))
       AUpdate(astParse(query), assignments.toList)
     case '{ type t; ($query: EntityQueryModel[`t`]).delete } =>
       ADelete(astParse(query))
@@ -424,6 +428,34 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       // // Verify that the AST in the returning-body is valid
       // idiomReturnCapability.verifyAst(bodyAst)
       Returning(astParse(action), ident, bodyAst)
+
+    case '{ ($action: Insert[t]).onConflictIgnore } =>
+      OnConflict(astParse(action), OnConflict.NoTarget, OnConflict.Ignore)
+
+    case '{ type t; ($action: Insert[`t`]).onConflictIgnore(($target: `t` => Any), (${Varargs(targets)}: Seq[`t` => Any]): _*) } =>
+      val targetProperties = combineAndCheckAndParse(target, targets)(_ => ())(LambdaToProperty.OrFail(_))
+      OnConflict(
+        astParse(action),
+        OnConflict.Properties(targetProperties.toList),
+        OnConflict.Ignore
+      )
+
+    case '{ type t; ($action: Insert[`t`]).onConflictUpdate(($assign: (`t`,`t`) => (Any, Any)), (${Varargs(assigns)}: Seq[(`t`, `t`) => (Any, Any)]): _*) } =>
+      val assignments = combineAndCheckAndParse(assign, assigns)(AssignmentTerm.CheckTypes(_))(AssignmentTerm.Double.OrFail(_))
+      OnConflict(
+        astParse(action),
+        OnConflict.NoTarget,
+        OnConflict.Update(assignments.toList)
+      )
+
+    case '{ type t; ($action: Insert[`t`]).onConflictUpdate(($target: `t` => Any), (${Varargs(targets)}: Seq[`t` => Any]): _*)(($assign: (`t`,`t`) => (Any, Any)), (${Varargs(assigns)}: Seq[(`t`, `t`) => (Any, Any)]): _*) } =>
+      val assignments = combineAndCheckAndParse(assign, assigns)(AssignmentTerm.CheckTypes(_))(AssignmentTerm.Double.OrFail(_))
+      val targetProperties = combineAndCheckAndParse(target, targets)(_ => ())(LambdaToProperty.OrFail(_))
+      OnConflict(
+        astParse(action),
+        OnConflict.Properties(targetProperties.toList),
+        OnConflict.Update(assignments.toList)
+      )
 
     // Need to make copies because presently `Action` does not have a .returning method
     case '{ ($action: Update[t]).returning[r](${Lambda1(id, tpe, body)}) } =>
@@ -918,7 +950,7 @@ case class ComplexValueParser(root: Parser[Ast] = Parser.empty)(override implici
   }
 }
 
-case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PropertyParser {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
   import Parser.Implicits._
 
@@ -926,13 +958,7 @@ case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override i
 
   def delegate: PartialFunction[Expr[_], Ast] = {
 
-    case Unseal(value @ Select(Seal(prefix), member)) =>
-      if (value.tpe <:< TypeRepr.of[Embedded]) {
-        Property.Opinionated(astParse(prefix), member, Renameable.ByStrategy, Visibility.Hidden)
-      } else {
-        //println(s"========= Parsing Property ${prefix.show}.${member} =========")
-        Property(astParse(prefix), member)
-      }
+    case AnyProperty(property) => property
 
     // If at the end there's an inner tree that's typed, move inside and try to parse again
     case Unseal(Typed(innerTree, _)) =>

@@ -12,6 +12,7 @@ class PostgresJAsyncContextSpec extends Spec {
   import testContext._
 
   "run non-batched action" in {
+    testContext.run(qr1.delete)
     val insert = quote { (i: Int) =>
       qr1.insert(_.i -> i)
     }
