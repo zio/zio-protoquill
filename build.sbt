@@ -290,26 +290,14 @@ lazy val releaseSettings = ReleasePlugin.extraReleaseCommands ++ Seq(
     //doOnPush(releaseStepCommand("sonatypeReleaseAll")) ++
     doOnPush   (pushChanges)
   },
-  pomExtra := (
-    <url>http://github.com/getquill/protoquill</url>
-    <licenses>
-      <license>
-        <name>Apache License 2.0</name>
-        <url>https://raw.githubusercontent.com/getquill/protoquill/master/LICENSE.txt</url>
-        <distribution>repo</distribution>
-      </license>
-    </licenses>
-    <scm>
-      <url>git@github.com:getquill/protoquill.git</url>
-      <connection>scm:git:git@github.com:getquill/protoquill.git</connection>
-    </scm>
-    <developers>
-      <developer>
-        <id>deusaquilus</id>
-        <name>Alexander Ioffe</name>
-        <url>http://github.com/deusaquilus/</url>
-      </developer>
-    </developers>)
+  homepage := Some(url("http://github.com/getquill/protoquill")),
+  licenses := List(("Apache License 2.0", url("https://raw.githubusercontent.com/getquill/protoquill/master/LICENSE.txt"))),
+  developers := List(
+    Developer("deusaquilus", "Alexander Ioffe", "", url("https://github.com/deusaquilus"))
+  ),
+  scmInfo := Some(
+    ScmInfo(url("https://github.com/getquill/protoquill"), "git:git@github.com:getquill/protoquill.git")
+  )
 )
 
 def doOnDefault(steps: ReleaseStep*): Seq[ReleaseStep] =
