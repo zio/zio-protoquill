@@ -1,6 +1,7 @@
 import ReleaseTransformations._
 //import com.typesafe.sbt.SbtScalariform.ScalariformKeys
 //import scalariform.formatter.preferences._
+import com.jsuereth.sbtpgp.PgpKeys.publishSigned
 import sbtrelease.ReleasePlugin
 import scala.sys.process.Process
 import java.io.{File => JFile}
@@ -88,7 +89,9 @@ lazy val `quill` = {
     .dependsOn(filteredModules: _*)
     .settings(
       publishArtifact := false,
-      publish / skip := true
+      publish / skip := true,
+      publishLocal / skip := true,
+      publishSigned / skip := true,
     )
 }
 
