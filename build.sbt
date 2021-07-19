@@ -88,7 +88,7 @@ lazy val `quill` = {
     .dependsOn(filteredModules: _*)
     .settings(
       publishArtifact := false,
-      skip in publish := true
+      publish / skip := true
     )
 }
 
@@ -126,7 +126,7 @@ lazy val `quill-sql` =
           )
       },
       // TODO remove this if in community build since there's no scalatest
-      testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oGF"),
+      Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oGF"),
       // If it's a community-build we're using a scala incremental and scalafmt doesn't seem to work well with that
       libraryDependencies ++= {
         if (isCommunityBuild)
@@ -164,7 +164,7 @@ lazy val `quill-jasync` =
     .settings(commonSettings: _*)
     .settings(releaseSettings: _*)
     .settings(
-      fork in Test := true,
+      Test / fork := true,
       libraryDependencies ++= Seq(
         "com.github.jasync-sql" % "jasync-common" % "1.1.4",
         ("org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1").withDottyCompat(scalaVersion.value)
@@ -177,7 +177,7 @@ lazy val `quill-jasync-postgres` =
     .settings(commonSettings: _*)
     .settings(releaseSettings: _*)
     .settings(
-      fork in Test := true,
+      Test / fork := true,
       libraryDependencies ++= Seq(
         "com.github.jasync-sql" % "jasync-postgresql" % "1.1.4"
       )
@@ -189,7 +189,7 @@ lazy val `quill-zio` =
     .settings(commonSettings: _*)
     .settings(releaseSettings: _*)
     .settings(
-      fork in Test := true,
+      Test / fork := true,
       libraryDependencies ++= Seq(
         "dev.zio" %% "zio" % "1.0.8",
         "dev.zio" %% "zio-streams" % "1.0.8"
@@ -203,8 +203,8 @@ lazy val `quill-jdbc-zio` =
     .settings(releaseSettings: _*)
     .settings(jdbcTestingLibraries: _*)
     .settings(
-      testGrouping in Test := {
-        (definedTests in Test).value map { test =>
+       Test / testGrouping := {
+        (Test / definedTests).value map { test =>
           if (test.name endsWith "IntegrationSpec")
             Tests.Group(name = test.name, tests = Seq(test), runPolicy = Tests.SubProcess(
               ForkOptions().withRunJVMOptions(Vector("-Xmx200m"))
@@ -238,7 +238,7 @@ lazy val jdbcTestingLibraries = Seq(
 )
 
 lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
-  fork in Test := true
+  Test / fork := true
 )
 
 lazy val basicSettings = Seq(
@@ -248,7 +248,7 @@ lazy val basicSettings = Seq(
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.
-  // testOptions in Test ++= Seq(
+  // Test / testOptions ++= Seq(
   //   Tests.Argument(TestFrameworks.ScalaTest, "-oF")
   //   //  /*, "-eGNCXEHLOPQRM"*/, "-h", "target/html", "-u", "target/junit"
   //   //Tests.Argument(TestFrameworks.ScalaTest, "-u", "junits")
