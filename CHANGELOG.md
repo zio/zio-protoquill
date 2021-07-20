@@ -1,3 +1,7 @@
+# 3.7.2.Beta1.4
+
+* [Support for ON CONFLICT in Postgres, MySQL, and SQLite](https://github.com/getquill/protoquill/pull/9)
+
 # 3.7.2.Beta1.3
 
 * [Implement Dynamic Batch Actions](https://github.com/getquill/protoquill/pull/8)
