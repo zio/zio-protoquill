@@ -18,9 +18,9 @@ import io.getquill.query
 trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   // Need SqlContext here otherwise there will be encoder-not-found issues in 'insertPeople' since that does lifting
   // Also note that the context needs to be typed. As an example of how to do that, we passed typing parameters
-  // through the class. If the parameters are removed (i.e. used `val ctx: Context[_, _]`), the LoadObject will try to
+  // through the class. If the parameters are removed (i.e. used `val ctx: Context[_, _]`), the LoadModule will try to
   // load the base-object `Idiom` because that is the minimal thing that the Dialect parameter needs
-  // (and it seems LoadObject in BatchQueryExecution does not yet know what the values of the _, _ in Context[_, _]
+  // (and it seems LoadModule in BatchQueryExecution does not yet know what the values of the _, _ in Context[_, _]
   // are supposed to be)
   val ctx: Context[D, N]
   import ctx._

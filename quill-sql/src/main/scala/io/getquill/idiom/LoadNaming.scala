@@ -6,7 +6,7 @@ import scala.quoted.{Type => TType, _}
 
 import io.getquill.NamingStrategy
 import io.getquill.util.CollectTry
-import io.getquill.util.LoadObject
+import io.getquill.util.LoadModule
 import io.getquill.CompositeNamingStrategy
 
 object LoadNaming {
@@ -16,12 +16,12 @@ object LoadNaming {
 
     def `endWith$`(str: String) =
       if (str.endsWith("$")) str else str + "$"
-    
+
     def loadFromTastyType[T](tpe: TypeRepr): Try[T] =
       Try {
         val loadClassType = tpe
         val optClassSymbol = loadClassType.classSymbol
-        val className = 
+        val className =
           optClassSymbol match {
             case Some(value) => value.fullName
             case None =>
@@ -50,7 +50,7 @@ object LoadNaming {
     treeTpe <:< TypeRepr.of[CompositeNamingStrategy] match {
       case true =>
         treeTpe match {
-          case AppliedType(_, types) => 
+          case AppliedType(_, types) =>
             types
               .filter(_.isInstanceOf[TypeRepr]).map(_.asInstanceOf[TypeRepr])
               .filterNot(_ =:= TypeRepr.of[NamingStrategy])
@@ -78,5 +78,3 @@ def macLoadNamingStrategyImpl[T: TType](t: Expr[T])(using Quotes): Expr[String] 
   //println( loadedStrategies )
   Expr(loadedStrategies.toString) // maybe list of string?
 }
-
-

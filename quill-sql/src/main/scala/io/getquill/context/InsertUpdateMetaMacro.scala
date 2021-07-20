@@ -3,7 +3,7 @@ package io.getquill.context
 
 import scala.quoted._
 import io.getquill.norm.BetaReduction
-import io.getquill.util.LoadObject 
+import io.getquill.util.LoadModule
 import io.getquill.parser.Parser
 import io.getquill.parser.Parser.Implicits._
 import io.getquill.parser.ParserFactory
@@ -30,17 +30,17 @@ object MetaMacro:
     val excludes = excludesRaw match
       case Varargs(exprs) => exprs
       case _ => quotes.reflect.report.throwError(s"Could not parse: ${excludesRaw.show} as a varargs parameter")
-    
+
     // Parse those into Function(params, Property) asts
     val excludeAstMethods =
       excludes.map(exclude => parserFactory.apply.seal.apply(exclude))
 
       // Excract the 'Property' elements from there
-    val excludeAstProps = 
+    val excludeAstProps =
       excludeAstMethods.map {
-        case Function(List(param), prop @ Property(_, _)) => 
+        case Function(List(param), prop @ Property(_, _)) =>
           BetaReduction(prop, param -> InsertUpdateMacro.VIdent)
-        case other => 
+        case other =>
           quotes.reflect.report.throwError(s"Could not recognize insert exclusion AST: ${other} as a valid exclusion AST")
       }
 

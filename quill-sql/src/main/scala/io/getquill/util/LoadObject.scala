@@ -8,7 +8,7 @@ import scala.quoted._
 // For example, in Dsl.scala, I tried using BaseParserFactory.type
 // but then created a delegate trait BaseParsreFactory for the object BaseParseFactory
 // which I then used directly. This worked while BaseParseFactory.type did not.
-object LoadObject {
+object LoadModule {
   private def `endWith$`(str: String) =
     if (str.endsWith("$")) str else str + "$"
 
@@ -22,16 +22,16 @@ object LoadObject {
   def apply[T: Type](using Quotes): Try[T] = {
     import quotes.reflect.{Try => _, _}
     Try {
-      
+
       // if (TypeRepr.of[T].classSymbol.isEmpty) {
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T]} *** ~~~~~~~~~~~~~~~~~")  
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol} *** ~~~~~~~~~~~~~~~~~")  
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol.moduleClass.fullName} *** ~~~~~~~~~~~~~~~~~")  
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol.companionClass.fullName} *** ~~~~~~~~~~~~~~~~~")  
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T]} *** ~~~~~~~~~~~~~~~~~")
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol} *** ~~~~~~~~~~~~~~~~~")
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol.moduleClass.fullName} *** ~~~~~~~~~~~~~~~~~")
+      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol.companionClass.fullName} *** ~~~~~~~~~~~~~~~~~")
       // }
       val loadClassType = TypeRepr.of[T]
       val optClassSymbol = loadClassType.classSymbol
-      val className = 
+      val className =
         optClassSymbol match {
           case Some(value) => value.fullName
           case None =>
@@ -55,7 +55,7 @@ object LoadObject {
 // TODO Move this to a test
 inline def loadMac[T]: String = ${ loadMacImpl[T] }
 def loadMacImpl[T: Type](using Quotes): Expr[String] = {
-  val loaded = LoadObject[T]
+  val loaded = LoadModule[T]
   println( loaded )
   Expr(loaded.toString)
 }
