@@ -35,7 +35,7 @@ object StaticTranslationMacro {
   import scala.quoted._ // Expr.summon is actually from here
   import io.getquill.Planter
   import io.getquill.idiom.LoadNaming
-  import io.getquill.util.LoadObject
+  import io.getquill.util.LoadModule
   import io.getquill.generic.GenericEncoder
   import io.getquill.ast.External
   import io.getquill.ReturnAction
@@ -128,7 +128,7 @@ object StaticTranslationMacro {
 
   def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using Quotes, Type[D], Type[N]): Try[(Idiom, NamingStrategy)] =
     for {
-      idiom <- LoadObject[D]
+      idiom <- LoadModule[D]
       namingStrategy <- LoadNaming.static[N]
     } yield (idiom, namingStrategy)
 

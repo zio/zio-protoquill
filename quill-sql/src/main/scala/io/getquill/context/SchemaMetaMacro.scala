@@ -5,7 +5,7 @@ import io.getquill.metaprog.Extractors._
 import io.getquill.MetaDsl
 import io.getquill.SchemaMeta
 import io.getquill.Unquote
-import io.getquill.util.LoadObject
+import io.getquill.util.LoadModule
 import io.getquill.querySchema
 
 object SchemaMetaMacro {

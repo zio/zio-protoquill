@@ -2,7 +2,7 @@ package io.getquill.context
 
 import scala.quoted._
 import io.getquill.parser.ParserFactory
-import io.getquill.util.LoadObject 
+import io.getquill.util.LoadModule
 import io.getquill.norm.BetaReduction
 import io.getquill.parser.Parser
 import io.getquill.parser.Parser.Implicits._
@@ -31,7 +31,7 @@ object ExtractLifts {
     //   .map((uid, planters) => planters.sortBy(_._2).head) // for each uid, pick first index
     //   .toList.sortBy(_._2).map(_._1)                      // once that's done, sort by original index
     //   .map(_.plant)                                       // then replant
-    
+
     import quotes.reflect._
 
     // TODO First one for each UID should win because it's the outermost one, should make sure tha't the case
