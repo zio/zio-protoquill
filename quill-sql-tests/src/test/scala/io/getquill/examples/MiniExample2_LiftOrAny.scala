@@ -2,10 +2,9 @@ package io.getquill.examples
 
 import scala.language.implicitConversions
 import io.getquill._
-import io.getquill.QueryDsl._
 
 object MiniExample2_LiftOrAny {
-  
+
   case class Person(name: String, age: Int)
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)

@@ -1,11 +1,6 @@
 package io.getquill
 
 import scala.language.implicitConversions
-//
-//import io.getquill.QueryDsl._
-//import io.getquill.SchemaMeta
-//import io.getquill.QueryMeta
-//import io.getquill.InsertMeta
 import io.getquill.util.debug.PrintMac
 
 
