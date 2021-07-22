@@ -6,7 +6,6 @@ import scala.quoted._
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
-import io.getquill.Dsl
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
 import io.getquill.metaprog.QuotationLotExpr

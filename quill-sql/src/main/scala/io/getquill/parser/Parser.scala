@@ -8,8 +8,6 @@ import scala.quoted._
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
-import io.getquill.Dsl
-import io.getquill.QueryDsl
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
 import io.getquill.metaprog.QuotationLotExpr
@@ -25,7 +23,6 @@ import io.getquill.metaprog.Pointable
 import io.getquill.metaprog.Extractors._
 import io.getquill.util.printer
 import io.getquill._
-import io.getquill.MetaDsl
 import io.getquill.Ord
 import io.getquill.Embedded
 import io.getquill.metaprog.Is
@@ -317,7 +314,6 @@ case class OrderingParser(root: Parser[Ast] = Parser.empty)(override implicit va
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ordering] = {
-    case '{ ($ordDsl: MetaDsl).implicitOrd } => AscNullsFirst
     case '{ implicitOrd } => AscNullsFirst
 
     // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
@@ -795,7 +791,6 @@ case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val q
 
 case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with ComparisonTechniques {
   import quotes.reflect._
-  import QueryDsl._
   import io.getquill.ast.Infix
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
