@@ -11,10 +11,10 @@ Currently Supported:
  - Insert, Update, Delete [Actions](https://getquill.io/#quotation-actions) (Compile-Time and Dynamic)
  - Batch Insert, Batch Update, and Batch Delete Actions (currently only Compile-Time)
  - ZIO, Synchronous JDBC, and Jasync Postgres contexts.
+ - SQL OnConflict Clauses
+ - Prepare Query (i.e. `context.prepare(query)`)
 
 Currently Not Supported:
- - SQL OnConflict Clauses (Coming Soon!)
- - Prepare Query (i.e. `context.prepare(query)`)
  - Dynamic Query API (i.e. [this](https://getquill.io/#quotation-dynamic-queries-dynamic-query-api))
  - [Implicit Query](https://getquill.io/#quotation-implicit-query)
  - [IO Monad](https://getquill.io/#quotation-io-monad)
@@ -32,6 +32,7 @@ There are also quite a few new features that ProtoQuill has:
 One other note that this documentation is not yet a fully-fledged reference for ProtoQuill features. Have a look at the original [Quill documentation](https://getquill.io/) for basic information about how Quill constructs (e.g. Queries, Joins, Actions, Batch Actions, etc...) are written in lieu of any documentation missing here.
 
 For further information, watch:
+ - [ProtoQuill Release Party](https://www.youtube.com/watch?v=El9fkkHewp0) - Overview of new Quill features in Scala 3 and discussion about the future of Metaprogramming.
  - [Quill, Dotty, And The Awesome Power of 'Inline'](https://www.youtube.com/watch?v=SmBpGkIsJIU) - Many examples of new things that can be done with this library that cannot be done with standard Quill.
  - [ScQuilL Sessions - Quill, Dotty, and Macros](https://www.youtube.com/watch?v=0PSg__PPjY8&list=PLqky8QybCVQYNZY_MNJpkjFKT-dAdHQDX) - A tutorial on developing Dotty-Quill from scratch (covers quoting, liftables, and liftables).
  - [Generic Derivation is the New Reflection](https://www.youtube.com/watch?v=E9L1-rkYPng) - A tutorial on how Dotty Generic Derivation works covering a Dotty-Quill use-case.
@@ -44,8 +45,15 @@ These are sychronous so for a high-throughput system you will ultimately need to
 to either the ZIO-based contexts, Jasync, or the Monix ones (Monix contexts coming soon!)
 
 Add the following to your SBT file:
-```
-TBD
+```scala
+libraryDependencies ++= Seq(
+  // Syncronous JDBC Modules
+  "io.getquill" %% "quill-jdbc" % "3.7.2.Beta1.4",
+  // Or ZIO Modules
+  "io.getquill" %% "quill-jdbc-zio" % "3.7.2.Beta1.4",
+  // Postgres Async
+  "io.getquill" %% "quill-jasync-postgres" % "3.7.2.Beta1.4"
+)
 ```
 
 Assuming we are using Postgres, add the following application.conf.
@@ -69,7 +77,7 @@ object MyApp {
 
   def main(args: Array[String]): Unit = {
     val named = "Joe"
-    inline def somePeople = quote { 
+    inline def somePeople = quote {
       query[Person].filter(p => p.firstName == lift(named))
     }
     val people: List[Person] = run(somePeople)
@@ -88,8 +96,8 @@ ProtoQuill queries are built using inline quoted expressions.
 // With just this import you can use quote, query, insert/update/delete and lazyLift
 import io.getquill._
 
-inline def people = quote { 
-  query[Person] 
+inline def people = quote {
+  query[Person]
 }
 inline def joes = quote {
   people.filter(p => p.name == "Joe")
@@ -115,8 +123,8 @@ run(joes)
 
 However, if parts of the the query are dynamic (i.e. not `inline def`) it is needed:
 ```scala
-inline def people = quote { 
-  query[Person] 
+inline def people = quote {
+  query[Person]
 }
 val joes = quote {
   people.filter(p => p.name == "Joe")
@@ -170,7 +178,7 @@ inline given QueryMeta[PersonName, String] =
       (q: Query[PersonName]) => q.map(p => p.name)
     }
   )((name: String) => PersonName(name))
-  
+
 val result = ctx.run(people)
 // TODO Get SQL
 ```
@@ -330,8 +338,8 @@ inline def q = quote {
 }
 run(q)
 
-// SELECT p.firstName, p.lastName, p.age 
-// FROM Person p 
+// SELECT p.firstName, p.lastName, p.age
+// FROM Person p
 // WHERE
 //   (p.firstName = ? OR ? IS NULL) AND
 //   (p.lastName = ? OR ? IS NULL) AND
@@ -340,8 +348,8 @@ run(q)
 ```
 The way that this works is that in each `?` slot, the corresponding column is looked up from the map.
 ```
-// SELECT p.firstName, p.lastName, p.age 
-// FROM Person p 
+// SELECT p.firstName, p.lastName, p.age
+// FROM Person p
 // WHERE
 //   (p.firstName = { values("firstName") } OR { values("firstName") } IS NULL) AND
 //   (p.lastName = { values("lastName") } OR { values("lastName") } IS NULL) AND
@@ -370,7 +378,7 @@ To use co-product rows do the following:
 2. Create an object called a row-typer which will take a Database row and figure out how what element of the coproduct to decode into.
    ```scala
    given RowTyper[Shape] with
-     def apply(row: Row) = 
+     def apply(row: Row) =
        row.apply[String]("type") match
          case "square" => classTag[Shape.Square]
          case "circle" => classTag[Shape.Circle]
@@ -423,7 +431,7 @@ For this reason, ProtoQuill supports an easy extension syntax for custom parsing
    import io.getquill.parser._
    import io.getquill.ast.{ Ast, Infix }
    import io.getquill.quat.Quat
-   
+
    case class CustomOperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
      import quotes.reflect._
      import CustomOps._
@@ -434,7 +442,7 @@ For this reason, ProtoQuill supports an easy extension syntax for custom parsing
            List("power(", " ,", ")"),
            List(astParse(i), astParse(j)), true, Quat.Value)
    }
-   
+
    object CustomParser extends ParserLibrary:
      import Parser._
      override def operationsParser(using qctx: Quotes) =
@@ -450,7 +458,7 @@ For this reason, ProtoQuill supports an easy extension syntax for custom parsing
    inline def q = quote { query[Person].map(p => p.age ** 2) }
    // SELECT power(p.age ,2) FROM Person p
    ```
-  
+
   ## Migration Notes
 
  - Most Scala2-Quill code should either work in ProtoQuill directly or require minimal changes in order to work.
@@ -508,10 +516,9 @@ For a basic reasoning of why Inline was chosen (instead of Refined-Types on `val
  - Implement a `filterByLikes` which is the same as `filterByKeys` but uses `like` instead of `==`.
    then can also implement a `lazyFilterByLikes`.
  - Write a `query.filter(p => p.firstName.inSet("foo", lift(bar), "baz"))` using the `ListFlicer`.
-   this could either translate into `WHERE firstName == 'foo' OR firstName == ? OR firstName == 'baz'` or 
+   this could either translate into `WHERE firstName == 'foo' OR firstName == ? OR firstName == 'baz'` or
    `WHERE firstName in ('foo', ?, 'baz')`.
  - Combine MapFlicer and ListFilcer to allow up to N maps to filter each field up to N times
    this would be very useful with `like` in order to check that a field matches multiple patterns
    e.g. `... FROM Person p WHERE p.firstName like 'j%' AND p.firstName like '%e' i.e. find
    all people whose name starts with 'j' and ends with 'e'.
-
