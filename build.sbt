@@ -246,7 +246,7 @@ lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
 
 lazy val basicSettings = Seq(
   scalaVersion := {
-    if (isCommunityBuild) dottyLatestNightlyBuild.get else "3.0.0"
+    if (isCommunityBuild) dottyLatestNightlyBuild.get else "3.0.1"
   },
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
