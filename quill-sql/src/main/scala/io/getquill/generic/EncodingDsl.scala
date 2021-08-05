@@ -8,6 +8,28 @@ import scala.compiletime.{erasedValue, summonFrom}
 import io.getquill.MappedEncoding
 import io.getquill.generic.DecodingType
 
+/**
+ * Note that much of the implementation of anyValEncoder/anyValDecoder is a workaround for:
+ * https://github.com/lampepfl/dotty/issues/12179#issuecomment-826294510
+ *
+ * Originally, the idea was to simply pass the `self` in `LowPriorityImplicits` directly
+ * into the macro that creates the AnyValEncoders. That way, the implementation would be as simple as:
+ * {{{
+ *   trait LowPriorityImplicits { self: EncodingDsl =>
+ *     implicit inline def anyValEncoder[Cls <: AnyVal]: Encoder[Cls] =
+ *       new MappedEncoderMaker[Encoder, Cls](self)
+ *   }
+ * }}}
+ * Then, the MappedEncoderMaker could just internally call `self.mappedEncoder(mapped, encoder)`
+ * (where this `self` is the one that is passed in from the `LowPriorityImplicits`).
+ *
+ * Unfortunately however, because of Dotty#12179, this would create an implicit encoder which would
+ * never be found. This created the need for the additional abstraction of AnyValEncoderContext and
+ * AnyValDecoderContext which would define `makeMappedEncoder`/`makeMappedDecoder` stub methods
+ * that the `LowPriorityImplicits` methods `anyValEncoder`/`anyValDecoder` could delegate the actual
+ * encoding/decoding work into. Hopefully when Dotty#12179 is resolved all of this convoluted logic
+ * can be removed and we can go back to the simpler implementation.
+ */
 trait LowPriorityImplicits { self: EncodingDsl =>
 
   implicit inline def anyValEncoder[Cls <: AnyVal]: Encoder[Cls] =
