@@ -74,8 +74,14 @@ trait QueryDsl {
   inline def select[T]: Query[T] = ${ QueryMacro[T] }
 }
 
+trait StaticSplice[T] {
+  def apply(value: T): String
+}
+
 trait QuoteDsl {
   import scala.language.implicitConversions
+
+  //inline def static[T](inline value: T): String = ${ StaticSpliceMacro('value) }
 
   inline def insertMeta[T](inline exclude: (T => Any)*): InsertMeta[T] = ${ InsertMetaMacro[T]('exclude) }
 

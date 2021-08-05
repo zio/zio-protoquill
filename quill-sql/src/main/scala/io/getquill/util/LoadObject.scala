@@ -19,36 +19,44 @@ object LoadModule {
       field.get(cls).asInstanceOf[T]
     }
 
-  def apply[T: Type](using Quotes): Try[T] = {
-    import quotes.reflect.{Try => _, _}
-    Try {
+  object TypeRepr {
+    def apply(using Quotes)(loadClassType: quotes.reflect.TypeRepr): Try[Object] = {
+      import quotes.reflect.{Try => _, TypeRepr => TTypeRepr, _}
+      Try {
 
-      // if (TypeRepr.of[T].classSymbol.isEmpty) {
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T]} *** ~~~~~~~~~~~~~~~~~")
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol} *** ~~~~~~~~~~~~~~~~~")
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol.moduleClass.fullName} *** ~~~~~~~~~~~~~~~~~")
-      //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol.companionClass.fullName} *** ~~~~~~~~~~~~~~~~~")
-      // }
-      val loadClassType = TypeRepr.of[T]
-      val optClassSymbol = loadClassType.classSymbol
-      val className =
-        optClassSymbol match {
-          case Some(value) => value.fullName
-          case None =>
-            //println(s"${'[$tpe].show} is not a class type. Attempting to load it as a module.")
-            if (!loadClassType.termSymbol.moduleClass.isNoSymbol) {
-              loadClassType.termSymbol.moduleClass.fullName
-            } else {
-              //println(s"The class ${'[$tpe].show} cannot be loaded because it is either a scala class or module")
-              report.throwError(s"The class ${Type.show[T]} cannot be loaded because it is either a scala class or module")
-            }
-        }
+        // if (TypeRepr.of[T].classSymbol.isEmpty) {
+        //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T]} *** ~~~~~~~~~~~~~~~~~")
+        //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol} *** ~~~~~~~~~~~~~~~~~")
+        //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol.moduleClass.fullName} *** ~~~~~~~~~~~~~~~~~")
+        //   println(s"~~~~~~~~~~~~~~~~~ EMPTY SYMBOL FOR: ${TypeRepr.of[T].termSymbol.companionClass.fullName} *** ~~~~~~~~~~~~~~~~~")
+        // }
+        val optClassSymbol = loadClassType.classSymbol
+        val className =
+          optClassSymbol match {
+            case Some(value) => value.fullName
+            case None =>
+              //println(s"${'[$tpe].show} is not a class type. Attempting to load it as a module.")
+              if (!loadClassType.termSymbol.moduleClass.isNoSymbol) {
+                loadClassType.termSymbol.moduleClass.fullName
+              } else {
+                //println(s"The class ${'[$tpe].show} cannot be loaded because it is either a scala class or module")
+                report.throwError(s"The class ${Format.TypeRepr(loadClassType.widen)} cannot be loaded because it not a static module. Either it is a class or some other dynamic value.")
+              }
+          }
 
-      val clsFull = `endWith$`(className)
-      val cls = Class.forName(clsFull)
-      val field = cls.getField("MODULE$")
-      field.get(cls).asInstanceOf[T]
+        val clsFull = `endWith$`(className)
+        val cls = Class.forName(clsFull)
+        val field = cls.getField("MODULE$")
+        field.get(cls)
+      }
     }
+  }
+
+  def apply[T: Type](using Quotes): Try[T] = {
+    import quotes.reflect.{ TypeRepr => TTypeRepr, _ }
+    val loadClassType = TTypeRepr.of[T]
+    val tryLoad = TypeRepr(loadClassType)
+    tryLoad.map(_.asInstanceOf[T])
   }
 }
 
