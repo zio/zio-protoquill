@@ -116,6 +116,24 @@ object Extractors {
     def apply(using Quotes)(term: quotes.reflect.Term) = Untype.unapply(term).get
   }
 
+  /**
+   * Ignore case where there happens to be an apply e.g. java functions where "str".length in scala
+   * will translate into "str".lenth() since for java methods () is automatically added in.
+   * Hence it's `Apply( Select(Literal(IntConstant("str")), "length") )`
+   * Not just `Select(Literal(IntConstant("str")), "length")`
+   *
+   * Note maybe there's even a case where you want multiple empty-applies e.g. foo()() to be ignored
+   * hence this would be done recursively like `Untype`
+   */
+  object IgnoreApplyNoargs {
+    def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+      import quotes.reflect._
+      term match {
+        case Apply(inner, Nil) => Some(inner)
+        case _ => Some(term)
+      }
+  }
+
   object TypedMatroshkaTerm {
     def recurse(using Quotes)(innerTerm: quotes.reflect.Term): quotes.reflect.Term =
       import quotes.reflect._
