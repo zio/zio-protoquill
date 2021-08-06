@@ -97,25 +97,16 @@ private[getquill] object ReflectivePathChainLookup:
 
   import java.lang.reflect.{ Method, Field }
   def singleLookup(elem: LookupElement, path: String): Option[LookupElement] =
-    elem match
-      case moduleCls: LookupElement.ModuleClass =>
-        LookupPath(elem, path) match
-          case Lookup.Submodule(elem) => Some(elem)
-          case Lookup.Method(elem) => Some(elem)
-          case Lookup.Field(elem) => Some(elem)
-          case Lookup.HelperObjectMethod(elem) => Some(elem)
-          case Lookup.HelperObjectField(elem) => Some(elem)
-          case _ => None
-      case instance: LookupElement.Value =>
-        LookupPath(elem, path) match
-          case Lookup.Submodule(elem) => Some(elem)
-          case Lookup.Method(elem) => Some(elem)
-          case Lookup.Field(elem) => Some(elem)
-          case Lookup.HelperObjectMethod(elem) => Some(elem)
-          case Lookup.HelperObjectField(elem) => Some(elem)
-          case _ => None
+    LookupPath(elem, path) match
+      case Lookup.Submodule(elem) => Some(elem)
+      case Lookup.Method(elem) => Some(elem)
+      case Lookup.Field(elem) => Some(elem)
+      case Lookup.HelperObjectMethod(elem) => Some(elem)
+      case Lookup.HelperObjectField(elem) => Some(elem)
+      case _ => None
 
   def chainLookup(element: LookupElement, paths: List[String])(pathsSeen: List[String] = List()): Either[String, LookupElement] =
+    import StringOps._
     paths match
       case Nil => Right(element)
       case head :: tail =>
@@ -125,11 +116,16 @@ private[getquill] object ReflectivePathChainLookup:
             chainLookup(nextElement, tail)(pathsSeen :+ head)
           case None =>
             Left(
-              s"Could not look up the path ${pathsSeen.mkString(".")}[$head] from the `${element.cls.getName}` ${element.current}.\n" +
+              s"Could not look up the path `${pathsSeen.dots}[$head]` from the `${element.cls.getName}` ${element.current}.\n" +
               s"Remaining path: ${paths.mkString(".")}"
             )
 
   def apply(obj: Object, paths: List[String]) =
     chainLookup(LookupElement.Value(obj), paths)()
+
+  object StringOps:
+    extension (strList: List[String])
+      def dots =
+        if (!strList.isEmpty) strList.mkString("", ".", ".") else ""
 
 end ReflectivePathChainLookup

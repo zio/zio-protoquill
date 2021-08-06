@@ -44,7 +44,12 @@ object LoadModule {
               }
           }
 
+        println(s"================== Class Symbol: ${optClassSymbol} ================")
+        println(s"================== Class Symbol FullName: ${optClassSymbol.map(_.fullName)} ================")
+        println(s"================== Class Name: ${className} ================")
+
         val clsFull = `endWith$`(className)
+        println(s"================== Loading Class: ${clsFull} ================")
         val cls = Class.forName(clsFull)
         val field = cls.getField("MODULE$")
         field.get(cls)

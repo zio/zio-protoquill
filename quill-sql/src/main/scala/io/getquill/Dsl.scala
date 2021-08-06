@@ -26,6 +26,7 @@ import io.getquill.context.UnquoteMacro
 import io.getquill.context.LiftMacro
 import io.getquill._
 import io.getquill.dsl.InfixDsl
+import io.getquill.context.StaticSpliceMacro
 
 // trait Quoter {
 //   def quote[T](bodyExpr: Quoted[T]): Quoted[T] = ???
@@ -81,7 +82,7 @@ trait StaticSplice[T] {
 trait QuoteDsl {
   import scala.language.implicitConversions
 
-  //inline def static[T](inline value: T): String = ${ StaticSpliceMacro('value) }
+  inline def static[T](inline value: T): T = ${ StaticSpliceMacro('value) }
 
   inline def insertMeta[T](inline exclude: (T => Any)*): InsertMeta[T] = ${ InsertMetaMacro[T]('exclude) }
 
