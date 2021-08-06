@@ -44,12 +44,18 @@ object LoadModule {
               }
           }
 
-        println(s"================== Class Symbol: ${optClassSymbol} ================")
-        println(s"================== Class Symbol FullName: ${optClassSymbol.map(_.fullName)} ================")
-        println(s"================== Class Name: ${className} ================")
+        // println(s"================== Class Symbol: ${optClassSymbol} ================")
+        // println(s"================== Class Symbol FullName: ${optClassSymbol.map(_.fullName)} ================")
+        // println(s"================== Class Name: ${className} ================")
 
-        val clsFull = `endWith$`(className)
-        println(s"================== Loading Class: ${clsFull} ================")
+        val clsFullRaw = `endWith$`(className)
+
+        // TODO This is a hack! Need to actually use scala compile-time tpe.memberType(tpe.owner) over and over
+        // again to get the actual static-lineage until we get to the package name and then compute the name from that
+        // Replace io.getquill.Foo$.Bar$ with io.getquill.Foo$Bar which is the java convention for nested modules
+        val clsFull = clsFullRaw.replace("$.", "$")
+
+        //println(s"================== Loading Class: ${clsFull} ================")
         val cls = Class.forName(clsFull)
         val field = cls.getField("MODULE$")
         field.get(cls)

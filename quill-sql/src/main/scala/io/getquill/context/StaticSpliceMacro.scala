@@ -133,15 +133,13 @@ object StaticSpliceMacro {
         import io.getquill.ast._
         val quat = Lifter.quat(QuatMaking.ofType[T])
 
-        val splice = Expr(s""""${splicedValue.toString}"""")
+        val splice = Expr(s""""${splicedValue.current}"""")
 
         val quotation =
-          '{ Quoted[T].apply(
-              Infix(List($splice), List(), true, $quat),
-              List(), List()
-            )
-          }
-        UnquoteMacro(quotation)
+          UnquoteMacro('{ Quoted[T](Infix(List($splice), List(), true, $quat),Nil, Nil) })
+
+        println("============ Output Quotation ============\n" + Format.Expr(quotation))
+        quotation
 
       case other =>
         // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
