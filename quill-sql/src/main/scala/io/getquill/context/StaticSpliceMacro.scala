@@ -7,12 +7,14 @@ import io.getquill.metaprog.Extractors
 import scala.util.Success
 import scala.util.Failure
 import scala.util.Try
+import scala.util.Right
+import scala.util.Left
 import io.getquill.util.Format
 
 object StaticSpliceMacro {
   import Extractors._
 
-  object SelectPath:
+  private[getquill] object SelectPath:
     def recurseInto(using Quotes)(term: quotes.reflect.Term, accum: List[String] = List()): Option[(quotes.reflect.Term, List[String])] =
       import quotes.reflect._
       term match
@@ -28,32 +30,6 @@ object StaticSpliceMacro {
         case select: Select => recurseInto(select)
         case _ => None
   end SelectPath
-
-  object ReflectivePathChainLookup:
-    import java.lang.reflect.{ Method, Field }
-    def singleLookup(obj: Object, path: String): Try[Object] =
-      val cls = obj.getClass
-      val methodOrField: Try[Method | Field] = Try(cls.getField(path)).orElse(Try(cls.getMethod(path)))
-      methodOrField match
-        case Success(value) =>
-          value match
-            case m: Method => Try(m.invoke(obj))
-            case f: Field => Try(f.get(obj))
-        case Failure(_) =>
-          Failure(new IllegalArgumentException(s"A method or field ${path} could not be found on the class ${cls}"))
-
-    def chainLookup(obj: Try[Object], paths: List[String]): Try[Object] =
-      paths match
-        case Nil => obj
-        case head :: tail =>
-          obj match
-            case Success(value) =>
-              val nextLookup = singleLookup(value, head)
-              chainLookup(nextLookup, tail)
-            case e @ Failure(_) => e
-    def apply(obj: Object, paths: List[String]) =
-      chainLookup(Success(obj), paths)
-  end ReflectivePathChainLookup
 
   def apply[T: Type](value: Expr[T])(using Quotes): Expr[String] =
     // TODO summon a Expr[StaticSplicer] using the T type passed originally.
@@ -73,9 +49,9 @@ object StaticSpliceMacro {
         module match
           case Success(value) =>
             ReflectivePathChainLookup(value, path) match
-              case Success(value) => Expr(value.toString) // TODO Summon StaticSplicer here
-              case Failure(e) =>
-                report.throwError(s"Could not look up {${Format.TypeRepr(ident.tpe.widen)}}.${path.mkString(".")}. Failed because:\n${e.getMessage}")
+              case Right(value) => Expr(value.toString) // TODO Summon StaticSplicer here
+              case Left(msg) =>
+                report.throwError(s"Could not look up {${Format.TypeRepr(ident.tpe.widen)}}.${path.mkString(".")}. Failed because:\n${msg}")
 
           case Failure(_) =>
             // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
