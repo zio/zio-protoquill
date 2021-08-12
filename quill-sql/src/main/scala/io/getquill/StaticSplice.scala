@@ -22,32 +22,17 @@ object StaticSplice:
 
   object Summon:
     def apply[T: Type](using Quotes): Either[String, StaticSplice[T]] =
-      import quotes.reflect._
-      val out =
-        for {
-          summonValue <- Expr.summon[StaticSplice[T]].toEitherOr(s"a StaticSplice[${Format.TypeOf[T]}] cannot be summoned")
-          // Summoning StaticSplice[T] will given (SpliceString: StaticSplice[String])
-          // (a.k.a. Typed(Ident(SpliceString), TypeTree(StaticSplice[String])) usually with an outer inline surrounding it all)
-          // so then we need to use Untype to just get SpliceString which is a module that we can load
-          staticSpliceType = Untype(summonValue.asTerm.underlyingArgument).tpe.widen
+      import quotes.reflect.{ Try => TTry, _}
+      for {
+        summonValue <- Expr.summon[StaticSplice[T]].toEitherOr(s"a StaticSplice[${Format.TypeOf[T]}] cannot be summoned")
+        // Summoning StaticSplice[T] will given (SpliceString: StaticSplice[String])
+        // (a.k.a. Typed(Ident(SpliceString), TypeTree(StaticSplice[String])) usually with an outer inline surrounding it all)
+        // so then we need to use Untype to just get SpliceString which is a module that we can load
+        staticSpliceType = Untype(summonValue.asTerm.underlyingArgument).tpe.widen
 
-          module <- {
-            println(s"<<<<<<<<<<<<<<<< Just as term: ${Printer.TreeStructure.show(summonValue.asTerm)}")
-            println(s"<<<<<<<<<<<<<<<< Summoned the actual value ${Format.Expr(summonValue)}")
-            println(s"<<<<<<<<<<<<<<<< With the type ${Format.TypeRepr(staticSpliceType)}")
-            println(s"<<<<<<<<<<<<<<<< named ${staticSpliceType.typeSymbol.fullName}")
-            LoadModule.TypeRepr(staticSpliceType).toEither.mapLeft(_.getMessage)
-          }
-
-        } yield (module)
-
-      out match
-        case Right(value) =>
-          println(s"<<<<<<<<<<<<<<<<<<< Summoned the actual module: ${value.getClass}")
-        case Left(e) =>
-
-
-      out.map(_.asInstanceOf[StaticSplice[T]])
+        untypedModule <- LoadModule.TypeRepr(staticSpliceType).toEither.mapLeft(_.getMessage)
+        module        <- Try(untypedModule.asInstanceOf[StaticSplice[T]]).toEither.mapLeft(_.getMessage)
+      } yield (module)
 
   object SpliceString extends StaticSplice[String]:
     def apply(value: String) = s"'${value}'"

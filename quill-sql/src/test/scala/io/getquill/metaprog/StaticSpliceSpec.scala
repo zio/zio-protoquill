@@ -12,7 +12,9 @@ class StaticSpliceSpec extends Spec {
 
   "simple string splice should work" in {
 
-    // ctx.run { query[Person].filter(p => p.name == static(Constants.Joe)) } //helloooo
+    ctx.run { query[Person].filter(p => p.name == static(Constants.Joe)) }
+    ctx.run { query[Person].filter(p => p.name == static(Mod.modVal)) }
+    ctx.run { query[Person].filter(p => p.name == static(Mod.modDef)) }
     ctx.run { query[Person].filter(p => p.name == static(Mod.Foo.Bar.barVal)) }
   }
 }

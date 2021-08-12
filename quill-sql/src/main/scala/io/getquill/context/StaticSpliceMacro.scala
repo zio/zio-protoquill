@@ -93,6 +93,7 @@ object StaticSpliceMacro {
     // Technically that should be fine because they will only actually be used in the testing code though
     // should think about this more later. For now just do toString to check that stuff from the main return works
 
+    println(s"=============== Splicing: ${Format.Term(value)}")
 
     Untype(value) match
       case SelectPath(pathRoot, selectPath) =>
@@ -101,18 +102,10 @@ object StaticSpliceMacro {
         val (ownerTpe, path) =
           pathRoot match
             case term @ DefTerm(TermIsModule()) =>
-              println(s"---------------- The Core-Term: ${Format.Term(term)} is a module (to: ${selectPath})")
-              println(s"Root is a val: ${term.tpe.termSymbol.isValDef}")
-              println(s"TermSymbol Flags: ${term.tpe.termSymbol.flags.show}")
-              println(s"TypeSymbol Flags: ${term.tpe.typeSymbol.flags.show} checking is module ${term.tpe.typeSymbol.flags.is(Flags.Module | Flags.Static)}")
-              println(s"ClassSymbol Flags: ${term.tpe.classSymbol.get.flags.show}")
-              println(s"Root is a param: ${term.tpe.typeSymbol}")
               (pathRoot.tpe, selectPath)
+
+            // TODO Maybe only check module owner if Path is Nil?
             case term @ DefTerm(TermOwnerIsModule(owner)) =>
-              println(s"---------------- The Owner of the Core-Term: ${Format.Term(term)} i.e. ${Format.TypeRepr(owner)} is a module")
-              // Add name of the method to path of things we are selected, owner is now the owner of that method
-              // (I.e. `Foo` is the owner module, `fooMethod` is the name added to the path)
-              // println(s"************ NEXT OWNER IS: ${owner.typeSymbol.owner} ************")
               (owner, pathRoot.symbol.name +: selectPath)
             case _ =>
               report.throwError(s"Cannot evaluate the static path ${Format.Term(value)}. Neither it's type ${Format.TypeRepr(pathRoot.tpe)} nor the owner of this type is a static module.")
@@ -139,8 +132,6 @@ object StaticSpliceMacro {
               // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
               report.throwError(s"Could not look up {${(ownerTpe)}}.${path.mkString(".")} from the object.\nStatic load failed due to: ${e.stackTraceToString}")
 
-        // TODO Summon StaticSplicer here
-        // TODO Maybe 'ast.Constant' should be reserved for actual scala constants and this should be a new type ast.Literal of some kind?
         import io.getquill.ast._
         val quat = Lifter.quat(QuatMaking.ofType[T])
 
