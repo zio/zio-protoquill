@@ -75,10 +75,6 @@ trait QueryDsl {
   inline def select[T]: Query[T] = ${ QueryMacro[T] }
 }
 
-trait StaticSplice[T] {
-  def apply(value: T): String
-}
-
 trait QuoteDsl {
   import scala.language.implicitConversions
 

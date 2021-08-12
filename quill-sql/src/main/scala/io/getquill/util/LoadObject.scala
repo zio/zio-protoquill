@@ -55,7 +55,7 @@ object LoadModule {
         // Replace io.getquill.Foo$.Bar$ with io.getquill.Foo$Bar which is the java convention for nested modules
         val clsFull = clsFullRaw.replace("$.", "$")
 
-        //println(s"================== Loading Class: ${clsFull} ================")
+        println(s"================== Loading Class: ${clsFull} ================")
         val cls = Class.forName(clsFull)
         val field = cls.getField("MODULE$")
         field.get(cls)

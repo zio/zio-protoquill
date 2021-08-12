@@ -14,6 +14,9 @@ import io.getquill.Quoted
 import io.getquill.quat.QuatMaking
 import io.getquill.parser.Lifter
 import scala.util.Try
+import java.io.ByteArrayOutputStream
+import io.getquill.StaticSplice
+import io.getquill.util.CommonExtensions.Either._
 
 object StaticSpliceMacro {
   import Extractors._
@@ -48,41 +51,42 @@ object StaticSpliceMacro {
       if (term.tpe.termSymbol.isValDef || term.tpe.termSymbol.isDefDef) Some(term)
       else None
 
-  // object StaticLineage {
-  //   case class Module(using Quotes)(tpe: quotes.reflect.TypeRepr) extends StaticLineage
-  //   case class Package(using Quotes)(term: Term) extends StaticLineage
 
-  // }
+  object TermIsModule:
+    def unapply(using Quotes)(value: quotes.reflect.Term): Boolean =
+      import quotes.reflect.{Try => _, _}
+      val tpe = value.tpe.widen
+      val flags = tpe.typeSymbol.flags
+      if (flags.is(Flags.Module & Flags.Static) && !flags.is(Flags.Package))
+        true
+      else
+        false
 
-  object TermOwnerModule:
+  /** The term is a static module but not a package */
+  object TermOwnerIsModule:
     def unapply(using Quotes)(value: quotes.reflect.Term): Option[quotes.reflect.TypeRepr] =
       import quotes.reflect.{Try => _, _}
       Try(value.tpe.termSymbol.owner).toOption.flatMap { owner =>
         val memberType = value.tpe.memberType(owner)
-        if (memberType.typeSymbol.flags.is(Flags.Module))
+        val flags = memberType.typeSymbol.flags
+        if (flags.is(Flags.Module & Flags.Static) && !flags.is(Flags.Package))
           Some(memberType)
         else
           None
       }
 
-
-
-  def apply[T: Type](value: Expr[T])(using Quotes): Expr[T] =
+  def apply[T: Type](valueRaw: Expr[T])(using Quotes): Expr[T] =
     import quotes.reflect.{ Try => _, _ }
     import ReflectivePathChainLookup.StringOps._
 
-    val owner = value.asTerm.tpe.memberType(value.asTerm.tpe.termSymbol.owner)
+    val value = valueRaw.asTerm.underlyingArgument
+
+    val owner = value.tpe.memberType(value.tpe.termSymbol.owner)
     println(
-      s"INPUT: ${Printer.TreeStructure.show(value.asTerm)}\n" +
-      s"IS VAL: ${value.asTerm.tpe.termSymbol.isValDef}\n" +
+      s"INPUT: ${Printer.TreeStructure.show(value.underlyingArgument)}\n" +
+      s"IS VAL: ${value.tpe.termSymbol.isValDef}\n" +
       s"SYM: ${owner.typeSymbol.flags.show}"
     )
-
-    value.asTerm match
-      case term @ DefTerm(TermOwnerModule(owner)) =>
-        println(s"Owner of: ${term} is ${owner}")
-
-      case _ =>
 
     // TODO summon a Expr[StaticSplicer] using the T type passed originally.
     // Then use use LoadModule to get the value of that thing during runtime so we can use it
@@ -94,28 +98,34 @@ object StaticSpliceMacro {
     // should think about this more later. For now just do toString to check that stuff from the main return works
 
 
-    Untype(value.asTerm.underlyingArgument) match
+    Untype(value) match
       case SelectPath(pathRoot, selectedPath) =>
+        println(s"============= Found Path from ${pathRoot} to ${selectedPath}")
 
         // selectedOwner can just be the method name so we need to find it's owner and all that to the path
         // (e.g. for `object Foo { def fooMethod }` it could just be Ident(fooMethod))
         val (ownerTpe, path) =
           pathRoot match
-            case term @ DefTerm(TermOwnerModule(owner)) =>
+            case term @ DefTerm(TermIsModule()) =>
+              (pathRoot.tpe, selectedPath)
+            case term @ DefTerm(TermOwnerIsModule(owner)) =>
               // Add name of the method to path of things we are selected, owner is now the owner of that method
               // (I.e. `Foo` is the owner module, `fooMethod` is the name added to the path)
-              println(s"************ NEXT OWNER IS: ${owner.typeSymbol.owner} ************")
-              (owner, selectedPath :+ pathRoot.symbol.name)
+              // println(s"************ NEXT OWNER IS: ${owner.typeSymbol.owner} ************")
+              (owner, pathRoot.symbol.name +: selectedPath)
             case _ =>
-              (pathRoot.tpe, selectedPath)
+              report.throwError(s"Cannot evaluate the static path ${Format.Term(value)}. Neither it's type ${Format.TypeRepr(pathRoot.tpe)} nor the owner of this type is a static module.")
 
         // TODO Check if ident is a static module, throw an error otherwise
         val module = LoadModule.TypeRepr(ownerTpe)
 
-        println("============= TRYING TO LOAD STUFF =========")
-        println( Try(Class.forName("io.getquill.util.prep.Mod$.Foo$.Bar$")) )
-        println( Try(Class.forName("io.getquill.util.prep.Mod$Foo$Bar$")) )
-        println( Try(Class.forName("io.getquill.util.prep.Mod$Foo$Bar$")).map(_.getMethods.toList.map(_.getName)) )
+        extension (t: Throwable)
+          def stackTraceToString =
+            val stream = new ByteArrayOutputStream()
+            val writer = new java.io.BufferedWriter(new java.io.OutputStreamWriter(stream))
+            t.printStackTrace(new java.io.PrintWriter(writer))
+            writer.flush
+            stream.toString
 
         val splicedValue =
           module match
@@ -126,22 +136,31 @@ object StaticSpliceMacro {
                   report.throwError(s"Could not look up {${(ownerTpe)}}.${path.mkString(".")}. Failed because:\n${msg}")
             case Failure(e) =>
               // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
-              report.throwError(s"Could not look up {${(ownerTpe)}}.${path.mkString(".")} from the object.\nStatic load failed due to: ${e.getMessage}")
+              report.throwError(s"Could not look up {${(ownerTpe)}}.${path.mkString(".")} from the object.\nStatic load failed due to: ${e.stackTraceToString}")
 
         // TODO Summon StaticSplicer here
         // TODO Maybe 'ast.Constant' should be reserved for actual scala constants and this should be a new type ast.Literal of some kind?
         import io.getquill.ast._
         val quat = Lifter.quat(QuatMaking.ofType[T])
 
-        val splice = Expr(s""""${splicedValue.current}"""")
+        def errorMsg(error: String) =
+          s"Could not statically splice ${Format.Term(value)} because ${error}"
 
-        val quotation =
-          UnquoteMacro('{ Quoted[T](Infix(List($splice), List(), true, $quat),Nil, Nil) })
+        val spliceEither =
+          for {
+            castSplice <- Try(splicedValue.current.asInstanceOf[T]).toEither.mapLeft(e => errorMsg(e.getMessage))
+            splicer    <- StaticSplice.Summon[T].mapLeft(str => errorMsg(str))
+            splice     <- Try(splicer(castSplice)).toEither.mapLeft(e => errorMsg(e.getMessage))
+          } yield splice
 
-        println("============ Output Quotation ============\n" + Format.Expr(quotation))
-        quotation
+        val spliceStr =
+          spliceEither match
+            case Left(msg) => report.throwError(msg, valueRaw)
+            case Right(value) => value
+
+        UnquoteMacro('{ Quoted[T](Infix(List(${Expr(spliceStr)}), List(), true, $quat),Nil, Nil) })
 
       case other =>
         // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
-        report.throwError(s"Could not load a static value `${Format.Expr(value)}` from ${Printer.TreeStructure.show(other)}")
+        report.throwError(s"Could not load a static value `${Format.Term(value)}` from ${Printer.TreeStructure.show(other)}")
 }
