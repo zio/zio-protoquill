@@ -25,6 +25,7 @@ object StaticSpliceMacro {
     def recurseInto(using Quotes)(term: quotes.reflect.Term, accum: List[String] = List()): Option[(quotes.reflect.Term, List[String])] =
       import quotes.reflect._
       term match
+        // Recurses through a series of selects do the core identifier e.g:
         // Select(Select(Ident("core"), "foo"), "bar") => recurseInto( {Select(Ident("core"), "foo")}, "bar" +: List("baz") )
         case Select(inner, pathNode) => recurseInto(inner, pathNode +: accum)
         case id: Ident => Some((id, accum))
@@ -51,13 +52,16 @@ object StaticSpliceMacro {
       if (term.tpe.termSymbol.isValDef || term.tpe.termSymbol.isDefDef) Some(term)
       else None
 
+  def isModule(using Quotes)(sym: quotes.reflect.Symbol) =
+    import quotes.reflect._
+    val f = sym.flags
+    f.is(Flags.Module) && !f.is(Flags.Package) && !f.is(Flags.Param) && !f.is(Flags.ParamAccessor) && !f.is(Flags.Method)
 
   object TermIsModule:
     def unapply(using Quotes)(value: quotes.reflect.Term): Boolean =
       import quotes.reflect.{Try => _, _}
       val tpe = value.tpe.widen
-      val flags = tpe.typeSymbol.flags
-      if (flags.is(Flags.Module & Flags.Static) && !flags.is(Flags.Package))
+      if (isModule(tpe.typeSymbol))
         true
       else
         false
@@ -68,8 +72,7 @@ object StaticSpliceMacro {
       import quotes.reflect.{Try => _, _}
       Try(value.tpe.termSymbol.owner).toOption.flatMap { owner =>
         val memberType = value.tpe.memberType(owner)
-        val flags = memberType.typeSymbol.flags
-        if (flags.is(Flags.Module & Flags.Static) && !flags.is(Flags.Package))
+        if (isModule(memberType.typeSymbol))
           Some(memberType)
         else
           None
@@ -80,13 +83,6 @@ object StaticSpliceMacro {
     import ReflectivePathChainLookup.StringOps._
 
     val value = valueRaw.asTerm.underlyingArgument
-
-    val owner = value.tpe.memberType(value.tpe.termSymbol.owner)
-    println(
-      s"INPUT: ${Printer.TreeStructure.show(value.underlyingArgument)}\n" +
-      s"IS VAL: ${value.tpe.termSymbol.isValDef}\n" +
-      s"SYM: ${owner.typeSymbol.flags.show}"
-    )
 
     // TODO summon a Expr[StaticSplicer] using the T type passed originally.
     // Then use use LoadModule to get the value of that thing during runtime so we can use it
@@ -99,20 +95,25 @@ object StaticSpliceMacro {
 
 
     Untype(value) match
-      case SelectPath(pathRoot, selectedPath) =>
-        println(s"============= Found Path from ${pathRoot} to ${selectedPath}")
-
+      case SelectPath(pathRoot, selectPath) =>
         // selectedOwner can just be the method name so we need to find it's owner and all that to the path
         // (e.g. for `object Foo { def fooMethod }` it could just be Ident(fooMethod))
         val (ownerTpe, path) =
           pathRoot match
             case term @ DefTerm(TermIsModule()) =>
-              (pathRoot.tpe, selectedPath)
+              println(s"---------------- The Core-Term: ${Format.Term(term)} is a module (to: ${selectPath})")
+              println(s"Root is a val: ${term.tpe.termSymbol.isValDef}")
+              println(s"TermSymbol Flags: ${term.tpe.termSymbol.flags.show}")
+              println(s"TypeSymbol Flags: ${term.tpe.typeSymbol.flags.show} checking is module ${term.tpe.typeSymbol.flags.is(Flags.Module | Flags.Static)}")
+              println(s"ClassSymbol Flags: ${term.tpe.classSymbol.get.flags.show}")
+              println(s"Root is a param: ${term.tpe.typeSymbol}")
+              (pathRoot.tpe, selectPath)
             case term @ DefTerm(TermOwnerIsModule(owner)) =>
+              println(s"---------------- The Owner of the Core-Term: ${Format.Term(term)} i.e. ${Format.TypeRepr(owner)} is a module")
               // Add name of the method to path of things we are selected, owner is now the owner of that method
               // (I.e. `Foo` is the owner module, `fooMethod` is the name added to the path)
               // println(s"************ NEXT OWNER IS: ${owner.typeSymbol.owner} ************")
-              (owner, pathRoot.symbol.name +: selectedPath)
+              (owner, pathRoot.symbol.name +: selectPath)
             case _ =>
               report.throwError(s"Cannot evaluate the static path ${Format.Term(value)}. Neither it's type ${Format.TypeRepr(pathRoot.tpe)} nor the owner of this type is a static module.")
 
