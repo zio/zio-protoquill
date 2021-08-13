@@ -9,6 +9,7 @@ object Mod {
   def modDefAp() = "modDefApValue"
   def modDef = "modDefValue"
   val modVal = "modValValue"
+  val modIntVal = 123
 
   object Foo {
     def fooDefAp() = "fooDefApValue"

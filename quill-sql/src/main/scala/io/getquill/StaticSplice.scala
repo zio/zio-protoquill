@@ -40,33 +40,33 @@ object StaticSplice:
 
   object SpliceInt extends StaticSplice[Int]:
     def apply(value: Int) = s"${value}"
-  given StaticSplice[Int] = SpliceInt
+  inline given StaticSplice[Int] = SpliceInt
 
   object SpliceShort extends StaticSplice[Short]:
     def apply(value: Short) = s"${value}"
-  given StaticSplice[Short] = SpliceShort
+  inline given StaticSplice[Short] = SpliceShort
 
   object SpliceLong extends StaticSplice[Long]:
     def apply(value: Long) = s"${value}"
-  given StaticSplice[Long] = SpliceLong
+  inline given StaticSplice[Long] = SpliceLong
 
   object SpliceFloat extends StaticSplice[Float]:
     def apply(value: Float) = s"${value}"
-  given StaticSplice[Float] = SpliceFloat
+  inline given StaticSplice[Float] = SpliceFloat
 
   object SpliceDouble extends StaticSplice[Double]:
     def apply(value: Double) = s"${value}"
-  given StaticSplice[Double] = SpliceDouble
+  inline given StaticSplice[Double] = SpliceDouble
 
   object SpliceDate extends StaticSplice[java.sql.Date]:
     def apply(value: java.sql.Date) =
       value.toLocalDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-  given StaticSplice[java.sql.Date] = SpliceDate
+  inline given StaticSplice[java.sql.Date] = SpliceDate
 
   object SpliceLocalDate extends StaticSplice[java.time.LocalDate]:
     def apply(value: java.time.LocalDate) =
       value.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-  given StaticSplice[java.time.LocalDate] = SpliceLocalDate
+  inline given StaticSplice[java.time.LocalDate] = SpliceLocalDate
 
 
 end StaticSplice
