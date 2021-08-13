@@ -140,56 +140,5 @@ object StaticSpliceMacro {
         case Left(msg) => report.throwError(msg, valueRaw)
         case Right(value) => value
 
-
     UnquoteMacro('{ Quoted[T](Infix(List(${Expr(spliceStr)}), List(), true, $quat),Nil, Nil) })
-
-    // Untype(value) match
-    //   case SelectPath(pathRoot, selectPath) =>
-    //     // selectedOwner can just be the method name so we need to find it's owner and all that to the path
-    //     // (e.g. for `object Foo { def fooMethod }` it could just be Ident(fooMethod))
-    //     val (ownerTpe, path) =
-    //       pathRoot match
-    //         case term @ DefTerm(TermIsModule()) =>
-    //           (pathRoot.tpe, selectPath)
-
-    //         // TODO Maybe only check module owner if Path is Nil?
-    //         case term @ DefTerm(TermOwnerIsModule(owner)) =>
-    //           (owner, pathRoot.symbol.name +: selectPath)
-    //         case _ =>
-    //           report.throwError(s"Cannot evaluate the static path ${Format.Term(value)}. Neither it's type ${Format.TypeRepr(pathRoot.tpe)} nor the owner of this type is a static module.")
-
-    //     // TODO Check if ident is a static module, throw an error otherwise
-    //     val module = LoadModule.TypeRepr(ownerTpe)
-
-    //     val splicedValue =
-    //       module match
-    //         case Success(value) =>
-    //           ReflectivePathChainLookup(value, path) match
-    //             case Right(value) => value
-    //             case Left(msg) =>
-    //               report.throwError(s"Could not look up {${(ownerTpe)}}.${path.mkString(".")}. Failed because:\n${msg}")
-    //         case Failure(e) =>
-    //           // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
-    //           report.throwError(s"Could not look up {${(ownerTpe)}}.${path.mkString(".")} from the object.\nStatic load failed due to: ${e.stackTraceToString}")
-
-    //     import io.getquill.ast._
-    //     val quat = Lifter.quat(QuatMaking.ofType[T])
-
-    //     val spliceEither =
-    //       for {
-    //         castSplice <- Try(splicedValue.current.asInstanceOf[T]).toEither.mapLeft(e => errorMsg(e.getMessage))
-    //         splicer    <- StaticSplice.Summon[T].mapLeft(str => errorMsg(str))
-    //         splice     <- Try(splicer(castSplice)).toEither.mapLeft(e => errorMsg(e.getMessage))
-    //       } yield splice
-
-    //     val spliceStr =
-    //       spliceEither match
-    //         case Left(msg) => report.throwError(msg, valueRaw)
-    //         case Right(value) => value
-
-    //     UnquoteMacro('{ Quoted[T](Infix(List(${Expr(spliceStr)}), List(), true, $quat),Nil, Nil) })
-
-    //   case other =>
-    //     // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
-    //     report.throwError(s"Could not load a static value `${Format.Term(value)}` from ${Printer.TreeStructure.show(other)}")
 }
