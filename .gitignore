@@ -39,7 +39,6 @@ project/.bloop/
 .jvmopts
 .DS_Store
 .vscode
-.scalafmt.conf
 project/metals.sbt
 project/project/
 .sbtopts
