@@ -30,26 +30,26 @@ import io.getquill.util.Format
 object Particularize:
   object Static:
     /** Convenience constructor for doing particularization from an Unparticular.Query */
-    def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Expr[Planter[_, _]]], runtimeLiftingPlaceholder: Expr[Int => String], emptySetContainsToken: Token => Token)(using Quotes): Expr[String] =
+    def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Expr[Planter[_, _, _]]], runtimeLiftingPlaceholder: Expr[Int => String], emptySetContainsToken: Token => Token)(using Quotes): Expr[String] =
       raw(query.realQuery, lifts, runtimeLiftingPlaceholder, emptySetContainsToken)
 
-    private[getquill] def raw[PrepareRowTemp](statement: Statement, lifts: List[Expr[Planter[_, _]]], runtimeLiftingPlaceholder: Expr[Int => String], emptySetContainsToken: Token => Token)(using Quotes): Expr[String] = {
+    private[getquill] def raw[PrepareRowTemp, Session](statement: Statement, lifts: List[Expr[Planter[_, _, _]]], runtimeLiftingPlaceholder: Expr[Int => String], emptySetContainsToken: Token => Token)(using Quotes): Expr[String] = {
       import quotes.reflect._
 
       enum LiftChoice:
-        case ListLift(value: EagerListPlanterExpr[Any, PrepareRowTemp])
-        case SingleLift(value: EagerPlanterExpr[Any, PrepareRowTemp])
+        case ListLift(value: EagerListPlanterExpr[Any, PrepareRowTemp, Session])
+        case SingleLift(value: EagerPlanterExpr[Any, PrepareRowTemp, Session])
 
-      val listLifts: Map[String, EagerListPlanterExpr[Any, PrepareRowTemp]] =
+      val listLifts: Map[String, EagerListPlanterExpr[Any, PrepareRowTemp, Session]] =
         lifts.collect {
-          case PlanterExpr.Uprootable(planterExpr: EagerListPlanterExpr[_, _]) =>
-            planterExpr.asInstanceOf[EagerListPlanterExpr[Any, PrepareRowTemp]]
+          case PlanterExpr.Uprootable(planterExpr: EagerListPlanterExpr[_, _, _]) =>
+            planterExpr.asInstanceOf[EagerListPlanterExpr[Any, PrepareRowTemp, Session]]
         }.map(lift => (lift.uid, lift)).toMap
 
-      val singleLifts: Map[String, EagerPlanterExpr[Any, PrepareRowTemp]] =
+      val singleLifts: Map[String, EagerPlanterExpr[Any, PrepareRowTemp, Session]] =
         lifts.collect {
-          case PlanterExpr.Uprootable(planterExpr: EagerPlanterExpr[_, _]) =>
-            planterExpr.asInstanceOf[EagerPlanterExpr[Any, PrepareRowTemp]]
+          case PlanterExpr.Uprootable(planterExpr: EagerPlanterExpr[_, _, _]) =>
+            planterExpr.asInstanceOf[EagerPlanterExpr[Any, PrepareRowTemp, Session]]
         }.map(lift => (lift.uid, lift)).toMap
 
       def getLifts(uid: String): LiftChoice =
@@ -231,18 +231,18 @@ object Particularize:
 
   object Dynamic:
     /** Convenience constructor for doing particularization from an Unparticular.Query */
-    def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token): String =
+    def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Planter[_, _, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token): String =
       raw(query.realQuery, lifts, liftingPlaceholder, emptySetContainsToken)
 
-    private[getquill] def raw[PrepareRowTemp](statements: Statement, lifts: List[Planter[_, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token): String = {
+    private[getquill] def raw[PrepareRowTemp, Session](statements: Statement, lifts: List[Planter[_, _, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token): String = {
       enum LiftChoice:
-        case ListLift(value: EagerListPlanter[Any, PrepareRowTemp])
-        case SingleLift(value: Planter[Any, PrepareRowTemp])
+        case ListLift(value: EagerListPlanter[Any, PrepareRowTemp, Session])
+        case SingleLift(value: Planter[Any, PrepareRowTemp, Session])
 
-      val listLifts = lifts.collect { case e: EagerListPlanter[_, _] => e.asInstanceOf[EagerListPlanter[Any, PrepareRowTemp]] }.map(lift => (lift.uid, lift)).toMap
-      val singleLifts = lifts.collect { case e: EagerPlanter[_, _] => e.asInstanceOf[EagerPlanter[Any, PrepareRowTemp]] }.map(lift => (lift.uid, lift)).toMap
+      val listLifts = lifts.collect { case e: EagerListPlanter[_, _, _] => e.asInstanceOf[EagerListPlanter[Any, PrepareRowTemp, Session]] }.map(lift => (lift.uid, lift)).toMap
+      val singleLifts = lifts.collect { case e: EagerPlanter[_, _, _] => e.asInstanceOf[EagerPlanter[Any, PrepareRowTemp, Session]] }.map(lift => (lift.uid, lift)).toMap
       // For dynamic lifts, it is possible that we have injectable lifts that have not yet been resolved
-      val injectableLifts = lifts.collect { case e: InjectableEagerPlanter[_, _] => e.asInstanceOf[InjectableEagerPlanter[Any, PrepareRowTemp]] }.map(lift => (lift.uid, lift)).toMap
+      val injectableLifts = lifts.collect { case e: InjectableEagerPlanter[_, _, _] => e.asInstanceOf[InjectableEagerPlanter[Any, PrepareRowTemp, Session]] }.map(lift => (lift.uid, lift)).toMap
 
       def getLifts(uid: String): LiftChoice =
         listLifts.get(uid).map(LiftChoice.ListLift(_))

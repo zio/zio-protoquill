@@ -145,7 +145,7 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
    * Since Quill provides a extractor for an individual ResultSet row, a single row can easily be cached
    * in memory. This allows for a straightforward implementation of a hasNext method.
    */
-  class ResultSetIterator[T](rs: ResultSet, extractor: Extractor[T]) extends BufferedIterator[T] {
+  class ResultSetIterator[T](rs: ResultSet, conn: Connection, extractor: Extractor[T]) extends BufferedIterator[T] {
 
     private[this] var state = 0 // 0: no data, 1: cached, 2: finished
     private[this] var cached: T = null.asInstanceOf[T]
@@ -157,7 +157,7 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
 
     /** Return a new value or call finished() */
     protected def fetchNext(): T =
-      if (rs.next()) extractor(rs)
+      if (rs.next()) extractor(rs, conn)
       else finished()
 
     def head: T = {
@@ -201,7 +201,7 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
   def streamQuery[T](fetchSize: Option[Int], sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): QStream[T] = {
     def prepareStatement(conn: Connection) = {
       val stmt = prepareStatementForStreaming(sql, conn, fetchSize)
-      val (params, ps) = prepare(stmt)
+      val (params, ps) = prepare(stmt, conn)
       logger.logQuery(sql, params)
       ps
     }
@@ -220,14 +220,14 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
     val outStream: ZStream[Connection, Throwable, T] =
       managedEnv.flatMap {
         case (conn, ps, rs) =>
-          val iter = new ResultSetIterator(rs, extractor)
+          val iter = new ResultSetIterator(rs, conn, extractor)
           fetchSize match {
             // TODO Assuming chunk size is fetch size. Not sure if this is optimal.
             //      Maybe introduce some switches to control this?
             case Some(size) =>
               chunkedFetch(iter, size)
             case None =>
-              Stream.fromIterator(new ResultSetIterator(rs, extractor))
+              Stream.fromIterator(new ResultSetIterator(rs, conn, extractor))
           }
       }
 

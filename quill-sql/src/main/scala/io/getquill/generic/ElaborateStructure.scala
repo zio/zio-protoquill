@@ -339,8 +339,8 @@ object ElaborateStructure {
       case ElaborationSide.Decoding => "decodeable"
 
     val isAutomaticLeaf = side match
-      case ElaborationSide.Encoding => Expr.summon[GenericEncoder[T, _]].isDefined
-      case ElaborationSide.Decoding => Expr.summon[GenericDecoder[_, T, DecodingType.Specific]].isDefined
+      case ElaborationSide.Encoding => Expr.summon[GenericEncoder[T, _, _]].isDefined
+      case ElaborationSide.Decoding => Expr.summon[GenericDecoder[_, _, T, DecodingType.Specific]].isDefined
 
     // TODO Back here. Should have a input arg that asks whether elaboration is
     //      on the encoding or on the decoding side.

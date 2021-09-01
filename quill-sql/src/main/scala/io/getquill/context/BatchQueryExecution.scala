@@ -52,8 +52,8 @@ import io.getquill.parser.Lifter
 import io.getquill.metaprog.InjectableEagerPlanterExpr
 import _root_.io.getquill.norm.BetaReduction
 
-trait BatchContextOperation[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Res](val idiom: D, val naming: N) {
-  def execute(sql: String, prepare: List[PrepareRow => (List[Any], PrepareRow)], extractor: Extraction[ResultRow, T], executionInfo: ExecutionInfo): Res
+trait BatchContextOperation[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Res](val idiom: D, val naming: N) {
+  def execute(sql: String, prepare: List[(PrepareRow, Session) => (List[Any], PrepareRow)], extractor: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo): Res
 }
 
 private[getquill] enum BatchActionType:
@@ -140,18 +140,19 @@ object DynamicBatchQueryExecution:
     A <: QAC[I, T] & Action[I],
     ResultRow,
     PrepareRow,
+    Session,
     D <: Idiom,
     N <: NamingStrategy,
     Res
   ](
     quotedRaw: Quoted[BatchAction[A]],
-    batchContextOperation: BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Res],
+    batchContextOperation: BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res],
     caseClassAst: ast.CaseClass,
     // These are computed based on the insertion-type I which is calculated before, not from quotedRaw
     // (i.e. note that to get lifts from QuotedRaw we need to go through runtimeQuotes of each quote recursively so it wouldn't be possible to know that anyway for a dynamic query during compile-time)
-    perRowLifts: List[Planter[_, _]],
+    perRowLifts: List[Planter[_, _, _]],
     extractionBehavior: BatchExtractBehavior,
-    rawExtractor: Extraction[ResultRow, T]
+    rawExtractor: Extraction[ResultRow, Session, T]
   ) = {
     // since real quotation could possibly be nested, need to get all splice all quotes and get all lifts in all runtimeQuote sections first
     val ast = spliceQuotations(quotedRaw)
@@ -185,7 +186,7 @@ object DynamicBatchQueryExecution:
     //println(s"===== Dynamically Expanded Quotation: ====\n${io.getquill.util.Messages.qprint(dynamicExpandedQuotation)}")
 
     val (queryString, outputAst, sortedLifts, extractor) =
-      PrepareDynamicExecution[I, T, T, D, N, PrepareRow, ResultRow](
+      PrepareDynamicExecution[I, T, T, D, N, PrepareRow, ResultRow, Session](
         dynamicExpandedQuotation,
         rawExtractor,
         batchContextOperation.idiom,
@@ -197,9 +198,9 @@ object DynamicBatchQueryExecution:
 
     val prepares =
       entities.map { entity =>
-        val lifts = sortedLifts.asInstanceOf[List[InjectableEagerPlanter[_, _]]].map(lift => lift.withInject(entity))
+        val lifts = sortedLifts.asInstanceOf[List[InjectableEagerPlanter[_, _, _]]].map(lift => lift.withInject(entity))
         //println(s"===== Prepared Lifts: ====\n${io.getquill.util.Messages.qprint(lifts)}")
-        (row: PrepareRow) => LiftsExtractor.Dynamic[PrepareRow](lifts, row)
+        (row: PrepareRow, session: Session) => LiftsExtractor.Dynamic[PrepareRow, Session](lifts, row, session)
       }
 
     // TODO this variable should go through BatchQueryExecution arguments and be propagated here
@@ -218,11 +219,12 @@ object BatchQueryExecution:
     A <: QAC[I, T] & Action[I]: Type,
     ResultRow: Type,
     PrepareRow: Type,
+    Session: Type,
     D <: Idiom: Type,
     N <: NamingStrategy: Type,
     Res: Type
   ](quotedRaw: Expr[Quoted[BatchAction[A]]],
-    batchContextOperation: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Res]])(using val qctx: Quotes):
+    batchContextOperation: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]])(using val qctx: Quotes):
     import quotes.reflect._
 
     def extractionBehavior: BatchExtractBehavior =
@@ -236,12 +238,12 @@ object BatchQueryExecution:
         case _ =>
           report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.TypeOf[A]}")
 
-    def prepareLifts(): (ast.CaseClass, List[Expr[InjectableEagerPlanter[_, PrepareRow]]]) =
+    def prepareLifts(): (ast.CaseClass, List[Expr[InjectableEagerPlanter[_, PrepareRow, Session]]]) =
       // Use some custom functionality in the lift macro to prepare the case class an injectable lifts
       // e.g. if T is Person(name: String, age: Int) and we do liftQuery(people:List[Person]).foreach(p => query[Person].insert(p))
       // ast = CaseClass(name -> lift(UUID1), age -> lift(UUID2))
       // lifts = List(InjectableEagerLift(p.name, UUID1), InjectableEagerLift(p.age, UUID2))
-      val (caseClassAst, perRowLifts) = LiftMacro.liftInjectedProduct[I, PrepareRow]
+      val (caseClassAst, perRowLifts) = LiftMacro.liftInjectedProduct[I, PrepareRow, Session]
       //println(s"Case class AST: ${io.getquill.util.Messages.qprint(caseClassAst)}")
       //println("========= CaseClass =========\n" + io.getquill.util.Messages.qprint(caseClassAst))
       // Assuming that all lifts of the batch query are injectable
@@ -265,7 +267,7 @@ object BatchQueryExecution:
      * e.g. given    liftQuery(people).foreach(p => query[Person].insert[Person](p))
      * then create a liftQuery(people).foreach(p => query[Person].insert[Person](_.name -> lift(p.name), _.age -> lift(p.age)))
      */
-    def expandQuotation(actionQueryAstExpr: Expr[Ast], batchActionType: BatchActionType, perRowLifts: List[Expr[InjectableEagerPlanter[_, PrepareRow]]]) =
+    def expandQuotation(actionQueryAstExpr: Expr[Ast], batchActionType: BatchActionType, perRowLifts: List[Expr[InjectableEagerPlanter[_, PrepareRow, Session]]]) =
       batchActionType match
         case BatchActionType.Insert => '{ Quoted[Insert[I]]($actionQueryAstExpr, ${Expr.ofList(perRowLifts)}, Nil) }
         case BatchActionType.Update => '{ Quoted[Update[I]]($actionQueryAstExpr, ${Expr.ofList(perRowLifts)}, Nil) }
@@ -279,9 +281,9 @@ object BatchQueryExecution:
       val caseClassExpr = Lifter.caseClass(caseClass)
       val perRowLiftsExpr = Expr.ofList(perRowLifts)
       val extractionBehaviorExpr = Expr(extractionBehavior)
-      val extractor = MakeExtractor[ResultRow, T, T].dynamic(identityConverter, extractionBehavior)
+      val extractor = MakeExtractor[ResultRow, Session, T, T].dynamic(identityConverter, extractionBehavior)
 
-      '{ DynamicBatchQueryExecution.apply[I, T, A, ResultRow, PrepareRow, D, N,Res](
+      '{ DynamicBatchQueryExecution.apply[I, T, A, ResultRow, PrepareRow, Session, D, N,Res](
         $quotedRaw,
         $batchContextOperation,
         $caseClassExpr,
@@ -316,7 +318,7 @@ object BatchQueryExecution:
           StaticTranslationMacro.applyInner[I, T, D, N](expandedQuotation, ElaborationBehavior.Skip) match
             case Some(state @ StaticState(query, filteredPerRowLifts, _, _)) =>
               // create an extractor for returning actions
-              val extractor = MakeExtractor[ResultRow, T, T].static(state, identityConverter, extractionBehavior)
+              val extractor = MakeExtractor[ResultRow, Session, T, T].static(state, identityConverter, extractionBehavior)
 
               val prepares =
                 '{ $entities.map(entity => ${
@@ -330,9 +332,9 @@ object BatchQueryExecution:
                   // we need a pre-filtered, and ordered list of lifts. The StaticTranslationMacro interanally has done that so we can take the lifts from there although they need to be casted.
                   // This is safe because they are just the lifts taht we have already had from the `injectableLifts` list
                   // TODO If all the lists are not InjectableEagerPlanterExpr, then we need to find out which ones are not and not inject them
-                  val injectedLifts = filteredPerRowLifts.asInstanceOf[List[InjectableEagerPlanterExpr[_, _]]].map(lift => lift.inject('entity))
+                  val injectedLifts = filteredPerRowLifts.asInstanceOf[List[InjectableEagerPlanterExpr[_, _, _]]].map(lift => lift.inject('entity))
                   val injectedLiftsExpr = Expr.ofList(injectedLifts)
-                  val prepare = '{ (row: PrepareRow) => LiftsExtractor.apply[PrepareRow]($injectedLiftsExpr, row) }
+                  val prepare = '{ (row: PrepareRow, session: Session) => LiftsExtractor.apply[PrepareRow, Session]($injectedLiftsExpr, row, session) }
                   prepare
                 }) }
               '{ $batchContextOperation.execute(${Expr(query.basicQuery)}, $prepares.toList, $extractor, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)})) }
@@ -354,11 +356,12 @@ object BatchQueryExecution:
     A <: QAC[I, T] with Action[I],
     ResultRow,
     PrepareRow,
+    Session,
     D <: Idiom,
     N <: NamingStrategy,
     Res
-  ](inline quoted: Quoted[BatchAction[A]], ctx: BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Res]) =
-    ${ applyImpl[I, T, A, ResultRow, PrepareRow, D, N, Res]('quoted, 'ctx) }
+  ](inline quoted: Quoted[BatchAction[A]], ctx: BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]) =
+    ${ applyImpl[I, T, A, ResultRow, PrepareRow, Session, D, N, Res]('quoted, 'ctx) }
 
   def applyImpl[
     I: Type,
@@ -366,11 +369,12 @@ object BatchQueryExecution:
     A <: QAC[I, T] with Action[I]: Type,
     ResultRow: Type,
     PrepareRow: Type,
+    Session: Type,
     D <: Idiom: Type,
     N <: NamingStrategy: Type,
     Res: Type
   ](quoted: Expr[Quoted[BatchAction[A]]],
-    ctx: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Res]])(using qctx: Quotes): Expr[Res] =
-    new RunQuery[I, T, A, ResultRow, PrepareRow, D, N, Res](quoted, ctx).apply()
+    ctx: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]])(using qctx: Quotes): Expr[Res] =
+    new RunQuery[I, T, A, ResultRow, PrepareRow, Session, D, N, Res](quoted, ctx).apply()
 
 end BatchQueryExecution

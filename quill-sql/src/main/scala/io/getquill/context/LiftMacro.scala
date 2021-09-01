@@ -39,16 +39,16 @@ import io.getquill.InjectableEagerPlanter
 object LiftQueryMacro {
   private[getquill] def newUuid = java.util.UUID.randomUUID().toString
 
-  def apply[T: Type, U[_] <: Iterable[_]: Type, PrepareRow: Type](entity: Expr[U[T]])(using Quotes): Expr[Query[T]] = {
+  def apply[T: Type, U[_] <: Iterable[_]: Type, PrepareRow: Type, Session: Type](entity: Expr[U[T]])(using Quotes): Expr[Query[T]] = {
     import quotes.reflect._
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
     val quat = QuatMaking.ofType[T]
     quat match
-      case _: Quat.Product => 
+      case _: Quat.Product =>
         // Not sure why cast back to iterable is needed here but U param is not needed once it is inside of the planter
         '{ EagerEntitiesPlanter($entity.asInstanceOf[Iterable[T]], ${Expr(newUuid)}).unquote } // [T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
-      case _ => 
-        val encoder = LiftMacro.summonEncoderOrFail[T, PrepareRow](entity)
+      case _ =>
+        val encoder = LiftMacro.summonEncoderOrFail[T, PrepareRow, Session](entity)
         '{ EagerListPlanter($entity.asInstanceOf[Iterable[T]].toList, $encoder, ${Expr(newUuid)}).unquote }
   }
 }
@@ -57,16 +57,16 @@ object LiftMacro {
   private[getquill] def newUuid = java.util.UUID.randomUUID().toString
   private[getquill] val VIdent = AIdent("v", Quat.Generic)
 
-  def apply[T: Type, PrepareRow: Type](entity: Expr[T])(using Quotes): Expr[T] = {
+  def apply[T: Type, PrepareRow: Type, Session: Type](entity: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect._
 
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
     val quat = QuatMaking.ofType[T]
     quat match
-      case _: Quat.Product => 
-        '{ ${liftProduct[T, PrepareRow](entity)}.unquote }
-      case _ => 
-        var liftPlanter = liftValue[T, PrepareRow](entity)
+      case _: Quat.Product =>
+        '{ ${liftProduct[T, PrepareRow, Session](entity)}.unquote }
+      case _ =>
+        var liftPlanter = liftValue[T, PrepareRow, Session](entity)
         '{ $liftPlanter.unquote }
   }
 
@@ -82,20 +82,20 @@ object LiftMacro {
     }
 
   // TODO Injected => Injectable
-  private[getquill] def liftInjectedProduct[T, PrepareRow](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): (CaseClass, List[Expr[InjectableEagerPlanter[_, PrepareRow]]]) = {
+  private[getquill] def liftInjectedProduct[T, PrepareRow, Session](using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow], sessionTpe: Type[Session]): (CaseClass, List[Expr[InjectableEagerPlanter[_, PrepareRow, Session]]]) = {
     import qctx.reflect._
     val (caseClassAstInitial, liftsInitial) = liftInjectedProductComponents[T, PrepareRow]
     //println("========= CaseClass Initial =========\n" + io.getquill.util.Messages.qprint(caseClassAstInitial))
     val TaggedLiftedCaseClass(caseClassAst, lifts) = TaggedLiftedCaseClass(caseClassAstInitial, liftsInitial).reKeyWithUids()
-    val liftPlanters = 
+    val liftPlanters =
       lifts.map(
-        (liftKey, lift) => 
+        (liftKey, lift) =>
           // since we don't have an implicit Type for every single lift, we need to pull out each of their TypeReprs convert them to Type and manually pass them in
           // Also need to widen the type otherwise for some value v=Person(name: String) the type will be TermRef(TermRef(NoPrefix,val v),val name) as oppsoed to 'String'
           val liftType = lift.asTerm.tpe.widen.asType
           liftType match {
             case '[T => liftT] =>
-              injectableLiftValue[liftT, PrepareRow](lift.asExprOf[T => liftT], liftKey) // Note: if want to get this to work, try doing 'summon[Type[liftT]]' (using liftType, prepareRowTpe, quotes)
+              injectableLiftValue[liftT, PrepareRow, Session](lift.asExprOf[T => liftT], liftKey) // Note: if want to get this to work, try doing 'summon[Type[liftT]]' (using liftType, prepareRowTpe, quotes)
           }
       )
     (caseClassAst, liftPlanters)
@@ -111,7 +111,7 @@ object LiftMacro {
     //println("========= Elaboration =========\n" + io.getquill.util.Messages.qprint(elaborated))
     val (_, caseClassAst) = ElaborateStructure.productValueToAst[T](elaborated)
     val caseClass = caseClassAst.asInstanceOf[io.getquill.ast.CaseClass]
-    
+
     // Get just the labels. We need to pass in an instance of T which we don't actually use
     // so it's fine to pass in anything but technically that is a bit inelegant.
     // Unfortunately, we need not only the flattened labels (which would could probably get from the Elaborator)
@@ -131,10 +131,10 @@ object LiftMacro {
     val exprTypes = liftLambdasAndTypes.map(_._2)
     def liftCombo[Output: Type](index: Int) =
       '{ (entity: T) =>
-        ${liftLambdas(index)}.apply(entity).asInstanceOf[Output]  
+        ${liftLambdas(index)}.apply(entity).asInstanceOf[Output]
       }
-    
-    val output = 
+
+    val output =
       labels.zipWithIndex.map((label, index) => {
         exprTypes(index) match
           case '[tt] => (label, liftCombo[tt](index))
@@ -150,45 +150,45 @@ object LiftMacro {
     //       val paramTypes = params.map(_.tpt.tpe)
     //       val paramNames = params.map(_.name)
     //       val mt = MethodType(paramNames)(_ => paramTypes, _ => TypeRepr.of[Any] /*.appliedTo(body.tpe.widen)*/ )
-    //       Lambda(Symbol.spliceOwner, mt, (owner,args) => body.changeOwner(owner))    
+    //       Lambda(Symbol.spliceOwner, mt, (owner,args) => body.changeOwner(owner))
   }
 
-  
-  private[getquill] def liftProduct[T, PrepareRow](productEntity: Expr[T])(using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow]): Expr[CaseClassLift[T]] = {
+
+  private[getquill] def liftProduct[T, PrepareRow, Session](productEntity: Expr[T])(using qctx:Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow], sessionTpe: Type[Session]): Expr[CaseClassLift[T]] = {
     import qctx.reflect._
     // Elaborate the entity and get it's lift. Since we are in the lifter, the elabration side is the encoding side (i.e. since lifts are doing Encoding).
     val TaggedLiftedCaseClass(caseClassAst, lifts) = ElaborateStructure.ofProductValue[T](productEntity, ElaborationSide.Encoding).reKeyWithUids()
-    val liftPlanters = 
+    val liftPlanters =
       lifts.map(
-        (liftKey, lift) => 
+        (liftKey, lift) =>
           // since we don't have an implicit Type for every single lift, we need to pull out each of their TypeReprs convert them to Type and manually pass them in
           // Also need to widen the type otherwise for some value v=Person(name: String) the type will be TermRef(TermRef(NoPrefix,val v),val name) as oppsoed to 'String'
           val liftType = lift.asTerm.tpe.widen.asType
           liftType match {
             case '[liftT] =>
-              liftValue[liftT, PrepareRow](lift.asExprOf[liftT], liftKey) // Note: if want to get this to work, try doing 'summon[Type[liftT]]' (using liftType, prepareRowTpe, quotes)
+              liftValue[liftT, PrepareRow, Session](lift.asExprOf[liftT], liftKey) // Note: if want to get this to work, try doing 'summon[Type[liftT]]' (using liftType, prepareRowTpe, quotes)
           }
       )
     val quotation = '{ Quoted[T](${Lifter(caseClassAst)}, ${Expr.ofList(liftPlanters)}, Nil) }
     '{ CaseClassLift[T]($quotation, ${Expr(java.util.UUID.randomUUID.toString)}) } // NOTE UUID technically not needed here. Can try to remove it later
   }
 
-  private[getquill] def summonEncoderOrFail[T: Type, PrepareRow: Type](loggingEntity: Expr[_])(using Quotes) =
+  private[getquill] def summonEncoderOrFail[T: Type, PrepareRow: Type, Session: Type](loggingEntity: Expr[_])(using Quotes) =
     import quotes.reflect._
-    Expr.summon[GenericEncoder[T, PrepareRow]] match
+    Expr.summon[GenericEncoder[T, PrepareRow, Session]] match
         case Some(enc) => enc
         case None => report.throwError(s"Cannot Find a '${Printer.TypeReprCode.show(TypeRepr.of[T])}' Encoder of ${Printer.TreeShortCode.show(loggingEntity.asTerm)}", loggingEntity)
 
-  private[getquill] def liftValue[T: Type, PrepareRow: Type](valueEntity: Expr[T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
+  private[getquill] def liftValue[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
     import quotes.reflect._
-    val encoder = summonEncoderOrFail[T, PrepareRow](valueEntity)
+    val encoder = summonEncoderOrFail[T, PrepareRow, Session](valueEntity)
     '{ EagerPlanter($valueEntity, $encoder, ${Expr(uuid)}) } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 
-  private[getquill] def injectableLiftValue[T: Type, PrepareRow: Type](valueEntity: Expr[_ => T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
+  private[getquill] def injectableLiftValue[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[_ => T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
     import quotes.reflect._
-    val encoder = 
-      Expr.summon[GenericEncoder[T, PrepareRow]] match
+    val encoder =
+      Expr.summon[GenericEncoder[T, PrepareRow, Session]] match
         case Some(enc) => enc
         case None => report.throwError(s"Cannot Find a '${Printer.TypeReprCode.show(TypeRepr.of[T])}' Encoder of ${Printer.TreeShortCode.show(valueEntity.asTerm)}", valueEntity)
 

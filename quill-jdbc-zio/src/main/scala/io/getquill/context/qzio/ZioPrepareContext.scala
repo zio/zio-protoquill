@@ -8,7 +8,7 @@ import io.getquill.context.RowContext
 import io.getquill.context.ExecutionInfo
 import io.getquill.util.ContextLogger
 import zio.blocking.Blocking
-import zio.{ Has, ZIO }
+import zio.{ Has, Task, ZIO }
 
 import java.sql.{ Connection, PreparedStatement, ResultSet, SQLException }
 
@@ -23,6 +23,7 @@ trait ZioPrepareContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends Z
   override type PrepareQueryResult = QIO[PrepareRow]
   override type PrepareActionResult = QIO[PrepareRow]
   override type PrepareBatchActionResult = QIO[List[PrepareRow]]
+  override type Session = Connection
 
   def prepareQuery(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): PrepareQueryResult =
     prepareSingle(sql, prepare)(executionInfo, dc)
@@ -31,14 +32,17 @@ trait ZioPrepareContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends Z
     prepareSingle(sql, prepare)(executionInfo, dc)
 
   /** Execute SQL on connection and return prepared statement. Closes the statement in a bracket. */
-  def prepareSingle(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): QIO[PreparedStatement] = {
-    ZIO.environment[QConnection]
-      .mapEffect(bconn => bconn.get[Connection].prepareStatement(sql))
-      .mapEffect { stmt =>
-        val (params, ps) = prepare(stmt)
+  def prepareSingle(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext): QIO[PreparedStatement] = {
+    (for {
+      bconn <- ZIO.environment[Has[Connection]]
+      conn = bconn.get[Connection]
+      stmt <- Task(conn.prepareStatement(sql))
+      ps <- Task {
+        val (params, ps) = prepare(stmt, conn)
         logger.logQuery(sql, params)
         ps
-      }.refineToOrDie[SQLException]
+      }
+    } yield ps).refineToOrDie[SQLException]
   }
 
   def prepareBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: DatasourceContext): PrepareBatchActionResult =

@@ -14,20 +14,20 @@ trait MirrorEncoders extends EncodingDsl {
   type Encoder[T] = MirrorEncoder[T]
 
   case class MirrorEncoder[T](encoder: EncoderMethod[T]) extends BaseEncoder[T] {
-    override def apply(index: Int, value: T, row: PrepareRow) =
-      encoder(index, value, row)
+    override def apply(index: Int, value: T, row: PrepareRow, session: Session) =
+      encoder(index, value, row, session)
   }
 
-  def encoder[T]: MirrorEncoder[T] = MirrorEncoder((index: Int, value: T, row: PrepareRow) => row.add(value))
+  def encoder[T]: MirrorEncoder[T] = MirrorEncoder((index: Int, value: T, row: PrepareRow, session: Session) => row.add(value))
 
   implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], e: Encoder[O]): Encoder[I] =
-     MirrorEncoder((index: Int, value: I, row: PrepareRow) => e(index, mapped.f(value), row))
+     MirrorEncoder((index: Int, value: I, row: PrepareRow, session: Session) => e(index, mapped.f(value), row, session))
 
   implicit def optionEncoder[T](implicit d: Encoder[T]): Encoder[Option[T]] =
-    MirrorEncoder((index: Int, value: Option[T], row: PrepareRow) => {
+    MirrorEncoder((index: Int, value: Option[T], row: PrepareRow, session: Session) => {
       value match {
         case None    => row.add(None)
-        case Some(v) => row.add(d(index, v, Row()).data.headOption)
+        case Some(v) => row.add(d(index, v, Row(), session).data.headOption)
       }
     })
 

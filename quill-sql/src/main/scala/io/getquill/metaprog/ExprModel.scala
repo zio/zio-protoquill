@@ -40,47 +40,47 @@ class ExprModel {
 // This is the mirror of `Planter`. It holds types of
 // Planters and allows planting them back into the Scala AST
 // (need scala.quoted.Type here i.e. full name or incremental recompile breaks)
-sealed trait PlanterExpr[T: scala.quoted.Type, PrepareRow: scala.quoted.Type]:
+sealed trait PlanterExpr[T: scala.quoted.Type, PrepareRow: scala.quoted.Type, Session: scala.quoted.Type]:
   def uid: String
-  def plant(using Quotes): Expr[Planter[T, PrepareRow]] // TODO Change to 'replant' ?
-  def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], bindings: List[quotes.reflect.Definition]): PlanterExpr[T, PrepareRow]
+  def plant(using Quotes): Expr[Planter[T, PrepareRow, Session]] // TODO Change to 'replant' ?
+  def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], bindings: List[quotes.reflect.Definition]): PlanterExpr[T, PrepareRow, Session]
 
-case class EagerListPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[List[T]], encoder: Expr[GenericEncoder[T, PrepareRow]])(using Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow]:
-  def plant(using Quotes): Expr[EagerListPlanter[T, PrepareRow]] =
-    '{ EagerListPlanter[T, PrepareRow]($expr, $encoder, ${Expr(uid)}) }
+case class EagerListPlanterExpr[T: Type, PrepareRow: Type, Session: Type](uid: String, expr: Expr[List[T]], encoder: Expr[GenericEncoder[T, PrepareRow, Session]])(using Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow, Session]:
+  def plant(using Quotes): Expr[EagerListPlanter[T, PrepareRow, Session]] =
+    '{ EagerListPlanter[T, PrepareRow, Session]($expr, $encoder, ${Expr(uid)}) }
   def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], bindings: List[quotes.reflect.Definition]) =
     import quotes.reflect._
-    this.copy[T, PrepareRow](expr = Inlined(call, bindings, this.expr.asTerm).asExprOf[List[T]], encoder = Inlined(call, bindings, this.encoder.asTerm).asExprOf[GenericEncoder[T, PrepareRow]])
+    this.copy[T, PrepareRow, Session](expr = Inlined(call, bindings, this.expr.asTerm).asExprOf[List[T]], encoder = Inlined(call, bindings, this.encoder.asTerm).asExprOf[GenericEncoder[T, PrepareRow, Session]])
 
-case class EagerPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T], encoder: Expr[GenericEncoder[T, PrepareRow]]) extends PlanterExpr[T, PrepareRow]:
-  def plant(using Quotes): Expr[EagerPlanter[T, PrepareRow]] =
-    '{ EagerPlanter[T, PrepareRow]($expr, $encoder, ${Expr(uid)}) }
+case class EagerPlanterExpr[T: Type, PrepareRow: Type, Session: Type](uid: String, expr: Expr[T], encoder: Expr[GenericEncoder[T, PrepareRow, Session]]) extends PlanterExpr[T, PrepareRow, Session]:
+  def plant(using Quotes): Expr[EagerPlanter[T, PrepareRow, Session]] =
+    '{ EagerPlanter[T, PrepareRow, Session]($expr, $encoder, ${Expr(uid)}) }
   def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], bindings: List[quotes.reflect.Definition]) =
     import quotes.reflect._
-    this.copy[T, PrepareRow](expr = Inlined(call, bindings, this.expr.asTerm).asExprOf[T], encoder = Inlined(call, bindings, this.encoder.asTerm).asExprOf[GenericEncoder[T, PrepareRow]])
+    this.copy[T, PrepareRow, Session](expr = Inlined(call, bindings, this.expr.asTerm).asExprOf[T], encoder = Inlined(call, bindings, this.encoder.asTerm).asExprOf[GenericEncoder[T, PrepareRow, Session]])
 
-case class InjectableEagerPlanterExpr[T: Type, PrepareRow: Type](uid: String, inject: Expr[_ => T], encoder: Expr[GenericEncoder[T, PrepareRow]]) extends PlanterExpr[T, PrepareRow]:
-  def plant(using Quotes): Expr[InjectableEagerPlanter[T, PrepareRow]] =
-    '{ InjectableEagerPlanter[T, PrepareRow]($inject, $encoder, ${Expr(uid)}) }
-  def inject(injectee: Expr[Any])(using Quotes): Expr[EagerPlanter[T, PrepareRow]] =
-    '{ EagerPlanter[T, PrepareRow]($inject.asInstanceOf[Any => T].apply($injectee), $encoder, ${Expr(uid)}) }
+case class InjectableEagerPlanterExpr[T: Type, PrepareRow: Type, Session: Type](uid: String, inject: Expr[_ => T], encoder: Expr[GenericEncoder[T, PrepareRow, Session]]) extends PlanterExpr[T, PrepareRow, Session]:
+  def plant(using Quotes): Expr[InjectableEagerPlanter[T, PrepareRow, Session]] =
+    '{ InjectableEagerPlanter[T, PrepareRow, Session]($inject, $encoder, ${Expr(uid)}) }
+  def inject(injectee: Expr[Any])(using Quotes): Expr[EagerPlanter[T, PrepareRow, Session]] =
+    '{ EagerPlanter[T, PrepareRow, Session]($inject.asInstanceOf[Any => T].apply($injectee), $encoder, ${Expr(uid)}) }
   def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], bindings: List[quotes.reflect.Definition]) =
     import quotes.reflect._
-    this.copy[T, PrepareRow](inject = Inlined(call, bindings, this.inject.asTerm).asExprOf[_ => T], encoder = Inlined(call, bindings, this.encoder.asTerm).asExprOf[GenericEncoder[T, PrepareRow]])
+    this.copy[T, PrepareRow, Session](inject = Inlined(call, bindings, this.inject.asTerm).asExprOf[_ => T], encoder = Inlined(call, bindings, this.encoder.asTerm).asExprOf[GenericEncoder[T, PrepareRow, Session]])
 
-case class LazyPlanterExpr[T: Type, PrepareRow: Type](uid: String, expr: Expr[T]) extends PlanterExpr[T, PrepareRow]:
-  def plant(using Quotes): Expr[LazyPlanter[T, PrepareRow]] =
-    '{ LazyPlanter[T, PrepareRow]($expr, ${Expr(uid)}) }
+case class LazyPlanterExpr[T: Type, PrepareRow: Type, Session: Type](uid: String, expr: Expr[T]) extends PlanterExpr[T, PrepareRow, Session]:
+  def plant(using Quotes): Expr[LazyPlanter[T, PrepareRow, Session]] =
+    '{ LazyPlanter[T, PrepareRow, Session]($expr, ${Expr(uid)}) }
   def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], bindings: List[quotes.reflect.Definition]) =
     import quotes.reflect._
-    this.copy[T, PrepareRow](expr = Inlined(call, bindings, this.expr.asTerm).asExprOf[T])
+    this.copy[T, PrepareRow, Session](expr = Inlined(call, bindings, this.expr.asTerm).asExprOf[T])
 
-case class EagerEntitiesPlanterExpr[T, PrepareRow: Type](uid: String, expr: Expr[Iterable[T]])(using val tpe: Type[T], queryTpe: Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow]:
-  def plant(using Quotes): Expr[EagerEntitiesPlanter[T, PrepareRow]] =
-    '{ EagerEntitiesPlanter[T, PrepareRow]($expr, ${Expr(uid)}) }
+case class EagerEntitiesPlanterExpr[T, PrepareRow: Type, Session: Type](uid: String, expr: Expr[Iterable[T]])(using val tpe: Type[T], queryTpe: Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow, Session]:
+  def plant(using Quotes): Expr[EagerEntitiesPlanter[T, PrepareRow, Session]] =
+    '{ EagerEntitiesPlanter[T, PrepareRow, Session]($expr, ${Expr(uid)}) }
   def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], bindings: List[quotes.reflect.Definition]) =
     import quotes.reflect._
-    this.copy[T, PrepareRow](expr = Inlined(call, bindings, this.expr.asTerm).asExprOf[Iterable[T]])
+    this.copy[T, PrepareRow, Session](expr = Inlined(call, bindings, this.expr.asTerm).asExprOf[Iterable[T]])
 
 object PlanterExpr {
 
@@ -94,21 +94,22 @@ object PlanterExpr {
 
   object Uprootable {
 
+    /** Match the generic parameters [T, PrepareRow, Session] going into InjectableEagerPlanter[T, PrepareRow, Session] */
     object MatchInjectableEager:
       def unapply(using Quotes)(term: quotes.reflect.Term) =
         import quotes.reflect._
         term match
-          case Apply(TypeApply(Select(Ident("InjectableEagerPlanter"), "apply"), List(qtType, prepType)), List(liftValue, encoder, Literal(StringConstant(uid)))) => Option((qtType, prepType, liftValue, encoder, uid))
+          case Apply(TypeApply(Select(Ident("InjectableEagerPlanter"), "apply"), List(qtType, prepType, sessionType)), List(liftValue, encoder, Literal(StringConstant(uid)))) => Option((qtType, prepType, sessionType, liftValue, encoder, uid))
           case _ => None
 
-    def unapply(expr: Expr[Any])(using Quotes): Option[PlanterExpr[_, _]] =
+    def unapply(expr: Expr[Any])(using Quotes): Option[PlanterExpr[_, _, _]] =
       import quotes.reflect._
       // underlyingArgument application is needed on expr otherwise the InjectableEagerPlanter matchers won't work no mater how you configure them
       UntypeExpr(expr.asTerm.underlyingArgument.asExpr) match {
-        case Is[EagerPlanter[_, _]]( '{ EagerPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
-          Some(EagerPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
-        case Is[EagerListPlanter[_, _]]( '{ EagerListPlanter.apply[qt, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
-          Some(EagerListPlanterExpr[qt, prep](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _]])
+        case Is[EagerPlanter[_, _, _]]( '{ EagerPlanter.apply[qt, prep, session]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
+          Some(EagerPlanterExpr[qt, prep, session](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _, _]])
+        case Is[EagerListPlanter[_, _, _]]( '{ EagerListPlanter.apply[qt, prep, session]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
+          Some(EagerListPlanterExpr[qt, prep, session](uid, liftValue, encoder/* .asInstanceOf[Expr[GenericEncoder[A, A]]] */).asInstanceOf[PlanterExpr[_, _, _]])
 
 
         // If you uncomment this instead of '{ InjectableEagerPlanter.apply... it will also work but expr.asTerm.underlyingArgument.asExpr on top is needed
@@ -122,39 +123,28 @@ object PlanterExpr {
 
         // You can't just do '{ InjectableEagerPlanter... below but also have to do this. I'm not sure why. Also you can't
         // JUST do this. You either need the clause above or the clause below otherwise it won't work
-        case Unseal(MatchInjectableEager(qtType, prepType, liftValue, encoder, uid)) =>
-          (qtType.tpe.asType, prepType.tpe.asType) match
-            case ('[qtt], '[prep]) =>
+        case Unseal(MatchInjectableEager(qtType, prepType, sessionType, liftValue, encoder, uid)) =>
+          (qtType.tpe.asType, prepType.tpe.asType, sessionType.tpe.asType) match
+            case ('[qtt], '[prep], '[session]) =>
               encoder.tpe.asType match
                 case '[enc] =>
-                  Some(InjectableEagerPlanterExpr[qtt, prep](uid, liftValue.asExpr.asInstanceOf[Expr[_ => qtt]], encoder.asExpr.asInstanceOf[Expr[enc & GenericEncoder[qtt, prep]]]))
+                  Some(InjectableEagerPlanterExpr[qtt, prep, session](uid, liftValue.asExpr.asInstanceOf[Expr[_ => qtt]], encoder.asExpr.asInstanceOf[Expr[enc & GenericEncoder[qtt, prep, session]]]))
 
-        case ( '{ InjectableEagerPlanter.apply[qta, prep]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
-          Some(InjectableEagerPlanterExpr[qta, prep](uid, liftValue, encoder))
+        case ( '{ InjectableEagerPlanter.apply[qta, prep, session]($liftValue, $encoder, ${Expr(uid: String)}) } ) =>
+          Some(InjectableEagerPlanterExpr[qta, prep, session](uid, liftValue, encoder))
 
-        case Is[LazyPlanter[_, _]]( '{ LazyPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } ) =>
-          Some(LazyPlanterExpr[qt, prep](uid, liftValue).asInstanceOf[PlanterExpr[_, _]])
-        case Is[EagerEntitiesPlanter[_, _]]( '{ EagerEntitiesPlanter.apply[qt, prep]($liftValue, ${Expr(uid: String)}) } ) =>
-          Some(EagerEntitiesPlanterExpr[qt, prep](uid, liftValue).asInstanceOf[EagerEntitiesPlanterExpr[_, _]])
+        case Is[LazyPlanter[_, _, _]]( '{ LazyPlanter.apply[qt, prep, session]($liftValue, ${Expr(uid: String)}) } ) =>
+          Some(LazyPlanterExpr[qt, prep, session](uid, liftValue).asInstanceOf[PlanterExpr[_, _, _]])
+        case Is[EagerEntitiesPlanter[_, _, _]]( '{ EagerEntitiesPlanter.apply[qt, prep, session]($liftValue, ${Expr(uid: String)}) } ) =>
+          Some(EagerEntitiesPlanterExpr[qt, prep, session](uid, liftValue).asInstanceOf[EagerEntitiesPlanterExpr[_, _, _]])
         case other =>
-          // println(
-          //   "---------- Could not match:\n" + Printer.TreeStructure.show(e.asTerm)
-          //   + s"\n--- type is: ${Format.TypeRepr(other.asTerm.tpe.widen)}"
-          // )
-
-          // other match
-          //   case ( '{ InjectableEagerPlanter.apply[a,b]($liftValue, $encoder, $uid) } ) =>
-          //     println("=========== WORKS WITHOUT UID =======")
-          //   case _ =>
-          //     println("=========== NOT WORKS WITHOUT UID =======")
-
           None
       }
   }
 
   protected object `(Planter).unquote` {
-    def unapply(expr: Expr[Any])(using Quotes): Option[Expr[Planter[_, _]]] = expr match {
-      case '{ ($planter: Planter[tt, pr]).unquote } =>
+    def unapply(expr: Expr[Any])(using Quotes): Option[Expr[Planter[_, _, _]]] = expr match {
+      case '{ ($planter: Planter[tt, pr, sess]).unquote } =>
         Some(planter/* .asInstanceOf[Expr[Planter[A, A]]] */)
       case _ =>
         None
@@ -163,7 +153,7 @@ object PlanterExpr {
 
 
   object UprootableUnquote {
-    def unapply(expr: Expr[Any])(using Quotes): Option[PlanterExpr[_, _]] = {
+    def unapply(expr: Expr[Any])(using Quotes): Option[PlanterExpr[_, _, _]] = {
       import quotes.reflect.report
       expr match {
         case `(Planter).unquote`(planterUnquote) =>
@@ -181,21 +171,17 @@ object PlanterExpr {
   }
 
 
-  def findUnquotes(expr: Expr[Any])(using Quotes): List[PlanterExpr[_, _]] =
-    val res =
+  def findUnquotes(expr: Expr[Any])(using Quotes): List[PlanterExpr[_, _, _]] =
     ExprAccumulate(expr) {
-      //case UprootableUnquote(planter) => planterx
       // Since we are also searching expressions inside spliced quotatations (in the Lifts slot) those things are not unquoted
       // so we to search all planter expressions, not just the unquotes
       case PlanterExpr.Uprootable(planter) => planter
     }
-    //println("((((((((((((((((((((((((((((((( Found Uprootable Unquotes ))))))))))))))))))))))\n"+res.map(_.expr.show))
-    res
 
   // TODO Find a way to propogate PrepareRow into here
   // pull vases out of Quotation.lifts
   object UprootableList {
-    def unapply(expr: Expr[List[Any]])(using Quotes): Option[List[PlanterExpr[_, _]]] = {
+    def unapply(expr: Expr[List[Any]])(using Quotes): Option[List[PlanterExpr[_, _, _]]] = {
       import quotes.reflect._
       UntypeExpr(expr.asTerm.underlyingArgument.asExpr) match {
         case '{ Nil } =>
@@ -205,31 +191,25 @@ object PlanterExpr {
           val scalarValues =
             elems.map {
               case other @ PlanterExpr.Uprootable(vaseExpr) =>
-                //println(s"The Planter IS uprootable `${Format(Printer.TreeStructure.show(other.asTerm))}`")
                 Some(vaseExpr)
               case other =>
-                //println(s"The Planter is not uprootable `${Format(Printer.TreeStructure.show(other.asTerm))}`")
                 None
             }.collect {
               case Some(value) => value
             }
-          //println("****************** FIRST GOT HERE **************")
-          //println(s"Scalar values (${scalarValues.length}): ${scalarValues.map(_.expr.show).mkString("(", ",", ")")}")
-          //println(s"Elems (${elems.length}): ${elems.map(_.show).mkString("(", ",", ")")}")
 
           // if all the elements match SingleValueVase then return them, otherwise don't
           if (scalarValues.length == elems.length) Some(scalarValues.toList)
           else None
 
         case _ =>
-          //println("~~~~~~~~ Tree is not Uprootable: " + Printer.TreeStructure.show(expr.asTerm))
           None
       }
     }
   }
 }
 
-case class QuotedExpr(ast: Expr[Ast], lifts: Expr[List[Planter[_, _]]], runtimeQuotes: Expr[List[QuotationVase]])
+case class QuotedExpr(ast: Expr[Ast], lifts: Expr[List[Planter[_, _, _]]], runtimeQuotes: Expr[List[QuotationVase]])
 object QuotedExpr {
 
   /** To be used internally only since it does not account for inlines that could appear in front of it */
@@ -250,7 +230,7 @@ object QuotedExpr {
   }
 
   object UprootableWithLifts {
-    def unapply(expr: Expr[Any])(using Quotes): Option[(QuotedExpr, List[PlanterExpr[_, _]])] =
+    def unapply(expr: Expr[Any])(using Quotes): Option[(QuotedExpr, List[PlanterExpr[_, _, _]])] =
       expr match {
         /*
         It is possible that there are inlines, if so they cannot be in the AST since that is re-syntheized on every quote call so any references they
@@ -266,7 +246,7 @@ object QuotedExpr {
       }
   }
 
-  def uprootableWithLiftsOpt(quoted: Expr[Any])(using Quotes): Option[(QuotedExpr, List[PlanterExpr[_, _]])] =
+  def uprootableWithLiftsOpt(quoted: Expr[Any])(using Quotes): Option[(QuotedExpr, List[PlanterExpr[_, _, _]])] =
     import quotes.reflect._
     quoted match {
       case QuotedExpr.UprootableWithLifts(quotedExpr) => Some(quotedExpr)
@@ -421,7 +401,7 @@ object QuotationLotExpr {
   //   class Uprootable(
   //     val uid: String,
   //     val ast: Expr[Ast],
-  //     val inlineLifts: List[PlanterExpr[_, _]]
+  //     val inlineLifts: List[PlanterExpr[_, _, _]]
   //   )(
   //     val bin: Expr[QuotationLot[Any]],
   //     val quotation: Expr[Quoted[Any]],
@@ -429,7 +409,7 @@ object QuotationLotExpr {
   //   )
 
   //   object Uprootable {
-  //     def unapply(value: Uprootable): Option[(String, Expr[Ast], List[PlanterExpr[_, _]])] =
+  //     def unapply(value: Uprootable): Option[(String, Expr[Ast], List[PlanterExpr[_, _, _]])] =
   //       Some((value.uid, value.ast, value.inlineLifts))
 
   //     object Full {
@@ -438,7 +418,7 @@ object QuotationLotExpr {
   //         ast: Expr[Ast],
   //         bin: Expr[QuotationLot[Any]],
   //         quotation: Expr[Quoted[Any]],
-  //         inlineLifts: List[PlanterExpr[_, _]],
+  //         inlineLifts: List[PlanterExpr[_, _, _]],
   //         rest: List[Expr[_]]
   //       )] = Some((value.uid, value.ast, value.bin, value.quotation, value.inlineLifts, value.rest))
   //     }
@@ -448,7 +428,7 @@ object QuotationLotExpr {
   case class Uprootable(
     uid: String,
     ast: Expr[Ast],
-    inlineLifts: List[PlanterExpr[_, _]]
+    inlineLifts: List[PlanterExpr[_, _, _]]
   )(
     val quotation: Expr[Quoted[Any]],
     val bin: Expr[QuotationLot[Any]],

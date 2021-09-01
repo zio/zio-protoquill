@@ -100,7 +100,7 @@ object StaticTranslationMacro {
    * that contains the UUIDs of lifted elements. We check against list to make
    * sure that that only needed lifts are used and in the right order.
    */
-  private[getquill] def processLifts(lifts: List[PlanterExpr[_, _]], matchingExternals: List[External])(using Quotes): Option[List[PlanterExpr[_, _]]] =
+  private[getquill] def processLifts(lifts: List[PlanterExpr[_, _, _]], matchingExternals: List[External])(using Quotes): Option[List[PlanterExpr[_, _, _]]] =
     import quotes.reflect.report
 
     val encodeablesMap =

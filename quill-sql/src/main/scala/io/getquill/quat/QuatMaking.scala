@@ -102,7 +102,7 @@ trait QuatMaking extends QuatMakingBase {
         // and ask for them to define a Decoder for Name as well.
         // Question: Should we pass in PrepareRow as well in order to have things be possibly products
         // in one dialect and values in another???
-        case '[t] => (Expr.summon[GenericEncoder[t, _]], Expr.summon[GenericDecoder[_, t, DecodingType.Specific]]) match
+        case '[t] => (Expr.summon[GenericEncoder[t, _, _]], Expr.summon[GenericDecoder[_, _, t, DecodingType.Specific]]) match
           case (Some(_), Some(_)) => true
           case (Some(enc), None) =>
             report.warning(

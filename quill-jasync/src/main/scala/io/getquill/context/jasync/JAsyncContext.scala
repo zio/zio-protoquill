@@ -25,11 +25,6 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
 
   private val logger = ContextLogger(classOf[JAsyncContext[_, _, _]])
 
-  override type DatasourceContextBehavior = DatasourceContextInjection.Implicit
-
-  // Need to define this in ProtoQuill so can pass implicit contexts
-  override type DatasourceContext = ExecutionContext
-
   override type Result[T] = Future[T]
   override type RunQueryResult[T] = Seq[T]
   override type RunQuerySingleResult[T] = T
@@ -81,10 +76,10 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
 
   def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[T]] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
-    val (params, values) = prepare(Nil)
+    val (params, values) = prepare(Nil, ())
     logger.logQuery(sql, params)
     withConnection(_.sendPreparedStatement(sql, values.asJava))
-      .map(_.getRows.asScala.iterator.map(extractor).toList)
+      .map(_.getRows.asScala.iterator.map(row => extractor(row, ())).toList)
   }
 
   def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[T] =
@@ -93,7 +88,7 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
 
   def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[Long] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
-    val (params, values) = prepare(Nil)
+    val (params, values) = prepare(Nil, ())
     logger.logQuery(sql, params)
     withConnection(_.sendPreparedStatement(sql, values.asJava)).map(_.getRowsAffected)
   }
@@ -101,7 +96,7 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
   def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningAction: ReturnAction)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[T] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
     val expanded = expandAction(sql, returningAction)
-    val (params, values) = prepare(Nil)
+    val (params, values) = prepare(Nil, ())
     logger.logQuery(sql, params)
     withConnection(_.sendPreparedStatement(expanded, values.asJava))
       .map(extractActionResult(returningAction, extractor))

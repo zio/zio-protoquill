@@ -50,21 +50,22 @@ trait LowPriorityImplicits { self: EncodingDsl =>
 trait EncodingDsl extends LowPriorityImplicits { self => //extends LowPriorityImplicits
   type PrepareRow
   type ResultRow
+  type Session
   //type Index = Int
 
-  type EncoderMethod[T] = (Int, T, PrepareRow) => PrepareRow
-  type DecoderMethod[T] = (Int, ResultRow) => T
+  type EncoderMethod[T] = (Int, T, PrepareRow, Session) => PrepareRow
+  type DecoderMethod[T] = (Int, ResultRow, Session) => T
 
   // Final Encoder/Decoder classes that Context implementations will use for their actual signatures
   // need to by subtypes GenericEncoder for encoder summoning to work from SqlContext where Encoders/Decoders
   // are defined only abstractly.
-  type Encoder[T] <: GenericEncoder[T, PrepareRow]
-  type Decoder[T] <: GenericDecoder[ResultRow, T, DecodingType.Specific]
+  type Encoder[T] <: GenericEncoder[T, PrepareRow, Session]
+  type Decoder[T] <: GenericDecoder[ResultRow, Session, T, DecodingType.Specific]
 
   // Initial Encoder/Decoder classes that Context implementations will subclass for their
   // respective Encoder[T]/Decoder[T] implementations e.g. JdbcEncoder[T](...) extends BaseEncoder[T]
-  type BaseEncoder[T] = GenericEncoder[T, PrepareRow]
-  type BaseDecoder[T] = GenericDecoder[ResultRow, T, DecodingType.Specific]
+  type BaseEncoder[T] = GenericEncoder[T, PrepareRow, Session]
+  type BaseDecoder[T] = GenericDecoder[ResultRow, Session, T, DecodingType.Specific]
 
   type ColumnResolver = GenericColumnResolver[ResultRow]
   type RowTyper[T] = GenericRowTyper[ResultRow, T]
@@ -78,9 +79,9 @@ trait EncodingDsl extends LowPriorityImplicits { self => //extends LowPriorityIm
   implicit def mappedDecoder[Base, Mapped](implicit mapped: MappedEncoding[Base, Mapped], decoder: Decoder[Base]): Decoder[Mapped]
 
   protected def mappedBaseEncoder[Mapped, Base](mapped: MappedEncoding[Mapped, Base], encoder: EncoderMethod[Base]): EncoderMethod[Mapped] =
-    (index, value, row) => encoder(index, mapped.f(value), row)
+    (index, value, row, session) => encoder(index, mapped.f(value), row, session)
   protected def mappedBaseDecoder[Base, Mapped](mapped: MappedEncoding[Base, Mapped], decoder: DecoderMethod[Base]): DecoderMethod[Mapped] =
-    (index, row) => mapped.f(decoder(index, row))
+    (index, row, session) => mapped.f(decoder(index, row, session))
 
   // Define some standard encoders that all contexts should have
   implicit def stringEncoder: Encoder[String]
