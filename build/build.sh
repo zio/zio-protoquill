@@ -20,7 +20,8 @@ export CASSANDRA_PORT=19042
 export ORIENTDB_HOST=127.0.0.1
 export ORIENTDB_PORT=12424
 
-export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Xms1024m -Xmx3g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+export GC_OPTS="-XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+UseG1GC -XX:+UseStringDeduplication"
+export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Xms1024m -Xmx3g -Xss5m ${GC_OPTS}"
 
 modules=$1
 
@@ -165,7 +166,7 @@ function base_build() {
 
 function sqltest_build() {
     # Can use more memory here since not loading any images
-    export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Xms2g -Xmx5g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+    export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Xms2g -Xmx5g -Xss5m ${GC_OPTS}"
     sbt -Dmodules=sqltest -Doracle=true $SBT_ARGS test
 }
 
@@ -178,7 +179,7 @@ function db_build() {
 
 # function js_build() {
 #     show_mem
-#     export JVM_OPTS="-Dquill.macro.log=false -Xms1024m -Xmx4g -Xss5m -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+CMSClassUnloadingEnabled -XX:+UseConcMarkSweepGC"
+#     export JVM_OPTS="-Dquill.macro.log=false -Xms1024m -Xmx4g -Xss5m ${GC_OPTS}"
 #     sbt -Dmodules=js $SBT_ARGS test
 # }
 
