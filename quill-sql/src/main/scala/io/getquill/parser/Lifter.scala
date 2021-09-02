@@ -21,6 +21,7 @@ object Lifter extends LifterProxy {
   val default = Lifter(SerializeQuat.global, SerializeAst.global)
 
   def NotSerializing = Lifter(SerializeQuat.None, SerializeAst.None)
+  def NotSerializingAst = Lifter(SerializeQuat.global, SerializeAst.None)
 
   def apply(ast: Ast): Quotes ?=> Expr[Ast] = default.liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
 

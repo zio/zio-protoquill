@@ -125,7 +125,7 @@ object Parser {
 
     def delegate = composite
 
-    def composite: PartialFunction[Expr[_], Ast] =
+    lazy val composite: PartialFunction[Expr[_], Ast] =
       children.map(child => child.reparent(this)).foldRight(PartialFunction.empty[Expr[_], Ast])(_ orElse _)
 
     //Is this to chain parsers?
