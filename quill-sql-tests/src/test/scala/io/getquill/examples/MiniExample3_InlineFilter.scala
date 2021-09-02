@@ -5,7 +5,7 @@ import io.getquill._
 import io.getquill.QueryDsl._
 
 object MiniExample3_InlineFilter {
-  
+
   case class Person(name: String, age: Int)
 
   def main(args: Array[String]): Unit = {
@@ -13,16 +13,16 @@ object MiniExample3_InlineFilter {
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
 
-    inline def onlyJoes = 
+    inline def onlyJoes =
       (p: Person) => p.name == "Joe"
-    
+
     inline def q = quote {
       query[Person].filter(onlyJoes)
     }
 
-    println( run(q) )
+    println(run(q))
 
-    println( List(Person("Joe", 22), Person("Jack", 33)).filter(onlyJoes) )
+    println(List(Person("Joe", 22), Person("Jack", 33)).filter(onlyJoes))
 
   }
 }

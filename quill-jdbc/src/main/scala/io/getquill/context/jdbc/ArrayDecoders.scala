@@ -3,8 +3,8 @@ package io.getquill.context.jdbc
 import java.sql.Timestamp
 import java.time.LocalDate
 import java.util.Date
-import java.sql.{ Date => SqlDate }
-import java.math.{ BigDecimal => JBigDecimal }
+import java.sql.{Date => SqlDate}
+import java.math.{BigDecimal => JBigDecimal}
 
 import io.getquill.generic.ArrayEncoding
 import io.getquill.util.Messages.fail
@@ -29,16 +29,21 @@ trait ArrayDecoders extends ArrayEncoding {
   implicit def arrayTimestampDecoder[Col <: Seq[Timestamp]](implicit bf: CBF[Timestamp, Col]): Decoder[Col] = arrayRawDecoder[Timestamp, Col]
   implicit def arrayLocalDateDecoder[Col <: Seq[LocalDate]](implicit bf: CBF[LocalDate, Col]): Decoder[Col] = arrayDecoder[SqlDate, LocalDate, Col](_.toLocalDate)
 
-  /**
-   * Generic encoder for JDBC arrays.
-   *
-   * @param mapper retrieved raw types fro JDBC array may be mapped via this mapper to satisfy encoder type
-   * @param bf builder factory is needed to create instances of decoder's collection
-   * @tparam I raw type retrieved form JDBC array
-   * @tparam O mapped type fulfilled in decoder's collection
-   * @tparam Col seq type
-   * @return JDBC array decoder
-   */
+  /** Generic encoder for JDBC arrays.
+    *
+    * @param mapper
+    *   retrieved raw types fro JDBC array may be mapped via this mapper to satisfy encoder type
+    * @param bf
+    *   builder factory is needed to create instances of decoder's collection
+    * @tparam I
+    *   raw type retrieved form JDBC array
+    * @tparam O
+    *   mapped type fulfilled in decoder's collection
+    * @tparam Col
+    *   seq type
+    * @return
+    *   JDBC array decoder
+    */
   def arrayDecoder[I, O, Col <: Seq[O]](mapper: I => O)(implicit bf: CBF[O, Col], tag: ClassTag[I]): Decoder[Col] = {
     decoder[Col]((idx: Index, row: ResultRow, session: Session) => {
       val arr = row.getArray(idx)
@@ -52,14 +57,17 @@ trait ArrayDecoders extends ArrayEncoding {
     })
   }
 
-  /**
-   * Creates JDBC array decoder for type `T` which is already supported by database as array element.
-   *
-   * @param bf builder factory is needed to create instances of decoder's collection
-   * @tparam T element type
-   * @tparam Col seq type
-   * @return JDBC array decoder
-   */
+  /** Creates JDBC array decoder for type `T` which is already supported by database as array element.
+    *
+    * @param bf
+    *   builder factory is needed to create instances of decoder's collection
+    * @tparam T
+    *   element type
+    * @tparam Col
+    *   seq type
+    * @return
+    *   JDBC array decoder
+    */
   def arrayRawDecoder[T: ClassTag, Col <: Seq[T]](implicit bf: CBF[T, Col]): Decoder[Col] =
     arrayDecoder[T, T, Col](identity)
 }

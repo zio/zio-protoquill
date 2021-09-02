@@ -15,12 +15,12 @@ object DeserializeAstInstances:
     import io.getquill.metaprog.Extractors._
 
     def isQuat(expr: Expr[_]) =
-        expr.asTerm.tpe <:< TypeRepr.of[io.getquill.quat.Quat]
+      expr.asTerm.tpe <:< TypeRepr.of[io.getquill.quat.Quat]
 
     class CustomExprMap extends ExprMap {
       def transform[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] =
         expr match
-          case '{ SerialHelper.fromSerializedJVM[a](${Expr(serial: String)}) } =>
+          case '{ SerialHelper.fromSerializedJVM[a](${ Expr(serial: String) }) } =>
             try {
               val actualAst = SerialHelper.fromSerializedJVM[io.getquill.ast.Ast](serial)
               val astExpr = Lifter.NotSerializing.liftableAst(actualAst)
@@ -38,7 +38,7 @@ object DeserializeAstInstances:
           // Otherwise blows up and claims it can type Seq[Stuff] as _*
           case Varargs(args) =>
             val mappedArgs = args.map(arg => transformChildren(arg))
-            '{ (${Expr.ofList(mappedArgs)}).asInstanceOf[TF] }
+            '{ (${ Expr.ofList(mappedArgs) }).asInstanceOf[TF] }
 
           case other =>
             transformChildren(other)
@@ -104,8 +104,8 @@ object ExprAccumulate {
         expr.asTerm match
           // Not including this causes execption "scala.tasty.reflect.ExprCastError: Expr: [ : Nothing]" in certain situations
           case Repeated(Nil, Inferred()) => expr
-          case _ if (isQuat(expr)) => expr
-          case _ => transformChildren[TF](expr)
+          case _ if (isQuat(expr))       => expr
+          case _                         => transformChildren[TF](expr)
       }
     }
 

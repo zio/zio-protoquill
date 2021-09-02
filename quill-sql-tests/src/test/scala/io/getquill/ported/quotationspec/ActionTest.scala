@@ -15,10 +15,10 @@ class ActionTest extends Spec with TestEntities with Inside {
   extension (ast: Ast)
     def body: Ast = ast match
       case f: Function => f.body
-      case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+      case _           => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
 
   def internalizeVLabel(ast: Ast) =
-    NameChangeIdent{ case "v" => "_$V" }.apply(ast)
+    NameChangeIdent { case "v" => "_$V" }.apply(ast)
 
   "action" - {
     "update" - {
@@ -32,7 +32,10 @@ class ActionTest extends Spec with TestEntities with Inside {
         inline def q = quote {
           qr1.update(t => t.i -> (t.i + 1))
         }
-        quote(unquote(q)).ast mustEqual Update(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "i"), BinaryOperation(Property(Ident("t"), "i"), NumericOperator.`+`, Constant.auto(1)))))
+        quote(unquote(q)).ast mustEqual Update(
+          Entity("TestEntity", Nil, TestEntityQuat),
+          List(Assignment(Ident("t"), Property(Ident("t"), "i"), BinaryOperation(Property(Ident("t"), "i"), NumericOperator.`+`, Constant.auto(1))))
+        )
       }
       "case class" in {
         inline def q = quote {

@@ -1,12 +1,12 @@
 package io.getquill.context.jasync
 
-import java.time.{ LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZoneId, ZonedDateTime }
+import java.time.{LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZoneId, ZonedDateTime}
 import java.util.Date
 
 // Need to import for Protoquill. Not sure why
 import io.getquill.MappedEncoding
 
-import org.joda.time.{ DateTime => JodaDateTime, DateTimeZone => JodaDateTimeZone, LocalTime => JodaLocalTime, LocalDate => JodaLocalDate, LocalDateTime => JodaLocalDateTime }
+import org.joda.time.{DateTime => JodaDateTime, DateTimeZone => JodaDateTimeZone, LocalTime => JodaLocalTime, LocalDate => JodaLocalDate, LocalDateTime => JodaLocalDateTime}
 
 trait Encoders {
   this: JAsyncContextBase[_, _] =>
@@ -16,7 +16,7 @@ trait Encoders {
   type EncoderSqlType = SqlTypes.SqlTypes
 
   case class AsyncEncoder[T](sqlType: DecoderSqlType)(implicit encoder: BaseEncoder[T])
-    extends BaseEncoder[T] {
+      extends BaseEncoder[T] {
     override def apply(index: Index, value: T, row: PrepareRow, session: Session) =
       encoder.apply(index, value, row, session)
   }

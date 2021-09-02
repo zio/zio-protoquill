@@ -1,7 +1,7 @@
 package io.getquill.postgres
 
 import io.getquill.context.ZioJdbc.Prefix
-import io.getquill.{ PrepareZioJdbcSpecBase, ZioSpec }
+import io.getquill.{PrepareZioJdbcSpecBase, ZioSpec}
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 

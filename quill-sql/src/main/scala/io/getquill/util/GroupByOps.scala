@@ -1,11 +1,10 @@
 package io.getquill.util
 
-
 import scala.reflect.ClassTag
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 import io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}
 import scala.compiletime.erasedValue
-import io.getquill.ast.Visibility.{ Hidden, Visible }
+import io.getquill.ast.Visibility.{Hidden, Visible}
 import scala.deriving._
 import scala.quoted._
 import io.getquill.parser.Lifter

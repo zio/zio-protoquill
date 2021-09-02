@@ -10,14 +10,14 @@ object CommonExtensions:
       def toEitherOr[L](leftValue: L) =
         opt match
           case Some(value) => Right(value)
-          case None => Left(leftValue)
+          case None        => Left(leftValue)
 
     extension [L, R](either: Either[L, R])
       def mapLeft[L1](f: L => L1): Either[L1, R] =
         either.left.map(f)
       def discardLeft(f: L => Nothing): R =
         either match
-          case Left(l) => f(l)
+          case Left(l)      => f(l)
           case Right(value) => value
   end Either
 

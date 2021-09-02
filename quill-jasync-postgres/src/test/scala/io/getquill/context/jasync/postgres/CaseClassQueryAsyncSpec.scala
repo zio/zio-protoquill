@@ -1,6 +1,6 @@
 package io.getquill.context.jasync.postgres
 
-import scala.concurrent.ExecutionContext.Implicits.{ global => ec }
+import scala.concurrent.ExecutionContext.Implicits.{global => ec}
 import io.getquill.context.sql.CaseClassQuerySpec
 import org.scalatest.matchers.should.Matchers._
 import io.getquill._

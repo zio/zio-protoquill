@@ -1,6 +1,6 @@
 package io.getquill.context.jdbc.sqlserver
 
-import io.getquill.{ Literal, Spec, SqlServerJdbcContext }
+import io.getquill.{Literal, Spec, SqlServerJdbcContext}
 import io.getquill._
 
 class JdbcContextSpec extends Spec {
@@ -91,7 +91,8 @@ class JdbcContextSpec extends Spec {
       ctx.run(qr1Emb.insert(lift(TestEntityEmb(Emb("one", 1), 18L, Some(123)))))
       val inserted = ctx.run {
         qr1Emb.insert(lift(TestEntityEmb(Emb("two", 2), 18L, Some(123)))).returning(r =>
-          (r.emb.i, r.o))
+          (r.emb.i, r.o)
+        )
       }
       (2, Some(123)) mustBe inserted
     }

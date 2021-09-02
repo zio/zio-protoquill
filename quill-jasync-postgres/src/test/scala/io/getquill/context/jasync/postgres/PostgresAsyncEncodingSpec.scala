@@ -1,9 +1,9 @@
 package io.getquill.context.jasync.postgres
 
-import java.time.{ LocalDate, LocalDateTime, ZonedDateTime }
+import java.time.{LocalDate, LocalDateTime, ZonedDateTime}
 
 import io.getquill.context.sql.EncodingSpec
-import org.joda.time.{ DateTime => JodaDateTime, LocalDate => JodaLocalDate, LocalDateTime => JodaLocalDateTime }
+import org.joda.time.{DateTime => JodaDateTime, LocalDate => JodaLocalDate, LocalDateTime => JodaLocalDateTime}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Await

@@ -2,13 +2,13 @@ package io.getquill.context
 
 import com.typesafe.config.Config
 import io.getquill.JdbcContextConfig
-import zio.{ Has, Task, ZIO, ZLayer, ZManaged }
+import zio.{Has, Task, ZIO, ZLayer, ZManaged}
 import zio.stream.ZStream
 import io.getquill.util.LoadConfig
 import izumi.reflect.Tag
 
 import java.io.Closeable
-import java.sql.{ Connection, SQLException }
+import java.sql.{Connection, SQLException}
 import javax.sql.DataSource
 
 object ZioJdbc {
@@ -92,30 +92,22 @@ object ZioJdbc {
   }
 
   implicit class QuillZioExt[T](qzio: ZIO[QConnection, Throwable, T]) {
-    /**
-     * Allows the user to specify `Has[DataSource]` instead of `Has[Connection]` for a Quill ZIO value i.e.
-     * Converts:<br>
-     *   `ZIO[QConnection, Throwable, T]` to `ZIO[QDataSource, Throwable, T]` a.k.a.<br>
-     *   `ZIO[Has[Connection] with Blocking, Throwable, T]` to `ZIO[Has[DataSource] with Blocking, Throwable, T]` a.k.a.<br>
-     */
+
+    /** Allows the user to specify `Has[DataSource]` instead of `Has[Connection]` for a Quill ZIO value i.e. Converts:<br> `ZIO[QConnection, Throwable, T]` to `ZIO[QDataSource,
+      * Throwable, T]` a.k.a.<br> `ZIO[Has[Connection] with Blocking, Throwable, T]` to `ZIO[Has[DataSource] with Blocking, Throwable, T]` a.k.a.<br>
+      */
     def dependOnDataSource(): ZIO[QDataSource, SQLException, T] = QConnection.dependOnDataSource(qzio)
 
-    /**
-     * Allows the user to specify JDBC `DataSource` instead of `QConnection` for a Quill ZIO value i.e.
-     * Provides a DataSource object which internally brackets `dataSource.getConnection` and `connection.close()`.
-     * This effectively converts:<br>
-     *   `ZIO[QConnection, Throwable, T]` to `ZIO[Blocking, Throwable, T]` a.k.a.<br>
-     *   `ZIO[Has[Connection] with Blocking, Throwable, T]` to `ZIO[Blocking, Throwable, T]` a.k.a.<br>
-     */
+    /** Allows the user to specify JDBC `DataSource` instead of `QConnection` for a Quill ZIO value i.e. Provides a DataSource object which internally brackets
+      * `dataSource.getConnection` and `connection.close()`. This effectively converts:<br> `ZIO[QConnection, Throwable, T]` to `ZIO[Blocking, Throwable, T]` a.k.a.<br>
+      * `ZIO[Has[Connection] with Blocking, Throwable, T]` to `ZIO[Blocking, Throwable, T]` a.k.a.<br>
+      */
     def provideConnectionFrom(ds: DataSource with Closeable): ZIO[Blocking, SQLException, T] =
       QConnection.provideConnectionFrom(qzio)(ds)
 
-    /**
-     * Allows the user to specify JDBC `Connection` instead of `QConnection` for a Quill ZIO value i.e.
-     * Provides a Connection object which converts:<br>
-     *   `ZIO[QConnection, Throwable, T]` to `ZIO[Blocking, Throwable, T]` a.k.a.<br>
-     *   `ZIO[Has[Connection] with Blocking, Throwable, T]` to `ZIO[Blocking, Throwable, T]` a.k.a.<br>
-     */
+    /** Allows the user to specify JDBC `Connection` instead of `QConnection` for a Quill ZIO value i.e. Provides a Connection object which converts:<br> `ZIO[QConnection,
+      * Throwable, T]` to `ZIO[Blocking, Throwable, T]` a.k.a.<br> `ZIO[Has[Connection] with Blocking, Throwable, T]` to `ZIO[Blocking, Throwable, T]` a.k.a.<br>
+      */
     def provideConnection(conn: Connection): ZIO[Blocking, SQLException, T] =
       QConnection.provideConnection(qzio)(conn)
   }

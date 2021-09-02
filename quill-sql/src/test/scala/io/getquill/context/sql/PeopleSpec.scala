@@ -18,7 +18,7 @@ class PeopleSpecUseCls extends PeopleSpec {
 
     val q = quote { query[Foo].filter(f => !(f.a > f.b)) }
     //println( io.getquill.util.Messages.qprint.apply(q) )
-    println( context.run(q) ) //hello
+    println(context.run(q)) //hello
   }
 }
 

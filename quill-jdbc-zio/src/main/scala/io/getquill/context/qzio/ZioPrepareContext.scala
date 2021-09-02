@@ -8,13 +8,13 @@ import io.getquill.context.RowContext
 import io.getquill.context.ExecutionInfo
 import io.getquill.util.ContextLogger
 import zio.blocking.Blocking
-import zio.{ Has, Task, ZIO }
+import zio.{Has, Task, ZIO}
 
-import java.sql.{ Connection, PreparedStatement, ResultSet, SQLException }
+import java.sql.{Connection, PreparedStatement, ResultSet, SQLException}
 
 trait ZioPrepareContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
-  with PrepareContext[Dialect, Naming]
-  with RowContext {
+    with PrepareContext[Dialect, Naming]
+    with RowContext {
 
   private[getquill] val logger = ContextLogger(classOf[ZioPrepareContext[_, _]])
 

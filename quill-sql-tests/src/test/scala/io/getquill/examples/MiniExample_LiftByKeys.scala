@@ -19,12 +19,12 @@ object MiniExample_LiftByKeys {
   def regularMapProc() = {
     inline def q = quote {
       query[Person].filter(p =>
-        MapFlicer[Person, PrepareRow, Session](p, values, null, (a, b) => (a == b) || (b == (null) ) )
+        MapFlicer[Person, PrepareRow, Session](p, values, null, (a, b) => (a == b) || (b == (null)))
       )
     }
     val r = run(q)
-    println( r.string )
-    println( r.prepareRow.data.toList)
+    println(r.string)
+    println(r.prepareRow.data.toList)
   }
 
   def extensionMapProc() = {
@@ -32,8 +32,8 @@ object MiniExample_LiftByKeys {
       query[Person].filterByKeys(values)
     }
     val r = run(q)
-    println( r.string )
-    println( r.prepareRow.data.toList)
+    println(r.string)
+    println(r.prepareRow.data.toList)
   }
 
   /*
@@ -43,7 +43,7 @@ object MiniExample_LiftByKeys {
      ( p.firstName = [ values.getOrElse("firstName",null) ] OR [ values.getOrElse("firstName",null) ] == null ) AND
      ( p.lastName = [ values.getOrElse("lastName",null) ] OR [ values.getOrElse("lastName",null) ] == null ) AND
      ( p.age = [ values.getOrElse("age",null) ] OR [ values.getOrElse("age",null) == null ] ) AND true
-  */
+   */
 
   def main(args: Array[String]): Unit = {
     regularMapProc()

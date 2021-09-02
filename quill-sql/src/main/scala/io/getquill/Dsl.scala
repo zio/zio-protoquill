@@ -43,7 +43,6 @@ import io.getquill.context.StaticSpliceMacro
 //   export io.getquill.ActionReturning
 // }
 
-
 //export io.getquill.Dsl._
 //export io.getquill.Model._
 implicit val defaultParser: ParserLibrary = ParserLibrary

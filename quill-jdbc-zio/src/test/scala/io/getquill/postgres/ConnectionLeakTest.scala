@@ -1,7 +1,7 @@
 package io.getquill.postgres
 
 import java.util.UUID
-import io.getquill.{ JdbcContextConfig, Literal, PostgresZioJdbcContext, ZioSpec }
+import io.getquill.{JdbcContextConfig, Literal, PostgresZioJdbcContext, ZioSpec}
 import io.getquill.context.sql.ProductSpec
 import io.getquill.context.ZioJdbc.Prefix
 import io.getquill.util.LoadConfig

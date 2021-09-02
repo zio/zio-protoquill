@@ -1,11 +1,11 @@
 package io.getquill.context.jasync.postgres
 
-import com.github.jasync.sql.db.{ QueryResult, ResultSetKt }
+import com.github.jasync.sql.db.{QueryResult, ResultSetKt}
 import io.getquill.ReturnAction.ReturnColumns
 import scala.concurrent.ExecutionContext.Implicits.global
 import io.getquill._
 
-import io.getquill.{ Literal, PostgresJAsyncContext, ReturnAction, Spec }
+import io.getquill.{Literal, PostgresJAsyncContext, ReturnAction, Spec}
 
 class PostgresJAsyncContextSpec extends Spec {
 
@@ -46,8 +46,8 @@ class PostgresJAsyncContextSpec extends Spec {
   "cannot extract" in {
     object ctx extends PostgresJAsyncContext(Literal, "testPostgresDB") {
       override def extractActionResult[O](
-        returningAction:    ReturnAction,
-        returningExtractor: ctx.Extractor[O]
+          returningAction: ReturnAction,
+          returningExtractor: ctx.Extractor[O]
       )(result: QueryResult) =
         super.extractActionResult(returningAction, returningExtractor)(result)
     }

@@ -5,9 +5,8 @@ import io.getquill._
 import io.getquill.QueryDsl._
 
 object MiniExample1_Joes {
-  
-  case class Person(name: String, age: Int)
 
+  case class Person(name: String, age: Int)
 
   def main(args: Array[String]): Unit = {
 
@@ -27,7 +26,7 @@ object MiniExample1_Joes {
       joes(query[Person], false)
     }
 
-    println( run(q1) )
-    println( run(q2) )
+    println(run(q1))
+    println(run(q2))
   }
 }

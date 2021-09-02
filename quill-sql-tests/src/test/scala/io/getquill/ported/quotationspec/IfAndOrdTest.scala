@@ -9,10 +9,10 @@ class IfAndOrdTest extends Spec with TestEntities with Inside {
   extension (ast: Ast)
     def ordering: Ast = ast match
       case f: SortBy => f.ordering
-      case _ => fail("Not a sortby, can't get ordering")
+      case _         => fail("Not a sortby, can't get ordering")
     def body: Ast = ast match
       case f: Function => f.body
-      case _ => fail(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+      case _           => fail(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
 
   "if" - {
     "simple" in {

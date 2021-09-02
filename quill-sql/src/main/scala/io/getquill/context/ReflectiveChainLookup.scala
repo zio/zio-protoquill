@@ -38,8 +38,6 @@ private[getquill] object ReflectivePathChainLookup:
 
   object Lookup:
 
-
-
     // If it's a method on a regular (i.e. dynamic) class. Try to that up
     object Method:
       def unapply(lookup: LookupPath): Option[LookupElement.Value] =
@@ -95,15 +93,15 @@ private[getquill] object ReflectivePathChainLookup:
 
   end Lookup
 
-  import java.lang.reflect.{ Method, Field }
+  import java.lang.reflect.{Method, Field}
   def singleLookup(elem: LookupElement, path: String): Option[LookupElement] =
     LookupPath(elem, path) match
-      case Lookup.Submodule(elem) => Some(elem)
-      case Lookup.Method(elem) => Some(elem)
-      case Lookup.Field(elem) => Some(elem)
+      case Lookup.Submodule(elem)          => Some(elem)
+      case Lookup.Method(elem)             => Some(elem)
+      case Lookup.Field(elem)              => Some(elem)
       case Lookup.HelperObjectMethod(elem) => Some(elem)
-      case Lookup.HelperObjectField(elem) => Some(elem)
-      case _ => None
+      case Lookup.HelperObjectField(elem)  => Some(elem)
+      case _                               => None
 
   def chainLookup(element: LookupElement, paths: List[String])(pathsSeen: List[String] = List()): Either[String, LookupElement] =
     import StringOps._
@@ -117,7 +115,7 @@ private[getquill] object ReflectivePathChainLookup:
           case None =>
             Left(
               s"Could not look up the path `${pathsSeen.dots}[$head]` from the `${element.cls.getName}` ${element.current}.\n" +
-              s"Remaining path: ${paths.mkString(".")}"
+                s"Remaining path: ${paths.mkString(".")}"
             )
 
   def apply(obj: Object, paths: List[String]) =

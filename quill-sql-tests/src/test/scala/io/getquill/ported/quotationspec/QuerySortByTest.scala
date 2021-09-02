@@ -66,7 +66,12 @@ class QuerySortByTest extends Spec with Inside with TestEntities {
         inline def q = quote {
           qr1.sortBy(t => (t.s, t.i))(Ord(Ord.desc, Ord.asc))
         }
-        quote(unquote(q)).ast mustEqual SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))), TupleOrdering(List(Desc, Asc)))
+        quote(unquote(q)).ast mustEqual SortBy(
+          Entity("TestEntity", Nil, TestEntityQuat),
+          Ident("t"),
+          Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))),
+          TupleOrdering(List(Desc, Asc))
+        )
       }
     }
   }

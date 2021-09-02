@@ -3,8 +3,6 @@ package io.getquill
 import scala.language.implicitConversions
 import io.getquill.QuotationLot
 
-
-
 import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.Quoted
 import io.getquill.Planter

@@ -5,7 +5,7 @@ import io.getquill.ast._
 import io.getquill.Quoted
 import io.getquill.customparser.CustomParser
 import io.getquill.customparser.CustomOps
-import io.getquill.{ defaultParser => _, _ }
+import io.getquill.{defaultParser => _, _}
 
 import org.scalatest._
 

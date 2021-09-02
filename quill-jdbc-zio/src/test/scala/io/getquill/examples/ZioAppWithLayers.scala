@@ -3,7 +3,7 @@ package io.getquill.examples
 import io.getquill._
 import io.getquill.context.ZioJdbc._
 import zio.console.putStrLn
-import zio.{ App, ExitCode, URIO }
+import zio.{App, ExitCode, URIO}
 import io.getquill._
 
 object ZioAppWithLayers extends App {

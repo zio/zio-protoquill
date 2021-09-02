@@ -34,13 +34,15 @@ object LoadModule {
         val className =
           optClassSymbol match {
             case Some(value) => value.fullName
-            case None =>
+            case None        =>
               //println(s"${'[$tpe].show} is not a class type. Attempting to load it as a module.")
               if (!loadClassType.termSymbol.moduleClass.isNoSymbol) {
                 loadClassType.termSymbol.moduleClass.fullName
               } else {
                 //println(s"The class ${'[$tpe].show} cannot be loaded because it is either a scala class or module")
-                report.throwError(s"The class ${Format.TypeRepr(loadClassType.widen)} cannot be loaded because it not a static module. Either it is a class or some other dynamic value.")
+                report.throwError(
+                  s"The class ${Format.TypeRepr(loadClassType.widen)} cannot be loaded because it not a static module. Either it is a class or some other dynamic value."
+                )
               }
           }
 
@@ -64,7 +66,7 @@ object LoadModule {
   }
 
   def apply[T: Type](using Quotes): Try[T] = {
-    import quotes.reflect.{ TypeRepr => TTypeRepr, _ }
+    import quotes.reflect.{TypeRepr => TTypeRepr, _}
     val loadClassType = TTypeRepr.of[T]
     val tryLoad = TypeRepr(loadClassType)
     tryLoad.map(_.asInstanceOf[T])
@@ -75,6 +77,6 @@ object LoadModule {
 inline def loadMac[T]: String = ${ loadMacImpl[T] }
 def loadMacImpl[T: Type](using Quotes): Expr[String] = {
   val loaded = LoadModule[T]
-  println( loaded )
+  println(loaded)
   Expr(loaded.toString)
 }

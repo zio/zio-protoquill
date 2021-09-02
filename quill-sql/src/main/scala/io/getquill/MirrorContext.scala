@@ -23,13 +23,13 @@ object MirrorSession {
 }
 
 class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
-extends MirrorContextBase[Dialect, Naming] with AstSplicing
+    extends MirrorContextBase[Dialect, Naming] with AstSplicing
 
 trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
-extends Context[Dialect, Naming]
-with PrepareContext[Dialect, Naming]
-with MirrorDecoders
-with MirrorEncoders { self =>
+    extends Context[Dialect, Naming]
+    with PrepareContext[Dialect, Naming]
+    with MirrorDecoders
+    with MirrorEncoders { self =>
   override type Result[T] = T
   override type RunQueryResult[T] = QueryMirror[T]
   override type RunQuerySingleResult[T] = QueryMirror[T]
@@ -70,7 +70,10 @@ with MirrorEncoders { self =>
   override def executeAction[T](string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext): Result[RunActionResult] =
     ActionMirror(string, prepare(Row(), session)._2, info)
 
-  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: DatasourceContext): Result[RunActionReturningResult[T]] =
+  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(
+      info: ExecutionInfo,
+      dc: DatasourceContext
+  ): Result[RunActionReturningResult[T]] =
     ActionReturningMirror[T](sql, prepare(Row(), session)._2, extractor, returningBehavior, info)
 
   override def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionResult] =
@@ -82,12 +85,16 @@ with MirrorEncoders { self =>
       info
     )
 
-  override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionReturningResult[T]] =
+  override def executeBatchActionReturning[T](
+      groups: List[BatchGroupReturning],
+      extractor: Extractor[T]
+  )(info: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionReturningResult[T]] =
     BatchActionReturningMirror[T](
       groups.map {
         case BatchGroupReturning(string, returningBehavior, prepare) =>
           (string, returningBehavior, prepare.map(_(Row(), session)._2))
-      }, extractor,
+      },
+      extractor,
       info
     )
 

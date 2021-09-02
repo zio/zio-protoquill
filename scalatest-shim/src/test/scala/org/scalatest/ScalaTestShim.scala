@@ -6,7 +6,6 @@ trait BeforeAndAfter
 trait BeforeAndAfterAll
 trait Inside
 
-
 trait Must {
   def execute(any: Any): Unit
 }
@@ -14,9 +13,6 @@ trait Must {
 trait Should {
   def execute(any: Any): Unit
 }
-
-
-
 
 object freespec {
   trait AnyFreeSpec extends ShimExtensions {
@@ -57,7 +53,6 @@ enum AssertThrowsStates:
   case NoException
   case WrongException(e: Throwable)
 
-
 object ScalaTestShim {
   // todo go through classes by name in the classpath, see which ones end with
   // "Test". Instantiate them. The 'in' result call should result with an object
@@ -86,27 +81,27 @@ trait ShimExtensions {
   object compile extends MustNotWord
 
   extension (str: String) {
-    infix def -(any: =>Any) = println(any)
-    infix def in (any: =>Any) = println(any)
+    infix def -(any: => Any) = println(any)
+    infix def in(any: => Any) = println(any)
   }
-  extension [T] (some: Any) {
+  extension [T](some: Any) {
 
     def mustEqual(other: Any) =
       if (some != other) throw new IllegalArgumentException(s"${some} did not match ${other}")
 
     def assertThrows(any: Any)(using tag: scala.reflect.ClassTag[T]) =
       var state = AssertThrowsStates.NoException
-      try { any } catch {
+      try { any }
+      catch {
         case e if (tag.runtimeClass.isAssignableFrom(e.getClass)) =>
           state = AssertThrowsStates.Success
         case other =>
           state = AssertThrowsStates.WrongException(other)
       }
       state match
-        case AssertThrowsStates.NoException => throw new RuntimeException("No exception thrown")
-        case AssertThrowsStates.WrongException(e) =>  throw new RuntimeException(s"Wrong exception thrown: ${e}, expected ${tag.runtimeClass}")
-        case _ => // Otherwise success
-
+        case AssertThrowsStates.NoException       => throw new RuntimeException("No exception thrown")
+        case AssertThrowsStates.WrongException(e) => throw new RuntimeException(s"Wrong exception thrown: ${e}, expected ${tag.runtimeClass}")
+        case _                                    => // Otherwise success
 
     def mustNot(value: MustNotWord) = ???
     def mustBe(other: MustBeWord) = ???
@@ -138,7 +133,7 @@ trait ShimExtensions {
       def execute(any: Any) =
         func.lift(any) match {
           case Some(value) => println("Succeeded!")
-          case None => println(s"The value did not match the pattern")
+          case None        => println(s"The value did not match the pattern")
         }
     }
 }

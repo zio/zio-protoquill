@@ -7,7 +7,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ ReturnAction }
+import io.getquill.{ReturnAction}
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -27,7 +27,6 @@ import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill.generic.DecodingType
 
-
 object SummonDecoderMacro {
   import io.getquill.parser._
   import scala.quoted._ // Expr.summon is actually from here
@@ -40,6 +39,6 @@ object SummonDecoderMacro {
       case None =>
         Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Generic]] match
           case Some(decoder) => decoder
-          case None => report.throwError(s"Cannot Find decoder for ${Type.show[T]}")
+          case None          => report.throwError(s"Cannot Find decoder for ${Type.show[T]}")
   }
 }

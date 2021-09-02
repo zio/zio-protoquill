@@ -2,7 +2,7 @@ package io.getquill.examples
 
 import io.getquill._
 import io.getquill.util.LoadConfig
-import zio.{ App, ExitCode, Task, URIO, ZLayer, ZManaged }
+import zio.{App, ExitCode, Task, URIO, ZLayer, ZManaged}
 import zio.console.putStrLn
 import io.getquill._
 

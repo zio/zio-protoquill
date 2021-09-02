@@ -1,9 +1,9 @@
 package io.getquill.context.jdbc
 
-import java.sql.{ Date, Timestamp, Types }
-import java.time.{ LocalDate, LocalDateTime }
-import java.util.{ Calendar, TimeZone }
-import java.{ sql, util }
+import java.sql.{Date, Timestamp, Types}
+import java.time.{LocalDate, LocalDateTime}
+import java.util.{Calendar, TimeZone}
+import java.{sql, util}
 
 // Needed as an import in Protoquill but not in Scala2 Quill. Not sure why
 import io.getquill.MappedEncoding
@@ -28,10 +28,13 @@ trait Encoders extends EncodingDsl {
   }
 
   def encoder[T](sqlType: Int, f: (Index, T, PrepareRow) => Unit): Encoder[T] =
-    JdbcEncoder(sqlType, (index: Index, value: T, row: PrepareRow, session: Session) => {
-      f(index, value, row)
-      row
-    })
+    JdbcEncoder(
+      sqlType,
+      (index: Index, value: T, row: PrepareRow, session: Session) => {
+        f(index, value, row)
+        row
+      }
+    )
 
   def encoder[T](sqlType: Int, f: PrepareRow => (Index, T) => Unit): Encoder[T] =
     encoder(sqlType, (index: Index, value: T, row: PrepareRow) => f(row)(index, value))
@@ -62,12 +65,21 @@ trait Encoders extends EncodingDsl {
   implicit val doubleEncoder: Encoder[Double] = encoder(Types.DOUBLE, _.setDouble)
   implicit val byteArrayEncoder: Encoder[Array[Byte]] = encoder(Types.VARBINARY, _.setBytes)
   implicit val dateEncoder: Encoder[util.Date] =
-    encoder(Types.TIMESTAMP, (index, value, row) =>
-      row.setTimestamp(index, new sql.Timestamp(value.getTime), Calendar.getInstance(dateTimeZone)))
+    encoder(
+      Types.TIMESTAMP,
+      (index, value, row) =>
+        row.setTimestamp(index, new sql.Timestamp(value.getTime), Calendar.getInstance(dateTimeZone))
+    )
   implicit val localDateEncoder: Encoder[LocalDate] =
-    encoder(Types.DATE, (index, value, row) =>
-      row.setDate(index, Date.valueOf(value), Calendar.getInstance(dateTimeZone)))
+    encoder(
+      Types.DATE,
+      (index, value, row) =>
+        row.setDate(index, Date.valueOf(value), Calendar.getInstance(dateTimeZone))
+    )
   implicit val localDateTimeEncoder: Encoder[LocalDateTime] =
-    encoder(Types.TIMESTAMP, (index, value, row) =>
-      row.setTimestamp(index, Timestamp.valueOf(value), Calendar.getInstance(dateTimeZone)))
+    encoder(
+      Types.TIMESTAMP,
+      (index, value, row) =>
+        row.setTimestamp(index, Timestamp.valueOf(value), Calendar.getInstance(dateTimeZone))
+    )
 }

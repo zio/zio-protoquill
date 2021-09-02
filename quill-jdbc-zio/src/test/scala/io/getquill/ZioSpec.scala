@@ -3,8 +3,8 @@ package io.getquill
 import io.getquill.context.ZioJdbc._
 import io.getquill.util.LoadConfig
 import org.scalatest.BeforeAndAfterAll
-import zio.{ Runtime, ZIO }
-import zio.stream.{ Sink, ZStream }
+import zio.{Runtime, ZIO}
+import zio.stream.{Sink, ZStream}
 
 import java.io.Closeable
 import javax.sql.DataSource

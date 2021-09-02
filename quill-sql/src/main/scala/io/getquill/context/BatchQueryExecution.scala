@@ -7,7 +7,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ ReturnAction }
+import io.getquill.{ReturnAction}
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -64,10 +64,10 @@ private[getquill] enum BatchActionType:
 private[getquill] object ActionEntity:
   def unapply(actionAst: Ast): Option[BatchActionType] =
     actionAst match
-      case ast.Insert(entity, _) => Some(BatchActionType.Insert)
+      case ast.Insert(entity, _)           => Some(BatchActionType.Insert)
       case ast.Update(entity, assignments) => Some(BatchActionType.Update)
-      case ast.Delete(entity) => Some(BatchActionType.Delete)
-      case _ => None
+      case ast.Delete(entity)              => Some(BatchActionType.Delete)
+      case _                               => None
 
 object PrepareBatchComponents:
   import Execution._
@@ -94,14 +94,13 @@ object PrepareBatchComponents:
             // TODO In the actionQueryAst should we make sure to verify that an Entity exists?
             case Foreach(_, foreachIdent, actionQueryAst @ ReturningAction(ActionEntity(bType), id, body)) =>
               actionQueryAst match
-                case _: Returning =>           Right(foreachIdent, actionQueryAst, bType)
-                case _: ReturningGenerated =>  Right(foreachIdent, actionQueryAst, bType)
+                case _: Returning          => Right(foreachIdent, actionQueryAst, bType)
+                case _: ReturningGenerated => Right(foreachIdent, actionQueryAst, bType)
             case other =>
               Left(s"Malformed batch entity: ${other}. Batch insertion entities must have the form Returning/ReturningGenerated(Insert(Entity, Nil: List[Assignment]), _, _)")
 
-
     // (continue to beta-reduce out the foreach-ident if an error has not happened)
-    componentsOrError.map{ (foreachIdent, actionQueryAstRaw, bType) =>
+    componentsOrError.map { (foreachIdent, actionQueryAstRaw, bType) =>
       // The primary idea that drives batch query execution is the realization that you
       // can beta reduce out the foreach identifier replacing it with lift tags.
       // For example if we have something like:
@@ -120,14 +119,13 @@ object PrepareBatchComponents:
   }
 end PrepareBatchComponents
 
-
 object BatchQueryExecutionModel:
   import Execution._
   type BatchExtractBehavior = ExtractBehavior.Skip.type | ExtractBehavior.ExtractWithReturnAction.type
   given ToExpr[BatchExtractBehavior] with
     def apply(behavior: BatchExtractBehavior)(using Quotes): Expr[BatchExtractBehavior] =
       behavior match
-        case _: ExtractBehavior.Skip.type => '{ ExtractBehavior.Skip }
+        case _: ExtractBehavior.Skip.type                    => '{ ExtractBehavior.Skip }
         case _: ExtractBehavior.ExtractWithReturnAction.type => '{ ExtractBehavior.ExtractWithReturnAction }
 
 object DynamicBatchQueryExecution:
@@ -135,24 +133,24 @@ object DynamicBatchQueryExecution:
   import PrepareDynamicExecution._
 
   def apply[
-    I,
-    T,
-    A <: QAC[I, T] & Action[I],
-    ResultRow,
-    PrepareRow,
-    Session,
-    D <: Idiom,
-    N <: NamingStrategy,
-    Res
+      I,
+      T,
+      A <: QAC[I, T] & Action[I],
+      ResultRow,
+      PrepareRow,
+      Session,
+      D <: Idiom,
+      N <: NamingStrategy,
+      Res
   ](
-    quotedRaw: Quoted[BatchAction[A]],
-    batchContextOperation: BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res],
-    caseClassAst: ast.CaseClass,
-    // These are computed based on the insertion-type I which is calculated before, not from quotedRaw
-    // (i.e. note that to get lifts from QuotedRaw we need to go through runtimeQuotes of each quote recursively so it wouldn't be possible to know that anyway for a dynamic query during compile-time)
-    perRowLifts: List[Planter[_, _, _]],
-    extractionBehavior: BatchExtractBehavior,
-    rawExtractor: Extraction[ResultRow, Session, T]
+      quotedRaw: Quoted[BatchAction[A]],
+      batchContextOperation: BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res],
+      caseClassAst: ast.CaseClass,
+      // These are computed based on the insertion-type I which is calculated before, not from quotedRaw
+      // (i.e. note that to get lifts from QuotedRaw we need to go through runtimeQuotes of each quote recursively so it wouldn't be possible to know that anyway for a dynamic query during compile-time)
+      perRowLifts: List[Planter[_, _, _]],
+      extractionBehavior: BatchExtractBehavior,
+      rawExtractor: Extraction[ResultRow, Session, T]
   ) = {
     // since real quotation could possibly be nested, need to get all splice all quotes and get all lifts in all runtimeQuote sections first
     val ast = spliceQuotations(quotedRaw)
@@ -211,20 +209,19 @@ object DynamicBatchQueryExecution:
 
 object BatchQueryExecution:
   import Execution._
-  import BatchQueryExecutionModel.{ _, given }
+  import BatchQueryExecutionModel.{_, given}
 
   private[getquill] class RunQuery[
-    I: Type,
-    T: Type,
-    A <: QAC[I, T] & Action[I]: Type,
-    ResultRow: Type,
-    PrepareRow: Type,
-    Session: Type,
-    D <: Idiom: Type,
-    N <: NamingStrategy: Type,
-    Res: Type
-  ](quotedRaw: Expr[Quoted[BatchAction[A]]],
-    batchContextOperation: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]])(using val qctx: Quotes):
+      I: Type,
+      T: Type,
+      A <: QAC[I, T] & Action[I]: Type,
+      ResultRow: Type,
+      PrepareRow: Type,
+      Session: Type,
+      D <: Idiom: Type,
+      N <: NamingStrategy: Type,
+      Res: Type
+  ](quotedRaw: Expr[Quoted[BatchAction[A]]], batchContextOperation: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]])(using val qctx: Quotes):
     import quotes.reflect._
 
     def extractionBehavior: BatchExtractBehavior =
@@ -261,18 +258,16 @@ object BatchQueryExecution:
       (caseClassAst, perRowLifts)
     end prepareLifts
 
-    /**
-     * (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p))
-     * Create a quotation with the elaborated entity
-     * e.g. given    liftQuery(people).foreach(p => query[Person].insert[Person](p))
-     * then create a liftQuery(people).foreach(p => query[Person].insert[Person](_.name -> lift(p.name), _.age -> lift(p.age)))
-     */
+    /** (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insert(p)) Create a quotation with the elaborated entity e.g.
+      * given liftQuery(people).foreach(p => query[Person].insert[Person](p)) then create a liftQuery(people).foreach(p => query[Person].insert[Person](_.name -> lift(p.name),
+      * _.age -> lift(p.age)))
+      */
     def expandQuotation(actionQueryAstExpr: Expr[Ast], batchActionType: BatchActionType, perRowLifts: List[Expr[InjectableEagerPlanter[_, PrepareRow, Session]]]) =
       batchActionType match
-        case BatchActionType.Insert => '{ Quoted[Insert[I]]($actionQueryAstExpr, ${Expr.ofList(perRowLifts)}, Nil) }
-        case BatchActionType.Update => '{ Quoted[Update[I]]($actionQueryAstExpr, ${Expr.ofList(perRowLifts)}, Nil) }
+        case BatchActionType.Insert => '{ Quoted[Insert[I]]($actionQueryAstExpr, ${ Expr.ofList(perRowLifts) }, Nil) }
+        case BatchActionType.Update => '{ Quoted[Update[I]]($actionQueryAstExpr, ${ Expr.ofList(perRowLifts) }, Nil) }
         // We need lifts for 'Delete' because it could have a WHERE clause
-        case BatchActionType.Delete => '{ Quoted[Delete[I]]($actionQueryAstExpr, ${Expr.ofList(perRowLifts)}, Nil) }
+        case BatchActionType.Delete => '{ Quoted[Delete[I]]($actionQueryAstExpr, ${ Expr.ofList(perRowLifts) }, Nil) }
 
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
 
@@ -283,17 +278,18 @@ object BatchQueryExecution:
       val extractionBehaviorExpr = Expr(extractionBehavior)
       val extractor = MakeExtractor[ResultRow, Session, T, T].dynamic(identityConverter, extractionBehavior)
 
-      '{ DynamicBatchQueryExecution.apply[I, T, A, ResultRow, PrepareRow, Session, D, N,Res](
-        $quotedRaw,
-        $batchContextOperation,
-        $caseClassExpr,
-        $perRowLiftsExpr,
-        $extractionBehaviorExpr,
-        $extractor
-      ) }
+      '{
+        DynamicBatchQueryExecution.apply[I, T, A, ResultRow, PrepareRow, Session, D, N, Res](
+          $quotedRaw,
+          $batchContextOperation,
+          $caseClassExpr,
+          $perRowLiftsExpr,
+          $extractionBehaviorExpr,
+          $extractor
+        )
+      }
 
     end applyDynamic
-
 
     def apply(): Expr[Res] =
       UntypeExpr(quoted) match
@@ -302,7 +298,7 @@ object BatchQueryExecution:
           val entities =
             planters match
               case List(EagerEntitiesPlanterExpr(_, entities)) => entities
-              case _ => report.throwError(s"Invalid liftQuery clause: ${planters}. Must be a single EagerEntitiesPlanter", quoted)
+              case _                                           => report.throwError(s"Invalid liftQuery clause: ${planters}. Must be a single EagerEntitiesPlanter", quoted)
 
           val unliftedAst = Unlifter(quoteAst)
           // for Person(name, age) it would be (CaseClass(name->lift(A), age->lift(B), List(InjectableEagerLift(A), InjectableEagerLift(B))))
@@ -321,23 +317,27 @@ object BatchQueryExecution:
               val extractor = MakeExtractor[ResultRow, Session, T, T].static(state, identityConverter, extractionBehavior)
 
               val prepares =
-                '{ $entities.map(entity => ${
-                  // Since things like returningGenerated can exclude lifts...
-                  //   For example:
-                  //   query[Person].insert(_.id -> lift(1), _.name -> lift("Joe")).returningGenerated(_.id))
-                  //   becomes something like Quoted(query[Person].insert(_.id -> lift(A), _.name -> lift(B)).returningGenerated(_.id)), lifts: List(ScalarTag(A, 1), ScalarTag(B, "Joe")))
-                  //   but since we are excluding the person.id column (this is done in the transformation phase NormalizeReturning which is in SqlNormalization in the quill-sql-portable module)
-                  //   actually we only want only the ScalarTag(B) so we need to get the list of lift tags (in tokens) once the Dialect has serialized the query
-                  //   which correctly order the list of lifts. A similar issue happens with insertMeta and updateMeta.
-                  // we need a pre-filtered, and ordered list of lifts. The StaticTranslationMacro interanally has done that so we can take the lifts from there although they need to be casted.
-                  // This is safe because they are just the lifts taht we have already had from the `injectableLifts` list
-                  // TODO If all the lists are not InjectableEagerPlanterExpr, then we need to find out which ones are not and not inject them
-                  val injectedLifts = filteredPerRowLifts.asInstanceOf[List[InjectableEagerPlanterExpr[_, _, _]]].map(lift => lift.inject('entity))
-                  val injectedLiftsExpr = Expr.ofList(injectedLifts)
-                  val prepare = '{ (row: PrepareRow, session: Session) => LiftsExtractor.apply[PrepareRow, Session]($injectedLiftsExpr, row, session) }
-                  prepare
-                }) }
-              '{ $batchContextOperation.execute(${Expr(query.basicQuery)}, $prepares.toList, $extractor, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)})) }
+                '{
+                  $entities.map(entity =>
+                    ${
+                      // Since things like returningGenerated can exclude lifts...
+                      //   For example:
+                      //   query[Person].insert(_.id -> lift(1), _.name -> lift("Joe")).returningGenerated(_.id))
+                      //   becomes something like Quoted(query[Person].insert(_.id -> lift(A), _.name -> lift(B)).returningGenerated(_.id)), lifts: List(ScalarTag(A, 1), ScalarTag(B, "Joe")))
+                      //   but since we are excluding the person.id column (this is done in the transformation phase NormalizeReturning which is in SqlNormalization in the quill-sql-portable module)
+                      //   actually we only want only the ScalarTag(B) so we need to get the list of lift tags (in tokens) once the Dialect has serialized the query
+                      //   which correctly order the list of lifts. A similar issue happens with insertMeta and updateMeta.
+                      // we need a pre-filtered, and ordered list of lifts. The StaticTranslationMacro interanally has done that so we can take the lifts from there although they need to be casted.
+                      // This is safe because they are just the lifts taht we have already had from the `injectableLifts` list
+                      // TODO If all the lists are not InjectableEagerPlanterExpr, then we need to find out which ones are not and not inject them
+                      val injectedLifts = filteredPerRowLifts.asInstanceOf[List[InjectableEagerPlanterExpr[_, _, _]]].map(lift => lift.inject('entity))
+                      val injectedLiftsExpr = Expr.ofList(injectedLifts)
+                      val prepare = '{ (row: PrepareRow, session: Session) => LiftsExtractor.apply[PrepareRow, Session]($injectedLiftsExpr, row, session) }
+                      prepare
+                    }
+                  )
+                }
+              '{ $batchContextOperation.execute(${ Expr(query.basicQuery) }, $prepares.toList, $extractor, ExecutionInfo(ExecutionType.Static, ${ Lifter(state.ast) })) }
 
             case None =>
               report.warning(s"Could not create static state from the query: ${Format.Expr(expandedQuotation)}")
@@ -351,30 +351,29 @@ object BatchQueryExecution:
   end RunQuery
 
   inline def apply[
-    I,
-    T,
-    A <: QAC[I, T] with Action[I],
-    ResultRow,
-    PrepareRow,
-    Session,
-    D <: Idiom,
-    N <: NamingStrategy,
-    Res
+      I,
+      T,
+      A <: QAC[I, T] with Action[I],
+      ResultRow,
+      PrepareRow,
+      Session,
+      D <: Idiom,
+      N <: NamingStrategy,
+      Res
   ](inline quoted: Quoted[BatchAction[A]], ctx: BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]) =
     ${ applyImpl[I, T, A, ResultRow, PrepareRow, Session, D, N, Res]('quoted, 'ctx) }
 
   def applyImpl[
-    I: Type,
-    T: Type,
-    A <: QAC[I, T] with Action[I]: Type,
-    ResultRow: Type,
-    PrepareRow: Type,
-    Session: Type,
-    D <: Idiom: Type,
-    N <: NamingStrategy: Type,
-    Res: Type
-  ](quoted: Expr[Quoted[BatchAction[A]]],
-    ctx: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]])(using qctx: Quotes): Expr[Res] =
+      I: Type,
+      T: Type,
+      A <: QAC[I, T] with Action[I]: Type,
+      ResultRow: Type,
+      PrepareRow: Type,
+      Session: Type,
+      D <: Idiom: Type,
+      N <: NamingStrategy: Type,
+      Res: Type
+  ](quoted: Expr[Quoted[BatchAction[A]]], ctx: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]])(using qctx: Quotes): Expr[Res] =
     new RunQuery[I, T, A, ResultRow, PrepareRow, Session, D, N, Res](quoted, ctx).apply()
 
 end BatchQueryExecution

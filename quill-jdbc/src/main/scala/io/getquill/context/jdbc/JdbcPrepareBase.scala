@@ -1,15 +1,15 @@
 package io.getquill.context.jdbc
 
-import java.sql.{ Connection, PreparedStatement }
+import java.sql.{Connection, PreparedStatement}
 
 import io.getquill.NamingStrategy
 import io.getquill.context.sql.idiom.SqlIdiom
-import io.getquill.context.{ Context, ContextEffect }
+import io.getquill.context.{Context, ContextEffect}
 import io.getquill.util.ContextLogger
 
 // NOTE: Prepare context macros not defined in Dotty-Quill yet. This is not used
 trait JdbcPrepareBase[Dialect <: SqlIdiom, Naming <: NamingStrategy]
-  extends Context[Dialect, Naming] {
+    extends Context[Dialect, Naming] {
 
   private[getquill] val logger = ContextLogger(classOf[JdbcPrepareBase[_, _]])
 

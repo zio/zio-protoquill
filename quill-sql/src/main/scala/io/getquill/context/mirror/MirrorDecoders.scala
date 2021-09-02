@@ -30,7 +30,8 @@ trait MirrorDecoders extends EncodingDsl {
       row[Option[Any]](index) match {
         case Some(v) => Some(d(0, Row.fromList(v), session))
         case None    => None
-      })
+      }
+    )
 
   implicit val stringDecoder: Decoder[String] = decoder[String]
   implicit val bigDecimalDecoder: Decoder[BigDecimal] = decoder[BigDecimal]

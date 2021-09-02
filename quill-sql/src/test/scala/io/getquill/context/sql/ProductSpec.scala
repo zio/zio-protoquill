@@ -37,6 +37,6 @@ trait ProductSpec extends Spec {
   )
 
   inline def productSingleInsert = quote {
-   product.insert(_.id -> 0, _.description -> "Window", _.sku -> 1004L).returningGenerated(_.id)
+    product.insert(_.id -> 0, _.description -> "Window", _.sku -> 1004L).returningGenerated(_.id)
   }
 }

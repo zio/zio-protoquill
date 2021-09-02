@@ -1,6 +1,6 @@
 package io.getquill.context.jdbc.oracle
 
-import io.getquill.context.sql.{ EncodingSpec, EncodingTestType }
+import io.getquill.context.sql.{EncodingSpec, EncodingTestType}
 import io.getquill.Query
 import io.getquill._
 
@@ -29,9 +29,8 @@ class JdbcEncodingSpec extends EncodingSpec {
   def emptyAsNull(str: String) = if (str == "") null else str
   def emptyAsNull(bytes: Array[Byte]) = if (bytes == null || bytes.isEmpty) null else bytes
 
-  /**
-   * Since oracle encodes "" as null, need to modify verification in order to track this
-   */
+  /** Since oracle encodes "" as null, need to modify verification in order to track this
+    */
   override def verify(result: List[EncodingTestEntity]) = {
     result.size mustEqual insertValues.size
     result.zip(insertValues).foreach {

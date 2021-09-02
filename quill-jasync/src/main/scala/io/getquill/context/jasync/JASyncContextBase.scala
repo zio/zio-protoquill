@@ -9,11 +9,11 @@ import io.getquill.context.DatasourceContextInjection
 import scala.concurrent.ExecutionContext
 
 trait JAsyncContextBase[D <: SqlIdiom, N <: NamingStrategy]
-  extends Context[D, N]
-  //with TranslateContext
-  with SqlContext[D, N]
-  with Decoders
-  with Encoders {
+    extends Context[D, N]
+    //with TranslateContext
+    with SqlContext[D, N]
+    with Decoders
+    with Encoders {
 
   override type PrepareRow = Seq[Any]
   override type ResultRow = RowData

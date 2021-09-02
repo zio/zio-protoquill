@@ -1,6 +1,6 @@
 package io.getquill.context.sql
 
-import io.getquill.{ Literal, MirrorSqlDialect, Spec, SqlMirrorContext }
+import io.getquill.{Literal, MirrorSqlDialect, Spec, SqlMirrorContext}
 import io.getquill.context.sql.util.StringOps._
 import io.getquill._
 

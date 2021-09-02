@@ -17,6 +17,7 @@ object SummonParser:
           case '[t] =>
             LoadModule[t] match
               case Success(parser) => parser.asInstanceOf[ParserFactory]
-              case Failure(e) => report.throwError(s"Could not summon a parser of type ${Format.TypeOf[t]}. A parser must be a static object created in it's own compilation unit. ${e}")
+              case Failure(e) =>
+                report.throwError(s"Could not summon a parser of type ${Format.TypeOf[t]}. A parser must be a static object created in it's own compilation unit. ${e}")
       case None =>
         report.throwError("Could not summon a parser factory")

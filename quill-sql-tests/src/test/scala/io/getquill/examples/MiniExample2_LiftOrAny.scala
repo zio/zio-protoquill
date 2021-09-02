@@ -5,7 +5,7 @@ import io.getquill._
 import io.getquill.QueryDsl._
 
 object MiniExample2_LiftOrAny {
-  
+
   case class Person(name: String, age: Int)
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
@@ -20,7 +20,7 @@ object MiniExample2_LiftOrAny {
       query[Person].filter(p => liftOrAny(p.name, runtimeValue))
     }
 
-    println( run(q) )
+    println(run(q))
   }
 
   def usingEqual() = {
@@ -32,7 +32,7 @@ object MiniExample2_LiftOrAny {
       query[Person].filter(p => liftOrAny(p.name, runtimeValue))
     }
 
-    println( run(q) )
+    println(run(q))
   }
 
   def main(args: Array[String]): Unit = {

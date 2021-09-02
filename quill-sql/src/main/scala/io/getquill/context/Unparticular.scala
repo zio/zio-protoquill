@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ ReturnAction }
+import io.getquill.{ReturnAction}
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -17,18 +17,16 @@ import io.getquill.Planter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import io.getquill.idiom.Idiom
-import io.getquill.ast.{ Transform, QuotationTag }
+import io.getquill.ast.{Transform, QuotationTag}
 import io.getquill.QuotationLot
 import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
-import io.getquill.ast.{ Query => AQuery, _ }
+import io.getquill.ast.{Query => AQuery, _}
 import scala.util.{Success, Failure}
 import io.getquill.idiom.Statement
 import io.getquill.QAC
 import io.getquill.NamingStrategy
-
-
 
 object Unparticular:
   import io.getquill.ast._
@@ -37,16 +35,11 @@ object Unparticular:
   import scala.annotation.tailrec
   import io.getquill.idiom._
 
-  /** 
-   * Query with potentially non enumerate liftQuery(...) statements where set operations
-   * that look like this: `query[Person].filter(p => liftQuery(scalars).contains(p.name))`
-   * will look like this "WHERE p.name in (?)" (this is the basicQuery). 
-   * This last "?" actually needs to be expanded
-   * into a comma separated list coming from the lifted list which is actualy Expr[List[T]]
-   * but that will be done in the Particularizee(r). The `realQuery` is a tokenized representation
-   * of the query that can be turned into what it actually will need to look like by the
-   * Particularize(r)
-   */
+  /** Query with potentially non enumerate liftQuery(...) statements where set operations that look like this: `query[Person].filter(p => liftQuery(scalars).contains(p.name))` will
+    * look like this "WHERE p.name in (?)" (this is the basicQuery). This last "?" actually needs to be expanded into a comma separated list coming from the lifted list which is
+    * actualy Expr[List[T]] but that will be done in the Particularizee(r). The `realQuery` is a tokenized representation of the query that can be turned into what it actually will
+    * need to look like by the Particularize(r)
+    */
   case class Query(basicQuery: String, realQuery: Statement)
   object Query:
     def fromStatement(stmt: Statement, liftingPlaceholder: Int => String) =
@@ -59,10 +52,10 @@ object Unparticular:
   private def token2string(token: Token, liftingPlaceholder: Int => String): (String, List[External]) = {
     @tailrec
     def apply(
-      workList:      List[Token],
-      sqlResult:     Seq[String],
-      liftingResult: Seq[External],
-      liftingSize:   Int
+        workList: List[Token],
+        sqlResult: Seq[String],
+        liftingResult: Seq[External],
+        liftingSize: Int
     ): (String, List[External]) = workList match {
       case Nil => sqlResult.reverse.mkString("") -> liftingResult.reverse.toList
       case head :: tail =>
@@ -80,6 +73,5 @@ object Unparticular:
 
     apply(List(token), Seq(), Seq(), 0)
   }
-
 
 end Unparticular

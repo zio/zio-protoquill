@@ -1,13 +1,13 @@
 package io.getquill.context.jasync
 
 import java.nio.charset.Charset
-import java.lang.{ Long => JavaLong }
+import java.lang.{Long => JavaLong}
 
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 import com.github.jasync.sql.db.ConcreteConnection
-import com.github.jasync.sql.db.{ ConnectionPoolConfiguration, ConnectionPoolConfigurationBuilder }
+import com.github.jasync.sql.db.{ConnectionPoolConfiguration, ConnectionPoolConfigurationBuilder}
 import com.github.jasync.sql.db.pool.ConnectionPool
 import com.github.jasync.sql.db.Configuration
 import com.github.jasync.sql.db.SSLConfiguration
@@ -16,9 +16,9 @@ import com.github.jasync.sql.db.util.AbstractURIParser
 import com.typesafe.config.Config
 
 abstract class JAsyncContextConfig[C <: ConcreteConnection](
-  config:            Config,
-  connectionFactory: Configuration => ObjectFactory[C],
-  uriParser:         AbstractURIParser
+    config: Config,
+    connectionFactory: Configuration => ObjectFactory[C],
+    uriParser: AbstractURIParser
 ) {
 
   private def getValue[T](path: String, getter: String => T) = Try(getter(path))
@@ -54,8 +54,8 @@ abstract class JAsyncContextConfig[C <: ConcreteConnection](
         "sslmode" -> getString("sslmode"),
         "sslrootcert" -> getString("sslrootcert")
       ).collect {
-          case (key, Some(value)) => key -> value
-        }.asJava
+        case (key, Some(value)) => key -> value
+      }.asJava
     ),
     Try(Charset.forName(config.getString("charset"))).getOrElse(urlConfiguration.getCharset),
     getInt("maximumMessageSize").getOrElse(urlConfiguration.getMaximumMessageSize),

@@ -1,6 +1,6 @@
 package io.getquill.examples
 
-import io.getquill.{ Literal, PostgresZioJdbcContext }
+import io.getquill.{Literal, PostgresZioJdbcContext}
 import io.getquill.context.ZioJdbc.QDataSource
 import zio.console.putStrLn
 import zio.Runtime

@@ -4,7 +4,6 @@ import scala.language.implicitConversions
 
 import io.getquill.Quoted
 
-
 import io.getquill.ast._
 import io.getquill.QuotationLot
 import io.getquill.QuotationVase
@@ -35,7 +34,7 @@ object GenericDecoderCoproductTestAdditional {
 
   case class MyResult(values: (String, Any)*) {
     lazy val list = LinkedHashMap[String, Any](values.toList: _*)
-    def get(i: Int): String = list.values.toList(i-1).toString
+    def get(i: Int): String = list.values.toList(i - 1).toString
     def get(key: String): String = list.apply(key).toString
     def resolve(key: String): Int = list.keysIterator.toList.indexOf(key) + 1
   }

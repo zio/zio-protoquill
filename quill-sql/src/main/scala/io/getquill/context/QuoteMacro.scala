@@ -14,7 +14,6 @@ import io.getquill.metaprog.Pointable
 import io.getquill.Quoted
 import io.getquill.metaprog.SummonParser
 
-
 object ExtractLifts {
   // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
   // appearing in the AST in multiple places.
@@ -73,6 +72,6 @@ object QuoteMacro {
 
     // Extract runtime quotes and lifts
     val (lifts, pluckedUnquotes) = ExtractLifts(bodyRaw)
-    '{ Quoted[T](${reifiedAst}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
+    '{ Quoted[T](${ reifiedAst }, ${ Expr.ofList(lifts) }, ${ Expr.ofList(pluckedUnquotes) }) }
   }
 }

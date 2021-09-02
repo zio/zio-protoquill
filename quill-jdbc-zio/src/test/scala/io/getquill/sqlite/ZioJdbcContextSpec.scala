@@ -2,7 +2,7 @@ package io.getquill.sqlite
 
 import io.getquill.ZioSpec
 import io.getquill.context.ZioJdbc.Prefix
-import zio.{ Task, ZIO }
+import zio.{Task, ZIO}
 import io.getquill._
 
 class ZioJdbcContextSpec extends ZioSpec {

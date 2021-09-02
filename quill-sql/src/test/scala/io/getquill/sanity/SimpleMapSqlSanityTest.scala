@@ -23,7 +23,7 @@ class SimpleMapSqlSanityTest extends Spec {
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
     val output = ctx.run(qq).string
-     output mustEqual """SELECT p.name FROM SanePerson p"""
+    output mustEqual """SELECT p.name FROM SanePerson p"""
   }
 
 }

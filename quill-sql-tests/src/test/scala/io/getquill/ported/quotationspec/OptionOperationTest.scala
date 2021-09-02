@@ -124,16 +124,14 @@ class OptionOperationTest extends Spec with Inside {
         inline def q = quote {
           (o: Option[Row]) => o.exists(v => v.id == 4)
         }
-        quote(unquote(q)).ast.asFunction.body mustEqual OptionTableExists(Ident("o"), Ident("v"),
-          Property(Ident("v"), "id") +==+ Constant.auto(4))
+        quote(unquote(q)).ast.asFunction.body mustEqual OptionTableExists(Ident("o"), Ident("v"), Property(Ident("v"), "id") +==+ Constant.auto(4))
       }
       "embedded" in {
         case class EmbeddedEntity(id: Int) extends Embedded
         inline def q = quote {
           (o: Option[EmbeddedEntity]) => o.exists(v => v.id == 1)
         }
-        quote(unquote(q)).ast.asFunction.body mustEqual OptionTableExists(Ident("o"), Ident("v"),
-          Property(Ident("v"), "id") +==+ Constant.auto(1))
+        quote(unquote(q)).ast.asFunction.body mustEqual OptionTableExists(Ident("o"), Ident("v"), Property(Ident("v"), "id") +==+ Constant.auto(1))
       }
     }
     "contains" in {

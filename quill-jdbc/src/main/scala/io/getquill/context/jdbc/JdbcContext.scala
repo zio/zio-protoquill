@@ -1,21 +1,21 @@
 package io.getquill.context.jdbc
 
 import java.io.Closeable
-import java.sql.{ Connection, PreparedStatement }
+import java.sql.{Connection, PreparedStatement}
 
 import javax.sql.DataSource
 import io.getquill.context.sql.idiom.SqlIdiom
-import io.getquill.{ NamingStrategy, ReturnAction }
-import io.getquill.context.{ ContextEffect }
+import io.getquill.{NamingStrategy, ReturnAction}
+import io.getquill.context.{ContextEffect}
 
-import scala.util.{ DynamicVariable, Try }
+import scala.util.{DynamicVariable, Try}
 import scala.util.control.NonFatal
 import io.getquill.context.ExecutionInfo
 
 abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
-  extends JdbcContextBase[Dialect, Naming]
-  //with TranslateContext // Not defined for Dotty Quill Yet
-{
+    extends JdbcContextBase[Dialect, Naming]
+    //with TranslateContext // Not defined for Dotty Quill Yet
+    {
 
   val dataSource: DataSource with Closeable
 
@@ -36,16 +36,22 @@ abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   // In Scala2 needed explicit typing here due to scala/bug#8356. Need to check if this is still needed.
   override def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): Long =
     super.executeAction(sql, prepare)(executionInfo, dc)
-  override def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): List[T] =
+  override def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(
+      executionInfo: ExecutionInfo,
+      dc: DatasourceContext
+  ): List[T] =
     super.executeQuery(sql, prepare, extractor)(executionInfo, dc)
   // override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor): T =
   //   super.executeQuerySingle(sql, prepare, extractor)
-  override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, dc: DatasourceContext): O =
+  override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(
+      executionInfo: ExecutionInfo,
+      dc: DatasourceContext
+  ): O =
     super.executeActionReturning(sql, prepare, extractor, returningBehavior)(executionInfo, dc)
   override def executeBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: DatasourceContext): List[Long] =
     super.executeBatchAction(groups)(executionInfo, dc)
   override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: DatasourceContext): List[T] =
-   super.executeBatchActionReturning(groups, extractor)(executionInfo, dc)
+    super.executeBatchActionReturning(groups, extractor)(executionInfo, dc)
 
   protected val currentConnection = new DynamicVariable[Option[Connection]](None)
 

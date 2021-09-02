@@ -1,6 +1,6 @@
 package io.getquill.context.jasync
 
-import java.math.{ BigDecimal => JavaBigDecimal }
+import java.math.{BigDecimal => JavaBigDecimal}
 import java.time._
 import java.util.Date
 import com.github.jasync.sql.db.RowData
@@ -9,9 +9,9 @@ import com.github.jasync.sql.db.RowData
 import io.getquill.MappedEncoding
 
 import io.getquill.util.Messages.fail
-import org.joda.time.{ DateTime => JodaDateTime, LocalDate => JodaLocalDate, LocalTime => JodaLocalTime, LocalDateTime => JodaLocalDateTime }
+import org.joda.time.{DateTime => JodaDateTime, LocalDate => JodaLocalDate, LocalTime => JodaLocalTime, LocalDateTime => JodaLocalDateTime}
 
-import scala.reflect.{ ClassTag, classTag }
+import scala.reflect.{ClassTag, classTag}
 
 trait Decoders {
   this: JAsyncContextBase[_, _] =>
@@ -24,14 +24,14 @@ trait Decoders {
   type DecoderSqlType = SqlTypes.SqlTypes
 
   case class AsyncDecoder[T](sqlType: DecoderSqlType)(implicit decoder: BaseDecoder[T])
-    extends BaseDecoder[T] {
+      extends BaseDecoder[T] {
     override def apply(index: Index, row: ResultRow, session: Session) =
       decoder(index, row, session)
   }
 
   def decoder[T: ClassTag](
-    f:       PartialFunction[Any, T] = PartialFunction.empty,
-    sqlType: DecoderSqlType
+      f: PartialFunction[Any, T] = PartialFunction.empty,
+      sqlType: DecoderSqlType
   ): Decoder[T] =
     AsyncDecoder[T](sqlType)(new BaseDecoder[T] {
       def apply(index: Int, row: RowData, session: Session) = {
@@ -90,22 +90,31 @@ trait Decoders {
     })
 
   implicit val booleanDecoder: Decoder[Boolean] =
-    decoder[Boolean]({
-      case v: Byte  => v == (1: Byte)
-      case v: Short => v == (1: Short)
-      case v: Int   => v == 1
-      case v: Long  => v == 1L
-    }, SqlTypes.BOOLEAN)
+    decoder[Boolean](
+      {
+        case v: Byte  => v == (1: Byte)
+        case v: Short => v == (1: Short)
+        case v: Int   => v == 1
+        case v: Long  => v == 1L
+      },
+      SqlTypes.BOOLEAN
+    )
 
   implicit val byteDecoder: Decoder[Byte] =
-    decoder[Byte]({
-      case v: Short => v.toByte
-    }, SqlTypes.TINYINT)
+    decoder[Byte](
+      {
+        case v: Short => v.toByte
+      },
+      SqlTypes.TINYINT
+    )
 
   implicit val shortDecoder: Decoder[Short] =
-    decoder[Short]({
-      case v: Byte => v.toShort
-    }, SqlTypes.SMALLINT)
+    decoder[Short](
+      {
+        case v: Byte => v.toShort
+      },
+      SqlTypes.SMALLINT
+    )
 
   implicit val intDecoder: Decoder[Int] =
     AsyncDecoder(SqlTypes.INTEGER)(new NumericDecoder[Int] {
@@ -133,23 +142,35 @@ trait Decoders {
 
   implicit val byteArrayDecoder: Decoder[Array[Byte]] = decoder[Array[Byte]](PartialFunction.empty, SqlTypes.TINYINT)
 
-  implicit val jodaDateTimeDecoder: Decoder[JodaDateTime] = decoder[JodaDateTime]({
-    case dateTime: JodaDateTime           => dateTime
-    case localDateTime: JodaLocalDateTime => localDateTime.toDateTime
-  }, SqlTypes.TIMESTAMP)
+  implicit val jodaDateTimeDecoder: Decoder[JodaDateTime] = decoder[JodaDateTime](
+    {
+      case dateTime: JodaDateTime           => dateTime
+      case localDateTime: JodaLocalDateTime => localDateTime.toDateTime
+    },
+    SqlTypes.TIMESTAMP
+  )
 
-  implicit val jodaLocalDateDecoder: Decoder[JodaLocalDate] = decoder[JodaLocalDate]({
-    case localDate: JodaLocalDate => localDate
-  }, SqlTypes.DATE)
+  implicit val jodaLocalDateDecoder: Decoder[JodaLocalDate] = decoder[JodaLocalDate](
+    {
+      case localDate: JodaLocalDate => localDate
+    },
+    SqlTypes.DATE
+  )
 
-  implicit val jodaLocalDateTimeDecoder: Decoder[JodaLocalDateTime] = decoder[JodaLocalDateTime]({
-    case localDateTime: JodaLocalDateTime => localDateTime
-  }, SqlTypes.TIMESTAMP)
+  implicit val jodaLocalDateTimeDecoder: Decoder[JodaLocalDateTime] = decoder[JodaLocalDateTime](
+    {
+      case localDateTime: JodaLocalDateTime => localDateTime
+    },
+    SqlTypes.TIMESTAMP
+  )
 
-  implicit val dateDecoder: Decoder[Date] = decoder[Date]({
-    case localDateTime: JodaLocalDateTime => localDateTime.toDate
-    case localDate: JodaLocalDate         => localDate.toDate
-  }, SqlTypes.TIMESTAMP)
+  implicit val dateDecoder: Decoder[Date] = decoder[Date](
+    {
+      case localDateTime: JodaLocalDateTime => localDateTime.toDate
+      case localDate: JodaLocalDate         => localDate.toDate
+    },
+    SqlTypes.TIMESTAMP
+  )
 
   implicit val decodeZonedDateTime: MappedEncoding[JodaDateTime, ZonedDateTime] =
     MappedEncoding(jdt => ZonedDateTime.ofInstant(Instant.ofEpochMilli(jdt.getMillis), ZoneId.of(jdt.getZone.getID)))

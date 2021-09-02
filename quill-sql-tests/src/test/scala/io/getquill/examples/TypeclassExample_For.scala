@@ -1,29 +1,26 @@
 package io.getquill.examples
 
-
 import scala.language.implicitConversions
 import io.getquill._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 
 object TypeclassExample_For {
-  
+
   case class Address(fk: Int, street: String, zip: Int) extends Embedded
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
-
   case class Person(id: Int, name: String, age: Int)
 
   trait Functor[F[_]]:
-    extension [A, B](inline x: F[A])
-      inline def map(inline f: A => B): F[B]
+    extension [A, B](inline x: F[A]) inline def map(inline f: A => B): F[B]
 
   trait Monad[F[_]] extends Functor[F]:
     //inline def pure[A](x: A): F[A]
     extension [A, B](inline x: F[A])
       inline def map(inline f: A => B): F[B]
       inline def flatMap(inline f: A => F[B]): F[B]
-      
+
   trait For[F[_]]: //extends Monad[F]:
     extension [A, B](inline x: F[A])
       inline def map(inline f: A => B): F[B]
@@ -31,8 +28,7 @@ object TypeclassExample_For {
       inline def withFilter(inline f: A => Boolean): F[A]
 
   class ListFunctor extends Functor[List]:
-    extension [A, B](inline xs: List[A])
-      inline def map(inline f: A => B): List[B] = xs.map(f)
+    extension [A, B](inline xs: List[A]) inline def map(inline f: A => B): List[B] = xs.map(f)
 
   class ListMonad extends Monad[List]:
     extension [A, B](inline xs: List[A])
@@ -44,10 +40,9 @@ object TypeclassExample_For {
       inline def map(inline f: A => B): List[B] = xs.map(f)
       inline def flatMap(inline f: A => List[B]): List[B] = xs.flatMap(f)
       inline def withFilter(inline f: A => Boolean): List[A] = xs.filter(f)
-   
+
   class QueryFunctor extends Functor[Query]:
-    extension [A, B](inline xs: Query[A])
-      inline def map(inline f: A => B): Query[B] = xs.map(f)
+    extension [A, B](inline xs: Query[A]) inline def map(inline f: A => B): Query[B] = xs.map(f)
 
   class QueryMonad extends Monad[Query]:
     extension [A, B](inline xs: Query[A])
@@ -77,7 +72,7 @@ object TypeclassExample_For {
     inline def mapM(inline f: A => B) = from.map(f)
     inline def flatMapM(inline f: A => F[B]) = from.flatMap(f)
   }
-  
+
   object UseCase:
     extension [F[_]](inline people: F[Person])(using inline fun: For[F])
       inline def joesAddresses(inline addresses: F[Address]) =
@@ -104,8 +99,7 @@ object TypeclassExample_For {
 
     println(peopleL.joesAddresses(addressesL))
     inline def q = quote { people.joesAddresses(addresses) }
-    println( run(q) )
-
+    println(run(q))
 
   }
 }

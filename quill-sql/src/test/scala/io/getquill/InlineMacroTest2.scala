@@ -1,9 +1,9 @@
 // Creating an inline fold. Once val parser is implemented this shuold be possible
 // package io.getquill
 
-// 
+//
 // import scala.language.implicitConversions
-// 
+//
 
 // object InlineMacroTest2 {
 
@@ -18,7 +18,7 @@
 
 //   def main(args: Array[String]): Unit = {
 
-//     
+//
 //     case class Address(street: String, zip: Int) extends Embedded
 //     given Embedable[Address]
 //     case class Person(id: Int, firstName: String, age: Int, addr: Address, middleName: String, lastName: String)
@@ -29,7 +29,7 @@
 
 //     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
 //     import ctx._
-    
+
 //     val output = run(q)
 //     println(output)
 //   }

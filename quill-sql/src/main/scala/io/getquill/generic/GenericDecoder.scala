@@ -31,8 +31,8 @@ object GenericDecoder {
   def resolveIndexOrFallback[ResultRow: Type](originalIndex: Expr[Int], resultRow: Expr[ResultRow], fieldName: String)(using Quotes) =
     import quotes.reflect._
     Expr.summon[GenericColumnResolver[ResultRow]] match
-      case Some(resolver) => '{ $resolver($resultRow, ${Expr(fieldName)}) }
-      case None => originalIndex
+      case Some(resolver) => '{ $resolver($resultRow, ${ Expr(fieldName) }) }
+      case None           => originalIndex
 
   def summonAndDecode[ResultRow: Type, Session: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): Expr[T] =
     import quotes.reflect.{Term => QTerm, _}
@@ -47,7 +47,10 @@ object GenericDecoder {
             println(s"WARNING Could not summon a decoder for the type: ${io.getquill.util.Format.TypeOf[T]}")
             report.throwError(s"Cannot find decoder for the type: ${Format.TypeOf[T]}")
 
-  def flatten[ResultRow: Type, Session: Type, Fields: Type, Types: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(fieldsTup: Type[Fields], typesTup: Type[Types])(using Quotes): List[(Type[_], Expr[_])] = {
+  def flatten[ResultRow: Type, Session: Type, Fields: Type, Types: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(
+      fieldsTup: Type[Fields],
+      typesTup: Type[Types]
+  )(using Quotes): List[(Type[_], Expr[_])] = {
     import quotes.reflect.{Term => QTerm, _}
 
     (fieldsTup, typesTup) match {
@@ -58,21 +61,29 @@ object GenericDecoder {
       case ('[field *: fields], '[tpe *: types]) if Expr.summon[GenericDecoder[ResultRow, Session, tpe, DecodingType.Specific]].isEmpty =>
         // If it is a generic inner class, find out by how many columns we have to move forward
         // An alternative to this is the decoder returning the index incremented after the last thing it decoded
-       val air = TypeRepr.of[tpe].classSymbol.get.caseFields.length
-       if (air == 0) println(s"[WARNING] Arity of product column ${Format.TypeOf[field]} type ${Format.TypeOf[tpe]} was 0. This is not valid.")
-       // Get the field class as an actual string, on the mirror itself it's stored as a type
-       val fieldValue = Type.of[field].constValue
-       // In certain cases we want to lookup a column not by it's index but by it's name. Most database APIs can do this in general so we add a secondary mechanism
+        val air = TypeRepr.of[tpe].classSymbol.get.caseFields.length
+        if (air == 0) println(s"[WARNING] Arity of product column ${Format.TypeOf[field]} type ${Format.TypeOf[tpe]} was 0. This is not valid.")
+        // Get the field class as an actual string, on the mirror itself it's stored as a type
+        val fieldValue = Type.of[field].constValue
+        // In certain cases we want to lookup a column not by it's index but by it's name. Most database APIs can do this in general so we add a secondary mechanism
         // this is especially needed if we are using a sum type since in that case, the set of existing fields may actually have fewer things in it then the number of
         // database columns (i.e. since we're using table-per-class which means the table contains all the columns from all the co-product types)
         // if we have a 'column resolver' then we are trying to get the index by name instead by the number. So we lookup if a column resolver exists and use it.
-       val resolvedIndex = resolveIndexOrFallback[ResultRow](index, resultRow, fieldValue)
-       (Type.of[tpe], summonAndDecode[ResultRow, Session, tpe](resolvedIndex, resultRow, session)) :: flatten[ResultRow, Session, fields, types]('{$index + ${Expr(air)}}, resultRow, session)(Type.of[fields], Type.of[types])
+        val resolvedIndex = resolveIndexOrFallback[ResultRow](index, resultRow, fieldValue)
+        (Type.of[tpe], summonAndDecode[ResultRow, Session, tpe](resolvedIndex, resultRow, session)) :: flatten[ResultRow, Session, fields, types](
+          '{ $index + ${ Expr(air) } },
+          resultRow,
+          session
+        )(Type.of[fields], Type.of[types])
 
       case ('[field *: fields], '[tpe *: types]) =>
         val fieldValue = Type.of[field].constValue
         val resolvedIndex = resolveIndexOrFallback[ResultRow](index, resultRow, fieldValue)
-        (Type.of[tpe], summonAndDecode[ResultRow, Session, tpe](resolvedIndex, resultRow, session)) :: flatten[ResultRow, Session, fields, types]('{$index + 1}, resultRow, session)(Type.of[fields], Type.of[types])
+        (Type.of[tpe], summonAndDecode[ResultRow, Session, tpe](resolvedIndex, resultRow, session)) :: flatten[ResultRow, Session, fields, types](
+          '{ $index + 1 },
+          resultRow,
+          session
+        )(Type.of[fields], Type.of[types])
 
       case (_, '[EmptyTuple]) => Nil
 
@@ -81,14 +92,19 @@ object GenericDecoder {
   }
 
   /** Find a type from a coproduct type that matches a given ClassTag, if it matches, summon a decoder for it and decode it */
-  def selectMatchingElementAndDecode[Types: Type, ResultRow: Type, Session: Type, T: Type](rawIndex: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session], rowTypeClassTag: Expr[ClassTag[_]])(typesTup: Type[Types])(using Quotes): Expr[T] =
+  def selectMatchingElementAndDecode[Types: Type, ResultRow: Type, Session: Type, T: Type](
+      rawIndex: Expr[Int],
+      resultRow: Expr[ResultRow],
+      session: Expr[Session],
+      rowTypeClassTag: Expr[ClassTag[_]]
+  )(typesTup: Type[Types])(using Quotes): Expr[T] =
     import quotes.reflect._
     typesTup match
       case ('[tpe *: types]) =>
         val possibleElementClass =
           Expr.summon[ClassTag[tpe]] match
             case Some(cls) => '{ $cls.runtimeClass }
-            case None => report.throwError(s"Cannot summon a ClassTag for the type ${Format.TypeOf[tpe]}")
+            case None      => report.throwError(s"Cannot summon a ClassTag for the type ${Format.TypeOf[tpe]}")
 
         val rowTypeClass = '{ $rowTypeClassTag.runtimeClass }
         '{
@@ -106,9 +122,7 @@ object GenericDecoder {
         // Note even when a type in the coproduct matches the rowTypeClassTag, we will still get into this clause
         // because the inlining has to explore every possibility. Therefore we return a runtime error here.
         val msg = s"Cannot resolve coproduct type for '${Format.TypeOf[T]}'"
-        '{ throw new IllegalArgumentException(${Expr(msg)}) }
-
-
+        '{ throw new IllegalArgumentException(${ Expr(msg) }) }
 
   def decode[T: Type, ResultRow: Type, Session: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): Expr[T] = {
     import quotes.reflect._
@@ -117,7 +131,7 @@ object GenericDecoder {
       case Some(ev) =>
         // Otherwise, recursively summon fields
         ev match {
-          case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+          case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
             // do not treat optional objects as coproduts, a Specific (i.e. EncodingType.Specific) Option-decoder
             // is defined in the EncodingDsl
             if (TypeRepr.of[T] <:< TypeRepr.of[Option[Any]])
@@ -127,13 +141,12 @@ object GenericDecoder {
               Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Specific]] match
                 // TODO Summoning twice in this case (both here and in summonAndDecode, can optimize that)
                 case Some(_) => summonAndDecode[ResultRow, Session, T](index, resultRow, session)
-                case None =>
+                case None    =>
                   // TODO warn about how it can't be "Some[T]" or None for a row-type here?
                   Type.of[T] match
                     case '[Option[t]] =>
                       val decoded = summonAndDecode[ResultRow, Session, t](index, resultRow, session)
                       '{ Option($decoded) }.asExprOf[T]
-
             else
               // First make sure there is a column resolver, otherwise we can't look up fields by name which
               // means we can't get specific fields which means we can't decode co-products
@@ -144,8 +157,9 @@ object GenericDecoder {
                 case None =>
                   report.warning(
                     s"Need column resolver for in order to be able to decode a coproduct but none exists for ${Format.TypeOf[T]} (row type: ${Format.TypeOf[ResultRow]}). " +
-                    s"\nHave you extended the a MirrorContext and made sure to `import ctx.{given, _}`." +
-                    s"\nOtherwise a failure will occur with the encoder at runtime")
+                      s"\nHave you extended the a MirrorContext and made sure to `import ctx.{given, _}`." +
+                      s"\nOtherwise a failure will occur with the encoder at runtime"
+                  )
                   val msg = Expr(s"Cannot Column Resolver does not exist for ${Format.TypeOf[ResultRow]}")
                   '{ throw new IllegalArgumentException($msg) }
                 case _ =>
@@ -159,11 +173,13 @@ object GenericDecoder {
                       // Technically this should be an error but if I make it into one, the user will have zero feedback as to what is going on and
                       // the output will be "Decoder could not be summoned during query execution". At least in this situation
                       // the user actually has actionable information on how to resolve the problem.
-                      report.warning(s"Need a RowTyper for ${Format.TypeOf[T]}. Have you implemented a RowTyper for it? Otherwise the decoder will fail at runtime if this type is encountered")
+                      report.warning(
+                        s"Need a RowTyper for ${Format.TypeOf[T]}. Have you implemented a RowTyper for it? Otherwise the decoder will fail at runtime if this type is encountered"
+                      )
                       val msg = Expr(s"Cannot summon RowTyper for type: ${Format.TypeOf[T]}")
                       '{ throw new IllegalArgumentException($msg) }
 
-          case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+          case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
             val children = flatten(index, resultRow, session)(Type.of[elementLabels], Type.of[elementTypes])
             val types = children.map(_._1)
             val terms = children.map(_._2)
@@ -173,7 +189,6 @@ object GenericDecoder {
             //println(s"========== ParamSymss: ${constructor.paramSymss.map(_.map(_.flags.show))} ================")
             //println(s"========== ParamSymss: ${constructor.paramSymss.map(_.map(_.isTypeParam))} ================")
             //println(s"========== ParamSymss: ${tpe.classSymbol.get.flags.show} ================")
-
 
             // If we are a tuple, we can easily construct it
             if (tpe <:< TypeRepr.of[Tuple]) {
@@ -190,7 +205,7 @@ object GenericDecoder {
                 )
               //println(s"=========== Create from Tuple Constructor ${Format.Expr(construct.asExprOf[T])} ===========")
               construct.asExprOf[T]
-            // If we are a case class with no generic parameters, we can easily construct it
+              // If we are a case class with no generic parameters, we can easily construct it
             } else if (tpe.classSymbol.exists(_.flags.is(Flags.Case)) && !constructor.paramSymss.exists(_.exists(_.isTypeParam))) {
               val construct =
                 Apply(
@@ -199,12 +214,11 @@ object GenericDecoder {
                 )
               //println(s"=========== Create from CaseClass Constructor ${Format.Expr(construct.asExprOf[T])} ===========")
               construct.asExprOf[T]
-            // Otherwise, we have to use the mirror itself for construction which is more spliced code
+              // Otherwise, we have to use the mirror itself for construction which is more spliced code
             } else {
               //println(s"=========== Create from Mirror ${Format.Expr(m)} ===========")
-              '{ $m.fromProduct(${Expr.ofTupleFromSeq(terms)}) }.asExprOf[T]
+              '{ $m.fromProduct(${ Expr.ofTupleFromSeq(terms) }) }.asExprOf[T]
             }
-
 
           case _ => report.throwError("Tuple decoder could not be summoned")
         }
@@ -217,7 +231,7 @@ object GenericDecoder {
     import quotes.reflect._
     '{
       new GenericDecoder[ResultRow, Session, T, DecodingType.Generic] {
-        def apply(index: Int, resultRow: ResultRow, session: Session) = ${GenericDecoder.decode[T, ResultRow, Session]('index, 'resultRow, 'session)}
+        def apply(index: Int, resultRow: ResultRow, session: Session) = ${ GenericDecoder.decode[T, ResultRow, Session]('index, 'resultRow, 'session) }
       }
     }
 }

@@ -6,11 +6,11 @@ import io.getquill.context.jdbc.ResultSetExtractor
 import io.getquill.context.sql.ProductSpec
 import io.getquill.context.qzio.ZioJdbcContext
 import org.scalactic.Equality
-import zio.{ Task, ZIO }
+import zio.{Task, ZIO}
 import io.getquill.generic.GenericDecoder
 import io.getquill.generic.DecodingType.Generic
 
-import java.sql.{ PreparedStatement, ResultSet }
+import java.sql.{PreparedStatement, ResultSet}
 import _root_.io.getquill.context.jdbc.JdbcContext
 
 trait PrepareZioJdbcSpecBase extends ProductSpec with ZioSpec {
@@ -32,15 +32,18 @@ trait PrepareZioJdbcSpecBase extends ProductSpec with ZioSpec {
 
   def singleInsert(prep: QIO[PreparedStatement]) = {
     prep.flatMap(stmt =>
-      Task(stmt).bracketAuto { stmt => Task(stmt.execute()) }).provideConnectionFrom(pool).defaultRun
+      Task(stmt).bracketAuto { stmt => Task(stmt.execute()) }
+    ).provideConnectionFrom(pool).defaultRun
   }
 
   def batchInsert(prep: QIO[List[PreparedStatement]]) = {
     prep.flatMap(stmts =>
       ZIO.collectAll(
         stmts.map(stmt =>
-          Task(stmt).bracketAuto { stmt => Task(stmt.execute()) })
-      )).provideConnectionFrom(pool).defaultRun
+          Task(stmt).bracketAuto { stmt => Task(stmt.execute()) }
+        )
+      )
+    ).provideConnectionFrom(pool).defaultRun
   }
 
   def extractResults[T](prep: QIO[PreparedStatement])(extractor: (ResultSet, Session) => T) = {

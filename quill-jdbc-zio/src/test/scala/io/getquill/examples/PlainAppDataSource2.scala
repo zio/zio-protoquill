@@ -1,10 +1,10 @@
 package io.getquill.examples
 
 import com.zaxxer.hikari.HikariDataSource
-import io.getquill.context.ZioJdbc.{ QConnection, QDataSource }
+import io.getquill.context.ZioJdbc.{QConnection, QDataSource}
 import io.getquill.util.LoadConfig
-import io.getquill.{ JdbcContextConfig, Literal, PostgresZioJdbcContext }
-import zio.{ Runtime, Task, ZLayer }
+import io.getquill.{JdbcContextConfig, Literal, PostgresZioJdbcContext}
+import zio.{Runtime, Task, ZLayer}
 import zio.blocking.Blocking
 import zio.console.putStrLn
 import io.getquill._

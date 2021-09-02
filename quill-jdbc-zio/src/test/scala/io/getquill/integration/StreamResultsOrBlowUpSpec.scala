@@ -1,20 +1,16 @@
 package io.getquill.integration
 
-import java.sql.{ Connection, ResultSet }
+import java.sql.{Connection, ResultSet}
 import org.scalatest.matchers.should.Matchers._
 import io.getquill._
 import io.getquill.context.ZioJdbc.Prefix
 
-/**
- * This is a long-running test that will cause a OutOfMemory exception if
- * a ResultSet is not streamed correctly (e.g. if the ResultSet.TYPE_SCROLL_SENSITIVE option
- * is used which will force most databases to put the entire ResultSet into memory).
- * Run with -Xmx200m and doBlowUp=true to correctly reproduce the error.
- * You can also use -Xmx100m but then it will blow up due to a GC Limit OutOfMemory as opposed
- * to a heap space OutOfMemory.
- *
- * As a default, this test will run as part of the suite without blowing up.
- */
+/** This is a long-running test that will cause a OutOfMemory exception if a ResultSet is not streamed correctly (e.g. if the ResultSet.TYPE_SCROLL_SENSITIVE option is used which
+  * will force most databases to put the entire ResultSet into memory). Run with -Xmx200m and doBlowUp=true to correctly reproduce the error. You can also use -Xmx100m but then it
+  * will blow up due to a GC Limit OutOfMemory as opposed to a heap space OutOfMemory.
+  *
+  * As a default, this test will run as part of the suite without blowing up.
+  */
 class StreamResultsOrBlowUpSpec extends ZioSpec {
 
   override def prefix = Prefix("testPostgresDB")
@@ -38,7 +34,7 @@ class StreamResultsOrBlowUpSpec extends ZioSpec {
       stmt
     }
   }
-  import ctx.{ run => runQuill, _ }
+  import ctx.{run => runQuill, _}
   val inserts = quote {
     (numRows: Long) =>
       infix"""insert into person (name, age) select md5(random()::text), random()*10+1 from generate_series(1, ${numRows}) s(i)""".as[Insert[Int]]

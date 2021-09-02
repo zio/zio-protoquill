@@ -1,10 +1,10 @@
 package io.getquill.context.jdbc
-import java.sql.{ Connection, PreparedStatement, ResultSet }
+import java.sql.{Connection, PreparedStatement, ResultSet}
 
 import io.getquill.context.sql.ProductSpec
 import io.getquill.util.Using.Manager
 import org.scalactic.Equality
-import scala.util.{ Success, Failure }
+import scala.util.{Success, Failure}
 import io.getquill.generic.GenericDecoder
 import io.getquill.generic.DecodingType.Generic
 

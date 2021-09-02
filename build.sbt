@@ -12,7 +12,7 @@ ThisBuild / versionScheme := Some("always")
 // https://github.com/sbt/sbt-pgp/issues/178
 Global / useGpgPinentry := true
 
-releaseVersion     := { ver =>
+releaseVersion := { ver =>
   println(s"=== Releasing on initially specified version: ${ver}")
   ver
 }
@@ -39,11 +39,14 @@ lazy val sqlTestModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
 )
 
 lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-jdbc`, `quill-zio`, `quill-jdbc-zio`
+  `quill-jdbc`,
+  `quill-zio`,
+  `quill-jdbc-zio`
 )
 
 lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-jasync`, `quill-jasync-postgres`
+  `quill-jasync`,
+  `quill-jasync-postgres`
 )
 
 lazy val allModules =
@@ -71,7 +74,7 @@ val filteredModules = {
       Seq[sbt.ClasspathDep[sbt.ProjectReference]]()
     case _ =>
       println("Compiling All Modules")
-        allModules
+      allModules
   }
   println(s"Returning modules list: ${modules.map(_.project)}")
   modules
@@ -90,7 +93,7 @@ lazy val `quill` = {
       publishArtifact := false,
       publish / skip := true,
       publishLocal / skip := true,
-      publishSigned / skip := true,
+      publishSigned / skip := true
     )
 }
 
@@ -112,7 +115,7 @@ lazy val `quill-sql` =
         // .excludeAll(ExclusionRule(organization="com.trueaccord.scalapb")
         ("com.lihaoyi" %% "pprint" % "0.5.6").withDottyCompat(scalaVersion.value),
         ("io.getquill" %% "quill-core-portable" % "3.7.2").withDottyCompat(scalaVersion.value),
-        ("io.getquill" %% "quill-sql-portable" % "3.7.2").withDottyCompat(scalaVersion.value),
+        ("io.getquill" %% "quill-sql-portable" % "3.7.2").withDottyCompat(scalaVersion.value)
         //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
         //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
       ),
@@ -134,7 +137,9 @@ lazy val `quill-sql` =
         if (isCommunityBuild)
           Seq()
         else
-          Seq(("org.scalameta" %% "scalafmt-cli" % "2.7.5" ).excludeAll(ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")).withDottyCompat(scalaVersion.value))
+          Seq(("org.scalameta" %% "scalafmt-cli" % "2.7.5").excludeAll(ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")).withDottyCompat(
+            scalaVersion.value
+          ))
       }
     ).dependsOn({
       // If it's a community build, we cannot include scalatest since the scalatest for the corresponding
@@ -205,12 +210,16 @@ lazy val `quill-jdbc-zio` =
     .settings(releaseSettings: _*)
     .settings(jdbcTestingLibraries: _*)
     .settings(
-       Test / testGrouping := {
+      Test / testGrouping := {
         (Test / definedTests).value map { test =>
           if (test.name endsWith "IntegrationSpec")
-            Tests.Group(name = test.name, tests = Seq(test), runPolicy = Tests.SubProcess(
-              ForkOptions().withRunJVMOptions(Vector("-Xmx200m"))
-            ))
+            Tests.Group(
+              name = test.name,
+              tests = Seq(test),
+              runPolicy = Tests.SubProcess(
+                ForkOptions().withRunJVMOptions(Vector("-Xmx200m"))
+              )
+            )
           else
             Tests.Group(name = test.name, tests = Seq(test), runPolicy = Tests.SubProcess(ForkOptions()))
         }
@@ -228,13 +237,13 @@ lazy val commonSettings = /* ReleasePlugin.extraReleaseCommands ++  */ basicSett
 
 lazy val jdbcTestingLibraries = Seq(
   libraryDependencies ++= Seq(
-    "com.zaxxer"              %  "HikariCP"                % "3.4.5",
-    "mysql"                   %  "mysql-connector-java"    % "8.0.22"             % Test,
-    "com.h2database"          %  "h2"                      % "1.4.200"            % Test,
-    "org.postgresql"          %  "postgresql"              % "42.2.18"             % Test,
-    "org.xerial"              %  "sqlite-jdbc"             % "3.32.3.2"             % Test,
-    "com.microsoft.sqlserver" %  "mssql-jdbc"              % "7.1.1.jre8-preview" % Test,
-    "com.oracle.ojdbc"        %  "ojdbc8"                  % "19.3.0.0"           % Test,
+    "com.zaxxer" % "HikariCP" % "3.4.5",
+    "mysql" % "mysql-connector-java" % "8.0.22" % Test,
+    "com.h2database" % "h2" % "1.4.200" % Test,
+    "org.postgresql" % "postgresql" % "42.2.18" % Test,
+    "org.xerial" % "sqlite-jdbc" % "3.32.3.2" % Test,
+    "com.microsoft.sqlserver" % "mssql-jdbc" % "7.1.1.jre8-preview" % Test,
+    "com.oracle.ojdbc" % "ojdbc8" % "19.3.0.0" % Test
     //"org.mockito"             %% "mockito-scala-scalatest" % "1.16.2"              % Test
   )
 )
@@ -269,7 +278,7 @@ lazy val releaseSettings = ReleasePlugin.extraReleaseCommands ++ Seq(
     if (isSnapshot.value)
       Some("snapshots" at nexus + "content/repositories/snapshots")
     else
-      Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+      Some("releases" at nexus + "service/local/staging/deploy/maven2")
   },
   pgpSecretRing := file("local.secring.gpg"),
   pgpPublicRing := file("local.pubring.gpg"),
@@ -277,17 +286,17 @@ lazy val releaseSettings = ReleasePlugin.extraReleaseCommands ++ Seq(
   releasePublishArtifactsAction := PgpKeys.publishSigned.value,
   releaseProcess := {
     Seq[ReleaseStep]() ++
-    doOnDefault(checkSnapshotDependencies) ++
-    doOnDefault(inquireVersions) ++
-    doOnDefault(runClean) ++
-    doOnPush   (setReleaseVersion) ++
-    doOnPush   (commitReleaseVersion) ++
-    doOnPush   (tagRelease) ++
-    doOnDefault(publishArtifacts) ++
-    doOnPush   (setNextVersion) ++
-    doOnPush   (commitNextVersion) ++
-    //doOnPush(releaseStepCommand("sonatypeReleaseAll")) ++
-    doOnPush   (pushChanges)
+      doOnDefault(checkSnapshotDependencies) ++
+      doOnDefault(inquireVersions) ++
+      doOnDefault(runClean) ++
+      doOnPush(setReleaseVersion) ++
+      doOnPush(commitReleaseVersion) ++
+      doOnPush(tagRelease) ++
+      doOnDefault(publishArtifacts) ++
+      doOnPush(setNextVersion) ++
+      doOnPush(commitNextVersion) ++
+      //doOnPush(releaseStepCommand("sonatypeReleaseAll")) ++
+      doOnPush(pushChanges)
   },
   homepage := Some(url("http://github.com/getquill/protoquill")),
   licenses := List(("Apache License 2.0", url("https://raw.githubusercontent.com/getquill/protoquill/master/LICENSE.txt"))),

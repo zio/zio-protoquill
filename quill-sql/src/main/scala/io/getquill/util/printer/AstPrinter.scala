@@ -3,19 +3,18 @@ package io.getquill.util.printer
 import pprint.{PPrinter, Tree, Util}
 
 import fansi.Str
-import pprint.{ Renderer, Tree, Truncated }
+import pprint.{Renderer, Tree, Truncated}
 import scala.quoted._
 import io.getquill.util.FromMessages
 
 class AstPrinter extends io.getquill.AstPrinter(false, false, FromMessages.traceQuats) {
 
   val removePrefixes = Set(
-
   )
 
   def shouldAddProperties(x: Product) = {
     val className = x.getClass.getName
-    (x.productArity > 2) && //&& Util.isOperator(x.productPrefix) 
+    (x.productArity > 2) && //&& Util.isOperator(x.productPrefix)
     (removePrefixes.filter(prefix => className.startsWith(prefix)).isEmpty)
   }
 
@@ -46,7 +45,6 @@ class AstPrinter extends io.getquill.AstPrinter(false, false, FromMessages.trace
   }
 }
 
-
 object AstPrinter {
   val astprint = new AstPrinter()
 }
@@ -54,40 +52,39 @@ object AstPrinter {
 def str(str: Any) =
   new AstPrinter()(str).render
 
-def lnfbw(str: Any): Unit = 
+def lnfbw(str: Any): Unit =
   println(new AstPrinter()(str).plainText)
 
-def lnf(str: Any): Unit = 
+def lnf(str: Any): Unit =
   println(new AstPrinter()(str))
 
 def unapplier(message: String) = new Unapplier(message)
 class Unapplier(message: String) {
-  def unapply[T](t: T): Option[T] = 
+  def unapply[T](t: T): Option[T] =
     println(s"***************** [[[[[${message}]]]]]] *****************")
     println(s"Encountered:\n${t.toString.split("\n").map("  " + _).mkString("\n")}")
     Some(t)
 }
 
-
 def xunapplier(message: String)(using Quotes) = new XUnapplier(message)
 class XUnapplier(message: String)(using Quotes) {
   import quotes.reflect._
-  def unapply[T](t: T): Option[T] = 
+  def unapply[T](t: T): Option[T] =
     println(s"***************** [[[[[${message}]]]]]] *****************")
-    def tString = 
+    def tString =
       t match {
-        case e: Expr[_] => e.show
+        case e: Expr[_]       => e.show
         case Some(e: Expr[_]) => e.show
-        case t: Term => str(t)
-        case other => other.toString
+        case t: Term          => str(t)
+        case other            => other.toString
       }
 
-    def tStringAst = 
+    def tStringAst =
       t match {
-        case e: Expr[_] => str(e.asTerm)
+        case e: Expr[_]       => str(e.asTerm)
         case Some(e: Expr[_]) => str(e.asTerm)
-        case t: Term => str(t)
-        case other => other.toString
+        case t: Term          => str(t)
+        case other            => other.toString
       }
 
     println(s"Encountered:\n${tString.split("\n").map("  " + _).mkString("\n")}")
@@ -95,12 +92,11 @@ class XUnapplier(message: String)(using Quotes) {
     Some(t)
 }
 
-def ln(str: Any, delimiter: Option[String] = None):Unit = 
+def ln(str: Any, delimiter: Option[String] = None): Unit =
   if (System.getProperty("printAst", "false").toBoolean)
     delimiter match {
-      case None => 
+      case None =>
         println(new AstPrinter()(str))
-      case Some(value) => 
+      case Some(value) =>
         println(new AstPrinter()(str).render.split("\n").map(value + _).mkString("\n"))
     }
-    

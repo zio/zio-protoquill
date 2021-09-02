@@ -1,67 +1,48 @@
 package io.getquill.context.qzio
 
-import io.getquill.context.{ ContextEffect, StreamingContext }
+import io.getquill.context.{ContextEffect, StreamingContext}
 import io.getquill.context.ZioJdbc._
 import io.getquill.context.jdbc.JdbcRunContext
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.util.ContextLogger
-import io.getquill.{ NamingStrategy, ReturnAction }
-import zio.Exit.{ Failure, Success }
-import zio.stream.{ Stream, ZStream }
-import zio.{ Cause, Chunk, ChunkBuilder, Has, Task, UIO, ZIO, ZManaged }
+import io.getquill.{NamingStrategy, ReturnAction}
+import zio.Exit.{Failure, Success}
+import zio.stream.{Stream, ZStream}
+import zio.{Cause, Chunk, ChunkBuilder, Has, Task, UIO, ZIO, ZManaged}
 
-import java.sql.{ Array => _, _ }
+import java.sql.{Array => _, _}
 import javax.sql.DataSource
 import scala.util.Try
-import zio.blocking.{ Blocking, blocking }
+import zio.blocking.{Blocking, blocking}
 import io.getquill.context.ExecutionInfo
 
 import scala.reflect.ClassTag
 
-/**
- * Quill context that executes JDBC queries inside of ZIO. Unlike most other contexts
- * that require passing in a Data Source, this context takes in a java.sql.Connection
- * as a resource dependency which can be provided later (see `ZioJdbc` for helper methods
- * that assist in doing this).
- *
- * The resource dependency itself is not just a Connection since JDBC requires blocking.
- * Instead it is a `Has[Connection] with Has[Blocking.Service]` which is type-alised as
- * `QConnection` hence methods in this context return `ZIO[QConnection, Throwable, T]`.
- * The type `QIO[T]` i.e. Quill-IO is an alias for this.
- *
- * If you have a zio-app, using this context is fairly straightforward but requires some setup:
- * {{
- *   val zioConn =
- *     ZLayer.fromManaged(for {
- *       ds <- ZManaged.fromAutoCloseable(Task(JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource))
- *       conn <- ZManaged.fromAutoCloseable(Task(ds.getConnection))
- *     } yield conn)
- *
- *   MyZioContext.run(query[Person]).provideCustomLayer(zioConn)
- * }}
- *
- * Various methods in the `io.getquill.context.ZioJdbc` can assist in simplifying it's creation, for example, you can
- * provide a `DataSource` instead of a `Connection` like this
- * (note that the resulting Connection has a closing bracket).
- * {{
- *   import ZioJdbc._
- *   val zioConn = QDataSource.fromPrefix("testPostgresDB") >>> QDataSource.toConnection
- *   MyZioContext.run(query[Person]).provideCustomLayer(zioConn)
- * }}
- *
- * If you are using a Plain Scala app however, you will need to manually run it e.g. using zio.Runtime
- * {{
- *   Runtime.default.unsafeRun(MyZioContext.run(query[Person]).provideCustomLayer(zioConn))
- * }}
- */
+/** Quill context that executes JDBC queries inside of ZIO. Unlike most other contexts that require passing in a Data Source, this context takes in a java.sql.Connection as a
+  * resource dependency which can be provided later (see `ZioJdbc` for helper methods that assist in doing this).
+  *
+  * The resource dependency itself is not just a Connection since JDBC requires blocking. Instead it is a `Has[Connection] with Has[Blocking.Service]` which is type-alised as
+  * `QConnection` hence methods in this context return `ZIO[QConnection, Throwable, T]`. The type `QIO[T]` i.e. Quill-IO is an alias for this.
+  *
+  * If you have a zio-app, using this context is fairly straightforward but requires some setup: {{ val zioConn = ZLayer.fromManaged(for { ds <-
+  * ZManaged.fromAutoCloseable(Task(JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource)) conn <- ZManaged.fromAutoCloseable(Task(ds.getConnection)) } yield conn)
+  *
+  * MyZioContext.run(query[Person]).provideCustomLayer(zioConn) }}
+  *
+  * Various methods in the `io.getquill.context.ZioJdbc` can assist in simplifying it's creation, for example, you can provide a `DataSource` instead of a `Connection` like this
+  * (note that the resulting Connection has a closing bracket). {{ import ZioJdbc._ val zioConn = QDataSource.fromPrefix("testPostgresDB") >>> QDataSource.toConnection
+  * MyZioContext.run(query[Person]).provideCustomLayer(zioConn) }}
+  *
+  * If you are using a Plain Scala app however, you will need to manually run it e.g. using zio.Runtime {{
+  * Runtime.default.unsafeRun(MyZioContext.run(query[Person]).provideCustomLayer(zioConn)) }}
+  */
 abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
-  with JdbcRunContext[Dialect, Naming]
-  with StreamingContext[Dialect, Naming]
-  with ZioPrepareContext[Dialect, Naming]
-  /* with ZioTranslateContext Translate in ProtoQuill not implemented yet */ {
+    with JdbcRunContext[Dialect, Naming]
+    with StreamingContext[Dialect, Naming]
+    with ZioPrepareContext[Dialect, Naming]
+    /* with ZioTranslateContext Translate in ProtoQuill not implemented yet */ {
 
   override private[getquill] val logger = ContextLogger(classOf[ZioJdbcContext[_, _]])
-
 
   override type Error = SQLException
   override type Environment = Has[Session] with Blocking
@@ -120,7 +101,8 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
             rollbackFailCause => ZIO.halt(cause.flatMap(Cause.die) ++ rollbackFailCause),
             _ => ZIO.halt(cause.flatMap(Cause.die)) // or ZIO.halt(cause).orDie
           )
-      })))
+      }
+    )))
   }
 
   // Probing not supported in ProtoQuill yet
@@ -140,11 +122,9 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
   //     case None => Try[Unit](())
   //   }
 
-  /**
-   * In order to allow a ResultSet to be consumed by an Observable, a ResultSet iterator must be created.
-   * Since Quill provides a extractor for an individual ResultSet row, a single row can easily be cached
-   * in memory. This allows for a straightforward implementation of a hasNext method.
-   */
+  /** In order to allow a ResultSet to be consumed by an Observable, a ResultSet iterator must be created. Since Quill provides a extractor for an individual ResultSet row, a
+    * single row can easily be cached in memory. This allows for a straightforward implementation of a hasNext method.
+    */
   class ResultSetIterator[T](rs: ResultSet, conn: Connection, extractor: Extractor[T]) extends BufferedIterator[T] {
 
     private[this] var state = 0 // 0: no data, 1: cached, 2: finished
@@ -187,9 +167,8 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
     }
   }
 
-  /**
-   * Override to enable specific vendor options needed for streaming
-   */
+  /** Override to enable specific vendor options needed for streaming
+    */
   protected def prepareStatementForStreaming(sql: String, conn: Connection, fetchSize: Option[Int]) = {
     val stmt = conn.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)
     fetchSize.foreach { size =>
@@ -198,7 +177,10 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
     stmt
   }
 
-  def streamQuery[T](fetchSize: Option[Int], sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): QStream[T] = {
+  def streamQuery[T](fetchSize: Option[Int], sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(
+      executionInfo: ExecutionInfo,
+      dc: DatasourceContext
+  ): QStream[T] = {
     def prepareStatement(conn: Connection) = {
       val stmt = prepareStatementForStreaming(sql, conn, fetchSize)
       val (params, ps) = prepare(stmt, conn)

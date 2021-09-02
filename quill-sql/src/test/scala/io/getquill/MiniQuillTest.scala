@@ -8,7 +8,6 @@ import scala.language.implicitConversions
 //import io.getquill.InsertMeta
 import io.getquill.util.debug.PrintMac
 
-
 object MiniQuillTest {
 
   val ctx = new MirrorContext(PostgresDialect, Literal) //helloooooooo
@@ -33,14 +32,12 @@ object MiniQuillTest {
     //   query[PersonName]
     // }
 
-
     case class Person(name: String, age: Int)
 
     inline def q = quote {
       query[Person].map(_.age).sum
     }
     println(ctx.run(q))
-
 
     // inline def q = quote {
     //   query[Person].filter(p => p.name == lift("joe")) //helooo
@@ -157,7 +154,6 @@ object MiniQuillTest {
     //   println( run(q) ) // hello
     // }
 
-
     // TODO Exclude a column (via InsertMeta) from Optional object (i.e and multiple excludes)
     // TODO Exclude a column (via InsertMeta)from Insert meta with Insert Schema (i.e and multiple excludes)
     // TODO Exclude a column (via InsertMeta)from Optional object Insert meta with Insert Schema (i.e and multiple excludes)
@@ -181,15 +177,6 @@ object MiniQuillTest {
   def infixAndLiftQuery() = {
 
     //hellooooooooooooooo
-
-
-
-
-
-
-
-
-
 
   }
 

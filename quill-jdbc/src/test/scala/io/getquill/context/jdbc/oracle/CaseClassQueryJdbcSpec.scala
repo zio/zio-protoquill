@@ -58,6 +58,8 @@ class CaseClassQueryJdbcSpec extends CaseClassQuerySpec {
   }
 
   "Example 4 - Ex 4 Mapped Union All of Nicknames Same Field Filtered" in {
-    testContext.run(`Ex 4 Mapped Union All of Nicknames Same Field Filtered`) should contain theSameElementsAs `Ex 4 Mapped Union All of Nicknames Same Field Filtered expected result`
+    testContext.run(
+      `Ex 4 Mapped Union All of Nicknames Same Field Filtered`
+    ) should contain theSameElementsAs `Ex 4 Mapped Union All of Nicknames Same Field Filtered expected result`
   }
 }

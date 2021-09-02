@@ -5,7 +5,6 @@ import scala.language.implicitConversions
 import io.getquill.Dsl
 import io.getquill.Quoted
 
-
 import io.getquill.ast._
 import io.getquill.QuotationLot
 import io.getquill.QuotationVase
@@ -92,7 +91,9 @@ class QuerySchemaTest extends Spec with Inside { //hello
       printer.lnf(q.ast)
       println(q.ast)
       //q.ast.toString mustEqual """querySchema("test_entity", _.i -> "ii")"""
-      ctx.run(q).strAndExec mustEqual ("""`querySchema`("test_entity", _.i -> "ii").filter(e => e.i == 1).map(e => CaseClass(s: e.s, i: e.i, l: e.l, o: e.o))""", ExecutionType.Dynamic)
+      ctx.run(
+        q
+      ).strAndExec mustEqual ("""`querySchema`("test_entity", _.i -> "ii").filter(e => e.i == 1).map(e => CaseClass(s: e.s, i: e.i, l: e.l, o: e.o))""", ExecutionType.Dynamic)
     }
     "custom with embedded" in {
       case class Entity(emb: EmbValue)

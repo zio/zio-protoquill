@@ -1,9 +1,9 @@
 package io.getquill.parser
 
 import java.util.Base64
-import com.esotericsoftware.kryo.io.{ Input, Output }
-import com.esotericsoftware.kryo.{ Kryo, Serializer }
-import com.twitter.chill.{ IKryoRegistrar, KryoPool, ScalaKryoInstantiator }
+import com.esotericsoftware.kryo.io.{Input, Output}
+import com.esotericsoftware.kryo.{Kryo, Serializer}
+import com.twitter.chill.{IKryoRegistrar, KryoPool, ScalaKryoInstantiator}
 import io.getquill.util.Messages
 import io.getquill.quat._
 import io.getquill.ast.Ast
@@ -197,7 +197,6 @@ object KryoAstSerializer {
       k.register(AggregationOperator.`sum`.getClass)
       k.register(AggregationOperator.`size`.getClass)
 
-
       k.register(Ident.getClass)
       k.register(ExternalIdent.getClass)
       k.register(OptionNone.getClass)
@@ -211,8 +210,8 @@ object KryoAstSerializer {
       k.register(classOf[Entity])
       k.register(classOf[EntitySerial])
 
-
-      k.register(classOf[Entity],
+      k.register(
+        classOf[Entity],
         new Serializer[Entity]():
           override def write(kryo: Kryo, output: Output, obj: Entity): Unit =
             //println(s"## Writing Entity: ${io.getquill.util.Messages.qprint(obj)}")
@@ -222,7 +221,8 @@ object KryoAstSerializer {
             //println(s"## Reading Entity: ${io.getquill.util.Messages.qprint(in)}")
             Entity.Opinionated(in.name, in.properties, in.quat, in.renameable)
       )
-      k.register(classOf[OptionNone],
+      k.register(
+        classOf[OptionNone],
         new Serializer[OptionNone]():
           override def write(kryo: Kryo, output: Output, obj: OptionNone): Unit =
             kryo.writeObject(output, OptionNoneSerial(obj.quat))
@@ -230,7 +230,8 @@ object KryoAstSerializer {
             val in = kryo.readObject(input, classOf[OptionNoneSerial])
             OptionNone(in.quat)
       )
-      k.register(classOf[Constant],
+      k.register(
+        classOf[Constant],
         new Serializer[Constant]():
           override def write(kryo: Kryo, output: Output, obj: Constant): Unit =
             kryo.writeObject(output, ConstantSerial(obj.v, obj.quat))
@@ -238,7 +239,8 @@ object KryoAstSerializer {
             val in = kryo.readObject(input, classOf[ConstantSerial])
             Constant(in.v, in.quat)
       )
-      k.register(classOf[Ident],
+      k.register(
+        classOf[Ident],
         new Serializer[Ident]():
           override def write(kryo: Kryo, output: Output, obj: Ident): Unit =
             kryo.writeObject(output, IdentSerial(obj.name, obj.quat, obj.visibility))
@@ -246,7 +248,8 @@ object KryoAstSerializer {
             val in = kryo.readObject(input, classOf[IdentSerial])
             Ident(in.name, in.quat)
       )
-      k.register(classOf[ExternalIdent],
+      k.register(
+        classOf[ExternalIdent],
         new Serializer[ExternalIdent]():
           override def write(kryo: Kryo, output: Output, obj: ExternalIdent): Unit =
             kryo.writeObject(output, ExternalIdentSerial(obj.name, obj.quat, obj.renameable))

@@ -1,7 +1,7 @@
 package io.getquill.context.sql.encoding
 
 import io.getquill.Spec
-import io.getquill.context.sql.{ testContext => ctx }
+import io.getquill.context.sql.{testContext => ctx}
 import io.getquill.MappedEncoding
 import io.getquill._
 import org.scalatest._ // Needed for the shims to work
@@ -21,11 +21,11 @@ class ArrayEncodingSpec extends Spec {
 
   "Provide array support with MappingEncoding" - {
     "encoders" in {
-      import impl.{ encodeRaw, encodeDecor }
+      import impl.{encodeRaw, encodeDecor}
       implicitly[Encoder[List[Decor]]]
     }
     "decoders" in {
-      import impl.{ decodeRaw, decodeDecor }
+      import impl.{decodeRaw, decodeDecor}
       implicitly[Decoder[Vector[Decor]]]
     }
   }

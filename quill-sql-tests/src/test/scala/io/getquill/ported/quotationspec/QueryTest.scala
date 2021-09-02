@@ -10,7 +10,7 @@ import io.getquill.ast.Renameable.Fixed
 import io.getquill.quat.quatOf
 import io.getquill.ast.Implicits._
 
-import scala.math.BigDecimal.{ double2bigDecimal, int2bigDecimal, javaBigDecimal2bigDecimal, long2bigDecimal }
+import scala.math.BigDecimal.{double2bigDecimal, int2bigDecimal, javaBigDecimal2bigDecimal, long2bigDecimal}
 
 case class CustomAnyValue(i: Int) extends AnyVal
 case class EmbeddedValue(s: String, i: Int) extends Embedded
@@ -94,8 +94,11 @@ class QueryTest extends Spec with TestEntities {
         }
         val renamedQuat = TestEntityQuat.renameAtPath(Nil, List("s" -> "theS"))
         quote(unquote(q)).ast mustEqual (
-          Filter(Entity.Opinionated("SomeAlias", List(PropertyAlias(List("s"), "theS")), renamedQuat, Fixed), Ident("t", renamedQuat),
-            (Property(Ident("t", renamedQuat), "s") +==+ Constant.auto("s")) +&&+ (Property(Ident("t", renamedQuat), "i") +==+ Constant.auto(1)))
+          Filter(
+            Entity.Opinionated("SomeAlias", List(PropertyAlias(List("s"), "theS")), renamedQuat, Fixed),
+            Ident("t", renamedQuat),
+            (Property(Ident("t", renamedQuat), "s") +==+ Constant.auto("s")) +&&+ (Property(Ident("t", renamedQuat), "i") +==+ Constant.auto(1))
+          )
         )
       }
 
@@ -143,13 +146,21 @@ class QueryTest extends Spec with TestEntities {
       inline def q = quote {
         qr1.filter(t => t.s == "s")
       }
-      quote(unquote(q)).ast mustEqual Filter(Entity("TestEntity", Nil, TestEntityQuat), Ident("t", TestEntityQuat), BinaryOperation(Property(Ident("t", TestEntityQuat), "s"), EqualityOperator.`==`, Constant.auto("s")))
+      quote(unquote(q)).ast mustEqual Filter(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t", TestEntityQuat),
+        BinaryOperation(Property(Ident("t", TestEntityQuat), "s"), EqualityOperator.`==`, Constant.auto("s"))
+      )
     }
     "withFilter" in {
       inline def q = quote {
         qr1.withFilter(t => t.s == "s")
       }
-      quote(unquote(q)).ast mustEqual Filter(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), BinaryOperation(Property(Ident("t"), "s"), EqualityOperator.`==`, Constant.auto("s")))
+      quote(unquote(q)).ast mustEqual Filter(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t"),
+        BinaryOperation(Property(Ident("t"), "s"), EqualityOperator.`==`, Constant.auto("s"))
+      )
     }
     "map" in {
       inline def q = quote {
@@ -167,7 +178,11 @@ class QueryTest extends Spec with TestEntities {
       inline def q = quote {
         qr1.concatMap(t => t.s.split(" "))
       }
-      quote(unquote(q)).ast mustEqual ConcatMap(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), BinaryOperation(Property(Ident("t", TestEntityQuat), "s"), StringOperator.`split`, Constant.auto(" ")))
+      quote(unquote(q)).ast mustEqual ConcatMap(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t"),
+        BinaryOperation(Property(Ident("t", TestEntityQuat), "s"), StringOperator.`split`, Constant.auto(" "))
+      )
     }
     "sortBy" - {
       "default ordering" in {
@@ -223,7 +238,12 @@ class QueryTest extends Spec with TestEntities {
           inline def q = quote {
             qr1.sortBy(t => (t.s, t.i))(Ord(Ord.desc, Ord.asc))
           }
-          quote(unquote(q)).ast mustEqual SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))), TupleOrdering(List(Desc, Asc)))
+          quote(unquote(q)).ast mustEqual SortBy(
+            Entity("TestEntity", Nil, TestEntityQuat),
+            Ident("t"),
+            Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))),
+            TupleOrdering(List(Desc, Asc))
+          )
         }
       }
     }
@@ -239,31 +259,46 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.map(t => t.i).min
         }
-        quote(unquote(q)).ast mustEqual Aggregation(AggregationOperator.`min`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t", TestEntityQuat), Property(Ident("t", TestEntityQuat), "i")))
+        quote(unquote(q)).ast mustEqual Aggregation(
+          AggregationOperator.`min`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t", TestEntityQuat), Property(Ident("t", TestEntityQuat), "i"))
+        )
       }
       "max" in {
         inline def q = quote {
           qr1.map(t => t.i).max
         }
-        quote(unquote(q)).ast mustEqual Aggregation(AggregationOperator.`max`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i")))
+        quote(unquote(q)).ast mustEqual Aggregation(
+          AggregationOperator.`max`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i"))
+        )
       }
       "avg" in {
         inline def q = quote {
           qr1.map(t => t.i).avg
         }
-        quote(unquote(q)).ast mustEqual Aggregation(AggregationOperator.`avg`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i")))
+        quote(unquote(q)).ast mustEqual Aggregation(
+          AggregationOperator.`avg`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i"))
+        )
       }
       "sum" in {
         inline def q = quote {
           qr1.map(t => t.i).sum
         }
-        quote(unquote(q)).ast mustEqual Aggregation(AggregationOperator.`sum`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i")))
+        quote(unquote(q)).ast mustEqual Aggregation(
+          AggregationOperator.`sum`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i"))
+        )
       }
       "size" in {
         inline def q = quote {
           qr1.map(t => t.i).size
         }
-        quote(unquote(q)).ast mustEqual Aggregation(AggregationOperator.`size`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i")))
+        quote(unquote(q)).ast mustEqual Aggregation(
+          AggregationOperator.`size`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i"))
+        )
       }
     }
 
@@ -272,13 +307,19 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.map(t => t.s).min
         }
-        quote(unquote(q)).ast mustEqual Aggregation(AggregationOperator.`min`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "s")))
+        quote(unquote(q)).ast mustEqual Aggregation(
+          AggregationOperator.`min`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "s"))
+        )
       }
       "max" in {
         inline def q = quote {
           qr1.map(t => t.s).max
         }
-        quote(unquote(q)).ast mustEqual Aggregation(AggregationOperator.`max`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "s")))
+        quote(unquote(q)).ast mustEqual Aggregation(
+          AggregationOperator.`max`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "s"))
+        )
       }
     }
     "distinct" in {
@@ -328,7 +369,14 @@ class QueryTest extends Spec with TestEntities {
     "join" - {
 
       def tree(t: JoinType) =
-        Join(t, Entity("TestEntity", Nil, TestEntityQuat), Entity("TestEntity2", Nil, TestEntity2Quat), Ident("a"), Ident("b"), BinaryOperation(Property(Ident("a"), "s"), EqualityOperator.`==`, Property(Ident("b"), "s")))
+        Join(
+          t,
+          Entity("TestEntity", Nil, TestEntityQuat),
+          Entity("TestEntity2", Nil, TestEntity2Quat),
+          Ident("a"),
+          Ident("b"),
+          BinaryOperation(Property(Ident("a"), "s"), EqualityOperator.`==`, Property(Ident("b"), "s"))
+        )
 
       "inner join" in {
         inline def q = quote {

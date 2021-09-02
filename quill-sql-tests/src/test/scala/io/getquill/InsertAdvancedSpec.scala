@@ -24,7 +24,7 @@ class InsertAdvancedSpec extends Spec with Inside {
     // Insert(Entity("Person", List()), List(Assignment(Id("x1"), Property(Id("x1"), "name"), "Joe"), Assignment(Id("x2"), Property(Id("x2"), "age"), 123)))
     "simple, inline query" - {
       inline def a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
-      inline def q = quote { query[Person].insert(Person("Joe", 123)) }            // Insert entity form
+      inline def q = quote { query[Person].insert(Person("Joe", 123)) } // Insert entity form
       "regular" in {
         ctx.run(q).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
         ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
@@ -93,7 +93,7 @@ class InsertAdvancedSpec extends Spec with Inside {
     // Insert(Entity("Person", List()), List(Assignment(Id("x1"), Property(Id("x1"), "name"), "Joe"), Assignment(Id("x2"), Property(Id("x2"), "age"), 123)))
     "simple, inline query" - {
       inline def a = quote { query[Person].update(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
-      inline def q = quote { query[Person].update(Person("Joe", 123)) }            // Insert entity form
+      inline def q = quote { query[Person].update(Person("Joe", 123)) } // Insert entity form
       "regular" in {
         ctx.run(q).triple mustEqual ("UPDATE Person SET name = 'Joe', age = 123", List(), Static)
         ctx.run(a).triple mustEqual ("UPDATE Person SET name = 'Joe', age = 123", List(), Static)
@@ -158,16 +158,16 @@ class InsertAdvancedSpec extends Spec with Inside {
   "entity insert with dynamic components should work for" - {
     "given queries in an outer scope" - {
       inline def a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
-      inline def q = quote { query[Person].insert(Person("Joe", 123)) }            // Insert entity form
+      inline def q = quote { query[Person].insert(Person("Joe", 123)) } // Insert entity form
       val adyn = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Dynamic Insert "assignment form"
-      val qdyn = quote { query[Person].insert(Person("Joe", 123)) }            // Dynamic Insert entity form
+      val qdyn = quote { query[Person].insert(Person("Joe", 123)) } // Dynamic Insert entity form
 
       "dynamic schema makes whole query dynamic - it will plug into runtime queries post-facto" in {
         given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
 
         // For static queries `insert` macro is only being evaluated right here so `given sm` will change names
-        ctx.run(q).triple mustEqual    ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
-        ctx.run(a).triple mustEqual    ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
+        ctx.run(q).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
+        ctx.run(a).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
 
         // For dynamic queries `insert` macro is already evaluated therefore `given sm` will not change the column names
         ctx.run(qdyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
@@ -179,16 +179,16 @@ class InsertAdvancedSpec extends Spec with Inside {
   "(update) entity insert with dynamic components should work for" - {
     "given queries in an outer scope" - {
       inline def a = quote { query[Person].update(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
-      inline def q = quote { query[Person].update(Person("Joe", 123)) }            // Insert entity form
+      inline def q = quote { query[Person].update(Person("Joe", 123)) } // Insert entity form
       val adyn = quote { query[Person].update(_.name -> "Joe", _.age -> 123) } // Dynamic Insert "assignment form"
-      val qdyn = quote { query[Person].update(Person("Joe", 123)) }            // Dynamic Insert entity form
+      val qdyn = quote { query[Person].update(Person("Joe", 123)) } // Dynamic Insert entity form
 
       "dynamic schema makes whole query dynamic - it will plug into runtime queries post-facto" in {
         given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
 
         // For static queries `insert` macro is only being evaluated right here so `given sm` will change names
-        ctx.run(q).triple mustEqual    ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
-        ctx.run(a).triple mustEqual    ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
+        ctx.run(q).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
+        ctx.run(a).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
 
         // For dynamic queries `insert` macro is already evaluated therefore `given sm` will not change the column names
         ctx.run(qdyn).triple mustEqual ("UPDATE Person SET name = 'Joe', age = 123", List(), Dynamic)
@@ -201,14 +201,14 @@ class InsertAdvancedSpec extends Spec with Inside {
   "given queries in an outer scope - with the given already there" - {
     given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
     inline def a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
-    inline def q = quote { query[Person].insert(Person("Joe", 123)) }            // Insert entity form
+    inline def q = quote { query[Person].insert(Person("Joe", 123)) } // Insert entity form
     val adyn = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Dynamic Insert "assignment form"
-    val qdyn = quote { query[Person].insert(Person("Joe", 123)) }            // Dynamic Insert entity form
+    val qdyn = quote { query[Person].insert(Person("Joe", 123)) } // Dynamic Insert entity form
 
     // Since schema meta has been plugged in already, all behaviors are the same
     "dynamic schema plugs in and makes all queries dynamic" in {
-      ctx.run(q).triple mustEqual    ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
-      ctx.run(a).triple mustEqual    ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
+      ctx.run(q).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
+      ctx.run(a).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
       ctx.run(qdyn).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
       ctx.run(adyn).triple mustEqual ("INSERT INTO tblPerson (colName,age) VALUES ('Joe', 123)", List(), Dynamic)
     }
@@ -218,39 +218,25 @@ class InsertAdvancedSpec extends Spec with Inside {
   "(update) given queries in an outer scope - with the given already there" - {
     given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
     inline def a = quote { query[Person].update(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
-    inline def q = quote { query[Person].update(Person("Joe", 123)) }            // Insert entity form
+    inline def q = quote { query[Person].update(Person("Joe", 123)) } // Insert entity form
     val adyn = quote { query[Person].update(_.name -> "Joe", _.age -> 123) } // Dynamic Insert "assignment form"
-    val qdyn = quote { query[Person].update(Person("Joe", 123)) }            // Dynamic Insert entity form
+    val qdyn = quote { query[Person].update(Person("Joe", 123)) } // Dynamic Insert entity form
 
     // Since schema meta has been plugged in already, all behaviors are the same
     "dynamic schema plugs in and makes all queries dynamic" in {
-      ctx.run(q).triple mustEqual    ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
-      ctx.run(a).triple mustEqual    ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
+      ctx.run(q).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
+      ctx.run(a).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
       ctx.run(qdyn).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
       ctx.run(adyn).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
     }
   }
 
+  // "regular dynamic query shuold work" in {
+  //   ctx.run(qdyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
+  //   ctx.run(adyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
+  // }
 
-
-
-
-
-
-
-
-
-
-
-
-
-    // "regular dynamic query shuold work" in {
-    //   ctx.run(qdyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
-    //   ctx.run(adyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
-    // }
-
-    // TODO add dynamic schema ignore possiblity
-
+  // TODO add dynamic schema ignore possiblity
 
   // TODO Need more testing of this for multiple use-cases
 //   "Entity with embedding" - {

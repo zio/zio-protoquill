@@ -29,9 +29,7 @@ class ActionAstSpec extends Spec with Inside {
   case class Person(id: Int, name: String, age: Int)
 
   "simple (assignment based apis)" - {
-    "simple insert" in {
-
-    }
+    "simple insert" in {}
     "simple update Step 1" in {
       inline def q = quote { query[Person].update(_.name -> lift("Joe"), _.age -> 123) }
       //println( io.getquill.util.Messages.qprint(q) )
@@ -42,36 +40,20 @@ class ActionAstSpec extends Spec with Inside {
       //println( io.getquill.util.Messages.qprint(q) )
       q must matchPattern {
         case Quoted(
-          Update(
-            Ent("Person"),
-            List(
-              Assignment(Id("x3"), Property(Id("x3"), "name"), ScalarTag(nameId1)),
-              Assignment(Id("x4"), Property(Id("x4"), "age"), Constant(123, _))
-            )
-          ), 
-          List(EagerPlanter("Joe", encoder, nameId2)), 
-          Nil
-        ) if (nameId1 == nameId2) =>
+              Update(
+                Ent("Person"),
+                List(
+                  Assignment(Id("x3"), Property(Id("x3"), "name"), ScalarTag(nameId1)),
+                  Assignment(Id("x4"), Property(Id("x4"), "age"), Constant(123, _))
+                )
+              ),
+              List(EagerPlanter("Joe", encoder, nameId2)),
+              Nil
+            ) if (nameId1 == nameId2) =>
       }
       ctx.run(q).triple mustEqual ("UPDATE Person SET name = ?, age = 123", List("Joe"), ExecutionType.Static)
     }
-    "simple delete" in {
-
-    }
+    "simple delete" in {}
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
-} 
+}

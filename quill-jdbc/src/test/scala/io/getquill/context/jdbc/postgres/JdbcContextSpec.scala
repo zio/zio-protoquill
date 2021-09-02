@@ -104,7 +104,8 @@ class JdbcContextSpec extends Spec {
       ctx.run(qr1.delete)
       val inserted = ctx.run {
         qr1.insert(lift(TestEntity("two", 36, 18L, Some(123), true))).returning(r =>
-          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i).map(_.s).max))
+          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i).map(_.s).max)
+        )
       }
       (36, "two_s", Some("foobar")) mustBe inserted
     }
@@ -117,7 +118,8 @@ class JdbcContextSpec extends Spec {
       ctx.run(qr1.delete)
       val inserted = ctx.run {
         qr1.insert(lift(TestEntity("two", 36, 18L, Some(123), true))).returning(r =>
-          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i && rr.s == lift(value)).map(_.s).max))
+          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i && rr.s == lift(value)).map(_.s).max)
+        )
       }
       (36, "two_s", Some("foobar")) mustBe inserted
     }
@@ -127,7 +129,8 @@ class JdbcContextSpec extends Spec {
       ctx.run(qr1.insert(lift(TestEntity("one", 1, 18L, Some(1), true))))
       val inserted = ctx.run {
         qr1.insert(lift(TestEntity("two", 2, 18L, Some(123), true))).returning(r =>
-          (r.i, r.s + "_s", qr1.filter(rr => rr.o.exists(_ == r.i - 1)).map(_.s).max))
+          (r.i, r.s + "_s", qr1.filter(rr => rr.o.exists(_ == r.i - 1)).map(_.s).max)
+        )
       }
       (2, "two_s", Some("one")) mustBe inserted
     }
@@ -137,7 +140,8 @@ class JdbcContextSpec extends Spec {
       ctx.run(qr1Emb.insert(lift(TestEntityEmb(Emb("one", 1), 18L, Some(123)))))
       val inserted = ctx.run {
         qr1Emb.insert(lift(TestEntityEmb(Emb("two", 2), 18L, Some(123)))).returning(r =>
-          (r.emb.i, r.o))
+          (r.emb.i, r.o)
+        )
       }
       (2, Some(123)) mustBe inserted
     }
@@ -182,7 +186,8 @@ class JdbcContextSpec extends Spec {
 
       val updated = ctx.run {
         qr1.update(lift(TestEntity("bar", 36, 42L, Some(321), true))).returning(r =>
-          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i).map(_.s).max))
+          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i).map(_.s).max)
+        )
       }
       (36, "bar_s", Some("foobar")) mustBe updated
     }
@@ -197,7 +202,8 @@ class JdbcContextSpec extends Spec {
 
       val updated = ctx.run {
         qr1.update(lift(TestEntity("bar", 36, 42L, Some(321), true))).returning(r =>
-          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i && rr.s == lift(value)).map(_.s).max))
+          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i && rr.s == lift(value)).map(_.s).max)
+        )
       }
       (36, "bar_s", Some("foobar")) mustBe updated
     }
@@ -208,7 +214,8 @@ class JdbcContextSpec extends Spec {
 
       val updated = ctx.run {
         qr1.update(lift(TestEntity("two", 2, 18L, Some(123), true))).returning(r =>
-          (r.i, r.s + "_s", qr1.filter(rr => rr.o.exists(_ == r.i - 1)).map(_.s).max))
+          (r.i, r.s + "_s", qr1.filter(rr => rr.o.exists(_ == r.i - 1)).map(_.s).max)
+        )
       }
       (2, "two_s", Some("one")) mustBe updated
     }
@@ -265,7 +272,8 @@ class JdbcContextSpec extends Spec {
 
       val deleted = ctx.run {
         qr1.delete.returning(r =>
-          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i).map(_.s).max))
+          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i).map(_.s).max)
+        )
       }
       (1, "foo_s", Some("foobar")) mustBe deleted
     }
@@ -280,7 +288,8 @@ class JdbcContextSpec extends Spec {
 
       val deleted = ctx.run {
         qr1.delete.returning(r =>
-          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i && rr.s == lift(value)).map(_.s).max))
+          (r.i, r.s + "_s", qr2.filter(rr => rr.i == r.i && rr.s == lift(value)).map(_.s).max)
+        )
       }
       (1, "foo_s", Some("foobar")) mustBe deleted
     }
@@ -291,7 +300,8 @@ class JdbcContextSpec extends Spec {
 
       val deleted = ctx.run {
         qr1.delete.returning(r =>
-          (r.i, r.s + "_s", qr1.filter(rr => rr.o.exists(_ == r.i - 1)).map(_.s).max))
+          (r.i, r.s + "_s", qr1.filter(rr => rr.o.exists(_ == r.i - 1)).map(_.s).max)
+        )
       }
       (2, "one_s", Some("one")) mustBe deleted
     }

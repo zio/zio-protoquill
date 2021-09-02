@@ -19,13 +19,13 @@ object MappedDecoderMaker:
   def applyImpl[Decoder[_]: Type, Mapped <: AnyVal: Type](using qctx: Quotes): Expr[AnyValDecoderContext[Decoder, Mapped] => Decoder[Mapped]] =
     import qctx.reflect._
     // try to summon a normal encoder first and see if that works
-    def isAnyValDecoder(term: Term) = 
+    def isAnyValDecoder(term: Term) =
       term match
         case TypeApply(Select(This(Some("EncodingDsl")), "anyValDecoder"), List(Inferred())) => true
-        case _ => false
+        case _                                                                               => false
 
     //Expr.summon[Decoder[Mapped]] match
-    //  case Some(decoder) if !isAnyValDecoder(decoder.asTerm) => 
+    //  case Some(decoder) if !isAnyValDecoder(decoder.asTerm) =>
     //    decoder
     //  case _ =>
     // get the type from the primary constructor and try to summon an encoder for that
@@ -42,18 +42,22 @@ object MappedDecoderMaker:
     firstParamType.asType match
       case '[tt] =>
         Expr.summon[Decoder[tt]] match
-          case Some(enc) => 
+          case Some(enc) =>
             val mappedDecoding =
-              '{ MappedEncoding((v: tt) => ${
-                Apply(
-                  Select(New(TypeTree.of[Mapped]), constructor),
-                  List('v.asTerm)
-                ).asExprOf[Mapped]
-              }) }
+              '{
+                MappedEncoding((v: tt) =>
+                  ${
+                    Apply(
+                      Select(New(TypeTree.of[Mapped]), constructor),
+                      List('v.asTerm)
+                    ).asExprOf[Mapped]
+                  }
+                )
+              }
             val out = '{ (ctx: AnyValDecoderContext[Decoder, Mapped]) => ctx.makeMappedDecoder[tt]($mappedDecoding, $enc) }
             //println(s"========== RETURNING Encoder ${Format.TypeRepr(tpe)} => ${Format.TypeRepr(firstParamType)} Consisting of: ${Format.Expr(out)} =========")
             out
-          case None => 
+          case None =>
             report.throwError(
               s"Cannot find a regular encoder for the AnyVal type ${Format.TypeRepr(tpe)} or a mapped-encoder for it's base type: ${Format.TypeRepr(firstParamType)}"
             )
@@ -63,26 +67,26 @@ object MappedEncoderMaker:
   def applyImpl[Encoder[_]: Type, Mapped <: AnyVal: Type](using qctx: Quotes): Expr[AnyValEncoderContext[Encoder, Mapped] => Encoder[Mapped]] =
     import qctx.reflect._
 
-    def isAnyValEncoder(term: Term) = 
+    def isAnyValEncoder(term: Term) =
       term match
         case TypeApply(Select(This(Some("EncodingDsl")), "anyValEncoder"), List(Inferred())) => true
-        case _ => false
+        case _                                                                               => false
 
     // try to summon a normal encoder first and see if that works
     //Expr.summon[Encoder[Mapped]] match
-      //case Some(encoder) if !isAnyValEncoder(encoder.asTerm) => 
-      //  //println("-----------" + Printer.TreeStructure.show(encoder.asTerm))
-      //  encoder
-      //case _ =>
+    //case Some(encoder) if !isAnyValEncoder(encoder.asTerm) =>
+    //  //println("-----------" + Printer.TreeStructure.show(encoder.asTerm))
+    //  encoder
+    //case _ =>
     // get the type from the primary constructor and try to summon an encoder for that
     val tpe = TypeRepr.of[Mapped]
     // TODO Better error describing why the encoder could not be syntheisized if the constructor doesn't exist or has wrong form (i.e. != 1 arg)
-    
+
     val firstParam =
       tpe.typeSymbol.primaryConstructor.paramSymss match
-        case List(List(first)) => 
+        case List(List(first)) =>
           first
-        case _ => 
+        case _ =>
           report.throwError(s"not matched: ${Format.TypeRepr(tpe.dealias)}")
     val firstParamField = tpe.typeSymbol.memberField(firstParam.name)
     val firstParamType = tpe.memberType(firstParamField)
@@ -91,12 +95,12 @@ object MappedEncoderMaker:
     firstParamType.asType match
       case '[tt] =>
         Expr.summon[Encoder[tt]] match
-          case Some(enc) => 
-            val mappedEncoding = '{ MappedEncoding((v:Mapped) => ${ Select('v.asTerm, firstParamField).asExprOf[tt] }) }
+          case Some(enc) =>
+            val mappedEncoding = '{ MappedEncoding((v: Mapped) => ${ Select('v.asTerm, firstParamField).asExprOf[tt] }) }
             val out = '{ (ctx: AnyValEncoderContext[Encoder, Mapped]) => ctx.makeMappedEncoder[tt]($mappedEncoding, $enc) }
             //println(s"========== RETURNING Encoder ${Format.TypeRepr(tpe)} => ${Format.TypeRepr(firstParamType)} Consisting of: ${Format.Expr(out)} =========")
             out
-          case None => 
+          case None =>
             report.throwError(
               s"Cannot find a regular encoder for the AnyVal type ${Format.TypeRepr(tpe)} or a mapped-encoder for it's base type: ${Format.TypeRepr(firstParamType)}"
             )
@@ -113,7 +117,7 @@ object AnyValToValMacro:
     val firstParamField = tpe.typeSymbol.memberField(firstParam.name)
     val firstParamType = tpe.memberType(firstParamField)
     //println("Member type of 1st param: " + io.getquill.util.Format.TypeRepr(firstParamType))
-    '{ MappedEncoding((v:Cls) => ${ Select('v.asTerm, firstParamField).asExprOf[V] }) }
+    '{ MappedEncoding((v: Cls) => ${ Select('v.asTerm, firstParamField).asExprOf[V] }) }
 
 object ValToAnyValMacro:
   // For: String, Foo(value: String) extends AnyVal
@@ -123,9 +127,13 @@ object ValToAnyValMacro:
     import qctx.reflect._
     val tpe = TypeRepr.of[Cls]
     val constructor = tpe.typeSymbol.primaryConstructor
-    '{ MappedEncoding((v: V) => ${
-      Apply(
-        Select(New(TypeTree.of[Cls]), constructor),
-        List('v.asTerm)
-      ).asExprOf[Cls]
-     }) }
+    '{
+      MappedEncoding((v: V) =>
+        ${
+          Apply(
+            Select(New(TypeTree.of[Cls]), constructor),
+            List('v.asTerm)
+          ).asExprOf[Cls]
+        }
+      )
+    }

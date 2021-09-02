@@ -24,7 +24,7 @@ object LoadNaming {
         val className =
           optClassSymbol match {
             case Some(value) => value.fullName
-            case None =>
+            case None        =>
               //println(s"${loadClassType.show} is not a class type. Attempting to load it as a module.")
               if (!loadClassType.termSymbol.moduleClass.isNoSymbol) {
                 loadClassType.termSymbol.moduleClass.fullName
@@ -69,7 +69,6 @@ object LoadNaming {
     Expr(loadedStrategies.toString) // maybe list of string?
   }
 }
-
 
 inline def macLoadNamingStrategy[T](t: T): String = ${ macLoadNamingStrategyImpl[T]('t) }
 def macLoadNamingStrategyImpl[T: TType](t: Expr[T])(using Quotes): Expr[String] = {

@@ -9,11 +9,9 @@ import scala.util.Failure
 import scala.util.Success
 import io.getquill.util.CommonExtensions.Either._
 
-/**
- * Trait that allows usage of 'static' block. Can declared one of these and use similar to encoders
- * but it needs to be compiled in a previous compilation unit and a global static.
- * TODO More explanation
- */
+/** Trait that allows usage of 'static' block. Can declared one of these and use similar to encoders but it needs to be compiled in a previous compilation unit and a global static.
+  * TODO More explanation
+  */
 trait StaticSplice[T]:
   def apply(value: T): String
 
@@ -22,7 +20,7 @@ object StaticSplice:
 
   object Summon:
     def apply[T: Type](using Quotes): Either[String, StaticSplice[T]] =
-      import quotes.reflect.{ Try => TTry, _}
+      import quotes.reflect.{Try => TTry, _}
       for {
         summonValue <- Expr.summon[StaticSplice[T]].toEitherOr(s"a StaticSplice[${Format.TypeOf[T]}] cannot be summoned")
         // Summoning StaticSplice[T] will given (SpliceString: StaticSplice[String])
@@ -31,7 +29,7 @@ object StaticSplice:
         staticSpliceType = Untype(summonValue.asTerm.underlyingArgument).tpe.widen
 
         untypedModule <- LoadModule.TypeRepr(staticSpliceType).toEither.mapLeft(_.getMessage)
-        module        <- Try(untypedModule.asInstanceOf[StaticSplice[T]]).toEither.mapLeft(_.getMessage)
+        module <- Try(untypedModule.asInstanceOf[StaticSplice[T]]).toEither.mapLeft(_.getMessage)
       } yield (module)
 
   object SpliceString extends StaticSplice[String]:
@@ -67,6 +65,5 @@ object StaticSplice:
     def apply(value: java.time.LocalDate) =
       value.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
   inline given StaticSplice[java.time.LocalDate] = SpliceLocalDate
-
 
 end StaticSplice
