@@ -24,12 +24,25 @@ object Unlifter {
   trait NiceUnliftable[T: ClassTag] extends FromExpr[T] { // : ClassTag
     def unlift: Quotes ?=> PartialFunction[Expr[T], T]
     def apply(expr: Expr[T])(using Quotes): T =
-      unlift.lift(expr).getOrElse { throw new IllegalArgumentException(s"Could not Unlift AST type ${classTag[T].runtimeClass.getSimpleName} from the element ${pprint.apply(quotes.reflect.asTerm(expr))} into the Quill Abstract Syntax Tree") }
+      import quotes.reflect._
+      expr match
+        case '{ SerialHelper.fromSerializedJVM[tt](${Expr(serial: String)}) } if (TypeRepr.of[tt] <:< TypeRepr.of[Ast]) =>
+          SerialHelper.fromSerializedJVM[Ast](serial).asInstanceOf[T]
+        // On JVM, a Quat must be serialized and then lifted from the serialized state i.e. as a FromSerialized using JVM (due to 64KB method limit)
+        case '{ Quat.Product.fromSerializedJVM(${Expr(str: String)}) } =>
+          Quat.Product.fromSerializedJVM(str).asInstanceOf[T]
+        case '{ Quat.fromSerializedJVM(${Expr(str: String)}) } =>
+          Quat.fromSerializedJVM(str).asInstanceOf[T]
+        case _ =>
+          unlift.lift(expr).getOrElse {
+            throw new IllegalArgumentException(s"Could not Unlift AST type ${classTag[T].runtimeClass.getSimpleName} from the element ${pprint.apply(quotes.reflect.asTerm(expr))} into the Quill Abstract Syntax Tree")
+          }
+
     /** For things that contain subclasses, don't strictly check the super type and fail the match
       * if the type fails since we can't do that when it could be a sub-type of the type being matched.
       * The only thing we can do in that case is go through the sub-parser and see if anything matches.
       */
-    def unapply(expr: Expr[T])(using Quotes): Option[T] = unlift.lift(expr)
+    def unapply(expr: Expr[T])(using Quotes): Option[T] = Some(apply(expr))
     // TODO Maybe want to go to stricter version of this going back to Some(apply(expr)). See comment below about quoted matching being covariant.
   }
 
@@ -210,8 +223,6 @@ object Unlifter {
     import io.getquill.metaprog.Extractors.MatchingOptimizers._
     // TODO have a typeclass like Splicer to translate constant to strings
     def unlift =
-      case '{ SerialHelper.fromSerializedJVM[tt](${Expr(serial: String)}) } =>
-       SerialHelper.fromSerializedJVM[Ast](serial)
       case Is[AQuery]( unliftQuery(q) ) => q
       case Is[Constant]( unliftConstant(c) ) => c
       case Is[Action]( unliftAction(a) ) => a
@@ -234,6 +245,7 @@ object Unlifter {
       case Is[IterableOperation]( unliftTraversableOperation(o) ) => o
       // TODO Is the matching covariant? In that case can do "case '{ $oo: OptionOperation } and then strictly throw an error"
       case Is[OptionOperation]( unliftOptionOperation(ast) ) => ast
+      case Is[Assignment]( unliftAssignment(ast) ) => ast
       case '{ NullValue } => NullValue
   }
 
@@ -275,16 +287,12 @@ object Unlifter {
     def unexprSeq = expr.map(_.valueOrError)
 
   given quatProductUnliftable: NiceUnliftable[Quat.Product] with {
-    // On JVM, a Quat must be serialized and then lifted from the serialized state i.e. as a FromSerialized using JVM (due to 64KB method limit)
     def unlift =
-      case '{ Quat.Product.fromSerializedJVM(${Expr(str: String)}) } => Quat.Product.fromSerializedJVM(str)
       case '{ Quat.Product.WithRenamesCompact.apply($tpe)(${Varargs(fields)}: _*)(${Varargs(values)}: _*)(${Varargs(renamesFrom)}: _*)(${Varargs(renamesTo)}: _*) } => Quat.Product.WithRenamesCompact(tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
   }
 
   given quatUnliftable: NiceUnliftable[Quat] with {
     def unlift =
-      // On JVM, a Quat must be serialized and then lifted from the serialized state i.e. as a FromSerialized using JVM (due to 64KB method limit)
-      case '{ Quat.fromSerializedJVM(${Expr(str: String)}) } => Quat.fromSerializedJVM(str)
       case '{ Quat.Product.WithRenamesCompact.apply($tpe)(${Varargs(fields)}: _*)(${Varargs(values)}: _*)(${Varargs(renamesFrom)}: _*)(${Varargs(renamesTo)}: _*) } => Quat.Product.WithRenamesCompact(tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
 
       // TODO Ask Nicolas How do you uniquely identify this?

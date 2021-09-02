@@ -296,7 +296,7 @@ object InsertUpdateMacro {
           // process which assignments to exclude and take them out
           val remainingAssignments = assignmentsOfEntity.filterNot(asi => exclusions.contains(asi.property))
           // Then lift the remaining assignments
-          val liftedAssignmentsOfEntity = Expr.ofList(remainingAssignments.map(asi => Lifter.assignment(asi)))
+          val liftedAssignmentsOfEntity = Expr.ofList(remainingAssignments.map(asi => Lifter.NotSerializing.assignment(asi)))
           // ... and return them in lifted form
           liftedAssignmentsOfEntity
         // If we have assignment-exclusions that can only be accessed during runtime
@@ -304,7 +304,7 @@ object InsertUpdateMacro {
           // Pull out the exclusions from the quotation
           val exclusions = '{ DynamicUtil.retrieveAssignmentTuple($quotation) }
           // Lift ALL the assignments of the entity
-          val allAssignmentsLifted = Expr.ofList(assignmentsOfEntity.map(ast => Lifter.assignment(ast)))
+          val allAssignmentsLifted = Expr.ofList(assignmentsOfEntity.map(ast => Lifter.NotSerializing.assignment(ast)))
           // Create a statement that represents the filtered assignments during runtime
           val liftedFilteredAssignments = '{ $allAssignmentsLifted.filterNot(asi => $exclusions.contains(asi.property)) }
           // ... and return the filtered assignments

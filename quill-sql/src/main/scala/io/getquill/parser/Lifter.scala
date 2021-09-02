@@ -17,29 +17,32 @@ object SerialHelper:
   def fromSerializedJVM[T](serial: String): T = KryoAstSerializer.deserialize(serial).asInstanceOf[T]
   def toSerializedJVM(ast: Ast): String =KryoAstSerializer.serialize(ast)
 
-object Lifter {
+object Lifter extends LifterProxy {
+  val default = Lifter(SerializeQuat.global, SerializeAst.global)
+
   def NotSerializing = Lifter(SerializeQuat.None, SerializeAst.None)
 
-  // A new parameter should be introduced to replace Messages.maxQuatFields which is far too conservative
-  // for ProtoQuill. The unlifter is so slow that Kryo serialization beats it's performance even for small Quats.
-  // In Scala2-Quill Quat-Serialization was used just to avoid Java Method-Size limits but in ProtoQuill
-  // it also substantially improves performance over quoted-match unlifting.
-  private def newLifter(ast: Ast) =
-    Lifter(SerializeQuat.global(ast.countQuatFields), SerializeAst.global)
-  def apply(ast: Ast): Quotes ?=> Expr[Ast] = newLifter(ast).liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
-  def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = newLifter(ast).liftableAssignment(ast)
-  def entity(ast: Entity): Quotes ?=> Expr[Entity] = newLifter(ast).liftableEntity(ast)
-  def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = newLifter(ast).liftableTuple(ast)
-  def caseClass(ast: CaseClass): Quotes ?=> Expr[CaseClass] = newLifter(ast).liftableCaseClass(ast)
-  def ident(ast: AIdent): Quotes ?=> Expr[AIdent] = newLifter(ast).liftableIdent(ast)
-  def quat(quat: Quat): Quotes ?=> Expr[Quat] =
-    Lifter(SerializeQuat.global(quat.countFields), SerializeAst.global).liftableQuat(quat)
+  def apply(ast: Ast): Quotes ?=> Expr[Ast] = default.liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
 
-  def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] =
-    Lifter(SerializeQuat.None, SerializeAst.None).liftableReturnAction(returnAction)
+  private [getquill] def doSerializeQuat(quat: Quat, serializeQuat: SerializeQuat) =
+    serializeQuat match
+      case SerializeQuat.All => true
+      case SerializeQuat.ByFieldCount(maxNonSerializeFields) => quat.countFields > maxNonSerializeFields
+      case SerializeQuat.None => false
 }
 
 
+trait LifterProxy {
+  def default: Lifter
+
+  def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = default.liftableAssignment(ast)
+  def entity(ast: Entity): Quotes ?=> Expr[Entity] = default.liftableEntity(ast)
+  def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = default.liftableTuple(ast)
+  def caseClass(ast: CaseClass): Quotes ?=> Expr[CaseClass] = default.liftableCaseClass(ast)
+  def ident(ast: AIdent): Quotes ?=> Expr[AIdent] = default.liftableIdent(ast)
+  def quat(quat: Quat): Quotes ?=> Expr[Quat] = default.liftableQuat(quat)
+  def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] = default.liftableReturnAction(returnAction)
+}
 
 /**
  * Convert constructs of Quill Ast into Expr[Ast]. This allows them to be passed
@@ -48,7 +51,8 @@ object Lifter {
  *
  * Note that liftable List is already taken care of by the Dotty implicits
  */
-case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
+case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) extends LifterProxy {
+  val default = this
 
   extension [T](t: T)(using ToExpr[T], Quotes)
     def expr: Expr[T] = Expr(t)
@@ -57,7 +61,15 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
     // TODO Can we Change to 'using Quotes' without changing all the signitures? Would be simplier to extend
     def lift: Quotes ?=> PartialFunction[T, Expr[T]]
     def apply(t: T)(using Quotes): Expr[T] =
-      lift.lift(t).getOrElse { throw new IllegalArgumentException(s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element ${pprint.apply(t)} into the Quill Abstract Syntax Tree") }
+      t match
+        case ast: Ast if (serializeAst == SerializeAst.All) =>
+          tryToSerialize[Ast](ast).asInstanceOf[Expr[T]]
+        case quat: Quat if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
+          '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }.asInstanceOf[Expr[T]]
+        case _ =>
+          lift.lift(t).getOrElse {
+            throw new IllegalArgumentException(s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element ${pprint.apply(t)} into the Quill Abstract Syntax Tree")
+          }
     def unapply(t: T)(using Quotes) = Some(apply(t))
 
   // Technically not part of the AST this needs to be lifted in the QueryExecution and returned to the executeActionReturning context clause
@@ -125,8 +137,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
 
   given liftableQuatProduct: NiceLiftable[Quat.Product] with {
     def lift =
-      case quat: Quat.Product if (serializeQuat == SerializeQuat.All) =>
-        '{ io.getquill.quat.Quat.Product.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
       case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) =>
         '{ io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${tpe.expr})(${fields.toList.spliceVarargs}: _*)(${values.toList.spliceVarargs}: _*)(${renamesFrom.toList.spliceVarargs}: _*)(${renamesTo.toList.spliceVarargs}: _*) }
   }
@@ -136,8 +146,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
 
   given liftableQuat : NiceLiftable[Quat] with {
     def lift =
-      case quat: Quat.Product if (serializeQuat == SerializeQuat.All) =>
-        '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }
       case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) => '{ io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${tpe.expr})(${fields.toList.spliceVarargs}: _*)(${values.toList.spliceVarargs}: _*)(${renamesFrom.toList.spliceVarargs}: _*)(${renamesTo.toList.spliceVarargs}: _*) }
       case Quat.Value => '{ io.getquill.quat.Quat.Value }
       case Quat.Null => '{ io.getquill.quat.Quat.Null }
@@ -228,7 +236,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) {
 
   given liftableAst : NiceLiftable[Ast] with {
     def lift =
-      case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Ast](ast)
       case Constant(ConstantValue(v), quat) => '{ Constant(${ConstantExpr(v)}, ${quat.expr}) }
       case Constant((), quat) => '{ Constant((), ${quat.expr}) }
       case Function(params: List[AIdent], body: Ast) => '{ Function(${params.expr}, ${body.expr}) }

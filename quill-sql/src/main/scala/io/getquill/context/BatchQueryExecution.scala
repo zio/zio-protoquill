@@ -278,7 +278,7 @@ object BatchQueryExecution:
 
     def applyDynamic(): Expr[Res] =
       val (caseClass, perRowLifts) = prepareLifts()
-      val caseClassExpr = Lifter.caseClass(caseClass)
+      val caseClassExpr = Lifter.NotSerializing.caseClass(caseClass)
       val perRowLiftsExpr = Expr.ofList(perRowLifts)
       val extractionBehaviorExpr = Expr(extractionBehavior)
       val extractor = MakeExtractor[ResultRow, Session, T, T].dynamic(identityConverter, extractionBehavior)

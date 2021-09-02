@@ -103,6 +103,7 @@ object Extractors {
 
     def apply(using Quotes)(expr: Expr[_]): Expr[_] =
       import quotes.reflect._
+      import scala.util.{ Try, Success, Failure }
       Untype.unapply(expr.asTerm).map(_.asExpr).get
   }
 

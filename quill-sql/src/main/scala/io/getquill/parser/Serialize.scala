@@ -4,11 +4,14 @@ import io.getquill.util.ProtoMessages
 
 enum SerializeQuat:
   case All
+  case ByFieldCount(maxFields: Int) extends SerializeQuat
   case None
 
 object SerializeQuat:
-  def global(numQuatFields: Int) =
-    if (numQuatFields > ProtoMessages.maxQuatFields) SerializeQuat.All else SerializeQuat.None
+  def global =
+    if (ProtoMessages.maxQuatFields == 0) SerializeQuat.All
+    else if (ProtoMessages.maxQuatFields < 0) SerializeQuat.None
+    else SerializeQuat.ByFieldCount(ProtoMessages.maxQuatFields)
 
 enum SerializeAst:
   case All
