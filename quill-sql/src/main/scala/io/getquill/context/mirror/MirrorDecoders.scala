@@ -14,21 +14,21 @@ trait MirrorDecoders extends EncodingDsl {
   type Decoder[T] = MirrorDecoder[T]
 
   case class MirrorDecoder[T](decoder: DecoderMethod[T]) extends BaseDecoder[T] {
-    override def apply(index: Int, row: ResultRow) =
-      decoder(index, row)
+    override def apply(index: Int, row: ResultRow, session: Session) =
+      decoder(index, row, session)
   }
 
-  def decoder[T: ClassTag]: MirrorDecoder[T] = MirrorDecoder((index: Int, row: ResultRow) => row.apply[T](index))
+  def decoder[T: ClassTag]: MirrorDecoder[T] = MirrorDecoder((index: Int, row: ResultRow, session: Session) => row.apply[T](index))
 
-  def decoderUnsafe[T]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow) => row.data(index).asInstanceOf[T])
+  def decoderUnsafe[T]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow, session: Session) => row.data(index).asInstanceOf[T])
 
   implicit def mappedDecoder[I, O](implicit mapped: MappedEncoding[I, O], d: Decoder[I]): Decoder[O] =
-    MirrorDecoder((index: Int, row: ResultRow) => mapped.f(d.apply(index, row)))
+    MirrorDecoder((index: Int, row: ResultRow, session: Session) => mapped.f(d.apply(index, row, session)))
 
   implicit def optionDecoder[T](implicit d: Decoder[T]): Decoder[Option[T]] =
-    MirrorDecoder((index: Int, row: ResultRow) =>
+    MirrorDecoder((index: Int, row: ResultRow, session: Session) =>
       row[Option[Any]](index) match {
-        case Some(v) => Some(d(0, Row.fromList(v)))
+        case Some(v) => Some(d(0, Row.fromList(v), session))
         case None    => None
       })
 

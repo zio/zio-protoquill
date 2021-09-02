@@ -25,7 +25,7 @@ trait PrepareZioJdbcSpecBase extends ProductSpec with ZioSpec {
     }
   }
 
-  def productExtractor = (rs: ResultSet) => summon[GenericDecoder[context.ResultRow, Product, Generic]](0, rs)
+  def productExtractor = (rs: ResultSet, session: Session) => summon[GenericDecoder[context.ResultRow, context.Session, Product, Generic]](0, rs, session)
 
   def withOrderedIds(products: List[Product]) =
     products.zipWithIndex.map { case (product, id) => product.copy(id = id.toLong + 1) }
@@ -43,12 +43,17 @@ trait PrepareZioJdbcSpecBase extends ProductSpec with ZioSpec {
       )).provideConnectionFrom(pool).defaultRun
   }
 
-  def extractResults[T](prep: QIO[PreparedStatement])(extractor: ResultSet => T) = {
-    prep.bracketAuto { stmt =>
-      Task(stmt.executeQuery()).bracketAuto { rs =>
-        Task(ResultSetExtractor(rs, extractor))
-      }
-    }.provideConnectionFrom(pool).defaultRun
+  def extractResults[T](prep: QIO[PreparedStatement])(extractor: (ResultSet, Session) => T) = {
+    (for {
+      bconn <- ZIO.environment[QConnection]
+      conn = bconn.get[java.sql.Connection]
+      out <-
+        prep.bracketAuto { stmt =>
+          Task(stmt.executeQuery()).bracketAuto { rs =>
+            Task(ResultSetExtractor(rs, conn, extractor))
+          }
+        }.provide(bconn)
+    } yield (out)).provideConnectionFrom(pool).defaultRun
   }
 
   def extractProducts(prep: QIO[PreparedStatement]) =

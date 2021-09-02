@@ -85,7 +85,7 @@ object QueryMetaExtractor {
 
   def attemptStaticRequip[T: Type, R: Type](
     queryLot: QuotedExpr,
-    queryLifts: List[PlanterExpr[_, _]],
+    queryLifts: List[PlanterExpr[_, _, _]],
     quip: Expr[QueryMeta[T, R]]
   )(using Quotes): Option[StaticRequip[T, R]] = {
     import quotes.reflect.report

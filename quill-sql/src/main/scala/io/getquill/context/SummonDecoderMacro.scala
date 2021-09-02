@@ -33,13 +33,13 @@ object SummonDecoderMacro {
   import scala.quoted._ // Expr.summon is actually from here
   import io.getquill.Planter
 
-  def apply[T: Type, ResultRow: Type](using Quotes): Expr[GenericDecoder[ResultRow, T, DecodingType]] = {
+  def apply[T: Type, ResultRow: Type, Session: Type](using Quotes): Expr[GenericDecoder[ResultRow, Session, T, DecodingType]] = {
     import quotes.reflect._
-    Expr.summon[GenericDecoder[ResultRow, T, DecodingType.Specific]] match
+    Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Specific]] match
       case Some(decoder) => decoder
       case None =>
-        Expr.summon[GenericDecoder[ResultRow, T, DecodingType.Generic]] match
+        Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Generic]] match
           case Some(decoder) => decoder
           case None => report.throwError(s"Cannot Find decoder for ${Type.show[T]}")
-  }  
+  }
 }

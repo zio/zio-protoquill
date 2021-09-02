@@ -17,56 +17,56 @@ import io.getquill.Query
 abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
 
   extension (m: MirrorContext[_, _]#BatchActionReturningMirror[_])
-    def triple = 
+    def triple =
       if (m.groups.length != 1) fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
       val (queryString, returnAction, prepares) = m.groups(0)
       (
-        queryString, 
+        queryString,
         prepares.map { prep =>
           // being explicit here about the fact that this is done per prepare element i.e. all of them are supposed to be Row instances
           prep match {
-            case r: io.getquill.context.mirror.Row => 
+            case r: io.getquill.context.mirror.Row =>
               r.data.toList.map(_._2)
           }
-        }, 
+        },
         m.info.executionType
       )
-  
+
   extension (m: MirrorContext[_, _]#BatchActionMirror)
-    def triple = 
+    def triple =
       if (m.groups.length != 1) fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
       val (queryString, prepares) = m.groups(0)
       (
-        queryString, 
+        queryString,
         prepares.map { prep =>
           // being explicit here about the fact that this is done per prepare element i.e. all of them are supposed to be Row instances
           prep match {
-            case r: io.getquill.context.mirror.Row => 
+            case r: io.getquill.context.mirror.Row =>
               r.data.toList.map(_._2)
           }
-        }, 
+        },
         m.info.executionType
       )
 
   extension (m: MirrorContext[_, _]#ActionMirror)
-    def triple = 
+    def triple =
       (
-        m.string, 
+        m.string,
         m.prepareRow match {
-          case r: io.getquill.context.mirror.Row => 
+          case r: io.getquill.context.mirror.Row =>
             r.data.toList.map(_._2)
-        }, 
+        },
         m.info.executionType
       )
 
   extension [T](m: MirrorContext[_, _]#QueryMirror[_])
-    def triple = 
+    def triple =
       (
-        m.string, 
+        m.string,
         m.prepareRow match {
-          case r: io.getquill.context.mirror.Row => 
+          case r: io.getquill.context.mirror.Row =>
             r.data.toList.map(_._2)
-        }, 
+        },
         m.info.executionType
       )
 
@@ -75,18 +75,18 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
       val r = ctx.run(q)
       (
         r.prepareRow match {
-          case r: io.getquill.context.mirror.Row => 
+          case r: io.getquill.context.mirror.Row =>
             r.data.toList.map(_._2)
-        }, 
+        },
         r.info.executionType
       )
 
-  extension [T, PrepareRow](q: Quoted[T])
-    def encodeEagerLifts(row: PrepareRow) =
+  extension [T, PrepareRow, Session](q: Quoted[T])
+    def encodeEagerLifts(row: PrepareRow, session: Session) =
       q.lifts.zipWithIndex.collect {
-        case (ep: EagerPlanter[String, PrepareRow], idx) => ep.encoder(idx, ep.value, row)
+        case (ep: EagerPlanter[String, PrepareRow, Session], idx) => ep.encoder(idx, ep.value, row, session)
       }
-  
+
   extension (ast: Ast)
     def asFunction = ast.asInstanceOf[Function]
 

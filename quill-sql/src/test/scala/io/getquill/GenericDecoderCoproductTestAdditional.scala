@@ -28,7 +28,10 @@ object GenericDecoderCoproductTestAdditional {
   // TODO Resore this when moving back to original way of doing generic decoders
   //implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.generic
 
-  implicit inline def autoDecoder[T]: GenericDecoder[MyResult, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, MyResult] }
+  implicit inline def autoDecoder[T]: GenericDecoder[MyResult, MySession, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, MyResult, MySession] }
+
+  sealed trait MySession
+  object MySession extends MySession
 
   case class MyResult(values: (String, Any)*) {
     lazy val list = LinkedHashMap[String, Any](values.toList: _*)
@@ -37,12 +40,12 @@ object GenericDecoderCoproductTestAdditional {
     def resolve(key: String): Int = list.keysIterator.toList.indexOf(key) + 1
   }
 
-  given GenericDecoder[MyResult, String, DecodingType.Specific] with
-    def apply(index: Int, row: MyResult): String = row.get(index).toString
+  given GenericDecoder[MyResult, MySession, String, DecodingType.Specific] with
+    def apply(index: Int, row: MyResult, session: MySession): String = row.get(index).toString
 
-  given GenericDecoder[MyResult, Int, DecodingType.Specific] with
-    def apply(index: Int, row: MyResult): Int = row.get(index).toString.toInt
-  
+  given GenericDecoder[MyResult, MySession, Int, DecodingType.Specific] with
+    def apply(index: Int, row: MyResult, session: MySession): Int = row.get(index).toString.toInt
+
   // TODO automatically provide this in 'context'
   given res: GenericColumnResolver[MyResult] with {
     def apply(resultRow: MyResult, columnName: String): Int = {

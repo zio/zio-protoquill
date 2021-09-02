@@ -52,7 +52,7 @@ class PostgresJAsyncContextSpec extends Spec {
         super.extractActionResult(returningAction, returningExtractor)(result)
     }
     intercept[IllegalStateException] {
-      ctx.extractActionResult(ReturnColumns(List("w/e")), row => 1)(new QueryResult(0, "w/e", ResultSetKt.getEMPTY_RESULT_SET))
+      ctx.extractActionResult(ReturnColumns(List("w/e")), (row, session) => 1)(new QueryResult(0, "w/e", ResultSetKt.getEMPTY_RESULT_SET))
     }
     ctx.close
   }

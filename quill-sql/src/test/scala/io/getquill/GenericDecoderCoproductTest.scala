@@ -35,13 +35,13 @@ class GenericDecoderCoproductTest extends Spec {
   import GenericDecoderCoproductTestAdditional._
 
   // // Can't find a needed reference to Type[Shape.Circle] and Type[Shape.Square] if you
-  // // use sealed trait and put inside main body. Probably because scala compiler has not been able 
+  // // use sealed trait and put inside main body. Probably because scala compiler has not been able
   // to close the class yet hence it does not yet know that it is a sum
 
   import StaticSealedTraitExample._
   // enum Shape:
   //   case Square(width: Int, height: Int) extends Shape
-  //   case Circle(radius: Int) extends Shape  
+  //   case Circle(radius: Int) extends Shape
 
   given deter: GenericRowTyper[MyResult, Shape] with {
     def apply(rr: MyResult): ClassTag[_] = {
@@ -55,9 +55,10 @@ class GenericDecoderCoproductTest extends Spec {
   }
 
   "test coproduct type" in {
+    val s = MySession
     val r1 = MyResult("type" -> "square", "radius" -> 890, "width" -> 123, "height" -> 456)
-    autoDecoder[Shape](1, r1) mustEqual Shape.Square(123, 456)
+    autoDecoder[Shape](1, r1, s) mustEqual Shape.Square(123, 456)
     val r2 = MyResult("type" -> "circle", "radius" -> 890, "width" -> 123, "height" -> 456)
-    autoDecoder[Shape](1, r2) mustEqual Shape.Circle(890)
+    autoDecoder[Shape](1, r2, s) mustEqual Shape.Circle(890)
   }
 }

@@ -24,7 +24,7 @@ trait EntityQuery[T] extends EntityQueryModel[T] with Unquoteable:
   override def filter(f: T => Boolean): EntityQuery[T] = NonQuotedException()
   override def map[R](f: T => R): EntityQuery[R] = NonQuotedException()
 
-case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _]], runtimeQuotes: List[QuotationVase]) {
+case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _, _]], runtimeQuotes: List[QuotationVase]) {
   override def toString = io.getquill.util.Messages.qprint(this).plainText
 }
 
@@ -32,7 +32,7 @@ case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _]], 
 // For example, a ScalarPlanter is re-inserted into the PrepareRow sequence
 // Note that we cannot assume the unquote is just T since unquoted values can be
 // different e.g. in EagerEntityListPlaner
-sealed trait Planter[T, PrepareRow] extends Unquoteable {
+sealed trait Planter[T, PrepareRow, Session] extends Unquoteable {
   def unquote: T
   def uid: String
 }
@@ -49,31 +49,31 @@ implicit class InfixInterpolator(val sc: StringContext) {
   def infix(args: Any*): InfixValue = NonQuotedException()
 }
 
-case class InjectableEagerPlanter[T, PrepareRow](inject: _ => T, encoder: GenericEncoder[T, PrepareRow], uid: String) extends Planter[T, PrepareRow] {
+case class InjectableEagerPlanter[T, PrepareRow, Session](inject: _ => T, encoder: GenericEncoder[T, PrepareRow, Session], uid: String) extends Planter[T, PrepareRow, Session] {
   // This is the equivalent of InjectableEagerPlanterExpr's 'inject' method only for dynamic batch queries
   // TODO Try changing to Any => T and see if exceptions happen anywhere
-  def withInject(element: Any) = EagerPlanter[T, PrepareRow](inject.asInstanceOf[Any => T](element), encoder, uid)
+  def withInject(element: Any) = EagerPlanter[T, PrepareRow, Session](inject.asInstanceOf[Any => T](element), encoder, uid)
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
 
-case class EagerListPlanter[T, PrepareRow](values: List[T], encoder: GenericEncoder[T, PrepareRow], uid: String) extends Planter[Query[T], PrepareRow] {
+case class EagerListPlanter[T, PrepareRow, Session](values: List[T], encoder: GenericEncoder[T, PrepareRow, Session], uid: String) extends Planter[Query[T], PrepareRow, Session] {
   def unquote: Query[T] =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
 
-case class EagerPlanter[T, PrepareRow](value: T, encoder: GenericEncoder[T, PrepareRow], uid: String) extends Planter[T, PrepareRow] {
+case class EagerPlanter[T, PrepareRow, Session](value: T, encoder: GenericEncoder[T, PrepareRow, Session], uid: String) extends Planter[T, PrepareRow, Session] {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
 
-case class LazyPlanter[T, PrepareRow](value: T, uid: String) extends Planter[T, PrepareRow] {
+case class LazyPlanter[T, PrepareRow, Session](value: T, uid: String) extends Planter[T, PrepareRow, Session] {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
 
 // Equivalent to CaseClassValueLift
-case class EagerEntitiesPlanter[T, PrepareRow](value: Iterable[T], uid: String) extends Planter[Query[T], PrepareRow] {
+case class EagerEntitiesPlanter[T, PrepareRow, Session](value: Iterable[T], uid: String) extends Planter[Query[T], PrepareRow, Session] {
   def unquote: Query[T] =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
