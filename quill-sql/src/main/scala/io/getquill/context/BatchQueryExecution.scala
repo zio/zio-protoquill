@@ -340,11 +340,13 @@ object BatchQueryExecution:
               '{ $batchContextOperation.execute(${Expr(query.basicQuery)}, $prepares.toList, $extractor, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)})) }
 
             case None =>
-              report.warning(s"Could not create static state from the query: ${Format.Expr(expandedQuotation)}")
+              // TODO report via trace debug
+              //report.warning(s"Could not create static state from the query: ${Format.Expr(expandedQuotation)}")
               applyDynamic()
 
         case _ =>
-          report.warning(s"Batch actions must be static quotations. Found: ${Format.Expr(quoted)}", quoted)
+          // TODO report via trace debug
+          //report.warning(s"Batch actions must be static quotations. Found: ${Format.Expr(quoted)}", quoted)
           applyDynamic()
     end apply
 

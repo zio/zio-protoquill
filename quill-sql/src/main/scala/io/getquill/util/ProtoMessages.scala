@@ -17,6 +17,7 @@ object ProtoMessages:
 
   private[getquill] def serializeAst = cache("quill.ast.serialize", variable("quill.ast.serialize", "quill_ast_serialize", "true").toBoolean)
   private[getquill] def maxQuatFields = cache("quill.quat.tooManyFields", variable("quill.quat.tooManyFields", "quill_quat_tooManyFields", "4").toInt)
+  private[getquill] def errorDetail = cache("quill.error.detail", variable("quill.error.detail", "quill_error_detail", "false").toBoolean)
 
 
 end ProtoMessages

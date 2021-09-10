@@ -2,6 +2,7 @@ package io.getquill.util
 
 import scala.util.{ Try, Success, Failure }
 import scala.quoted._
+import io.getquill.util.ProtoMessages
 
 object Format {
   // import org.scalafmt.interfaces.Scalafmt
@@ -58,7 +59,17 @@ object Format {
 
     def Detail(expr: Expr[_])(using Quotes) =
       import quotes.reflect._
-      Format(Printer.TreeStructure.show(expr.asTerm))
+      val term = expr.asTerm
+      if (ProtoMessages.errorDetail) {
+        s"""|
+            |s"==== Expression ====
+            |  ${Format(Printer.TreeShortCode.show(term)) }
+            |==== Extractors ===
+            |  ${Format(Printer.TreeStructure.show(term))}
+            |""".stripMargin,
+      } else {
+        Format(Printer.TreeShortCode.show(term))
+      }
   }
 
   def apply(code: String) = {

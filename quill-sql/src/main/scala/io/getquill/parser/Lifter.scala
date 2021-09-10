@@ -1,7 +1,6 @@
 package io.getquill.parser
 
 import scala.quoted.{ Type => TType, _ }
-import scala.quoted._
 import scala.quoted
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import io.getquill.metaprog.Extractors._
@@ -12,6 +11,8 @@ import io.getquill.util.Messages
 import io.getquill.ReturnAction
 import scala.meta.Term.Assign
 import scala.util.Try
+import io.getquill.util.Format
+import io.getquill.util.StringUtil.section
 
 object SerialHelper:
   def fromSerializedJVM[T](serial: String): T = KryoAstSerializer.deserialize(serial).asInstanceOf[T]
@@ -22,8 +23,6 @@ object Lifter extends LifterProxy {
 
   def NotSerializing = Lifter(SerializeQuat.None, SerializeAst.None)
   def NotSerializingAst = Lifter(SerializeQuat.global, SerializeAst.None)
-
-  def apply(ast: Ast): Quotes ?=> Expr[Ast] = default.liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
 
   private [getquill] def doSerializeQuat(quat: Quat, serializeQuat: SerializeQuat) =
     serializeQuat match
@@ -36,6 +35,8 @@ object Lifter extends LifterProxy {
 trait LifterProxy {
   def default: Lifter
 
+  def apply(ast: Ast): Quotes ?=> Expr[Ast] = default.liftableAst(ast) // can also do ast.lift but this makes some error messages simpler
+  def action(ast: Action): Quotes ?=> Expr[Action] = default.liftableAction(ast)
   def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = default.liftableAssignment(ast)
   def entity(ast: Entity): Quotes ?=> Expr[Entity] = default.liftableEntity(ast)
   def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = default.liftableTuple(ast)
@@ -60,16 +61,24 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
   trait NiceLiftable[T: ClassTag] extends ToExpr[T]:
     // TODO Can we Change to 'using Quotes' without changing all the signitures? Would be simplier to extend
-    def lift: Quotes ?=> PartialFunction[T, Expr[T]]
-    def apply(t: T)(using Quotes): Expr[T] =
-      t match
+
+    def lift: (Quotes) ?=> PartialFunction[T, Expr[T]]
+    def apply(element: T)(using Quotes): Expr[T] =
+      import quotes.reflect._
+      element match
         case ast: Ast if (serializeAst == SerializeAst.All) =>
           tryToSerialize[Ast](ast).asInstanceOf[Expr[T]]
+        case quat: Quat.Product if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
+          '{ io.getquill.quat.Quat.Product.fromSerializedJVM(${Expr(quat.serializeJVM)}) }.asInstanceOf[Expr[T]]
         case quat: Quat if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
           '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }.asInstanceOf[Expr[T]]
         case _ =>
-          lift.lift(t).getOrElse {
-            throw new IllegalArgumentException(s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element ${pprint.apply(t)} into the Quill Abstract Syntax Tree")
+          lift.lift(element).getOrElse {
+            report.throwError(
+              s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element:\n" +
+              s"${section(io.getquill.util.Messages.qprint(element).toString)}\n" +
+              s"of the Quill Abstract Syntax Tree"
+            )
           }
     def unapply(t: T)(using Quotes) = Some(apply(t))
 
@@ -214,8 +223,17 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case AscNullsLast         => '{ io.getquill.ast.AscNullsLast }
       case DescNullsLast        => '{ io.getquill.ast.DescNullsLast }
 
+  given liftableAction: NiceLiftable[Action] with
+    def lift =
+      case Insert(query: Ast, assignments: List[Assignment]) => '{ Insert(${query.expr}, ${assignments.expr}) }
+      case Update(query: Ast, assignments: List[Assignment]) => '{ Update(${query.expr}, ${assignments.expr}) }
+      case Delete(query: Ast) => '{ Delete(${query.expr}) }
+      case Returning(action: Ast, alias: AIdent, body: Ast) => '{ Returning(${action.expr}, ${alias.expr}, ${body.expr})  }
+      case ReturningGenerated(action: Ast, alias: AIdent, body: Ast) => '{ ReturningGenerated(${action.expr}, ${alias.expr}, ${body.expr})  }
+      case Foreach(query: Ast, alias: AIdent, body: Ast) => '{ Foreach(${query.expr}, ${alias.expr}, ${body.expr})  }
 
-  def tryToSerialize[T <: Ast: Type](ast: Ast)(using Quotes): Expr[T] =
+
+  def tryToSerialize[T <: Ast: TType](ast: Ast)(using Quotes): Expr[T] =
     // Kryo can have issues if 'ast' is a lazy val (e.g. it will attempt to serialize Entity.Opinionated as though
     // it is an actual object which will fail because it is actually an inner class. Should look into
     // adding support for inner classes or remove them
@@ -237,6 +255,12 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
   given liftableAst : NiceLiftable[Ast] with {
     def lift =
+      case v: Property => liftableProperty(v)
+      case v: AIdent => liftableIdent(v)
+      case v: IterableOperation => liftableTraversableOperation(v)
+      case v: OptionOperation => liftableOptionOperation(v)
+      case a: Assignment => liftableAssignment(a)
+      case a: Action => liftableAction(a)
       case Constant(ConstantValue(v), quat) => '{ Constant(${ConstantExpr(v)}, ${quat.expr}) }
       case Constant((), quat) => '{ Constant((), ${quat.expr}) }
       case Function(params: List[AIdent], body: Ast) => '{ Function(${params.expr}, ${body.expr}) }
@@ -254,18 +278,12 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case SortBy(query: Ast, alias: AIdent, criterias: Ast, ordering: Ast) => '{ SortBy(${query.expr}, ${alias.expr}, ${criterias.expr}, ${ordering.expr})  }
       case Distinct(a: Ast) => '{ Distinct(${a.expr}) }
       case Nested(a: Ast) => '{ Nested(${a.expr}) }
-      case Foreach(query: Ast, alias: AIdent, body: Ast) => '{ Foreach(${query.expr}, ${alias.expr}, ${body.expr})  }
       case UnaryOperation(operator: UnaryOperator, a: Ast) => '{ UnaryOperation(${liftOperator(operator).asInstanceOf[Expr[UnaryOperator]]}, ${a.expr})  }
       case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${a.expr}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${b.expr})  }
       case ScalarTag(uid: String) => '{ScalarTag(${uid.expr})}
       case QuotationTag(uid: String) => '{QuotationTag(${uid.expr})}
       case Union(a, b) => '{ Union(${a.expr}, ${b.expr}) }
       case UnionAll(a, b) => '{ UnionAll(${a.expr}, ${b.expr}) }
-      case Insert(query: Ast, assignments: List[Assignment]) => '{ Insert(${query.expr}, ${assignments.expr}) }
-      case Update(query: Ast, assignments: List[Assignment]) => '{ Update(${query.expr}, ${assignments.expr}) }
-      case Delete(query: Ast) => '{ Delete(${query.expr}) }
-      case Returning(action: Ast, alias: AIdent, body: Ast) => '{ Returning(${action.expr}, ${alias.expr}, ${body.expr})  }
-      case ReturningGenerated(action: Ast, alias: AIdent, body: Ast) => '{ ReturningGenerated(${action.expr}, ${alias.expr}, ${body.expr})  }
       case Infix(parts, params, pure, quat) => '{ Infix(${parts.expr}, ${params.expr}, ${pure.expr}, ${quat.expr}) }
       case Join(typ, a, b, identA, identB, body) => '{ Join(${typ.expr}, ${a.expr}, ${b.expr}, ${identA.expr}, ${identB.expr}, ${body.expr}) }
       case FlatJoin(typ, a, identA, on) => '{ FlatJoin(${typ.expr}, ${a.expr}, ${identA.expr}, ${on.expr}) }
@@ -273,11 +291,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case Drop(query: Ast, num: Ast) => '{ Drop(${query.expr}, ${num.expr})}
       case ConcatMap(query: Ast, alias: AIdent, body: Ast) => '{ ConcatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
       case NullValue => '{ NullValue }
-      case v: Property => liftableProperty(v)
-      case v: AIdent => liftableIdent(v)
-      case v: IterableOperation => liftableTraversableOperation(v)
-      case v: OptionOperation => liftableOptionOperation(v)
-      case a: Assignment => liftableAssignment(a)
   }
 
   import EqualityOperator.{ == => ee, != => nee }

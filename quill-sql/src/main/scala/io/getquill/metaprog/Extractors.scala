@@ -9,7 +9,7 @@ class Is[T: Type]:
   def unapply(expr: Expr[Any])(using Quotes) =
     import quotes.reflect._
     if (expr.asTerm.tpe <:< TypeRepr.of[T])
-      Some(expr)
+      Some(expr.asExprOf[T])
     else
       None
 
