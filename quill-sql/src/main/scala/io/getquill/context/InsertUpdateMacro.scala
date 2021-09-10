@@ -285,20 +285,31 @@ object InsertUpdateMacro {
       assignmentsAst
     }
 
+    /** Is the assignment list know at compile time or only runtime? */
+    enum AssignmentList:
+      def splice: Expr[List[io.getquill.ast.Assignment]] =
+        this match
+          case Static(list) =>
+            Expr.ofList(list.map(asi => Lifter.NotSerializingAst.assignment(asi)))
+          case Dynamic(list) =>
+            list
+      // If it is known at compile-time we can carry the actual instance list
+      case Static(list: List[io.getquill.ast.Assignment]) extends AssignmentList
+      // If it is only known at runtime, we have to carry around the spliceable expression
+      case Dynamic(list: Expr[List[io.getquill.ast.Assignment]])
+
     /**
      * Get assignments from an entity and then either exclude or include them
      * either statically or dynamically.
      */
-    def processAssignmentsAndExclusions(assignmentsOfEntity: List[io.getquill.ast.Assignment]): Expr[List[io.getquill.ast.Assignment]] =
+    def processAssignmentsAndExclusions(assignmentsOfEntity: List[io.getquill.ast.Assignment]): AssignmentList =
       IgnoredColumns.summon match
         // If we have assignment-exclusions during compile time
         case SummonState.Static(exclusions) =>
           // process which assignments to exclude and take them out
           val remainingAssignments = assignmentsOfEntity.filterNot(asi => exclusions.contains(asi.property))
-          // Then lift the remaining assignments
-          val liftedAssignmentsOfEntity = Expr.ofList(remainingAssignments.map(asi => Lifter.NotSerializingAst.assignment(asi)))
-          // ... and return them in lifted form
-          liftedAssignmentsOfEntity
+          // Then just return the remaining assignments
+          AssignmentList.Static(remainingAssignments)
         // If we have assignment-exclusions that can only be accessed during runtime
         case SummonState.Dynamic(uid, quotation) =>
           // Pull out the exclusions from the quotation
@@ -308,7 +319,7 @@ object InsertUpdateMacro {
           // Create a statement that represents the filtered assignments during runtime
           val liftedFilteredAssignments = '{ $allAssignmentsLifted.filterNot(asi => $exclusions.contains(asi.property)) }
           // ... and return the filtered assignments
-          liftedFilteredAssignments
+          AssignmentList.Dynamic(liftedFilteredAssignments)
 
 
     /**
@@ -352,33 +363,34 @@ object InsertUpdateMacro {
       //println("******************* TOP OF APPLY **************")
       // Processed Assignments AST plus any lifts that may have come from the assignments AST themsevles.
       // That is usually the case when
-      val assignmentsAst = processAssignmentsAndExclusions(assignmentOfEntity)
+      val assignmentList = processAssignmentsAndExclusions(assignmentOfEntity)
 
       // TODO where if there is a schemaMeta? Need to use that to create the entity
-      summonState match
+      (summonState, assignmentList) match
         // If we can get a static entity back
-        case SummonState.Static(entity) =>
+        case (SummonState.Static(entity), AssignmentList.Static(assignmentsAst)) =>
           // Lift it into an `Insert` ast, put that into a `quotation`, then return that `quotation.unquote` i.e. ready to splice into the quotation from which this `.insert` macro has been called
           val action = MacroType.ofThis() match
               case MacroType.Insert =>
-                '{ AInsert(${Lifter(entity)}, ${assignmentsAst}) }
+                AInsert(entity, assignmentsAst)
               case MacroType.Update =>
-                '{ AUpdate(${Lifter(entity)}, ${assignmentsAst}) }
+                AUpdate(entity, assignmentsAst)
 
-          val quotation = '{ Quoted[A[T]](${action}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
+          // Now create the quote and lift the action. This is more efficient then the alternative because the whole action AST can be serialized
+          val quotation = '{ Quoted[A[T]](${Lifter(action)}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
           // Unquote the quotation and return
           quotation
 
-        // If we get a dynamic entity back
+        // If we get a dynamic entity back we need to splice things as an Expr even if the assignmentsList is know at compile time
         // e.g. entityQuotation is 'querySchema[Person](...)' which is not inline
-        case SummonState.Dynamic(uid, entityQuotation) =>
+        case (SummonState.Dynamic(uid, entityQuotation), assignmentsList) =>
           // Need to create a ScalarTag representing a splicing of the entity (then going to add the actual thing into a QuotationVase and add to the pluckedUnquotes)
-
           val action = MacroType.ofThis() match
               case MacroType.Insert =>
-                '{ AInsert(QuotationTag(${Expr(uid)}), ${assignmentsAst}) }
+                // If the assignments list is dynamic, its 'assignmentsList.splice' just puts in the Expr. If it is static, it will call the lifter so splice it.
+                '{ AInsert(QuotationTag(${Expr(uid)}), ${assignmentsList.splice}) }
               case MacroType.Update =>
-                '{ AUpdate(QuotationTag(${Expr(uid)}), ${assignmentsAst}) }
+                '{ AUpdate(QuotationTag(${Expr(uid)}), ${assignmentsList.splice}) }
 
           // Create the QuotationVase in which this dynamic quotation will go
           val runtimeQuote = '{ QuotationVase($entityQuotation, ${Expr(uid)}) }

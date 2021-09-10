@@ -7,6 +7,8 @@ import io.getquill.quat.Quat
 import io.getquill.ast.{Ident => AIdent, Query => AQuery, _}
 import io.getquill.metaprog.Is
 import io.getquill.metaprog.Extractors
+import io.getquill.util.Format
+import io.getquill.util.StringUtil.section
 
 object UnlifterType {
   type Unlift[T] = PartialFunction[Expr[T], T]
@@ -35,7 +37,12 @@ object Unlifter {
           Quat.fromSerializedJVM(str).asInstanceOf[T]
         case _ =>
           unlift.lift(expr).getOrElse {
-            throw new IllegalArgumentException(s"Could not Unlift AST type ${classTag[T].runtimeClass.getSimpleName} from the element ${pprint.apply(quotes.reflect.asTerm(expr))} into the Quill Abstract Syntax Tree")
+            report.throwError(
+              s"Could not Unlift AST type ${classTag[T].runtimeClass.getSimpleName} from the element:\n" +
+              s"${section(Format.Expr.Detail(expr))}\n" +
+              s"of the Quill Abstract Syntax Tree",
+              expr
+            )
           }
 
     /** For things that contain subclasses, don't strictly check the super type and fail the match
@@ -193,6 +200,7 @@ object Unlifter {
 
   given unliftQuery: NiceUnliftable[AQuery] with
     def unlift =
+      case Is[Entity](ent) => unliftEntity(ent)
       case Is[Map]( '{ Map(${query}, ${alias}, ${body}: Ast) } ) => Map(query.unexpr, alias.unexpr, body.unexpr)
       case Is[FlatMap]( '{ FlatMap(${query}, ${alias}, ${body}: Ast) } ) => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
       case Is[Filter]( '{ Filter(${query}, ${alias}, ${body}: Ast) } ) => Filter(query.unexpr, alias.unexpr, body.unexpr)
@@ -223,9 +231,13 @@ object Unlifter {
     import io.getquill.metaprog.Extractors.MatchingOptimizers._
     // TODO have a typeclass like Splicer to translate constant to strings
     def unlift =
-      case Is[AQuery]( unliftQuery(q) ) => q
-      case Is[Constant]( unliftConstant(c) ) => c
-      case Is[Action]( unliftAction(a) ) => a
+      case Is[AQuery](q) => unliftQuery(q)
+      case Is[Constant](c) => unliftConstant(c)
+      case Is[Action](a) => unliftAction(a)
+      case Is[Entity](p) => unliftEntity(p)
+      case Is[Property](p) => unliftProperty(p)
+      case Is[AIdent](i) => unliftIdent(i)
+      case Is[Ordering](o) => unliftOrdering(o)
       case Is[If]( '{ If($cond, $thenStmt, $elseStmt) } ) => If(cond.unexpr, thenStmt.unexpr, elseStmt.unexpr)
       case Is[Function]( '{ Function($params, $body) } ) => Function(params.unexpr, body.unexpr)
       case Is[FunctionApply]( '{ FunctionApply($function, $values) } ) => FunctionApply(function.unexpr, values.unexpr)
@@ -238,10 +250,6 @@ object Unlifter {
       case Is[Infix]( '{ Infix($parts, $params, $pure, $quat) } ) => Infix(parts.unexpr, params.unexpr, pure.unexpr, quat.unexpr)
       case Is[Tuple]( '{ Tuple.apply($values) } ) => Tuple(values.unexpr)
       case Is[CaseClass]( '{ CaseClass($values) } ) => CaseClass(values.unexpr)
-      case Is[Entity]( unliftEntity(p) ) => p
-      case Is[Property]( unliftProperty(p) ) => p
-      case Is[AIdent]( unliftIdent(id) ) => id
-      case Is[Ordering]( unliftOrdering(o) ) => o
       case Is[IterableOperation]( unliftTraversableOperation(o) ) => o
       // TODO Is the matching covariant? In that case can do "case '{ $oo: OptionOperation } and then strictly throw an error"
       case Is[OptionOperation]( unliftOptionOperation(ast) ) => ast
@@ -289,14 +297,12 @@ object Unlifter {
   given quatProductUnliftable: NiceUnliftable[Quat.Product] with {
     def unlift =
       case '{ Quat.Product.WithRenamesCompact.apply($tpe)(${Varargs(fields)}: _*)(${Varargs(values)}: _*)(${Varargs(renamesFrom)}: _*)(${Varargs(renamesTo)}: _*) } => Quat.Product.WithRenamesCompact(tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
+      //case '{ Quat.Product.apply(${Varargs(fields)}: _*) } => Quat.Product(fields.unexprSeq: _*)
   }
 
   given quatUnliftable: NiceUnliftable[Quat] with {
     def unlift =
-      case '{ Quat.Product.WithRenamesCompact.apply($tpe)(${Varargs(fields)}: _*)(${Varargs(values)}: _*)(${Varargs(renamesFrom)}: _*)(${Varargs(renamesTo)}: _*) } => Quat.Product.WithRenamesCompact(tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
-
-      // TODO Ask Nicolas How do you uniquely identify this?
-      //case '{ Quat.Product.apply(${Varargs(fields)}: _*) } => Quat.Product(fields.unexprSeq: _*)
+      case Is[Quat.Product](p) => quatProductUnliftable(p)
       case '{ Quat.Value } => Quat.Value
       case '{ Quat.Null } => Quat.Null
       case '{ Quat.Generic } => Quat.Generic
