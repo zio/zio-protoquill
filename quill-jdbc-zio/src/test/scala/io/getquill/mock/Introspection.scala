@@ -1,9 +1,7 @@
-// No reflection API of this kind in Scala3, need to do something else
 // package io.getquill.mock
 
 // import scala.reflect.ClassTag
 // import scala.reflect.runtime.{ universe => ru }
-// import io.getquill._
 
 // class Introspection[T](t: T)(implicit tt: ru.TypeTag[T], ct: ClassTag[T]) {
 //   import ru._

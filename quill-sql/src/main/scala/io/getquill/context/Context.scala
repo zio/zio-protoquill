@@ -39,6 +39,9 @@ import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
 import java.awt.Dialog
 import org.scalafmt.config.ScalafmtRunner.Dialect
+import io.getquill.context.ProtoContext
+import io.getquill.context.AstSplicing
+import io.getquill.context.RowContext
 
 sealed trait ExecutionType
 object ExecutionType:
@@ -66,49 +69,6 @@ trait ProtoStreamContext[Dialect <: Idiom, Naming <: NamingStrategy] extends Row
 
   def streamQuery[T](fetchSize: Option[Int], sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): StreamResult[T]
 }
-
-trait RowContext {
-  type PrepareRow
-  type ResultRow
-
-  protected val identityPrepare: Prepare = (p: PrepareRow, s: Session) => (Nil, p)
-  protected val identityExtractor = (rr: ResultRow, s: Session) => rr
-
-  case class BatchGroup(string: String, prepare: List[Prepare])
-  case class BatchGroupReturning(string: String, returningBehavior: ReturnAction, prepare: List[Prepare])
-
-  type Prepare = (PrepareRow, Session) => (List[Any], PrepareRow)
-  type Extractor[T] = (ResultRow, Session) => T
-  type Session
-}
-
-trait ProtoContext[Dialect <: Idiom, Naming <: NamingStrategy] extends RowContext {
-  type PrepareRow
-  type ResultRow
-
-  type Result[T]
-  type RunQuerySingleResult[T]
-  type RunQueryResult[T]
-  type RunActionResult
-  type RunActionReturningResult[T]
-  type RunBatchActionResult
-  type RunBatchActionReturningResult[T]
-  type Session
-  /** Future class to hold things like ExecutionContext for Cassandra etc... */
-  type DatasourceContext
-
-  def idiom: Dialect
-  def naming: Naming
-
-  def executeQuery[T](sql: String, prepare: Prepare, extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunQueryResult[T]]
-  def executeQuerySingle[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunQuerySingleResult[T]]
-  def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunActionResult]
-  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunActionReturningResult[T]]
-  def executeBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionResult]
-  def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionReturningResult[T]]
-}
-
-trait AstSplicing
 
 sealed trait DatasourceContextInjection
 object DatasourceContextInjection {

@@ -1,7 +1,7 @@
 package io.getquill.postgres
 
 import io.getquill.PeopleZioSpec
-import io.getquill.context.ZioJdbc.Prefix
+import io.getquill.Prefix
 import org.scalatest.matchers.should.Matchers._
 import io.getquill._
 
@@ -68,7 +68,7 @@ class PeopleZioJdbcSpec extends PeopleZioSpec {
     collect(testContext.stream(`Ex 11 query`, 4)) should contain theSameElementsAs `Ex 11 expected`
   }
 
-  // Probe is not supported in ProtoQuill yet
+  // Probing not supported in ProtoQuill yet
   // "Example 12 - probe" in {
   //   probe("select 1").toOption mustBe defined
   // }

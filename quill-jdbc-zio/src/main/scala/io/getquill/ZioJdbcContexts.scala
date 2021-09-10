@@ -37,13 +37,12 @@ class OracleZioJdbcContext[N <: NamingStrategy](val naming: N)
   extends ZioJdbcContext[OracleDialect, N]
   with OracleJdbcRunContext[N]
 
-// Probing is not supported in ProtoQuill Yet
-// trait WithProbing[D <: SqlIdiom, N <: NamingStrategy] extends ZioJdbcContext[D, N] {
-//   def probingConfig: Config;
-//   override def probingDataSource: Option[DataSource] = Some(JdbcContextConfig(probingConfig).dataSource)
-// }
+trait WithProbing[D <: SqlIdiom, N <: NamingStrategy] extends ZioJdbcContext[D, N] {
+  def probingConfig: Config;
+  override def probingDataSource: Option[DataSource] = Some(JdbcContextConfig(probingConfig).dataSource)
+}
 
-// trait WithProbingPrefix[D <: SqlIdiom, N <: NamingStrategy] extends WithProbing[D, N] {
-//   def configPrefix: String;
-//   def probingConfig: Config = LoadConfig(configPrefix)
-// }
+trait WithProbingPrefix[D <: SqlIdiom, N <: NamingStrategy] extends WithProbing[D, N] {
+  def configPrefix: String;
+  def probingConfig: Config = LoadConfig(configPrefix)
+}

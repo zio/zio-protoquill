@@ -85,8 +85,8 @@ object ParserHelpers {
 
       object Double:
         def OrFail(expr: Expr[_]) =
-          unapply(expr).getOrElse { Parser.throwExpressionError(expr, classOf[Assignment]) }
-        def unapply(expr: Expr[_]): Option[Assignment] =
+          unapply(expr).getOrElse { Parser.throwExpressionError(expr, classOf[AssignmentDual]) }
+        def unapply(expr: Expr[_]): Option[AssignmentDual] =
           UntypeExpr(expr) match
              case TwoComponents(ident1, identTpe1, ident2, identTpe2, prop, value) =>
                 val i1 = cleanIdent(ident1, identTpe1)
@@ -95,7 +95,7 @@ object ParserHelpers {
                   case `i1` => OnConflict.Existing(i1)
                   case `i2` => OnConflict.Excluded(i2)
                 }
-                Some(Assignment(i1, astParse(prop), valueAst))
+                Some(AssignmentDual(i1, i2, astParse(prop), valueAst))
              case _ => None
 
 

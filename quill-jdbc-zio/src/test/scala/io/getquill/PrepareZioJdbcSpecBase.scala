@@ -6,24 +6,23 @@ import io.getquill.context.jdbc.ResultSetExtractor
 import io.getquill.context.sql.ProductSpec
 import io.getquill.context.qzio.ZioJdbcContext
 import org.scalactic.Equality
-import zio.{ Task, ZIO }
+import zio.{ Has, Task, ZIO }
 import io.getquill.generic.GenericDecoder
 import io.getquill.generic.DecodingType.Generic
 
-import java.sql.{ PreparedStatement, ResultSet }
-import _root_.io.getquill.context.jdbc.JdbcContext
+import java.sql.{ Connection, PreparedStatement, ResultSet }
 
 trait PrepareZioJdbcSpecBase extends ProductSpec with ZioSpec {
 
   val context: ZioJdbcContext[_, _]
-  import context._
+    import context._
 
-  implicit val productEq: Equality[Product] = new Equality[Product] {
-    override def areEqual(a: Product, b: Any): Boolean = b match {
-      case Product(_, desc, sku) => desc == a.description && sku == a.sku
-      case _                     => false
+    implicit val productEq: Equality[Product] = new Equality[Product] {
+      override def areEqual(a: Product, b: Any): Boolean = b match {
+        case Product(_, desc, sku) => desc == a.description && sku == a.sku
+        case _                     => false
+      }
     }
-  }
 
   def productExtractor = (rs: ResultSet, session: Session) => summon[GenericDecoder[context.ResultRow, context.Session, Product, Generic]](0, rs, session)
 
@@ -32,7 +31,7 @@ trait PrepareZioJdbcSpecBase extends ProductSpec with ZioSpec {
 
   def singleInsert(prep: QIO[PreparedStatement]) = {
     prep.flatMap(stmt =>
-      Task(stmt).bracketAuto { stmt => Task(stmt.execute()) }).provideConnectionFrom(pool).defaultRun
+      Task(stmt).bracketAuto { stmt => Task(stmt.execute()) }).onDataSource.provide(Has(pool)).defaultRun
   }
 
   def batchInsert(prep: QIO[List[PreparedStatement]]) = {
@@ -40,20 +39,18 @@ trait PrepareZioJdbcSpecBase extends ProductSpec with ZioSpec {
       ZIO.collectAll(
         stmts.map(stmt =>
           Task(stmt).bracketAuto { stmt => Task(stmt.execute()) })
-      )).provideConnectionFrom(pool).defaultRun
+      )).onDataSource.provide(Has(pool)).defaultRun
   }
 
-  def extractResults[T](prep: QIO[PreparedStatement])(extractor: (ResultSet, Session) => T) = {
+  def extractResults[T](prepareStatement: QIO[PreparedStatement])(extractor: (ResultSet, Connection) => T) = {
     (for {
-      bconn <- ZIO.environment[QConnection]
-      conn = bconn.get[java.sql.Connection]
-      out <-
-        prep.bracketAuto { stmt =>
-          Task(stmt.executeQuery()).bracketAuto { rs =>
-            Task(ResultSetExtractor(rs, conn, extractor))
-          }
-        }.provide(bconn)
-    } yield (out)).provideConnectionFrom(pool).defaultRun
+      conn <- ZIO.service[Connection]
+      result <- prepareStatement.provide(Has(conn)).bracketAuto { stmt =>
+        Task(stmt.executeQuery()).bracketAuto { rs =>
+          Task(ResultSetExtractor(rs, conn, extractor))
+        }
+      }
+    } yield result).onDataSource.provide(Has(pool)).defaultRun
   }
 
   def extractProducts(prep: QIO[PreparedStatement]) =

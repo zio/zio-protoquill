@@ -1,11 +1,11 @@
 package io.getquill.postgres
 
-import io.getquill.context.ZioJdbc.Prefix
+import io.getquill.Prefix
 import io.getquill.{ PrepareZioJdbcSpecBase, ZioSpec }
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 
-import java.sql.ResultSet
+import java.sql.{ Connection, ResultSet }
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioSpec with BeforeAndAfter {
 

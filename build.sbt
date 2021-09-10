@@ -109,13 +109,17 @@ lazy val `quill-sql` =
         "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
         "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases"
       ),
+      excludeDependencies ++= Seq(
+        "com.typesafe.scala-logging" % "scala-logging_2.13"
+      ),
       libraryDependencies ++= Seq(
         // .excludeAll(ExclusionRule(organization="com.trueaccord.scalapb")
         ("com.lihaoyi" %% "pprint" % "0.5.6").withDottyCompat(scalaVersion.value),
-        ("io.getquill" %% "quill-core-portable" % "3.7.2").withDottyCompat(scalaVersion.value),
-        ("io.getquill" %% "quill-sql-portable" % "3.7.2").withDottyCompat(scalaVersion.value),
+        ("io.getquill" %% "quill-core-portable" % "3.10.0").withDottyCompat(scalaVersion.value),
+        ("io.getquill" %% "quill-sql-portable" % "3.10.0").withDottyCompat(scalaVersion.value),
         //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
         //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
+        "com.typesafe.scala-logging" % "scala-logging_3" % "3.9.4"
       ),
       // If it's a community-build we're using a scala incremental version so there's no scalatest for that
       libraryDependencies ++= {

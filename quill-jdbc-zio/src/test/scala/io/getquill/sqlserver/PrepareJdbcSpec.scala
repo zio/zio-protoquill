@@ -1,8 +1,8 @@
 package io.getquill.sqlserver
 
-import java.sql.ResultSet
+import java.sql.{ Connection, ResultSet }
 import io.getquill.PrepareZioJdbcSpecBase
-import io.getquill.context.ZioJdbc.Prefix
+import io.getquill.Prefix
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 
@@ -18,7 +18,7 @@ class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
   val prepareQuery = prepare(query[Product])
   // TODO Try removing 'inline' and do the old implicit way and see if an error results
-  inline given InsertMeta[Product] = insertMeta[Product](_.id)
+    inline given InsertMeta[Product] = insertMeta[Product](_.id)
 
   "single" in {
     val prepareInsert = prepare(query[Product].insert(lift(productEntries.head)))

@@ -1,4 +1,3 @@
-// translate is not supported yet
 // package io.getquill.context.qzio
 
 // import io.getquill.NamingStrategy
