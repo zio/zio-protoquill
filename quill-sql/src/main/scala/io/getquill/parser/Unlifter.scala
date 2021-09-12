@@ -9,6 +9,7 @@ import io.getquill.metaprog.Is
 import io.getquill.metaprog.Extractors
 import io.getquill.util.Format
 import io.getquill.util.StringUtil.section
+import io.getquill.metaprog.Extractors.MatchingOptimizers._
 
 object UnlifterType {
   type Unlift[T] = PartialFunction[Expr[T], T]
@@ -97,10 +98,13 @@ object Unlifter {
       case '{ Property.Opinionated(${ast}, ${name}, ${renameable}, ${visibility}) } =>
         Property.Opinionated(ast.unexpr, constString(name), unliftRenameable(renameable), unliftVisibility(visibility))
 
-  given unliftAssignment: NiceUnliftable[Assignment] with {
+  given unliftAssignment: NiceUnliftable[Assignment] with
     def unlift =
       case '{ Assignment($alias, $property, $value) } => Assignment(alias.unexpr, property.unexpr, value.unexpr)
-  }
+
+  given unliftAssignmentDual: NiceUnliftable[AssignmentDual] with
+    def unlift =
+      case '{ AssignmentDual($alias1, $alias2, $property, $value) } => AssignmentDual(alias1.unexpr, alias2.unexpr, property.unexpr, value.unexpr)
 
   given unliftPropertyAlias: NiceUnliftable[PropertyAlias] with {
     def unlift =
@@ -197,6 +201,18 @@ object Unlifter {
       case Is[Returning]( '{ Returning(${action}, ${alias}, ${body}: Ast) } ) => Returning(action.unexpr, alias.unexpr, body.unexpr)
       case Is[ReturningGenerated]( '{ ReturningGenerated(${action}, ${alias}, ${body}: Ast) } ) => ReturningGenerated(action.unexpr, alias.unexpr, body.unexpr)
       case Is[Foreach]( '{ Foreach(${query}, ${alias}, ${body}: Ast) } ) => Foreach(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[OnConflict]( '{ OnConflict($a, $b, $c) } ) => OnConflict(a.unexpr, b.unexpr, c.unexpr)
+
+
+  given unliftConflictTarget: NiceUnliftable[OnConflict.Target] with
+    def unlift =
+      case '{ OnConflict.NoTarget } => OnConflict.NoTarget
+      case '{ OnConflict.Properties($a) } => OnConflict.Properties(a.unexpr)
+
+  given unliftConflictAction: NiceUnliftable[OnConflict.Action] with
+    def unlift =
+      case '{ OnConflict.Ignore } => OnConflict.Ignore
+      case '{ OnConflict.Update($a) } => OnConflict.Update(a.unexpr)
 
   given unliftQuery: NiceUnliftable[AQuery] with
     def unlift =
@@ -228,8 +244,6 @@ object Unlifter {
         Entity.Opinionated(b, elems.unexpr, unliftedQuat, renameable.unexpr)
 
   given unliftAst: NiceUnliftable[Ast] with {
-    import io.getquill.metaprog.Extractors.MatchingOptimizers._
-    // TODO have a typeclass like Splicer to translate constant to strings
     def unlift =
       case Is[AQuery](q) => unliftQuery(q)
       case Is[Constant](c) => unliftConstant(c)
@@ -252,8 +266,10 @@ object Unlifter {
       case Is[CaseClass]( '{ CaseClass($values) } ) => CaseClass(values.unexpr)
       case Is[IterableOperation]( unliftTraversableOperation(o) ) => o
       // TODO Is the matching covariant? In that case can do "case '{ $oo: OptionOperation } and then strictly throw an error"
-      case Is[OptionOperation]( unliftOptionOperation(ast) ) => ast
-      case Is[Assignment]( unliftAssignment(ast) ) => ast
+      case Is[OptionOperation]( ast ) => unliftOptionOperation(ast)
+      case Is[Assignment]( ast ) => unliftAssignment(ast)
+      case Is[OnConflict.Excluded]( '{ OnConflict.Excluded($a) } ) => OnConflict.Excluded(a.unexpr)
+      case Is[OnConflict.Existing]( '{ OnConflict.Existing($a) } ) => OnConflict.Existing(a.unexpr)
       case '{ NullValue } => NullValue
   }
 

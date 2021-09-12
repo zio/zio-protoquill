@@ -120,8 +120,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
   given liftableIdent : NiceLiftable[AIdent] with {
     def lift =
-      // Problems happen with liftQuery when this is done. Maybe some issue with ListLift from ExprModel
-      //case ast if (serializeAst == SerializeAst.All) => tryToSerialize[AIdent](ast)
       case AIdent.Opinionated(name: String, quat, visibility) => '{ AIdent.Opinionated(${name.expr}, ${quat.expr}, ${visibility.expr})  }
   }
 
@@ -130,12 +128,14 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case PropertyAlias(a, b) => '{ PropertyAlias(${a.expr}, ${b.expr}) }
   }
 
-  given liftableAssignment : NiceLiftable[Assignment] with {
+  given liftableAssignment : NiceLiftable[Assignment] with
     def lift =
-      // Problems happen with liftQuery when this is done. Maybe some issue with ListLift from ExprModel
-      //case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Assignment](ast)
       case Assignment(ident, property, value) => '{ Assignment(${ident.expr}, ${property.expr}, ${value.expr}) }
-  }
+
+  given liftableAssignmentDual : NiceLiftable[AssignmentDual] with
+    def lift =
+      case AssignmentDual(ident1, ident2, property, value) => '{ AssignmentDual(${ident1.expr}, ${ident2.expr}, ${property.expr}, ${value.expr}) }
+
 
   given liftableJoinType : NiceLiftable[JoinType] with {
     def lift =
@@ -231,65 +231,63 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case Returning(action: Ast, alias: AIdent, body: Ast) => '{ Returning(${action.expr}, ${alias.expr}, ${body.expr})  }
       case ReturningGenerated(action: Ast, alias: AIdent, body: Ast) => '{ ReturningGenerated(${action.expr}, ${alias.expr}, ${body.expr})  }
       case Foreach(query: Ast, alias: AIdent, body: Ast) => '{ Foreach(${query.expr}, ${alias.expr}, ${body.expr})  }
+      case OnConflict(a, b, c) => '{ OnConflict(${a.expr}, ${b.expr}, ${c.expr}) }
 
+  given liftableConflictTarget: NiceLiftable[OnConflict.Target] with
+    def lift =
+      case OnConflict.NoTarget      => '{ OnConflict.NoTarget }
+      case OnConflict.Properties(a) => '{ OnConflict.Properties(${a.expr}) }
 
-  def tryToSerialize[T <: Ast: TType](ast: Ast)(using Quotes): Expr[T] =
-    // Kryo can have issues if 'ast' is a lazy val (e.g. it will attempt to serialize Entity.Opinionated as though
-    // it is an actual object which will fail because it is actually an inner class. Should look into
-    // adding support for inner classes or remove them
-    Try {
-      val serial = SerialHelper.toSerializedJVM(ast)
-      // Needs to be casted directly in here or else the type will not be written by Expr matchers correctly
-      '{ SerialHelper.fromSerializedJVM[T](${Expr(serial)}) }
-    }.recoverWith {
-      case e =>
-        val msg = s"Could not unift-serialize the '${ast.getClass}' ${io.getquill.util.Messages.qprint(ast)}. Performing a regular unlift instead."
-        println(s"WARNING: ${msg}")
-        quotes.reflect.report.warning(msg)
-        Try(Lifter(serializeQuat, SerializeAst.None).liftableAst(ast).asInstanceOf[Expr[T]])
-    }.getOrElse {
-      val msg = s"Could not serialize the '${ast.getClass}' ${io.getquill.util.Messages.qprint(ast)}."
-      println(s"WARNING: ${msg}")
-      quotes.reflect.report.throwError(msg)
-    }
+  given liftableConflictAction: NiceLiftable[OnConflict.Action] with
+    def lift =
+      case OnConflict.Ignore    => '{ OnConflict.Ignore }
+      case OnConflict.Update(a) => '{ OnConflict.Update(${a.expr}) }
+
+  given liftableQuery: NiceLiftable[AQuery] with
+    def lift =
+      case e: Entity => liftableEntity(e)
+      case Filter(query: Ast, alias: AIdent, body: Ast) => '{ Filter(${query.expr}, ${alias.expr}, ${body.expr})  }
+      case Map(query: Ast, alias: AIdent, body: Ast) => '{ Map(${query.expr}, ${alias.expr}, ${body.expr})  }
+      case FlatMap(query: Ast, alias: AIdent, body: Ast) => '{ FlatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
+      case ConcatMap(query: Ast, alias: AIdent, body: Ast) => '{ ConcatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
+      case SortBy(query: Ast, alias: AIdent, criterias: Ast, ordering: Ast) => '{ SortBy(${query.expr}, ${alias.expr}, ${criterias.expr}, ${ordering.expr})  }
+      case GroupBy(query: Ast, alias: AIdent, body: Ast) => '{ GroupBy(${query.expr}, ${alias.expr}, ${body.expr})  }
+      case Aggregation(operator, query) => '{ Aggregation(${operator.expr}, ${query.expr}) }
+      case Take(query: Ast, num: Ast) => '{ Take(${query.expr}, ${num.expr})}
+      case Drop(query: Ast, num: Ast) => '{ Drop(${query.expr}, ${num.expr})}
+      case Union(a, b) => '{ Union(${a.expr}, ${b.expr}) }
+      case UnionAll(a, b) => '{ UnionAll(${a.expr}, ${b.expr}) }
+      case Join(typ, a, b, identA, identB, body) => '{ Join(${typ.expr}, ${a.expr}, ${b.expr}, ${identA.expr}, ${identB.expr}, ${body.expr}) }
+      case FlatJoin(typ, a, identA, on) => '{ FlatJoin(${typ.expr}, ${a.expr}, ${identA.expr}, ${on.expr}) }
+      case Distinct(a: Ast) => '{ Distinct(${a.expr}) }
+      case Nested(a: Ast) => '{ Nested(${a.expr}) }
 
   given liftableAst : NiceLiftable[Ast] with {
     def lift =
+      case q: AQuery => liftableQuery(q)
       case v: Property => liftableProperty(v)
       case v: AIdent => liftableIdent(v)
       case v: IterableOperation => liftableTraversableOperation(v)
       case v: OptionOperation => liftableOptionOperation(v)
       case a: Assignment => liftableAssignment(a)
+      case a: AssignmentDual => liftableAssignmentDual(a)
       case a: Action => liftableAction(a)
-      case Constant(ConstantValue(v), quat) => '{ Constant(${ConstantExpr(v)}, ${quat.expr}) }
-      case Constant((), quat) => '{ Constant((), ${quat.expr}) }
-      case Function(params: List[AIdent], body: Ast) => '{ Function(${params.expr}, ${body.expr}) }
-      case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.expr}, ${values.expr}) }
       case v: Entity => liftableEntity(v)
       case v: Tuple => liftableTuple(v)
       case v: CaseClass => liftableCaseClass(v)
       case v: Ordering => orderingLiftable(v)
+      case Constant(ConstantValue(v), quat) => '{ Constant(${ConstantExpr(v)}, ${quat.expr}) }
+      case Constant((), quat) => '{ Constant((), ${quat.expr}) }
+      case Function(params: List[AIdent], body: Ast) => '{ Function(${params.expr}, ${body.expr}) }
+      case FunctionApply(function: Ast, values: List[Ast]) => '{ FunctionApply(${function.expr}, ${values.expr}) }
       case If(cond, thenStmt, elseStmt) => '{ If(${cond.expr}, ${thenStmt.expr}, ${elseStmt.expr}) }
-      case Aggregation(operator, query) => '{ Aggregation(${operator.expr}, ${query.expr}) }
-      case Map(query: Ast, alias: AIdent, body: Ast) => '{ Map(${query.expr}, ${alias.expr}, ${body.expr})  }
-      case FlatMap(query: Ast, alias: AIdent, body: Ast) => '{ FlatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
-      case Filter(query: Ast, alias: AIdent, body: Ast) => '{ Filter(${query.expr}, ${alias.expr}, ${body.expr})  }
-      case GroupBy(query: Ast, alias: AIdent, body: Ast) => '{ GroupBy(${query.expr}, ${alias.expr}, ${body.expr})  }
-      case SortBy(query: Ast, alias: AIdent, criterias: Ast, ordering: Ast) => '{ SortBy(${query.expr}, ${alias.expr}, ${criterias.expr}, ${ordering.expr})  }
-      case Distinct(a: Ast) => '{ Distinct(${a.expr}) }
-      case Nested(a: Ast) => '{ Nested(${a.expr}) }
       case UnaryOperation(operator: UnaryOperator, a: Ast) => '{ UnaryOperation(${liftOperator(operator).asInstanceOf[Expr[UnaryOperator]]}, ${a.expr})  }
       case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${a.expr}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${b.expr})  }
       case ScalarTag(uid: String) => '{ScalarTag(${uid.expr})}
       case QuotationTag(uid: String) => '{QuotationTag(${uid.expr})}
-      case Union(a, b) => '{ Union(${a.expr}, ${b.expr}) }
-      case UnionAll(a, b) => '{ UnionAll(${a.expr}, ${b.expr}) }
       case Infix(parts, params, pure, quat) => '{ Infix(${parts.expr}, ${params.expr}, ${pure.expr}, ${quat.expr}) }
-      case Join(typ, a, b, identA, identB, body) => '{ Join(${typ.expr}, ${a.expr}, ${b.expr}, ${identA.expr}, ${identB.expr}, ${body.expr}) }
-      case FlatJoin(typ, a, identA, on) => '{ FlatJoin(${typ.expr}, ${a.expr}, ${identA.expr}, ${on.expr}) }
-      case Take(query: Ast, num: Ast) => '{ Take(${query.expr}, ${num.expr})}
-      case Drop(query: Ast, num: Ast) => '{ Drop(${query.expr}, ${num.expr})}
-      case ConcatMap(query: Ast, alias: AIdent, body: Ast) => '{ ConcatMap(${query.expr}, ${alias.expr}, ${body.expr})  }
+      case OnConflict.Excluded(a) => '{ OnConflict.Excluded(${a.expr}) }
+      case OnConflict.Existing(a) => '{ OnConflict.Existing(${a.expr}) }
       case NullValue => '{ NullValue }
   }
 
@@ -322,4 +320,24 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case BooleanOperator.&& => '{ BooleanOperator.&& }
       case BooleanOperator.! => '{ BooleanOperator.! }
   }
+
+  def tryToSerialize[T <: Ast: TType](ast: Ast)(using Quotes): Expr[T] =
+    // Kryo can have issues if 'ast' is a lazy val (e.g. it will attempt to serialize Entity.Opinionated as though
+    // it is an actual object which will fail because it is actually an inner class. Should look into
+    // adding support for inner classes or remove them
+    Try {
+      val serial = SerialHelper.toSerializedJVM(ast)
+      // Needs to be casted directly in here or else the type will not be written by Expr matchers correctly
+      '{ SerialHelper.fromSerializedJVM[T](${Expr(serial)}) }
+    }.recoverWith {
+      case e =>
+        val msg = s"Could not unift-serialize the '${ast.getClass}' ${io.getquill.util.Messages.qprint(ast)}. Performing a regular unlift instead."
+        println(s"WARNING: ${msg}")
+        quotes.reflect.report.warning(msg)
+        Try(Lifter(serializeQuat, SerializeAst.None).liftableAst(ast).asInstanceOf[Expr[T]])
+    }.getOrElse {
+      val msg = s"Could not serialize the '${ast.getClass}' ${io.getquill.util.Messages.qprint(ast)}."
+      println(s"WARNING: ${msg}")
+      quotes.reflect.report.throwError(msg)
+    }
 }
