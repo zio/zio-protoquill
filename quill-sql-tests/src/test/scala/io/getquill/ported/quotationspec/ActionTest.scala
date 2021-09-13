@@ -9,7 +9,7 @@ import io.getquill.quat.quatOf
 import io.getquill._
 import org.scalatest.Inside
 
-class ActionTest extends Spec with TestEntities with Inside {
+class ActionTest extends Spec with NonSerializingQuotation with TestEntities with Inside {
   case class ActionTestEntity(id: Int)
 
   extension (ast: Ast)
@@ -87,6 +87,45 @@ class ActionTest extends Spec with TestEntities with Inside {
             )
         }
         quote(unquote(q)).ast mustEqual internalizeVLabel(n.ast)
+      }
+      "insert with conflict" - {
+        "onConflictIgnore" in {
+          inline def q = quote {
+            qr1.insert(t => t.s -> "s").onConflictIgnore
+          }
+          quote(unquote(q)).ast mustEqual OnConflict(
+            Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
+            OnConflict.NoTarget,
+            OnConflict.Ignore
+          )
+        }
+        "onConflictIgnore(_.i)" in {
+          inline def q = quote {
+            qr1.insert(t => t.s -> "s").onConflictIgnore(r => r.i)
+          }
+          quote(unquote(q)).ast mustEqual OnConflict(
+            Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
+            OnConflict.Properties(List(Property(Ident("r"), "i"))),
+            OnConflict.Ignore
+          )
+        }
+        "onConflictUpdate((t, e) => ...)" in {
+          inline def q = quote {
+            qr1.insert(t => t.s -> "s").onConflictUpdate((t, e) => t.s -> e.s, (t, e) => t.l -> e.l)
+          }
+
+          def IdT(name: String) = Ident(name, TestEntityQuat)
+          quote(unquote(q)).ast mustEqual OnConflict(
+            Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
+            OnConflict.NoTarget,
+            OnConflict.Update(
+              List(
+                AssignmentDual(IdT("t"), IdT("e"), Property(IdT("t"), "s"), Property(OnConflict.Excluded(IdT("e")), "s")),
+                AssignmentDual(IdT("t"), IdT("e"), Property(IdT("t"), "l"), Property(OnConflict.Excluded(IdT("e")), "l"))
+              )
+            )
+          )
+        }
       }
       "batch delete" in {
         val ctx = new MirrorContext(MirrorSqlDialect, Literal)

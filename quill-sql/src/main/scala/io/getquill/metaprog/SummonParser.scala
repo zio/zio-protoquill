@@ -6,6 +6,24 @@ import io.getquill.util.Format
 import scala.quoted._
 import scala.util.Success
 import scala.util.Failure
+import io.getquill.parser.SerializeQuat
+import io.getquill.parser.SerializeAst
+
+object SummonSerializationBehaviors:
+  import scala.quoted._
+  /** Summon any serialization behavior defined on the context. If it does not exist return None */
+  def apply()(using Quotes): (Option[SerializeQuat], Option[SerializeAst]) =
+    import quotes.reflect._
+    // Find a SerializationBehavior and try to unlift it
+    val serializeAst =
+      Expr.summon[SerializeAst] match
+        case Some(value) => Some(SerializeAst.Lifter(value))
+        case None => None
+    val serializeQuat =
+      Expr.summon[SerializeQuat] match
+        case Some(value) => Some(SerializeQuat.Lifter(value))
+        case None => None
+    (serializeQuat, serializeAst)
 
 object SummonParser:
   def apply()(using Quotes): ParserFactory =

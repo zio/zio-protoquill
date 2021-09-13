@@ -231,6 +231,8 @@ object Unlifter {
       case Is[Take]( '{ Take($query, $num)} ) => Take(query.unexpr, num.unexpr)
       case Is[Drop]( '{ Drop($query, $num)} ) => Drop(query.unexpr, num.unexpr)
       case Is[ConcatMap]( '{ ConcatMap(${query}, ${alias}, ${body}: Ast) } ) => ConcatMap(query.unexpr, alias.unexpr, body.unexpr)
+      // Note: Aggregation is actually a Query-Type. Not sure why in Scala2-Quill it's not in the query-unlifter
+      case Is[Aggregation]( '{ Aggregation(${operator}, ${query}) } ) => Aggregation(operator.unexpr, query.unexpr)
 
   given unliftEntity: NiceUnliftable[Entity] with
     def unlift =
@@ -255,7 +257,6 @@ object Unlifter {
       case Is[If]( '{ If($cond, $thenStmt, $elseStmt) } ) => If(cond.unexpr, thenStmt.unexpr, elseStmt.unexpr)
       case Is[Function]( '{ Function($params, $body) } ) => Function(params.unexpr, body.unexpr)
       case Is[FunctionApply]( '{ FunctionApply($function, $values) } ) => FunctionApply(function.unexpr, values.unexpr)
-      case Is[Aggregation]( '{ Aggregation(${operator}, ${query}) } ) => Aggregation(operator.unexpr, query.unexpr)
       case Is[UnaryOperation]( '{ UnaryOperation(${operator}, ${a}: Ast) } ) => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
       case Is[BinaryOperation]( '{ BinaryOperation(${a}, ${operator}, ${b}: Ast) } ) => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
       case Is[Property]( '{ Property(${ast}, ${name}) } ) => Property(ast.unexpr, constString(name))

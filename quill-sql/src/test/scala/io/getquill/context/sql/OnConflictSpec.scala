@@ -55,7 +55,7 @@ trait OnConflictSpec extends Spec {
   object `onConflictUpdate((t, e) => ...)` extends onConflictUpdate(3) {
     inline def testQuery(e: TestEntity) = quote {
       query[TestEntity]
-        .insert(lift(e)) //hello
+        .insert(lift(e))
         .onConflictUpdate((t, e) => t.s -> (t.s + "-" + e.s), (t, _) => t.l -> (t.l + 1))
     }
   }

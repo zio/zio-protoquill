@@ -8,7 +8,7 @@ import org.scalatest._
 import io.getquill.quat.Quat
 import io.getquill._
 
-class FunctionQuotationTest extends Spec with Inside {
+class FunctionQuotationTest extends Spec with NonSerializingQuotation with Inside {
   // val ctx = new MirrorContext(MirrorIdiom, Literal)
   // import ctx._
 

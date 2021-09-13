@@ -8,7 +8,7 @@ import io.getquill.context.sql.testContext
 import io.getquill.context.sql.testContext._
 import io.getquill._
 
-class ActionSpec extends Spec {
+class ActionSpec extends Spec with NonSerializingQuotation {
   "action" - {
     "insert" - {
       "not affected by variable name" - {

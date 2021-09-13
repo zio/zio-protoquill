@@ -16,21 +16,7 @@ import io.getquill.util.StringUtil.section
 
 object SerialHelper:
   def fromSerializedJVM[T](serial: String): T = KryoAstSerializer.deserialize(serial).asInstanceOf[T]
-  def toSerializedJVM(ast: Ast): String =KryoAstSerializer.serialize(ast)
-
-object Lifter extends LifterProxy {
-  val default = Lifter(SerializeQuat.global, SerializeAst.global)
-
-  def NotSerializing = Lifter(SerializeQuat.None, SerializeAst.None)
-  def NotSerializingAst = Lifter(SerializeQuat.global, SerializeAst.None)
-
-  private [getquill] def doSerializeQuat(quat: Quat, serializeQuat: SerializeQuat) =
-    serializeQuat match
-      case SerializeQuat.All => true
-      case SerializeQuat.ByFieldCount(maxNonSerializeFields) => quat.countFields > maxNonSerializeFields
-      case SerializeQuat.None => false
-}
-
+  def toSerializedJVM(ast: Ast): String = KryoAstSerializer.serialize(ast)
 
 trait LifterProxy {
   def default: Lifter
@@ -340,4 +326,19 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       println(s"WARNING: ${msg}")
       quotes.reflect.report.throwError(msg)
     }
+}
+
+object Lifter extends LifterProxy {
+  val default = new Lifter(SerializeQuat.global, SerializeAst.global)
+
+  def NotSerializing = Lifter(SerializeQuat.None, SerializeAst.None)
+  def NotSerializingAst = Lifter(SerializeQuat.global, SerializeAst.None)
+  def WithBehavior(serializeQuat: Option[SerializeQuat] = None, serializeAst: Option[SerializeAst] = None) =
+    Lifter(serializeQuat.getOrElse(SerializeQuat.global), serializeAst.getOrElse(SerializeAst.global))
+
+  private[getquill] def doSerializeQuat(quat: Quat, serializeQuat: SerializeQuat) =
+    serializeQuat match
+      case SerializeQuat.All => true
+      case SerializeQuat.ByFieldCount(maxNonSerializeFields) => quat.countFields > maxNonSerializeFields
+      case SerializeQuat.None => false
 }
