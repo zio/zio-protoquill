@@ -14,7 +14,7 @@ import io.getquill.norm.NormalizeStringConcat
 import io.getquill._
 import io.getquill.ast
 
-class OptionOperationTest extends Spec with Inside {
+class OptionOperationTest extends Spec with NonSerializingQuotation with Inside {
   "option operation" - {
     import io.getquill.ast.Implicits._
 

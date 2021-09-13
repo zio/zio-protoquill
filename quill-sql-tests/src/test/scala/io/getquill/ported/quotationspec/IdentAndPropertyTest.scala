@@ -7,7 +7,7 @@ import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.quat.Quat
 import io.getquill._
 
-class IdentAndPropertyTest extends Spec with TestEntities {
+class IdentAndPropertyTest extends Spec with NonSerializingQuotation with TestEntities {
   extension (ast: Ast)
     def body: Ast = ast match
       case f: Function => f.body

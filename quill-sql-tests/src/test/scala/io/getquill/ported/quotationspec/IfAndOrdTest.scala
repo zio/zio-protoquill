@@ -4,7 +4,7 @@ import org.scalatest._
 import io.getquill._
 import io.getquill.ast._
 
-class IfAndOrdTest extends Spec with TestEntities with Inside {
+class IfAndOrdTest extends Spec with NonSerializingQuotation with TestEntities with Inside {
 
   extension (ast: Ast)
     def ordering: Ast = ast match

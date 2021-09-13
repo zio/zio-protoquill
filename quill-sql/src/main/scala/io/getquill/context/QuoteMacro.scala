@@ -13,6 +13,7 @@ import io.getquill.metaprog.Pluckable
 import io.getquill.metaprog.Pointable
 import io.getquill.Quoted
 import io.getquill.metaprog.SummonParser
+import io.getquill.metaprog.SummonSerializationBehaviors
 
 
 object ExtractLifts {
@@ -64,12 +65,14 @@ object QuoteMacro {
     val body = bodyRaw.asTerm.underlyingArgument.asExpr
 
     val parserFactory = SummonParser()
+    val (serializeQuats, serializeAst) = SummonSerializationBehaviors()
 
     import Parser._
 
     val rawAst = parserFactory.apply.seal.apply(body)
     val ast = BetaReduction(rawAst)
-    val reifiedAst = Lifter(ast)
+
+    val reifiedAst = Lifter.WithBehavior(serializeQuats, serializeAst)(ast)
 
     // Extract runtime quotes and lifts
     val (lifts, pluckedUnquotes) = ExtractLifts(bodyRaw)

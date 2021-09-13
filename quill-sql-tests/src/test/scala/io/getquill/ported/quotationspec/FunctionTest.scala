@@ -7,7 +7,7 @@ import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.quat.Quat
 import io.getquill._
 
-class FunctionTest extends Spec with TestEntities {
+class FunctionTest extends Spec with NonSerializingQuotation with TestEntities {
   object IsDynamic {
     def apply(a: Ast) =
       CollectAst(a) { case d: Dynamic => d }.nonEmpty
