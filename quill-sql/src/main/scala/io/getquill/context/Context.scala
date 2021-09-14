@@ -43,11 +43,6 @@ import io.getquill.context.ProtoContext
 import io.getquill.context.AstSplicing
 import io.getquill.context.RowContext
 
-sealed trait ExecutionType
-object ExecutionType:
-  case object Dynamic extends ExecutionType
-  case object Static extends ExecutionType
-
 /**
  * Metadata related to query execution. Note that AST should be lazy so as not to be evaluated
  * at runtime (which would happen with a by-value property since `{ ExecutionInfo(stuff, ast) } is spliced
@@ -117,7 +112,7 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy] extends ProtoContext[D
       q.filter(p => MapFlicer[T, PrepareRow, Session](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
   }
 
-  protected def context: DatasourceContext = fail(s"DatasourceContext method not implemented for '${this.getClass}' Context")
+  protected def context: DatasourceContext = fail(s"DatasourceContext method not implemented for '${this.getClass.getName}' Context")
 
   // Think I need to implement 'run' here as opposed to in Context because an abstract
   // inline method cannot be called. Should look into this further. E.g. maybe the 'inline' in

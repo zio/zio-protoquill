@@ -15,6 +15,9 @@ import io.getquill.idiom.Idiom
 import io.getquill.Query
 
 abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
+  val QV = Quat.Value
+  val QEP = Quat.Product.empty
+  def QP(fields: String*) = Quat.LeafProduct(fields: _*)
 
   extension (m: MirrorContext[_, _]#BatchActionReturningMirror[_])
     def triple =

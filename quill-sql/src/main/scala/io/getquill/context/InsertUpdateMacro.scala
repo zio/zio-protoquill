@@ -132,9 +132,10 @@ object InsertUpdateMacro {
             unquotation match
               // The {querySchema[Person]} part is static (i.e. fully known at compile-time)
               case Uprootable.Ast(ast) =>
-                Unlifter(ast) match
-                  case ent: Entity => SummonState.Static(ent)
-                  case other       => report.throwError(s"Unlifted insertion Entity '${qprint(other).plainText}' is not a Query.")
+                val unliftedAst = Unlifter(ast)
+                // This should be some tree containing an entity (it could even be an infix containing an entity).
+                // Maybe should actually check there's an entity inside in the future.
+                SummonState.Static(unliftedAst)
               // The {querySchema[Person]} is dynamic (i.e. not fully known at compile-time)
               case Pluckable(uid, quotation, _) =>
                 SummonState.Dynamic(uid, quotation)

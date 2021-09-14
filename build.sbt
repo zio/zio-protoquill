@@ -47,8 +47,12 @@ lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-jasync`, `quill-jasync-postgres`
 )
 
+lazy val bigdataModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
+  `quill-cassandra`
+)
+
 lazy val allModules =
-  baseModules ++ dbModules ++ jasyncModules
+  baseModules ++ dbModules ++ jasyncModules ++ bigdataModules
 
 val filteredModules = {
   val modulesStr = sys.props.get("modules")
@@ -67,6 +71,9 @@ val filteredModules = {
     case Some("async") =>
       println("Compiling Async Database Modules")
       jasyncModules
+    case Some("bigdata") =>
+      println("Compiling Big Data Modules")
+      bigdataModules
     case Some("none") =>
       println("Invoking Aggregate Project")
       Seq[sbt.ClasspathDep[sbt.ProjectReference]]()
@@ -224,6 +231,18 @@ lazy val `quill-jdbc-zio` =
     .dependsOn(`quill-zio` % "compile->compile;test->test")
     .dependsOn(`quill-sql` % "compile->compile;test->test")
     .dependsOn(`quill-jdbc` % "compile->compile;test->test")
+
+lazy val `quill-cassandra` =
+  (project in file("quill-cassandra"))
+    .settings(commonSettings: _*)
+    .settings(releaseSettings: _*)
+    .settings(
+      Test / fork := true,
+      libraryDependencies ++= Seq(
+        "com.datastax.cassandra" %  "cassandra-driver-core" % "3.7.2"
+      )
+    )
+    .dependsOn(`quill-sql` % "compile->compile;test->test")
 
 // Include scalafmt formatter for pretty printing failed queries
 val includeFormatter =

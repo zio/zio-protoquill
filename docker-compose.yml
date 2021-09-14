@@ -17,18 +17,18 @@ services:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
 
-  # cassandra:
-  #   build:
-  #     context: .
-  #     dockerfile: ./build/Dockerfile-cassandra
-  #   ports:
-  #     - "19042:9042"
-  #   # enable NativeMemoryTracking so that jcmd in possible in build.sh. For CompressedClassSpaceSize 1gig is default which is too high.
-  #   environment:
-  #     - MAX_HEAP_SIZE=256m
-  #     - HEAP_NEWSIZE=64m
-  #     - JVM_OPTS=-XX:NativeMemoryTracking=summary -XX:CompressedClassSpaceSize=200m
-  #   init: true
+  cassandra:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile-cassandra
+    ports:
+      - "19042:9042"
+    # enable NativeMemoryTracking so that jcmd in possible in build.sh. For CompressedClassSpaceSize 1gig is default which is too high.
+    environment:
+      - MAX_HEAP_SIZE=256m
+      - HEAP_NEWSIZE=64m
+      - JVM_OPTS=-XX:NativeMemoryTracking=summary -XX:CompressedClassSpaceSize=200m
+    init: true
 
   orientdb:
     image: orientdb:3.0.11
@@ -71,7 +71,7 @@ services:
     links:
       - postgres:postgres
       - mysql:mysql
-      #- cassandra:cassandra
+      - cassandra:cassandra
       #- orientdb:orientdb
       - sqlserver:sqlserver
       - oracle:oracle

@@ -101,16 +101,16 @@ function setup_postgres() {
     psql --host $2 --port $port -U postgres -d quill_test -a -q -f $1
 }
 
-# function setup_cassandra() {
-#     host=$(get_host $2)
-#     echo "Waiting for Cassandra"
-#     until cqlsh $2 -e "describe cluster" &> /dev/null; do
-#         sleep 5;
-#     done
-#     echo "Connected to Cassandra"
+function setup_cassandra() {
+    host=$(get_host $2)
+    echo "Waiting for Cassandra"
+    until cqlsh $2 -e "describe cluster" &> /dev/null; do
+        sleep 5;
+    done
+    echo "Connected to Cassandra"
 
-#     cqlsh $2 -f $1
-# }
+    cqlsh $2 -f $1
+}
 
 function setup_sqlserver() {
     host=$(get_host $2)
@@ -150,7 +150,7 @@ function send_script() {
 export -f setup_sqlite
 export -f setup_mysql
 export -f setup_postgres
-# export -f setup_cassandra
+export -f setup_cassandra
 export -f setup_sqlserver
 export -f setup_oracle
 export -f send_script
