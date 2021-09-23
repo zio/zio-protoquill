@@ -133,32 +133,32 @@ function wait_for_mysql_postgres() {
     show_mem
 }
 
-# function wait_for_bigdata() {
-#     show_mem
+function wait_for_bigdata() {
+    show_mem
 
-#     sbt clean scalariformFormat test:scalariformFormat
-#     sbt checkUnformattedFiles
-#     sbt clean $SBT_ARGS quill-coreJVM/test:compile & COMPILE=$!
-#     ./build/setup_bigdata.sh & SETUP=$!
+    # sbt clean scalariformFormat test:scalariformFormat
+    # sbt checkUnformattedFiles
+    sbt clean $SBT_ARGS quill-sql/test:compile & COMPILE=$!
+    ./build/setup_bigdata.sh & SETUP=$!
 
-#     wait $SETUP
-#     if [[ "$?" != "0" ]]; then
-#        echo "BigData Database setup failed"
-#        sleep 10
-#        kill -9 $COMPILE
-#        exit 1
-#     fi
+    wait $SETUP
+    if [[ "$?" != "0" ]]; then
+       echo "BigData Database setup failed"
+       sleep 10
+       kill -9 $COMPILE
+       exit 1
+    fi
 
-#     wait $COMPILE
-#     if [[ "$?" != "0" ]]; then
-#        echo "Compilation of core module has failed"
-#        sleep 10
-#        exit 1
-#     fi
+    wait $COMPILE
+    if [[ "$?" != "0" ]]; then
+       echo "Compilation of core module has failed"
+       sleep 10
+       exit 1
+    fi
 
-#     echo "BigData Database Setup is finished"
-#     show_mem
-# }
+    echo "BigData Database Setup is finished"
+    show_mem
+}
 
 function base_build() {
     sbt -Dmodules=base $SBT_ARGS test
@@ -188,10 +188,10 @@ function async_build() {
     sbt -Dmodules=async $SBT_ARGS test
 }
 
-# function bigdata_build() {
-#     wait_for_bigdata
-#     sbt -Dmodules=bigdata $SBT_ARGS test
-# }
+function bigdata_build() {
+    wait_for_bigdata
+    sbt -Dmodules=bigdata $SBT_ARGS test
+}
 
 function full_build() {
     wait_for_databases
@@ -229,9 +229,9 @@ elif [[ $modules == "sqltest" ]]; then
 elif [[ $modules == "async" ]]; then
     echo "Build Script: Doing Async Database Build"
     async_build
-# elif [[ $modules == "bigdata" ]]; then
-#     echo "Build Script: Doing BigData Build"
-#     bigdata_build
+elif [[ $modules == "bigdata" ]]; then
+    echo "Build Script: Doing BigData Build"
+    bigdata_build
 else
     echo "Build Script: Doing Full Build"
     full_build

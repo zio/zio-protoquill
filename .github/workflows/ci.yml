@@ -18,7 +18,7 @@ jobs:
     strategy:
       matrix:
         scala: [3.0.0]
-        module: [sqltest, db, async]
+        module: [sqltest, db, async, bigdata]
 
     steps:
     - uses: actions/checkout@v2
@@ -44,7 +44,7 @@ jobs:
     strategy:
       matrix:
         scala: [3.0.0]
-        module: [base, db, async, publish]
+        module: [base, db, async, bigdata, publish]
 
     steps:
     - uses: actions/checkout@v2

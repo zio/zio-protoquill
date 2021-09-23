@@ -190,7 +190,7 @@ object LiftMacro {
     val encoder =
       Expr.summon[GenericEncoder[T, PrepareRow, Session]] match
         case Some(enc) => enc
-        case None => report.throwError(s"Cannot Find a '${Printer.TypeReprCode.show(TypeRepr.of[T])}' Encoder of ${Printer.TreeShortCode.show(valueEntity.asTerm)}", valueEntity)
+        case None => report.throwError(s"Cannot inject the value: ${io.getquill.util.Format.Expr(valueEntity)}.Cannot Find a '${Printer.TypeReprCode.show(TypeRepr.of[T])}' Encoder of ${Printer.TreeShortCode.show(valueEntity.asTerm)}", valueEntity)
 
     '{ InjectableEagerPlanter($valueEntity, $encoder, ${Expr(uuid)}) } //[T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }

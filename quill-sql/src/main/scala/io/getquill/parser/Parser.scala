@@ -63,12 +63,21 @@ object Parser {
       throwInfo match
         case ThrowInfo.Message(msg) => msg
         case ThrowInfo.AstClass(astClass) => s"Tree cannot be parsed to '${astClass.getSimpleName}'"
+
+    // val stream = new java.io.ByteArrayOutputStream()
+    // val buff = new java.io.PrintWriter(stream)
+    // new Exception("stack trace").printStackTrace(buff)
+    // buff.flush
+
+    val traces = Thread.currentThread.getStackTrace.take(50).map("  " + _.toString).mkString("\n")
+
     report.throwError(s"""|
       |s"==== ${message} ====
       |  ${Format(Printer.TreeShortCode.show(term)) /* Or Maybe just expr? */}
       |==== Extractors ===
       |  ${Format(Printer.TreeStructure.show(term))}
-      |""".stripMargin,
+      |==== Stacktrace ===
+      |${traces}""".stripMargin,
       expr
     )
 
@@ -338,16 +347,12 @@ case class OrderingParser(root: Parser[Ast] = Parser.empty)(override implicit va
 
 // TODO Pluggable-in unlifter via implicit? Quotation generic should have it in the root?
 case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-  import quotes.reflect.{ Ident => TIdent, _}
+  import quotes.reflect.{ Ident => TIdent, Apply => TApply, _}
   import Parser.Implicits._
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   def delegate: PartialFunction[Expr[_], Ast] = {
-
-    // // TODO Document this?
-    // case Apply(TypeApply(Select(TIdent("Tuple2"), "apply"), List(Inferred(), Inferred())), List(Select(TIdent("p"), "name"), Select(TIdent("p"), "age"))) =>
-    //   report.throwError("Matched here!")
 
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
@@ -754,7 +759,7 @@ case class QueryScalarsParser(root: Parser[Ast] = Parser.empty)(override implici
 // }
 
 case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with Assignments {
-  import quotes.reflect.{Constant => TConstant, _}
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
   import Parser.Implicits._
   import io.getquill.dsl.InfixDsl
 
@@ -782,8 +787,19 @@ case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val q
           Some(parts.map(staticOrFail(_)))
         case _ => None
 
+  object InlineGenericIdent:
+    def unapply(term: quotes.reflect.Term): Boolean =
+      term match
+        case TIdent(name) if (name.matches("inline\\$generic\\$i[0-9]")) => true
+        case _ => false
+
   object InfixComponents:
     def unapply(expr: Expr[_]): Option[(Seq[String], Seq[Expr[Any]])] = expr match
+      // Discovered from cassandra context that nested infix clauses can have an odd form with the method infix$generic$i2 e.g:
+      // inline$generic$i2(InfixInterpolator(_root_.scala.StringContext.apply(List.apply[Any]("", " ALLOW FILTERING").asInstanceOf[_*])).infix(List.apply[Any]((Unquote.apply[EntityQuery[ListFrozen]]
+      // maybe need to add this to the general parser?
+      case Unseal(TApply(InlineGenericIdent(), List(value))) =>
+        unapply(value.asExpr)
       case '{ InfixInterpolator($partsExpr).infix(${Varargs(params)}: _*) } =>
         val parts = StringContextExpr.unapply(partsExpr).getOrElse { Parser.throwExpressionError(partsExpr, "Cannot parse a valid StringContext") }
         Some((parts, params))
@@ -951,7 +967,7 @@ case class ComplexValueParser(root: Parser[Ast] = Parser.empty)(override implici
 }
 
 case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PropertyParser {
-  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
   import Parser.Implicits._
 
   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
