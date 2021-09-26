@@ -1,239 +1,393 @@
-// package io.getquill.context.cassandra.encoding
+package io.getquill.context.cassandra.encoding
 
-// import com.datastax.driver.core.UDTValue
-// import io.getquill.util.MacroContextExt._
-// import io.getquill.util.OptionalTypecheck
+import scala.quoted._
+import com.datastax.driver.core.UDTValue
+import scala.collection.mutable.ListBuffer
+import io.getquill.generic.ElaborateStructure
+import io.getquill.generic.DeconstructElaboratedEntityLevels
+import io.getquill.Udt
+import io.getquill.generic.ElaborationSide
+import io.getquill.context.cassandra.UdtMeta
+import io.getquill.context.cassandra.UdtMetaDslMacro
+import io.getquill.context.CassandraSession
+import com.datastax.driver.core.BoundStatement
+import scala.reflect.ClassTag
+import io.getquill.util.Format
+import io.getquill.context.UdtValueLookup
+import io.getquill.generic.ElaborateStructure.{ TermType, Leaf, Branch }
+import com.datastax.driver.core.Row
+import io.getquill.util.ThreadUtil
 
-// import scala.collection.mutable.ListBuffer
-// import scala.reflect.macros.blackbox.{ Context => MacroContext }
+object UdtDecodingMacro:
 
-// class UdtEncodingMacro(val c: MacroContext) {
+  private[UdtDecodingMacro] case class UdtParams[T <: Udt](udt: Expr[UDTValue], meta: Expr[UdtMeta[T]], sess: Expr[UdtValueLookup])
 
-//   import c.universe._
+  inline def udtDecoder[Decoder[_], T <: Udt]: CassandraDecoderMaker[Decoder, T] => Decoder[T] =
+    ${ udtDecoderImpl[Decoder, T] }
 
-//   private val encoding = q"io.getquill.context.cassandra.encoding"
-//   private val udtRaw = typeOf[UDTValue]
-//   private def prefix = c.prefix
-//   private def UdtValueOps = q"_root_.io.getquill.context.cassandra.encoding.UdtValueOps"
+  def udtDecoderImpl[Decoder[_]: Type, T <: Udt: Type](using Quotes): Expr[CassandraDecoderMaker[Decoder, T] => Decoder[T]] = {
+    import quotes.reflect._
+    import scala.deriving._
 
-//   def udtDecoder[T](implicit t: WeakTypeTag[T]): Tree = {
-//     val (typeDefs, params, getters) = decodeUdt(t.tpe)
-//     c.untypecheck {
-//       q"""
-//          ${buildUdtMeta(t.tpe)}
-//          def udtdecoder[..$typeDefs](implicit ..$params): $prefix.Decoder[${t.tpe}] = {
-//            $prefix.decoder { (index, row, session) =>
-//              val udt = row.getUDTValue(index)
-//              new ${t.tpe}(..$getters)
-//            }
-//          }
-//          udtdecoder
-//        """
-//     }
-//   }
+    val madeOrFoundMeta = UdtMeta.build[T]
+    val decodeUdt = new UdtDecoderMaker[Decoder, T].apply
 
-//   def udtDecodeMapper[T](implicit t: WeakTypeTag[T]): Tree = {
-//     val (typeDefs, params, getters) = decodeUdt(t.tpe)
-//     c.untypecheck {
-//       q"""
-//          ${buildUdtMeta(t.tpe)}
-//          def udtdecodemapper[..$typeDefs](implicit ..$params): $encoding.CassandraMapper[$udtRaw, ${t.tpe}] = {
-//            $encoding.CassandraMapper((udt, session) => new ${t.tpe}(..$getters))
-//          }
-//          udtdecodemapper
-//        """
-//     }
-//   }
+    if (TypeRepr.of[T] =:= TypeRepr.of[Udt])
+      report.warning(s"Attempting to make UDT decoder for from ${Format.TypeOf[Decoder[T]]}:\n${ThreadUtil.currentThreadTrace}")
 
-//   def udtEncoder[T](implicit t: WeakTypeTag[T]): Tree = {
-//     val (typeDefs, params, body) = encodeUdt(t.tpe)
-//     val swapin =
-//       c.untypecheck {
-//         q"""
-//            ${buildUdtMeta(t.tpe)}
-//            def udtencoder[..$typeDefs](implicit ..$params): $prefix.Encoder[${t.tpe}] = {
-//              $prefix.encoder[$t]((i: $prefix.Index, x: ${t.tpe}, row: $prefix.PrepareRow, session: Session) => row.setUDTValue(i, {..$body}))
-//            }
-//            udtencoder
-//          """
-//       }
+    '{
+      (cem: CassandraDecoderMaker[Decoder, T]) => {
+        val meta = ${madeOrFoundMeta}
+        cem.apply ((i: Int, row: Row, sess: UdtValueLookup) => {
+          val udtValue = row.getUDTValue(i)
+          ${ decodeUdt(UdtParams('udtValue, 'meta, 'sess)) }
+        } )
+      }
+    }
+  }
 
-//     //println("=========== SWAPIN udtEncoder ===========\n" + show(swapin))
-//     swapin
-//   }
+  inline def udtDecodeMapper[Encoder[_], T <: Udt]: CassandraDecodeMapperMaker[Encoder, T] => CassandraMapper[UDTValue, T, MapperSide.Decode] = ${ udtDecodeMapperImpl[Encoder, T] }
 
-//   def udtEncodeMapper[T](implicit t: WeakTypeTag[T]): Tree = {
-//     val (typeDefs, params, body) = encodeUdt(t.tpe)
-//     val swapin =
-//       c.untypecheck {
-//         q"""
-//            ${buildUdtMeta(t.tpe)}
-//            def udtencodemapper[..$typeDefs](implicit ..$params): $encoding.CassandraMapper[${t.tpe}, $udtRaw] = {
-//              $encoding.CassandraMapper((x, session) => {..$body})
-//            }
-//            udtencodemapper
-//          """
-//       }
-//     //println("=========== SWAPIN udtEncodeMapper ===========\n" + show(swapin))
-//     swapin
-//   }
+  def udtDecodeMapperImpl[Encoder[_]: Type, T <: Udt: Type](using Quotes): Expr[CassandraDecodeMapperMaker[Encoder, T] => CassandraMapper[UDTValue, T, MapperSide.Decode]] =
+    import quotes.reflect._
+    val madeOrFoundMeta = UdtMeta.build[T]
 
-//   private def decodeUdt[T](udtType: Type) = {
-//     val t = udtFields(udtType).map {
-//       case (name, _, tpe, mapper, absType, absTypeDef, tag) =>
+    // TODO quill.trace.types 'summoning' level should enable this
+    //println(s"**** Mapper summoning decode of: ${Format.TypeOf[T]}")
 
-//         def classTree = q"$tag.runtimeClass.asInstanceOf[Class[$absType]]"
+    val decodeUdt = new UdtDecoderMaker[Encoder, T].apply
+    '{
+      (cem: CassandraDecodeMapperMaker[Encoder, T]) => {
+        val meta = ${madeOrFoundMeta}
+        cem.apply((udtValue, sess) => {
+          val udt = sess.udtValueOf(meta.name, meta.keyspace)
+          ${ decodeUdt(UdtParams('udtValue, 'meta, 'sess)) }
+        })
+      }
+    }
 
-//         def tagTree = q"$tag: scala.reflect.ClassTag[$absType]"
+  class UdtDecoderMaker[Encoder[_]: Type, T <: Udt: Type](using Quotes):
+    import quotes.reflect._
 
-//         def rawTree = q"$mapper.f(udt.get[$absType]($name, $classTree), session)"
+    def apply: UdtParams[T] => Expr[T] =
+      (info: UdtParams[T]) => {
+        // TODO Shared between encoder and decoder. Extract
+        def lookupField(name: String) =
+          '{ ${info.meta}.alias(${Expr(name)}).getOrElse(${Expr(name)}) }
 
-//         val params = ListBuffer.empty[Tree]
-//         val typeDefs = ListBuffer.empty[TypeDef]
-//         typeDefs.append(absTypeDef)
+        def getField[C: Type](udtValue: Expr[UDTValue], fieldName: String, mapper: Expr[CassandraMapper[_, C, MapperSide.Decode]]) =
+          mapper.asTerm.tpe.asType match
+            case '[CassandraMapper[fromT, C, MapperSide.Decode]] =>
+              val lookedUpField = lookupField(fieldName)
+              '{
+                val classTag = ${summonClassTagOrFail[fromT]}.runtimeClass.asInstanceOf[Class[fromT]]
+                val fieldValue = $udtValue.get[fromT]($lookedUpField, classTag)
+                $mapper.asInstanceOf[CassandraMapper[fromT, C, MapperSide.Decode]].f(fieldValue, ${info.sess})
+              }
 
-//         def single(tpe: Type) = q"$mapper: $encoding.CassandraMapper[$absType, $tpe]"
+        // Elem is the elem type of the encoder. C is the component (i.e. udt-field) type
+        def getOptional[C: Type](udtValue: Expr[UDTValue], fieldName: String) =
+          '{ Option(${ getField[C](udtValue, fieldName, summonMapperOrFail[C]) }) }
 
-//         val tree =
-//           if (tpe <:< typeOf[Option[Any]]) {
-//             params.appendAll(Seq(single(tpe.typeArgs.head), tagTree))
-//             q"Option($rawTree)"
+        def getRegular[C: Type](udtValue: Expr[UDTValue], fieldName: String) =
+          getField[C](udtValue, fieldName, summonMapperOrFail[C])
 
-//           } else if (tpe <:< typeOf[List[Any]]) {
-//             params.appendAll(Seq(single(tpe.typeArgs.head), tagTree))
-//             val list = q"$UdtValueOps(udt).getScalaList[$absType]($name, $classTree)"
-//             q"$list.map(row => $mapper.f(row, session)).toList"
+        // TODO Try swapping out all asInstanceOf for asExprOf outside the expression
+        def getList[C: Type](udtValue: Expr[UDTValue], fieldName: String) =
+          val lookedUpField = lookupField(fieldName)
+          val mapper = summonMapperOrFail[C]
+          mapper.asTerm.tpe.asType match
+            case '[CassandraMapper[fromT, C, MapperSide.Decode]] =>
+              val typedMapper = '{ $mapper.asInstanceOf[CassandraMapper[fromT, C, MapperSide.Decode]] }
+              val classFromT = '{ ${summonClassTagOrFail[fromT]}.runtimeClass.asInstanceOf[Class[fromT]] }
+              '{ UdtValueOps($udtValue)
+                .getScalaList[fromT]($lookedUpField, $classFromT)
+                .map(row => $typedMapper.f(row, ${info.sess}))
+                .toList
+              }
 
-//           } else if (isBaseType[Set[Any]](tpe)) {
-//             params.appendAll(Seq(single(tpe.typeArgs.head), tagTree))
-//             val set = q"$UdtValueOps(udt).getScalaSet[$absType]($name, $classTree)"
-//             q"$set.map(row => $mapper.f(row, session)).toSet"
+        def getSet[C: Type](udtValue: Expr[UDTValue], fieldName: String) =
+          val lookedUpField = lookupField(fieldName)
+          val mapper = summonMapperOrFail[C]
+          mapper.asTerm.tpe.asType match
+            case '[CassandraMapper[fromT, C, MapperSide.Decode]] =>
+              val typedMapper = '{ $mapper.asInstanceOf[CassandraMapper[fromT, C, MapperSide.Decode]] }
+              val classFromT = '{ ${summonClassTagOrFail[fromT]}.runtimeClass.asInstanceOf[Class[fromT]] }
+              '{ UdtValueOps($udtValue)
+                .getScalaSet[fromT]($lookedUpField, $classFromT)
+                .map(row => $typedMapper.f(row, ${info.sess}))
+                .toSet
+              }
 
-//           } else if (isBaseType[collection.Map[Any, Any]](tpe)) {
-//             val vAbsName = s"${absTypeDef.name.encodedName}V"
-//             val vAbsType = TypeName(vAbsName)
-//             typeDefs.append(makeTypeDef(vAbsName))
-//             val vTag = TermName(s"${tag.encodedName}V")
-//             val kTpe :: vTpe :: Nil = tpe.typeArgs
-//             val vMapper = TermName(s"${mapper.encodedName}V")
-//             params.appendAll(
-//               Seq(
-//                 q"$mapper: $encoding.CassandraMapper[$absType, $kTpe]",
-//                 q"$vMapper: $encoding.CassandraMapper[$vAbsType, $vTpe]",
-//                 tagTree,
-//                 q"$vTag: scala.reflect.ClassTag[$vAbsType]"
-//               )
-//             )
-//             val map = q"$UdtValueOps(udt).getScalaMap[$absType, $vAbsType]($name, $classTree, $vTag.runtimeClass.asInstanceOf[Class[$vAbsType]])"
-//             q"$map.map(kv => $mapper.f(kv._1, session) -> $vMapper.f(kv._2, session)).toMap"
+        def getMap[CK: Type, CV: Type](udtValue: Expr[UDTValue], fieldName: String) =
+          val lookedUpField = lookupField(fieldName)
+          val keyMapper = summonMapperOrFail[CK]
+          val valMapper = summonMapperOrFail[CV]
+          (keyMapper.asTerm.tpe.asType, valMapper.asTerm.tpe.asType) match
+            case ('[CassandraMapper[fromKT, CK, MapperSide.Decode]], '[CassandraMapper[fromVT, CV, MapperSide.Decode]]) =>
+              val typedKeyMapper = '{ $keyMapper.asInstanceOf[CassandraMapper[fromKT, CK, MapperSide.Decode]] }
+              val typedValMapper = '{ $valMapper.asInstanceOf[CassandraMapper[fromVT, CV, MapperSide.Decode]] }
+              val classFromKT = '{ ${summonClassTagOrFail[fromKT]}.runtimeClass.asInstanceOf[Class[fromKT]] }
+              val classFromVT = '{ ${summonClassTagOrFail[fromVT]}.runtimeClass.asInstanceOf[Class[fromVT]] }
+              '{ UdtValueOps($udtValue)
+                .getScalaMap[fromKT, fromVT]($lookedUpField, $classFromKT, $classFromVT)
+                .map[CK, CV](row =>
+                  ($typedKeyMapper.f(row._1, ${info.sess}), $typedValMapper.f(row._2, ${info.sess}))
+                ).toMap
+              }
 
-//           } else {
-//             params.appendAll(Seq(single(tpe), tagTree))
-//             rawTree
-//           }
-//         (typeDefs.toList, params.toList, tree)
-//     }.unzip3
-//     t.copy(_1 = t._1.flatten, _2 = t._2.flatten)
-//   }
+        def deriveComponents =
+          val (mirror, mirrorFields) = MirrorFields.of[T]
+          val mappedFields =
+            mirrorFields.map {
+              case (fieldName, t @ '[List[tpe]]) =>
+                (t, getList[tpe](info.udt, fieldName))
+              case (fieldName, t @ '[Set[tpe]]) =>
+                (t, getSet[tpe](info.udt, fieldName))
+              case (fieldName, t @ '[Map[tpeK, tpeV]]) =>
+                (t, getMap[tpeK, tpeV](info.udt, fieldName))
+              case (fieldName, t @ '[Option[tpe]]) =>
+                (t, getOptional[tpe](info.udt, fieldName))
+              case (fieldName, t @ '[tpe]) =>
+                (t, getRegular[tpe](info.udt, fieldName))
+            }
+          (mirror, mappedFields)
 
-//   private def encodeUdt[T](udtType: Type) = {
-//     // The `session` variable represents CassandraSession which will either be `this` (if it is CassandraClusterSessionContext)
-//     // or it will be `CassanraZioSession` otherwise. Either way, it should have the `udtValueOf` method.
-//     // It is passed in via the context.encoder (i.e. $prefix.encoder) variable
-//     val trees = ListBuffer[Tree](q"val udt = session.udtValueOf(meta.name, meta.keyspace)")
-//     val (typeDefs, params) = udtFields(udtType).map {
-//       case (name, field, tpe, mapper, absType, absTypeDef, tag) =>
+        val (mirror, mappedFields) = deriveComponents
+        val out = ConstructType(mirror, mappedFields)
+        out
+      }
+    end apply
 
-//         val params = ListBuffer.empty[Tree]
-//         val typeDefs = ListBuffer.empty[TypeDef]
-//         typeDefs.append(absTypeDef)
+    def summonClassTagOrFail[CT: Type] =
+        Expr.summon[ClassTag[CT]] match
+          case Some(ct) => ct
+          case None =>
+            report.throwError(s"Error creating Encoder[${Format.TypeOf[T]}]. Cannot summon ClassTag for ${Format.TypeOf[CT]}")
 
-//         def classTree = q"$tag.runtimeClass.asInstanceOf[Class[$absType]]"
+    def summonMapperOrFail[MT: Type]: Expr[CassandraMapper[_, MT, MapperSide.Decode]] =
+      import quotes.reflect._
+      Expr.summon[CassandraMapper[_, MT, MapperSide.Decode]] match
+        case Some(cm) => cm
+        case None =>
+          report.throwError(s"Error creating Encoder[${Format.TypeOf[T]}]. Cannot summon a CassandraMapper[${Format.TypeOf[MT]}, _, ${Format.TypeOf[MapperSide.Decode]}]")
+  end UdtDecoderMaker
 
-//         def tagTree = q"$tag: scala.reflect.ClassTag[$absType]"
+end UdtDecodingMacro
 
-//         def single(tpe: Type) = q"$mapper: $encoding.CassandraMapper[$tpe, $absType]"
 
-//         if (tpe <:< typeOf[Option[Any]]) {
-//           params.appendAll(Seq(single(tpe.typeArgs.head), tagTree))
-//           trees.append {
-//             q"x.$field.map(v => udt.set[$absType]($name, $mapper.f(v, session), $classTree)).getOrElse(udt.setToNull($name))"
-//           }
-//         } else if (tpe <:< typeOf[List[Any]]) {
-//           params.appendAll(Seq(single(tpe.typeArgs.head), tagTree))
-//           val list = q"x.$field.map(row => $mapper.f(row, session))"
-//           trees.append {
-//             q"$UdtValueOps(udt).setScalaList[$absType]($name, $list, $classTree)"
-//           }
-//         } else if (isBaseType[Set[Any]](tpe)) {
-//           params.appendAll(Seq(single(tpe.typeArgs.head), tagTree))
-//           val set = q"x.$field.map(row => $mapper.f(row, session))"
-//           trees.append {
-//             q"$UdtValueOps(udt).setScalaSet[$absType]($name, $set, $classTree)"
-//           }
-//         } else if (isBaseType[collection.Map[Any, Any]](tpe)) {
-//           val vAbsName = s"${absTypeDef.name.encodedName}V"
-//           val vAbsType = TypeName(vAbsName)
-//           typeDefs.append(makeTypeDef(vAbsName))
-//           val vTag = TermName(s"${tag.encodedName}V")
-//           val kTpe :: vTpe :: Nil = tpe.typeArgs
-//           val vMapper = TermName(s"${mapper.encodedName}V")
-//           params.appendAll(
-//             Seq(
-//               q"$mapper: $encoding.CassandraMapper[$kTpe, $absType]",
-//               q"$vMapper: $encoding.CassandraMapper[$vTpe, $vAbsType]",
-//               tagTree,
-//               q"$vTag: scala.reflect.ClassTag[$vAbsType]"
-//             )
-//           )
-//           val vClassTree = q"$vTag.runtimeClass.asInstanceOf[Class[$vAbsType]]"
-//           val map = q"x.$field.map(kv => $mapper.f(kv._1, session) -> $vMapper.f(kv._2, session))"
-//           trees.append {
-//             q"$UdtValueOps(udt).setScalaMap[$absType, $vAbsType]($name, $map, $classTree, $vClassTree)"
-//           }
-//         } else {
-//           params.appendAll(Seq(single(tpe), tagTree))
-//           trees.append {
-//             q"udt.set[$absType]($name, $mapper.f(x.$field, session), $classTree)"
-//           }
-//         }
-//         typeDefs.toList -> params.toList
-//     }.unzip
-//     (typeDefs.flatten, params.flatten, trees.toList)
-//   }
+object UdtEncodingMacro:
 
-//   private def udtFields(udt: Type) = {
-//     val fields = udt.decls.collectFirst {
-//       case m: MethodSymbol if m.isPrimaryConstructor => m.paramLists.flatten
-//     }.getOrElse(c.fail(s"Could not find primary constructor of $udt"))
+  private[UdtEncodingMacro] case class UdtParams[T <: Udt: Type](elem: Expr[T], udt: Expr[UDTValue], meta: Expr[UdtMeta[T]], sess: Expr[UdtValueLookup])
 
-//     fields.zipWithIndex.map {
-//       case (f, i) =>
-//         val name = f.name.decodedName.toString
-//         (
-//           q"meta.alias($name).getOrElse($prefix.naming.default($name))",
-//           f.name.toTermName,
-//           f.typeSignature.asSeenFrom(udt, udt.typeSymbol),
-//           TermName(s"m$i"),
-//           TypeName(s"T$i"),
-//           makeTypeDef(s"T$i"),
-//           TermName(s"t$i")
-//         )
-//     }
-//   }
+  class UdtEncoderMaker[Encoder[_]: Type, T <: Udt: Type](using Quotes):
+    import quotes.reflect._
 
-//   private def isBaseType[T](tpe: Type)(implicit t: TypeTag[T]) =
-//     !(tpe.baseType(t.tpe.typeSymbol) =:= NoType)
+    def apply: (UdtParams[T] => Expr[UDTValue], TermType) = {
+      val (deconstructedEntityComponents, elaborationType) = udtComponents[T]
+      val ents = deconstructedEntityComponents.map { case (t, o, g, tpe) => s"(${t} --> ${Format.Expr(g)})"}
+      //println(s"Components of: ${Format.TypeOf[T]}: ${ents}" )
 
-//   private def makeTypeDef(name: String) =
-//     TypeDef(Modifiers(Flag.PARAM), TypeName(name), Nil, TypeBoundsTree(EmptyTree, EmptyTree))
+      val udtMaker =
+        (info: UdtParams[T]) => {
+          def lookupField(name: String) =
+            '{ ${info.meta}.alias(${Expr(name)}).getOrElse(${Expr(name)}) } // todo insert summoned naming strategy here
 
-//   private def buildUdtMeta(tpe: Type): Tree = {
-//     val meta = OptionalTypecheck(c)(q"implicitly[$prefix.UdtMeta[$tpe]]") getOrElse {
-//       q"$prefix.udtMeta[$tpe]($prefix.naming.default(${typeName(tpe)}))"
-//     }
-//     c.typecheck(q"val meta: $prefix.UdtMeta[$tpe] = $meta")
-//   }
+          def setField[C: Type](fieldValue: Expr[C], fieldName: String, udt: Expr[UDTValue], mapper: Expr[CassandraMapper[C, _, MapperSide.Encode]]) =
+            mapper.asTerm.tpe.asType match
+              case '[CassandraMapper[C, toT, MapperSide.Encode]] =>
+                val lookedUpField = lookupField(fieldName)
+                '{ $udt.set[toT](
+                    $lookedUpField,
+                    $mapper.asInstanceOf[CassandraMapper[C, toT, MapperSide.Encode]].f($fieldValue, ${info.sess}),
+                    ${summonClassTagOrFail[toT]}.runtimeClass.asInstanceOf[Class[toT]])
+                }
 
-//   private def typeName(tpe: Type): String = tpe.typeSymbol.name.decodedName.toString
-// }
+          // Elem is the elem type of the encoder. C is the component (i.e. udt-field) type
+          def setOptional[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem => ?]) =
+            '{
+              $getter.apply($fieldValue).asInstanceOf[Option[C]].map(v =>
+                ${ setField[C]('v, fieldName, udt, summonMapperOrFail[C]) }
+              ).getOrElse($udt.setToNull(${lookupField(fieldName)}))
+            }
+
+          def setRegular[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem => ?]) =
+            val v = '{ $getter.apply($fieldValue).asInstanceOf[C] }
+            setField(v, fieldName, udt, summonMapperOrFail[C])
+
+          // TODO Try swapping out all asInstanceOf for asExprOf outside the expression
+          def setList[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem => ?]) =
+            val lookedUpField = lookupField(fieldName)
+            val mapper = summonMapperOrFail[C]
+            mapper.asTerm.tpe.asType match
+              case '[CassandraMapper[C, toT, MapperSide.Encode]] =>
+                val typedMapper = '{ $mapper.asInstanceOf[CassandraMapper[C, toT, MapperSide.Encode]] }
+                val list = '{ $getter.apply($fieldValue).asInstanceOf[List[C]].map(row => $typedMapper.f(row, ${info.sess})) }
+                val classToT = '{ ${summonClassTagOrFail[toT]}.runtimeClass.asInstanceOf[Class[toT]] }
+                '{ UdtValueOps($udt).setScalaList[toT]($lookedUpField, $list, $classToT) }
+
+          def setSet[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem => ?]) =
+            val lookedUpField = lookupField(fieldName)
+            val mapper = summonMapperOrFail[C]
+            mapper.asTerm.tpe.asType match
+              case '[CassandraMapper[C, toT, MapperSide.Encode]] =>
+                val typedMapper = '{ $mapper.asInstanceOf[CassandraMapper[C, toT, MapperSide.Encode]] }
+                val set = '{ $getter.apply($fieldValue).asInstanceOf[Set[C]].map(row => $typedMapper.f(row, ${info.sess})) }
+                val classToT = '{ ${summonClassTagOrFail[toT]}.runtimeClass.asInstanceOf[Class[toT]] }
+                '{ UdtValueOps($udt).setScalaSet[toT]($lookedUpField, $set, $classToT) }
+
+          def setMap[Elem: Type, CK: Type, CV: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem => ?]) =
+            val lookedUpField = lookupField(fieldName)
+            val keyMapper = summonMapperOrFail[CK]
+            val valMapper = summonMapperOrFail[CV]
+            (keyMapper.asTerm.tpe.asType, valMapper.asTerm.tpe.asType) match
+              case ('[CassandraMapper[CK, toKT, MapperSide.Encode]], '[CassandraMapper[CV, toVT, MapperSide.Encode]]) =>
+                val typedKeyMapper = '{ $keyMapper.asInstanceOf[CassandraMapper[CK, toKT, MapperSide.Encode]] }
+                val typedValMapper = '{ $valMapper.asInstanceOf[CassandraMapper[CV, toVT, MapperSide.Encode]] }
+                val map =
+                  '{ $getter.apply($fieldValue).asInstanceOf[Map[CK, CV]]
+                      .map[toKT, toVT](kv => ($typedKeyMapper.f(kv._1, ${info.sess}), $typedValMapper.f(kv._2, ${info.sess})))
+                  }
+                val classToKT = '{ ${summonClassTagOrFail[toKT]}.runtimeClass.asInstanceOf[Class[toKT]] }
+                val classToVT = '{ ${summonClassTagOrFail[toVT]}.runtimeClass.asInstanceOf[Class[toVT]] }
+                '{ UdtValueOps($udt).setScalaMap[toKT, toVT]($lookedUpField, $map, $classToKT, $classToVT) }
+
+          val components =
+            deconstructedEntityComponents.map {
+              case (fieldName, isOptional, getter, fieldType) =>
+                fieldType match
+                  case '[List[tpe]] =>
+                    setList[T, tpe](info.elem, fieldName, info.udt, getter)
+                  case '[Set[tpe]] =>
+                    setSet[T, tpe](info.elem, fieldName, info.udt, getter)
+                  case '[Map[tpeK, tpeV]] =>
+                    setMap[T, tpeK, tpeV](info.elem, fieldName, info.udt, getter)
+                  case '[tpe] =>
+                    if (isOptional)
+                      setOptional[T, tpe](info.elem, fieldName, info.udt, getter)
+                    else
+                      setRegular[T, tpe](info.elem, fieldName, info.udt, getter)
+            }
+
+          if (components.isEmpty)
+            report.throwError(s"The udt-type ${Format.TypeOf[T]} does not have any fields")
+
+          val otherCalls = components.dropRight(1)
+          val lastCall = components.last
+          Block(otherCalls.map(_.asTerm), lastCall.asTerm).asExprOf[UDTValue]
+        }
+
+      (udtMaker, elaborationType)
+    }
+
+    def summonClassTagOrFail[CT: Type] =
+        Expr.summon[ClassTag[CT]] match
+          case Some(ct) => ct
+          case None =>
+            report.throwError(s"Error creating Encoder[${Format.TypeOf[T]}]. Cannot summon ClassTag for ${Format.TypeOf[CT]}")
+
+    def summonMapperOrFail[MT: Type]: Expr[CassandraMapper[MT, _, MapperSide.Encode]] =
+      import quotes.reflect._
+      Expr.summon[CassandraMapper[MT, _, MapperSide.Encode]] match
+        case Some(cm) => cm
+        case None =>
+          report.throwError(s"Error creating Encoder[${Format.TypeOf[T]}]. Cannot summon a CassandraMapper[${Format.TypeOf[MT]}, _, ${Format.TypeOf[MapperSide.Encode]}]")
+
+    def innerType(tpe: Type[_]) =
+      tpe match
+        case '[Option[t]] => Type.of[t]
+        case _ => tpe
+
+    def checkValidProduct[T: Type] =
+      // First double check what the fields of the type are for diagnostic purposes.
+      val mirrorFields = MirrorFields.of[T]
+      if (mirrorFields._2.isEmpty)
+        report.throwError(s"Could not find any fields in the type: ${Format.TypeOf[T]}")
+
+    def summonElaboration[T: Type] =
+      val elaboration = ElaborateStructure.Term.ofProduct[T](ElaborationSide.Encoding, udtBehavior = ElaborateStructure.UdtBehavior.Derive)
+      if (elaboration.typeType == Leaf)
+        report.throwError(s"Error encoding UDT: ${Format.TypeOf[T]}. Elaboration was a leaf-type. This should not be possible.")
+      elaboration
+
+    def udtComponents[T: Type] =
+      // Check if this is a valid product
+      checkValidProduct[T]
+      val elaboration = summonElaboration[T]
+      // If it is get the components
+      val components =
+        DeconstructElaboratedEntityLevels.withTerms[T](elaboration).map((term, getter, rawTpe) => {
+          val tpe = innerType(rawTpe)
+          (term.name, term.optional, getter, tpe)
+        })
+      (components, elaboration.typeType)
+
+  end UdtEncoderMaker
+
+  // Assuming that:
+  // PrepareRow := BoundStatement, Session := CassandraSession
+  inline def udtEncoder[Encoder[_], T <: Udt]: CassandraEncoderMaker[Encoder, T] => Encoder[T] =
+    ${ udtEncoderImpl[Encoder, T] }
+
+  /**
+   * Generate an Encoder[T] for some arbitrary Encoder[_] and arbitrary T <: Udt. This
+   * is done via the Generic Derivation mechanisms of the ProtoQuill Elaborators.
+   *
+   * Since we can't directly return an Encoder due to https://github.com/lampepfl/dotty/issues/12179
+   * (have a look at the AnyVal encoder for more info), we pass it in as a parameter and the
+   * the CassandraEncoderMaker pattern to generate it. If we assume that all the encoders cassandra
+   * contexts ever need to use are CassandraEncoder instances then we don't need this parameter
+   * and maybe can simplify. Need to look into this some more.
+   */
+  def udtEncoderImpl[Encoder[_]: Type, T <: Udt: Type](using Quotes): Expr[CassandraEncoderMaker[Encoder, T] => Encoder[T]] = {
+    import quotes.reflect._
+    import scala.deriving._
+
+    val madeOrFoundMeta = UdtMeta.build[T]
+    val (encodeUdt, elaborationType) = new UdtEncoderMaker[Encoder, T].apply
+
+    def synthesizeEncoder: Expr[CassandraEncoderMaker[Encoder, T] => Encoder[T]] =
+      '{
+        (cem: CassandraEncoderMaker[Encoder, T]) => {
+          val meta = ${madeOrFoundMeta}
+          cem.apply ((i: Int, elem: T, row: BoundStatement, sess: UdtValueLookup) => row.setUDTValue(i, {
+            val udt = sess.udtValueOf(meta.name, meta.keyspace)
+            ${ encodeUdt(UdtParams('elem, 'udt, 'meta, 'sess)) }
+          }))
+        }
+      }
+
+    elaborationType match
+      case Leaf =>
+        Expr.summon[Encoder[T]] match
+          // If encoder has already been synthesized by a different macro invocation, elabration
+          // of the encoder will be a Leaf since an encoder exists for it. In that case we just summon the encoder
+          case Some(value) =>
+            '{ (cem: CassandraEncoderMaker[Encoder, T]) => $value }
+          case None =>
+            println(s"[ERROR] Could not synthesize leaf UDT encoder for: ${Format.TypeOf[T]}")
+            '{ ??? }
+      case Branch =>
+        synthesizeEncoder
+  }
+
+  inline def udtEncoderMapper[Encoder[_], T <: Udt]: CassandraEncodeMapperMaker[Encoder, T] => CassandraMapper[T, UDTValue, MapperSide.Encode] = ${ udtEncoderMapperImpl[Encoder, T] }
+
+  def udtEncoderMapperImpl[Encoder[_]: Type, T <: Udt: Type](using Quotes): Expr[CassandraEncodeMapperMaker[Encoder, T] => CassandraMapper[T, UDTValue, MapperSide.Encode]] = {
+    import quotes.reflect._
+    val madeOrFoundMeta = UdtMeta.build[T]
+    // TODO quill.trace.types 'summoning' level should enable this
+    //println(s"**** Mapper summoning encoder of: ${Format.TypeOf[T]}")
+    val (encodeUdt, _) = new UdtEncoderMaker[Encoder, T].apply
+    '{
+      (cem: CassandraEncodeMapperMaker[Encoder, T]) => {
+        val meta = ${madeOrFoundMeta}
+        cem.apply((elem, sess) => {
+          val udt = sess.udtValueOf(meta.name, meta.keyspace)
+          ${ encodeUdt(UdtParams('elem, 'udt, 'meta, 'sess)) }
+        })
+      }
+    }
+  }
+
+end UdtEncodingMacro

@@ -8,7 +8,7 @@ import io.getquill.MappedEncoding
 import java.util.{ Date, UUID }
 import io.getquill.generic._
 
-trait Decoders extends CassandraRowContext with EncodingDsl with CollectionDecoders with CassandraMapperConversions with CassandraTypes {
+trait Decoders extends CassandraRowContext with EncodingDsl with CollectionDecoders with CassandraMapperConversions with CassandraTypes with UdtDecoding {
 
   type Decoder[T] = CassandraDecoder[T]
 

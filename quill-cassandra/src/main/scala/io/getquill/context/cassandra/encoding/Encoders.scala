@@ -3,12 +3,36 @@ package io.getquill.context.cassandra.encoding
 import com.datastax.driver.core.LocalDate
 import io.getquill.context.cassandra.CassandraRowContext
 import io.getquill.MappedEncoding
+import io.getquill.context.CassandraSession
 
 import java.nio.ByteBuffer
 import java.util.{ Date, UUID }
 import io.getquill.generic._
+import com.datastax.driver.core.BoundStatement
+import com.datastax.driver.core.Row
+import io.getquill.context.UdtValueLookup
+import io.getquill.context.cassandra.encoding.UdtEncoding
+import com.datastax.driver.core.UDTValue
 
-trait Encoders extends CassandraRowContext with EncodingDsl with CollectionEncoders with CassandraMapperConversions with CassandraTypes {
+trait CassandraEncoderMaker[Encoder[_], T]:
+  def apply(e: (Int, T, BoundStatement, UdtValueLookup) => BoundStatement): Encoder[T]
+
+trait CassandraDecoderMaker[Decoder[_], T]:
+  def apply(e: (Int, Row, UdtValueLookup) => T): Decoder[T]
+
+trait CassandraEncodeMapperMaker[Encoder[_], T]:
+  def apply(f: (T, UdtValueLookup) => UDTValue): CassandraMapper[T, UDTValue, MapperSide.Encode]
+
+trait CassandraDecodeMapperMaker[Encoder[_], T]:
+  def apply(f: (UDTValue, UdtValueLookup) => T): CassandraMapper[UDTValue, T, MapperSide.Decode]
+
+trait Encoders
+extends CassandraRowContext
+with EncodingDsl
+with CollectionEncoders
+with CassandraMapperConversions
+with CassandraTypes
+with UdtEncoding {
 
   type Encoder[T] = CassandraEncoder[T]
 

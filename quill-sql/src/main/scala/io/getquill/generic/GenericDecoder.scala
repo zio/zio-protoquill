@@ -170,10 +170,6 @@ object GenericDecoder {
             // Get the constructor
             val tpe = TypeRepr.of[T]
             val constructor = TypeRepr.of[T].typeSymbol.primaryConstructor
-            //println(s"========== ParamSymss: ${constructor.paramSymss.map(_.map(_.flags.show))} ================")
-            //println(s"========== ParamSymss: ${constructor.paramSymss.map(_.map(_.isTypeParam))} ================")
-            //println(s"========== ParamSymss: ${tpe.classSymbol.get.flags.show} ================")
-
 
             // If we are a tuple, we can easily construct it
             if (tpe <:< TypeRepr.of[Tuple]) {
