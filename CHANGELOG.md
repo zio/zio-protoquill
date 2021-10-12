@@ -1,3 +1,10 @@
+# 3.10.0.Beta1.6
+
+* [Port quill-cassandra](https://github.com/getquill/protoquill/pull/23)
+* [Cassandra UDT Encoders/Decoders](https://github.com/getquill/protoquill/pull/25)
+* [Implementing Cassandra ZIO Context](https://github.com/getquill/protoquill/pull/26)
+* [Refactoring, introducing filterColumns](https://github.com/getquill/protoquill/commit/e070b862075e3beec56ad05c6801608acaa1dd0c)
+
 # 3.10.0.Beta1.5
 
 * [Move to 3.10.0 of base and zio. ProtoContext now in portable.](https://github.com/getquill/protoquill/commit/39c62ab2e6400f9cf4b3d87740900f55fd69ab12)
