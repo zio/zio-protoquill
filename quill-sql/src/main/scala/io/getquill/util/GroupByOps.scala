@@ -1,16 +1,14 @@
 package io.getquill.util
 
-
 import scala.reflect.ClassTag
 import scala.compiletime.{erasedValue, summonFrom, constValue}
-import io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}
+import _root_.io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}
 import scala.compiletime.erasedValue
-import io.getquill.ast.Visibility.{ Hidden, Visible }
+import _root_.io.getquill.ast.Visibility.{ Hidden, Visible }
 import scala.deriving._
 import scala.quoted._
-import io.getquill.parser.Lifter
-import io.getquill.quat.Quat
-import io.getquill.ast.{Map => AMap, _}
+import _root_.io.getquill.parser.Lifter
+import _root_.io.getquill.quat.Quat
 
 // TODO Move to a utils area
 object GroupByOps {

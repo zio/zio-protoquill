@@ -11,6 +11,7 @@ abstract class EncodingSpecHelper extends Spec {
       case List((e1, a1), (e2, a2)) =>
         verify(e1, a1)
         verify(e2, a2)
+      case _ => fail("Invalid values found")
     }
 
   protected def verify(e: EncodingTestEntity, a: EncodingTestEntity): Unit = {

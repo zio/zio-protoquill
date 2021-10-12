@@ -107,7 +107,7 @@ object LiftMacro {
     import io.getquill.util.Format
 
     // Get the elaboration and AST once so that it will not have to be parsed out of the liftedCombo (since they are normally returned by ElaborateStructure.ofProductValue)
-    val elaborated = ElaborateStructure.elaborationOfProductValue[T](ElaborationSide.Encoding)
+    val elaborated = ElaborateStructure.Term.ofProduct[T](ElaborationSide.Encoding)
     //println("========= Elaboration =========\n" + io.getquill.util.Messages.qprint(elaborated))
     val (_, caseClassAst) = ElaborateStructure.productValueToAst[T](elaborated)
     val caseClass = caseClassAst.asInstanceOf[io.getquill.ast.CaseClass]

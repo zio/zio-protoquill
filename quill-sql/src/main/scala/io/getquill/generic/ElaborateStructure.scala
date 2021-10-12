@@ -114,7 +114,7 @@ object ElaborateStructure {
     // Used by coproducts, merges all fields of a term with another if this is valid
     // Note that T is only needed for the error message. Maybe take it out once we store Types inside of Term
     def merge[T: Type](other: Term)(using quotes: Quotes) = {
-      import quotes.reflect._
+      import quotes.reflect.{ Term => TTerm, _ }
 
       // Terms must both have the same name
       if (this.name != other.name)
@@ -149,7 +149,7 @@ object ElaborateStructure {
 
   }
 
-  object Term {
+  object Term:
     import io.getquill.ast._
 
     // Not sure if Branch Terms should have hidden properties
@@ -248,7 +248,11 @@ object ElaborateStructure {
           output
       }
     }
-  }
+
+    private[getquill] def ofProduct[T: Type](side: ElaborationSide, baseName: String = "notused", udtBehavior: UdtBehavior = UdtBehavior.Leaf)(using Quotes) =
+      base[T](Term(baseName, Branch), side, udtBehavior)
+
+  end Term
 
   /** Go through all possibilities that the element might be and collect their fields */
   def collectFields[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide)(using Quotes): List[Term] = {
@@ -310,6 +314,10 @@ object ElaborateStructure {
     }
   }
 
+  enum UdtBehavior:
+    case Leaf
+    case Derive
+
   /**
    * Expand the structure of base term into series of terms for a given type
    * e.g. for Term(x) elaborate Person (case class Person(name: String, age: Int))
@@ -330,7 +338,7 @@ object ElaborateStructure {
    * when trying to elaborate this type.
    *
    */
-  def base[T: Type](term: Term, side: ElaborationSide)(using Quotes): Term = {
+  def base[T: Type](term: Term, side: ElaborationSide, udtBehavior: UdtBehavior = UdtBehavior.Leaf)(using Quotes): Term = {
     import quotes.reflect.{Term => QTerm, _}
 
     // for errors/warnings
@@ -339,8 +347,21 @@ object ElaborateStructure {
       case ElaborationSide.Decoding => "decodeable"
 
     val isAutomaticLeaf = side match
-      case ElaborationSide.Encoding => Expr.summon[GenericEncoder[T, _, _]].isDefined
-      case ElaborationSide.Decoding => Expr.summon[GenericDecoder[_, _, T, DecodingType.Specific]].isDefined
+      // Not sure why the UDT part is needed since it shuold always have a GenericEncoder/Decoder anyway
+      case _ if (TypeRepr.of[T] <:< TypeRepr.of[io.getquill.Udt]) =>
+        //println(s"------- TREATING UDT as Leaf ${Format.TypeOf[T]}")
+        // If we are elaborating a UDT and are told to elaborate normally, make sure that this is done
+        // even if an encoder exists for the UDT. Otherwise, automatically treat the UDT as a Leaf entity
+        // (since an encoder for it should have been derived by the macro that used UdtBehavior.Derive)
+        udtBehavior match
+          case UdtBehavior.Leaf => true
+          case UdtBehavior.Derive => false
+      case ElaborationSide.Encoding =>
+        //println(s"------- ALREDY EXISTS Encoder for ${Format.TypeOf[T]}")
+        Expr.summon[GenericEncoder[T, _, _]].isDefined
+      case ElaborationSide.Decoding =>
+        //println(s"------- ALREDY EXISTS Decoder for ${Format.TypeOf[T]}")
+        Expr.summon[GenericDecoder[_, _, T, DecodingType.Specific]].isDefined
 
     // TODO Back here. Should have a input arg that asks whether elaboration is
     //      on the encoding or on the decoding side.
@@ -455,7 +476,7 @@ object ElaborateStructure {
   // keep namefirst, namelast etc.... so that testability is easier due to determinism
   // re-key by the UIDs later
   def ofProductValue[T: Type](productValue: Expr[T], side: ElaborationSide)(using Quotes): TaggedLiftedCaseClass[Ast] = {
-    val elaborated = elaborationOfProductValue[T](side)
+    val elaborated = ElaborateStructure.Term.ofProduct[T](side)
     // create a nested AST for the Term nest with the expected scalar tags inside
     val (_, nestedAst) = productValueToAst(elaborated)
     // create the list of (label, lift) for the expanded entities
@@ -465,12 +486,9 @@ object ElaborateStructure {
   }
 
   def decomposedProductValue[T: Type](side: ElaborationSide)(using Quotes) = {
-    val elaborated = elaborationOfProductValue[T](side)
+    val elaborated = ElaborateStructure.Term.ofProduct[T](side)
     decomposedLiftsOfProductValue(elaborated)
   }
-
-  private[getquill] def elaborationOfProductValue[T: Type](side: ElaborationSide)(using Quotes) =
-    base[T](Term("notused", Branch), side)
 
   private[getquill] def liftsOfProductValue[T: Type](elaboration: Term, productValue: Expr[T])(using Quotes) =
     import quotes.reflect._

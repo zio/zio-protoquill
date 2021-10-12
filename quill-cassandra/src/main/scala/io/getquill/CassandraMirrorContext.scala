@@ -10,7 +10,8 @@ import scala.reflect.ClassTag
 class CassandraMirrorContextWithQueryProbing extends CassandraMirrorContext(Literal) with QueryProbing
 
 class CassandraMirrorContext[Naming <: NamingStrategy](naming: Naming)
-  extends MirrorContext[CqlIdiom, Naming](CqlIdiom, naming) with CassandraContext[Naming] {
+  extends MirrorContext[CqlIdiom, Naming](CqlIdiom, naming)
+  with CassandraContext[Naming] {
 
   implicit val timestampDecoder: Decoder[Date] = decoder[Date]
   implicit val timestampEncoder: Encoder[Date] = encoder[Date]
