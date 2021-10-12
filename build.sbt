@@ -48,7 +48,7 @@ lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
 )
 
 lazy val bigdataModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-cassandra`
+  `quill-cassandra`, `quill-cassandra-zio`
 )
 
 lazy val allModules =
@@ -243,6 +243,21 @@ lazy val `quill-cassandra` =
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
+
+lazy val `quill-cassandra-zio` =
+  (project in file("quill-cassandra-zio"))
+    .settings(commonSettings: _*)
+    .settings(releaseSettings: _*)
+    .settings(
+      Test / fork := true,
+      libraryDependencies ++= Seq(
+        "dev.zio" %% "zio" % "1.0.9",
+        "dev.zio" %% "zio-streams" % "1.0.9",
+        ("dev.zio" %% "zio-interop-guava" % "30.1.0.3").excludeAll(ExclusionRule(organization = "dev.zio")).withDottyCompat(scalaVersion.value)
+      )
+    )
+    .dependsOn(`quill-cassandra` % "compile->compile;test->test")
+    .dependsOn(`quill-zio` % "compile->compile;test->test")
 
 // Include scalafmt formatter for pretty printing failed queries
 val includeFormatter =

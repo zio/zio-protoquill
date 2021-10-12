@@ -47,12 +47,6 @@ with CassandraContext[N] {
     }
     preparedRow
   }
-
-  override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: DatasourceContext) =
-    fail("Cassandra doesn't support `returning`.")
-
-  override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: DatasourceContext) =
-    fail("Cassandra doesn't support `returning`.")
 }
 
 trait CassandraBaseContext[N <: NamingStrategy] extends CassandraStandardContext[N] {
@@ -71,6 +65,12 @@ trait CassandraStandardContext[N <: NamingStrategy]
   // Overriding them as defined in ProtoContext
   override type RunActionReturningResult[T] = Unit
   override type RunBatchActionReturningResult[T] = Unit
+
+  override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: DatasourceContext) =
+    fail("Cassandra doesn't support `returning`.")
+
+  override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: DatasourceContext) =
+    fail("Cassandra doesn't support `returning`.")
 }
 
 trait CassandraRowContext extends RowContext {
