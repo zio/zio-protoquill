@@ -22,14 +22,14 @@ with PrepareContext[Dialect, Naming] {
   override type PrepareBatchActionResult = QIO[List[PrepareRow]]
   override type Session = Connection
 
-  def prepareQuery(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext): PrepareQueryResult =
+  def prepareQuery(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): PrepareQueryResult =
     prepareSingle(sql, prepare)(info, dc)
 
-  def prepareAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext): PrepareActionResult =
+  def prepareAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): PrepareActionResult =
     prepareSingle(sql, prepare)(info, dc)
 
   /** Execute SQL on connection and return prepared statement. Closes the statement in a bracket. */
-  def prepareSingle(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext): QIO[PreparedStatement] = {
+  def prepareSingle(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): QIO[PreparedStatement] = {
     (for {
       bconn <- ZIO.environment[Has[Connection]]
       conn = bconn.get[Connection]
@@ -42,7 +42,7 @@ with PrepareContext[Dialect, Naming] {
     } yield ps).refineToOrDie[SQLException]
   }
 
-  def prepareBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: DatasourceContext): PrepareBatchActionResult =
+  def prepareBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): PrepareBatchActionResult =
     ZIO.collectAll[Has[Connection], Throwable, PrepareRow, List] {
       val batches = groups.flatMap {
         case BatchGroup(sql, prepares) =>
