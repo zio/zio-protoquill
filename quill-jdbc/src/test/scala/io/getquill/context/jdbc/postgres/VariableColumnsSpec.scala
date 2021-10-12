@@ -50,8 +50,10 @@ class VariableColumnsSpec extends Spec with Inside {
 
     "Remove Table from Plan when Columns for other table Not Needed" in {
       val columns = List[String]("name")
-      val result = ctx.run(plan(columns), OuterSelectWrap.Never).head
-      result must startWith("Seq Scan on persont p")
+      inside(ctx.run(plan(columns), OuterSelectWrap.Never)) {
+        case List(result) =>
+          result must startWith("Seq Scan on persont p")
+      }
 
       // Also check that the actual query works
       ctx.run(q(columns).take(5)) mustEqual
