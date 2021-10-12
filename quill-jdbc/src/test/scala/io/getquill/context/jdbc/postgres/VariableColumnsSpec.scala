@@ -37,7 +37,9 @@ class VariableColumnsSpec extends Spec with Inside {
           c must include("Seq Scan on addresst a")
       }
 
-      println( ctx.run(plan(columns), OuterSelectWrap.Never) )
+      // Also check that the actual query works
+      ctx.run(q(columns).take(5)) mustEqual
+        List(Combo(null,Some("1")), Combo(null,Some("2")), Combo(null,Some("3")), Combo(null,Some("4")), Combo(null,Some("5")))
     }
 
     "Remove Table from Plan when Columns Not Needed" in {
@@ -50,6 +52,10 @@ class VariableColumnsSpec extends Spec with Inside {
       val columns = List[String]("name")
       val result = ctx.run(plan(columns), OuterSelectWrap.Never).head
       result must startWith("Seq Scan on persont p")
+
+      // Also check that the actual query works
+      ctx.run(q(columns).take(5)) mustEqual
+        List(Combo("1",None), Combo("2",None), Combo("3",None), Combo("4",None), Combo("5",None))
     }
   }
 }
