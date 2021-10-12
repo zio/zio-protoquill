@@ -141,3 +141,11 @@ CREATE TABLE Address(
     zip int,
     otherExtraInfo VARCHAR(255)
 );
+
+-- For testing ColumnsFlicer query plan generation
+-- (i.e. queries where physical absence of a column should generate a different query plan)
+create table PersonT(id serial primary key, name varchar(255), age int);
+create table AddressT(ownerId int unique, street varchar(255), CONSTRAINT fk_person FOREIGN KEY(ownerId) REFERENCES PersonT(id));
+
+insert into PersonT (name, age) select i, i from generate_series(1, 100000) as t(i);
+insert into AddressT (ownerId, street) select i, i from generate_series(1, 100000) as t(i);

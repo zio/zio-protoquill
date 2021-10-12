@@ -39,6 +39,7 @@ import io.getquill.metaprog.Extractors._
 import io.getquill.BatchAction
 import io.getquill._
 import io.getquill.parser.Lifter
+import io.getquill.OuterSelectWrap
 
 trait ContextOperation[I, T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extractor: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]): Res
@@ -134,10 +135,12 @@ object QueryExecution:
     N <: NamingStrategy: Type,
     Ctx <: Context[_, _]: Type,
     Res: Type
-  ](quotedOp: Expr[Quoted[QAC[I, T]]],
+  ](
+    quotedOp: Expr[Quoted[QAC[I, T]]],
     contextOperation: Expr[ContextOperation[I, T, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
-    fetchSize: Expr[Option[Int]]
-    )(using val qctx: Quotes, QAC: Type[QAC[I, T]]):
+    fetchSize: Expr[Option[Int]],
+    wrap: Expr[OuterSelectWrap]
+  )(using val qctx: Quotes, QAC: Type[QAC[I, T]]):
     import qctx.reflect._
     import Execution._
 
@@ -156,6 +159,13 @@ object QueryExecution:
         case _ =>
           report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.Type(QAC)}")
 
+    lazy val wrapValue = OuterSelectWrap.unlift(wrap)
+    lazy val queryElaborationBehavior =
+      wrapValue match
+        case OuterSelectWrap.Always => ElaborationBehavior.Elaborate
+        case OuterSelectWrap.Never => ElaborationBehavior.Skip
+        case OuterSelectWrap.Default => ElaborationBehavior.Elaborate
+
     /** Summon all needed components and run executeQuery method */
     def applyQuery(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
       summonQueryMetaTypeIfExists[T] match
@@ -164,12 +174,12 @@ object QueryExecution:
           queryMeta match { case '[rawT] => runWithQueryMeta[rawT](quoted) }
         case None =>
           // Otherwise the regular pipeline
-          StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Elaborate) match
+          StaticTranslationMacro.applyInner[I, T, D, N](quoted, queryElaborationBehavior) match
             // Can we re-create needed info to construct+tokenize the query statically?
             case Some(staticState) =>
               executeStatic[T](staticState, identityConverter, ExtractBehavior.Extract) // Yes we can, do it!
             case None =>
-              executeDynamic(quoted, identityConverter, ExtractBehavior.Extract, ElaborationBehavior.Elaborate) // No we can't. Do dynamic
+              executeDynamic(quoted, identityConverter, ExtractBehavior.Extract, queryElaborationBehavior) // No we can't. Do dynamic
 
     def applyAction(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
       StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Skip) match
@@ -194,7 +204,7 @@ object QueryExecution:
         case None =>
           // NOTE: Can assume QuotationType is `Query` here since summonly a Query-meta is only allowed for Queries
           // TODO refacotry QueryMetaExtractor to use QAC[I, T] => QAC[I, RawT] then use that
-          executeDynamic[RawT](queryRawT.asExprOf[Quoted[QAC[I, RawT]]], converter, ExtractBehavior.Extract, ElaborationBehavior.Elaborate)
+          executeDynamic[RawT](queryRawT.asExprOf[Quoted[QAC[I, RawT]]], converter, ExtractBehavior.Extract, queryElaborationBehavior)
       }
 
     def resolveLazyLiftsStatic(lifts: List[Expr[Planter[?, ?, ?]]]): List[Expr[Planter[?, ?, ?]]] =
@@ -278,8 +288,8 @@ object QueryExecution:
     N <: NamingStrategy,
     Ctx <: Context[_, _],
     Res
-  ](inline quotedOp: Quoted[QAC[I, T]], ctx: ContextOperation[I, T, D, N, PrepareRow, ResultRow, Session, Ctx, Res], fetchSize: Option[Int]) =
-    ${ applyImpl('quotedOp, 'ctx, 'fetchSize) }
+  ](inline quotedOp: Quoted[QAC[I, T]], ctx: ContextOperation[I, T, D, N, PrepareRow, ResultRow, Session, Ctx, Res], fetchSize: Option[Int], inline wrap: OuterSelectWrap = OuterSelectWrap.Default) =
+    ${ applyImpl('quotedOp, 'ctx, 'fetchSize, 'wrap) }
 
   def applyImpl[
     I: Type,
@@ -291,11 +301,12 @@ object QueryExecution:
     N <: NamingStrategy: Type,
     Ctx <: Context[_, _]: Type,
     Res: Type
-  ](quotedOp: Expr[Quoted[QAC[I, T]]],
+  ](
+    quotedOp: Expr[Quoted[QAC[I, T]]],
     ctx: Expr[ContextOperation[I, T, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
-    fetchSize: Expr[Option[Int]]
-    )(using qctx: Quotes): Expr[Res] =
-    new RunQuery[I, T, ResultRow, PrepareRow, Session, D, N, Ctx, Res](quotedOp, ctx, fetchSize).apply()
+    fetchSize: Expr[Option[Int]],
+    wrap: Expr[OuterSelectWrap]
+  )(using qctx: Quotes): Expr[Res] = new RunQuery[I, T, ResultRow, PrepareRow, Session, D, N, Ctx, Res](quotedOp, ctx, fetchSize, wrap).apply()
 
 
 

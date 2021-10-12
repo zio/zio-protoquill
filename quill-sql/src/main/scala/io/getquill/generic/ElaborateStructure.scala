@@ -320,7 +320,7 @@ object ElaborateStructure {
 
   /**
    * Expand the structure of base term into series of terms for a given type
-   * e.g. for Term(x) elaborate Person (case class Person(name: String, age: Int))
+   * e.g. for Term(x) wrap Person (case class Person(name: String, age: Int))
    * will be Term(name, Term(x, Branch), Leaf), Term(age, Term(x, Branch), Leaf)
    * Note that this could potentially be different if we are on the encoding or the
    * decoding side. For example, someone could create something like:
@@ -335,7 +335,7 @@ object ElaborateStructure {
    * as opposed what we would generically have thought:
    * {{ Term(name, Term(x, Branch), Leaf)) }}.
    * That means that we need to know whether to look for an encoder as opposed to a decoder
-   * when trying to elaborate this type.
+   * when trying to wrap this type.
    *
    */
   def base[T: Type](term: Term, side: ElaborationSide, udtBehavior: UdtBehavior = UdtBehavior.Leaf)(using Quotes): Term = {
@@ -350,7 +350,7 @@ object ElaborateStructure {
       // Not sure why the UDT part is needed since it shuold always have a GenericEncoder/Decoder anyway
       case _ if (TypeRepr.of[T] <:< TypeRepr.of[io.getquill.Udt]) =>
         //println(s"------- TREATING UDT as Leaf ${Format.TypeOf[T]}")
-        // If we are elaborating a UDT and are told to elaborate normally, make sure that this is done
+        // If we are elaborating a UDT and are told to wrap normally, make sure that this is done
         // even if an encoder exists for the UDT. Otherwise, automatically treat the UDT as a Leaf entity
         // (since an encoder for it should have been derived by the macro that used UdtBehavior.Derive)
         udtBehavior match
@@ -373,7 +373,7 @@ object ElaborateStructure {
     // (only Generic Decoders), it is a good way to tell if something is a value type or not.
     if (isAutomaticLeaf)
         term.asLeaf
-      // Otherwise, summon the mirror and elaborate the value
+      // Otherwise, summon the mirror and wrap the value
     else
       // if there is a decoder for the term, just return the term
       Expr.summon[Mirror.Of[T]] match

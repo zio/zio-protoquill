@@ -42,6 +42,9 @@ import org.scalafmt.config.ScalafmtRunner.Dialect
 import io.getquill.context.ProtoContext
 import io.getquill.context.AstSplicing
 import io.getquill.context.RowContext
+import io.getquill.metaprog.etc.ColumnsFlicer
+import io.getquill.context.Execution.ElaborationBehavior
+import io.getquill.OuterSelectWrap
 
 /**
  * Metadata related to query execution. Note that AST should be lazy so as not to be evaluated
@@ -110,6 +113,9 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy] extends ProtoContext[D
   extension [T](inline q: Query[T]) {
     inline def filterByKeys(inline map: Map[String, String]) =
       q.filter(p => MapFlicer[T, PrepareRow, Session](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
+
+    inline def filterColumns(inline columns: List[String]) =
+      q.map(p => ColumnsFlicer[T, PrepareRow, Session](p, columns))
   }
 
   protected def context: DatasourceContext = fail(s"DatasourceContext method not implemented for '${this.getClass.getName}' Context")
@@ -117,8 +123,12 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy] extends ProtoContext[D
   // Think I need to implement 'run' here as opposed to in Context because an abstract
   // inline method cannot be called. Should look into this further. E.g. maybe the 'inline' in
   // the regular context can be non inline
+  @targetName("runQueryDefault")
+  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] =
+    run(quoted, OuterSelectWrap.Default)
+
   @targetName("runQuery")
-  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] = {
+  inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): Result[RunQueryResult[T]] = {
     val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, Session, this.type, Result[RunQueryResult[T]]](self.idiom, self.naming) {
       def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
         val extract = extraction match
@@ -129,7 +139,7 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy] extends ProtoContext[D
         self.executeQuery(sql, prepare, extract)(executionInfo, runContext)
     }
     // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
-    QueryExecution.apply(quoted, ca, None)
+    QueryExecution.apply(quoted, ca, None, wrap)
   }
 
   @targetName("runQuerySingle")

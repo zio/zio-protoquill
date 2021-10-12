@@ -36,6 +36,17 @@ object MiniExample_LiftByKeys {
     println( r.prepareRow.data.toList)
   }
 
+  def extensionColumnsProc() = {
+    val columns = List("firstName")
+    inline def q = quote {
+      query[Person].filterColumns(columns)
+    }
+    // println(q)
+    //val r = run(q) //hello
+    // println( r.string )
+    // println( r.prepareRow.data.toList)
+  }
+
   /*
    ============= The following expasion happens ===========
    SELECT p.firstName, p.lastName, p.age FROM Person p

@@ -17,6 +17,7 @@ import io.getquill.context.UdtValueLookup
 import io.getquill.generic.ElaborateStructure.{ TermType, Leaf, Branch }
 import com.datastax.driver.core.Row
 import io.getquill.util.ThreadUtil
+import io.getquill.generic.ConstructType
 
 object UdtDecodingMacro:
 

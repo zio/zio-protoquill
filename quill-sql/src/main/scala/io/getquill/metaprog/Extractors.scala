@@ -449,17 +449,17 @@ object Extractors {
           // println("Is Module2: " + (tpe.classSymbol.get.flags.is(Flags.Artifact)))
           // println("Flags: " + (tpe.classSymbol.get.flags.show))
           // report.throwError("**************** STOP HERE ****************")
+
+        // When constructing a case class with a macro we sometimes get this (e.g using ConstructType)
+        case ClassSymbolAndUnseal(sym, Apply(Select(New(Inferred()), "<init>"), args)) if isType[Product](expr) =>
+          Some((sym.name, sym.caseFields.map(_.name), args.map(_.asExpr)))
         case ClassSymbolAndUnseal(sym, Apply(Select(New(TypeIdent(_)), "<init>"), args)) if isType[Product](expr) =>
-          //println("@@@@@@@@@@@@============== !!!!! MATCH ON IN-FUNC !!!!! ==============@@@@@@@@@@@@")
           Some((sym.name, sym.caseFields.map(_.name), args.map(_.asExpr)))
         case ClassSymbolAndUnseal(sym, Apply(Select(ModuleCreation(), "apply"), args)) if isType[Product](expr) => //&& sym.flags.is(Flags.Case)
-          //println("@@@@@@@@@@@@============== !!!!! MATCH ON MOD !!!!! ==============@@@@@@@@@@@@")
           Some((sym.name, sym.caseFields.map(_.name), args.map(_.asExpr)))
         case _ =>
-          //println("@@@@@@@@@@@@============== No Match ==============@@@@@@@@@@@@")
           None
 
-      //println("@@@@@@@@@@@@============== OUT ==============@@@@@@@@@@@@\n" + out)
       out
     }
 

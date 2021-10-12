@@ -42,7 +42,7 @@ object StaticTranslationMacro {
   import io.getquill.NamingStrategy
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], elaborate: ElaborationBehavior, idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
+  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], wrap: ElaborationBehavior, idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
@@ -54,7 +54,7 @@ object StaticTranslationMacro {
     val unliftedAst = Unlifter.apply(astExpr)
 
     if (noRuntimeQuotations(unliftedAst)) {
-      val expandedAst = elaborate match
+      val expandedAst = wrap match
         // if the AST is a Query, e.g. Query(Entity[Person], ...) we expand it out until something like
         // Map(Query(Entity[Person], ...), x, CaseClass(name: x.name, age: x.age)). This was based on the Scala2-Quill
         // flatten method in ValueProjection.scala. Technically this can be performed in the SqlQuery from the Quat info
@@ -134,7 +134,7 @@ object StaticTranslationMacro {
 
   def applyInner[I: Type, T: Type, D <: Idiom, N <: NamingStrategy](
     quotedRaw: Expr[Quoted[QAC[I, T]]],
-    elaborate: ElaborationBehavior
+    wrap: ElaborationBehavior
   )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[StaticState] =
   {
     import quotes.reflect.{Try => TTry, _}
@@ -161,7 +161,7 @@ object StaticTranslationMacro {
         (idiom, naming)                        <- idiomAndNamingStatic.toOption.errPrint("Could not parse Idiom/Naming")
         // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
         (quotedExpr, lifts)                    <- QuotedExpr.uprootableWithLiftsOpt(quoted).errPrint("Could not uproot the quote")
-        (query, externals, returnAction, ast)  <- processAst[T](quotedExpr.ast, elaborate, idiom, naming).errPrint("Could not process the ASt")
+        (query, externals, returnAction, ast)  <- processAst[T](quotedExpr.ast, wrap, idiom, naming).errPrint("Could not process the ASt")
         encodedLifts                           <- processLifts(lifts, externals).errPrint("Could not process the lifts")
       } yield {
         if (io.getquill.util.Messages.debugEnabled)

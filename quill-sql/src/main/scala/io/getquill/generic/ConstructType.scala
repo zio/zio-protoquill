@@ -1,4 +1,4 @@
-package io.getquill.context.cassandra.encoding
+package io.getquill.generic
 
 import scala.quoted._
 import scala.deriving._
