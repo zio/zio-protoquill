@@ -206,7 +206,11 @@ lazy val `quill-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "dev.zio" %% "zio" % "1.0.8",
-        "dev.zio" %% "zio-streams" % "1.0.8"
+        "dev.zio" %% "zio-streams" % "1.0.8",
+        "com.github.ghostdogpr" %% "caliban" % "1.2.0",
+        "com.github.ghostdogpr" %% "caliban-zio-http"   % "1.2.0",
+        "io.d11" %% "zhttp"      % "1.0.0.0-RC17",
+        "ch.qos.logback" % "logback-classic" % "1.2.3"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -284,7 +288,7 @@ lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
 
 lazy val basicSettings = Seq(
   scalaVersion := {
-    if (isCommunityBuild) dottyLatestNightlyBuild.get else "3.0.0"
+    if (isCommunityBuild) dottyLatestNightlyBuild.get else "3.0.2"
   },
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
