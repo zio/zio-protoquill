@@ -1,4 +1,4 @@
-package io.getquill.context.sql.util
+package io.getquill.util
 
 object StringOps {
 
