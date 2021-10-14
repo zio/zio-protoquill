@@ -60,9 +60,12 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
     }
 
   def transaction[T](f: TransactionalExecutionContext => Future[T])(implicit ec: ExecutionContext) =
-    pool.inTransaction({ (c: Connection) /* Need to add parens here for Dotty */ =>
-      toCompletableFuture(f(TransactionalExecutionContext(ec, c)))
-    })
+    ec match {
+      case c: TransactionalExecutionContext => toCompletableFuture(f(c))
+      case _ => pool.inTransaction({ (c: Connection) /* Need to add parens here for Dotty */ =>
+        toCompletableFuture(f(TransactionalExecutionContext(ec, c)))
+      })
+    }
 
   // Quill IO Monad not in Protoquill yet
   // override def performIO[T](io: IO[T, _], transactional: Boolean = false)(implicit ec: ExecutionContext): Result[T] =
