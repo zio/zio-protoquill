@@ -474,6 +474,7 @@ object Extractors {
 
   def isPrimitive(using Quotes)(tpe: quotes.reflect.TypeRepr) =
     import quotes.reflect._
+    tpe <:< TypeRepr.of[String] ||
     tpe <:< TypeRepr.of[Int] ||
     tpe <:< TypeRepr.of[Long] ||
     tpe <:< TypeRepr.of[Float] ||

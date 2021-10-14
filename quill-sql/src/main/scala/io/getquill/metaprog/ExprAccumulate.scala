@@ -5,11 +5,12 @@ import scala.quoted._
 import scala.collection.mutable.ArrayBuffer
 import scala.tools.nsc.doc.html.HtmlTags.P
 import io.getquill.util.Format
+import scala.util.Try
 
 /** Remove all instances of SerialHelper.fromSerializedJVM from a tree (for printing purposes) */
 object DeserializeAstInstances:
   def apply[T: Type](input: Expr[T])(using Quotes): Expr[T] = {
-    import quotes.reflect._
+    import quotes.reflect.{ Try => _, _ }
     import io.getquill.parser.SerialHelper
     import io.getquill.parser.Lifter
     import io.getquill.metaprog.Extractors._
@@ -20,15 +21,17 @@ object DeserializeAstInstances:
     class CustomExprMap extends ExprMap {
       def transform[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] =
         expr match
-          case '{ SerialHelper.fromSerializedJVM[a](${Expr(serial: String)}) } =>
+          case '{ SerialHelper.fromSerializedJVM[a](${Expr(serial)}) } =>
             try {
               val actualAst = SerialHelper.fromSerializedJVM[io.getquill.ast.Ast](serial)
               val astExpr = Lifter.NotSerializing.liftableAst(actualAst)
+
               // Need to cast or may fail on an internal typecheck
               '{ $astExpr.asInstanceOf[TF] }
 
             } catch {
               case e =>
+                report.warning("Could Not Deserialize The AST During Investigation")
                 ('{ io.getquill.ast.Constant.auto("Could Not Deserialize") }).asExprOf[TF]
             }
 
@@ -36,18 +39,22 @@ object DeserializeAstInstances:
           case _ if (isQuat(expr)) => expr
 
           // Otherwise blows up and claims it can type Seq[Stuff] as _*
-          case Varargs(args) =>
-            val mappedArgs = args.map(arg => transformChildren(arg))
-            '{ (${Expr.ofList(mappedArgs)}).asInstanceOf[TF] }
+          case v @ Varargs(args) =>
+            Try {
+              val mappedArgs = args.map(arg => transformChildren(arg))
+              '{ (${Expr.ofList(mappedArgs)}).asInstanceOf[TF] }
+            }.getOrElse(v)
 
           case other =>
-            transformChildren(other)
+            Try(transformChildren(other)).getOrElse(other)
     }
 
     try {
       new CustomExprMap().transform(input)
     } catch {
-      case e => input
+      case e =>
+        report.warning("Could not Deserialize Ast Instances due to error:\n" + e)
+        input
     }
   }
 end DeserializeAstInstances

@@ -30,13 +30,13 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
   import io.getquill.metaprog.Extractors._
   import io.getquill.generic.ElaborateStructure.Term
 
-  def apply[ProductCls: Type](elaboration: Term): List[(Term, Expr[ProductCls => _], Type[_])] =
-    recurseNest[ProductCls](elaboration).asInstanceOf[List[(Term, Expr[ProductCls => _], Type[_])]]
+  def apply[ProductCls: Type](elaboration: Term): List[(Term, Expr[ProductCls] => Expr[_], Type[_])] =
+    recurseNest[ProductCls](elaboration).asInstanceOf[List[(Term, Expr[ProductCls] => Expr[_], Type[_])]]
 
   // TODO Do we need to include flattenOptions?
   // Given Person(name: String, age: Int)
   // Type TypeRepr[Person] and then List(Expr[Person => Person.name], Expr[Person => Person.age])
-  def recurseNest[Cls: Type](node: Term): List[(Term, Expr[_ => _], Type[_])] =
+  def recurseNest[Cls: Type](node: Term): List[(Term, Expr[_] => Expr[_], Type[_])] =
     // For example (given Person(name: String, age: Int)):
     // (Term(Person.name), Person => Person.name, String)
     // Or for nested entities (given Person(name: Name, age: Int))
@@ -53,7 +53,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
             // On a child field e.g. Person.age return the getter that we previously found for it since
             // it will not have any children on the nextlevel
             case Nil =>
-              List((fieldTerm, fieldGetter, fieldType)).asInstanceOf[List[(Term, Expr[Any => _], Type[_])]]
+              List((fieldTerm, fieldGetter, fieldType)).asInstanceOf[List[(Term, Expr[Any] => Expr[_], Type[_])]]
 
             // If there are fields on the next level e.g. Person.Name then go from:
             // Person => Name to Person => Name.first, Person => Name.last by swapping in Person
@@ -62,23 +62,15 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
             case _ =>
               // Note that getting the types to line up here is very tricky.
               val output =
-                recurseNest[tt](fieldTerm).map { (_, nextField, nextType) =>
-                  val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any => _]] // e.g. Person => Person.name (where name is a case class Name(first: String, last: String))
-                  val castNextField = nextField.asInstanceOf[Expr[Any => _]]     // e.g. Name => Name.first
+                recurseNest[tt](fieldTerm).map { (childTerm, nextField, nextType) =>
+                  val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any] => Expr[_]] // e.g. Person => Person.name (where name is a case class Name(first: String, last: String))
+                  val castNextField = nextField.asInstanceOf[Expr[Any] => Expr[_]]     // e.g. Name => Name.first
                     // e.g. nest Person => Person.name into Name => Name.first to get Person => Person.name.first
                   val pathToField =
                     // When Cls := Person(name: Name) and Name(first: String, last: String) ...
-                    '{ (input: Cls) =>
-                      ${
-                        // ... then (Name => Name.first)(person.name) beta-reduces to person.name.first
-                        Expr.betaReduce('{
-                          $castNextField(${
-                            // .. then (Person => Person.name)(person) beta-reduces to person.name
-                            Expr.betaReduce('{ $castFieldGetter(input) })
-                          })
-                        })
-                      }
-                    }
+                    (input: Expr[Cls]) =>
+                      castNextField(castFieldGetter(input))
+
                   //println(s"Path to field '${nextField}' is: ${Format.Expr(pathToField)}")
                   // if you have Person(name: Option[Name]), Name(first: String, last: String) then the fieldTypeRepr is going to be Option[Name]
                   // that means that the child type (which is going to be person.name.map(_.first)) needs to be Option[String] instead of [String]
@@ -90,20 +82,25 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
                         println(s"Optionalizing nextType ${Format.Type(nextType)} into ${Format.Type(output)}")
                         output
                       case ('[ft], '[Option[nt]]) =>
+                        lazy val pathToFieldShowable =
+                          '{ (input: Cls) => ${ pathToField('input) } }
+                        lazy val fieldGetterShowable =
+                          '{ (input: Cls) => ${ fieldGetter('input) } }
                         report.throwError(
-                          s"Child Type ${Format.TypeOf[nt]} of the expression ${Format.Expr(pathToField)} " +
-                          s"is not optional but the parent type ${Format.TypeOf[ft]} of the parent expression ${Format.Expr(fieldGetter)}" +
+                          s"Child Type ${Format.TypeOf[nt]} of the expression ${Format.Expr(pathToFieldShowable)} " +
+                          s"is not optional but the parent type ${Format.TypeOf[ft]} of the parent expression ${Format.Expr(fieldGetterShowable)}" +
                           s"is. This should not be possible.\n"+
                           s"== The Parent is: ${(node)}\n"+
-                          s"== The field is: ${(fieldTerm)}\n"+
-                          s"== The field is: ${Format.Expr(fieldGetter)}\n"+
+                          s"== The Parent field is: ${(fieldTerm)}\n"+
+                          s"== The Child field is: ${(childTerm)}\n"+
+                          s"== The field is: ${Format.Expr(fieldGetterShowable)}\n"+
                           s"== The objects are: ${Format.TypeOf[ft]} -> ${Format.Type(nextType)}"
                         )
                       case _ => nextType
-                  (fieldTerm, pathToField, childType)
+                  (childTerm, pathToField, childType)
                 }
               //println(s"====== Nested Getters: ${output.map(_.show)}")
-              output.asInstanceOf[List[(Term, Expr[Any => _], Type[_])]]
+              output.asInstanceOf[List[(Term, Expr[Any] => Expr[_], Type[_])]]
     }
   end recurseNest
 
@@ -121,7 +118,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
         //println(s"~~~~~~~~~~~~~ Non-Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
         expr
 
-  private[getquill] def elaborateObjectOneLevel[Cls: Type](node: Term): List[(Term, Expr[Cls => _], TypeRepr)] = {
+  private[getquill] def elaborateObjectOneLevel[Cls: Type](node: Term): List[(Term, Expr[Cls] => Expr[_], TypeRepr)] = {
     val clsType = TypeRepr.of[Cls]
     node match
       // If leaf node, don't need to do anything since high levels have already returned this field
@@ -142,7 +139,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
           //println(s"(Non-Option) MemField of ${childTerm.name} is ${memberSymbol}: ${Printer.TypeReprShortCode.show(memberType)}")
           memberType.asType match
             case '[t] =>
-              val expr = '{ (field: Cls) => ${ ('field `.` (childTerm.name)).asExprOf[t] }  }
+              val expr = (field: Expr[Cls]) => (field `.` (childTerm.name)).asExprOf[t]
               (
                 childTerm,
                 expr, // for Person, Person.name
@@ -175,19 +172,19 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
                 memeType.asType match
                   // If the nested field is itself optional, need to account for immediate flattening
                   case '[Option[mt]] =>
-                    val expr = '{ (optField: cls) => ${flattenOptions('optField).asExprOf[Option[root]]}.flatMap[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[Option[mt]]}) }
+                    val expr = (optField: Expr[cls]) => '{ ${flattenOptions(optField).asExprOf[Option[root]]}.flatMap[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[Option[mt]]}) }
                     //println(s"Mapping: asExprOf ${childTerm.name} into ${Format.TypeOf[Option[mt]]} in ${Format.Expr(expr)}")
                     (
                       childTerm,
-                      expr.asInstanceOf[Expr[Cls => _]],
+                      expr.asInstanceOf[Expr[Cls] => Expr[_]],
                       memeType
                     )
                   case '[mt] =>
-                    val expr = '{ (optField: cls) => ${flattenOptions('optField).asExprOf[Option[root]]}.map[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[mt]}) }
+                    val expr = (optField: Expr[cls]) => '{ ${flattenOptions(optField).asExprOf[Option[root]]}.map[mt](prop => ${('prop `.` (childTerm.name)).asExprOf[mt]}) }
                     //println(s"Mapping: asExprOf ${childTerm.name} into ${Format.TypeOf[mt]} in ${Format.Expr(expr)}")
                     (
                       childTerm,
-                      expr.asInstanceOf[Expr[Cls => _]],
+                      expr.asInstanceOf[Expr[Cls] => Expr[_]],
                       memeType
                     )
         }

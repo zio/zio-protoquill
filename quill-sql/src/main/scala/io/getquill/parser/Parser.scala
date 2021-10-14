@@ -854,7 +854,10 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     // This is done term-level or we would have to do it for every numeric type
     // toString is automatically converted into the Apply form i.e. foo.toString automatically becomes foo.toString()
     // so we need to parse it as an Apply. The others don't take arg parens so they are not in apply-form.
-    case Unseal(Apply(Select(num, "toString"), List())) if isPrimitive(num.tpe) => astParse(num.asExpr)
+
+    case Unseal(Apply(Select(num, "toString"), List())) if isNumeric(num.tpe) =>
+      val inner = astParse(num.asExpr)
+      Infix(List("cast(", " as VARCHAR)"), List(inner), false, inner.quat)
     case Unseal(Select(num, "toInt")) if isPrimitive(num.tpe) => astParse(num.asExpr)
     case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe) => astParse(num.asExpr)
     case Unseal(Select(num, "toFloat")) if isPrimitive(num.tpe) => astParse(num.asExpr)
@@ -891,6 +894,12 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     case NumericOperation(binaryOperation) =>
       binaryOperation
   }
+
+  // def isPrimitiveOrFail(using Quotes)(opName: String)(tpe: quotes.reflect.TypeRepr) =
+  //   import quotes.reflect._
+  //   if (isPrimitive(tpe)) true
+  //   else
+  //     report.throwError(s"Can only perform the operation `${opName}` on primitive types but found the type: ${Format.TypeRepr(tpe.widen)} (primitive types are: Int,Long,Short,Float,Double,Boolean,Char)")
 
   object NumericOperation {
     def unapply(expr: Expr[_]): Option[BinaryOperation] = {
