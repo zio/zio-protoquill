@@ -6,8 +6,6 @@ import sbtrelease.ReleasePlugin
 import scala.sys.process.Process
 import java.io.{File => JFile}
 
-scalafmtOnCompile := true
-
 ThisBuild / versionScheme := Some("always")
 
 // During release cycles, GPG will expect passphrase user-input EVEN when --passphrase is specified
