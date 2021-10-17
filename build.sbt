@@ -121,12 +121,12 @@ lazy val `quill-sql` =
       ),
       libraryDependencies ++= Seq(
         // .excludeAll(ExclusionRule(organization="com.trueaccord.scalapb")
-        ("com.lihaoyi" %% "pprint" % "0.5.6").cross(CrossVersion.for3Use2_13),
+        ("com.lihaoyi" %% "pprint" % "0.6.6"),
         ("io.getquill" %% "quill-core-portable" % "3.10.0").cross(CrossVersion.for3Use2_13),
         ("io.getquill" %% "quill-sql-portable" % "3.10.0").cross(CrossVersion.for3Use2_13),
         //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").cross(CrossVersion.for3Use2_13),
         //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
-        "com.typesafe.scala-logging" % "scala-logging_3" % "3.9.4"
+        "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4"
       ),
       // If it's a community-build we're using a scala incremental version so there's no scalatest for that
       libraryDependencies ++= {
@@ -134,8 +134,8 @@ lazy val `quill-sql` =
           Seq()
         else
           Seq(
-            "org.scalatest" % "scalatest_3" % "3.2.9" % "test",
-            "org.scalatest" % "scalatest-mustmatchers_3" % "3.2.9" % "test",
+            "org.scalatest" %% "scalatest" % "3.2.9" % "test",
+            "org.scalatest" %% "scalatest-mustmatchers" % "3.2.9" % "test",
             "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test
           )
       },
@@ -146,7 +146,7 @@ lazy val `quill-sql` =
         if (isCommunityBuild)
           Seq()
         else
-          Seq(("org.scalameta" %% "scalafmt-cli" % "2.7.5" ).excludeAll(ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")).cross(CrossVersion.for3Use2_13))
+          Seq(("org.scalameta" %% "scalafmt-cli" % "3.0.6" ).excludeAll(ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")).cross(CrossVersion.for3Use2_13))
       }
     ).dependsOn({
       // If it's a community build, we cannot include scalatest since the scalatest for the corresponding
@@ -181,7 +181,7 @@ lazy val `quill-jasync` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.github.jasync-sql" % "jasync-common" % "1.1.4",
-        ("org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1").cross(CrossVersion.for3Use2_13)
+        ("org.scala-lang.modules" %% "scala-java8-compat" % "1.0.1")
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
