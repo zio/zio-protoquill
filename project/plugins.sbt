@@ -2,11 +2,12 @@ resolvers += Classpaths.sbtPluginReleases
 
 resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/"
 
-addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.5.5")
 
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.6.1")
 
 // addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "5.2.4")
+
+addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.4.3")
 
 addSbtPlugin("com.github.gseitz" % "sbt-release" % "1.0.13")
 

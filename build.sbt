@@ -6,6 +6,8 @@ import sbtrelease.ReleasePlugin
 import scala.sys.process.Process
 import java.io.{File => JFile}
 
+scalafmtOnCompile := true
+
 ThisBuild / versionScheme := Some("always")
 
 // During release cycles, GPG will expect passphrase user-input EVEN when --passphrase is specified
@@ -29,7 +31,7 @@ releaseNextVersion := { ver =>
 }
 
 val isCommunityBuild =
-  sys.props.getOrElse("community", "true").toBoolean
+  sys.props.getOrElse("community", "false").toBoolean
 
 lazy val baseModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-sql`
@@ -121,10 +123,10 @@ lazy val `quill-sql` =
       ),
       libraryDependencies ++= Seq(
         // .excludeAll(ExclusionRule(organization="com.trueaccord.scalapb")
-        ("com.lihaoyi" %% "pprint" % "0.5.6").withDottyCompat(scalaVersion.value),
-        ("io.getquill" %% "quill-core-portable" % "3.10.0").withDottyCompat(scalaVersion.value),
-        ("io.getquill" %% "quill-sql-portable" % "3.10.0").withDottyCompat(scalaVersion.value),
-        //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
+        ("com.lihaoyi" %% "pprint" % "0.5.6").cross(CrossVersion.for3Use2_13),
+        ("io.getquill" %% "quill-core-portable" % "3.10.0").cross(CrossVersion.for3Use2_13),
+        ("io.getquill" %% "quill-sql-portable" % "3.10.0").cross(CrossVersion.for3Use2_13),
+        //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").cross(CrossVersion.for3Use2_13),
         //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
         "com.typesafe.scala-logging" % "scala-logging_3" % "3.9.4"
       ),
@@ -146,7 +148,7 @@ lazy val `quill-sql` =
         if (isCommunityBuild)
           Seq()
         else
-          Seq(("org.scalameta" %% "scalafmt-cli" % "2.7.5" ).excludeAll(ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")).withDottyCompat(scalaVersion.value))
+          Seq(("org.scalameta" %% "scalafmt-cli" % "2.7.5" ).excludeAll(ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")).cross(CrossVersion.for3Use2_13))
       }
     ).dependsOn({
       // If it's a community build, we cannot include scalatest since the scalatest for the corresponding
@@ -181,7 +183,7 @@ lazy val `quill-jasync` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.github.jasync-sql" % "jasync-common" % "1.1.4",
-        ("org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1").withDottyCompat(scalaVersion.value)
+        ("org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1").cross(CrossVersion.for3Use2_13)
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -253,7 +255,7 @@ lazy val `quill-cassandra-zio` =
       libraryDependencies ++= Seq(
         "dev.zio" %% "zio" % "1.0.9",
         "dev.zio" %% "zio-streams" % "1.0.9",
-        ("dev.zio" %% "zio-interop-guava" % "30.1.0.3").excludeAll(ExclusionRule(organization = "dev.zio")).withDottyCompat(scalaVersion.value)
+        ("dev.zio" %% "zio-interop-guava" % "30.1.0.3").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")
@@ -283,9 +285,7 @@ lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
 )
 
 lazy val basicSettings = Seq(
-  scalaVersion := {
-    if (isCommunityBuild) dottyLatestNightlyBuild.get else "3.0.0"
-  },
+  scalaVersion :=  "3.0.2",
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.
@@ -296,7 +296,9 @@ lazy val basicSettings = Seq(
   //   //Tests.Argument(TestFrameworks.ScalaTest, "-h", "testresults")
   // ),
   scalacOptions ++= Seq(
-    "-language:implicitConversions"
+    "-language:implicitConversions",
+    "-deprecation",
+    "-feature"
   )
 )
 
