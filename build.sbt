@@ -283,7 +283,7 @@ lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
 )
 
 lazy val basicSettings = Seq(
-  scalaVersion :=  "3.0.2",
+  scalaVersion :=  dottyLatestNightlyBuild().get,
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.
@@ -295,8 +295,6 @@ lazy val basicSettings = Seq(
   // ),
   scalacOptions ++= Seq(
     "-language:implicitConversions",
-    "-deprecation",
-    "-feature"
   )
 )
 
