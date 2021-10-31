@@ -111,6 +111,10 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy] extends ProtoContext[D
     ${ LiftQueryMacro[T, U, PrepareRow, Session]('runtimeValue) }
 
   extension [T](inline q: Query[T]) {
+    /**
+     * When using this with FilterColumns make sure it comes FIRST. Otherwise the columns are you filtering
+     * may have been nullified in the SQL before the filteration has actually happened.
+     */
     inline def filterByKeys(inline map: Map[String, String]) =
       q.filter(p => MapFlicer[T, PrepareRow, Session](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
 

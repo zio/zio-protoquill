@@ -18,6 +18,7 @@ import io.getquill.generic.ElaborateStructure.{ TermType, Leaf, Branch }
 import com.datastax.driver.core.Row
 import io.getquill.util.ThreadUtil
 import io.getquill.generic.ConstructType
+import io.getquill.generic.ElaborateStructure.UdtBehavior
 
 object UdtDecodingMacro:
 
@@ -185,8 +186,8 @@ object UdtEncodingMacro:
     import quotes.reflect._
 
     def apply: (UdtParams[T] => Expr[UDTValue], TermType) = {
-      val (deconstructedEntityComponents, elaborationType) = udtComponents[T]
-      val ents = deconstructedEntityComponents.map { case (t, o, g, tpe) => s"(${t} --> ${Format.Expr(g)})"}
+      val (deconstructedEntityComponents, elaborationType) = ElaborateStructure.decomposedProductValueDetails[T](ElaborationSide.Encoding, UdtBehavior.Derive)
+      // val ents = deconstructedEntityComponents.map { case (t, o, g, tpe) => s"(${t} --> ${Format.Expr(g)})"}
       //println(s"Components of: ${Format.TypeOf[T]}: ${ents}" )
 
       val udtMaker =
@@ -205,39 +206,39 @@ object UdtEncodingMacro:
                 }
 
           // Elem is the elem type of the encoder. C is the component (i.e. udt-field) type
-          def setOptional[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem => ?]) =
+          def setOptional[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem] => Expr[?]) =
             '{
-              $getter.apply($fieldValue).asInstanceOf[Option[C]].map(v =>
+              ${getter.apply(fieldValue)}.asInstanceOf[Option[C]].map(v =>
                 ${ setField[C]('v, fieldName, udt, summonMapperOrFail[C]) }
               ).getOrElse($udt.setToNull(${lookupField(fieldName)}))
             }
 
-          def setRegular[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem => ?]) =
-            val v = '{ $getter.apply($fieldValue).asInstanceOf[C] }
+          def setRegular[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem] => Expr[?]) =
+            val v = '{ ${getter.apply(fieldValue)}.asInstanceOf[C] }
             setField(v, fieldName, udt, summonMapperOrFail[C])
 
           // TODO Try swapping out all asInstanceOf for asExprOf outside the expression
-          def setList[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem => ?]) =
+          def setList[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem] => Expr[?]) =
             val lookedUpField = lookupField(fieldName)
             val mapper = summonMapperOrFail[C]
             mapper.asTerm.tpe.asType match
               case '[CassandraMapper[C, toT, MapperSide.Encode]] =>
                 val typedMapper = '{ $mapper.asInstanceOf[CassandraMapper[C, toT, MapperSide.Encode]] }
-                val list = '{ $getter.apply($fieldValue).asInstanceOf[List[C]].map(row => $typedMapper.f(row, ${info.sess})) }
+                val list = '{ ${getter.apply(fieldValue)}.asInstanceOf[List[C]].map(row => $typedMapper.f(row, ${info.sess})) }
                 val classToT = '{ ${summonClassTagOrFail[toT]}.runtimeClass.asInstanceOf[Class[toT]] }
                 '{ UdtValueOps($udt).setScalaList[toT]($lookedUpField, $list, $classToT) }
 
-          def setSet[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem => ?]) =
+          def setSet[Elem: Type, C: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem] => Expr[?]) =
             val lookedUpField = lookupField(fieldName)
             val mapper = summonMapperOrFail[C]
             mapper.asTerm.tpe.asType match
               case '[CassandraMapper[C, toT, MapperSide.Encode]] =>
                 val typedMapper = '{ $mapper.asInstanceOf[CassandraMapper[C, toT, MapperSide.Encode]] }
-                val set = '{ $getter.apply($fieldValue).asInstanceOf[Set[C]].map(row => $typedMapper.f(row, ${info.sess})) }
+                val set = '{ ${getter.apply(fieldValue)}.asInstanceOf[Set[C]].map(row => $typedMapper.f(row, ${info.sess})) }
                 val classToT = '{ ${summonClassTagOrFail[toT]}.runtimeClass.asInstanceOf[Class[toT]] }
                 '{ UdtValueOps($udt).setScalaSet[toT]($lookedUpField, $set, $classToT) }
 
-          def setMap[Elem: Type, CK: Type, CV: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem => ?]) =
+          def setMap[Elem: Type, CK: Type, CV: Type](fieldValue: Expr[Elem], fieldName: String, udt: Expr[UDTValue], getter: Expr[Elem] => Expr[?]) =
             val lookedUpField = lookupField(fieldName)
             val keyMapper = summonMapperOrFail[CK]
             val valMapper = summonMapperOrFail[CV]
@@ -246,7 +247,7 @@ object UdtEncodingMacro:
                 val typedKeyMapper = '{ $keyMapper.asInstanceOf[CassandraMapper[CK, toKT, MapperSide.Encode]] }
                 val typedValMapper = '{ $valMapper.asInstanceOf[CassandraMapper[CV, toVT, MapperSide.Encode]] }
                 val map =
-                  '{ $getter.apply($fieldValue).asInstanceOf[Map[CK, CV]]
+                  '{ ${getter.apply(fieldValue)}.asInstanceOf[Map[CK, CV]]
                       .map[toKT, toVT](kv => ($typedKeyMapper.f(kv._1, ${info.sess}), $typedValMapper.f(kv._2, ${info.sess})))
                   }
                 val classToKT = '{ ${summonClassTagOrFail[toKT]}.runtimeClass.asInstanceOf[Class[toKT]] }
@@ -294,34 +295,7 @@ object UdtEncodingMacro:
         case None =>
           report.throwError(s"Error creating Encoder[${Format.TypeOf[T]}]. Cannot summon a CassandraMapper[${Format.TypeOf[MT]}, _, ${Format.TypeOf[MapperSide.Encode]}]")
 
-    def innerType(tpe: Type[_]) =
-      tpe match
-        case '[Option[t]] => Type.of[t]
-        case _ => tpe
 
-    def checkValidProduct[T: Type] =
-      // First double check what the fields of the type are for diagnostic purposes.
-      val mirrorFields = MirrorFields.of[T]
-      if (mirrorFields._2.isEmpty)
-        report.throwError(s"Could not find any fields in the type: ${Format.TypeOf[T]}")
-
-    def summonElaboration[T: Type] =
-      val elaboration = ElaborateStructure.Term.ofProduct[T](ElaborationSide.Encoding, udtBehavior = ElaborateStructure.UdtBehavior.Derive)
-      if (elaboration.typeType == Leaf)
-        report.throwError(s"Error encoding UDT: ${Format.TypeOf[T]}. Elaboration was a leaf-type. This should not be possible.")
-      elaboration
-
-    def udtComponents[T: Type] =
-      // Check if this is a valid product
-      checkValidProduct[T]
-      val elaboration = summonElaboration[T]
-      // If it is get the components
-      val components =
-        DeconstructElaboratedEntityLevels.withTerms[T](elaboration).map((term, getter, rawTpe) => {
-          val tpe = innerType(rawTpe)
-          (term.name, term.optional, getter, tpe)
-        })
-      (components, elaboration.typeType)
 
   end UdtEncoderMaker
 

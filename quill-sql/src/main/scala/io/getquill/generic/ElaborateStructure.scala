@@ -95,7 +95,16 @@ object ElaborateStructure {
   case object Leaf extends TermType
   case object Branch extends TermType
 
-  // TODO Rename typeType to termType
+  // TODO Good use-case for zio-chunk
+  case class TermPath(terms: List[Term]):
+    def append(term: Term) = this.copy(terms = this.terms :+ term)
+    def concat(path: TermPath) = this.copy(terms = this.terms ++ path.terms)
+    def mkString(separator: String = "", dropFirst: Boolean = true) =
+      (if (dropFirst) terms.drop(1) else terms).map(_.name).mkString(separator)
+  object TermPath:
+    def single(term: Term) = TermPath(List(term))
+
+  // TODO Rename to Structure
   case class Term(name: String, typeType: TermType, children: List[Term] = List(), optional: Boolean = false) {
     def withChildren(children: List[Term]) = this.copy(children = children)
     def toAst = Term.toAstTop(this)
@@ -490,6 +499,44 @@ object ElaborateStructure {
     decomposedLiftsOfProductValue(elaborated)
   }
 
+  def decomposedProductValueDetails[T: Type](side: ElaborationSide, udtBehavior: UdtBehavior)(using Quotes) =
+    import quotes.reflect._
+
+    def innerType(tpe: Type[_]) =
+      tpe match
+        case '[Option[t]] => Type.of[t]
+        case _ => tpe
+
+    def isOptional(tpe: Type[_]) =
+      tpe match
+        case '[Option[t]] => true
+        case _ => false
+
+    def summonElaboration[T: Type] =
+      val elaboration = ElaborateStructure.Term.ofProduct[T](side, udtBehavior = udtBehavior)
+      if (elaboration.typeType == Leaf)
+        report.throwError(s"Error encoding UDT: ${Format.TypeOf[T]}. Elaboration detected no fields (i.e. was a leaf-type). This should not be possible.")
+      elaboration
+
+    val elaboration = summonElaboration[T]
+    // If it is get the components
+    val components =
+      DeconstructElaboratedEntityLevels.withTerms[T](elaboration).map((term, getter, rawTpe) => {
+        val tpe = innerType(rawTpe)
+        val isOpt = isOptional(rawTpe)
+        // Note, we can't look at term.optional for optionality because that one is only optional on the term level,
+        // in reality the type might be optional on the parent level as well.
+        // For example: case class Person(name: Option[Name], age: Int), case class Name(first: Option[String], last: String)
+        // the `last` field in Name has to be treated as an optional (i.e. after DeconstructElaboratedEntityLevels elements Expr(p => p.name.first), Expr(p => p.name.last), etc... have been found)
+        // so we have to treat p.name.last as an Option insead of a plain field.
+        // For example if we want to convert fields of `p:Person` to a string we need to do p.name.last.map(v => v.toString) instead of
+        // just tacking on .toString after the p.name.last expression since that would be p.name.last:Option[String].toString which
+        // makes an invalid query. See the MapFlicer for an example of this.
+        (term.name, isOpt, getter, tpe)
+      })
+    (components, elaboration.typeType)
+  end decomposedProductValueDetails
+
   private[getquill] def liftsOfProductValue[T: Type](elaboration: Term, productValue: Expr[T])(using Quotes) =
     import quotes.reflect._
     // for t:T := Person(name: String, age: Int) it will be paths := List[Expr](t.name, t.age) (labels: List("name", "age"))
@@ -500,8 +547,9 @@ object ElaborateStructure {
       exprType match
         case '[t] =>
           if (TypeRepr.of[t] =:= TypeRepr.of[Any])
-            report.warning(s"The following the expression was typed `Any`: ${Format.Expr(exprPath)}. Will likely not be able to summon an encoder for this (the actual type was: ${Format.TypeOf[T]} in ${Format.TypeRepr(exprPath.asTerm.tpe)})  (the other param was ${Format.TypeOf[T]}.")
-          '{ ${Expr.betaReduce('{ $exprPath($productValue) }) }.asInstanceOf[t] }
+            lazy val showableExprPath = '{ (input: T) => ${ exprPath('input) } }
+            report.warning(s"The following the expression was typed `Any`: ${Format.Expr(showableExprPath)}. Will likely not be able to summon an encoder for this (the actual type was: ${Format.TypeOf[T]} in ${Format.TypeRepr(showableExprPath.asTerm.tpe)})  (the other param was ${Format.TypeOf[T]}.")
+          '{ ${exprPath(productValue)}.asInstanceOf[t] }
     }
     if (labels.length != pathLambdas.length)
       report.throwError(s"List of (${labels.length}) labels: ${labels} does not match list of (${paths.length}) paths that they represent: ${paths.map(Format.Expr(_))}")
@@ -512,9 +560,8 @@ object ElaborateStructure {
     }
     outputs
 
-  private[getquill] def decomposedLiftsOfProductValue[T: Type](elaboration: Term)(using Quotes): List[(Expr[T => _], Type[_])] =
+  private[getquill] def decomposedLiftsOfProductValue[T: Type](elaboration: Term)(using Quotes): List[(Expr[T] => Expr[_], Type[_])] =
     DeconstructElaboratedEntityLevels[T](elaboration)
-
   /**
    * Flatten the elaboration from 'node' into a completely flat product type
    * Technicallly don't need Type T but it's very useful to know for errors and it's an internal API so I'll keep it for now

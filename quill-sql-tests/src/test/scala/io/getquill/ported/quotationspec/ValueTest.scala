@@ -10,7 +10,10 @@ import io.getquill._
 class ValueTest extends Spec with NonSerializingQuotation with TestEntities {
   "value" - { //helloo
     "null" in {
-      inline def q = quote("s" != null)
+      inline def s = quote ("s")
+      // Need to make "s" an external element because scala3 compiler optimizes `s != null` to `true` on a low level (i.e. even before the AST).
+      inline def q = quote(s != null)
+      println(quote(unquote(q)).ast)
       quote(unquote(q)).ast.asInstanceOf[BinaryOperation].b mustEqual NullValue
     }
     "constant" in {
