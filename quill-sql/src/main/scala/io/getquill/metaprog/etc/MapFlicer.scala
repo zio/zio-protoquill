@@ -12,7 +12,8 @@ import io.getquill.context.LiftMacro
 import io.getquill.metaprog.TypeExtensions._
 import io.getquill.generic.ConstructType
 import io.getquill.generic.DeconstructElaboratedEntityLevels
-import io.getquill.generic.ElaborateStructure.{ TermType, Leaf, Branch }
+import io.getquill.generic.Structure.StructType
+import io.getquill.generic.Structure.StructType.{ Leaf, Node }
 import io.getquill.generic.ElaborateStructure.UdtBehavior
 
 // I.e. Map-Folding-Splicer since it recursively spliced clauses into a map
@@ -37,8 +38,8 @@ class MapFlicerMacro {
   private def buildClause[T: Type, PrepareRow: Type, Session: Type](core: Expr[T])(eachField: Expr[(String, String) => Boolean], map: Expr[Map[String, String]], default: Expr[String])(using Quotes): Expr[Boolean] =
     import quotes.reflect._
     ElaborateStructure.decomposedProductValueDetails[T](ElaborationSide.Encoding, UdtBehavior.Leaf) match
-      case (terms, Leaf) => report.throwError("Not supported yet", core)
-      case (terms, Branch) =>
+      case (terms, Structure.StructType.Leaf) => report.throwError("Not supported yet", core)
+      case (terms, Structure.StructType.Node) =>
         val boolTerms =
           terms.map { (fieldString, isOptional, getter, tpe) =>
             val childTTerm = getter(core).asExprOf[Any]

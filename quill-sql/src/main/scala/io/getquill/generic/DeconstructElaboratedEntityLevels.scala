@@ -11,15 +11,15 @@ import scala.quoted._
 import io.getquill.parser.Lifter
 import io.getquill.quat.Quat
 import io.getquill.ast.{Map => AMap, _}
-import io.getquill.generic.ElaborateStructure.Term
+import io.getquill.generic.Structure
 import io.getquill.metaprog.Extractors
 import io.getquill.util.Format
 
 object DeconstructElaboratedEntityLevels {
-  def apply[ProductCls: Type](elaboration: Term)(using Quotes) =
+  def apply[ProductCls: Type](elaboration: Structure)(using Quotes) =
     withTerms[ProductCls](elaboration).map((term, func, tpe) => (func, tpe))
 
-  def withTerms[ProductCls: Type](elaboration: Term)(using Quotes) =
+  def withTerms[ProductCls: Type](elaboration: Structure)(using Quotes) =
     new DeconstructElaboratedEntityLevels().apply[ProductCls](elaboration)
 }
 
@@ -28,15 +28,15 @@ object DeconstructElaboratedEntityLevels {
 private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes):
   import qctx.reflect._
   import io.getquill.metaprog.Extractors._
-  import io.getquill.generic.ElaborateStructure.Term
+  import io.getquill.generic.Structure
 
-  def apply[ProductCls: Type](elaboration: Term): List[(Term, Expr[ProductCls] => Expr[_], Type[_])] =
-    recurseNest[ProductCls](elaboration).asInstanceOf[List[(Term, Expr[ProductCls] => Expr[_], Type[_])]]
+  def apply[ProductCls: Type](elaboration: Structure): List[(Structure, Expr[ProductCls] => Expr[_], Type[_])] =
+    recurseNest[ProductCls](elaboration).asInstanceOf[List[(Structure, Expr[ProductCls] => Expr[_], Type[_])]]
 
   // TODO Do we need to include flattenOptions?
   // Given Person(name: String, age: Int)
   // Type TypeRepr[Person] and then List(Expr[Person => Person.name], Expr[Person => Person.age])
-  def recurseNest[Cls: Type](node: Term): List[(Term, Expr[_] => Expr[_], Type[_])] =
+  def recurseNest[Cls: Type](node: Structure): List[(Structure, Expr[_] => Expr[_], Type[_])] =
     // For example (given Person(name: String, age: Int)):
     // (Term(Person.name), Person => Person.name, String)
     // Or for nested entities (given Person(name: Name, age: Int))
@@ -53,7 +53,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
             // On a child field e.g. Person.age return the getter that we previously found for it since
             // it will not have any children on the nextlevel
             case Nil =>
-              List((fieldTerm, fieldGetter, fieldType)).asInstanceOf[List[(Term, Expr[Any] => Expr[_], Type[_])]]
+              List((fieldTerm, fieldGetter, fieldType)).asInstanceOf[List[(Structure, Expr[Any] => Expr[_], Type[_])]]
 
             // If there are fields on the next level e.g. Person.Name then go from:
             // Person => Name to Person => Name.first, Person => Name.last by swapping in Person
@@ -100,7 +100,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
                   (childTerm, pathToField, childType)
                 }
               //println(s"====== Nested Getters: ${output.map(_.show)}")
-              output.asInstanceOf[List[(Term, Expr[Any] => Expr[_], Type[_])]]
+              output.asInstanceOf[List[(Structure, Expr[Any] => Expr[_], Type[_])]]
     }
   end recurseNest
 
@@ -118,11 +118,11 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
         //println(s"~~~~~~~~~~~~~ Non-Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
         expr
 
-  private[getquill] def elaborateObjectOneLevel[Cls: Type](node: Term): List[(Term, Expr[Cls] => Expr[_], TypeRepr)] = {
+  private[getquill] def elaborateObjectOneLevel[Cls: Type](node: Structure): List[(Structure, Expr[Cls] => Expr[_], TypeRepr)] = {
     val clsType = TypeRepr.of[Cls]
     node match
       // If leaf node, don't need to do anything since high levels have already returned this field
-      case term @ Term(name, _, Nil, _) =>
+      case term @ Structure.Leaf(name, _) =>
         List()
 
       // Product node not inside an option
@@ -130,7 +130,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
       // (done?)         => [ P(a, b), P(a, c) ]
       // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
       // where T is Term and P is Property (in Ast) and [] is a list
-      case (Term(name, _, childProps, false)) =>
+      case (Structure.Node(name, false, childProps)) =>
         // TODO For coproducts need to check that the childName method actually exists on the type and
         // exclude it if it does not
         childProps.map { childTerm =>
@@ -152,7 +152,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
       // [ a.map(v => v.b), a.map(v => v.c) ]
       // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
       // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
-      case Term(name, _, childProps, true) if TypeRepr.of[Cls] <:< TypeRepr.of[Option[Any]] =>
+      case Structure.Node(name, true, childProps) if TypeRepr.of[Cls] <:< TypeRepr.of[Option[Any]] =>
         // TODO For coproducts need to check that the childName method actually exists on the type and
         // exclude it if it does not
         childProps.map {

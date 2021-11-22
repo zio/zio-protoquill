@@ -91,180 +91,11 @@ enum ElaborationSide:
 object ElaborateStructure {
   import io.getquill.generic.GenericDecoder
 
-  sealed trait TermType
-  case object Leaf extends TermType
-  case object Branch extends TermType
-
-  // TODO Good use-case for zio-chunk
-  case class TermPath(terms: List[Term]):
-    def append(term: Term) = this.copy(terms = this.terms :+ term)
-    def concat(path: TermPath) = this.copy(terms = this.terms ++ path.terms)
-    def mkString(separator: String = "", dropFirst: Boolean = true) =
-      (if (dropFirst) terms.drop(1) else terms).map(_.name).mkString(separator)
-  object TermPath:
-    def single(term: Term) = TermPath(List(term))
-
-  // TODO Rename to Structure
-  case class Term(name: String, typeType: TermType, children: List[Term] = List(), optional: Boolean = false) {
-    def withChildren(children: List[Term]) = this.copy(children = children)
-    def toAst = Term.toAstTop(this)
-    def asLeaf = this.copy(typeType = Leaf, children = List())
-    def paths =
-      def pathsRecurse(node: Term, topLevel: Boolean = false): List[String] =
-        def emptyIfTop(str: String) = if(topLevel) "" else str
-        node match
-          case Term(name, _, Nil, _) => List(name)
-          case Term(name, _, childProps, _) =>
-            childProps
-              .flatMap(childTerm => pathsRecurse(childTerm))
-              .map(childName => emptyIfTop(name) + childName)
-      pathsRecurse(this, true)
-
-    // Used by coproducts, merges all fields of a term with another if this is valid
-    // Note that T is only needed for the error message. Maybe take it out once we store Types inside of Term
-    def merge[T: Type](other: Term)(using quotes: Quotes) = {
-      import quotes.reflect.{ Term => TTerm, _ }
-
-      // Terms must both have the same name
-      if (this.name != other.name)
-        report.throwError(s"Cannot resolve coproducts because terms ${this} and ${other} have different names") // TODO Describe this as better error messages for users?
-
-      if (this.optional != other.optional)
-        report.throwError(s"Cannot resolve coproducts because one of the terms ${this} and ${other} is optional and the other is not")
-
-      if (this.typeType != other.typeType)
-        report.throwError(s"Cannot resolve coproducts because the terms ${this} and ${other} have different types (${this.typeType} and ${other.typeType} respectively)")
-
-      import io.getquill.util.GroupByOps._
-      // Given Shape -> (Square, Rectangle) the result will be:
-      // Shape.x detected multiple kinds of values: List(Term(x,Branch,List(Term(width,Leaf,List(),false), Term(height,Leaf,List(),false)),false), Term(x,Branch,List(Term(radius,Leaf,List(),false)),false))
-      // Need to merge these terms
-      val orderedGroupBy = (this.children ++ other.children).groupByOrdered(_.name)
-      // Validate the keys to make sure that they are all the same kind of thing. E.g. if you have a Shape coproduct
-      // with a Square.height and a Rectagnle.height, both 'height' fields but be a Leaf (and also in the future will need to have the same data type)
-      // TODO Need to add datatype to Term so we can also verify types are the same for the coproducts
-      val newChildren =
-        orderedGroupBy.map((term, values) => {
-          val distinctValues = values.distinct
-          if (distinctValues.length > 1)
-            report.throwError(s"Invalid coproduct at: ${TypeRepr.of[T].widen.typeSymbol.name}.${term} detected multiple kinds of values: ${distinctValues}")
-
-          // TODO Check if there are zero?
-          distinctValues.head
-        }).toList
-
-      this.copy(children = newChildren)
-    }
-
-  }
-
-  object Term:
-    import io.getquill.ast._
-
-    // Not sure if Branch Terms should have hidden properties
-    def property(parent: Ast, name: String, termType: TermType) =
-      Property.Opinionated(parent, name, Renameable.neutral,
-        termType match {
-          case Leaf => Visible
-          case Branch => Hidden
-        }
-      )
-
-    def toAst(node: Term, parent: Ast): List[(Ast, String)] =
-      node match {
-        // If there are no children, property should not be hidden i.e. since it's not 'intermediate'
-        // I.e. for the sake of SQL we set properties representing embedded objects to 'hidden'
-        // so they don't show up in the SQL.
-        case Term(name, tt, Nil, _) =>
-          val output = List(property(parent, name, tt))
-          // Add field name to the output: x.width -> (x.width, width)
-          output.map(ast => (ast, name))
-
-
-        case Term(name, tt, list, false) =>
-          val output =
-            list.flatMap(elem =>
-              toAst(elem, property(parent, name, tt)))
-          // Add field name to the output
-          output.map((ast, childName) => (ast, name + childName))
-
-        // Leaflnode in an option
-        case Term(name, Leaf, list, true) =>
-          val idV = Ident("v", Quat.Generic) // TODO Specific quat inference
-          val output =
-            for {
-              elem <- list
-              (newAst, subName) <- toAst(elem, idV)
-            } yield (OptionMap(property(parent, name, Leaf), idV, newAst), subName)
-          // Add field name to the output
-          output.map((ast, childName) => (ast, name + childName))
-
-        // Product node in a option
-        case Term(name, Branch, list, true) =>
-          val idV = Ident("v", Quat.Generic)
-          val output =
-            for {
-              elem <- list
-              (newAst, subName) <- toAst(elem, idV)
-            } yield (OptionTableMap(property(parent, name, Branch), idV, newAst), subName)
-
-          // Add field name to the output
-          output.map((ast, childName) => (ast, name + childName))
-      }
-
-    /**
-     * Top-Level expansion of a Term is slighly different the later levels. A the top it's always ident.map(id => ...)
-     * if Ident is an option as opposed to OptionMap which it would be, in lower layers.
-     *
-     * Legend:
-     *   T(x, [y,z])      := Term(x=name, children=List(y,z)), T-Opt=OptionalTerm I.e. term where optional=true
-     *   P(a, b)          := Property(a, b) i.e. a.b
-     *   M(a, v, P(v, b)) := Map(a, v, P(v, b)) or m.map(v => P(v, b))
-     */
-    def toAstTop(node: Term): List[(Ast, String)] = {
-      node match {
-        // Node without children
-        // If leaf node, return the term, don't care about if it is optional or not
-        case Term(name, _, Nil, _) =>
-          val output = List(Ident(name, Quat.Generic))
-          // For a single-element field, add field name to the output
-          output.map(ast => (ast, name))
-
-        // Product node not inside an option.
-        // T( a, [T(b), T(c)] ) => [ a.b, a.c ]
-        // (done?)         => [ P(a, b), P(a, c) ]
-        // (recurse more?) => [ P(P(a, (...)), b), P(P(a, (...)), c) ]
-        // where T is Term and P is Property (in Ast) and [] is a list
-        case Term(name, _, list, false) =>
-          val output = list.flatMap(elem => toAst(elem, Ident(name, Quat.Generic)))
-          // Do not add top level field to the output. Otherwise it would be x -> (x.width, xwidth), (x.height, xheight)
-          output
-
-        // Production node inside an Option
-        // T-Opt( a, [T(b), T(c)] ) =>
-        // [ a.map(v => v.b), a.map(v => v.c) ]
-        // (done?)         => [ M( a, v, P(v, b)), M( a, v, P(v, c)) ]
-        // (recurse more?) => [ M( P(a, (...)), v, P(v, b)), M( P(a, (...)), v, P(v, c)) ]
-        case Term(name, _, list, true) =>
-          val idV = Ident("v", Quat.Generic)
-          val output =
-            for {
-              elem <- list
-              (newAst, name) <- toAst(elem, idV)
-              // TODO Is this right? Should it be OptionTableMap?
-            } yield (Map(Ident(name, Quat.Generic), idV, newAst), name)
-          // Do not add top level field to the output. Otherwise it would be x -> (x.width, xwidth), (x.height, xheight)
-          output
-      }
-    }
-
-    private[getquill] def ofProduct[T: Type](side: ElaborationSide, baseName: String = "notused", udtBehavior: UdtBehavior = UdtBehavior.Leaf)(using Quotes) =
-      base[T](Term(baseName, Branch), side, udtBehavior)
-
-  end Term
+  private[getquill] def ofProduct[T: Type](side: ElaborationSide, baseName: String = "notused", udtBehavior: UdtBehavior = UdtBehavior.Leaf)(using Quotes) =
+    base[T](Structure.Node(baseName), side, udtBehavior)
 
   /** Go through all possibilities that the element might be and collect their fields */
-  def collectFields[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide)(using Quotes): List[Term] = {
+  def collectFields[Fields, Types](node: Structure, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide)(using Quotes): List[Structure] = {
     import quotes.reflect.{Term => QTerm, _}
 
     (fieldsTup, typesTup) match {
@@ -276,7 +107,7 @@ object ElaborateStructure {
   }
 
   @tailrec
-  def flatten[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide, accum: List[Term] = List())(using Quotes): List[Term] = {
+  def flatten[Fields, Types](node: Structure, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide, accum: List[Structure] = List())(using Quotes): List[Structure] = {
     import quotes.reflect.{Term => QTerm, _}
 
     def constValue[T: Type]: String =
@@ -297,23 +128,23 @@ object ElaborateStructure {
         `Option[...[t]...]`.innerOrTopLevelT(Type.of[firstInnerTpe]) match
           case '[tpe] =>
             if (Type.of[tpe].isProduct)
-              val childTerm = Term(Type.of[field].constValue, Branch, optional = true)
+              val childTerm = Structure.Node(Type.of[field].constValue, optional = true)
               //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
               val baseTerm = base[tpe](childTerm, side)
               flatten(node, Type.of[fields], Type.of[types], side, baseTerm +: accum)
             else
-              val childTerm = Term(Type.of[field].constValue, Leaf, optional = true)
+              val childTerm = Structure.Leaf(Type.of[field].constValue, optional = true)
               //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
               flatten(node, Type.of[fields], Type.of[types], side, childTerm +: accum)
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct && Type.of[tpe].notOption  =>
-        val childTerm = Term(Type.of[field].constValue, Branch)
+        val childTerm = Structure.Node(Type.of[field].constValue)
         //println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
         val baseTerm = base[tpe](childTerm, side)
         flatten(node, Type.of[fields], Type.of[types], side, baseTerm +: accum)
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].notOption =>
-        val childTerm = Term(Type.of[field].constValue, Leaf)
+        val childTerm = Structure.Leaf(Type.of[field].constValue)
         //println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
         flatten(node, Type.of[fields], Type.of[types], side, childTerm +: accum)
 
@@ -347,7 +178,7 @@ object ElaborateStructure {
    * when trying to wrap this type.
    *
    */
-  def base[T: Type](term: Term, side: ElaborationSide, udtBehavior: UdtBehavior = UdtBehavior.Leaf)(using Quotes): Term = {
+  def base[T: Type](term: Structure, side: ElaborationSide, udtBehavior: UdtBehavior = UdtBehavior.Leaf)(using Quotes): Structure = {
     import quotes.reflect.{Term => QTerm, _}
 
     // for errors/warnings
@@ -407,7 +238,7 @@ object ElaborateStructure {
   }
 
   private def productized[T: Type](side: ElaborationSide, baseName: String = "x")(using Quotes): Ast = {
-    val lifted = base[T](Term(baseName, Branch), side).toAst
+    val lifted = base[T](Structure.Node(baseName), side).toAst
     val insert =
       if (lifted.length == 1)
         lifted.head._1
@@ -435,7 +266,7 @@ object ElaborateStructure {
   }
 
   def ofProductType[T: Type](baseName: String, side: ElaborationSide)(using Quotes): List[Ast] = {
-    val expanded = base[T](Term(baseName, Branch), side)
+    val expanded = base[T](Structure.Node(baseName), side)
     expanded.toAst.map(_._1)
   }
 
@@ -485,7 +316,7 @@ object ElaborateStructure {
   // keep namefirst, namelast etc.... so that testability is easier due to determinism
   // re-key by the UIDs later
   def ofProductValue[T: Type](productValue: Expr[T], side: ElaborationSide)(using Quotes): TaggedLiftedCaseClass[Ast] = {
-    val elaborated = ElaborateStructure.Term.ofProduct[T](side)
+    val elaborated = ElaborateStructure.ofProduct[T](side)
     // create a nested AST for the Term nest with the expected scalar tags inside
     val (_, nestedAst) = productValueToAst(elaborated)
     // create the list of (label, lift) for the expanded entities
@@ -495,7 +326,7 @@ object ElaborateStructure {
   }
 
   def decomposedProductValue[T: Type](side: ElaborationSide)(using Quotes) = {
-    val elaborated = ElaborateStructure.Term.ofProduct[T](side)
+    val elaborated = ElaborateStructure.ofProduct[T](side)
     decomposedLiftsOfProductValue(elaborated)
   }
 
@@ -513,8 +344,8 @@ object ElaborateStructure {
         case _ => false
 
     def summonElaboration[T: Type] =
-      val elaboration = ElaborateStructure.Term.ofProduct[T](side, udtBehavior = udtBehavior)
-      if (elaboration.typeType == Leaf)
+      val elaboration = ElaborateStructure.ofProduct[T](side, udtBehavior = udtBehavior)
+      if (elaboration.isLeaf)
         report.throwError(s"Error encoding UDT: ${Format.TypeOf[T]}. Elaboration detected no fields (i.e. was a leaf-type). This should not be possible.")
       elaboration
 
@@ -534,10 +365,10 @@ object ElaborateStructure {
         // makes an invalid query. See the MapFlicer for an example of this.
         (term.name, isOpt, getter, tpe)
       })
-    (components, elaboration.typeType)
+    (components, elaboration.structType)
   end decomposedProductValueDetails
 
-  private[getquill] def liftsOfProductValue[T: Type](elaboration: Term, productValue: Expr[T])(using Quotes) =
+  private[getquill] def liftsOfProductValue[T: Type](elaboration: Structure, productValue: Expr[T])(using Quotes) =
     import quotes.reflect._
     // for t:T := Person(name: String, age: Int) it will be paths := List[Expr](t.name, t.age) (labels: List("name", "age"))
     // for t:T := Person(name: Name, age: Int), Name(first:String, last: String) it will be paths := List[Expr](t.name.first, t.name.last, t.age) (labels: List(namefirst, namelast, age))
@@ -560,24 +391,24 @@ object ElaborateStructure {
     }
     outputs
 
-  private[getquill] def decomposedLiftsOfProductValue[T: Type](elaboration: Term)(using Quotes): List[(Expr[T] => Expr[_], Type[_])] =
+  private[getquill] def decomposedLiftsOfProductValue[T: Type](elaboration: Structure)(using Quotes): List[(Expr[T] => Expr[_], Type[_])] =
     DeconstructElaboratedEntityLevels[T](elaboration)
   /**
    * Flatten the elaboration from 'node' into a completely flat product type
    * Technicallly don't need Type T but it's very useful to know for errors and it's an internal API so I'll keep it for now
    */
-  private[getquill] def productValueToAst[T: Type](node: Term /* i.e. the elaboration */)(using Quotes): (String, Ast) =
-    def toAstRec(node: Term, parentTerm: String, topLevel: Boolean = false): (String, Ast) =
+  private[getquill] def productValueToAst[T: Type](node: Structure /* i.e. the elaboration */)(using Quotes): (String, Ast) =
+    def toAstRec(node: Structure, parentTerm: String, topLevel: Boolean = false): (String, Ast) =
       def notTopLevel(str: String) = if (topLevel) "" else str
       node match
-        case Term(name, Leaf, _, _) =>
+        case Structure.Leaf(name, _) =>
           (name, ScalarTag(parentTerm + name))
         // On the top level, parent is "", and 1st parent in recursion is also ""
-        case Term(name, Branch, list, false) =>
+        case Structure.Node(name, false, list) =>
           val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
           (name, CaseClass(children))
         // same logic for optionals
-        case Term(name, Branch, list, true) =>
+        case Structure.Node(name, true, list) =>
           val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
           (name, OptionSome(CaseClass(children)))
         case _ =>

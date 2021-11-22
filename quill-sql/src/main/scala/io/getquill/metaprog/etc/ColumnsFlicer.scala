@@ -12,7 +12,8 @@ import io.getquill.context.LiftMacro
 import io.getquill.metaprog.TypeExtensions._
 import io.getquill.generic.ConstructType
 import io.getquill.generic.DeconstructElaboratedEntityLevels
-import io.getquill.generic.ElaborateStructure.{ TermType, Leaf, Branch }
+import io.getquill.generic.Structure.StructType
+import io.getquill.generic.Structure.StructType.{ Leaf, Node }
 import io.getquill.generic.ElaborateStructure.UdtBehavior
 
 object ColumnsFlicer {
