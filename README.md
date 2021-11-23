@@ -109,7 +109,7 @@ run(joes)
 // TODO Get SQL
 ```
 
-### Quotaion is (Mostly) Optional
+### Quotation is (Mostly) Optional
 
 If all parts of a Query are `inline def`, quotation is not strictly necessary:
 
