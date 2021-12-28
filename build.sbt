@@ -275,6 +275,7 @@ lazy val `quill-cassandra-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
+        "com.datastax.oss" % "java-driver-core" % "4.13.0",
         "dev.zio" %% "zio" % "1.0.9",
         "dev.zio" %% "zio-streams" % "1.0.9",
         ("dev.zio" %% "zio-interop-guava" % "30.1.0.3").excludeAll(ExclusionRule(organization = "dev.zio")).withDottyCompat(scalaVersion.value)
