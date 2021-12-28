@@ -112,5 +112,8 @@ services:
       - ORACLE_PORT=1521
       - CASSANDRA_HOST=cassandra
       - CASSANDRA_PORT=9042
+      # the values should be used for all new cassandra projects
+      - CASSANDRA_CONTACT_POINT_0=cassandra:9042
+      - CASSANDRA_DC=datacenter1
       - ORIENTDB_HOST=orientdb
       - ORIENTDB_PORT=2424
