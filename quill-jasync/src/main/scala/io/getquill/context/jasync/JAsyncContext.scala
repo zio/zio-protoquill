@@ -16,7 +16,7 @@ import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import scala.util.Try
 import io.getquill.context.ExecutionInfo
-import io.getquill.context.DatasourceContextInjection
+import io.getquill.context.RunnerSummoningBehavior
 
 abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteConnection](val idiom: D, val naming: N, pool: ConnectionPool[C])
   extends JAsyncContextBase[D, N]
@@ -72,7 +72,7 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
   //   }
 
   // TODO Remove from all contexts
-  override def context: DatasourceContext = throw new IllegalStateException("DatasourceContext (ExecutionContext) of JAsyncContext is summoned implicitly, the member is unused.")
+  override def context: Runner = throw new IllegalStateException("Runner (ExecutionContext) of JAsyncContext is summoned implicitly, the member is unused.")
 
   def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[T]] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
@@ -86,7 +86,7 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
     implicit val ec = dc
     executeQuery(sql, prepare, extractor)(executionInfo, dc).map(handleSingleResult)
 
-  def executeAction[T](sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[Long] = {
+  def executeAction(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[Long] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
     val (params, values) = prepare(Nil, ())
     logger.logQuery(sql, params)

@@ -14,13 +14,11 @@ import io.getquill.MappedEncoding
 import io.getquill.generic._
 
 trait Encoders extends EncodingDsl {
-  this: JdbcRunContext[_, _] =>
+  this: JdbcComposition[_, _] =>
 
   // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
   // type Index = Int (Defined in JdbcRunContext)
   type Encoder[T] = JdbcEncoder[T]
-
-  private val dateTimeZone = TimeZone.getDefault
 
   case class JdbcEncoder[T](sqlType: Int, encoder: EncoderMethod[T]) extends BaseEncoder[T] {
     override def apply(index: Index, value: T, row: PrepareRow, session: Session) =

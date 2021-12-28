@@ -1,0 +1,134 @@
+package io.getquill.context.jdbc
+
+import io.getquill.{ NamingStrategy, ReturnAction }
+import io.getquill.ReturnAction.{ ReturnColumns, ReturnNothing, ReturnRecord }
+import io.getquill.context.{ Context, ExecutionInfo }
+import io.getquill.context.sql.SqlContext
+import io.getquill.context.sql.idiom.SqlIdiom
+import io.getquill.util.ContextLogger
+
+import java.sql.{ Connection, JDBCType, PreparedStatement, ResultSet, Statement }
+import java.util.TimeZone
+
+trait JdbcComposition[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends Context[Dialect, Naming]
+  with SqlContext[Dialect, Naming]
+  with Encoders
+  with Decoders {
+
+  // Dotty doesn't like that this is defined in both Encoders and Decoders.
+  // Makes us define it here in order to resolve the conflict.
+  type Index = Int
+  type PrepareRow = PreparedStatement
+  type ResultRow = ResultSet
+  type Session = Connection
+  type Runner = Unit
+
+  protected val dateTimeZone = TimeZone.getDefault
+
+  /**
+   * Parses instances of java.sql.Types to string form so it can be used in creation of sql arrays.
+   * Some databases does not support each of generic types, hence it's welcome to override this method
+   * and provide alternatives to non-existent types.
+   *
+   * @param intType one of java.sql.Types
+   * @return JDBC type in string form
+   */
+  def parseJdbcType(intType: Int): String = JDBCType.valueOf(intType).getName
+}
+
+trait JdbcRunContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends JdbcComposition[Dialect, Naming] {
+
+  // These type overrides are not required for JdbcRunContext in Scala2-Quill but it's a typing error. It only works
+  // because executeQuery is not actually defined in Context.scala therefore typing doesn't have
+  // to be correct on the base-level. Same issue with RunActionResult and others
+  override type RunQueryResult[T] = List[T]
+  override type RunQuerySingleResult[T] = T
+  override type RunActionResult = Long
+  override type RunActionReturningResult[T] = T
+  override type RunBatchActionResult = List[Long]
+  override type RunBatchActionReturningResult[T] = List[T]
+
+  private[getquill] val logger = ContextLogger(classOf[JdbcContext[_, _]])
+
+  def wrap[T](t: => T): Result[T]
+  def push[A, B](result: Result[A])(f: A => B): Result[B]
+  def seq[A](list: List[Result[A]]): Result[List[A]]
+
+  protected def withConnection[T](f: Connection => Result[T]): Result[T]
+  protected def withConnectionWrapped[T](f: Connection => T): Result[T] =
+    withConnection(conn => wrap(f(conn)))
+
+  // Not overridden in JdbcRunContext in Scala2-Quill because this method is not defined in the context
+  override def executeAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): Result[Long] =
+    withConnectionWrapped { conn =>
+      val (params, ps) = prepare(conn.prepareStatement(sql), conn)
+      logger.logQuery(sql, params)
+      ps.executeUpdate().toLong
+    }
+
+  // Not overridden in JdbcRunContext in Scala2-Quill because this method is not defined in the context
+  override def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[List[T]] =
+    withConnectionWrapped { conn =>
+      val (params, ps) = prepare(conn.prepareStatement(sql), conn)
+      logger.logQuery(sql, params)
+      val rs = ps.executeQuery()
+      extractResult(rs, conn, extractor)
+    }
+
+  // Not overridden in JdbcRunContext in Scala2-Quill because this method is not defined in the context
+  override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[T] =
+    handleSingleWrappedResult(executeQuery(sql, prepare, extractor)(info, dc))
+
+  // Not overridden in JdbcRunContext in Scala2-Quill because this method is not defined in the context
+  override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner): Result[O] =
+    withConnectionWrapped { conn =>
+      val (params, ps) = prepare(prepareWithReturning(sql, conn, returningBehavior), conn)
+      logger.logQuery(sql, params)
+      ps.executeUpdate()
+      handleSingleResult(extractResult(ps.getGeneratedKeys, conn, extractor))
+    }
+
+  protected def prepareWithReturning(sql: String, conn: Connection, returningBehavior: ReturnAction) =
+    returningBehavior match {
+      case ReturnRecord           => conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
+      case ReturnColumns(columns) => conn.prepareStatement(sql, columns.toArray)
+      case ReturnNothing          => conn.prepareStatement(sql)
+    }
+
+  def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): Result[List[Long]] =
+    withConnectionWrapped { conn =>
+      groups.flatMap {
+        case BatchGroup(sql, prepare) =>
+          val ps = conn.prepareStatement(sql)
+          logger.underlying.debug("Batch: {}", sql)
+          prepare.foreach { f =>
+            val (params, _) = f(ps, conn)
+            logger.logBatchItem(sql, params)
+            ps.addBatch()
+          }
+          ps.executeBatch().map(_.toLong)
+      }
+    }
+
+  def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner): Result[List[T]] =
+    withConnectionWrapped { conn =>
+      groups.flatMap {
+        case BatchGroupReturning(sql, returningBehavior, prepare) =>
+          val ps = prepareWithReturning(sql, conn, returningBehavior)
+          logger.underlying.debug("Batch: {}", sql)
+          prepare.foreach { f =>
+            val (params, _) = f(ps, conn)
+            logger.logBatchItem(sql, params)
+            ps.addBatch()
+          }
+          ps.executeBatch()
+          extractResult(ps.getGeneratedKeys, conn, extractor)
+      }
+    }
+
+  protected def handleSingleWrappedResult[T](list: Result[List[T]]): Result[T] =
+    push(list)(handleSingleResult(_))
+
+  private[getquill] final def extractResult[T](rs: ResultSet, conn: Connection, extractor: Extractor[T]): List[T] =
+    ResultSetExtractor(rs, conn, extractor)
+}

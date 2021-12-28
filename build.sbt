@@ -122,8 +122,8 @@ lazy val `quill-sql` =
       libraryDependencies ++= Seq(
         // .excludeAll(ExclusionRule(organization="com.trueaccord.scalapb")
         ("com.lihaoyi" %% "pprint" % "0.5.6").withDottyCompat(scalaVersion.value),
-        ("io.getquill" %% "quill-core-portable" % "3.10.0").withDottyCompat(scalaVersion.value),
-        ("io.getquill" %% "quill-sql-portable" % "3.10.0").withDottyCompat(scalaVersion.value),
+        ("io.getquill" %% "quill-core-portable" % "3.12.0").withDottyCompat(scalaVersion.value),
+        ("io.getquill" %% "quill-sql-portable" % "3.12.0").withDottyCompat(scalaVersion.value),
         //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").withDottyCompat(scalaVersion.value),
         //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
         "com.typesafe.scala-logging" % "scala-logging_3" % "3.9.4"
