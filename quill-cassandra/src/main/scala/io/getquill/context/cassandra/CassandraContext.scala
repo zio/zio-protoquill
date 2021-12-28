@@ -1,11 +1,11 @@
 package io.getquill.context.cassandra
 
 import java.util.{ Date, UUID }
-import com.datastax.driver.core.LocalDate
 import io.getquill.NamingStrategy
 import io.getquill.context.Context
 import io.getquill.context.cassandra.encoding.{ CassandraMapper, Encodings, MapperSide }
 
+import java.time.{ Instant, LocalDate }
 import scala.reflect.ClassTag
 
 trait CassandraContext[N <: NamingStrategy]
@@ -29,7 +29,7 @@ trait CassandraContext[N <: NamingStrategy]
   implicit val doubleDecoder: Decoder[Double]
   implicit val byteArrayDecoder: Decoder[Array[Byte]]
   implicit val uuidDecoder: Decoder[UUID]
-  implicit val timestampDecoder: Decoder[Date]
+  implicit val timestampDecoder: Decoder[Instant]
   implicit val cassandraLocalDateDecoder: Decoder[LocalDate]
 
   implicit val stringEncoder: Encoder[String]
@@ -43,7 +43,7 @@ trait CassandraContext[N <: NamingStrategy]
   implicit val doubleEncoder: Encoder[Double]
   implicit val byteArrayEncoder: Encoder[Array[Byte]]
   implicit val uuidEncoder: Encoder[UUID]
-  implicit val timestampEncoder: Encoder[Date]
+  implicit val timestampEncoder: Encoder[Instant]
   implicit val cassandraLocalDateEncoder: Encoder[LocalDate]
 
   implicit def listDecoder[T, Cas](implicit mapper: CassandraMapper[Cas, T, MapperSide.Decode], ct: ClassTag[Cas]): Decoder[List[T]]
@@ -56,11 +56,13 @@ trait CassandraContext[N <: NamingStrategy]
     b: ClassTag[VCas]
   ): Decoder[Map[K, V]]
 
-  implicit def listEncoder[T, Cas](implicit mapper: CassandraMapper[T, Cas, MapperSide.Encode]): Encoder[List[T]]
-  implicit def setEncoder[T, Cas](implicit mapper: CassandraMapper[T, Cas, MapperSide.Encode]): Encoder[Set[T]]
+  implicit def listEncoder[T, Cas](implicit mapper: CassandraMapper[T, Cas, MapperSide.Encode], ct: ClassTag[Cas]): Encoder[List[T]]
+  implicit def setEncoder[T, Cas](implicit mapper: CassandraMapper[T, Cas, MapperSide.Encode], ct: ClassTag[Cas]): Encoder[Set[T]]
   implicit def mapEncoder[K, V, KCas, VCas](
     implicit
     keyMapper: CassandraMapper[K, KCas, MapperSide.Encode],
-    valMapper: CassandraMapper[V, VCas, MapperSide.Encode]
+    valMapper: CassandraMapper[V, VCas, MapperSide.Encode],
+    a: ClassTag[KCas],
+    b: ClassTag[VCas]
   ): Encoder[Map[K, V]]
 }

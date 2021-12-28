@@ -1,7 +1,7 @@
 package io.getquill.context.cassandra
 
 import java.util.{ Date, UUID }
-import com.datastax.driver.core.LocalDate
+import java.time.{ Instant, LocalDate }
 import io.getquill._
 
 class ListsEncodingSpec extends CollectionsSpec {
@@ -22,13 +22,14 @@ class ListsEncodingSpec extends CollectionsSpec {
     floats:     List[Float],
     doubles:    List[Double],
     dates:      List[LocalDate],
-    timestamps: List[Date],
+    timestamps: List[Instant],
     uuids:      List[UUID]
   )
   val e = ListsEntity(1, List("c"), List(BigDecimal(1.33)), List(true), List(0, 1), List(3, 2), List(1, 2), List(2, 3),
-    List(1f, 3f), List(5d), List(LocalDate.fromMillisSinceEpoch(System.currentTimeMillis())),
-    List(new Date), List(UUID.randomUUID()))
-  inline def q = quote(query[ListsEntity])
+    List(1f, 3f), List(5d), List(LocalDate.now()),
+    List(Instant.now()), List(UUID.randomUUID()))
+
+  val q = quote(query[ListsEntity])
 
   "List encoders/decoders for CassandraTypes and CassandraMappers" in {
     ctx.run(q.insert(lift(e)))
@@ -41,6 +42,7 @@ class ListsEncodingSpec extends CollectionsSpec {
     inline def q = quote(querySchema[Entity]("ListsEntity"))
 
     ctx.run(q.insert(lift(e)))
+    val r = ctx.run(q.filter(_.id == 1)).head
     ctx.run(q.filter(_.id == 1)).head mustBe e
   }
 

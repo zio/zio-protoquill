@@ -4,8 +4,7 @@ import java.lang.{ Boolean => JBoolean, Double => JDouble, Float => JFloat, Inte
 import java.math.{ BigDecimal => JBigDecimal }
 import java.nio.ByteBuffer
 import java.util.{ Date, UUID }
-
-import com.datastax.driver.core.LocalDate
+import java.time.{ Instant, LocalDate }
 
 /**
  * `CassandraTypes` contains implicit markers for already supported types by Cassandra.
@@ -24,7 +23,7 @@ trait CassandraTypes extends CassandraMappedTypes {
   implicit val stringCassandraType: CassandraType[String] = CassandraType.of[String]
   implicit val byteBufferCassandraType: CassandraType[ByteBuffer] = CassandraType.of[ByteBuffer]
   implicit val uuidCassandraType: CassandraType[UUID] = CassandraType.of[UUID]
-  implicit val dateCassandraType: CassandraType[Date] = CassandraType.of[Date]
+  implicit val dateCassandraType: CassandraType[Instant] = CassandraType.of[Instant]
   implicit val localDateCassandraType: CassandraType[LocalDate] = CassandraType.of[LocalDate]
 }
 
