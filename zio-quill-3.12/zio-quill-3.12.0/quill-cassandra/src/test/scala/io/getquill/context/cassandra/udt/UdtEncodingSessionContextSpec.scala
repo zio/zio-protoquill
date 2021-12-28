@@ -1,11 +1,15 @@
 package io.getquill.context.cassandra.udt
 
-import com.datastax.oss.driver.api.core.CqlIdentifier
-import com.typesafe.config.{ ConfigValue, ConfigValueFactory }
-import io.getquill.{ CassandraContextConfig, CassandraSyncContext, SnakeCase }
+import io.getquill.{CassandraContextConfig, CassandraSyncContext, SnakeCase}
 import io.getquill.context.cassandra.testSyncDB
 import io.getquill.util.LoadConfig
-import io.getquill.Udt
+import io.getquill._
+import io.getquill.context.cassandra.encoding.CassandraMapper
+import com.datastax.driver.core.UDTValue
+import com.typesafe.config.ConfigValueFactory
+import io.getquill.context.cassandra.encoding.MapperSide
+import io.getquill.context.cassandra.UdtMeta
+
 
 class UdtEncodingSessionContextSpec extends UdtSpec {
 
@@ -29,6 +33,8 @@ class UdtEncodingSessionContextSpec extends UdtSpec {
       implicitly[Encoder[Map[String, Name]]]
     }
     "nested" in {
+      // Can use this to check if the mapper could be summoned
+      //implicitly[CassandraMapper[Name, UDTValue, MapperSide.Encode]]
       implicitly[Decoder[Personal]]
       implicitly[Encoder[Personal]]
       implicitly[Decoder[List[Personal]]]
@@ -58,15 +64,17 @@ class UdtEncodingSessionContextSpec extends UdtSpec {
         Some(Name("f", None)),
         List("e"),
         Set(1, 2),
-        Map(1 -> "1", 2 -> "2")),
+        Map(1 -> "1", 2 -> "2")
+        ),
         List(Name("first", None)))
       ctx1.run(query[WithEverything].insert(lift(e)))
       ctx1.run(query[WithEverything].filter(_.id == 1)).headOption must contain(e)
     }
+
     "with meta" in {
       case class MyName(first: String) extends Udt
       case class WithEverything(id: Int, name: MyName, nameList: List[MyName])
-      implicit val myNameMeta = udtMeta[MyName]("Name", _.first -> "firstName")
+      implicit val myNameMeta: UdtMeta[MyName] = udtMeta[MyName]("Name", _.first -> "firstName")
 
       val e = WithEverything(2, MyName("first"), List(MyName("first")))
       ctx1.run(query[WithEverything].insert(lift(e)))
@@ -95,14 +103,14 @@ class UdtEncodingSessionContextSpec extends UdtSpec {
     ctx2.udtValueOf("Personal").getType.getKeyspace.toString mustBe "quill_test"
   }
 
-  "naming strategy" in {
-    import ctx2._
-    case class WithUdt(id: Int, name: Name)
-    val e = WithUdt(1, Name("first", Some("second")))
-    // quill_test_2 uses snake case
-    ctx2.run(query[WithUdt].insert(lift(e)))
-    ctx2.run(query[WithUdt].filter(_.id == 1)).headOption must contain(e)
-  }
+  // "naming strategy" in {
+  //   import ctx2._
+  //   case class WithUdt(id: Int, name: Name)
+  //   val e = WithUdt(1, Name("first", Some("second")))
+  //   // quill_test_2 uses snake case
+  //   ctx2.run(query[WithUdt].insert(lift(e)))
+  //   ctx2.run(query[WithUdt].filter(_.id == 1)).headOption must contain(e)
+  // }
 
   override protected def beforeAll(): Unit = {
     clean1()

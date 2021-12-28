@@ -2,8 +2,11 @@ package io.getquill.context.cassandra
 
 import java.util.{ Date, UUID }
 import java.time.{ Instant, LocalDate }
+import io.getquill._
 
 class ListsEncodingSpec extends CollectionsSpec {
+
+
   val ctx = testSyncDB
   import ctx._
 
@@ -36,7 +39,7 @@ class ListsEncodingSpec extends CollectionsSpec {
   "Empty lists and optional fields" in {
     case class Entity(id: Int, texts: Option[List[String]], bools: Option[List[Boolean]], ints: List[Int])
     val e = Entity(1, Some(List("1", "2")), None, Nil)
-    val q = quote(querySchema[Entity]("ListsEntity"))
+    inline def q = quote(querySchema[Entity]("ListsEntity"))
 
     ctx.run(q.insert(lift(e)))
     val r = ctx.run(q.filter(_.id == 1)).head
@@ -46,7 +49,7 @@ class ListsEncodingSpec extends CollectionsSpec {
   "Mapped encoding for CassandraType" in {
     case class StrEntity(id: Int, texts: List[StrWrap])
     val e = StrEntity(1, List("1", "2").map(StrWrap.apply))
-    val q = quote(querySchema[StrEntity]("ListsEntity"))
+    inline def q = quote(querySchema[StrEntity]("ListsEntity"))
 
     ctx.run(q.insert(lift(e)))
     ctx.run(q.filter(_.id == 1)).head mustBe e
@@ -55,7 +58,7 @@ class ListsEncodingSpec extends CollectionsSpec {
   "Mapped encoding for CassandraMapper types" in {
     case class IntEntity(id: Int, ints: List[IntWrap])
     val e = IntEntity(1, List(1, 2).map(IntWrap.apply))
-    val q = quote(querySchema[IntEntity]("ListsEntity"))
+    inline def q = quote(querySchema[IntEntity]("ListsEntity"))
 
     ctx.run(q.insert(lift(e)))
     ctx.run(q.filter(_.id == 1)).head mustBe e
@@ -64,7 +67,7 @@ class ListsEncodingSpec extends CollectionsSpec {
   "Blob (Array[Byte]) support" in {
     case class BlobsEntity(id: Int, blobs: List[Array[Byte]])
     val e = BlobsEntity(1, List(Array(1.toByte, 2.toByte), Array(2.toByte)))
-    val q = quote(querySchema[BlobsEntity]("ListsEntity"))
+    inline def q = quote(querySchema[BlobsEntity]("ListsEntity"))
 
     ctx.run(q.insert(lift(e)))
     ctx.run(q.filter(_.id == 1))

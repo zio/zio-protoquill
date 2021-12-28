@@ -1,6 +1,7 @@
 package io.getquill.context.cassandra.udt
 
 import io.getquill.context.cassandra.mirrorContext
+import io.getquill._
 
 class UdtEncodingMirrorContextSpec extends UdtSpec {
 

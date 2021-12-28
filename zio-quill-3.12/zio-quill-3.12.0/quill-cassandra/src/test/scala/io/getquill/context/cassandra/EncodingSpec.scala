@@ -2,6 +2,8 @@ package io.getquill.context.cassandra
 
 import java.time.{ Instant, LocalDate, ZoneId, ZonedDateTime }
 import io.getquill.Query
+import io.getquill._
+
 
 class EncodingSpec extends EncodingSpecHelper {
 
@@ -32,7 +34,7 @@ class EncodingSpec extends EncodingSpecHelper {
   "encodes collections" - {
     "sync" in {
       import testSyncDB._
-      val q = quote {
+      inline def q = quote {
         (list: Query[Int]) =>
           query[EncodingTestEntity].filter(t => list.contains(t.id))
       }
@@ -44,7 +46,7 @@ class EncodingSpec extends EncodingSpecHelper {
     "async" in {
       import testAsyncDB._
       import scala.concurrent.ExecutionContext.Implicits.global
-      val q = quote {
+      inline def q = quote {
         (list: Query[Int]) =>
           query[EncodingTestEntity].filter(t => list.contains(t.id))
       }
@@ -93,9 +95,9 @@ class EncodingSpec extends EncodingSpecHelper {
       val instant = Instant.ofEpochMilli(epoh)
       val zonedDateTime = ZonedDateTime.ofInstant(instant, ZoneId.systemDefault)
 
-      val jq = quote(querySchema[Java8Types]("EncodingTestEntity"))
+      inline def jq = quote(querySchema[Java8Types]("EncodingTestEntity"))
       val j = Java8Types(LocalDate.ofEpochDay(epohDay), instant, Some(zonedDateTime))
-      val cq = quote(querySchema[CasTypes]("EncodingTestEntity"))
+      inline def cq = quote(querySchema[CasTypes]("EncodingTestEntity"))
       val c = CasTypes(LocalDate.ofEpochDay(epohDay), Instant.ofEpochMilli(epoh), Some(zonedDateTime))
 
       ctx.run(jq.delete)

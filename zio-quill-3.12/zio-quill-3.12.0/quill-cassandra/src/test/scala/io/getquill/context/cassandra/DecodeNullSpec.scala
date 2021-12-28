@@ -8,7 +8,7 @@ class DecodeNullSpec extends Spec {
 
     "sync" in {
       import testSyncDB._
-      val writeEntities = quote(querySchema[DecodeNullTestWriteEntity]("DecodeNullTestEntity"))
+      inline def writeEntities = quote(querySchema[DecodeNullTestWriteEntity]("DecodeNullTestEntity"))
 
       testSyncDB.run(writeEntities.delete)
       testSyncDB.run(writeEntities.insert(lift(insertValue)))
@@ -20,7 +20,7 @@ class DecodeNullSpec extends Spec {
     "async" in {
       import testAsyncDB._
       import scala.concurrent.ExecutionContext.Implicits.global
-      val writeEntities = quote(querySchema[DecodeNullTestWriteEntity]("DecodeNullTestEntity"))
+      inline def writeEntities = quote(querySchema[DecodeNullTestWriteEntity]("DecodeNullTestEntity"))
 
       val result =
         for {

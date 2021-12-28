@@ -1,6 +1,7 @@
 package io.getquill.context.cassandra.udt
 
 import io.getquill.context.cassandra.mirrorContext._
+import io.getquill._
 
 class UdtMetaDslSpec extends UdtSpec {
   "name" in {

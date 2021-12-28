@@ -2,6 +2,7 @@ package io.getquill.context.cassandra
 
 import java.time.{ Instant, LocalDate }
 import java.util.{ Date, UUID }
+import io.getquill._
 
 class SetsEncodingSpec extends CollectionsSpec {
   val ctx = testSyncDB
@@ -23,7 +24,7 @@ class SetsEncodingSpec extends CollectionsSpec {
   val e = SetsEntity(1, Set("c"), Set(BigDecimal(1.33)), Set(true), Set(1, 2), Set(2, 3), Set(1f, 3f),
     Set(5d), Set(LocalDate.now()),
     Set(Instant.now()), Set(UUID.randomUUID()))
-  val q = quote(query[SetsEntity])
+  inline def q = quote(query[SetsEntity])
 
   "Set encoders/decoders" in {
     ctx.run(q.insert(lift(e)))
@@ -33,7 +34,7 @@ class SetsEncodingSpec extends CollectionsSpec {
   "Empty sets and optional fields" in {
     case class Entity(id: Int, texts: Option[Set[String]], bools: Option[Set[Boolean]], ints: Set[Int])
     val e = Entity(1, Some(Set("1", "2")), None, Set())
-    val q = quote(querySchema[Entity]("SetsEntity"))
+    inline def q = quote(querySchema[Entity]("SetsEntity"))
 
     ctx.run(q.insert(lift(e)))
     ctx.run(q.filter(_.id == 1)).head mustBe e
@@ -42,7 +43,7 @@ class SetsEncodingSpec extends CollectionsSpec {
   "Mapped encoding for CassandraType" in {
     case class StrEntity(id: Int, texts: Set[StrWrap])
     val e = StrEntity(1, Set("1", "2").map(StrWrap.apply))
-    val q = quote(querySchema[StrEntity]("SetsEntity"))
+    inline def q = quote(querySchema[StrEntity]("SetsEntity"))
 
     ctx.run(q.insert(lift(e)))
     ctx.run(q.filter(_.id == 1)).head mustBe e
@@ -51,7 +52,7 @@ class SetsEncodingSpec extends CollectionsSpec {
   "Mapped encoding for CassandraMapper types" in {
     case class IntEntity(id: Int, ints: Set[IntWrap])
     val e = IntEntity(1, Set(1, 2).map(IntWrap.apply))
-    val q = quote(querySchema[IntEntity]("SetsEntity"))
+    inline def q = quote(querySchema[IntEntity]("SetsEntity"))
 
     ctx.run(q.insert(lift(e)))
     ctx.run(q.filter(_.id == 1)).head mustBe e
@@ -60,7 +61,7 @@ class SetsEncodingSpec extends CollectionsSpec {
   "Blob (Array[Byte]) support" in {
     case class BlobsEntity(id: Int, blobs: Set[Array[Byte]])
     val e = BlobsEntity(1, Set(Array(1.toByte, 2.toByte), Array(2.toByte)))
-    val q = quote(querySchema[BlobsEntity]("SetsEntity"))
+    inline def q = quote(querySchema[BlobsEntity]("SetsEntity"))
 
     ctx.run(q.insert(lift(e)))
     ctx.run(q.filter(_.id == 1))

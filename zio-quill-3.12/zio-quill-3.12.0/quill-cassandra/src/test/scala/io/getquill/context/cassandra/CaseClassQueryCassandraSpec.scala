@@ -1,6 +1,7 @@
 package io.getquill.context.cassandra
 
 import io.getquill.Spec
+import io.getquill._
 
 class CaseClassQueryCassandraSpec extends Spec {
 
@@ -9,7 +10,7 @@ class CaseClassQueryCassandraSpec extends Spec {
   case class Contact(id: Int, firstName: String, lastName: String, age: Int, addressFk: Int, extraInfo: String)
   case class Address(id: Int, street: String, zip: Int, otherExtraInfo: String)
 
-  val peopleInsert =
+  inline def peopleInsert =
     quote((p: Contact) => query[Contact].insert(p))
 
   val peopleEntries = List(
@@ -18,7 +19,7 @@ class CaseClassQueryCassandraSpec extends Spec {
     Contact(3, "Cora", "Jasper", 33, 3, "baz")
   )
 
-  val addressInsert =
+  inline def addressInsert =
     quote((c: Address) => query[Address].insert(c))
 
   val addressEntries = List(
@@ -30,7 +31,7 @@ class CaseClassQueryCassandraSpec extends Spec {
   case class ContactSimplified(firstName: String, lastName: String, age: Int)
   case class AddressableContact(firstName: String, lastName: String, age: Int, street: String, zip: Int)
 
-  val `Ex 1 CaseClass Record Output` = quote {
+  inline def `Ex 1 CaseClass Record Output` = quote {
     query[Contact].map(p => new ContactSimplified(p.firstName, p.lastName, p.age))
   }
 
@@ -42,7 +43,7 @@ class CaseClassQueryCassandraSpec extends Spec {
 
   case class FiltrationObject(idFilter: Int)
 
-  val `Ex 3 Inline Record Usage` = quote {
+  inline def `Ex 3 Inline Record Usage` = quote {
     val filtrationObject = new FiltrationObject(1)
     query[Contact].filter(p => p.id == filtrationObject.idFilter)
   }
@@ -51,7 +52,7 @@ class CaseClassQueryCassandraSpec extends Spec {
     new Contact(1, "Alex", "Jones", 60, 2, "foo")
   )
 
-  override def beforeAll = {
+  override def beforeAll() = {
     testSyncDB.run(query[Contact].delete)
     testSyncDB.run(query[Address].delete)
     testSyncDB.run(liftQuery(peopleEntries).foreach(p => peopleInsert(p)))

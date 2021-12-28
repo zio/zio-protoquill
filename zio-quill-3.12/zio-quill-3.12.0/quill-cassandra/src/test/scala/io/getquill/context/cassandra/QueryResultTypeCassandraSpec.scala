@@ -4,6 +4,7 @@ import io.getquill.Spec
 import io.getquill.context.cassandra.encoding.Encoders
 import io.getquill.context.cassandra.encoding.Decoders
 import io.getquill.Ord
+import io.getquill._
 
 trait QueryResultTypeCassandraSpec extends Spec {
 
@@ -18,17 +19,17 @@ trait QueryResultTypeCassandraSpec extends Spec {
     OrderTestEntity(3, 3)
   )
 
-  val insert = quote((e: OrderTestEntity) => query[OrderTestEntity].insert(e))
-  val deleteAll = quote(query[OrderTestEntity].delete)
-  val selectAll = quote(query[OrderTestEntity])
-  val map = quote(query[OrderTestEntity].map(_.id))
-  val filter = quote(query[OrderTestEntity].filter(_.id == 1))
-  val withFilter = quote(query[OrderTestEntity].withFilter(_.id == 1))
-  val sortBy = quote(query[OrderTestEntity].filter(_.id == 1).sortBy(_.i)(Ord.asc))
-  val take = quote(query[OrderTestEntity].take(10))
-  val entitySize = quote(query[OrderTestEntity].size)
-  val parametrizedSize = quote { (id: Int) =>
+  inline def insert = quote((e: OrderTestEntity) => query[OrderTestEntity].insert(e))
+  inline def deleteAll = quote(query[OrderTestEntity].delete)
+  inline def selectAll = quote(query[OrderTestEntity])
+  inline def map = quote(query[OrderTestEntity].map(_.id))
+  inline def filter = quote(query[OrderTestEntity].filter(_.id == 1))
+  inline def withFilter = quote(query[OrderTestEntity].withFilter(_.id == 1))
+  inline def sortBy = quote(query[OrderTestEntity].filter(_.id == 1).sortBy(_.i)(Ord.asc))
+  inline def take = quote(query[OrderTestEntity].take(10))
+  inline def entitySize = quote(query[OrderTestEntity].size)
+  inline def parametrizedSize = quote { (id: Int) =>
     query[OrderTestEntity].filter(_.id == id).size
   }
-  val distinct = quote(query[OrderTestEntity].map(_.id).distinct)
+  inline def distinct = quote(query[OrderTestEntity].map(_.id).distinct)
 }
