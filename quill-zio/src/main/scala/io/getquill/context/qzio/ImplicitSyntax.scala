@@ -1,5 +1,6 @@
 package io.getquill.context.qzio
 
+import zio.stream.ZStream
 import zio.{ IO, ZIO }
 
 /**
@@ -43,5 +44,9 @@ object ImplicitSyntax {
 
   implicit final class ImplicitSyntaxOps[R, E, A](private val self: ZIO[R, E, A]) extends AnyVal {
     def implicitly(implicit r: Implicit[R]): IO[E, A] = self.provide(r.env)
+  }
+
+  implicit final class StreamImplicitSyntaxOps[R, E, A](private val self: ZStream[R, E, A]) extends AnyVal {
+    def implicitly(implicit r: Implicit[R]): ZStream[Any, E, A] = self.provide(r.env)
   }
 }
