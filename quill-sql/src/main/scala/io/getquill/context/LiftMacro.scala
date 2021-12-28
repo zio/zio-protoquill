@@ -131,7 +131,7 @@ object LiftMacro {
     val exprTypes = liftLambdasAndTypes.map(_._2)
     def liftCombo[Output: Type](index: Int) =
       '{ (entity: T) =>
-        ${liftLambdas(index)}.apply(entity).asInstanceOf[Output]
+        ${liftLambdas(index).apply('entity)}.asInstanceOf[Output]
       }
 
     val output =

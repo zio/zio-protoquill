@@ -134,8 +134,8 @@ lazy val `quill-sql` =
           Seq()
         else
           Seq(
-            "org.scalatest" %% "scalatest" % "3.2.9" % "test",
-            "org.scalatest" %% "scalatest-mustmatchers" % "3.2.9" % "test",
+            "org.scalatest" %% "scalatest" % "3.2.9" % Test,
+            "org.scalatest" %% "scalatest-mustmatchers" % "3.2.9" % Test,
             "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test
           )
       },
@@ -198,6 +198,27 @@ lazy val `quill-jasync-postgres` =
     )
     .dependsOn(`quill-jasync` % "compile->compile;test->test")
 
+lazy val `quill-caliban` =
+  (project in file("quill-caliban"))
+    .settings(commonSettings: _*)
+    .settings(releaseSettings: _*)
+    .settings(
+      Test / fork := true,
+      libraryDependencies ++= Seq(
+        "com.github.ghostdogpr" %% "caliban" % "1.2.0",
+        "com.github.ghostdogpr" %% "caliban-zio-http"   % "1.2.0",
+        // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
+        // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
+        "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
+        "io.d11" %% "zhttp"      % "1.0.0.0-RC17" % Test,
+        // Don't want to make this dependant on zio-test for the testing code so importing this here separately
+        "org.scalatest" %% "scalatest" % "3.2.9" % Test,
+        "org.scalatest" %% "scalatest-mustmatchers" % "3.2.9" % Test,
+        "org.postgresql"          %  "postgresql"              % "42.2.18"             % Test,
+      )
+    )
+    .dependsOn(`quill-jdbc-zio` % "compile->compile")
+
 lazy val `quill-zio` =
   (project in file("quill-zio"))
     .settings(commonSettings: _*)
@@ -217,6 +238,8 @@ lazy val `quill-jdbc-zio` =
     .settings(releaseSettings: _*)
     .settings(jdbcTestingLibraries: _*)
     .settings(
+       Test / runMain / fork := true,
+       Test / fork := true,
        Test / testGrouping := {
         (Test / definedTests).value map { test =>
           if (test.name endsWith "IntegrationSpec")
@@ -283,7 +306,9 @@ lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
 )
 
 lazy val basicSettings = Seq(
-  scalaVersion :=  dottyLatestNightlyBuild().get,
+  scalaVersion := {
+    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.0.2"
+  },
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.

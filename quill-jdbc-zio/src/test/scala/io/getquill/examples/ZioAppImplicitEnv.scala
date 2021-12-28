@@ -25,6 +25,8 @@ object ZioAppImplicitEnv extends App {
     val joes = Ctx.run(query[Person].filter(p => p.name == "Joe")).implicitDS
     val jills = Ctx.run(query[Person].filter(p => p.name == "Jill")).implicitDS
     val alexes = Ctx.run(query[Person].filter(p => p.name == "Alex")).implicitDS
+
+    val janes = Ctx.stream(query[Person].filter(p => p.name == "Jane")).implicitDS.runCollect
   }
 
   override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] = {

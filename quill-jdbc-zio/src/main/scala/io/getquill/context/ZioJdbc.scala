@@ -137,6 +137,16 @@ object ZioJdbc {
       qzio.provide(Has(conn)).refineToOrDie[SQLException]
   }
 
+  implicit class QuillZStreamExt[T](qzstream: ZStream[Has[Connection], Throwable, T]) {
+    import io.getquill.context.qzio.ImplicitSyntax._
+
+    def onDataSource: ZStream[Has[DataSource with Closeable], SQLException, T] =
+      qzstream.provideLayer(DataSourceLayer.live).refineToOrDie[SQLException]
+
+    def implicitDS(implicit implicitEnv: Implicit[Has[DataSource with Closeable]]): ZStream[Any, SQLException, T] =
+      qzstream.onDataSource.implicitly
+  }
+
   /**
    * This is the same as `ZManaged.fromAutoCloseable` but if the `.close()` fails it will log `"close() of resource failed"`
    * and continue instead of immediately throwing an error in the ZIO die-channel. That is because for JDBC purposes,
