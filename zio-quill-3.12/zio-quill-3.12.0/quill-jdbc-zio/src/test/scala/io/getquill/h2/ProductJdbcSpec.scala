@@ -3,6 +3,7 @@ package io.getquill.h2
 import io.getquill.ZioSpec
 import io.getquill.Prefix
 import io.getquill.context.sql.ProductSpec
+import io.getquill._
 
 class ProductJdbcSpec extends ProductSpec with ZioSpec {
 
@@ -10,7 +11,7 @@ class ProductJdbcSpec extends ProductSpec with ZioSpec {
   val context = testContext
   import testContext._
 
-  override def beforeAll = {
+  override def beforeAll() = {
     super.beforeAll()
     testContext.run(quote(query[Product].delete)).runSyncUnsafe()
     ()

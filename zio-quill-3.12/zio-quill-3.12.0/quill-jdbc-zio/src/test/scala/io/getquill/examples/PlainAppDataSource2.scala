@@ -1,13 +1,16 @@
 package io.getquill.examples
 
 import com.zaxxer.hikari.{ HikariConfig, HikariDataSource }
+import io.getquill.context.ZioJdbc.DataSourceLayer
 import io.getquill.util.LoadConfig
 import io.getquill.{ JdbcContextConfig, Literal, PostgresZioJdbcContext }
-import zio.console.putStrLn
 import zio.{ Has, Runtime, Task, ZLayer }
+import zio.console.putStrLn
 
 import java.io.Closeable
+import java.sql.Connection
 import javax.sql.DataSource
+import io.getquill._
 
 object PlainAppDataSource2 {
 

@@ -1,7 +1,7 @@
 package io.getquill
 
 import io.getquill.ZioTestUtil._
-import io.getquill.context.qzio.ResultSetIterator
+import io.getquill.context.ZioJdbc._
 import io.getquill.util.LoadConfig
 import zio.{ Has, Task }
 
@@ -27,7 +27,7 @@ class ResultSetIteratorSpec extends ZioSpec {
     Person("Cora", 33)
   )
 
-  override def beforeAll = {
+  override def beforeAll() = {
     super.beforeAll()
     ctx.transaction {
       for {

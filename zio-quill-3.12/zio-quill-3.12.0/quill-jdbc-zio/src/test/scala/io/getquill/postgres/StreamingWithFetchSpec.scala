@@ -5,6 +5,7 @@ import io.getquill.context.ZioJdbc._
 import org.scalatest.BeforeAndAfter
 import zio.{ Has, Runtime }
 import io.getquill.Prefix
+import io.getquill._
 
 class StreamingWithFetchSpec extends ZioSpec with BeforeAndAfter {
 
@@ -14,8 +15,8 @@ class StreamingWithFetchSpec extends ZioSpec with BeforeAndAfter {
 
   case class Person(name: String, age: Int)
 
-  val selectAll = quote(query[Person])
-  val insert = quote { (p: Person) => query[Person].insert(p) }
+  inline def selectAll = quote(query[Person])
+  inline def insert = quote { (p: Person) => query[Person].insert(p) }
 
   def result[T](qzio: QIO[T]): T =
     Runtime.default.unsafeRun(qzio.provide(Has(pool)))
@@ -24,6 +25,7 @@ class StreamingWithFetchSpec extends ZioSpec with BeforeAndAfter {
     testContext.run(quote(query[Person].delete)).runSyncUnsafe()
     ()
   }
+
   "streaming with fetch should work" - {
     def produceEntities(num: Int) =
       (1 to num).map(i => Person("Joe" + i, i)).toList

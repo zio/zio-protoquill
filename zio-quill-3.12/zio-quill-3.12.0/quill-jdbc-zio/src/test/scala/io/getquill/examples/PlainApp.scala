@@ -3,6 +3,7 @@ package io.getquill.examples
 import io.getquill.{ Literal, PostgresZioJdbcContext }
 import io.getquill.context.ZioJdbc._
 import zio.Runtime
+import io.getquill._
 
 object PlainApp {
 

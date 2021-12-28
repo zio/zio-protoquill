@@ -4,6 +4,7 @@ import io.getquill.util.LoadConfig
 import org.scalatest.BeforeAndAfterAll
 import zio.{ Has, Runtime, ZIO }
 import zio.stream.{ Sink, ZStream }
+import io.getquill.context.ZioJdbc._
 
 import java.io.Closeable
 import java.sql.Connection
@@ -16,7 +17,7 @@ trait ZioSpec extends Spec with BeforeAndAfterAll {
 
   var pool: DataSource with Closeable = _
 
-  override def beforeAll = {
+  override def beforeAll() = {
     super.beforeAll()
     pool = JdbcContextConfig(LoadConfig(prefix.name)).dataSource
   }

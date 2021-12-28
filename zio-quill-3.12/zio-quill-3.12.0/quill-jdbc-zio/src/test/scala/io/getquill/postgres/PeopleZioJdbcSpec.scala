@@ -3,6 +3,7 @@ package io.getquill.postgres
 import io.getquill.PeopleZioSpec
 import io.getquill.Prefix
 import org.scalatest.matchers.should.Matchers._
+import io.getquill._
 
 class PeopleZioJdbcSpec extends PeopleZioSpec {
 
@@ -10,7 +11,7 @@ class PeopleZioJdbcSpec extends PeopleZioSpec {
   val context = testContext
   import testContext._
 
-  override def beforeAll = {
+  override def beforeAll() = {
     super.beforeAll()
     testContext.transaction {
       for {
@@ -67,7 +68,8 @@ class PeopleZioJdbcSpec extends PeopleZioSpec {
     collect(testContext.stream(`Ex 11 query`, 4)) should contain theSameElementsAs `Ex 11 expected`
   }
 
-  "Example 12 - probe" in {
-    probe("select 1").toOption mustBe defined
-  }
+  // Probing not supported in ProtoQuill yet
+  // "Example 12 - probe" in {
+  //   probe("select 1").toOption mustBe defined
+  // }
 }

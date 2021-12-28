@@ -3,6 +3,7 @@ package io.getquill.mysql
 import io.getquill.PeopleZioSpec
 import io.getquill.Prefix
 import org.scalatest.matchers.should.Matchers._
+import io.getquill._
 
 class PeopleZioJdbcSpec extends PeopleZioSpec {
 
@@ -10,7 +11,7 @@ class PeopleZioJdbcSpec extends PeopleZioSpec {
   val context = testContext
   import testContext._
 
-  override def beforeAll = {
+  override def beforeAll() = {
     super.beforeAll()
     testContext.transaction {
       for {

@@ -17,7 +17,7 @@ object ZioAppImplicitEnv extends App {
 
   case class MyQueryService(ds: DataSource) {
     import Ctx._
-    implicit val env = Implicit(Has(ds))
+    given Implicit[Has[DataSource]] = Implicit(Has(ds))
 
     val joes = Ctx.run(query[Person].filter(p => p.name == "Joe")).implicitly
     val jills = Ctx.run(query[Person].filter(p => p.name == "Jill")).implicitly

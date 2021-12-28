@@ -1,10 +1,9 @@
 package io.getquill.postgres
 
-import io.getquill.{ Prefix, ZioSpec }
-import zio.{ Task, ZIO, ZLayer }
-import io.getquill.context.ZioJdbc._
-
-import javax.sql.DataSource
+import io.getquill.ZioSpec
+import zio.{ Task, ZIO }
+import io.getquill.Prefix
+import io.getquill._
 
 class ZioJdbcContextSpec extends ZioSpec {
 
@@ -70,10 +69,11 @@ class ZioJdbcContextSpec extends ZioSpec {
         r <- testContext.run(qr1)
       } yield r).runSyncUnsafe().map(_.i) mustEqual List(33)
     }
-    "prepare" in {
-      testContext.prepareParams(
-        "select * from Person where name=? and age > ?", (ps, session) => (List("Sarah", 127), ps)
-      ).onDataSource.runSyncUnsafe() mustEqual List("127", "'Sarah'")
-    }
+    // For TranslateQuery, not supported in ProtoQuill yet
+    // "prepare" in {
+    //   testContext.prepareParams(
+    //     "select * from Person where name=? and age > ?", (ps, session) => (List("Sarah", 127), ps)
+    //   ).runSyncUnsafe() mustEqual List("127", "'Sarah'")
+    // }
   }
 }

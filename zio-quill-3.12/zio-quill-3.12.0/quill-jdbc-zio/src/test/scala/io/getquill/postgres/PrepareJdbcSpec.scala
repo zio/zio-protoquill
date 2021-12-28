@@ -3,14 +3,15 @@ package io.getquill.postgres
 import io.getquill.Prefix
 import io.getquill.{ PrepareZioJdbcSpecBase, ZioSpec }
 import org.scalatest.BeforeAndAfter
+import io.getquill._
 
 import java.sql.{ Connection, ResultSet }
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioSpec with BeforeAndAfter {
 
   override def prefix: Prefix = Prefix("testPostgresDB")
-  val context = testContext
-  import context._
+  val context: testContext.type = testContext
+  import testContext._
 
   before {
     testContext.run(query[Product].delete).runSyncUnsafe()

@@ -4,7 +4,6 @@ import java.sql.{ Connection, ResultSet }
 import org.scalatest.matchers.should.Matchers._
 import io.getquill._
 import io.getquill.Prefix
-import io.getquill.context.ZioJdbc._
 
 /**
  * This is a long-running test that will cause a OutOfMemory exception if

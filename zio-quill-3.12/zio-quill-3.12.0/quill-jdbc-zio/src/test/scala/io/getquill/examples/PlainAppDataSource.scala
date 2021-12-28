@@ -6,6 +6,7 @@ import io.getquill.util.LoadConfig
 import io.getquill.{ JdbcContextConfig, Literal, PostgresZioJdbcContext }
 import zio.console.putStrLn
 import zio.Runtime
+import io.getquill._
 
 object PlainAppDataSource {
 

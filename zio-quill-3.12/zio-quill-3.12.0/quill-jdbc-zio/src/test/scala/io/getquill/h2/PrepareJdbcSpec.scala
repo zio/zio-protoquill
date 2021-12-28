@@ -4,18 +4,18 @@ import java.sql.{ Connection, ResultSet }
 import io.getquill.PrepareZioJdbcSpecBase
 import io.getquill.Prefix
 import org.scalatest.BeforeAndAfter
+import io.getquill._
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
   def prefix = Prefix("testH2DB")
-  val context = testContext
-  import context._
+  val context: testContext.type = testContext
+  import testContext._
 
   before {
     testContext.run(query[Product].delete).runSyncUnsafe()
   }
 
-  def productExtractor = (rs: ResultSet, conn: Connection) => materializeQueryMeta[Product].extract(rs, conn)
   val prepareQuery = prepare(query[Product])
 
   "single" in {

@@ -3,6 +3,7 @@ package io.getquill.postgres
 import io.getquill.ZioSpec
 import io.getquill.context.sql.ProductSpec
 import io.getquill.Prefix
+import io.getquill._
 
 class ProductJdbcSpec extends ProductSpec with ZioSpec {
 
@@ -10,7 +11,7 @@ class ProductJdbcSpec extends ProductSpec with ZioSpec {
   val context = testContext
   import testContext._
 
-  override def beforeAll = {
+  override def beforeAll() = {
     super.beforeAll()
     testContext.run(quote(query[Product].delete)).runSyncUnsafe()
     ()
@@ -21,8 +22,7 @@ class ProductJdbcSpec extends ProductSpec with ZioSpec {
       val (inserted, product) =
         (for {
           i <- testContext.run {
-            val a = liftQuery(productEntries).foreach(e => productInsert(e))
-            a
+            liftQuery(productEntries).foreach(e => productInsert(e))
           }
           ps <- testContext.run(productById(lift(i(2))))
         } yield (i, ps.head)).runSyncUnsafe()

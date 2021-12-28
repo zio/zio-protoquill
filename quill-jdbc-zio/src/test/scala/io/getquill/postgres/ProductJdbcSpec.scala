@@ -21,7 +21,9 @@ class ProductJdbcSpec extends ProductSpec with ZioSpec {
     "Insert multiple products" in {
       val (inserted, product) =
         (for {
-          i <- testContext.run(liftQuery(productEntries).foreach(e => productInsert(e)))
+          i <- testContext.run {
+            liftQuery(productEntries).foreach(e => productInsert(e))
+          }
           ps <- testContext.run(productById(lift(i(2))))
         } yield (i, ps.head)).runSyncUnsafe()
 

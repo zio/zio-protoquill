@@ -7,6 +7,7 @@ import javax.sql.DataSource
 import io.getquill.context.qzio.ImplicitSyntax._
 import io.getquill.util.LoadConfig
 import zio.{ Has, Task, ZManaged }
+import io.getquill._
 
 class ImplicitEnvPatternSpec extends PeopleZioSpec {
 
@@ -15,7 +16,7 @@ class ImplicitEnvPatternSpec extends PeopleZioSpec {
   val context = testContext
   import testContext._
 
-  override def beforeAll = {
+  override def beforeAll() = {
     super.beforeAll()
     testContext.transaction {
       for {
