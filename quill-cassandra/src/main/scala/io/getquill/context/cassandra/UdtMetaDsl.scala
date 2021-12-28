@@ -7,8 +7,6 @@ object UdtMetaDsl {
 
   /**
    * Creates udt meta to override udt name / keyspace and rename columns
-   * (unlike in Scala2-Quill, any existing QueryMetas are ignored).
-   * TODO Make not of that in migration guide.
    *
    * @param path - either `udt_name` or `keyspace.udt_name`
    * @param columns - columns to rename
