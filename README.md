@@ -221,7 +221,7 @@ class QueryFilterable extends Filterable[List]:
   extension [A](inline xs: List[A])
     inline def filter(inline f: A => Boolean): List[A] = xs.filter(f)
 
-run( query[Person].joes )
+run( query[Person].onlyJoes )
 // GET SQL
 
 val people: List[Person] = ...
