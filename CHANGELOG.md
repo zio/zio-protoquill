@@ -1,3 +1,9 @@
+# 3.12.0.Beta1.7
+
+* [Fixing Caliban integration & adding quill-caliban to build](https://github.com/zio/zio-protoquill/pull/44)
+* [Move ZIO Contexts to latest Scala2-Quill implementations & Cassandra](https://github.com/zio/zio-protoquill/pull/43)
+* [use existing transactional context](https://github.com/zio/zio-protoquill/pull/29)
+
 # 3.10.0.Beta1.6
 
 * [Port quill-cassandra](https://github.com/getquill/protoquill/pull/23)
