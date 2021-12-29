@@ -28,14 +28,10 @@ jobs:
         java-version: 1.8.0
 
     - name: Scala ${{ matrix.scala }} Building ${{ matrix.module }}
-      uses: nick-invision/retry@v2
-      with:
-        timeout_minutes: 180
-        max_attempts: 3
-        command: |
-          export TRAVIS_SCALA_VERSION=${{ matrix.scala }}
-          echo "TRAVIS_SCALA_VERSION='$TRAVIS_SCALA_VERSION'"
-          ./build/build.sh ${{ matrix.module }}
+      run: |
+        export SCALA_VERSION=${{ matrix.scala }}
+        echo "SCALA_VERSION='$SCALA_VERSION'"
+        ./build/build.sh ${{ matrix.module }}
 
   release:
     if: ${{github.event_name != 'pull_request'}}
@@ -55,8 +51,8 @@ jobs:
     - run: |
         export ENCRYPTION_PASSWORD=${{ secrets.ENCRYPTION_PASSWORD }}
         export PGP_PASSPHRASE=${{ secrets.PGP_PASSPHRASE }}
-        export TRAVIS_PULL_REQUEST=${{ !!github.event.pull_request }}
-        echo "TRAVIS_PULL_REQUEST='$TRAVIS_PULL_REQUEST'"
-        export TRAVIS_BRANCH=$(git for-each-ref ${{ github.ref }} --format='%(refname:short)')
-        echo "TRAVIS_BRANCH='$TRAVIS_BRANCH'"
+        export PULL_REQUEST=${{ !!github.event.pull_request }}
+        echo "PULL_REQUEST='$PULL_REQUEST'"
+        export BRANCH=$(git for-each-ref ${{ github.ref }} --format='%(refname:short)')
+        echo "BRANCH='$BRANCH'"
         ./build/release.sh ${{ matrix.module }}

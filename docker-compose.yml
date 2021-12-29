@@ -52,12 +52,6 @@ services:
     image: quillbuilduser/oracle-18-xe-micro-sq
     ports:
       - "11521:1521"
-    volumes:
-      - ./build/oracle_setup:/oracle_setup
-      - ./quill-sql/src/test/sql/:/quill_setup
-    command: /oracle_setup/external_setup_script.sh
-    #command: 'echo -e "sga_target=1536M" >> /opt/oracle/product/18c/dbhomeXE/dbs/initXE.ora; /opt/oracle/product/18c/dbhomeXE/bin/lsnrctl start ; echo create spfile from pfile\; | /opt/oracle/product/18c/dbhomeXE/bin/sqlplus / as sysdba ;echo startup | /opt/oracle/product/18c/dbhomeXE/bin/sqlplus / as sysdba ; /opt/oracle/product/18c/dbhomeXE/bin/lsnrctl status ; tail -f /opt/oracle/diag/rdbms/*/*/trace/alert*.log'
-    #bash -c "mkdir /oracle_setup_local; cp /oracle_setup/* /oracle_setup_local && cp /oracle_setup/* /oracle_setup_local && cd /oracle_setup_local" #&& ./external_setup_script.sh"
     # Opatch is an internal java-based daemon in the Oracle container that updates components, don't really need it here. Reduce it's memory settings.
     environment:
       - OPATCH_JRE_MEMORY_OPTIONS=-Xms128m -Xmx256m -XX:PermSize=16m -XX:MaxPermSize=32m -Xss1m
@@ -112,5 +106,8 @@ services:
       - ORACLE_PORT=1521
       - CASSANDRA_HOST=cassandra
       - CASSANDRA_PORT=9042
+      # the values should be used for all new cassandra projects
+      - CASSANDRA_CONTACT_POINT_0=cassandra:9042
+      - CASSANDRA_DC=datacenter1
       - ORIENTDB_HOST=orientdb
       - ORIENTDB_PORT=2424

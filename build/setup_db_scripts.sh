@@ -49,32 +49,32 @@ function setup_mysql() {
     fi
 
     connection=$2
-    password='root'
+    MYSQL_ROOT_PASSWORD=root
 
     echo "Waiting for MySql"
     # If --protocol not set, --port is silently ignored so need to have it
-    until mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "select 1" &> /dev/null; do
-        echo "**Tapping MySQL Connection> mysql --protocol=tcp --host=$connection --password='$password' --port=$port -u root -e 'select 1'"
-        mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "select 1" || true
+    until mysql --protocol=tcp --host=$connection --password="$MYSQL_ROOT_PASSWORD" --port=$port -u root -e "select 1" &> /dev/null; do
+        echo "Tapping MySQL Connection, this may show an error> mysql --protocol=tcp --host=$connection --password='$MYSQL_ROOT_PASSWORD' --port=$port -u root -e 'select 1'"
+        mysql --protocol=tcp --host=$connection --password="$MYSQL_ROOT_PASSWORD" --port=$port -u root -e "select 1" || true
         sleep 5;
     done
     echo "Connected to MySql"
 
-    echo "**Verifying MySQL Connection> mysql --protocol=tcp --host=$connection --password='$password' --port=$port -u root -e 'select 1'"
-    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "select 1"
+    echo "**Verifying MySQL Connection> mysql --protocol=tcp --host=$connection --password='...' --port=$port -u root -e 'select 1'"
+    mysql --protocol=tcp --host=$connection --password="$MYSQL_ROOT_PASSWORD" --port=$port -u root -e "select 1"
 
     echo "MySql: Create codegen_test"
-    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "CREATE DATABASE codegen_test;"
+    mysql --protocol=tcp --host=$connection --password="$MYSQL_ROOT_PASSWORD" --port=$port -u root -e "CREATE DATABASE codegen_test;"
     echo "MySql: Create quill_test"
-    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "CREATE DATABASE quill_test;"
+    mysql --protocol=tcp --host=$connection --password="$MYSQL_ROOT_PASSWORD" --port=$port -u root -e "CREATE DATABASE quill_test;"
     echo "MySql: Write Schema to quill_test"
-    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root quill_test < $1
+    mysql --protocol=tcp --host=$connection --password="$MYSQL_ROOT_PASSWORD" --port=$port -u root quill_test < $1
     echo "MySql: Create finagle user"
-    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "CREATE USER 'finagle'@'%' IDENTIFIED BY 'finagle';"
+    mysql --protocol=tcp --host=$connection --password="$MYSQL_ROOT_PASSWORD" --port=$port -u root -e "CREATE USER 'finagle'@'%' IDENTIFIED BY 'finagle';"
     echo "MySql: Grant finagle user"
-    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "GRANT ALL PRIVILEGES ON * . * TO 'finagle'@'%';"
+    mysql --protocol=tcp --host=$connection --password="$MYSQL_ROOT_PASSWORD" --port=$port -u root -e "GRANT ALL PRIVILEGES ON * . * TO 'finagle'@'%';"
     echo "MySql: Flush the grant"
-    mysql --protocol=tcp --host=$connection --password="$password" --port=$port -u root -e "FLUSH PRIVILEGES;"
+    mysql --protocol=tcp --host=$connection --password="$MYSQL_ROOT_PASSWORD" --port=$port -u root -e "FLUSH PRIVILEGES;"
 }
 
 function setup_postgres() {
@@ -101,16 +101,16 @@ function setup_postgres() {
     psql --host $2 --port $port -U postgres -d quill_test -a -q -f $1
 }
 
-function setup_cassandra() {
-    host=$(get_host $2)
-    echo "Waiting for Cassandra"
-    until cqlsh $2 -e "describe cluster" &> /dev/null; do
-        sleep 5;
-    done
-    echo "Connected to Cassandra"
+ function setup_cassandra() {
+     host=$(get_host $2)
+     echo "Waiting for Cassandra"
+     until cqlsh $2 -e "describe cluster" &> /dev/null; do
+         sleep 5;
+     done
+     echo "Connected to Cassandra"
 
-    cqlsh $2 -f $1
-}
+     cqlsh $2 -f $1
+ }
 
 function setup_sqlserver() {
     host=$(get_host $2)
@@ -137,6 +137,13 @@ function setup_oracle() {
         sleep 2;
     done;
     sleep 2;
+
+    echo "Running Oracle Setup Script"
+    java -cp '/sqlline/sqlline.jar:/sqlline/ojdbc.jar' 'sqlline.SqlLine' \
+      -u 'jdbc:oracle:thin:@oracle:1521:xe' \
+      -n quill_test -p 'QuillRocks!' \
+      -f "$ORACLE_SCRIPT" \
+      --showWarnings=false
 
     echo "Connected to Oracle"
     sleep 2

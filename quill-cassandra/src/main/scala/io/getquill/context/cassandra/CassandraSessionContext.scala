@@ -1,7 +1,7 @@
 package io.getquill.context.cassandra
 
 import io.getquill.ReturnAction
-import com.datastax.driver.core._
+import com.datastax.oss.driver.api.core.cql.{ BoundStatement, Row }
 import io.getquill.NamingStrategy
 import io.getquill.context.{ CassandraSession, ExecutionInfo, Context, UdtValueLookup }
 import io.getquill.context.cassandra.encoding.{ CassandraTypes, Decoders, Encoders } //UdtEncoding
@@ -66,10 +66,10 @@ trait CassandraStandardContext[N <: NamingStrategy]
   override type RunActionReturningResult[T] = Unit
   override type RunBatchActionReturningResult[T] = Unit
 
-  override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: DatasourceContext) =
+  override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner) =
     fail("Cassandra doesn't support `returning`.")
 
-  override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: DatasourceContext) =
+  override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner) =
     fail("Cassandra doesn't support `returning`.")
 }
 

@@ -1,35 +1,36 @@
 package io.getquill
 
-import com.datastax.driver.core.Cluster
+import com.datastax.oss.driver.api.core.{ CqlSession, CqlSessionBuilder }
 import com.typesafe.config.Config
 import io.getquill.context.ExecutionInfo
 import io.getquill.context.cassandra.util.FutureConversions._
 //import io.getquill.monad.ScalaFutureIOMonad
 import io.getquill.util.{ ContextLogger, LoadConfig }
-import io.getquill.context.DatasourceContextInjection
+import io.getquill.context.RunnerSummoningBehavior
 
 import scala.jdk.CollectionConverters._
+import scala.compat.java8.FutureConverters._
+
 import scala.concurrent.{ ExecutionContext, Future }
 
-class CassandraAsyncContext[N <: NamingStrategy]( //hello
+class CassandraAsyncContext[N <: NamingStrategy](
   naming:                     N,
-  cluster:                    Cluster,
-  keyspace:                   String,
+  session:                    CqlSession,
   preparedStatementCacheSize: Long
 )
-  extends CassandraClusterSessionContext[N](naming, cluster, keyspace, preparedStatementCacheSize)
+  extends CassandraCqlSessionContext[N](naming, session, preparedStatementCacheSize)
   /*with ScalaFutureIOMonad*/ {
 
   // The ProtoQuill way of doing `implicit ec: ExceutionContext`.
   // This will cause the Context.scala `run` functions etc... summon an implicit
-  // DatasourceContext from the context which we set to ExecutionContext here.
+  // Runner from the context which we set to ExecutionContext here.
   // That is because Dotty macros cannot do arbitrary things like adding implicit
   // parameters to functions (which the Scala2-Quill implementation relied on
   // to summon an ExecutionContext).
-  override type DatasourceContextBehavior = DatasourceContextInjection.Implicit
-  override type DatasourceContext = ExecutionContext
+  override type RunnerBehavior = RunnerSummoningBehavior.Implicit
+  override type Runner = ExecutionContext
 
-  def this(naming: N, config: CassandraContextConfig) = this(naming, config.cluster, config.keyspace, config.preparedStatementCacheSize)
+  def this(naming: N, config: CassandraContextConfig) = this(naming, config.session, config.preparedStatementCacheSize)
 
   def this(naming: N, config: Config) = this(naming, CassandraContextConfig(config))
 
@@ -42,33 +43,32 @@ class CassandraAsyncContext[N <: NamingStrategy]( //hello
   override type RunQuerySingleResult[T] = T
   override type RunActionResult = Unit
   override type RunBatchActionResult = Unit
-  // In ProtoQuill this is defined in CassandraRowContext and the DatasourceContext is ExecutionContext
-  // override type DatasourceContext = Unit
+  // In ProtoQuill this is defined in CassandraRowContext and the Runner is ExecutionContext
+  // override type Runner = Unit
 
   // override def performIO[T](io: IO[T, _], transactional: Boolean = false)(implicit ec: ExecutionContext): Result[T] = {
   //   if (transactional) logger.underlying.warn("Cassandra doesn't support transactions, ignoring `io.transactional`")
   //   super.performIO(io)
   // }
 
-  def executeQuery[T](cql: String, prepare: Prepare, extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: ExecutionContext): Result[RunQueryResult[T]] = {
+  def executeQuery[T](cql: String, prepare: Prepare, extractor: Extractor[T])(info: ExecutionInfo, dc: ExecutionContext): Result[RunQueryResult[T]] = {
     implicit val ec = dc
     val statement = prepareAsyncAndGetStatement(cql, prepare, this, logger)
-    statement.flatMap(st => session.executeAsync(st).asScala)
-      .map(_.all.asScala.toList.map(row => extractor(row, this)))
+    statement.map(st => session.execute(st).asScala.toList.map(row => extractor(row, this)))
   }
 
-  def executeQuerySingle[T](cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunQuerySingleResult[T]] = {
+  def executeQuerySingle[T](cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[RunQuerySingleResult[T]] = {
     implicit val ec = dc
-    executeQuery(cql, prepare, extractor)(executionInfo, dc).map(handleSingleResult)
+    executeQuery(cql, prepare, extractor)(info, dc).map(handleSingleResult)
   }
 
-  def executeAction[T](cql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: DatasourceContext): Result[RunActionResult] = {
+  def executeAction(cql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: Runner): Result[RunActionResult] = {
     implicit val ec = dc
     val statement = prepareAsyncAndGetStatement(cql, prepare, this, logger)
-    statement.flatMap(st => session.executeAsync(st).asScala).map(_ => ())
+    statement.flatMap(st => session.executeAsync(st).toCompletableFuture.toScala).map(_ => ())
   }
 
-  def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionResult] = {
+  def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): Result[RunBatchActionResult] = {
     implicit val ec = dc
     Future.sequence {
       groups.flatMap {
@@ -77,4 +77,5 @@ class CassandraAsyncContext[N <: NamingStrategy]( //hello
       }
     }.map(_ => ())
   }
+
 }

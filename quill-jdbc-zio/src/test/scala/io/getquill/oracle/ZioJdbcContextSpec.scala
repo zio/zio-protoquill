@@ -3,11 +3,13 @@ package io.getquill.oracle
 import io.getquill.ZioSpec
 import io.getquill.Prefix
 import zio.{ Task, ZIO }
+import javax.sql.DataSource
 import io.getquill._
+import zio.ZLayer
 
 class ZioJdbcContextSpec extends ZioSpec {
 
-  def prefix = Prefix("testOracleDB")
+  override def prefix: Prefix = Prefix("testSqlServerDB")
   val context = testContext
   import testContext._
 
@@ -15,11 +17,21 @@ class ZioJdbcContextSpec extends ZioSpec {
     "success" in {
       (for {
         _ <- testContext.run(qr1.delete)
-        _ <- testContext.transaction {
-          testContext.run(qr1.insert(_.i -> 33))
-        }
+        _ <- testContext.transaction { testContext.run(qr1.insert(_.i -> 33)) }
         r <- testContext.run(qr1)
       } yield r).runSyncUnsafe().map(_.i) mustEqual List(33)
+    }
+    "success - with dependency" in {
+      (for {
+        _ <- testContext.run(qr1.delete)
+        _ <- testContext.transaction {
+          for {
+            env <- ZIO.service[Int]
+            qry <- testContext.run(qr1.insert(_.i -> lift(env)))
+          } yield qry
+        }
+        r <- testContext.run(qr1)
+      } yield r).provideSomeLayer(ZLayer.service[DataSource] >>> ZLayer.succeed(33)).runSyncUnsafe().map(_.i) mustEqual List(33)
     }
     "success - stream" in {
       (for {
@@ -27,22 +39,25 @@ class ZioJdbcContextSpec extends ZioSpec {
         seq <- testContext.transaction {
           for {
             _ <- testContext.run(qr1.insert(_.i -> 33))
-            s <- accumulate(testContext.stream(qr1))
+            s <- accumulateDS(testContext.stream(qr1))
           } yield s
         }
         r <- testContext.run(qr1)
       } yield (seq.map(_.i), r.map(_.i))).runSyncUnsafe() mustEqual ((List(33), List(33)))
     }
-    "failure" in {
+    "failure - nested" in {
       (for {
         _ <- testContext.run(qr1.delete)
         e <- testContext.transaction {
-          ZIO.collectAll(Seq(
-            testContext.run(qr1.insert(_.i -> 18)),
-            Task {
-              throw new IllegalStateException
+          testContext.run(qr1.insert(_.i -> 36)) *>
+            testContext.transaction {
+              ZIO.collectAll(Seq(
+                testContext.run(qr1.insert(_.i -> 18)),
+                Task {
+                  throw new IllegalStateException
+                }
+              ))
             }
-          ))
         }.catchSome {
           case e: Exception => Task(e.getClass.getSimpleName)
         }
@@ -52,18 +67,14 @@ class ZioJdbcContextSpec extends ZioSpec {
     "nested" in {
       (for {
         _ <- testContext.run(qr1.delete)
-        _ <- testContext.transaction {
-          testContext.transaction {
-            testContext.run(qr1.insert(_.i -> 33))
-          }
-        }
+        _ <- testContext.transaction { testContext.transaction { testContext.run(qr1.insert(_.i -> 33)) } }
         r <- testContext.run(qr1)
       } yield r).runSyncUnsafe().map(_.i) mustEqual List(33)
     }
     // For TranslateQuery, not supported in ProtoQuill yet
     // "prepare" in {
     //   testContext.prepareParams(
-    //     "select * from Person where name=? and age > ?", ps => (List("Sarah", 127), ps)
+    //     "select * from Person where name=? and age > ?", (ps, session) => (List("Sarah", 127), ps)
     //   ).runSyncUnsafe() mustEqual List("127", "'Sarah'")
     // }
   }

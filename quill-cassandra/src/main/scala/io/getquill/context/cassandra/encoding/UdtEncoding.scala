@@ -1,12 +1,12 @@
 package io.getquill.context.cassandra.encoding
 
-import com.datastax.driver.core.UDTValue
+import com.datastax.oss.driver.api.core.data.UdtValue
 import io.getquill.Udt
 import io.getquill.context.cassandra.CassandraRowContext
 import io.getquill.generic.EncodingDsl
 import io.getquill.context.{ CassandraSession, ExecutionInfo, Context, UdtValueLookup }
-import com.datastax.driver.core.Row
-import com.datastax.driver.core.BoundStatement
+import com.datastax.oss.driver.api.core.cql.Row
+import com.datastax.oss.driver.api.core.cql.BoundStatement
 import scala.util.NotGiven
 
 /**
@@ -29,10 +29,10 @@ trait UdtDecoding extends CassandraRowContext { self: Decoders =>
       }
     )
 
-  implicit inline def udtDecodeMapper[T <: Udt](using NotGiven[T =:= Udt]): CassandraMapper[UDTValue, T, MapperSide.Decode] =
+  implicit inline def udtDecodeMapper[T <: Udt](using NotGiven[T =:= Udt]): CassandraMapper[UdtValue, T, MapperSide.Decode] =
     UdtDecodingMacro.udtDecodeMapper(
       new CassandraDecodeMapperMaker[Decoder, T] {
-        def apply(f: (UDTValue, UdtValueLookup) => T): CassandraMapper[UDTValue, T, MapperSide.Decode] = CassandraMapper(f)
+        def apply(f: (UdtValue, UdtValueLookup) => T): CassandraMapper[UdtValue, T, MapperSide.Decode] = CassandraMapper(f)
       }
     )
 }
@@ -45,11 +45,11 @@ trait UdtEncoding extends CassandraRowContext { self: Encoders =>
       }
     )
 
-  // implicit def udtDecodeMapper[T <: Udt]: CassandraMapper[UDTValue, T] = macro UdtEncodingMacro.udtDecodeMapper[T]
-  implicit inline def udtEncodeMapper[T <: Udt]: CassandraMapper[T, UDTValue, MapperSide.Encode] =
+  // implicit def udtDecodeMapper[T <: Udt]: CassandraMapper[UdtValue, T] = macro UdtEncodingMacro.udtDecodeMapper[T]
+  implicit inline def udtEncodeMapper[T <: Udt]: CassandraMapper[T, UdtValue, MapperSide.Encode] =
     UdtEncodingMacro.udtEncoderMapper(
       new CassandraEncodeMapperMaker[Encoder, T] {
-        def apply(f: (T, UdtValueLookup) => UDTValue): CassandraMapper[T, UDTValue, MapperSide.Encode] = CassandraMapper(f)
+        def apply(f: (T, UdtValueLookup) => UdtValue): CassandraMapper[T, UdtValue, MapperSide.Encode] = CassandraMapper(f)
       }
     )
 

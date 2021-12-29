@@ -1,18 +1,17 @@
 package io.getquill.context.cassandra.encoding
 
-import com.datastax.driver.core.LocalDate
 import io.getquill.context.cassandra.CassandraRowContext
 import io.getquill.MappedEncoding
-import io.getquill.context.CassandraSession
 
 import java.nio.ByteBuffer
+import java.time.{ Instant, LocalDate, LocalTime }
 import java.util.{ Date, UUID }
 import io.getquill.generic._
-import com.datastax.driver.core.BoundStatement
-import com.datastax.driver.core.Row
 import io.getquill.context.UdtValueLookup
 import io.getquill.context.cassandra.encoding.UdtEncoding
-import com.datastax.driver.core.UDTValue
+import com.datastax.oss.driver.api.core.data.UdtValue
+import com.datastax.oss.driver.api.core.cql.Row
+import com.datastax.oss.driver.api.core.cql.BoundStatement
 
 trait CassandraEncoderMaker[Encoder[_], T]:
   def apply(e: (Int, T, BoundStatement, UdtValueLookup) => BoundStatement): Encoder[T]
@@ -21,10 +20,10 @@ trait CassandraDecoderMaker[Decoder[_], T]:
   def apply(e: (Int, Row, UdtValueLookup) => T): Decoder[T]
 
 trait CassandraEncodeMapperMaker[Encoder[_], T]:
-  def apply(f: (T, UdtValueLookup) => UDTValue): CassandraMapper[T, UDTValue, MapperSide.Encode]
+  def apply(f: (T, UdtValueLookup) => UdtValue): CassandraMapper[T, UdtValue, MapperSide.Encode]
 
 trait CassandraDecodeMapperMaker[Encoder[_], T]:
-  def apply(f: (UDTValue, UdtValueLookup) => T): CassandraMapper[UDTValue, T, MapperSide.Decode]
+  def apply(f: (UdtValue, UdtValueLookup) => T): CassandraMapper[UdtValue, T, MapperSide.Decode]
 
 trait Encoders
 extends CassandraRowContext
@@ -47,7 +46,7 @@ with UdtEncoding {
     encoder((index, value, row, session) => f(row)(index, value))
 
   private[this] val nullEncoder: Encoder[Null] =
-    encoder((index, value, row, session) => row.setToNull(index))
+    encoder((index, _, row, _) => row.setToNull(index))
 
   implicit def optionEncoder[T](implicit d: Encoder[T]): Encoder[Option[T]] =
     encoder { (index, value, row, session) =>
@@ -62,8 +61,8 @@ with UdtEncoding {
 
   implicit val stringEncoder: Encoder[String] = encoder(_.setString)
   implicit val bigDecimalEncoder: Encoder[BigDecimal] =
-    encoder((index, value, row, session) => row.setDecimal(index, value.bigDecimal))
-  implicit val booleanEncoder: Encoder[Boolean] = encoder(_.setBool)
+    encoder((index, value, row, _) => row.setBigDecimal(index, value.bigDecimal))
+  implicit val booleanEncoder: Encoder[Boolean] = encoder(_.setBoolean)
   implicit val byteEncoder: Encoder[Byte] = encoder(_.setByte)
   implicit val shortEncoder: Encoder[Short] = encoder(_.setShort)
   implicit val intEncoder: Encoder[Int] = encoder(_.setInt)
@@ -71,8 +70,9 @@ with UdtEncoding {
   implicit val floatEncoder: Encoder[Float] = encoder(_.setFloat)
   implicit val doubleEncoder: Encoder[Double] = encoder(_.setDouble)
   implicit val byteArrayEncoder: Encoder[Array[Byte]] =
-    encoder((index, value, row, session) => row.setBytes(index, ByteBuffer.wrap(value)))
-  implicit val uuidEncoder: Encoder[UUID] = encoder(_.setUUID)
-  implicit val timestampEncoder: Encoder[Date] = encoder(_.setTimestamp)
-  implicit val cassandraLocalDateEncoder: Encoder[LocalDate] = encoder(_.setDate)
+    encoder((index, value, row, _) => row.setByteBuffer(index, ByteBuffer.wrap(value)))
+  implicit val uuidEncoder: Encoder[UUID] = encoder(_.setUuid)
+  implicit val timestampEncoder: Encoder[Instant] = encoder(_.setInstant)
+  implicit val cassandraLocalTimeEncoder: Encoder[LocalTime] = encoder(_.setLocalTime)
+  implicit val cassandraLocalDateEncoder: Encoder[LocalDate] = encoder(_.setLocalDate)
 }

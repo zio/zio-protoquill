@@ -1,11 +1,13 @@
 package io.getquill.context.cassandra.udt
 
-import io.getquill.{ CassandraContextConfig, CassandraSyncContext, SnakeCase }
+import com.datastax.oss.driver.api.core.CqlIdentifier
+import io.getquill.{CassandraContextConfig, CassandraSyncContext, SnakeCase}
 import io.getquill.context.cassandra.testSyncDB
 import io.getquill.util.LoadConfig
 import io.getquill._
 import io.getquill.context.cassandra.encoding.CassandraMapper
-import com.datastax.driver.core.UDTValue
+import com.datastax.oss.driver.api.core.data.UdtValue
+import com.typesafe.config.ConfigValueFactory
 import io.getquill.context.cassandra.encoding.MapperSide
 import io.getquill.context.cassandra.UdtMeta
 
@@ -13,8 +15,9 @@ import io.getquill.context.cassandra.UdtMeta
 class UdtEncodingSessionContextSpec extends UdtSpec {
 
   val ctx1 = testSyncDB
-  val cluster = CassandraContextConfig(LoadConfig("testSyncDB")).cluster
-  val ctx2 = new CassandraSyncContext(SnakeCase, cluster, "quill_test_2", 1000)
+  val config0 = CassandraContextConfig(LoadConfig("testSyncDB").withValue("keyspace", ConfigValueFactory.fromAnyRef("system")))
+  val config2 = CassandraContextConfig(LoadConfig("testSyncDB").withValue("keyspace", ConfigValueFactory.fromAnyRef("quill_test_2")))
+  val ctx2 = new CassandraSyncContext(SnakeCase, config2)
 
   "Provide encoding for UDT" - {
     import ctx1._
@@ -81,15 +84,15 @@ class UdtEncodingSessionContextSpec extends UdtSpec {
   }
 
   "fail on inconsistent states" - {
-    val ctx0 = new CassandraSyncContext(SnakeCase, cluster, null, 1000)
+    val ctx0 = new CassandraSyncContext(SnakeCase, config0)
     "found several UDT with the same name, but not in current session" in {
       intercept[IllegalStateException](ctx0.udtValueOf("Name")).getMessage mustBe
         "Could not determine to which keyspace `Name` UDT belongs. Please specify desired keyspace using UdtMeta"
 
       // but ok when specified
-      ctx0.udtValueOf("Name", Some("quill_test")).getType.getKeyspace mustBe "quill_test"
+      ctx0.udtValueOf("Name", Some("quill_test")).getType.getKeyspace mustBe CqlIdentifier.fromCql("quill_test")
       // "nAmE" - identifiers are case insensitive
-      ctx0.udtValueOf("nAmE", Some("quill_test_2")).getType.getKeyspace mustBe "quill_test_2"
+      ctx0.udtValueOf("nAmE", Some("quill_test_2")).getType.getKeyspace mustBe CqlIdentifier.fromCql("quill_test_2")
     }
     "could not find UDT with given name" in {
       intercept[IllegalStateException](ctx0.udtValueOf("Whatever")).getMessage mustBe
@@ -98,7 +101,7 @@ class UdtEncodingSessionContextSpec extends UdtSpec {
   }
 
   "return udt if it's found in another keyspace" in {
-    ctx2.udtValueOf("Personal").getType.getKeyspace mustBe "quill_test"
+    ctx2.udtValueOf("Personal").getType.getKeyspace.toString mustBe "quill_test"
   }
 
   // "naming strategy" in {
@@ -112,7 +115,7 @@ class UdtEncodingSessionContextSpec extends UdtSpec {
 
   override protected def beforeAll(): Unit = {
     clean1()
-    // clean2()
+    clean2()
   }
 
   private def clean1(): Unit = {

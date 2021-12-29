@@ -17,6 +17,9 @@ export ORACLE_PORT=11521
 export CASSANDRA_HOST=127.0.0.1
 export CASSANDRA_PORT=19042
 
+export CASSANDRA_CONTACT_POINT_0=127.0.0.1:19042
+export CASSANDRA_DC=datacenter1
+
 export ORIENTDB_HOST=127.0.0.1
 export ORIENTDB_PORT=12424
 
@@ -60,10 +63,10 @@ function docker_stats() {
 }
 export -f docker_stats
 
-export SBT_ARGS="-Dcommunity=false" #++$TRAVIS_SCALA_VERSION Only building for Scala 3 for now
+export SBT_ARGS="-Dcommunity=false" #++$SCALA_VERSION Only building for Scala 3 for now
 
 # Enable coverage of builds when it is possible
-# if [[ $TRAVIS_SCALA_VERSION == 3* ]]; then
+# if [[ $SCALA_VERSION == 3* ]]; then
 #     export SBT_ARGS="$SBT_ARGS coverage"
 # fi
 
@@ -241,7 +244,7 @@ show_mem
 echo "Tests completed. Shutting down"
 time docker-compose down
 # for 2.12 publish coverage
-if [[ $TRAVIS_SCALA_VERSION == 2.12* ]]; then
+if [[ $SCALA_VERSION == 2.12* ]]; then
     echo "Coverage"
     time sbt $SBT_ARGS coverageReport coverageAggregate
     pip install --user codecov && codecov
