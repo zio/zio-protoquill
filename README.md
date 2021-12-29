@@ -13,21 +13,22 @@ Currently Supported:
  - ZIO, Synchronous JDBC, and Jasync Postgres contexts.
  - SQL OnConflict Clauses
  - Prepare Query (i.e. `context.prepare(query)`)
+ - Cassandra Contexts (using V4 drivers!)
 
 Currently Not Supported:
  - Dynamic Query API (i.e. [this](https://getquill.io/#quotation-dynamic-queries-dynamic-query-api))
  - [Implicit Query](https://getquill.io/#quotation-implicit-query)
  - [IO Monad](https://getquill.io/#quotation-io-monad)
- - Cassandra Contexts (Coming Soon!)
  - Monix JDBC (and Cassandra) Contexts (Coming Soon!)
  - Lagom Contexts
  - OrientDB Contexts
- - Spark Context (still waiting on Spark for Scala 2.13)
+ - Spark Context
 
 There are also quite a few new features that ProtoQuill has:
  - Scala Methods and Typeclasses Transforming ProtoQuill queries (see [Shareable Code](#shareable-code) and [Advanced Example](#advanced-example)).
  - [Custom Parsing](#custom-parsing) (Early API, still subject to change)
  - [Co-Product Rows](#co-product-rows) (Highly experimental, use with caution!)
+ - [Caliban-Integration](#caliban-integration) (Experimental deep integration with Caliban. Trivially filter/exclude any columns you want!)
 
 One other note that this documentation is not yet a fully-fledged reference for ProtoQuill features. Have a look at the original [Quill documentation](https://getquill.io/) for basic information about how Quill constructs (e.g. Queries, Joins, Actions, Batch Actions, etc...) are written in lieu of any documentation missing here.
 
@@ -48,11 +49,17 @@ Add the following to your SBT file:
 ```scala
 libraryDependencies ++= Seq(
   // Syncronous JDBC Modules
-  "io.getquill" %% "quill-jdbc" % "3.7.2.Beta1.4",
+  "io.getquill" %% "quill-jdbc" % "3.12.0.Beta1.7",
   // Or ZIO Modules
-  "io.getquill" %% "quill-jdbc-zio" % "3.7.2.Beta1.4",
-  // Postgres Async
-  "io.getquill" %% "quill-jasync-postgres" % "3.7.2.Beta1.4"
+  "io.getquill" %% "quill-jdbc-zio" % "3.12.0.Beta1.7",
+  // Or Postgres Async
+  "io.getquill" %% "quill-jasync-postgres" % "3.12.0.Beta1.7",
+  // Or Cassandra
+  "io.getquill" %% "quill-cassandra" % "3.12.0.Beta1.7",
+  // Or Cassandra + ZIO
+  "io.getquill" %% "quill-cassandra-zio" % "3.12.0.Beta1.7",
+  // Add for Caliban Integration
+  "io.getquill" %% "quill-caliban" % "3.12.0.Beta1.7"
 )
 ```
 
@@ -508,6 +515,110 @@ for backwards-compatibility reasons. The Queries in which it is used will inhere
 # Rationale for Inline
 
 For a basic reasoning of why Inline was chosen (instead of Refined-Types on `val` expressions) have a look at the video: [Quill, Dotty, And The Awesome Power of 'Inline'](https://github.com/getquill/protoquill). A more thorough explination is TBD.
+
+# Caliban Integration
+
+Experimental Caliban integration is provided by the `quill-caliban` module. This makes it relatively easy to setup a Caliban GraphQL endpoint where you can filter by any column returned from a Quill query as well as include/exclude any column, and these exclusions are pushed down to the database (In Spark-speak, these are called filter-pushdown, predicate-pushdown respectively). In order to setup the Caliban integration, do the following:
+
+```scala
+// Import Quill
+import io.getquill._
+
+// Import the Caliban integration
+import io.getquill.CalibanIntegration._
+
+// Given some simple schema
+case class PersonT(id: Int, first: String, last: String, age: Int)
+case class AddressT(ownerId: Int, street: String)
+case class PersonAddress(id: Int, first: String, last: String, age: Int, street: Option[String])
+  
+// Create a query and add .filterColumns and .filterByKeys to the end
+inline def peopleAndAddresses(inline columns: List[String], inline filters: Map[String, String]) =
+  quote {
+    // Given a query...
+    query[Person].leftJoin(query[Address]).on((p, a) => p.id == a.ownerId)
+      .map((p, a) => PersonAddress(p.id, p.first, p.last, p.age, a.map(_.street)))
+      // Add these to the end
+      .filterColumns(columns)
+      .filterByKeys(filters)
+  }
+  
+// Create a data-source that will pass along the column include/exclude and filter information
+object DataService:
+  def personAddress(columns: List[String], filters: Map[String, String]) =
+    run(q(columns, filters)).provide(Has(myDataSource))
+    // Assume this returns:
+    // List(
+    //   PersonAddress(1, "One", "A", 44, Some("123 St")),
+    //   PersonAddress(2, "Two", "B", 55, Some("123 St")),
+    //   PersonAddress(3, "Three", "C", 66, None),
+    // )
+
+// Create your Caliban Endpoint
+case class Queries(
+  personAddress: Field => (ProductArgs[PersonAddress] => Task[List[PersonAddress]])
+)
+
+// Implement the endpoint
+val endpoint =
+   graphQL(
+    RootResolver(
+      Queries(
+        personAddress =>
+          (productArgs =>
+            DataService.personAddress(
+              quillColumns(personAddress) /* From CalibanIntegration module*/, 
+              productArgs.keyValues
+            )
+          )
+      )
+    )
+  ).interpreter
+
+// Test-run the endpoint like this! (make sure not use the 'query' variable or it will collide with Quill!):
+val calibanQuery =
+  """
+  {
+    # Filter by any field in PersonAddress here including first, last, age, street!
+    personAddressFlat(first: "Joe") {
+      # Include/Exclude any fields from PersonAddress here!
+      id
+      last
+      street
+    }
+  }"""
+
+val output =
+  zio.Runtime.default.unsafeRun(for {
+      interpreter <- api.interpreter
+      result      <- interpreter.execute(calibanQuery)
+    } yield (result)
+  )
+  
+// The following data will be returned:
+output.data.toString == """{"personAddress":[{"id":1,"first":"One","last":"A","street":"123 St"}]}"""
+```
+You can also plug in this Caliban endpoint into ZIO-Http
+```scala
+object CalibanExample extends zio.App:
+  val myApp = for {
+    _ <- Dao.resetDatabase()
+    interpreter <- endpoints
+    _ <- Server.start(
+        port = 8088,
+        http = Http.route { case _ -> Root / "api" / "graphql" =>
+          ZHttpAdapter.makeHttpService(interpreter)
+        }
+      )
+      .forever
+  } yield ()
+
+  override def run(args: List[String]): ZIO[ZEnv, Nothing, ExitCode] =
+    myApp.exitCode
+
+end CalibanExample
+```
+Have a look at the Quill-Caliban Examples [here](https://github.com/zio/zio-protoquill/tree/master/quill-caliban/src/test/scala/io/getquill/example) and the Quill-Caliban tests [here](https://github.com/zio/zio-protoquill/tree/master/quill-caliban/src/test/scala/io/getquill).
 
 
 # Interesting Ideas
