@@ -579,7 +579,7 @@ val endpoint =
 val calibanQuery =
   """
   {
-    # Filter by any field in PersonAddress here including first, last, age, street!
+    # Filter by any field in PersonAddress here including first, last, age, street! (or any combination of filters!)
     personAddressFlat(first: "Joe") {
       # Include/Exclude any fields from PersonAddress here!
       id
