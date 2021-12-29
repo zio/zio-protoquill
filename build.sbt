@@ -40,7 +40,7 @@ lazy val sqlTestModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
 )
 
 lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-jdbc`, `quill-zio`, `quill-jdbc-zio`
+  `quill-jdbc`, `quill-zio`, `quill-jdbc-zio`, `quill-caliban`
 )
 
 lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
@@ -205,8 +205,8 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban" % "1.2.0",
-        "com.github.ghostdogpr" %% "caliban-zio-http"   % "1.2.0",
+        "com.github.ghostdogpr" %% "caliban" % "1.2.4",
+        "com.github.ghostdogpr" %% "caliban-zio-http"   % "1.2.4",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,

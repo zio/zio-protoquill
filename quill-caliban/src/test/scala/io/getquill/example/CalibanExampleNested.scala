@@ -1,4 +1,4 @@
-package io.getquill.context.cassandra.zio.examples
+package io.getquill
 
 import caliban.GraphQL.graphQL
 import caliban.schema.Annotations.GQLDescription
@@ -19,24 +19,23 @@ import scala.language.postfixOps
 import caliban.execution.Field
 import caliban.schema.ArgBuilder
 import io.getquill.CalibanIntegration._
+import io.getquill.util.ContextLogger
+import io.getquill.NestedSchema._
 
-case class PersonT(id: Int, name: String, age: Int)
-case class AddressT(ownerId: Int, street: String)
-case class PersonAddress(id: Int, name: String, age: Int, street: Option[String])
 
-case class PersonAddressPlanQuery(plan: String, pa: List[PersonAddress])
-
-object Dao:
+object DaoNested:
+  case class PersonAddressPlanQuery(plan: String, pa: List[PersonAddressNested])
+  private val logger = ContextLogger(classOf[DaoNested.type])
 
   object Ctx extends PostgresZioJdbcContext(Literal)
   import Ctx._
   lazy val ds = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
-  given Implicit[Has[DataSource with Closeable]] = Implicit(Has(ds))
+  given Implicit[Has[DataSource]] = Implicit(Has(ds))
 
   inline def q(inline columns: List[String], inline filters: Map[String, String]) =
     quote {
       query[PersonT].leftJoin(query[AddressT]).on((p, a) => p.id == a.ownerId)
-        .map((p, a) => PersonAddress(p.id, p.name, p.age, a.map(_.street)))
+        .map((p, a) => PersonAddressNested(p.id, p.name, p.age, a.map(_.street)))
         .filterColumns(columns)
         .filterByKeys(filters)
         .take(10)
@@ -45,46 +44,58 @@ object Dao:
     quote { infix"EXPLAIN ${q(columns, filters)}".pure.as[Query[String]] }
 
   def personAddress(columns: List[String], filters: Map[String, String]) =
+    println(s"Getting columns: $columns")
     run(q(columns, filters)).implicitDS.mapError(e => {
-      println("===========ERROR===========" + e.getMessage) //
+      logger.underlying.error("personAddress query failed", e)
       e
     })
 
   def personAddressPlan(columns: List[String], filters: Map[String, String]) =
     run(plan(columns, filters), OuterSelectWrap.Never).map(_.mkString("\n")).implicitDS.mapError(e => {
-      println("===========ERROR===========" + e.getMessage) //helloooo
+      logger.underlying.error("personAddressPlan query failed", e)
       e
     })
-end Dao
 
-case class Queries(
-    personAddress: Field => (ProductArgs[PersonAddress] => Task[List[PersonAddress]]),
-    personAddressPlan: Field => (ProductArgs[PersonAddress] => Task[PersonAddressPlanQuery])
-)
-object CalibanExample extends zio.App {
+  def resetDatabase() =
+    (for {
+      _ <- run(infix"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
+      _ <- run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insert(row)))
+      _ <- run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insert(row)))
+    } yield ()).implicitDS
+end DaoNested
 
-  val myApp = for {
-    interpreter <- graphQL(
+object CalibanExampleNested extends zio.App:
+  private val logger = ContextLogger(classOf[CalibanExampleNested.type])
+
+  case class Queries(
+      personAddress: Field => (ProductArgs[PersonAddressNested] => Task[List[PersonAddressNested]]),
+      personAddressPlan: Field => (ProductArgs[PersonAddressNested] => Task[DaoNested.PersonAddressPlanQuery])
+  )
+
+  val endpoints =
+     graphQL(
       RootResolver(
         Queries(
           personAddress =>
             (productArgs =>
-              Dao.personAddress(personAddress.fields.map(_.name), productArgs.keyValues)
+              DaoNested.personAddress(quillColumns(personAddress), productArgs.keyValues)
             ),
           personAddressPlan =>
             (productArgs => {
-              val cols = personAddressPlan.fields.flatMap(_.fields.map(_.name))
-              println(s"==== Selected Columns: ${cols}")
-              //println(s"==== Nested Fields: ${personAddressPlan.fields.map(_.fields.map(_.name))}")
-              (Dao.personAddressPlan(cols, productArgs.keyValues) zip Dao.personAddress(cols, productArgs.keyValues)).map(
-                (pa, plan) => PersonAddressPlanQuery(pa, plan)
+              val cols = quillColumns(personAddressPlan)
+              logger.underlying.info(s"Selected Columns: ${cols}")
+              (DaoNested.personAddressPlan(cols, productArgs.keyValues) zip DaoNested.personAddress(cols, productArgs.keyValues)).map(
+                (pa, plan) => DaoNested.PersonAddressPlanQuery(pa, plan)
               )
             })
         )
       )
     ).interpreter
-    _ <- Server
-      .start(
+
+  val myApp = for {
+    _ <- DaoNested.resetDatabase()
+    interpreter <- endpoints
+    _ <- Server.start(
         port = 8088,
         http = Http.route { case _ -> Root / "api" / "graphql" =>
           ZHttpAdapter.makeHttpService(interpreter)
@@ -96,4 +107,4 @@ object CalibanExample extends zio.App {
   override def run(args: List[String]): ZIO[ZEnv, Nothing, ExitCode] =
     myApp.exitCode
 
-}
+end CalibanExampleNested
