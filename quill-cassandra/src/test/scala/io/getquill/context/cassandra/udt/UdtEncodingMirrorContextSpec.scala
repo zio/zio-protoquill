@@ -11,6 +11,7 @@ class UdtEncodingMirrorContextSpec extends UdtSpec {
 
     "UDT raw columns" in {
       implicitly[Decoder[Name]]
+      implicitly[Encoder[Name]]
     }
 
     "UDT collections columns" in {

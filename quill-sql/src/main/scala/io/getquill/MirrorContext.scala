@@ -41,8 +41,8 @@ with MirrorEncoders { self =>
   override type RunBatchActionResult = BatchActionMirror
   override type Session = MirrorSession
 
-  override type DatasourceContext = Unit
-  override def context: DatasourceContext = ()
+  override type Runner = Unit
+  override def context: Runner = ()
   def session: MirrorSession
 
   // TODO Not needed, get rid of this
@@ -61,19 +61,19 @@ with MirrorEncoders { self =>
   case class BatchActionMirror(groups: List[(String, List[Row])], info: ExecutionInfo)
   case class BatchActionReturningMirror[T](groups: List[(String, ReturnAction, List[PrepareRow])], extractor: Extractor[T], info: ExecutionInfo)
 
-  override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: DatasourceContext) =
+  override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner) =
     QueryMirror(string, prepare(Row(), session)._2, extractor, info)
 
-  override def executeQuerySingle[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: DatasourceContext) =
+  override def executeQuerySingle[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner) =
     QueryMirror(string, prepare(Row(), session)._2, extractor, info)
 
-  override def executeAction[T](string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext): Result[RunActionResult] =
+  override def executeAction(string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): Result[RunActionResult] =
     ActionMirror(string, prepare(Row(), session)._2, info)
 
-  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: DatasourceContext): Result[RunActionReturningResult[T]] =
+  def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner): Result[RunActionReturningResult[T]] =
     ActionReturningMirror[T](sql, prepare(Row(), session)._2, extractor, returningBehavior, info)
 
-  override def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionResult] =
+  override def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): Result[RunBatchActionResult] =
     BatchActionMirror(
       groups.map {
         case BatchGroup(string, prepare) =>
@@ -82,7 +82,7 @@ with MirrorEncoders { self =>
       info
     )
 
-  override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: DatasourceContext): Result[RunBatchActionReturningResult[T]] =
+  override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner): Result[RunBatchActionReturningResult[T]] =
     BatchActionReturningMirror[T](
       groups.map {
         case BatchGroupReturning(string, returningBehavior, prepare) =>
@@ -98,16 +98,16 @@ with MirrorEncoders { self =>
   type PrepareActionResult = PrepareQueryMirror
   type PrepareBatchActionResult = PrepareBatchMirror
 
-  def prepareSingle(string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext) =
+  def prepareSingle(string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner) =
     PrepareQueryMirror(string, prepare, info)
 
-  def prepareQuery(string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext) =
+  def prepareQuery(string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner) =
     prepareSingle(string, prepare)(info, dc)
 
-  def prepareAction(string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: DatasourceContext) =
+  def prepareAction(string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner) =
     prepareSingle(string, prepare)(info, dc)
 
-  def prepareBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: DatasourceContext) =
+  def prepareBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner) =
     PrepareBatchMirror(
       groups.map {
         case BatchGroup(string, prepare) =>

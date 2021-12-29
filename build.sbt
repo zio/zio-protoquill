@@ -122,8 +122,8 @@ lazy val `quill-sql` =
       libraryDependencies ++= Seq(
         // .excludeAll(ExclusionRule(organization="com.trueaccord.scalapb")
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
-        ("io.getquill" %% "quill-core-portable" % "3.10.0").cross(CrossVersion.for3Use2_13),
-        ("io.getquill" %% "quill-sql-portable" % "3.10.0").cross(CrossVersion.for3Use2_13),
+        ("io.getquill" %% "quill-core-portable" % "3.12.0").cross(CrossVersion.for3Use2_13),
+        ("io.getquill" %% "quill-sql-portable" % "3.12.0").cross(CrossVersion.for3Use2_13),
         //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").cross(CrossVersion.for3Use2_13),
         //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
         "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4"
@@ -262,7 +262,8 @@ lazy val `quill-cassandra` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.datastax.cassandra" %  "cassandra-driver-core" % "3.7.2"
+        "com.datastax.oss" % "java-driver-core" % "4.13.0",
+        ("org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1").withDottyCompat(scalaVersion.value)
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -274,8 +275,9 @@ lazy val `quill-cassandra-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "1.0.9",
-        "dev.zio" %% "zio-streams" % "1.0.9",
+        "com.datastax.oss" % "java-driver-core" % "4.13.0",
+        "dev.zio" %% "zio" % "1.0.12",
+        "dev.zio" %% "zio-streams" % "1.0.12",
         ("dev.zio" %% "zio-interop-guava" % "30.1.0.3").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
       )
     )

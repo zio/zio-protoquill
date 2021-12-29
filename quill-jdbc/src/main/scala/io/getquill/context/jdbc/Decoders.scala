@@ -10,10 +10,7 @@ import scala.math.BigDecimal.javaBigDecimal2bigDecimal
 import io.getquill.MappedEncoding
 
 trait Decoders {
-  this: JdbcRunContext[_, _] =>
-
-  // In Scala2-Quill Decoders get this from JdbcRunContext which gets it from Encoders. That doesn't seem to happen in Dotty
-  private val dateTimeZone = TimeZone.getDefault
+  this: JdbcComposition[_, _] =>
 
   // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
   // type Index = Int (Defined in JdbcRunContext)

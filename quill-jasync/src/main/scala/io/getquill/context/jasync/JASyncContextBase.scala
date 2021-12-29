@@ -5,7 +5,7 @@ import io.getquill.NamingStrategy
 import io.getquill.context.Context
 import io.getquill.context.sql.SqlContext
 import io.getquill.context.sql.idiom.SqlIdiom
-import io.getquill.context.DatasourceContextInjection
+import io.getquill.context.RunnerSummoningBehavior
 import scala.concurrent.ExecutionContext
 
 trait JAsyncContextBase[D <: SqlIdiom, N <: NamingStrategy]
@@ -19,7 +19,7 @@ trait JAsyncContextBase[D <: SqlIdiom, N <: NamingStrategy]
   override type ResultRow = RowData
 
   // Need to define these in ProtoQuill so can pass implicit contexts
-  override type DatasourceContextBehavior = DatasourceContextInjection.Implicit
-  override type DatasourceContext = ExecutionContext
+  override type RunnerBehavior = RunnerSummoningBehavior.Implicit
+  override type Runner = ExecutionContext
   override type Session = Unit
 }
