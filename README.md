@@ -692,7 +692,7 @@ In the response you will not only the results but also the Query plan. Note that
 
 ![Screenshot from 2021-12-29 23-54-52](https://user-images.githubusercontent.com/1369480/147722872-a4801b6e-e916-427d-b134-e71bb8a0259a.png)
 
-As @ghostdogpr puts it... "From the front-end down to the DB, you only pay for what you ask!"
+As the writer of Caliban puts it... "From the front-end down to the DB, you only pay for what you ask!"
 
 # Interesting Ideas
  - Implement a `lazyFilterByKeys` method using the same logic as filterByKeys but using lazy lifts.
