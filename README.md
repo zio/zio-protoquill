@@ -620,6 +620,79 @@ end CalibanExample
 ```
 Have a look at the Quill-Caliban Examples [here](https://github.com/zio/zio-protoquill/tree/master/quill-caliban/src/test/scala/io/getquill/example) and the Quill-Caliban tests [here](https://github.com/zio/zio-protoquill/tree/master/quill-caliban/src/test/scala/io/getquill).
 
+### How it works
+
+When the `.filterColumns(columns)` and the `.filterByKeys(filters)` methods are called, the following query (that results from the Person<->Address table join):
+```sql
+SELECT
+  p.id, p.first, p.last, p.age, a.street
+FROM
+  Person p
+  LEFT JOIN Address a ON p.id = a.ownerId
+```
+...becomes this:
+```sql
+SELECT
+  CASE WHEN ? THEN p.id ELSE null END,
+  CASE WHEN ? THEN p.first ELSE null END,
+  CASE WHEN ? THEN p.last ELSE null END,
+  CASE WHEN ? THEN p.age ELSE null END,
+  CASE WHEN ? THEN a.street ELSE null END
+FROM
+  Person p
+  LEFT JOIN Address a ON p.id = a.ownerId
+WHERE
+  (cast(CASE WHEN ? THEN p.id ELSE null END as VARCHAR) = ? OR ? IS NULL)
+  AND (CASE WHEN ? THEN p.first ELSE null END = ? OR ? IS NULL)
+  AND (CASE WHEN ? THEN p.last ELSE null END = ? OR ? IS NULL)
+  AND (cast(CASE WHEN ? THEN p.age ELSE null END as VARCHAR) = ? OR ? IS NULL)
+  AND (CASE WHEN ? THEN a.street ELSE null END = ? OR ? IS NULL)
+```
+In each question mark in the `SELECT` and `WHERE` clauses, the appropriate field is selected from the `columns` list and `filters` map.
+Here is roughly how that looks:
+```sql
+SELECT
+  CASE WHEN ${columns.contains("id")} THEN p.id ELSE null END,
+  CASE WHEN ${columns.contains("first")} THEN p.first ELSE null END,
+  CASE WHEN ${columns.contains("last")} THEN p.last ELSE null END,
+  CASE WHEN ${columns.contains("age")} THEN p.age ELSE null END,
+  CASE WHEN ${columns.contains("street")} THEN a.street ELSE null END
+FROM
+  Person p
+  LEFT JOIN Address a ON p.id = a.ownerId
+WHERE
+      (cast(CASE WHEN ${filters.contains("id")} THEN p.id ELSE null END as VARCHAR) = ${filters("id").orNull} OR ${${filters("id").orNull}} IS NULL)
+  AND      (CASE WHEN ${filters.contains("first")} THEN p.first ELSE null END = ${filters("first").orNull} OR ${${filters("first").orNull}} IS NULL)
+  AND      (CASE WHEN ${filters.contains("last")} THEN p.last ELSE null END = ${filters("last").orNull} OR ${${filters("last").orNull}} IS NULL)
+  AND (cast(CASE WHEN ${filters.contains("age")} THEN p.age ELSE null END as VARCHAR) = ${filters("age").orNull} OR ${${filters("age").orNull}} IS NULL)
+  AND      (CASE WHEN ${filters.contains("street")} THEN a.street ELSE null END = ${filters("street").orNull} OR ${${filters("street").orNull}} IS NULL)
+```
+The important thing to understand is that the SQL optimizer can see into these `CASE WHEN (condition)` clauses when `condition` is a static variable and then know whether the actual column on the right-hand side of the Query actually needs to be used. In Database-Speak, we would call this SARGable.
+
+Don't take my word for it though, have a look at the examples under quill-caliban here: [here](https://github.com/zio/zio-protoquill/tree/master/quill-caliban/src/test/scala/io/getquill/example). For example run the CalibanExample.scala and execute the following GraphQL query:
+```
+query{
+  personAddressPlan(first: "One") {
+    plan 
+    pa {
+      id
+      street
+      first
+      last
+      # Exclude the street column
+    }
+  }
+}
+```
+
+
+In the response you will not only the results but also the Query plan. Note that in this particular case our Query-Planner knows that:
+1. We are using the filter "One" on the Person.first column.
+2. Since the only column we care about from the Address table is Address.street and our Query doesn't even want that column (and because in our case Person<->Address is a one-to-one relationship, that means that the table Address doesn't even need to be scanned!
+
+![Screenshot from 2021-12-29 23-54-52](https://user-images.githubusercontent.com/1369480/147722872-a4801b6e-e916-427d-b134-e71bb8a0259a.png)
+
+As @ghostdogpr puts it... "From the front-end down to the DB, you only pay for what you ask!"
 
 # Interesting Ideas
  - Implement a `lazyFilterByKeys` method using the same logic as filterByKeys but using lazy lifts.
