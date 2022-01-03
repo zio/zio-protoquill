@@ -13,6 +13,7 @@ import scala.meta.Term.Assign
 import scala.util.Try
 import io.getquill.util.Format
 import io.getquill.util.StringUtil.section
+import io.getquill.parser.DoSerialize
 
 object SerialHelper:
   def fromSerializedJVM[T](serial: String): T = KryoAstSerializer.deserialize(serial).asInstanceOf[T]
@@ -45,27 +46,62 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
   extension [T](t: T)(using ToExpr[T], Quotes)
     def expr: Expr[T] = Expr(t)
 
+  object HasSerializeBehavior:
+    def unapply(value: Expr[DoSerialize])(using Quotes): Boolean =
+      import quotes.reflect._
+      val memberSymbol = value.asTerm.tpe.termSymbol.memberType("BehaviorType")
+      value.asTerm.select(memberSymbol).tpe <:< TypeRepr.of[io.getquill.parser.SerializationBehavior.Serialize]
+
+
+
   trait NiceLiftable[T: ClassTag] extends ToExpr[T]:
     // TODO Can we Change to 'using Quotes' without changing all the signitures? Would be simplier to extend
 
+    def deserializeDisabled(using Quotes): Boolean =
+      import quotes.reflect._
+      Expr.summon[DoSerialize] match
+        case Some(HasSerializeBehavior()) =>
+          true
+        case Some(value) =>
+          false
+        case _ =>
+          false
+
     def lift: (Quotes) ?=> PartialFunction[T, Expr[T]]
+
+    private[getquill] def liftOrThrow(element: T)(using Quotes): Expr[T] =
+      import quotes.reflect._
+      lift.lift(element).getOrElse {
+        report.throwError(
+          s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element:\n" +
+          s"${section(io.getquill.util.Messages.qprint(element).toString)}\n" +
+          s"of the Quill Abstract Syntax Tree"
+        )
+      }
+
     def apply(element: T)(using Quotes): Expr[T] =
       import quotes.reflect._
       element match
+
+        case ast: Ast if (serializeAst == SerializeAst.None) =>
+          liftOrThrow(ast).asInstanceOf[Expr[T]]
+        case quat: Quat if (serializeQuat == SerializeQuat.None) =>
+          liftOrThrow(quat).asInstanceOf[Expr[T]]
+
+        case ast: Ast if (deserializeDisabled) =>
+          Lifter(SerializeQuat.None, SerializeAst.None).liftableAst(ast).asInstanceOf[Expr[T]]
+        case quat: Quat if (deserializeDisabled) =>
+          Lifter(SerializeQuat.None, SerializeAst.None).liftableQuat(quat).asInstanceOf[Expr[T]]
+
         case ast: Ast if (serializeAst == SerializeAst.All) =>
           tryToSerialize[Ast](ast).asInstanceOf[Expr[T]]
+
         case quat: Quat.Product if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
           '{ io.getquill.quat.Quat.Product.fromSerializedJVM(${Expr(quat.serializeJVM)}) }.asInstanceOf[Expr[T]]
         case quat: Quat if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
           '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }.asInstanceOf[Expr[T]]
-        case _ =>
-          lift.lift(element).getOrElse {
-            report.throwError(
-              s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element:\n" +
-              s"${section(io.getquill.util.Messages.qprint(element).toString)}\n" +
-              s"of the Quill Abstract Syntax Tree"
-            )
-          }
+
+        case _ => liftOrThrow(element)
     def unapply(t: T)(using Quotes) = Some(apply(t))
 
   // Technically not part of the AST this needs to be lifted in the QueryExecution and returned to the executeActionReturning context clause
@@ -308,6 +344,7 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
   }
 
   def tryToSerialize[T <: Ast: TType](ast: Ast)(using Quotes): Expr[T] =
+    import quotes.reflect.{ Try => _, _}
     // Kryo can have issues if 'ast' is a lazy val (e.g. it will attempt to serialize Entity.Opinionated as though
     // it is an actual object which will fail because it is actually an inner class. Should look into
     // adding support for inner classes or remove them
