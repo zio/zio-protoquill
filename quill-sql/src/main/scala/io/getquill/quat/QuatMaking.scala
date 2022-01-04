@@ -436,10 +436,6 @@ trait QuatMakingBase(using val qctx: Quotes) {
         }
 
       def traverseCoproduct[Types](parent: TypeRepr)(types: Type[Types]): List[Quat] =
-        val parentShow =
-          types match
-            case '[typeTpe] =>
-              TypeRepr.of[typeTpe].show
         types match
           case '[tpe *: tpes] =>
             val quat =
