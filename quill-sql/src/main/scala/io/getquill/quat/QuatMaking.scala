@@ -146,176 +146,18 @@ trait QuatMakingBase(using val qctx: Quotes) {
 
     def ofType(tpe: TypeRepr): Quat = {
 
-      def nonGenericMethods(tpe: TypeRepr) = {
-        tpe.classSymbol.get.memberFields
-          .filter(m => m.owner.name.toString != "Any" && m.owner.name.toString != "Object").map { param =>
-            (
-              param.name.toString,
-              tpe.memberType(param).simplified
+      val output = QuatMaking.lookupCache(tpe.widen)(() => ParseType.parseTopLevelType(tpe))
+      //println(s"*********** PARSED QUAT: ${output} ***********")
+      output
+    }
 
-              // Look up the parameter only if needed. This is typically an expensive operation
-              //if (!param.isParameter) param.typeSignature else param.typeSignature.asSeenFrom(tpe, tpe.typeSymbol)
-            )
-          }.toList
-      }
-
-      def caseClassConstructorArgs(tpe: TypeRepr) = {
-        import io.getquill.util.Format
-        //println(s"For: ${Format.TypeRepr(tpe)} case fields are: ${tpe.classSymbol.get.caseFields.map(p => s"'${p}'").toList}")
-        // Note. One one constructor param list is supported due to Quat Generation Specifics. This is already the case in most situations.
-        tpe.classSymbol.get.caseFields.map { param =>
-          (
-            // Not sure why some tuple case methods have spaces... but they do!
-            // For: Tuple2[Foo, Ent] case fields are: List('method _1', 'val _1 ', 'method _2', 'val _2 ')
-            param.name.toString.trim,
-            tpe.memberType(param).simplified
-            //if (!param.isParameter) param.typeSignature else param.typeSignature.asSeenFrom(tpe, tpe.typeSymbol)
-          )
-        }
-      }
-
-      object ArbitraryBaseType {
-        def unapply(tpe: TypeRepr): Option[(String, List[(String, TypeRepr)])] =
-          if (tpe.classSymbol.isDefined)
-            Some((tpe.widen.typeSymbol.name.toString, nonGenericMethods(tpe.widen)))
-          else
-            None
-      }
-
-      extension (sym: Symbol)
-        def isCaseClass = sym.caseFields.length > 0
-
-      object CaseClassBaseType {
-        def unapply(tpe: TypeRepr): Option[(String, List[(String, TypeRepr)])] =
-          if (tpe.classSymbol.isDefined && tpe.widen.typeSymbol.isCaseClass)
-            Some((tpe.widen.typeSymbol.name.toString, caseClassConstructorArgs(tpe.widen)))
-          else
-            None
-      }
-
-      object Signature {
-        def unapply(tpe: TypeRepr) =
-          Some(tpe.typeSymbol)
-      }
-
-      object OptionType {
-        def unapply(tpe: TypeRepr): Option[TypeRepr] =
-          // [Option[t]]  will yield 'Nothing if is pulled out of a non optional value'
-          if (tpe.is[Option[_]])
-            tpe.asType match
-              case '[Option[t]] =>
-                Some(TypeRepr.of[t])
-              case _ => None
-          else
-            None
-      }
-
-      object Deoption {
-        def unapply(tpe: TypeRepr): Option[TypeRepr] =
-          if (isType[Option[_]](tpe))
-            tpe.asType match
-              case '[Option[t]] => Some(TypeRepr.of[t])
-              case _ => Some(tpe)
-          else
-            Some(tpe)
-      }
-
-      def isGeneric(tpe: TypeRepr) = {
-        tpe.typeSymbol.isTypeParam || tpe.typeSymbol.isAliasType || tpe.typeSymbol.isAbstractType || tpe.typeSymbol.flags.is(Flags.Trait) || tpe.typeSymbol.flags.is(Flags.Abstract) || tpe.typeSymbol.flags.is(Flags.Param)
-      }
-
-      object Param {
-        def unapply(tpe: TypeRepr) =
-          if (isGeneric(tpe))
-            Some(tpe)
-          else
-            None
-      }
-
-      object RealTypeBounds {
-        def unapply(tpe: TypeRepr) =
-          // TypeBounds matcher can throw and exception, need to catch it here
-          // so it doesn't blow up compilation
-          try {
-            tpe match {
-              case TypeBounds(lower, upper) =>
-                Some((lower, upper))
-              case _ =>
-                None
-            }
-          } catch {
-            case e => None
-          }
-      }
-
-      object AnyType {
-        def unapply(tpe: TypeRepr): Option[TypeRepr] =
-          if (tpe =:= TypeRepr.of[Any] || tpe.widen =:=  TypeRepr.of[Any])
-            Some(tpe)
-          else
-            None
-      }
-
-      object BooleanType {
-        def unapply(tpe: TypeRepr): Option[TypeRepr] =
-          if (tpe.is[Boolean])
-            Some(tpe)
-          else
-            None
-      }
-
-      def isConstantType(tpe: TypeRepr) =
-        (tpe.is[Boolean] ||
-        tpe.is[String] ||
-        tpe.is[Int] ||
-        tpe.is[Long] ||
-        tpe.is[Float] ||
-        tpe.is[Double] ||
-        tpe.is[Byte])
-
-      object DefiniteValue {
-        def unapply(tpe: TypeRepr): Option[TypeRepr] = {
-          // UDTs (currently only used by cassandra) are created as tables even though there is an encoder for them.
-          if (isConstantType(tpe))
-            Some(tpe)
-          else if (tpe <:< TypeRepr.of[Udt])
-            None
-          else if (isType[AnyVal](tpe) && tpe.widen.typeSymbol.isCaseClass && anyValBehavior == AnyValBehavior.TreatAsValue)
-            Some(tpe)
-          else if (existsEncoderFor(tpe))
-            Some(tpe)
-          else
-            None
-        }
-      }
-
+    object ParseType:
       def parseTopLevelType(tpe: TypeRepr): Quat =
-        // println(s"================ TOP LEVEL Type: ${tpe} ================")
-        // println(s"Simplified Type: ${tpe.simplified}")
-        // println(s"Widened Type: ${tpe.widen}")
-        // println(s"isBoolean: ${BooleanType.unapply(tpe).isDefined}")
-        // println(s"Is Constant: ${tpe match {case c: Constant => true; case _ => false} }")
-        // println(s"Is Constant Type: ${tpe match {case c: ConstantType => true; case _ => false} }")
         tpe match {
-          case AnyType(tpe) =>
-            Quat.Generic
-
-          case BooleanType(tpe) =>
-            //println("========> TOP LEVEL Boolean")
-            Quat.BooleanValue
-
-          case OptionType(BooleanType(innerParam)) =>
-            //println("========> TOP LEVEL Boolean")
-            Quat.BooleanValue
-
-          case DefiniteValue(tpe) =>
-            //println("========> TOP LEVEL Value")
-            Quat.Value
+          case ValueType(quat) => quat
 
           // If it is a query type, recurse into it
-          case QueryType(tpe) =>
-            //println("========> TOP LEVEL Query")
-            parseType(tpe)
+          case QueryType(tpe) => parseType(tpe)
 
           // For cases where the type is actually a parameter with type bounds
           // and the upper bound is not final, assume that polymorphism is being used
@@ -354,53 +196,23 @@ trait QuatMakingBase(using val qctx: Quotes) {
       * at the top level.
       */
       def parseType(tpe: TypeRepr, boundedInterfaceType: Boolean = false): Quat =
-        //println(s"================ Type: ${tpe} ================")
-        // println(s"Simplified Type: ${tpe.simplified}")
-        // println(s"Widened Type: ${tpe.widen}")
-        // println(s"isBoolean: ${BooleanType.unapply(tpe).isDefined}")
-        // println(s"Is Constant: ${tpe match {case c: Constant => true; case _ => false} }")
-        // println(s"Is Constant Type: ${tpe match {case c: ConstantType => true; case _ => false} }")
         tpe match {
-          case AnyType(tpe) =>
-            Quat.Generic
-
-          case BooleanType(tpe) =>
-            //println(s"=========> ${tpe} Is Boolean")
-            Quat.BooleanValue
-
-          case OptionType(BooleanType(_)) =>
-            //println(s"=========> ${tpe} Is Option Of Boolean")
-            Quat.BooleanValue
-
-          case DefiniteValue(tpe) =>
-            //println("=========> Is Value")
-            Quat.Value
+          case ValueType(quat) => quat
 
           // This will happens for val-parsing situations e.g. where you have val (a,b) = (Query[A],Query[B]) inside a quoted block.
           // In this situations, the CaseClassBaseType should activate first and recurse which will then hit this case clause.
           case QueryType(tpe) =>
-            //println("=========> Is Query")
             parseType(tpe)
 
-          // If the type is optional, recurse
-          case OptionType(innerParam) =>
-            //asprintln("=========> Is Option")
-            parseType(innerParam)
-
-          case _ if (isNone(tpe)) =>
-            //println("=========> Is Null")
-            Quat.Null
+          case OptionType(innerParam) =>  parseType(innerParam)
+          case _ if (isNone(tpe)) => Quat.Null
 
           // For other types of case classes (and if there does not exist an encoder for it)
           // the exception to that is a cassandra UDT that we treat like an encodeable entity even if it has a parsed type
-          case CaseClassBaseType(name, fields) if !existsEncoderFor(tpe) || tpe <:< TypeRepr.of[Udt] =>
-            val cc = Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
-            //println(s"=========> Is CaseClassBased: ${cc.fields.toList}")
-            cc
+          case CaseClassType(quat) => quat
 
           // If we are already inside a bounded type, treat an arbitrary type as a interface list
           case ArbitraryBaseType(name, fields) if (boundedInterfaceType) =>
-            //println("=========> Is ArbitraryClassBased")
             Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
 
           // If the quat is a coproduct, merge the sub quats that are recursively retrieved
@@ -409,20 +221,177 @@ trait QuatMakingBase(using val qctx: Quotes) {
           // Is it a generic or does it have any generic parameters that have not been filled (e.g. is T not filled in Option[T] ?)
           // TODO Improve by making specific flag check to see that it's a coproduct
           case Param(tpe) =>
-            //println("=========> Is Generic")
             Quat.Generic
 
           // Otherwise it's a terminal value
           case _ =>
-            // TODO Put back once release 3.6.0 which will have unknown quats
-            Quat.Unknown
             //Messages.trace(s"Could not infer SQL-type of ${tpe}, assuming it is a Unknown Quat.")
-            //Quat.Unknown
-        }
+            Quat.Unknown
 
-      val output = QuatMaking.lookupCache(tpe.widen)(() => parseTopLevelType(tpe))
-      //println(s"*********** PARSED QUAT: ${output} ***********")
-      output
+        }
+    end ParseType
+
+    def nonGenericMethods(tpe: TypeRepr) = {
+      tpe.classSymbol.get.memberFields
+        .filter(m => m.owner.name.toString != "Any" && m.owner.name.toString != "Object").map { param =>
+        (
+          param.name.toString,
+          tpe.memberType(param).simplified
+
+          // Look up the parameter only if needed. This is typically an expensive operation
+          //if (!param.isParameter) param.typeSignature else param.typeSignature.asSeenFrom(tpe, tpe.typeSymbol)
+        )
+      }.toList
+    }
+
+    def caseClassConstructorArgs(tpe: TypeRepr) = {
+      import io.getquill.util.Format
+      //println(s"For: ${Format.TypeRepr(tpe)} case fields are: ${tpe.classSymbol.get.caseFields.map(p => s"'${p}'").toList}")
+      // Note. One one constructor param list is supported due to Quat Generation Specifics. This is already the case in most situations.
+      tpe.classSymbol.get.caseFields.map { param =>
+        (
+          // Not sure why some tuple case methods have spaces... but they do!
+          // For: Tuple2[Foo, Ent] case fields are: List('method _1', 'val _1 ', 'method _2', 'val _2 ')
+          param.name.toString.trim,
+          tpe.memberType(param).simplified
+          //if (!param.isParameter) param.typeSignature else param.typeSignature.asSeenFrom(tpe, tpe.typeSymbol)
+        )
+      }
+    }
+
+    object ArbitraryBaseType {
+      def unapply(tpe: TypeRepr): Option[(String, List[(String, TypeRepr)])] =
+        if (tpe.classSymbol.isDefined)
+          Some((tpe.widen.typeSymbol.name.toString, nonGenericMethods(tpe.widen)))
+        else
+          None
+    }
+
+    extension (sym: Symbol)
+      def isCaseClass = sym.caseFields.length > 0
+
+    object CaseClassBaseType {
+      def unapply(tpe: TypeRepr): Option[(String, List[(String, TypeRepr)])] =
+        if (tpe.classSymbol.isDefined && tpe.widen.typeSymbol.isCaseClass)
+          Some((tpe.widen.typeSymbol.name.toString, caseClassConstructorArgs(tpe.widen)))
+        else
+          None
+    }
+
+    object Signature {
+      def unapply(tpe: TypeRepr) =
+        Some(tpe.typeSymbol)
+    }
+
+    object OptionType {
+      def unapply(tpe: TypeRepr): Option[TypeRepr] =
+      // [Option[t]]  will yield 'Nothing if is pulled out of a non optional value'
+        if (tpe.is[Option[_]])
+          tpe.asType match
+            case '[Option[t]] => Some(TypeRepr.of[t])
+            case _ => None
+        else
+          None
+    }
+
+    object Deoption {
+      def unapply(tpe: TypeRepr): Option[TypeRepr] =
+        if (isType[Option[_]](tpe))
+          tpe.asType match
+            case '[Option[t]] => Some(TypeRepr.of[t])
+            case _ => Some(tpe)
+        else
+          Some(tpe)
+    }
+
+    def isGeneric(tpe: TypeRepr) = {
+      tpe.typeSymbol.isTypeParam || tpe.typeSymbol.isAliasType || tpe.typeSymbol.isAbstractType || tpe.typeSymbol.flags.is(Flags.Trait) || tpe.typeSymbol.flags.is(Flags.Abstract) || tpe.typeSymbol.flags.is(Flags.Param)
+    }
+
+    object Param {
+      def unapply(tpe: TypeRepr) =
+        if (isGeneric(tpe))
+          Some(tpe)
+        else
+          None
+    }
+
+    object RealTypeBounds {
+      def unapply(tpe: TypeRepr) =
+      // TypeBounds matcher can throw and exception, need to catch it here
+      // so it doesn't blow up compilation
+        try {
+          tpe match {
+            case TypeBounds(lower, upper) =>
+              Some((lower, upper))
+            case _ =>
+              None
+          }
+        } catch {
+          case e => None
+        }
+    }
+
+    object AnyType {
+      def unapply(tpe: TypeRepr): Option[TypeRepr] =
+        if (tpe =:= TypeRepr.of[Any] || tpe.widen =:=  TypeRepr.of[Any])
+          Some(tpe)
+        else
+          None
+    }
+
+    object BooleanType {
+      def unapply(tpe: TypeRepr): Option[TypeRepr] =
+        if (tpe.is[Boolean])
+          Some(tpe)
+        else
+          None
+    }
+
+    def isConstantType(tpe: TypeRepr) =
+      (tpe.is[Boolean] ||
+        tpe.is[String] ||
+        tpe.is[Int] ||
+        tpe.is[Long] ||
+        tpe.is[Float] ||
+        tpe.is[Double] ||
+        tpe.is[Byte])
+
+    object DefiniteValue {
+      def unapply(tpe: TypeRepr): Option[TypeRepr] = {
+        // UDTs (currently only used by cassandra) are created as tables even though there is an encoder for them.
+        if (isConstantType(tpe))
+          Some(tpe)
+        else if (tpe <:< TypeRepr.of[Udt])
+          None
+        else if (isType[AnyVal](tpe) && tpe.widen.typeSymbol.isCaseClass && anyValBehavior == AnyValBehavior.TreatAsValue)
+          Some(tpe)
+        else if (existsEncoderFor(tpe))
+          Some(tpe)
+        else
+          None
+      }
+    }
+
+    object ValueType {
+      def unapply(tpe: TypeRepr): Option[Quat] = {
+        tpe match
+          case AnyType(tpe) => Some(Quat.Generic)
+          case BooleanType(tpe) => Some(Quat.BooleanValue)
+          case OptionType(BooleanType(innerParam)) => Some(Quat.BooleanValue)
+          case DefiniteValue(tpe) => Some(Quat.Value)
+          case _ => None
+      }
+    }
+
+    object CaseClassType {
+      def unapply(tpe: TypeRepr): Option[Quat] = {
+        tpe match
+          case CaseClassBaseType(name, fields) if !existsEncoderFor(tpe) || tpe <:< TypeRepr.of[Udt] =>
+            Some(Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, ParseType.parseType(fieldType)) }))
+          case _ =>
+            None
+      }
     }
 
     object CoProduct {
@@ -435,7 +404,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
           case Some(ev) =>
             ev match
               case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-                  val coproductQuats = traverseCoproduct[elementTypes](Type.of[elementTypes])
+                  val coproductQuats = traverseCoproduct[elementTypes](TypeRepr.of[T])(Type.of[elementTypes])
                   val reduced = coproductQuats.reduce((q1, q2) => mergeQuats(q1, q2))
                   Some(reduced)
               case _ =>
@@ -466,11 +435,23 @@ trait QuatMakingBase(using val qctx: Quotes) {
             report.throwError(s"Could not match on type: ${tpe}")
         }
 
-      def traverseCoproduct[Types](types: Type[Types]): List[Quat] =
+      def traverseCoproduct[Types](parent: TypeRepr)(types: Type[Types]): List[Quat] =
+        val parentShow =
+          types match
+            case '[typeTpe] =>
+              TypeRepr.of[typeTpe].show
         types match
           case '[tpe *: tpes] =>
-            //println(s"Traversing coproducts: ${io.getquill.util.Format.TypeOf[tpe]}, and ${io.getquill.util.Format.TypeOf[tpes]}")
-            InferQuat.of[tpe] :: traverseCoproduct[tpes](Type.of[tpes])
+            val quat =
+              TypeRepr.of[tpe] match
+                case CaseClassType(quat) => quat
+                case ValueType(quat) => quat
+                case _ =>
+                  report.throwError(
+                    s"The Co-Product element ${TypeRepr.of[tpe].show} was not a Case Class or Value Type. Value-level " +
+                    s"Co-Products are not supported. Please write a decoder for it's parent-type ${parent.show}.")
+
+            InferQuat.of[tpe] :: traverseCoproduct[tpes](parent)(Type.of[tpes])
           case '[EmptyTuple] =>
             Nil
 
