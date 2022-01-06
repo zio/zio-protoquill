@@ -251,6 +251,7 @@ object QueryExecution:
      * i.e. have a staticState
      */
     def executeStatic[RawT: Type](state: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior): Expr[Res] =
+      VerifyFreeVariables(state.ast)
       val lifts = resolveLazyLiftsStatic(state.lifts)
 
       // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
@@ -389,6 +390,8 @@ object PrepareDynamicExecution:
       spliceBehavior match
         case SpliceBehavior.NeedsSplice => (spliceQuotations(quoted), gatherLifts(quoted))
         case SpliceBehavior.AlreadySpliced => (quoted.ast, quoted.lifts) // If already spliced, can skip all runtimeQuotes clauses since their asts have already been spliced, same with lifts
+
+    VerifyFreeVariables.runtime(splicedAst)
 
     // Pull out the all the Planter instances (for now they need to be EagerPlanters for Dynamic Queries)
     val lifts = gatheredLifts.map(lift => (lift.uid, lift)).toMap

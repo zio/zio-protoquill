@@ -8,7 +8,6 @@ import io.getquill.util.printer.AstPrinter
 import scala.deriving._
 import io.getquill.generic.GenericEncoder
 import io.getquill.parser.ParserFactory
-import io.getquill.parser.Parser.Implicits._
 import io.getquill.quotation.NonQuotedException
 import scala.annotation.compileTimeOnly
 import scala.compiletime.summonFrom

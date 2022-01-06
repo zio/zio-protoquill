@@ -15,18 +15,12 @@ import io.getquill.generic.GenericEncoder
 import io.getquill.generic.GenericDecoder
 import io.getquill.util.Format
 import io.getquill.generic.DecodingType
-
-// TODO Shuold not be using this 'Quoted', remove it
-case class Quoted[+T](val ast: io.getquill.ast.Ast)
-
-trait Value[T]
-
-// TODO Quat lifting so can return them from this function
+import io.getquill.Quoted
 
 inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
 
-object QuatMaking {
-  private class SimpleQuatMaker(using override val qctx: Quotes) extends QuatMakingBase(using qctx), QuatMaking
+object QuatMaking:
+  private class SimpleQuatMaker(using Quotes) extends QuatMakingBase with QuatMaking
   // TODO I don't think anyValBehavior is used anymore, try to remove it
   private def quatMaker(behavior: AnyValBehavior = AnyValBehavior.TreatAsValue)(using qctx: Quotes) =
     new SimpleQuatMaker {
@@ -71,10 +65,8 @@ object QuatMaking {
     val lookup = quatCache.get(tpe)
     lookup match
       case Some(value) =>
-        //println(s"---------------- SUCESSFULL LOOKUP OF: ${tpe}: ${value}")
         value
       case None =>
-        //println(s"-------!!!!!!!!! FAILED LOOKUP OF: ${tpe}")
         val quat = computeQuat()
         quatCache.put(tpe, quat)
         quat
@@ -82,12 +74,12 @@ object QuatMaking {
   enum AnyValBehavior:
     case TreatAsValue
     case TreatAsClass
-}
+end QuatMaking
 
-trait QuatMaking extends QuatMakingBase {
-  import qctx.reflect._
+trait QuatMaking extends QuatMakingBase:
 
-  override def existsEncoderFor(tpe: TypeRepr): Boolean =
+  override def existsEncoderFor(using Quotes)(tpe: quotes.reflect.TypeRepr): Boolean =
+    import quotes.reflect._
     // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
     def encoderComputation() = {
       tpe.asType match
@@ -129,122 +121,39 @@ trait QuatMaking extends QuatMakingBase {
     val output = QuatMaking.lookupIsEncodeable(tpe.widen)(encoderComputation)
     output
         //quotes.reflect.report.throwError(s"No type for: ${tpe}")
-}
+end QuatMaking
 
-trait QuatMakingBase(using val qctx: Quotes) {
-  import quotes.reflect._
+trait QuatMakingBase:
   import QuatMaking.AnyValBehavior
-
   def anyValBehavior: AnyValBehavior = AnyValBehavior.TreatAsValue
 
   // TODO Either can summon an Encoder[T] or quill 'Value[T]' so that we know it's a quat value and not a case class
-  def existsEncoderFor(tpe: TypeRepr): Boolean
+  def existsEncoderFor(using Quotes)(tpe: quotes.reflect.TypeRepr): Boolean
 
   object InferQuat:
-    def of[T](using TType[T]) = ofType(TypeRepr.of[T])
-    def ofExpr(expr: Expr[Any]) = ofType(expr.asTerm.tpe)
+    def of[T](using TType[T], Quotes) =
+      ofType(quotes.reflect.TypeRepr.of[T])
 
-    def ofType(tpe: TypeRepr): Quat = {
+    def ofExpr(expr: Expr[Any])(using Quotes) =
+      import quotes.reflect._
+      ofType(expr.asTerm.tpe)
 
-      val output = QuatMaking.lookupCache(tpe.widen)(() => ParseType.parseTopLevelType(tpe))
-      //println(s"*********** PARSED QUAT: ${output} ***********")
-      output
-    }
+    def ofType(using Quotes)(tpe: quotes.reflect.TypeRepr): Quat =
+      QuatMaking.lookupCache(tpe.widen)(() => ParseType.parseTopLevelType(tpe))
 
-    object ParseType:
-      def parseTopLevelType(tpe: TypeRepr): Quat =
-        tpe match {
-          case ValueType(quat) => quat
-
-          // If it is a query type, recurse into it
-          case QueryType(tpe) => parseType(tpe)
-
-          // For cases where the type is actually a parameter with type bounds
-          // and the upper bound is not final, assume that polymorphism is being used
-          // and that the user wants to extend a class e.g.
-          // trait Spirit { def grade: Int }
-          // case class Gin(grade: Int) extends Spirit
-          // def is80Prof[T <: Spirit] = quote { (spirit: Query[Spirit]) => spirit.filter(_.grade == 80) }
-          // run(is80Proof(query[Gin]))
-          // When processing is80Prof, we assume that Spirit is actually a base class to be extended
-
-          // TODO any way in dotty to find out if a class is final?
-          case Param(Signature(RealTypeBounds(lower, Deoption(upper)))) if (/*!upper.typeSymbol.isFinal &&*/ !existsEncoderFor(tpe)) =>
-            //println("========> TOP LEVEL Type Bound")
-            parseType(upper, true) match {
-              case p: Quat.Product => p.copy(tpe = Quat.Product.Type.Abstract)
-              case other           => other
-            }
-
-          // TODO any way in dotty to find out if a class is final?
-          case Param(RealTypeBounds(lower, Deoption(upper))) if (/*!upper.typeSymbol.isFinal && */ !existsEncoderFor(tpe)) =>
-            //println("========> TOP LEVEL Deoption Type Bound")
-            parseType(upper, true) match {
-              // TODO Put back after 3.6.0 release that actually has Quat.Product.Type.Abstract
-              //case p: Quat.Product => p.copy(tpe = Quat.Product.Type.Abstract)
-              case other           => other
-            }
-
-          case other =>
-            //println("========> NOT TOP LEVEL")
-            parseType(other)
-        }
-
-      /*
-      * Quat parsing has a top-level type parsing function and then secondary function which is recursed. This is because
-      * things like type boundaries (e.g.  type-bounds types (e.g. Query[T &lt;: BaseType]) should only be checked once
-      * at the top level.
-      */
-      def parseType(tpe: TypeRepr, boundedInterfaceType: Boolean = false): Quat =
-        tpe match {
-          case ValueType(quat) => quat
-
-          // This will happens for val-parsing situations e.g. where you have val (a,b) = (Query[A],Query[B]) inside a quoted block.
-          // In this situations, the CaseClassBaseType should activate first and recurse which will then hit this case clause.
-          case QueryType(tpe) =>
-            parseType(tpe)
-
-          case OptionType(innerParam) =>  parseType(innerParam)
-          case _ if (isNone(tpe)) => Quat.Null
-
-          // For other types of case classes (and if there does not exist an encoder for it)
-          // the exception to that is a cassandra UDT that we treat like an encodeable entity even if it has a parsed type
-          case CaseClassType(quat) => quat
-
-          // If we are already inside a bounded type, treat an arbitrary type as a interface list
-          case ArbitraryBaseType(name, fields) if (boundedInterfaceType) =>
-            Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
-
-          // If the quat is a coproduct, merge the sub quats that are recursively retrieved
-          case CoProduct(quat) => quat
-
-          // Is it a generic or does it have any generic parameters that have not been filled (e.g. is T not filled in Option[T] ?)
-          // TODO Improve by making specific flag check to see that it's a coproduct
-          case Param(tpe) =>
-            Quat.Generic
-
-          // Otherwise it's a terminal value
-          case _ =>
-            //Messages.trace(s"Could not infer SQL-type of ${tpe}, assuming it is a Unknown Quat.")
-            Quat.Unknown
-
-        }
-    end ParseType
-
-    def nonGenericMethods(tpe: TypeRepr) = {
+    def nonGenericMethods(using Quotes)(tpe: quotes.reflect.TypeRepr) =
       tpe.classSymbol.get.memberFields
         .filter(m => m.owner.name.toString != "Any" && m.owner.name.toString != "Object").map { param =>
-        (
-          param.name.toString,
-          tpe.memberType(param).simplified
+          (
+            param.name.toString,
+            tpe.memberType(param).simplified
 
-          // Look up the parameter only if needed. This is typically an expensive operation
-          //if (!param.isParameter) param.typeSignature else param.typeSignature.asSeenFrom(tpe, tpe.typeSymbol)
-        )
-      }.toList
-    }
+            // Look up the parameter only if needed. This is typically an expensive operation
+            //if (!param.isParameter) param.typeSignature else param.typeSignature.asSeenFrom(tpe, tpe.typeSymbol)
+          )
+        }.toList
 
-    def caseClassConstructorArgs(tpe: TypeRepr) = {
+    def caseClassConstructorArgs(using Quotes)(tpe: quotes.reflect.TypeRepr) =
       import io.getquill.util.Format
       //println(s"For: ${Format.TypeRepr(tpe)} case fields are: ${tpe.classSymbol.get.caseFields.map(p => s"'${p}'").toList}")
       // Note. One one constructor param list is supported due to Quat Generation Specifics. This is already the case in most situations.
@@ -257,69 +166,69 @@ trait QuatMakingBase(using val qctx: Quotes) {
           //if (!param.isParameter) param.typeSignature else param.typeSignature.asSeenFrom(tpe, tpe.typeSymbol)
         )
       }
-    }
 
-    object ArbitraryBaseType {
-      def unapply(tpe: TypeRepr): Option[(String, List[(String, TypeRepr)])] =
+    object ArbitraryBaseType:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[(String, List[(String, quotes.reflect.TypeRepr)])] =
         if (tpe.classSymbol.isDefined)
           Some((tpe.widen.typeSymbol.name.toString, nonGenericMethods(tpe.widen)))
         else
           None
-    }
 
-    extension (sym: Symbol)
-      def isCaseClass = sym.caseFields.length > 0
+    extension (using Quotes)(sym: quotes.reflect.Symbol)
+      def isCaseClass =
+        import quotes.reflect._
+        sym.caseFields.length > 0
 
-    object CaseClassBaseType {
-      def unapply(tpe: TypeRepr): Option[(String, List[(String, TypeRepr)])] =
+    object CaseClassBaseType:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[(String, List[(String, quotes.reflect.TypeRepr)])] =
         if (tpe.classSymbol.isDefined && tpe.widen.typeSymbol.isCaseClass)
           Some((tpe.widen.typeSymbol.name.toString, caseClassConstructorArgs(tpe.widen)))
         else
           None
-    }
 
-    object Signature {
-      def unapply(tpe: TypeRepr) =
-        Some(tpe.typeSymbol)
-    }
-
-    object OptionType {
-      def unapply(tpe: TypeRepr): Option[TypeRepr] =
-      // [Option[t]]  will yield 'Nothing if is pulled out of a non optional value'
+    object OptionType:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[quotes.reflect.TypeRepr] =
+        import quotes.reflect._
+        // [Option[t]]  will yield 'Nothing if is pulled out of a non optional value'
         if (tpe.is[Option[_]])
           tpe.asType match
-            case '[Option[t]] => Some(TypeRepr.of[t])
+            case '[Option[t]] =>
+              Some(TypeRepr.of[t])
             case _ => None
         else
           None
-    }
 
-    object Deoption {
-      def unapply(tpe: TypeRepr): Option[TypeRepr] =
+    object Deoption:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[quotes.reflect.TypeRepr] =
+        import quotes.reflect._
         if (isType[Option[_]](tpe))
           tpe.asType match
             case '[Option[t]] => Some(TypeRepr.of[t])
             case _ => Some(tpe)
         else
           Some(tpe)
-    }
 
-    def isGeneric(tpe: TypeRepr) = {
-      tpe.typeSymbol.isTypeParam || tpe.typeSymbol.isAliasType || tpe.typeSymbol.isAbstractType || tpe.typeSymbol.flags.is(Flags.Trait) || tpe.typeSymbol.flags.is(Flags.Abstract) || tpe.typeSymbol.flags.is(Flags.Param)
-    }
+    def isGeneric(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+      import quotes.reflect._
+      tpe.typeSymbol.isTypeParam ||
+        tpe.typeSymbol.isAliasType ||
+        tpe.typeSymbol.isAbstractType ||
+        tpe.typeSymbol.flags.is(Flags.Trait) ||
+        tpe.typeSymbol.flags.is(Flags.Abstract) ||
+        tpe.typeSymbol.flags.is(Flags.Param)
 
-    object Param {
-      def unapply(tpe: TypeRepr) =
+    object Param:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr) =
         if (isGeneric(tpe))
           Some(tpe)
         else
           None
-    }
 
-    object RealTypeBounds {
-      def unapply(tpe: TypeRepr) =
-      // TypeBounds matcher can throw and exception, need to catch it here
-      // so it doesn't blow up compilation
+    object RealTypeBounds:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+        import quotes.reflect._
+        // TypeBounds matcher can throw and exception, need to catch it here
+        // so it doesn't blow up compilation
         try {
           tpe match {
             case TypeBounds(lower, upper) =>
@@ -330,35 +239,55 @@ trait QuatMakingBase(using val qctx: Quotes) {
         } catch {
           case e => None
         }
-    }
 
-    object AnyType {
-      def unapply(tpe: TypeRepr): Option[TypeRepr] =
+    object AnyType:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[quotes.reflect.TypeRepr] =
+        import quotes.reflect._
         if (tpe =:= TypeRepr.of[Any] || tpe.widen =:=  TypeRepr.of[Any])
           Some(tpe)
         else
           None
-    }
 
-    object BooleanType {
-      def unapply(tpe: TypeRepr): Option[TypeRepr] =
+    object BooleanType:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[quotes.reflect.TypeRepr] =
+        import quotes.reflect._
         if (tpe.is[Boolean])
           Some(tpe)
         else
           None
-    }
 
-    def isConstantType(tpe: TypeRepr) =
+    object ValueType:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[Quat] =
+        import quotes.reflect._
+        tpe match
+          case AnyType(tpe) => Some(Quat.Generic)
+          case BooleanType(tpe) => Some(Quat.BooleanValue)
+          case OptionType(BooleanType(innerParam)) => Some(Quat.BooleanValue)
+          case DefiniteValue(tpe) => Some(Quat.Value)
+          case _ => None
+
+    object CaseClassType:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[Quat] =
+        import quotes.reflect._
+        tpe match
+          case CaseClassBaseType(name, fields) if !existsEncoderFor(tpe) || tpe <:< TypeRepr.of[Udt] =>
+            Some(Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, ParseType.parseType(fieldType)) }))
+          case _ =>
+            None
+
+    def isConstantType(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+      import quotes.reflect._
       (tpe.is[Boolean] ||
-        tpe.is[String] ||
-        tpe.is[Int] ||
-        tpe.is[Long] ||
-        tpe.is[Float] ||
-        tpe.is[Double] ||
-        tpe.is[Byte])
+      tpe.is[String] ||
+      tpe.is[Int] ||
+      tpe.is[Long] ||
+      tpe.is[Float] ||
+      tpe.is[Double] ||
+      tpe.is[Byte])
 
     object DefiniteValue {
-      def unapply(tpe: TypeRepr): Option[TypeRepr] = {
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[quotes.reflect.TypeRepr] = {
+        import quotes.reflect._
         // UDTs (currently only used by cassandra) are created as tables even though there is an encoder for them.
         if (isConstantType(tpe))
           Some(tpe)
@@ -373,33 +302,85 @@ trait QuatMakingBase(using val qctx: Quotes) {
       }
     }
 
-    object ValueType {
-      def unapply(tpe: TypeRepr): Option[Quat] = {
+    object ParseType:
+      def parseTopLevelType(using Quotes)(tpe: quotes.reflect.TypeRepr): Quat =
+        import quotes.reflect.{Signature => _, _}
         tpe match
-          case AnyType(tpe) => Some(Quat.Generic)
-          case BooleanType(tpe) => Some(Quat.BooleanValue)
-          case OptionType(BooleanType(innerParam)) => Some(Quat.BooleanValue)
-          case DefiniteValue(tpe) => Some(Quat.Value)
-          case _ => None
-      }
-    }
+          case ValueType(quat) => quat
+          // If it is a query type, recurse into it
+          case QueryType(tpe) => parseType(tpe)
 
-    object CaseClassType {
-      def unapply(tpe: TypeRepr): Option[Quat] = {
+          // For cases where the type is actually a parameter with type bounds
+          // and the upper bound is a trait or abstract class, assume that polymorphism is being used
+          // and that the user wants to extend a class e.g.
+          // trait Spirit { def grade: Int }
+          // case class Gin(grade: Int) extends Spirit
+          // def is80Prof[T <: Spirit] = quote { (spirit: Query[Spirit]) => spirit.filter(_.grade == 80) }
+          // run(is80Proof(query[Gin]))
+          // When processing is80Prof, we assume that Spirit is actually a base class to be extended
+          case Param(RealTypeBounds(lower, Deoption(upper))) if (upper.isAbstract && !existsEncoderFor(tpe)) =>
+            parseType(upper, true) match {
+              case p: Quat.Product => p.copy(tpe = Quat.Product.Type.Abstract)
+              case other           => other
+            }
+
+          case other => parseType(other)
+      end parseTopLevelType
+
+      extension (using Quotes)(tpe: quotes.reflect.TypeRepr)
+        def isAbstract =
+          import quotes.reflect._
+          val flags = tpe.typeSymbol.flags
+          flags.is(Flags.Trait) || flags.is(Flags.Abstract)
+
+      /*
+      * Quat parsing has a top-level type parsing function and then secondary function which is recursed. This is because
+      * things like type boundaries (e.g.  type-bounds types (e.g. Query[T &lt;: BaseType]) should only be checked once
+      * at the top level.
+      */
+      def parseType(using Quotes)(tpe: quotes.reflect.TypeRepr, boundedInterfaceType: Boolean = false): Quat =
+        import quotes.reflect._
         tpe match
+          case ValueType(quat) => quat
+
+          // This will happens for val-parsing situations e.g. where you have val (a,b) = (Query[A],Query[B]) inside a quoted block.
+          // In this situations, the CaseClassBaseType should activate first and recurse which will then hit this case clause.
+          case QueryType(tpe) => parseType(tpe)
+
+          // If the type is optional, recurse
+          case OptionType(innerParam) => parseType(innerParam)
+          case _ if (isNone(tpe)) => Quat.Null
+
+          // For other types of case classes (and if there does not exist an encoder for it)
+          // the exception to that is a cassandra UDT that we treat like an encodeable entity even if it has a parsed type
           case CaseClassBaseType(name, fields) if !existsEncoderFor(tpe) || tpe <:< TypeRepr.of[Udt] =>
-            Some(Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, ParseType.parseType(fieldType)) }))
-          case _ =>
-            None
-      }
-    }
+            Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
 
-    object CoProduct {
+          // If we are already inside a bounded type, treat an arbitrary type as a interface list
+          case ArbitraryBaseType(name, fields) if (boundedInterfaceType) =>
+            Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
+
+          // If the quat is a coproduct, merge the sub quats that are recursively retrieved
+          case CoProduct(quat) => quat
+
+          // Is it a generic or does it have any generic parameters that have not been filled (e.g. is T not filled in Option[T] ?)
+          // TODO Improve by making specific flag check to see that it's a coproduct
+          case Param(tpe) => Quat.Generic
+
+          // Otherwise it's a terminal value
+          case _ =>
+            Messages.trace(s"Could not infer SQL-type of ${tpe}, assuming it is a Unknown Quat.")
+            Quat.Unknown
+        end match
+    end ParseType
+
+    object CoProduct:
       import io.getquill.quat.LinkedHashMapOps._
       import scala.deriving._
       import scala.quoted._
 
-      def computeCoproduct[T](using tpe: Type[T]): Option[Quat] = {
+      def computeCoproduct[T](using tpe: Type[T])(using Quotes): Option[Quat] = {
+        import quotes.reflect._
         Expr.summon[Mirror.Of[T]] match
           case Some(ev) =>
             ev match
@@ -414,14 +395,16 @@ trait QuatMakingBase(using val qctx: Quotes) {
             None
       }
 
-      def isSealedTraitOrEnum(tpe: TypeRepr) =
+      def isSealedTraitOrEnum(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+        import quotes.reflect._
         val flags = tpe.typeSymbol.flags
         (flags.is(Flags.Trait) && flags.is(Flags.Sealed)) || flags.is(Flags.Enum)
 
-      def unapply(tpeRepr: TypeRepr) =
+      def unapply(using Quotes)(tpeRepr: quotes.reflect.TypeRepr) =
+        import quotes.reflect._
         // If you don't widen the exception happens: "Could not match on type: Type.of[...]
         val tpe = tpeRepr.widen.asType
-        tpe match {
+        tpe match
           // Skip optional types, they have a special case
           case _ if (tpeRepr <:< TypeRepr.of[Option[_]]) =>
             None
@@ -433,9 +416,9 @@ trait QuatMakingBase(using val qctx: Quotes) {
             computeCoproduct[t](using typedTpe)
           case _ =>
             report.throwError(s"Could not match on type: ${tpe}")
-        }
 
-      def traverseCoproduct[Types](parent: TypeRepr)(types: Type[Types]): List[Quat] =
+      def traverseCoproduct[Types](using Quotes)(parent: quotes.reflect.TypeRepr)(types: Type[Types]): List[Quat] =
+        import quotes.reflect._
         types match
           case '[tpe *: tpes] =>
             val quat =
@@ -447,7 +430,7 @@ trait QuatMakingBase(using val qctx: Quotes) {
                     s"The Co-Product element ${TypeRepr.of[tpe].show} was not a Case Class or Value Type. Value-level " +
                     s"Co-Products are not supported. Please write a decoder for it's parent-type ${parent.show}.")
 
-            InferQuat.of[tpe] :: traverseCoproduct[tpes](parent)(Type.of[tpes])
+            quat :: traverseCoproduct[tpes](parent)(Type.of[tpes])
           case '[EmptyTuple] =>
             Nil
 
@@ -468,40 +451,37 @@ trait QuatMakingBase(using val qctx: Quotes) {
               case Some(value) => value
               // TODO Get field names for these quats if they are inside something else?
               case None => throw new IllegalArgumentException(s"Could not create coproduct by merging quats ${q1} and ${q2}")
+    end CoProduct
 
-    }
-
-    object QuotedType {
-      def unapply(tpe: TypeRepr) =
+    object QuotedType:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+        import quotes.reflect._
         tpe.asType match
           case '[Quoted[t]] => Some(TypeRepr.of[t])
           case _ => None
-    }
 
-    object QueryType {
-      def unapply(tpe: TypeRepr) =
+    object QueryType:
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+        import quotes.reflect._
         if (isType[Query[_]](tpe))
           tpe.asType match
             case '[Query[t]] =>
               val out = TypeRepr.of[t]
-              //println(s"&&&&&&&&&&& DeQuery: ${out}")
-              //println(s"Subtype of bool: ${out <:< TypeRepr.of[Boolean]}")
               Some(out)
             case _ => None
         else
           None
-    }
 
-    def isNone(tpe: TypeRepr) = {
-      val era = tpe//.erasure
-      era =:= TypeRepr.of[None.type]
-    }
+    def isNone(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+      import quotes.reflect._
+      tpe =:= TypeRepr.of[None.type]
 
-    extension (tpe: TypeRepr)
+    extension (using Quotes)(tpe: quotes.reflect.TypeRepr)
       def is[T](using TType[T]) = isType[T](tpe)
 
-    private[getquill] def isType[T](tpe: TypeRepr)(implicit tt: TType[T]) =
+    private[getquill] def isType[T](using Quotes)(tpe: quotes.reflect.TypeRepr)(using tt: TType[T]) =
+      import quotes.reflect._
       tpe <:< TypeRepr.of[T] && !(tpe =:= TypeRepr.of[Nothing])
 
   end InferQuat
-}
+end QuatMakingBase

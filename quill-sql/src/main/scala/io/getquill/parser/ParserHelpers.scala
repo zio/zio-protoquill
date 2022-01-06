@@ -18,41 +18,44 @@ import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
 import io.getquill.metaprog.Extractors._
 import io.getquill.ast
+import io.getquill.parser.engine._
+import io.getquill.quat.QuatMakingBase
 
-object ParserHelpers {
+object ParserHelpers:
 
-  trait Idents extends QuatMaking {
-    import qctx.reflect.{Ident => TIdent, ValDef => TValDef, _}
+  trait Helpers(using Quotes) extends Idents with QuatMaking with QuatMakingBase
 
-    def cleanIdent(name: String, quat: Quat): AIdent = AIdent(name.replace("_$", "x"), quat)
-    def cleanIdent(name: String, tpe: TypeRepr): AIdent = AIdent(name.replace("_$", "x"), InferQuat.ofType(tpe))
-  }
+  trait Idents extends QuatMaking:
+    def cleanIdent(name: String, quat: Quat): AIdent =
+      AIdent(name.replace("_$", "x"), quat)
+    def cleanIdent(using Quotes)(name: String, tpe: quotes.reflect.TypeRepr): AIdent =
+      AIdent(name.replace("_$", "x"), InferQuat.ofType(tpe))
 
-  trait Assignments extends Idents {
-    import qctx.reflect.{Ident => TIdent, ValDef => TValDef, _}
-    import Parser.Implicits._
+  trait Assignments extends Idents:
+
     import io.getquill.util.Interpolator
     import io.getquill.util.Messages.TraceType
     import io.getquill.norm.BetaReduction
     import io.getquill.metaprog.Extractors.ArrowFunction
 
-    def astParse: SealedParser[Ast]
+    def rootParse: Parser
 
     object AssignmentTerm:
       object Components:
-        def unapply(expr: Expr[_]) =
+        def unapply(expr: Expr[_])(using Quotes) =
           UntypeExpr(expr) match
             case Lambda1(ident, identTpe, ArrowFunction(prop, value)) => Some((ident, identTpe, prop, value))
             case _ => None
 
       object TwoComponents:
-        def unapply(expr: Expr[_]) =
+        def unapply(expr: Expr[_])(using Quotes) =
           UntypeExpr(expr) match
             case Lambda2(ident1, identTpe1, ident2, identTpe2, ArrowFunction(prop, value)) => Some((ident1, identTpe1, ident2, identTpe2, prop, value))
             case _ => None
 
       object CheckTypes:
-        def checkPropAndValue(parent: Expr[Any], prop: Expr[Any], value: Expr[Any]) =
+        def checkPropAndValue(parent: Expr[Any], prop: Expr[Any], value: Expr[Any])(using Quotes) =
+          import quotes.reflect._
           val valueTpe = value.asTerm.tpe.widen
           val propTpe = prop.asTerm.tpe.widen
           // If both numbers are numeric and primitive e.g. `_.age -> 22.toShort` (in: `query[Person].insert(_.age -> 22.toShort)`)
@@ -66,7 +69,8 @@ object ParserHelpers {
           else if (!(valueTpe <:< propTpe)) {
             report.throwError(s"The ${Format.TypeRepr(valueTpe)} value ${Format.Expr(value)} cannot be assigned to the ${Format.TypeRepr(propTpe)} property ${Format.Expr(prop)} because they are not the same type (or a subtype).", parent)
           }
-        def apply(expr: Expr[_]) =
+        def apply(expr: Expr[_])(using Quotes) =
+          import quotes.reflect._
           expr match
             case Components(_, _, prop, value) => checkPropAndValue(expr, prop, value)
             case TwoComponents(_, _, _, _, prop, value) => checkPropAndValue(expr, prop, value)
@@ -74,50 +78,50 @@ object ParserHelpers {
               report.throwError(s"The assignment statement ${Format.Expr(expr)} is invalid.")
       end CheckTypes
 
-      def OrFail(expr: Expr[_]) =
-        unapply(expr).getOrElse { Parser.throwExpressionError(expr, classOf[Assignment]) }
+      def OrFail(expr: Expr[_])(using Quotes, History) =
+        unapply(expr).getOrElse { ParserError(expr, classOf[Assignment]) }
 
-      def unapply(expr: Expr[_]): Option[Assignment] =
+      def unapply(expr: Expr[_])(using Quotes, History): Option[Assignment] =
         UntypeExpr(expr) match
           case Components(ident, identTpe, prop, value) =>
-            Some(Assignment(cleanIdent(ident, identTpe), astParse(prop), astParse(value)))
+            Some(Assignment(cleanIdent(ident, identTpe), rootParse(prop), rootParse(value)))
           case _ => None
 
       object Double:
-        def OrFail(expr: Expr[_]) =
-          unapply(expr).getOrElse { Parser.throwExpressionError(expr, classOf[AssignmentDual]) }
-        def unapply(expr: Expr[_]): Option[AssignmentDual] =
+        def OrFail(expr: Expr[_])(using Quotes, History) =
+          unapply(expr).getOrElse { ParserError(expr, classOf[AssignmentDual]) }
+        def unapply(expr: Expr[_])(using Quotes, History): Option[AssignmentDual] =
           UntypeExpr(expr) match
              case TwoComponents(ident1, identTpe1, ident2, identTpe2, prop, value) =>
                 val i1 = cleanIdent(ident1, identTpe1)
                 val i2 = cleanIdent(ident2, identTpe2)
-                val valueAst = Transform(astParse(value)) {
+                val valueAst = Transform(rootParse(value)) {
                   case `i1` => OnConflict.Existing(i1)
                   case `i2` => OnConflict.Excluded(i2)
                 }
-                Some(AssignmentDual(i1, i2, astParse(prop), valueAst))
+                Some(AssignmentDual(i1, i2, rootParse(prop), valueAst))
              case _ => None
 
 
     end AssignmentTerm
-  }
+  end Assignments
 
   trait PropertyParser(implicit val qctx: Quotes) {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import io.getquill.Embedded
 
-    def astParse: SealedParser[Ast]
+    def rootParse: Parser
 
     // Parses (e:Entity) => e.foo (or e.foo.bar etc...)
     object LambdaToProperty:
       object OrFail:
-        def apply(expr: Expr[_]): Property =
+        def apply(expr: Expr[_])(using History): Property =
           unapply(expr) match
             case Some(value) => value
             case None =>
               report.throwError(s"Could not parse a (x) => x.property expression from: ${Format.Expr(expr)}", expr)
 
-      def unapply(expr: Expr[_]): Option[Property] =
+      def unapply(expr: Expr[_])(using History): Option[Property] =
         expr match
           case Lambda1(id, tpe, body) =>
             val bodyProperty = AnyProperty.OrFail(body)
@@ -128,39 +132,39 @@ object ParserHelpers {
 
     object AnyProperty:
       object OrFail:
-        def apply(expr: Expr[_]): Property =
+        def apply(expr: Expr[_])(using History): Property =
           unapply(expr) match
             case Some(value) => value
             case None =>
               report.throwError(s"Could not parse a ast.Property from the expression: ${Format.Expr(expr)}", expr)
 
-      def unapply(expr: Expr[_]): Option[Property] =
+      def unapply(expr: Expr[_])(using History): Option[Property] =
         expr match
           case Unseal(value @ Select(Seal(prefix), member)) =>
             if (value.tpe <:< TypeRepr.of[Embedded]) {
-              Some(Property.Opinionated(astParse(prefix), member, Renameable.ByStrategy, Visibility.Hidden))
+              Some(Property.Opinionated(rootParse(prefix), member, Renameable.ByStrategy, Visibility.Hidden))
             } else {
               //println(s"========= Parsing Property ${prefix.show}.${member} =========")
-              Some(Property(astParse(prefix), member))
+              Some(Property(rootParse(prefix), member))
             }
           case _ => None
     end AnyProperty
   }
 
 
-  trait PropertyAliases(implicit val qctx: Quotes) {
+  trait PropertyAliases(using Quotes) {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
-    import Parser.Implicits._
+
     import io.getquill.util.Interpolator
     import io.getquill.util.Messages.TraceType
     import io.getquill.norm.BetaReduction
 
-    def astParse: SealedParser[Ast]
+    def rootParse: Parser
 
     object PropertyAliasExpr {
       def OrFail[T: Type](expr: Expr[Any]) = expr match
           case PropertyAliasExpr(propAlias) => propAlias
-          case _ => Parser.throwExpressionError(expr, classOf[PropertyAlias])
+          case _ => ParserError(expr, classOf[PropertyAlias])
 
       def unapply[T: Type](expr: Expr[Any]): Option[PropertyAlias] = expr match
         case Lambda1(_, _, '{ ($prop: Any).->[v](${ConstExpr(alias: String)}) } ) =>
@@ -185,12 +189,10 @@ object ParserHelpers {
    * of different equality paradigms across ANSI-SQL and Scala for objects that may be Optional or not. Several
    * techniques are implemented to resolve these inconsistencies.
    */
-  trait ComparisonTechniques(implicit val qctx: Quotes) {
-    import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
-    import Parser.Implicits._
+  trait ComparisonTechniques:
 
     // To be able to access the external parser the extends this
-    def astParse: SealedParser[Ast]
+    def rootParse: Parser
 
     sealed trait EqualityBehavior { def operator: BinaryOperator }
     case object Equal extends EqualityBehavior { def operator: BinaryOperator = EqualityOperator.`==` }
@@ -201,13 +203,14 @@ object ParserHelpers {
      * is not macro specific so a good deal of it can be refactored out into the quill-sql-portable module.
      * Do equality checking on the database level with the same truth-table as idiomatic scala
      */
-    def equalityWithInnerTypechecksIdiomatic(left: Term, right: Term)(equalityBehavior: EqualityBehavior) = {
+    def equalityWithInnerTypechecksIdiomatic(using Quotes, History)(left: quotes.reflect.Term, right: quotes.reflect.Term)(equalityBehavior: EqualityBehavior) =
+      import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
       import io.getquill.ast.Implicits._
       val (leftIsOptional, rightIsOptional) = checkInnerTypes(left, right, ForbidInnerCompare)
-      val a = astParse(left.asExpr)
-      val b = astParse(right.asExpr)
+      val a = rootParse(left.asExpr)
+      val b = rootParse(right.asExpr)
       val comparison = BinaryOperation(a, equalityBehavior.operator, b)
-      (leftIsOptional, rightIsOptional, equalityBehavior) match {
+      (leftIsOptional, rightIsOptional, equalityBehavior) match
         // == two optional things. Either they are both null or they are both defined and the same
         case (true, true, Equal)    => (OptionIsEmpty(a) +&&+ OptionIsEmpty(b)) +||+ (OptionIsDefined(a) +&&+ OptionIsDefined(b) +&&+ comparison)
         // != two optional things. Either one is null and the other isn't. Or they are both defined and have different values
@@ -215,31 +218,27 @@ object ParserHelpers {
         // No additional logic when both sides are defined
         case (false, false, _)      => comparison
         // Comparing an optional object with a non-optional object is not allowed when using scala-idiomatic optional behavior
-        case (lop, rop, _) => {
+        case (lop, rop, _) =>
           val lopString = (if (lop) "Optional" else "Non-Optional") + s" ${left}}"
           val ropString = (if (rop) "Optional" else "Non-Optional") + s" ${right}}"
           report.throwError(s"Cannot compare ${lopString} with ${ropString} using operator ${equalityBehavior.operator}", left.asExpr)
-        }
-      }
-    }
 
     /**
      * (not used yet but will be used when support for 'extras' dsl functionality is added)
      * Do equality checking on the database level with the ansi-style truth table (i.e. always false if one side is null)
      */
-    def equalityWithInnerTypechecksAnsi(left: Term, right: Term)(equalityBehavior: EqualityBehavior) = {
+    def equalityWithInnerTypechecksAnsi(using Quotes, History)(left: quotes.reflect.Term, right: quotes.reflect.Term)(equalityBehavior: EqualityBehavior) =
+      import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
       import io.getquill.ast.Implicits._
       val (leftIsOptional, rightIsOptional) = checkInnerTypes(left, right, AllowInnerCompare)
-      val a = astParse(left.asExpr)
-      val b = astParse(right.asExpr)
+      val a = rootParse(left.asExpr)
+      val b = rootParse(right.asExpr)
       val comparison = BinaryOperation(a, equalityBehavior.operator, b)
-      (leftIsOptional, rightIsOptional) match {
+      (leftIsOptional, rightIsOptional) match
         case (true, true)   => OptionIsDefined(a) +&&+ OptionIsDefined(b) +&&+ comparison
         case (true, false)  => OptionIsDefined(a) +&&+ comparison
         case (false, true)  => OptionIsDefined(b) +&&+ comparison
         case (false, false) => comparison
-      }
-    }
 
     trait OptionCheckBehavior
     /** Allow T == Option[T] comparison **/
@@ -254,7 +253,8 @@ object ParserHelpers {
      * the 'weak conformance' operator is used and a subclass is allowed on either side of the `==`. Weak
      * conformance is necessary so that Longs can be compared to Ints etc...
      */
-    def checkInnerTypes(lhs: Term, rhs: Term, optionCheckBehavior: OptionCheckBehavior): (Boolean, Boolean) = {
+    def checkInnerTypes(using Quotes)(lhs: quotes.reflect.Term, rhs: quotes.reflect.Term, optionCheckBehavior: OptionCheckBehavior): (Boolean, Boolean) =
+      import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
       val leftType = lhs.tpe
       val rightType = rhs.tpe
       // Note that this only goes inside the optional one level i.e. Option[T] => T. If we have Option[Option[T]] it will return the inside Option[T].
@@ -268,7 +268,7 @@ object ParserHelpers {
       val rightIsOptional = isOptionType(rightType) && !(rightType.widen =:= TypeRepr.of[Nothing]) && !(rightType.widen =:= TypeRepr.of[Null])
       val typesMatch = wideMatchTypes(rightInner, leftInner)
 
-      optionCheckBehavior match {
+      optionCheckBehavior match
         case AllowInnerCompare if typesMatch =>
           (leftIsOptional, rightIsOptional)
         case ForbidInnerCompare if ((leftIsOptional && rightIsOptional) || (!leftIsOptional && !rightIsOptional)) && typesMatch =>
@@ -278,10 +278,12 @@ object ParserHelpers {
             report.throwError(s"${Format.TypeReprW(leftType)} == ${Format.TypeReprW(rightType)} is not allowed since ${Format.TypeReprW(leftInner)}, ${Format.TypeReprW(rightInner)} are different types.", lhs.asExpr)
           else
             report.throwError(s"${Format.TypeReprW(leftType)} == ${Format.TypeReprW(rightType)} is not allowed since they are different types.", lhs.asExpr)
-      }
-    }
 
-    def isOptionType(tpe: TypeRepr) = tpe <:< TypeRepr.of[Option[_]]
+    end checkInnerTypes
+
+    def isOptionType(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+      import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
+      tpe <:< TypeRepr.of[Option[_]]
 
     /**
      * Match types in the most wide way possible. This function is not for generalized type equality since quill does not directly
@@ -292,29 +294,29 @@ object ParserHelpers {
      * two numeric types of any kind etc... we allow the comparison to happen).
      * For int/long/float/double comparisons don't crash on compile-time typing can re-evaluate this upon user feedback
      */
-    def wideMatchTypes(a: TypeRepr, b: TypeRepr) =
+    def wideMatchTypes(using Quotes)(a: quotes.reflect.TypeRepr, b: quotes.reflect.TypeRepr) =
       a.widen =:= b.widen || a.widen <:< b.widen || b.widen <:< a.widen || (isNumeric(a.widen) && isNumeric(b.widen))
 
-    def innerOptionParam(tpe: TypeRepr): TypeRepr =
+    def innerOptionParam(using Quotes)(tpe: quotes.reflect.TypeRepr): quotes.reflect.TypeRepr =
+      import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
       if (tpe <:< TypeRepr.of[Option[_]])
         tpe.asType match
           case '[Option[t]] => TypeRepr.of[t]
       else
         tpe
-  }
+  end ComparisonTechniques
 
-  trait PatternMatchingValues(implicit override val qctx: Quotes) extends QuatMaking {
-    import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
-    import Parser.Implicits._
+  trait PatternMatchingValues extends Parser with QuatMaking:
     import io.getquill.util.Interpolator
     import io.getquill.util.Messages.TraceType
     import io.getquill.norm.BetaReduction
 
-    def astParse: SealedParser[Ast]
+    def rootParse: Parser
 
     // don't change to ValDef or might override the real valdef in qctx.reflect
     object ValDefTerm {
-      def unapply(tree: Tree): Option[Ast] =
+      def unapply(using Quotes, History)(tree: quotes.reflect.Tree): Option[Ast] =
+        import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
         tree match {
           case TValDef(name, tpe, Some(t @ PatMatchTerm.SimpleClause(ast))) =>
             println(s"====== Parsing Val Def ${name} = ${t.show}")
@@ -336,7 +338,7 @@ object ParserHelpers {
                 case None => report.throwError(s"Cannot parse 'val' clause with no '= rhs' (i.e. equals and right hand side) of ${Printer.TreeStructure.show(tree)}")
                 case Some(rhs) => rhs
               }
-            val bodyAst = astParse(body.asExpr)
+            val bodyAst = rootParse(body.asExpr)
             Some(Val(AIdent(name, InferQuat.ofType(tpe.tpe)), bodyAst))
 
           case TValDef(name, tpe, rhsOpt) =>
@@ -346,7 +348,7 @@ object ParserHelpers {
                 case None => report.throwError(s"Cannot parse 'val' clause with no '= rhs' (i.e. equals and right hand side) of ${Printer.TreeStructure.show(tree)}")
                 case Some(rhs) => rhs
               }
-            val bodyAst = astParse(body.asExpr)
+            val bodyAst = rootParse(body.asExpr)
             Some(Val(AIdent(name, InferQuat.ofType(tpe.tpe)), bodyAst))
 
           case _ => None
@@ -365,12 +367,13 @@ object ParserHelpers {
 
     object PatMatchTerm:
       object SimpleClause:
-        def unapply(term: Term): Option[Ast] =
+        def unapply(using Quotes, History)(term: quotes.reflect.Term): Option[Ast] =
           PatMatchTerm.unapply(term) match
             case Some(PatMatch.SimpleClause(ast)) => Some(ast)
             case _ => None
 
-      def unapply(root: Term): Option[PatMatch] =
+      def unapply(using Quotes, History)(root: quotes.reflect.Term): Option[PatMatch] =
+        import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
         root match
           case Match(expr, List(CaseDef(fields, None, body))) =>
             Some(PatMatch.SimpleClause(betaReduceTupleFields(expr, fields)(body)))
@@ -403,10 +406,11 @@ object ParserHelpers {
      * becomes reduced to:
      * ptups.map { x => fun(x.name, x.age) }
      */
-    protected def betaReduceTupleFields(tupleTree: Term, fieldsTree: Tree, messageExpr: Option[Term] = None)(bodyTree: Term): Ast = {
+    protected def betaReduceTupleFields(using Quotes, History)(tupleTree: quotes.reflect.Term, fieldsTree: quotes.reflect.Tree, messageExpr: Option[quotes.reflect.Term] = None)(bodyTree: quotes.reflect.Term): Ast = {
+      import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
       // TODO Need to verify that this is actually a tuple?
-      val tuple = astParse(tupleTree.asExpr)
-      val bodyRaw = astParse(bodyTree.asExpr)
+      val tuple = rootParse(tupleTree.asExpr)
+      val bodyRaw = rootParse(bodyTree.asExpr)
       // In some cases the body expression itself is so complex it needs to be beta-reduced before we start
       // beta reducing the pat match tuples otherwise some issues can happen. This was discovered in the DepartmentsSpec tests
       val body = BetaReduction(bodyRaw)
@@ -461,6 +465,6 @@ object ParserHelpers {
       trace"Result: ${result}".andLog()
       result
     }
-  }
+  end PatternMatchingValues
 
-}
+end ParserHelpers

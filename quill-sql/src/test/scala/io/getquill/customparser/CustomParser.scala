@@ -2,11 +2,12 @@ package io.getquill.customparser
 
 import io.getquill.parser.ParserLibrary
 import scala.quoted._
-import io.getquill.parser.Parser
 import io.getquill.parser.OperationsParser
 import io.getquill.ast.Ast
 import io.getquill.ast.Infix
 import io.getquill.quat.Quat
+import io.getquill.parser.engine.ParserChain
+import io.getquill.parser.engine.Parser
 
 object CustomOps {
   extension (i: Int)
@@ -14,17 +15,16 @@ object CustomOps {
 }
 
 object CustomParser extends ParserLibrary:
-  import Parser._
-  override def operationsParser(using qctx: Quotes) =
-    Series.of(new OperationsParser, new CustomOperationsParser)
+  override def operationsParser(using Quotes) =
+    ParserChain.attempt(OperationsParser(_)) orElse
+      ParserChain.attempt(CustomOperationsParser(_))
 
-case class CustomOperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+class CustomOperationsParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
   import quotes.reflect._
   import CustomOps._
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
-  def delegate: PartialFunction[Expr[_], Ast] =
+  def attempt =
     case '{ ($i: Int)**($j: Int) } =>
       Infix(
         List("power(", " ,", ")"),
-        List(astParse(i), astParse(j)), true, Quat.Value)
+        List(rootParse(i), rootParse(j)), true, Quat.Value)
 }
