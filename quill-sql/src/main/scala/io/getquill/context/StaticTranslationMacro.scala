@@ -48,10 +48,7 @@ object StaticTranslationMacro {
     def noRuntimeQuotations(ast: Ast) =
       CollectAst.byType[QuotationTag](ast).isEmpty
 
-    // val queryMeta =
-    //   Expr.summon[QueryMeta]
-
-    val unliftedAst = Unlifter.apply(astExpr)
+    val unliftedAst = VerifyFreeVariables(Unlifter(astExpr))
 
     if (noRuntimeQuotations(unliftedAst)) {
       val expandedAst = wrap match

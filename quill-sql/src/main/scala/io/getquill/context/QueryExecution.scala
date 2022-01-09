@@ -251,7 +251,6 @@ object QueryExecution:
      * i.e. have a staticState
      */
     def executeStatic[RawT: Type](state: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior): Expr[Res] =
-      VerifyFreeVariables(state.ast)
       val lifts = resolveLazyLiftsStatic(state.lifts)
 
       // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
