@@ -70,7 +70,9 @@ object Execution:
       case None =>
         Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]] match
           case Some(decoder) => decoder
-          case None => report.throwError(s"Decoder could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
+          case None =>
+            println(s"Error summoning Decoder: could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
+            report.throwError(s"Decoder could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
 
   /** See if there there is a QueryMeta mapping T to some other type RawT */
   def summonQueryMetaTypeIfExists[T: Type](using Quotes) =
