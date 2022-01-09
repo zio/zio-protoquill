@@ -53,9 +53,9 @@ object Format {
   }
 
   object Expr {
-    def apply(expr: Expr[_])(using Quotes) =
+    def apply(expr: Expr[_], showErrorTrace: Boolean = false)(using Quotes) =
       import quotes.reflect._
-      Format(Printer.TreeShortCode.show(expr.asTerm))
+      Format(Printer.TreeShortCode.show(expr.asTerm), showErrorTrace)
 
     def Detail(expr: Expr[_])(using Quotes) =
       import quotes.reflect._
@@ -72,7 +72,7 @@ object Format {
       }
   }
 
-  def apply(code: String) = {
+  def apply(code: String, showErrorTrace: Boolean = false) = {
       val encosedCode =
         s"""|object DummyEnclosure {
             |  ${code}
@@ -84,7 +84,9 @@ object Format {
         val lines =
           enclosedCode
             .replaceFirst("^object DummyEnclosure \\{", "")
+            .reverse
             .replaceFirst("\\}", "")
+            .reverse
             .split("\n")
         val linesTrimmedFirst = if (lines.head == "") lines.drop(1) else lines
         // if there was a \n} on the last line, remove the }
@@ -95,19 +97,6 @@ object Format {
         else
           linesTrimmedLast.mkString("\n")
 
-      extension [T](t: Try[T])
-        def toOptionMsg = t match
-          case Success(v) => Some(v)
-          case Failure(e) => None
-
-      val formattedCode =
-        for {
-          cls <- Try { /* println("getting formatter"); */ Class.forName("org.scalafmt.cli.Scalafmt210") }.toOptionMsg
-          inst <- Try { /* println("making instance"); */ cls.newInstance() }.toOptionMsg
-          formatMethod <- Try { /* println("getting format method"); */ cls.getMethod("format", classOf[String], classOf[String]) }.toOptionMsg
-          formatted <- Try { /* println("formatting"); */ formatMethod.invoke(inst, encosedCode, "Main.scala") }.toOptionMsg
-        } yield String.valueOf(formatted) /* null safe way of doing .toString in scala) */
-
-      formattedCode.map(code => unEnclose(code)).getOrElse(code)
+      unEnclose(ScalafmtFormat(encosedCode, showErrorTrace))
     }
 }

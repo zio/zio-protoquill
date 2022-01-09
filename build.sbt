@@ -120,13 +120,18 @@ lazy val `quill-sql` =
         "com.typesafe.scala-logging" % "scala-logging_2.13"
       ),
       libraryDependencies ++= Seq(
-        // .excludeAll(ExclusionRule(organization="com.trueaccord.scalapb")
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
         ("io.getquill" %% "quill-core-portable" % "3.12.0").cross(CrossVersion.for3Use2_13),
         ("io.getquill" %% "quill-sql-portable" % "3.12.0").cross(CrossVersion.for3Use2_13),
-        //("org.scalameta" %% "scalafmt-dynamic" % "2.7.4").cross(CrossVersion.for3Use2_13),
-        //"org.scala-lang" % "scala3-library_3.0.0-M3" % (scalaVersion.value),
-        "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4"
+        "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
+        ("org.scalameta" %% "scalafmt-cli" % "3.1.0")
+          .excludeAll(
+            ExclusionRule(organization = "com.lihaoyi", name = "sourcecode_2.13"),
+            ExclusionRule(organization = "com.lihaoyi", name = "fansi_2.13"),
+            ExclusionRule(organization = "com.lihaoyi", name = "pprint_2.13"),
+            ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")
+          )
+          .cross(CrossVersion.for3Use2_13)
       ),
       // If it's a community-build we're using a scala incremental version so there's no scalatest for that
       libraryDependencies ++= {
@@ -140,14 +145,7 @@ lazy val `quill-sql` =
           )
       },
       // TODO remove this if in community build since there's no scalatest
-      Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oGF"),
-      // If it's a community-build we're using a scala incremental and scalafmt doesn't seem to work well with that
-      libraryDependencies ++= {
-        if (isCommunityBuild)
-          Seq()
-        else
-          Seq(("org.scalameta" %% "scalafmt-cli" % "3.0.6" ).excludeAll(ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")).cross(CrossVersion.for3Use2_13))
-      }
+      Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oGF")
     ).dependsOn({
       // If it's a community build, we cannot include scalatest since the scalatest for the corresponding
       // incremental scala version does not exist. So we need to include this module that "shims-it-out" so we can just be able

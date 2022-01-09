@@ -4,8 +4,6 @@ package io.getquill.context
 import scala.quoted._
 import io.getquill.norm.BetaReduction
 import io.getquill.util.LoadModule
-import io.getquill.parser.Parser
-import io.getquill.parser.Parser.Implicits._
 import io.getquill.parser.ParserFactory
 import io.getquill.generic.ElaborateStructure
 import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, Update => AUpdate, _ }
@@ -21,10 +19,11 @@ import io.getquill.Insert
 import io.getquill.Update
 import io.getquill.parser.ParserFactory
 import io.getquill.metaprog.SummonParser
+import io.getquill.parser.engine.History
 
 object MetaMacro:
   def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): (Tuple, Expr[String]) =
-    val parserFactory = SummonParser()
+    val parser = SummonParser().assemble
 
     // Pull out individual args from the apply
     val excludes = excludesRaw match
@@ -33,7 +32,7 @@ object MetaMacro:
 
     // Parse those into Function(params, Property) asts
     val excludeAstMethods =
-      excludes.map(exclude => parserFactory.apply.seal.apply(exclude))
+      excludes.map(exclude => parser(exclude))
 
       // Excract the 'Property' elements from there
     val excludeAstProps =

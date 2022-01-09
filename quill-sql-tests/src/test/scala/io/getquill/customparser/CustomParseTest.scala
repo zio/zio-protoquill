@@ -11,7 +11,7 @@ import org.scalatest._
 
 class CustomParseTest extends Spec with Inside {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
-  import ctx._
+  import ctx._ //
 
   "can customize parsing spec" in {
     given myParser: CustomParser.type = CustomParser

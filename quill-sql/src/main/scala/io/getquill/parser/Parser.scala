@@ -30,219 +30,103 @@ import io.getquill.Ord
 import io.getquill.Embedded
 import io.getquill.metaprog.Is
 import io.getquill.generic.ElaborationSide
+import io.getquill.parser.engine._
+import io.getquill.context.VerifyFreeVariables
 
-type Parser[R] = PartialFunction[quoted.Expr[_], R]
-type SealedParser[R] = (quoted.Expr[_] => R)
+trait ParserFactory:
+  def assemble(using Quotes): ParserLibrary.ReadyParser
 
-/**
-  * Parse Quill-DSL expressions into the Quill AST.
-  *
-  * Naming Legend:
-  *  - AIdent/AQuery/etc... means Quill Ast-Ident/Query...
-  *  - TIdent/TConstant/ec... means Tasty Ident/Constant/etc...
-  */
-object Parser {
-  val empty: Parser[Ast] = PartialFunction.empty[Expr[_], Ast]
-
-  enum ThrowInfo:
-    case AstClass(astClass: Class[_])
-    case Message(msg: String)
-
-  def throwExpressionError(expr: Expr[_], astClass: Class[_])(using Quotes): Nothing =
-    throwExpressionError(expr, ThrowInfo.AstClass(astClass))
-
-  def throwExpressionError(expr: Expr[_], msg: String)(using Quotes): Nothing =
-    throwExpressionError(expr, ThrowInfo.Message(msg))
-
-  def throwExpressionError(expr: Expr[_], throwInfo: ThrowInfo)(using Quotes): Nothing =
-    import quotes.reflect._
-    // When errors are printed, make sure to deserialize parts of the AST that may be serialized,
-    // otherwise in the expression printout there will garbled base46 characters everywhere
-    val term = io.getquill.metaprog.DeserializeAstInstances(expr).asTerm
-    val message =
-      throwInfo match
-        case ThrowInfo.Message(msg) => msg
-        case ThrowInfo.AstClass(astClass) => s"Tree cannot be parsed to '${astClass.getSimpleName}'"
-
-    // val stream = new java.io.ByteArrayOutputStream()
-    // val buff = new java.io.PrintWriter(stream)
-    // new Exception("stack trace").printStackTrace(buff)
-    // buff.flush
-
-    val traces = Thread.currentThread.getStackTrace.take(50).map("  " + _.toString).mkString("\n")
-
-    report.throwError(s"""|
-      |s"==== ${message} ====
-      |  ${Format(Printer.TreeShortCode.show(term)) /* Or Maybe just expr? */}
-      |==== Extractors ===
-      |  ${Format(Printer.TreeStructure.show(term))}
-      |==== Stacktrace ===
-      |${traces}""".stripMargin,
-      expr
-    )
-
-  object Implicits {
-    extension [R](parser: Parser[R])(using ct: ClassTag[R])
-      def seal(using Quotes): SealedParser[R] =
-        (expr: Expr[_]) => parser.lift(expr).getOrElse {
-          throwExpressionError(expr, ct.runtimeClass)
-        }
-  }
-
-  trait Delegated[+R] extends Parser[R] {
-    def delegate: PartialFunction[Expr[_], R]
-
-    //apply() is an abstract member of PartialFunction
-    override def apply(expr: Expr[_]): R = {
-      delegate.apply(expr)
-    }
-
-    //isDefinedAt() is an abstract member of PartialFunction
-    //Checks if a value is contained in the function's domain.
-    def isDefinedAt(expr: Expr[_]): Boolean = {
-      delegate.isDefinedAt(expr)
-    }
-
-  }
-
-  /** Optimizes 'Clause' by checking if it is some given type first. Otherwise can early-exit */
-  trait SpecificClause[Criteria: Type, R](using override val qctx: Quotes) extends Clause[R] {
-    import quotes.reflect._
-    override def isDefinedAt(expr: Expr[_]): Boolean =
-      expr.asTerm.tpe <:< TypeRepr.of[Criteria] && delegate.isDefinedAt(expr)
-  }
-
-  /** Optimizes 'Clause' by allowing a more efficient 'prematch' criteria to be used */
-  trait PrematchClause[R](using override val qctx: Quotes) extends Clause[R] {
-    import qctx.reflect._
-
-    def prematch(expr: Expr[_]): Boolean
-
-    override def isDefinedAt(expr: Expr[_]): Boolean =
-      prematch(expr) && delegate.isDefinedAt(expr)
-  }
-
-  abstract class Clause[+R](using override val qctx: Quotes) extends Delegated[R] with Idents with QuatMaking with QuatMakingBase(using qctx) { base =>
-    import Implicits._
-
-    def root: Parser[Ast]
-    def astParse = root.seal
-    def reparent(root: Parser[Ast]): Clause[R]
-  }
-
-  case class Series private (children: List[Clause[Ast]] = List())(implicit val qctx: Quotes) extends Delegated[Ast] { self =>
-
-    def delegate = composite
-
-    lazy val composite: PartialFunction[Expr[_], Ast] =
-      children.map(child => child.reparent(this)).foldRight(PartialFunction.empty[Expr[_], Ast])(_ orElse _)
-
-    //Is this to chain parsers?
-    def combine(other: Series): Series =
-      Series(self.children ++ other.children)
-  }
-
-  object Series {
-    def single(clause: Clause[Ast])(using Quotes): Series = Series(List(clause))
-    def of(clauses: Clause[Ast]*)(using Quotes) = Series(clauses.toList)
-  }
-}
-
-trait ParserFactory {
-  def apply(using Quotes): Parser[Ast]
-}
-trait ParserLibrary extends ParserFactory {
-  import Parser._
-
+trait ParserLibrary extends ParserFactory:
 
   // TODO add a before everything identity parser,
   // a after everything except Inline recurse parser
-  def quotationParser(using qctx: Quotes)            = Series.single(new QuotationParser)
-  def queryParser(using qctx: Quotes)                = Series.single(new QueryParser)
-  def infixParser(using qctx: Quotes)                = Series.single(new InfixParser)
-  def setOperationsParser(using qctx: Quotes)        = Series.single(new SetOperationsParser)
-  def queryScalarsParser(using qctx: Quotes)         = Series.single(new QueryScalarsParser)
-  def traversableOperationParser(using qctx: Quotes) = Series.single(new TraversableOperationParser)
-  def patMatchParser(using qctx: Quotes)             = Series.single(new CasePatMatchParser)
-  def functionParser(using qctx: Quotes)             = Series.single(new FunctionParser)
-  def functionApplyParser(using qctx: Quotes)        = Series.single(new FunctionApplyParser)
-  def valParser(using qctx: Quotes)                  = Series.single(new ValParser)
-  def blockParser(using qctx: Quotes)                = Series.single(new BlockParser)
-  def operationsParser(using qctx: Quotes)           = Series.single(new OperationsParser)
-  def orderingParser(using qctx: Quotes)             = Series.single(new OrderingParser)
-  def genericExpressionsParser(using qctx: Quotes)   = Series.single(new GenericExpressionsParser)
-  def actionParser(using qctx: Quotes)               = Series.single(new ActionParser)
-  def batchActionParser(using qctx: Quotes)          = Series.single(new BatchActionParser)
-  def optionParser(using qctx: Quotes)               = Series.single(new OptionParser)
-  def ifElseParser(using qctx: Quotes)               = Series.single(new IfElseParser)
-  def complexValueParser(using qctx: Quotes)         = Series.single(new ComplexValueParser)
-  def valueParser(using qctx: Quotes)                = Series.single(new ValueParser)
+  protected def quotationParser(using Quotes)            = ParserChain.attempt(QuotationParser(_))
+  protected def queryParser(using Quotes)                = ParserChain.attempt(QueryParser(_))
+  protected def infixParser(using Quotes)                = ParserChain.attempt(InfixParser(_))
+  protected def setOperationsParser(using Quotes)        = ParserChain.attempt(SetOperationsParser(_))
+  protected def queryScalarsParser(using Quotes)         = ParserChain.attempt(QueryScalarsParser(_))
+  protected def traversableOperationParser(using Quotes) = ParserChain.attempt(TraversableOperationParser(_))
+  protected def patMatchParser(using Quotes)             = ParserChain.attempt(CasePatMatchParser(_))
+  protected def functionParser(using Quotes)             = ParserChain.attempt(FunctionParser(_))
+  protected def functionApplyParser(using Quotes)        = ParserChain.attempt(FunctionApplyParser(_))
+  protected def valParser(using Quotes)                  = ParserChain.attempt(ValParser(_))
+  protected def blockParser(using Quotes)                = ParserChain.attempt(BlockParser(_))
+  protected def operationsParser(using Quotes)           = ParserChain.attempt(OperationsParser(_))
+  protected def orderingParser(using Quotes)             = ParserChain.attempt(OrderingParser(_))
+  protected def genericExpressionsParser(using Quotes)   = ParserChain.attempt(GenericExpressionsParser(_))
+  protected def actionParser(using Quotes)               = ParserChain.attempt(ActionParser(_))
+  protected def batchActionParser(using Quotes)          = ParserChain.attempt(BatchActionParser(_))
+  protected def optionParser(using Quotes)               = ParserChain.attempt(OptionParser(_))
+  protected def ifElseParser(using Quotes)               = ParserChain.attempt(IfElseParser(_))
+  protected def complexValueParser(using Quotes)         = ParserChain.attempt(ComplexValueParser(_))
+  protected def valueParser(using Quotes)                = ParserChain.attempt(ValueParser(_))
 
-  // def userDefined(using qctxInput: Quotes) = Series(new Glosser[Ast] {
-  //   val qctx = qctxInput
+  // def userDefined(using quotesInput: Quotes) = Series(new Glosser[Ast] {
+  //   val quotes = quotesInput
   //   def apply(root: Parser[Ast]) = PartialFunction.empty[Expr[_], Ast]
   // })
 
   //Everything needs to be parsed from a quoted state, and sent to the subsequent parser
-  def apply(using Quotes): Parser[Ast] =
-    quotationParser
-        .combine(valueParser)
-        .combine(queryParser)
-        .combine(queryScalarsParser)
-        .combine(infixParser)
-        .combine(setOperationsParser)
-        .combine(traversableOperationParser)
-        .combine(optionParser)
-        .combine(orderingParser)
-        .combine(actionParser)
-        .combine(batchActionParser)
-        .combine(functionParser) // decided to have it be it's own parser unlike Quill3
-        .combine(patMatchParser)
-        .combine(valParser)
-        .combine(blockParser)
-        .combine(operationsParser)
-        .combine(ifElseParser)
-        .combine(complexValueParser) // must go before functionApplyParser since valueParser parsers '.apply on case class' and the functionApply would take that
-        .combine(functionApplyParser) // must go before genericExpressionsParser otherwise that will consume the 'apply' clauses
-        .combine(genericExpressionsParser)
-}
+  def assemble(using Quotes): ParserLibrary.ReadyParser =
+    val assembly =
+      quotationParser
+        .orElse(valueParser)
+        .orElse(queryParser)
+        .orElse(queryScalarsParser)
+        .orElse(infixParser)
+        .orElse(setOperationsParser)
+        .orElse(traversableOperationParser)
+        .orElse(optionParser)
+        .orElse(orderingParser)
+        .orElse(actionParser)
+        .orElse(batchActionParser)
+        .orElse(functionParser) // decided to have it be it's own parser unlike Quill3
+        .orElse(patMatchParser)
+        .orElse(valParser)
+        .orElse(blockParser)
+        .orElse(operationsParser)
+        .orElse(ifElseParser)
+        .orElse(complexValueParser) // must go before functionApplyParser since valueParser parsers '.apply on case class' and the functionApply would take that
+        .orElse(functionApplyParser) // must go before genericExpressionsParser otherwise that will consume the 'apply' clauses
+        .orElse(genericExpressionsParser)
+        .complete
+    ParserLibrary.ReadyParser(assembly)
 
-object ParserLibrary extends ParserLibrary
+end ParserLibrary
 
-case class FunctionApplyParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+object ParserLibrary extends ParserLibrary:
+  class ReadyParser private[parser](parser: Parser):
+    def apply(expr: Expr[_])(using Quotes) =
+      parser(expr)(using History.Root)
+
+class FunctionApplyParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
   import quotes.reflect._
-  import Parser.Implicits._
   import io.getquill.norm.capture.AvoidAliasConflict
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
   //case q"new { def apply[..t1](...$params) = $body }" =>
   //  c.fail("Anonymous classes aren't supported for function declaration anymore. Use a method with a type parameter instead. " +
   //    "For instance, replace `val q = quote { new { def apply[T](q: Query[T]) = ... } }` by `def q[T] = quote { (q: Query[T] => ... }`")
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+  def attempt = {
     case Unseal(Apply(Select(term, "apply"), args)) =>
-      FunctionApply(astParse(term.asExpr), args.map(arg => astParse(arg.asExpr)))
+      FunctionApply(rootParse(term.asExpr), args.map(arg => rootParse(arg.asExpr)))
   }
 }
 
 
-case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.PrematchClause[Ast] {
+class FunctionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) with Helpers {
   import quotes.reflect._
-  import Parser.Implicits._
-  import io.getquill.norm.capture.AvoidAliasConflict
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
-  // TODO Find out what is type signature of things that need to go into here
-  // maybe the type just needs to be widened?
-  def prematch(expr: Expr[_]) = true //expr.asTerm.tpe.typeSymbol.fullName.contains("scala.Function")
+  import io.getquill.norm.capture.AvoidAliasConflict
+
 
   //case q"new { def apply[..t1](...$params) = $body }" =>
   //  c.fail("Anonymous classes aren't supported for function declaration anymore. Use a method with a type parameter instead. " +
   //    "For instance, replace `val q = quote { new { def apply[T](q: Query[T]) = ... } }` by `def q[T] = quote { (q: Query[T] => ... }`")
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+  def attempt = {
     case Unseal(RawLambdaN(params, body)) =>
-      val subtree = Function(params.map((name, tpe) => cleanIdent(name, tpe)), astParse(body.asExpr))
+      val subtree = Function(params.map((name, tpe) => cleanIdent(name, tpe)), rootParse(body.asExpr))
       // If there are actions inside the subtree, we need to do some additional sanitizations
       // of the variables so that their content will not collide with code that we have generated.
 
@@ -254,42 +138,41 @@ case class FunctionParser(root: Parser[Ast] = Parser.empty)(override implicit va
   }
 }
 
-case class ValParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PatternMatchingValues {
+class ValParser(val rootParse: Parser)(using Quotes)
+  extends Parser(rootParse)
+  with PatternMatchingValues:
   import quotes.reflect._
-  import Parser.Implicits._
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
-
-  def delegate: PartialFunction[Expr[_], Ast] = {
+  def attempt =
     case Unseal(ValDefTerm(ast)) => ast
-  }
-}
 
-case class BlockParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PatternMatchingValues {
+class BlockParser(val rootParse: Parser)(using Quotes)
+  extends Parser(rootParse)
+  with PatternMatchingValues {
   import quotes.reflect.{Block => TBlock, _}
-  import Parser.Implicits._
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+
+
+  def attempt = {
     case block @ Unseal(TBlock(parts, lastPart)) if (parts.length > 0) =>
       val partsAsts =
         parts.map {
-          case term: Term => astParse(term.asExpr)
+          case term: Term => rootParse(term.asExpr)
           case ValDefTerm(ast) => ast
           case other =>
             // TODO Better site-description in error (does other.show work?)
             report.throwError(s"Illegal statement ${other.show} in block ${block.show}")
         }
-      val lastPartAst = astParse(lastPart.asExpr)
+      val lastPartAst = rootParse(lastPart.asExpr)
       Block((partsAsts :+ lastPartAst))
   }
 }
 
-case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PatternMatchingValues {
+class CasePatMatchParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PatternMatchingValues {
   import quotes.reflect.{ Constant => TConstant, _ }
-  import Parser.Implicits._
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+
+
+  def attempt = {
     case Unseal(PatMatchTerm(patMatch)) =>
       patMatch match
         case PatMatch.SimpleClause(ast) => ast
@@ -304,35 +187,30 @@ case class CasePatMatchParser(root: Parser[Ast] = Parser.empty)(override implici
 }
 
 /** Same as traversableOperationParser, pre-filters that the result-type is a boolean */
-case class TraversableOperationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Boolean, Ast] with PatternMatchingValues {
+class TraversableOperationParser(val rootParse: Parser)(using Quotes)
+  extends Parser(rootParse)
+  with Parser.PrefilterType[Boolean]
+  with PatternMatchingValues:
   import quotes.reflect._
-  import Parser.Implicits._
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
-
-  def delegate: PartialFunction[Expr[_], Ast] = {
+  def attempt =
     case '{ ($col: collection.Map[k, v]).contains($body) } =>
-      MapContains(astParse(col), astParse(body))
+      MapContains(rootParse(col), rootParse(body))
     case '{ ($col: collection.Set[v]).contains($body) } =>
-      SetContains(astParse(col), astParse(body))
+      SetContains(rootParse(col), rootParse(body))
     case '{ ($col: collection.Seq[v]).contains($body) } =>
-      ListContains(astParse(col), astParse(body))
-  }
-}
+      ListContains(rootParse(col), rootParse(body))
 
-
-case class OrderingParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[io.getquill.ast.Ordering] with PatternMatchingValues {
+class OrderingParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PatternMatchingValues {
   import quotes.reflect._
-  import Parser.Implicits._
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
-  def delegate: PartialFunction[Expr[_], Ordering] = {
+  def attempt: History ?=> PartialFunction[Expr[_], Ordering] = {
     case '{ ($ordDsl: MetaDsl).implicitOrd } => AscNullsFirst
     case '{ implicitOrd } => AscNullsFirst
 
     // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
     case Unseal(Apply(TypeApply(Select(Ident("Ord"), "apply"), _), args)) =>
       // parse all sub-orderings if this is a composite
-      val subOrderings = args.map(_.asExpr).map(ordExpression => delegate.seal(ordExpression))
+      val subOrderings = args.map(_.asExpr).map(ordExpression => attempt.lift(ordExpression).getOrElse(ParserError(ordExpression, classOf[Ordering])))
       TupleOrdering(subOrderings)
 
     case '{ Ord.asc[t] }               => Asc
@@ -346,13 +224,13 @@ case class OrderingParser(root: Parser[Ast] = Parser.empty)(override implicit va
 
 
 // TODO Pluggable-in unlifter via implicit? Quotation generic should have it in the root?
-case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+class QuotationParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
   import quotes.reflect.{ Ident => TIdent, Apply => TApply, _}
-  import Parser.Implicits._
 
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+
+
+  def attempt = {
 
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
@@ -378,13 +256,12 @@ case class QuotationParser(root: Parser[Ast] = Parser.empty)(override implicit v
 
 // As a performance optimization, ONLY Matches things returning Action[_] UP FRONT.
 // All other kinds of things rejected
-case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Action[_], Ast] with Assignments with PropertyParser {
+class ActionParser(val rootParse: Parser)(using Quotes)
+  extends Parser(rootParse)
+  with Parser.PrefilterType[Action[_]]
+  with Assignments
+  with PropertyParser:
   import quotes.reflect.{Constant => TConstant, _}
-  import Parser.Implicits._
-
-  def delegate: PartialFunction[Expr[_], Ast] = {
-    del
-  }
 
   def combineAndCheckAndParse[T: Type, A <: Ast](first: Expr[T], others: Seq[Expr[T]])(checkClause: Expr[_] => Unit)(parseClause: Expr[_] => A): Seq[A] =
     val assignments = (first.asTerm +: others.map(_.asTerm).filterNot(isNil(_)))
@@ -392,15 +269,15 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     assignments.map(term => parseClause(term.asExpr))
 
 
-  def del: PartialFunction[Expr[_], Ast] = {
+  def attempt = {
     case '{ type t; ($query: EntityQueryModel[`t`]).insert(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
       val assignments = combineAndCheckAndParse(first, others)(AssignmentTerm.CheckTypes(_))(AssignmentTerm.OrFail(_))
-      AInsert(astParse(query), assignments.toList)
+      AInsert(rootParse(query), assignments.toList)
     case '{ type t; ($query: EntityQueryModel[`t`]).update(($first: `t`=>(Any,Any)), (${Varargs(others)}: Seq[`t` => (Any, Any)]): _*) } =>
       val assignments = combineAndCheckAndParse(first, others)(AssignmentTerm.CheckTypes(_))(AssignmentTerm.OrFail(_))
-      AUpdate(astParse(query), assignments.toList)
+      AUpdate(rootParse(query), assignments.toList)
     case '{ type t; ($query: EntityQueryModel[`t`]).delete } =>
-      ADelete(astParse(query))
+      ADelete(rootParse(query))
 
     // Returning generated
     // summon an idiom if one can be summoned (make sure when doing import ctx._ it is provided somewhere)
@@ -421,7 +298,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
 
     case '{ ($action: Insert[t]).returning[r](${Lambda1(id, tpe, body)}) } =>
       val ident = cleanIdent(id, tpe)
-      val bodyAst = reprocessReturnClause(ident, astParse(body), action, Type.of[t])
+      val bodyAst = reprocessReturnClause(ident, rootParse(body), action, Type.of[t])
       // // TODO Verify that the idiom supports this type of returning clause
       // idiomReturnCapability match {
       //   case ReturningMultipleFieldSupported | ReturningClauseSupported | OutputClauseSupported =>
@@ -432,15 +309,15 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       // }
       // // Verify that the AST in the returning-body is valid
       // idiomReturnCapability.verifyAst(bodyAst)
-      Returning(astParse(action), ident, bodyAst)
+      Returning(rootParse(action), ident, bodyAst)
 
     case '{ ($action: Insert[t]).onConflictIgnore } =>
-      OnConflict(astParse(action), OnConflict.NoTarget, OnConflict.Ignore)
+      OnConflict(rootParse(action), OnConflict.NoTarget, OnConflict.Ignore)
 
     case '{ type t; ($action: Insert[`t`]).onConflictIgnore(($target: `t` => Any), (${Varargs(targets)}: Seq[`t` => Any]): _*) } =>
       val targetProperties = combineAndCheckAndParse(target, targets)(_ => ())(LambdaToProperty.OrFail(_))
       OnConflict(
-        astParse(action),
+        rootParse(action),
         OnConflict.Properties(targetProperties.toList),
         OnConflict.Ignore
       )
@@ -448,7 +325,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     case '{ type t; ($action: Insert[`t`]).onConflictUpdate(($assign: (`t`,`t`) => (Any, Any)), (${Varargs(assigns)}: Seq[(`t`, `t`) => (Any, Any)]): _*) } =>
       val assignments = combineAndCheckAndParse(assign, assigns)(AssignmentTerm.CheckTypes(_))(AssignmentTerm.Double.OrFail(_))
       OnConflict(
-        astParse(action),
+        rootParse(action),
         OnConflict.NoTarget,
         OnConflict.Update(assignments.toList)
       )
@@ -457,7 +334,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       val assignments = combineAndCheckAndParse(assign, assigns)(AssignmentTerm.CheckTypes(_))(AssignmentTerm.Double.OrFail(_))
       val targetProperties = combineAndCheckAndParse(target, targets)(_ => ())(LambdaToProperty.OrFail(_))
       OnConflict(
-        astParse(action),
+        rootParse(action),
         OnConflict.Properties(targetProperties.toList),
         OnConflict.Update(assignments.toList)
       )
@@ -465,16 +342,16 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
     // Need to make copies because presently `Action` does not have a .returning method
     case '{ ($action: Update[t]).returning[r](${Lambda1(id, tpe, body)}) } =>
       val ident = cleanIdent(id, tpe)
-      val bodyAst = reprocessReturnClause(ident, astParse(body), action, Type.of[t])
-      Returning(astParse(action), ident, bodyAst)
+      val bodyAst = reprocessReturnClause(ident, rootParse(body), action, Type.of[t])
+      Returning(rootParse(action), ident, bodyAst)
     case '{ ($action: Delete[t]).returning[r](${Lambda1(id, tpe, body)}) } =>
       val ident = cleanIdent(id, tpe)
-      val bodyAst = reprocessReturnClause(ident, astParse(body), action, Type.of[t])
-      Returning(astParse(action), ident, bodyAst)
+      val bodyAst = reprocessReturnClause(ident, rootParse(body), action, Type.of[t])
+      Returning(rootParse(action), ident, bodyAst)
 
     case '{ ($action: Insert[t]).returningGenerated[r](${Lambda1(id, tpe, body)}) } =>
       val ident = cleanIdent(id, tpe)
-      val bodyAst = reprocessReturnClause(ident, astParse(body), action, Type.of[t])
+      val bodyAst = reprocessReturnClause(ident, rootParse(body), action, Type.of[t])
       // // TODO Verify that the idiom supports this type of returning clause
       // idiomReturnCapability match {
       //   case ReturningNotSupported =>
@@ -483,7 +360,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       // }
       // // Verify that the AST in the returning-body is valid
       // idiomReturnCapability.verifyAst(bodyAst)
-      ReturningGenerated(astParse(action), ident, bodyAst)
+      ReturningGenerated(rootParse(action), ident, bodyAst)
   }
 
   private def isNil(term: Term): Boolean =
@@ -492,7 +369,7 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       case _ => false
     }
 
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
 
   import io.getquill.generic.ElaborateStructure
 
@@ -518,103 +395,109 @@ case class ActionParser(root: Parser[Ast] = Parser.empty)(override implicit val 
       case _ =>
         originalBody
 
-  object IsActionType {
+  private object IsActionType:
     def unapply(term: TypeRepr): Boolean =
       term <:< TypeRepr.of[Insert[_]] || term <:< TypeRepr.of[Update[_]] || term <:< TypeRepr.of[Delete[_]]
-  }
-}
+
+end ActionParser
 
 // As a performance optimization, ONLY Matches things returning BatchAction[_] UP FRONT.
 // All other kinds of things rejected
-case class BatchActionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[BatchAction[_], Ast] with Assignments {
+class BatchActionParser(val rootParse: Parser)(using Quotes)
+  extends Parser(rootParse)
+  with Parser.PrefilterType[BatchAction[_]]
+  with Assignments {
   import quotes.reflect.{Constant => TConstant, _}
-  import Parser.Implicits._
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+
+  def attempt = {
     case '{ type a <: Action[_] with QAC[_, _]; ($q: Query[t]).foreach[`a`, b](${Lambda1(ident, tpe, body)})($unq) } =>
-      Foreach(astParse(q), cleanIdent(ident, tpe), astParse(body))
+      Foreach(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
   }
 
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
 }
 
-case class IfElseParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-  import qctx.reflect.{Constant => TConstant, _}
-  import Parser.Implicits._
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+class IfElseParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
+  import quotes.reflect.{Constant => TConstant, _}
 
-  def delegate: PartialFunction[Expr[_], Ast] =
+
+
+  def attempt =
     case '{ if ($cond) { $thenClause } else { $elseClause } } =>
-      ast.If(astParse(cond), astParse(thenClause), astParse(elseClause))
+      ast.If(rootParse(cond), rootParse(thenClause), rootParse(elseClause))
 }
 
-// We can't use SpecificClause[Option[_]] here since the types of quotations that need to match
+// We can't use PrefilterType[Option[_]] here since the types of quotations that need to match
 // are not necessarily an Option[_] e.g. Option[t].isEmpty needs to match on a clause whose type is Boolean
 // That's why we need to use the 'Is' object and optimize it that way here
-case class OptionParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
-  import qctx.reflect.{Constant => TConstant, _}
-  import Parser.Implicits._
+class OptionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) with Helpers {
+  import quotes.reflect.{Constant => TConstant, _}
+
   import MatchingOptimizers._
 
   extension (quat: Quat)
     def isProduct = quat.isInstanceOf[Quat.Product]
 
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
 
   /**
    * Note: The -->, -@> etc.. clauses are just to optimize the match by doing an early-exit if possible.
    * they don't actaully do any application-relevant logic
    */
-  def delegate: PartialFunction[Expr[_], Ast] = {
+  def attempt = {
     case "isEmpty" --> '{ ($o: Option[t]).isEmpty } =>
-      OptionIsEmpty(astParse(o))
+      OptionIsEmpty(rootParse(o))
 
     case "nonEmpty" --> '{ ($o: Option[t]).nonEmpty } =>
-      OptionNonEmpty(astParse(o))
+      OptionNonEmpty(rootParse(o))
 
     case "isDefined" --> '{ ($o: Option[t]).isDefined } =>
-      OptionIsDefined(astParse(o))
+      OptionIsDefined(rootParse(o))
 
     case "flatten" -@> '{ ($o: Option[t]).flatten($impl) } =>
-      OptionFlatten(astParse(o))
+      OptionFlatten(rootParse(o))
 
     case "map" -@> '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } =>
-      val queryAst = astParse(o)
-      if (queryAst.quat.isProduct) OptionTableMap(astParse(o), cleanIdent(id, idType), astParse(body))
-      else OptionMap(queryAst, cleanIdent(id, idType), astParse(body))
+      val queryAst = rootParse(o)
+      if (queryAst.quat.isProduct) OptionTableMap(rootParse(o), cleanIdent(id, idType), rootParse(body))
+      else OptionMap(queryAst, cleanIdent(id, idType), rootParse(body))
 
     case "flatMap" -@> '{ ($o: Option[t]).flatMap(${Lambda1(id, idType, body)}) } =>
-      val queryAst = astParse(o)
-      if (queryAst.quat.isProduct) OptionTableFlatMap(astParse(o), cleanIdent(id, idType), astParse(body))
-      else OptionFlatMap(queryAst, cleanIdent(id, idType), astParse(body))
+      val queryAst = rootParse(o)
+      if (queryAst.quat.isProduct) OptionTableFlatMap(rootParse(o), cleanIdent(id, idType), rootParse(body))
+      else OptionFlatMap(queryAst, cleanIdent(id, idType), rootParse(body))
 
     case "exists" -@> '{ ($o: Option[t]).exists(${Lambda1(id, idType, body)}) } =>
-      val queryAst = astParse(o)
-      if (queryAst.quat.isProduct) OptionTableExists(astParse(o), cleanIdent(id, idType), astParse(body))
-      else OptionExists(queryAst, cleanIdent(id, idType), astParse(body))
+      val queryAst = rootParse(o)
+      if (queryAst.quat.isProduct) OptionTableExists(rootParse(o), cleanIdent(id, idType), rootParse(body))
+      else OptionExists(queryAst, cleanIdent(id, idType), rootParse(body))
 
     case "forall" -@> '{ ($o: Option[t]).forall(${Lambda1(id, idType, body)}) } =>
       // TODO If is embedded warn about no checking? Investigate that case
-      val queryAst = astParse(o)
-      if (queryAst.quat.isProduct) OptionTableForall(astParse(o), cleanIdent(id, idType), astParse(body))
-      else OptionForall(queryAst, cleanIdent(id, idType), astParse(body))
+      val queryAst = rootParse(o)
+      if (queryAst.quat.isProduct) OptionTableForall(rootParse(o), cleanIdent(id, idType), rootParse(body))
+      else OptionForall(queryAst, cleanIdent(id, idType), rootParse(body))
 
     case "getOrElse" -@> '{ type t; ($o: Option[`t`]).getOrElse($body: `t`) } =>
-      OptionGetOrElse(astParse(o), astParse(body))
+      OptionGetOrElse(rootParse(o), rootParse(body))
 
     case "contains" -@> '{ type t; ($o: Option[`t`]).contains($body: `t`) } =>
-      OptionContains(astParse(o), astParse(body))
+      OptionContains(rootParse(o), rootParse(body))
   }
 }
 
 // As a performance optimization, ONLY Matches things returning Query[_] UP FRONT.
 // All other kinds of things rejected
-case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Query[_], Ast] with PropertyAliases {
-  import qctx.reflect.{Constant => TConstant, Ident => TIdent, _}
-  import Parser.Implicits._
+class QueryParser(val rootParse: Parser)(using Quotes)
+  extends Parser(rootParse)
+  with Parser.PrefilterType[Query[_]]
+  with PropertyAliases
+  with Helpers:
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
   import MatchingOptimizers._
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+  def attempt = {
     case '{ type t; EntityQuery.apply[`t`] } =>
       val tpe = TypeRepr.of[t]
       val name: String = tpe.classSymbol.get.name
@@ -625,46 +508,46 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       e
 
     case "map" -@> '{ ($q:Query[qt]).map[mt](${Lambda1(ident, tpe, body)}) } =>
-      Map(astParse(q), cleanIdent(ident, tpe), astParse(body))
+      Map(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
 
     case "flatMap" -@> '{ ($q:Query[qt]).flatMap[mt](${Lambda1(ident, tpe, body)}) } =>
-      FlatMap(astParse(q), cleanIdent(ident, tpe), astParse(body))
+      FlatMap(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
 
     case "filter" -@> '{ ($q:Query[qt]).filter(${Lambda1(ident, tpe, body)}) } =>
-      Filter(astParse(q), cleanIdent(ident, tpe), astParse(body))
+      Filter(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
 
     case "withFilter" -@> '{ ($q:Query[qt]).withFilter(${Lambda1(ident, tpe, body)}) } =>
-      Filter(astParse(q), cleanIdent(ident, tpe), astParse(body))
+      Filter(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
 
     case "concatMap" -@@> '{type t1; type t2; ($q:Query[qt]).concatMap[`t1`, `t2`](${Lambda1(ident, tpe, body)})($unknown_stuff) } => //ask Alex why is concatMap like this? what's unkonwn_stuff?
-      ConcatMap(astParse(q), cleanIdent(ident, tpe), astParse(body))
+      ConcatMap(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
 
-    case "union"    -@> '{ ($a: Query[t]).union($b) } => Union(astParse(a), astParse(b))
-    case "unionAll" -@> '{ ($a: Query[t]).unionAll($b) } => UnionAll(astParse(a), astParse(b))
-    case "++"       -@> '{ ($a: Query[t]).++($b) } => UnionAll(astParse(a), astParse(b))
+    case "union"    -@> '{ ($a: Query[t]).union($b) } => Union(rootParse(a), rootParse(b))
+    case "unionAll" -@> '{ ($a: Query[t]).unionAll($b) } => UnionAll(rootParse(a), rootParse(b))
+    case "++"       -@> '{ ($a: Query[t]).++($b) } => UnionAll(rootParse(a), rootParse(b))
 
-    case ("join"      -@> '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])) })      withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(InnerJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
-    case ("leftJoin"  -@> '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])) })  withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(LeftJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
-    case ("rightJoin" -@> '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])) }) withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(RightJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
-    case ("fullJoin"  -@> '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])) })  withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(FullJoin, astParse(q1), astParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), astParse(on))
+    case ("join"      -@> '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])) })      withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(InnerJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
+    case ("leftJoin"  -@> '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])) })  withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(LeftJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
+    case ("rightJoin" -@> '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])) }) withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(RightJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
+    case ("fullJoin"  -@> '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])) })  withOnClause  (OnClause(ident1, tpe1, ident2, tpe2, on)) => Join(FullJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
 
     case "join" -@> '{ type t1; ($q1: Query[`t1`]).join[`t1`](${Lambda1(ident1, tpe, on)}) } =>
-      FlatJoin(InnerJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
+      FlatJoin(InnerJoin, rootParse(q1), cleanIdent(ident1, tpe), rootParse(on))
     case "leftJoin" -@> '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${Lambda1(ident1, tpe, on)}) } =>
-      FlatJoin(LeftJoin, astParse(q1), cleanIdent(ident1, tpe), astParse(on))
+      FlatJoin(LeftJoin, rootParse(q1), cleanIdent(ident1, tpe), rootParse(on))
 
-    case "take" -@> '{ type t; ($q: Query[`t`]).take($n: Int) } => Take(astParse(q),astParse(n))
-    case "drop" -@> '{ type t; ($q: Query[`t`]).drop($n: Int) } => Drop(astParse(q),astParse(n))
+    case "take" -@> '{ type t; ($q: Query[`t`]).take($n: Int) } => Take(rootParse(q),rootParse(n))
+    case "drop" -@> '{ type t; ($q: Query[`t`]).drop($n: Int) } => Drop(rootParse(q),rootParse(n))
 
     // 2-level so we don't care to select-apply it now
     case "sortBy" -@@> '{ type r; ($q: Query[t]).sortBy[`r`](${Lambda1(ident1, tpe, body)})($ord: Ord[`r`]) } =>
-      SortBy(astParse(q), cleanIdent(ident1, tpe), astParse(body), astParse(ord))
+      SortBy(rootParse(q), cleanIdent(ident1, tpe), rootParse(body), rootParse(ord))
 
     case "groupBy" -@> '{ type r; ($q: Query[t]).groupBy[`r`](${Lambda1(ident1, tpe, body)}) } =>
-      GroupBy(astParse(q), cleanIdent(ident1, tpe), astParse(body))
+      GroupBy(rootParse(q), cleanIdent(ident1, tpe), rootParse(body))
 
     case "distinct" --> '{ ($q: Query[t]).distinct } =>
-      astParse(q) match
+      rootParse(q) match
         case fj: FlatJoin => throw new IllegalArgumentException(
           """
             |The .distinct cannot be placed after a join clause in a for-comprehension. Put it before.
@@ -677,7 +560,7 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
           Distinct(other)
 
     case "nested" --> '{ ($q: Query[t]).nested } =>
-      astParse(q) match
+      rootParse(q) match
         case fj: FlatJoin => throw new IllegalArgumentException(
           """
             |The .nested cannot be placed after a join clause in a for-comprehension. Put it before.
@@ -693,8 +576,8 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
 
   import io.getquill.JoinQuery
 
-  case class OnClause(ident1: String, tpe1: quotes.reflect.TypeRepr, ident2: String, tpe2: quotes.reflect.TypeRepr, on: quoted.Expr[_])
-  object withOnClause:
+  private case class OnClause(ident1: String, tpe1: quotes.reflect.TypeRepr, ident2: String, tpe2: quotes.reflect.TypeRepr, on: quoted.Expr[_])
+  private object withOnClause:
     def unapply(jq: Expr[_]) =
       jq match
         case '{ ($q: JoinQuery[a,b,r]).on(${Lambda2(ident1, tpe1, ident2, tpe2, on)}) } =>
@@ -702,68 +585,70 @@ case class QueryParser(root: Parser[Ast] = Parser.empty)(override implicit val q
         case _ =>
           None
 
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
-}
+
+end QueryParser
 
 /** Query contains, nonEmpty, etc... Pre-filters for a boolean output type */
-case class SetOperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.SpecificClause[Boolean, Ast] with PropertyAliases {
-  import qctx.reflect.{Constant => TConstant, Ident => TIdent, _}
-  import Parser.Implicits._
+class SetOperationsParser(val rootParse: Parser)(using Quotes)
+  extends Parser(rootParse)
+  with Parser.PrefilterType[Boolean]
+  with PropertyAliases:
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
+
+
+  def attempt =
     case '{ type t; type u >: `t`; ($q: Query[`t`]).nonEmpty } =>
-      UnaryOperation(SetOperator.`nonEmpty`, astParse(q))
+      UnaryOperation(SetOperator.`nonEmpty`, rootParse(q))
     case '{ type t; type u >: `t`; ($q: Query[`t`]).isEmpty } =>
-      UnaryOperation(SetOperator.`isEmpty`, astParse(q))
+      UnaryOperation(SetOperator.`isEmpty`, rootParse(q))
     case '{ type t; type u >: `t`; ($q: Query[`t`]).contains[`u`]($b) } =>
-      BinaryOperation(astParse(q), SetOperator.`contains`, astParse(b))
-  }
+      BinaryOperation(rootParse(q), SetOperator.`contains`, rootParse(b))
 
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
-}
+end SetOperationsParser
 
 /**
  * Since QueryParser only matches things that output Query[_], make a separate parser that
  * parses things like query.sum, query.size etc... when needed.
  */
-case class QueryScalarsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PropertyAliases {
-  import qctx.reflect.{Constant => TConstant, Ident => TIdent, _}
-  import Parser.Implicits._
+class QueryScalarsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PropertyAliases {
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
-    case '{ type t; type u >: `t`; ($q: Query[`t`]).value[`u`] } => astParse(q)
-    case '{ type t; type u >: `t`; ($q: Query[`t`]).min[`u`] } => Aggregation(AggregationOperator.`min`, astParse(q))
-    case '{ type t; type u >: `t`; ($q: Query[`t`]).max[`u`] } => Aggregation(AggregationOperator.`max`, astParse(q))
-    case '{ type t; type u >: `t`; ($q: Query[`t`]).avg[`u`]($n) } => Aggregation(AggregationOperator.`avg`, astParse(q))
-    case '{ type t; type u >: `t`; ($q: Query[`t`]).sum[`u`]($n) } => Aggregation(AggregationOperator.`sum`, astParse(q))
-    case '{ type t; ($q: Query[`t`]).size } => Aggregation(AggregationOperator.`size`, astParse(q))
+
+  def attempt = {
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).value[`u`] } => rootParse(q)
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).min[`u`] } => Aggregation(AggregationOperator.`min`, rootParse(q))
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).max[`u`] } => Aggregation(AggregationOperator.`max`, rootParse(q))
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).avg[`u`]($n) } => Aggregation(AggregationOperator.`avg`, rootParse(q))
+    case '{ type t; type u >: `t`; ($q: Query[`t`]).sum[`u`]($n) } => Aggregation(AggregationOperator.`sum`, rootParse(q))
+    case '{ type t; ($q: Query[`t`]).size } => Aggregation(AggregationOperator.`size`, rootParse(q))
   }
 
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
 }
 
-// case class ConflictParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+// case class ConflictParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
 //   import quotes.reflect.{Constant => TConstant, using,  _}
-//   import Parser.Implicits._
-//   def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+//
+//
 
 //   //  case q"$query.map[mt]((x) => y) }"
 //   //case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, body)}) } =>
 
-//   def delegate: PartialFunction[Expr[_], Ast] = {
+//   def attempt = {
 //     // case q"$query.onConflictIgnore" =>
-//     //  OnConflict(astParser(query), OnConflict.NoTarget, OnConflict.Ignore)
+//     //  OnConflict(rootParser(query), OnConflict.NoTarget, OnConflict.Ignore)
 //     case '{ ($query:Insert[qt]).onConflictIgnore } =>
-//       OnConflict(astParse(query), OnConflict.NoTarget, OnConflict.Ignore)
+//       OnConflict(rootParse(query), OnConflict.NoTarget, OnConflict.Ignore)
 //   }
 // }
 
-case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with Assignments {
+class InfixParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with Assignments:
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
-  import Parser.Implicits._
+
   import io.getquill.dsl.InfixDsl
 
-  def delegate: PartialFunction[Expr[_], Ast] =
+  def attempt =
     case '{ ($i: InfixValue).pure.asCondition } => genericInfix(i)(true, Quat.BooleanExpression)
     case '{ ($i: InfixValue).asCondition } => genericInfix(i)(false, Quat.BooleanExpression)
     case '{ ($i: InfixValue).generic.pure.as[t] } => genericInfix(i)(true, Quat.Generic)
@@ -771,29 +656,29 @@ case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     case '{ ($i: InfixValue).as[t] } => genericInfix(i)(false, InferQuat.of[t])
     case '{ ($i: InfixValue) } => genericInfix(i)(false, Quat.Value)
 
-  def genericInfix(i: Expr[_])(isPure: Boolean, quat: Quat) =
-    val (parts, paramsExprs) = InfixComponents.unapply(i).getOrElse { Parser.throwExpressionError(i, classOf[Infix]) }
-    Infix(parts.toList, paramsExprs.map(astParse(_)).toList, isPure, quat)
+  def genericInfix(i: Expr[_])(isPure: Boolean, quat: Quat)(using History) =
+    val (parts, paramsExprs) = InfixComponents.unapply(i).getOrElse { ParserError(i, classOf[Infix]) }
+    Infix(parts.toList, paramsExprs.map(rootParse(_)).toList, isPure, quat)
 
 
   object StringContextExpr:
     def staticOrFail(expr: Expr[String]) =
       expr match
         case Expr(str: String) => str
-        case _ => Parser.throwExpressionError(expr, "All String-parts of a 'infix' statement must be static strings")
+        case _ => ParserError(expr, "All String-parts of a 'infix' statement must be static strings")
     def unapply(expr: Expr[_]) =
       expr match
         case '{ StringContext.apply(${Varargs(parts)}: _*) } =>
           Some(parts.map(staticOrFail(_)))
         case _ => None
 
-  object InlineGenericIdent:
+  private object InlineGenericIdent:
     def unapply(term: quotes.reflect.Term): Boolean =
       term match
         case TIdent(name) if (name.matches("inline\\$generic\\$i[0-9]")) => true
         case _ => false
 
-  object InfixComponents:
+  private object InfixComponents:
     def unapply(expr: Expr[_]): Option[(Seq[String], Seq[Expr[Any]])] = expr match
       // Discovered from cassandra context that nested infix clauses can have an odd form with the method infix$generic$i2 e.g:
       // inline$generic$i2(InfixInterpolator(_root_.scala.StringContext.apply(List.apply[Any]("", " ALLOW FILTERING").asInstanceOf[_*])).infix(List.apply[Any]((Unquote.apply[EntityQuery[ListFrozen]]
@@ -801,20 +686,20 @@ case class InfixParser(root: Parser[Ast] = Parser.empty)(override implicit val q
       case Unseal(TApply(InlineGenericIdent(), List(value))) =>
         unapply(value.asExpr)
       case '{ InfixInterpolator($partsExpr).infix(${Varargs(params)}: _*) } =>
-        val parts = StringContextExpr.unapply(partsExpr).getOrElse { Parser.throwExpressionError(partsExpr, "Cannot parse a valid StringContext") }
+        val parts = StringContextExpr.unapply(partsExpr).getOrElse { ParserError(partsExpr, "Cannot parse a valid StringContext") }
         Some((parts, params))
       case _ =>
         None
 
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
-}
 
-case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with ComparisonTechniques {
+end InfixParser
+
+class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with ComparisonTechniques {
   import quotes.reflect._
   import QueryDsl._
   import io.getquill.ast.Infix
 
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
+
 
   //Handles named operations, ie Argument Operation Argument
   object NamedOp1 {
@@ -827,9 +712,9 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
       }
   }
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+  def attempt = {
     case '{ ($str:String).like($other) } =>
-      Infix(List(""," like ",""), List(astParse(str), astParse(other)), true, Quat.Value)
+      Infix(List(""," like ",""), List(rootParse(str), rootParse(other)), true, Quat.Value)
 
     case expr @ NamedOp1(left, "==", right) =>
       equalityWithInnerTypechecksIdiomatic(left.asTerm, right.asTerm)(Equal)
@@ -839,15 +724,15 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
       equalityWithInnerTypechecksIdiomatic(left.asTerm, right.asTerm)(NotEqual)
 
     case NamedOp1(left, "||", right) =>
-      BinaryOperation(astParse(left), BooleanOperator.||, astParse(right))
+      BinaryOperation(rootParse(left), BooleanOperator.||, rootParse(right))
     case NamedOp1(left, "&&", right) =>
-      BinaryOperation(astParse(left), BooleanOperator.&&, astParse(right))
+      BinaryOperation(rootParse(left), BooleanOperator.&&, rootParse(right))
 
-    case '{ !($b: Boolean) } => UnaryOperation(BooleanOperator.!, astParse(b))
+    case '{ !($b: Boolean) } => UnaryOperation(BooleanOperator.!, rootParse(b))
 
     // Unary minus symbol i.e. val num: Int = 4; quote { -lift(num) }.
     // This is done term-level or we would have to do it for every numeric type
-    case Unseal(Select(num, "unary_-")) if isNumeric(num.tpe) => UnaryOperation(NumericOperator.-, astParse(num.asExpr))
+    case Unseal(Select(num, "unary_-")) if isNumeric(num.tpe) => UnaryOperation(NumericOperator.-, rootParse(num.asExpr))
 
     // In the future a casting system should be implemented to handle these cases.
     // Until then, let the SQL dialect take care of the auto-conversion.
@@ -856,31 +741,31 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
     // so we need to parse it as an Apply. The others don't take arg parens so they are not in apply-form.
 
     case Unseal(Apply(Select(num, "toString"), List())) if isNumeric(num.tpe) =>
-      val inner = astParse(num.asExpr)
+      val inner = rootParse(num.asExpr)
       Infix(List("cast(", " as VARCHAR)"), List(inner), false, inner.quat)
-    case Unseal(Select(num, "toInt")) if isPrimitive(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toFloat")) if isPrimitive(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toDouble")) if isPrimitive(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toByte")) if isPrimitive(num.tpe) => astParse(num.asExpr)
-    case Unseal(Select(num, "toChar")) if isPrimitive(num.tpe) => astParse(num.asExpr)
+    case Unseal(Select(num, "toInt")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
+    case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
+    case Unseal(Select(num, "toFloat")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
+    case Unseal(Select(num, "toDouble")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
+    case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
+    case Unseal(Select(num, "toByte")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
+    case Unseal(Select(num, "toChar")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
 
     // TODO not sure how I want to do this on an SQL level. Maybe implement using SQL function containers since
     // they should be more dialect-portable then just infix
-    case '{ ($str: String).length } => Infix(List("Len(",")"), List(astParse(str)), true, Quat.Value)
+    case '{ ($str: String).length } => Infix(List("Len(",")"), List(rootParse(str)), true, Quat.Value)
 
     //String Operations Cases
     case NamedOp1(left, "+", right) if is[String](left) || is[String](right) =>
-      BinaryOperation(astParse(left), StringOperator.+, astParse(right))
+      BinaryOperation(rootParse(left), StringOperator.+, rootParse(right))
 
-    case '{ ($i: String).toString } => astParse(i)
-    case '{ ($str:String).toUpperCase } => UnaryOperation(StringOperator.toUpperCase, astParse(str))
-    case '{ ($str:String).toLowerCase } => UnaryOperation(StringOperator.toLowerCase, astParse(str))
-    case '{ ($str:String).toLong } => UnaryOperation(StringOperator.toLong, astParse(str))
-    case '{ ($str:String).toInt } => UnaryOperation(StringOperator.toInt, astParse(str))
-    case '{ ($left:String).startsWith($right) } => BinaryOperation(astParse(left), StringOperator.startsWith, astParse(right))
-    case '{ ($left:String).split($right:String) } => BinaryOperation(astParse(left), StringOperator.split, astParse(right))
+    case '{ ($i: String).toString } => rootParse(i)
+    case '{ ($str:String).toUpperCase } => UnaryOperation(StringOperator.toUpperCase, rootParse(str))
+    case '{ ($str:String).toLowerCase } => UnaryOperation(StringOperator.toLowerCase, rootParse(str))
+    case '{ ($str:String).toLong } => UnaryOperation(StringOperator.toLong, rootParse(str))
+    case '{ ($str:String).toInt } => UnaryOperation(StringOperator.toInt, rootParse(str))
+    case '{ ($left:String).startsWith($right) } => BinaryOperation(rootParse(left), StringOperator.startsWith, rootParse(right))
+    case '{ ($left:String).split($right:String) } => BinaryOperation(rootParse(left), StringOperator.split, rootParse(right))
 
     /*
     //SET Operations
@@ -901,15 +786,12 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
   //   else
   //     report.throwError(s"Can only perform the operation `${opName}` on primitive types but found the type: ${Format.TypeRepr(tpe.widen)} (primitive types are: Int,Long,Short,Float,Double,Boolean,Char)")
 
-  object NumericOperation {
-    def unapply(expr: Expr[_]): Option[BinaryOperation] = {
-      UntypeExpr(expr) match {
+  object NumericOperation:
+    def unapply(expr: Expr[_])(using History): Option[BinaryOperation] =
+      UntypeExpr(expr) match
         case NamedOp1(left, NumericOpLabel(binaryOp), right) if (isNumeric(left.asTerm.tpe) && isNumeric(right.asTerm.tpe)) =>
-          Some(BinaryOperation(astParse(left), binaryOp, astParse(right)))
+          Some(BinaryOperation(rootParse(left), binaryOp, rootParse(right)))
         case _ => None
-      }
-    }
-  }
 
   object NumericOpLabel {
     def unapply(str: String): Option[BinaryOperator] =
@@ -933,11 +815,13 @@ case class OperationsParser(root: Parser[Ast] = Parser.empty)(override implicit 
  * null-constant can match anything e.g. a (something: SomeValue) clause. Found this out
  * when tried to do just '{ (infix: InfixValue) } and 'null' matched it
  */
-case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+class ValueParser(rootParse: Parser)(using Quotes)
+  extends Parser(rootParse)
+  with QuatMaking {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+
+  def attempt = {
     // Parse Null values
     case Unseal(Literal(NullConstant())) => NullValue
     // null.asInstanceOf[someType]
@@ -947,29 +831,32 @@ case class ValueParser(root: Parser[Ast] = Parser.empty)(override implicit val q
     // Parse Constants
     case expr @ Unseal(ConstantTerm(v)) => Constant(v, InferQuat.ofExpr(expr))
     // Parse Option constructors
-    case '{ Some.apply[t]($v) } => OptionSome(astParse(v))
-    case '{ Option.apply[t]($v) } => OptionApply(astParse(v))
+    case '{ Some.apply[t]($v) } => OptionSome(rootParse(v))
+    case '{ Option.apply[t]($v) } => OptionApply(rootParse(v))
     case '{ None } => OptionNone(Quat.Null)
     case '{ Option.empty[t] } => OptionNone(InferQuat.of[t])
   }
 }
 
-case class ComplexValueParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
+class ComplexValueParser(rootParse: Parser)(using Quotes)
+  extends Parser(rootParse)
+  with QuatMaking
+  with Helpers {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+
+  def attempt = {
     case ArrowFunction(prop, value) =>
-      Tuple(List(astParse(prop), astParse(value)))
+      Tuple(List(rootParse(prop), rootParse(value)))
 
     // Parse tuples
     case Unseal(Apply(TypeApply(Select(TupleIdent(), "apply"), types), values)) =>
-      Tuple(values.map(v => astParse(v.asExpr)))
+      Tuple(values.map(v => rootParse(v.asExpr)))
 
     case CaseClassCreation(ccName, fields, args) =>
       if (fields.length != args.length)
         throw new IllegalArgumentException(s"In Case Class ${ccName}, does not have the same number of fields (${fields.length}) as it does arguments ${args.length} (fields: ${fields}, args: ${args.map(_.show)})")
-      val argsAst = args.map(astParse(_))
+      val argsAst = args.map(rootParse(_))
       CaseClass(fields.zip(argsAst))
 
     case id @ Unseal(i @ TIdent(x)) =>
@@ -977,21 +864,21 @@ case class ComplexValueParser(root: Parser[Ast] = Parser.empty)(override implici
   }
 }
 
-case class GenericExpressionsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] with PropertyParser {
+class GenericExpressionsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PropertyParser {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
-  import Parser.Implicits._
 
-  def reparent(newRoot: Parser[Ast]) = this.copy(root = newRoot)
 
-  def delegate: PartialFunction[Expr[_], Ast] = {
+
+
+  def attempt = {
 
     case AnyProperty(property) => property
 
     // If at the end there's an inner tree that's typed, move inside and try to parse again
     case Unseal(Typed(innerTree, _)) =>
-      astParse(innerTree.asExpr)
+      rootParse(innerTree.asExpr)
 
     case Unseal(Inlined(_, _, v)) =>
-      astParse(v.asExpr)
+      rootParse(v.asExpr)
   }
 }

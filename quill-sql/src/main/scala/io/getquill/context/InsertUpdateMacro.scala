@@ -5,8 +5,6 @@ package io.getquill.context
 import scala.quoted._
 import io.getquill.norm.BetaReduction
 import io.getquill.util.LoadModule
-import io.getquill.parser.Parser
-import io.getquill.parser.Parser.Implicits._
 import io.getquill.parser.ParserFactory
 import io.getquill.generic.ElaborateStructure
 import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, Update => AUpdate, _ }
@@ -31,6 +29,7 @@ import io.getquill.util.Format
 import io.getquill.generic.ElaborationSide
 import io.getquill.metaprog.SummonParser
 import _root_.io.getquill.ActionReturning
+import io.getquill.parser.engine.History
 
 /**
  * TODO Right now this is just insert but we can easily extend to update and delete
@@ -107,10 +106,10 @@ object InsertUpdateMacro {
    * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
    * statement is based. The schema is based on the EntityQuery which could potentially be an unquoted QuerySchema.
    */
-  class Pipeline[T: Type, A[T] <: Insert[T] | Update[T]: Type](using override val qctx: Quotes) extends QuatMaking with QuatMakingBase(using qctx):
+  class Pipeline[T: Type, A[T] <: Insert[T] | Update[T]: Type](using Quotes) extends QuatMaking with QuatMakingBase:
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
-
+    val parser = SummonParser().assemble
 
     case class InserteeSchema(schemaRaw: Expr[EntityQuery[T]]):
       private def plainEntity: Entity =
@@ -144,8 +143,7 @@ object InsertUpdateMacro {
 
           // parse this
           case '{ ($q: EntityQuery[t]) } =>
-            val parserFactory = SummonParser()
-            val ast = parserFactory.apply.seal.apply(q)
+            val ast = parser(q)
             SummonState.Static(ast)
 
           case _ =>
@@ -236,8 +234,7 @@ object InsertUpdateMacro {
      * Parse the input to of query[Person].insert(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs")
      */
     def parseStaticInsertee(insertee: Expr[_]): CaseClass | AIdent = {
-      val parserFactory = SummonParser()
-      val rawAst = parserFactory.apply.seal.apply(insertee)
+      val rawAst = parser(insertee)
       val ast = BetaReduction(rawAst)
       ast match
         case cc: CaseClass => cc

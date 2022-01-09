@@ -4,8 +4,7 @@ import scala.quoted._
 import io.getquill.parser.ParserFactory
 import io.getquill.util.LoadModule
 import io.getquill.norm.BetaReduction
-import io.getquill.parser.Parser
-import io.getquill.parser.Parser.Implicits._
+import io.getquill.parser.engine.Parser
 import io.getquill.parser.Lifter
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.metaprog.QuotationLotExpr
@@ -14,6 +13,7 @@ import io.getquill.metaprog.Pointable
 import io.getquill.Quoted
 import io.getquill.metaprog.SummonParser
 import io.getquill.metaprog.SummonSerializationBehaviors
+import io.getquill.parser.engine.History
 
 
 object ExtractLifts {
@@ -64,12 +64,10 @@ object QuoteMacro {
     // NOTE Can disable underlyingArgument here if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val body = bodyRaw.asTerm.underlyingArgument.asExpr
 
-    val parserFactory = SummonParser()
+    val parser = SummonParser().assemble
     val (serializeQuats, serializeAst) = SummonSerializationBehaviors()
 
-    import Parser._
-
-    val rawAst = parserFactory.apply.seal.apply(body)
+    val rawAst = parser(body)
     val ast = BetaReduction(rawAst)
 
     val reifiedAst = Lifter.WithBehavior(serializeQuats, serializeAst)(ast)
