@@ -1,9 +1,19 @@
 package io.getquill.util
 
 import java.io.ByteArrayOutputStream
+import scala.util.Try
+import scala.util.Success
+import scala.util.Failure
 
 /** Extensions for common scala data types */
 object CommonExtensions:
+
+  object Option:
+    extension [T](opt: Option[T])
+      def asTryFail(e: Throwable): Try[T] =
+        opt match
+          case Some(v) => Success(v)
+          case None => Failure(e)
 
   object Either:
     extension [T](opt: Option[T])

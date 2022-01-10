@@ -315,7 +315,7 @@ object BatchQueryExecution:
 
           val expandedQuotation = expandQuotation(Lifter(actionQueryAst), batchActionType, perRowLifts)
 
-          StaticTranslationMacro.applyInner[I, T, D, N](expandedQuotation, ElaborationBehavior.Skip) match
+          StaticTranslationMacro[I, T, D, N](expandedQuotation, ElaborationBehavior.Skip) match
             case Some(state @ StaticState(query, filteredPerRowLifts, _, _)) =>
               // create an extractor for returning actions
               val extractor = MakeExtractor[ResultRow, Session, T, T].static(state, identityConverter, extractionBehavior)

@@ -1,6 +1,5 @@
 package io.getquill.util
 
-import org.scalafmt.cli._
 import scala.util.matching.Regex
 import java.io.File
 import metaconfig._, Configured._

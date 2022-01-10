@@ -1,7 +1,7 @@
 package io.getquill.metaprog
 
 import io.getquill.parser.ParserFactory
-import io.getquill.util.LoadModule
+import io.getquill.util.Load
 import io.getquill.util.Format
 import scala.quoted._
 import scala.util.Success
@@ -33,7 +33,7 @@ object SummonParser:
         val factoryTypeRepr = factory.asTerm.tpe.widen
         factoryTypeRepr.asType match
           case '[t] =>
-            LoadModule[t] match
+            Load.Module[t] match
               case Success(parser) => parser.asInstanceOf[ParserFactory]
               case Failure(e) => report.throwError(s"Could not summon a parser of type ${Format.TypeOf[t]}. A parser must be a static object created in it's own compilation unit. ${e}")
       case None =>

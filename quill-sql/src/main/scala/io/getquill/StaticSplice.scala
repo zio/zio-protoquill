@@ -3,7 +3,7 @@ package io.getquill
 import scala.quoted._
 import java.time.format.DateTimeFormatter
 import io.getquill.util.Format
-import io.getquill.util.LoadModule
+import io.getquill.util.Load
 import scala.util.Try
 import scala.util.Failure
 import scala.util.Success
@@ -30,7 +30,7 @@ object StaticSplice:
         // so then we need to use Untype to just get SpliceString which is a module that we can load
         staticSpliceType = Untype(summonValue.asTerm.underlyingArgument).tpe.widen
 
-        untypedModule <- LoadModule.TypeRepr(staticSpliceType).toEither.mapLeft(_.getMessage)
+        untypedModule <- Load.Module.fromTypeRepr(staticSpliceType).toEither.mapLeft(_.getMessage)
         module        <- Try(untypedModule.asInstanceOf[StaticSplice[T]]).toEither.mapLeft(_.getMessage)
       } yield (module)
 

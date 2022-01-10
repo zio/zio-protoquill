@@ -35,7 +35,7 @@ object StaticTranslationMacro {
   import scala.quoted._ // Expr.summon is actually from here
   import io.getquill.Planter
   import io.getquill.idiom.LoadNaming
-  import io.getquill.util.LoadModule
+  import io.getquill.util.Load
   import io.getquill.generic.GenericEncoder
   import io.getquill.ast.External
   import io.getquill.ReturnAction
@@ -125,11 +125,11 @@ object StaticTranslationMacro {
 
   def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using Quotes, Type[D], Type[N]): Try[(Idiom, NamingStrategy)] =
     for {
-      idiom <- LoadModule[D]
+      idiom <- Load.Module[D]
       namingStrategy <- LoadNaming.static[N]
     } yield (idiom, namingStrategy)
 
-  def applyInner[I: Type, T: Type, D <: Idiom, N <: NamingStrategy](
+  def apply[I: Type, T: Type, D <: Idiom, N <: NamingStrategy](
     quotedRaw: Expr[Quoted[QAC[I, T]]],
     wrap: ElaborationBehavior
   )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[StaticState] =
@@ -137,10 +137,6 @@ object StaticTranslationMacro {
     import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
-    idiomAndNamingStatic[D, N] match {
-      case Success(v) =>
-      case Failure(f) => f.printStackTrace()
-    }
 
     extension [T](opt: Option[T]) {
       def errPrint(str: String) =
@@ -155,7 +151,7 @@ object StaticTranslationMacro {
 
     val tryStatic =
       for {
-        (idiom, naming)                        <- idiomAndNamingStatic.toOption.errPrint("Could not parse Idiom/Naming")
+        (idiom, naming)                        <- idiomAndNamingStatic[D, N].toOption.errPrint("Could not parse Idiom/Naming")
         // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
         (quotedExpr, lifts)                    <- QuotedExpr.uprootableWithLiftsOpt(quoted).errPrint("Could not uproot the quote")
         (query, externals, returnAction, ast)  <- processAst[T](quotedExpr.ast, wrap, idiom, naming).errPrint("Could not process the ASt")
