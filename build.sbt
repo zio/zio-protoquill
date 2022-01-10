@@ -124,7 +124,7 @@ lazy val `quill-sql` =
         ("io.getquill" %% "quill-core-portable" % "3.12.0").cross(CrossVersion.for3Use2_13),
         ("io.getquill" %% "quill-sql-portable" % "3.12.0").cross(CrossVersion.for3Use2_13),
         "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
-        ("org.scalameta" %% "scalafmt-cli" % "3.1.0")
+        ("org.scalameta" %% "scalafmt-core" % "3.1.0")
           .excludeAll(
             ExclusionRule(organization = "com.lihaoyi", name = "sourcecode_2.13"),
             ExclusionRule(organization = "com.lihaoyi", name = "fansi_2.13"),

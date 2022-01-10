@@ -4,7 +4,7 @@ package io.getquill.context
 
 import scala.quoted._
 import io.getquill.norm.BetaReduction
-import io.getquill.util.LoadModule
+import io.getquill.util.Load
 import io.getquill.parser.ParserFactory
 import io.getquill.generic.ElaborateStructure
 import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, Update => AUpdate, _ }

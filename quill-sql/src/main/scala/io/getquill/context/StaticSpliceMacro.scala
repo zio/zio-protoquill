@@ -2,7 +2,7 @@ package io.getquill.context
 
 import scala.quoted._
 import io.getquill.StaticSplice
-import io.getquill.util.LoadModule
+import io.getquill.util.Load
 import io.getquill.metaprog.Extractors
 import scala.util.Success
 import scala.util.Failure
@@ -116,7 +116,7 @@ object StaticSpliceMacro {
         case _ =>
           report.throwError(s"Cannot evaluate the static path ${Format.Term(value)}. Neither it's type ${Format.TypeRepr(pathRoot.tpe)} nor the owner of this type is a static module.")
 
-    val module = LoadModule.TypeRepr(ownerTpe).toEither.discardLeft(e =>
+    val module = Load.Module.fromTypeRepr(ownerTpe).toEither.discardLeft(e =>
       // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
       report.throwError(s"Could not look up {${(ownerTpe)}}.${path.mkString(".")} from the object.\nStatic load failed due to: ${e.stackTraceToString}")
     )

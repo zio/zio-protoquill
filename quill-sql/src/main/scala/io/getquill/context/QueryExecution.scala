@@ -171,7 +171,7 @@ object QueryExecution:
 
     /**
      * Summon all needed components and run executeQuery method
-     * (Experiment with catching `StaticTranslationMacro.applyInner` errors since they usually happen
+     * (Experiment with catching `StaticTranslationMacro.apply` errors since they usually happen
      * because some upstream construct has done a reportError so we do not want to do another one.
      * I.e. if we do another returnError here it will override that one which is not needed.
      * if this seems to work well, make the same change to other apply___ methods here.
@@ -183,7 +183,7 @@ object QueryExecution:
         case Some(queryMeta) =>
           queryMeta match { case '[rawT] => runWithQueryMeta[rawT](quoted) }
         case None =>
-          Try(StaticTranslationMacro.applyInner[I, T, D, N](quoted, queryElaborationBehavior)) match
+          Try(StaticTranslationMacro[I, T, D, N](quoted, queryElaborationBehavior)) match
             case scala.util.Failure(e) =>
               import CommonExtensions.Throwable._
               val msg = s"Query splicing failed due to error: ${e.stackTraceToString}"
@@ -199,14 +199,14 @@ object QueryExecution:
               executeDynamic(quoted, identityConverter, ExtractBehavior.Extract, queryElaborationBehavior) // No we can't. Do dynamic
 
     def applyAction(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
-      StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Skip) match
+      StaticTranslationMacro[I, T, D, N](quoted, ElaborationBehavior.Skip) match
         case Some(staticState) =>
           executeStatic[T](staticState, identityConverter, ExtractBehavior.Skip)
         case None =>
           executeDynamic(quoted, identityConverter, ExtractBehavior.Skip, ElaborationBehavior.Skip)
 
     def applyActionReturning(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
-      StaticTranslationMacro.applyInner[I, T, D, N](quoted, ElaborationBehavior.Skip) match
+      StaticTranslationMacro[I, T, D, N](quoted, ElaborationBehavior.Skip) match
         case Some(staticState) =>
           executeStatic[T](staticState, identityConverter, ExtractBehavior.ExtractWithReturnAction)
         case None =>
