@@ -7,6 +7,7 @@ import scala.deriving._
 import scala.compiletime.{erasedValue, constValue, summonFrom, summonInline}
 import io.getquill.metaprog.TypeExtensions._
 import io.getquill.util.Format
+import scala.annotation.tailrec
 
 trait GenericColumnResolver[ResultRow] {
   def apply(resultRow: ResultRow, columnName: String): Int
@@ -47,7 +48,10 @@ object GenericDecoder {
             println(s"WARNING Could not summon a decoder for the type: ${io.getquill.util.Format.TypeOf[T]}")
             report.throwError(s"Cannot find decoder for the type: ${Format.TypeOf[T]}")
 
-  def flatten[ResultRow: Type, Session: Type, Fields: Type, Types: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(fieldsTup: Type[Fields], typesTup: Type[Types])(using Quotes): List[(Type[_], Expr[_])] = {
+  case class FlattenPair(tpe: Type[_], exr: Expr[_])
+
+  @tailrec
+  def flatten[ResultRow: Type, Session: Type, Fields: Type, Types: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(fieldsTup: Type[Fields], typesTup: Type[Types], accum: List[FlattenPair] = List())(using Quotes): List[FlattenPair] = {
     import quotes.reflect.{Term => QTerm, _}
 
     (fieldsTup, typesTup) match {
@@ -67,14 +71,16 @@ object GenericDecoder {
         // database columns (i.e. since we're using table-per-class which means the table contains all the columns from all the co-product types)
         // if we have a 'column resolver' then we are trying to get the index by name instead by the number. So we lookup if a column resolver exists and use it.
        val resolvedIndex = resolveIndexOrFallback[ResultRow](index, resultRow, fieldValue)
-       (Type.of[tpe], summonAndDecode[ResultRow, Session, tpe](resolvedIndex, resultRow, session)) :: flatten[ResultRow, Session, fields, types]('{$index + ${Expr(air)}}, resultRow, session)(Type.of[fields], Type.of[types])
+       val result = FlattenPair(Type.of[tpe], summonAndDecode[ResultRow, Session, tpe](resolvedIndex, resultRow, session))
+       flatten[ResultRow, Session, fields, types]('{$index + ${Expr(air)}}, resultRow, session)(Type.of[fields], Type.of[types], result +: accum)
 
       case ('[field *: fields], '[tpe *: types]) =>
         val fieldValue = Type.of[field].constValue
         val resolvedIndex = resolveIndexOrFallback[ResultRow](index, resultRow, fieldValue)
-        (Type.of[tpe], summonAndDecode[ResultRow, Session, tpe](resolvedIndex, resultRow, session)) :: flatten[ResultRow, Session, fields, types]('{$index + 1}, resultRow, session)(Type.of[fields], Type.of[types])
+        val result = FlattenPair(Type.of[tpe], summonAndDecode[ResultRow, Session, tpe](resolvedIndex, resultRow, session))
+        flatten[ResultRow, Session, fields, types]('{$index + 1}, resultRow, session)(Type.of[fields], Type.of[types], result +: accum)
 
-      case (_, '[EmptyTuple]) => Nil
+      case (_, '[EmptyTuple]) => accum
 
       case _ => report.throwError("Cannot Derive Product during Type Flattening of Expression:\n" + typesTup)
     }
@@ -107,8 +113,6 @@ object GenericDecoder {
         // because the inlining has to explore every possibility. Therefore we return a runtime error here.
         val msg = s"Cannot resolve coproduct type for '${Format.TypeOf[T]}'"
         '{ throw new IllegalArgumentException(${Expr(msg)}) }
-
-
 
   def decode[T: Type, ResultRow: Type, Session: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): Expr[T] = {
     import quotes.reflect._
@@ -164,7 +168,7 @@ object GenericDecoder {
                       '{ throw new IllegalArgumentException($msg) }
 
           case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-            val children = flatten(index, resultRow, session)(Type.of[elementLabels], Type.of[elementTypes])
+            val children = flatten(index, resultRow, session)(Type.of[elementLabels], Type.of[elementTypes]).reverse
             val types = children.map(_._1)
             val terms = children.map(_._2)
             // Get the constructor
