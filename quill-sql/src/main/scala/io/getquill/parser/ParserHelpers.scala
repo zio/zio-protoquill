@@ -467,4 +467,31 @@ object ParserHelpers:
     }
   end PatternMatchingValues
 
+
+  object ImplicitClassExtensionPattern:
+    private def isImplicitClassMaker(using Quotes)(term: quotes.reflect.Term): Boolean =
+      import quotes.reflect._
+      term.tpe.termSymbol.flags.is(Flags.Final | Flags.Implicit | Flags.Method | Flags.Synthetic)
+    def unapply(expr: Expr[_])(using Quotes) =
+      import quotes.reflect._
+      expr match
+        case expr @ Unseal(Select(Apply(cc @ Ident(ccid), List(constructorArg)), methodName)) if (isImplicitClassMaker(cc)) =>
+          Some((ccid, constructorArg, methodName))
+        case _ =>
+          None
+    def errorMessage(using Quotes)(expr: Expr[_], ccid: String, constructorArg: quotes.reflect.Term, methodName: String) =
+      s"""|Error in the expression: `${Format.Expr(expr)}` (a.k.a. `${Format.Term(constructorArg)}.${methodName}`)
+          |Attempted to call the method `${methodName}` on the expression `${Format.Term(constructorArg)}`
+          |via the implicit extensions class `${ccid}`.
+          |Implicit extensions in Quotations are not supported in ProtoQuill. Instead use inline
+          |extension methods. For example, instead of doing this:
+          |implicit class ${ccid}(input: ${Format.TypeRepr(constructorArg.tpe.widen)}):
+          |  def ${methodName} = [method content]
+          |
+          |Do this:
+          |extension (inline input: ${Format.TypeRepr(constructorArg.tpe.widen)})
+          |  inline def ${methodName} = [method content]
+          |"""".stripMargin
+
+
 end ParserHelpers
