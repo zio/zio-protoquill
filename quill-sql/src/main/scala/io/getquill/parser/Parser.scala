@@ -867,10 +867,9 @@ class ComplexValueParser(rootParse: Parser)(using Quotes)
 class GenericExpressionsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PropertyParser {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
 
-
-
-
   def attempt = {
+    case expr @ ImplicitClassExtensionPattern(clsName, constructorArg, methodName) =>
+      report.throwError(ImplicitClassExtensionPattern.errorMessage(expr, clsName, constructorArg, methodName), expr)
 
     case AnyProperty(property) => property
 
