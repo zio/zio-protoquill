@@ -7,13 +7,18 @@ import io.getquill.ast._
 import io.getquill.Quoted
 
 import io.getquill.quat.quatOf
+import io.getquill.context.SplicingBehaviorHint
+import io.getquill.context.SplicingBehavior
 
 class SimpleMapSqlSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)
 
+  given SplicingBehaviorHint with
+    override type BehaviorType = SplicingBehavior.FailOnDynamic
+
   "simple test for one inline query converted to sql" in {
     inline def q = quote {
-      query[SanePerson] // helloo
+      query[SanePerson]
     }
     inline def qq = quote {
       q.map(p => p.name)

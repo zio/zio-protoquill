@@ -3,10 +3,15 @@ package io.getquill.sanity
 import io.getquill._
 import io.getquill.ast._
 import io.getquill.Quoted
+import io.getquill.context.SplicingBehaviorHint
+import io.getquill.context.SplicingBehavior
 
 class SimplePrepareSpec extends Spec {
   val ctx = SqlMirrorContext(PostgresDialect, Literal)
   import ctx._
+
+  given SplicingBehaviorHint with
+    override type BehaviorType = SplicingBehavior.FailOnDynamic
 
   "prepare should work for" - {
     case class Person(name: String, age: Int)

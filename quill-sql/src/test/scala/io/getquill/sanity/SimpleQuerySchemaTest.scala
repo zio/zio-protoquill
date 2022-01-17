@@ -2,9 +2,14 @@ package io.getquill.sanity
 
 import io.getquill._
 import io.getquill.generic._
+import io.getquill.context.SplicingBehaviorHint
+import io.getquill.context.SplicingBehavior
 
 
 class SimpleQuerySchemaTest extends Spec {
+
+  given SplicingBehaviorHint with
+    override type BehaviorType = SplicingBehavior.FailOnDynamic
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._

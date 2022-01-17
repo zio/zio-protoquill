@@ -11,9 +11,14 @@ import io.getquill.quat.Quat
 import io.getquill.quat.quatOf
 import io.getquill.quote
 import io.getquill.query
+import io.getquill.context.SplicingBehaviorHint
+import io.getquill.context.SplicingBehavior
 
 class SimpleMapRunSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)
+
+  given SplicingBehaviorHint with
+    override type BehaviorType = SplicingBehavior.FailOnDynamic
 
   "simple test for inline query and map translated to the mirror idiom" in {
     inline def q = quote {
