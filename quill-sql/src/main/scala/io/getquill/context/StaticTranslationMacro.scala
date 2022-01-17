@@ -29,6 +29,8 @@ import io.getquill.QAC
 import io.getquill.NamingStrategy
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.util.Format
+import io.getquill.util.Interpolator
+import io.getquill.util.Messages.TraceType
 
 object StaticTranslationMacro {
   import io.getquill.parser._
@@ -139,23 +141,40 @@ object StaticTranslationMacro {
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
 
     extension [T](opt: Option[T]) {
-      def errPrint(str: String) =
+      def errPrint(str: => String) =
         opt match {
           case s: Some[T] => s
           case None =>
-            // TODO Print this when a high level of trace debugging is enabled
-            //println(str);
-            None
+            if (HasDynamicSplicingHint.fail)
+              report.throwError(str)
+            else
+              if (io.getquill.util.Messages.tracesEnabled(TraceType.Warning))
+                println(s"[StaticTranslationError] ${str}")
+              None
         }
     }
 
     val tryStatic =
       for {
-        (idiom, naming)                        <- idiomAndNamingStatic[D, N].toOption.errPrint("Could not parse Idiom/Naming")
-        // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly recognized by QuotedExpr.uprootableOpt for some reason
-        (quotedExpr, lifts)                    <- QuotedExpr.uprootableWithLiftsOpt(quoted).errPrint("Could not uproot the quote")
-        (query, externals, returnAction, ast)  <- processAst[T](quotedExpr.ast, wrap, idiom, naming).errPrint("Could not process the ASt")
-        encodedLifts                           <- processLifts(lifts, externals).errPrint("Could not process the lifts")
+        (idiom, naming) <-
+          idiomAndNamingStatic[D, N].toOption.errPrint(
+            s"Could not parse Idiom/Naming from ${Format.TypeOf[D]}/${Format.TypeOf[N]}"
+          )
+
+        // TODO (MAJOR) Really should plug quotedExpr into here because inlines are spliced back in but they are not properly
+        // recognized by QuotedExpr.uprootableOpt for some reason
+
+        (quotedExpr, lifts) <-
+          QuotedExpr.uprootableWithLiftsOpt(quoted).errPrint(
+            s"Could not uproot the quote: ${Format.Expr(quoted)}"
+          )
+
+        (query, externals, returnAction, ast) <-
+          processAst[T](quotedExpr.ast, wrap, idiom, naming).errPrint(s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}")
+
+        encodedLifts <-
+          processLifts(lifts, externals).errPrint(s"Could not process the lifts:\n${lifts.map(_.toString).mkString(",\n")}")
+
       } yield {
         if (io.getquill.util.Messages.debugEnabled)
           report.info(

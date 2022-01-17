@@ -1,10 +1,15 @@
 package io.getquill.sanity
 
 import io.getquill._
+import io.getquill.context.SplicingBehaviorHint
+import io.getquill.context.SplicingBehavior
 
 object SimpleBatchWithInfix extends Spec {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
+
+  given SplicingBehaviorHint with
+    override type BehaviorType = SplicingBehavior.FailOnDynamic
 
   "batch must work with simple infix" in {
     case class Person[T](name: String, age: Int)
