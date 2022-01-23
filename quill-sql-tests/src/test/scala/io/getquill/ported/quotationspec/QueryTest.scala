@@ -143,13 +143,13 @@ class QueryTest extends Spec with NonSerializingQuotation with TestEntities {
       inline def q = quote {
         qr1.filter(t => t.s == "s")
       }
-      quote(unquote(q)).ast mustEqual Filter(Entity("TestEntity", Nil, TestEntityQuat), Ident("t", TestEntityQuat), BinaryOperation(Property(Ident("t", TestEntityQuat), "s"), EqualityOperator.`==`, Constant.auto("s")))
+      quote(unquote(q)).ast mustEqual Filter(Entity("TestEntity", Nil, TestEntityQuat), Ident("t", TestEntityQuat), BinaryOperation(Property(Ident("t", TestEntityQuat), "s"), EqualityOperator.`_==`, Constant.auto("s")))
     }
     "withFilter" in {
       inline def q = quote {
         qr1.withFilter(t => t.s == "s")
       }
-      quote(unquote(q)).ast mustEqual Filter(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), BinaryOperation(Property(Ident("t"), "s"), EqualityOperator.`==`, Constant.auto("s")))
+      quote(unquote(q)).ast mustEqual Filter(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), BinaryOperation(Property(Ident("t"), "s"), EqualityOperator.`_==`, Constant.auto("s")))
     }
     "map" in {
       inline def q = quote {
@@ -328,7 +328,7 @@ class QueryTest extends Spec with NonSerializingQuotation with TestEntities {
     "join" - {
 
       def tree(t: JoinType) =
-        Join(t, Entity("TestEntity", Nil, TestEntityQuat), Entity("TestEntity2", Nil, TestEntity2Quat), Ident("a"), Ident("b"), BinaryOperation(Property(Ident("a"), "s"), EqualityOperator.`==`, Property(Ident("b"), "s")))
+        Join(t, Entity("TestEntity", Nil, TestEntityQuat), Entity("TestEntity2", Nil, TestEntity2Quat), Ident("a"), Ident("b"), BinaryOperation(Property(Ident("a"), "s"), EqualityOperator.`_==`, Property(Ident("b"), "s")))
 
       "inner join" in {
         inline def q = quote {

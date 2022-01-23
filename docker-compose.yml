@@ -10,12 +10,14 @@ services:
       - POSTGRES_HOST_AUTH_METHOD=trust
 
   mysql:
-    image: mysql:5.7
+    image: mysql/mysql-server:8.0.23 # use this because it supports ARM64 architecture for M1 Mac
+    command: --default-authentication-plugin=mysql_native_password
     ports:
       - "13306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_ROOT_HOST=%
 
   cassandra:
     build:

@@ -101,7 +101,7 @@ class QuerySpec extends Spec {
           qr1.distinct
         }
         testContext.run(q).string mustEqual
-          "SELECT x.s, x.i, x.l, x.o, x.b FROM (SELECT DISTINCT x.s, x.i, x.l, x.o, x.b FROM TestEntity x) AS x"
+          "SELECT DISTINCT x.s, x.i, x.l, x.o, x.b FROM TestEntity x"
       }
 
       "single" in {
@@ -117,7 +117,7 @@ class QuerySpec extends Spec {
           qr1.map(i => (i.i, i.l)).distinct
         }
         testContext.run(q).string mustEqual
-          "SELECT i._1, i._2 FROM (SELECT DISTINCT i.i AS _1, i.l AS _2 FROM TestEntity i) AS i"
+          "SELECT DISTINCT i.i AS _1, i.l AS _2 FROM TestEntity i"
       }
 
       // A little different from Scala2-Quill Since in ProtoQuill Elaborates to a ast.CaseClass not a ast.Tuple
@@ -145,7 +145,7 @@ class QuerySpec extends Spec {
           qr1.map(i => i.i).distinct.map(x => x + 1)
         }
         testContext.run(q).string mustEqual
-          "SELECT i.i + 1 FROM (SELECT DISTINCT i.i FROM TestEntity i) AS i"
+          "SELECT i._1 + 1 FROM (SELECT DISTINCT i.i AS _1 FROM TestEntity i) AS i"
       }
 
       "with join + filter" in {
@@ -156,7 +156,7 @@ class QuerySpec extends Spec {
           } yield (v1, v2)
         }
         testContext.run(q).string mustEqual
-          "SELECT i.i, x1.s, x1.i, x1.l, x1.o FROM (SELECT DISTINCT i.i FROM TestEntity i) AS i, TestEntity2 x1 WHERE x1.i = i.i"
+          "SELECT i._1, x1.s, x1.i, x1.l, x1.o FROM (SELECT DISTINCT i.i AS _1 FROM TestEntity i) AS i, TestEntity2 x1 WHERE x1.i = i._1"
       }
 
       "with two joins" in {
@@ -167,7 +167,7 @@ class QuerySpec extends Spec {
           } yield (v1, v2)
         }
         testContext.run(q).string mustEqual
-          "SELECT i.i, x2.s, x2.i, x2.l, x2.o FROM (SELECT DISTINCT i.i FROM TestEntity i) AS i INNER JOIN (SELECT x2.s, x2.i, x2.l, x2.o FROM TestEntity2 x2 ORDER BY x2.l ASC NULLS FIRST) AS x2 ON x2.i = i.i"
+          "SELECT i._1, x2.s, x2.i, x2.l, x2.o FROM (SELECT DISTINCT i.i AS _1 FROM TestEntity i) AS i INNER JOIN (SELECT x2.s, x2.i, x2.l, x2.o FROM TestEntity2 x2 ORDER BY x2.l ASC NULLS FIRST) AS x2 ON x2.i = i._1"
       }
 
       "followed by aggregation" in {
@@ -196,7 +196,7 @@ class QuerySpec extends Spec {
           }
         }
         testContext.run(q).string mustEqual
-          "SELECT t.s, t1.i FROM (SELECT t.s, t.i, t.l, t.o, t.b FROM TestEntity t ORDER BY t.s ASC NULLS FIRST) AS t, (SELECT t1.s, t1.i, t1.l, t1.o FROM TestEntity2 t1 ORDER BY t1.i ASC NULLS FIRST) AS t1"
+          "SELECT t.s AS _1, t1.i AS _2 FROM (SELECT t.s, t.i, t.l, t.o, t.b FROM TestEntity t ORDER BY t.s ASC NULLS FIRST) AS t, (SELECT t1.s, t1.i, t1.l, t1.o FROM TestEntity2 t1 ORDER BY t1.i ASC NULLS FIRST) AS t1"
       }
       "asc" in {
         inline def q = quote {
@@ -263,7 +263,7 @@ class QuerySpec extends Spec {
           }
         }
         testContext.run(q).string mustEqual
-          "SELECT t.i, COUNT(*) FROM TestEntity t GROUP BY t.i"
+          "SELECT t.i AS _1, COUNT(t.*) AS _2 FROM TestEntity t GROUP BY t.i"
       }
       "nested" in {
         inline def q = quote {
@@ -277,7 +277,7 @@ class QuerySpec extends Spec {
           }
         }
         testContext.run(q).string mustEqual
-          "SELECT t._1, t._2, c.s, c.i, c.l, c.o FROM (SELECT t.i AS _1, COUNT(*) AS _2 FROM TestEntity t GROUP BY t.i) AS t, TestEntity2 c WHERE true AND c.i = t._1"
+          "SELECT t._1, t._2, c.s, c.i, c.l, c.o FROM (SELECT t.i AS _1, COUNT(t.*) AS _2 FROM TestEntity t GROUP BY t.i) AS t, TestEntity2 c WHERE c.i = t._1"
       }
       "limited" in {
         inline def q = quote {
@@ -288,7 +288,7 @@ class QuerySpec extends Spec {
         }
 
         testContext.run(q).string mustEqual
-          "SELECT t._1, t._2 FROM (SELECT t.i AS _1, MIN(t.l) AS _2 FROM TestEntity t GROUP BY t.i) AS t LIMIT 10"
+          "SELECT x._1, x._2 FROM (SELECT t.i AS _1, MIN(t.l) AS _2 FROM TestEntity t GROUP BY t.i) AS x LIMIT 10"
       }
       "filter.flatMap(groupBy)" in {
         inline def q = quote {
@@ -340,7 +340,7 @@ class QuerySpec extends Spec {
             qr1.size
           }
           testContext.run(q).string mustEqual
-            "SELECT COUNT(*) FROM TestEntity x"
+            "SELECT COUNT(x.*) FROM TestEntity x"
         }
         "with groupBy" in {
           inline def q = quote {
@@ -382,7 +382,7 @@ class QuerySpec extends Spec {
           }
         }
         testContext.run(q).string mustEqual
-          "SELECT t.i, (COUNT(*)) + 1 FROM TestEntity t GROUP BY t.i"
+          "SELECT t.i AS _1, (COUNT(t.*)) + 1 AS _2 FROM TestEntity t GROUP BY t.i"
       }
     }
 
@@ -414,7 +414,7 @@ class QuerySpec extends Spec {
           }
         }
         testContext.run(q).string mustEqual
-          "SELECT a.s, b.i FROM (SELECT x.s, x.i, x.l, x.o, x.b FROM TestEntity x LIMIT 1) AS a, (SELECT x.s, x.i, x.l, x.o FROM TestEntity2 x LIMIT 2) AS b"
+          "SELECT a.s AS _1, b.i AS _2 FROM (SELECT x.s, x.i, x.l, x.o, x.b FROM TestEntity x LIMIT 1) AS a, (SELECT x.s, x.i, x.l, x.o FROM TestEntity2 x LIMIT 2) AS b"
       }
     }
     "union" - {
@@ -423,7 +423,7 @@ class QuerySpec extends Spec {
           qr1.filter(t => t.i > 10).union(qr1.filter(t => t.s == "s"))
         }
         testContext.run(q).string mustEqual
-          "SELECT x.s, x.i, x.l, x.o, x.b FROM ((SELECT t.s, t.i, t.l, t.o, t.b FROM TestEntity t WHERE t.i > 10) UNION (SELECT t1.s, t1.i, t1.l, t1.o, t1.b FROM TestEntity t1 WHERE t1.s = 's')) AS x"
+          "(SELECT t.s, t.i, t.l, t.o, t.b FROM TestEntity t WHERE t.i > 10) UNION (SELECT t1.s, t1.i, t1.l, t1.o, t1.b FROM TestEntity t1 WHERE t1.s = 's')"
       }
       "mapped" in {
         inline def q = quote {
@@ -445,7 +445,7 @@ class QuerySpec extends Spec {
           j.union(j).map(u => (u._1.s, u._2.i))
         }
         testContext.run(q).string mustEqual
-          "SELECT u._1s, u._2i FROM ((SELECT a.s AS _1s, b.i AS _2i FROM TestEntity a, TestEntity2 b) UNION (SELECT a1.s AS _1s, b1.i AS _2i FROM TestEntity a1, TestEntity2 b1)) AS u"
+          "SELECT u._1s AS _1, u._2i AS _2 FROM ((SELECT a.s AS _1s, b.i AS _2i FROM TestEntity a, TestEntity2 b) UNION (SELECT a1.s AS _1s, b1.i AS _2i FROM TestEntity a1, TestEntity2 b1)) AS u"
       }
     }
     "unionAll" - {
@@ -454,7 +454,7 @@ class QuerySpec extends Spec {
           qr1.filter(t => t.i > 10).unionAll(qr1.filter(t => t.s == "s"))
         }
         testContext.run(q).string mustEqual
-          "SELECT x.s, x.i, x.l, x.o, x.b FROM ((SELECT t.s, t.i, t.l, t.o, t.b FROM TestEntity t WHERE t.i > 10) UNION ALL (SELECT t1.s, t1.i, t1.l, t1.o, t1.b FROM TestEntity t1 WHERE t1.s = 's')) AS x"
+          "(SELECT t.s, t.i, t.l, t.o, t.b FROM TestEntity t WHERE t.i > 10) UNION ALL (SELECT t1.s, t1.i, t1.l, t1.o, t1.b FROM TestEntity t1 WHERE t1.s = 's')"
       }
     }
     "join" - {
@@ -515,7 +515,7 @@ class QuerySpec extends Spec {
             qr1.map(y => y.s).join(qr2).on((a, b) => a == b.s)
           }
           testContext.run(q).string mustEqual
-            "SELECT y.s, b.s, b.i, b.l, b.o FROM TestEntity y INNER JOIN TestEntity2 b ON y.s = b.s"
+            "SELECT y.s AS _1, b.s, b.i, b.l, b.o FROM TestEntity y INNER JOIN TestEntity2 b ON y.s = b.s"
         }
       }
     }

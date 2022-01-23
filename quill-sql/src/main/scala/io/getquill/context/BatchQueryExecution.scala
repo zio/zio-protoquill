@@ -51,6 +51,7 @@ import io.getquill.QAC
 import io.getquill.parser.Lifter
 import io.getquill.metaprog.InjectableEagerPlanterExpr
 import _root_.io.getquill.norm.BetaReduction
+import io.getquill.context.Execution.ElaborationBehavior
 
 trait BatchContextOperation[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: List[(PrepareRow, Session) => (List[Any], PrepareRow)], extractor: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo): Res
@@ -191,6 +192,7 @@ object DynamicBatchQueryExecution:
         rawExtractor,
         batchContextOperation.idiom,
         batchContextOperation.naming,
+        ElaborationBehavior.Skip,
         SpliceBehavior.AlreadySpliced
       )
 

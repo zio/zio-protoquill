@@ -264,7 +264,7 @@ object Unlifter {
       case Is[QuotationTag]( '{ QuotationTag($uid) } ) => QuotationTag(constString(uid))
       case Is[Infix]( '{ Infix($parts, $params, $pure, $quat) } ) => Infix(parts.unexpr, params.unexpr, pure.unexpr, quat.unexpr)
       case Is[Tuple]( '{ Tuple.apply($values) } ) => Tuple(values.unexpr)
-      case Is[CaseClass]( '{ CaseClass($values) } ) => CaseClass(values.unexpr)
+      case Is[CaseClass]( '{ CaseClass(${values}: List[(String, Ast)]) } ) => CaseClass(values.unexpr)
       case Is[IterableOperation]( unliftTraversableOperation(o) ) => o
       // TODO Is the matching covariant? In that case can do "case '{ $oo: OptionOperation } and then strictly throw an error"
       case Is[OptionOperation]( ast ) => unliftOptionOperation(ast)
@@ -295,8 +295,8 @@ object Unlifter {
       case '{ StringOperator.toInt } =>  StringOperator.toInt
       case '{ StringOperator.startsWith } =>  StringOperator.startsWith
       case '{ StringOperator.split } =>  StringOperator.split
-      case '{ EqualityOperator.== } =>  EqualityOperator.==
-      case '{ EqualityOperator.!= } =>  EqualityOperator.!=
+      case '{ EqualityOperator.`_==` } =>  EqualityOperator.`_==`
+      case '{ EqualityOperator.`_!=` } =>  EqualityOperator.`_!=`
       case '{ BooleanOperator.|| } =>  BooleanOperator.||
       case '{ BooleanOperator.&& } =>  BooleanOperator.&&
       case '{ BooleanOperator.! } =>  BooleanOperator.!

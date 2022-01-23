@@ -313,8 +313,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case NullValue => '{ NullValue }
   }
 
-  import EqualityOperator.{ == => ee, != => nee }
-
   given liftOperator : NiceLiftable[Operator] with {
     def lift =
       case SetOperator.contains => '{ SetOperator.contains }
@@ -336,8 +334,8 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case StringOperator.toInt => '{ StringOperator.toInt }
       case StringOperator.startsWith => '{ StringOperator.startsWith }
       case StringOperator.split => '{ StringOperator.split }
-      case _: ee.type => '{ EqualityOperator.== }    // if you don't do it this way, complains about 'stable identifier error'
-      case _: nee.type => '{ EqualityOperator.!= }   // (can't use 'ne' here because 'ne' alias is a non-stable identifier? maybe used for something else?)
+      case EqualityOperator.`_==` => '{ EqualityOperator.`_==` }    // if you don't do it this way, complains about 'stable identifier error'
+      case EqualityOperator.`_!=` => '{ EqualityOperator.`_!=` }   // (can't use 'ne' here because 'ne' alias is a non-stable identifier? maybe used for something else?)
       case BooleanOperator.|| => '{ BooleanOperator.|| }
       case BooleanOperator.&& => '{ BooleanOperator.&& }
       case BooleanOperator.! => '{ BooleanOperator.! }

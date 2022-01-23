@@ -14,7 +14,7 @@ class ExpandMappedInfixSpec extends Spec {
     inline def q = quote {
       i.map(x => x)
     }
-    ExpandMappedInfix(q.ast: Ast) mustEqual i.ast
+    ExpandMappedInfixCassandra(q.ast: Ast) mustEqual i.ast
   }
 
   "expands mapped infix wrapping single query" in {
@@ -24,7 +24,7 @@ class ExpandMappedInfixSpec extends Spec {
     inline def n = quote {
       infix"${qr1.map(t => t.i)} ALLOW FILTERING".as[Query[TestEntity]]
     }
-    ExpandMappedInfix(q.ast: Ast) mustEqual n.ast
+    ExpandMappedInfixCassandra(q.ast: Ast) mustEqual n.ast
   }
 
 }

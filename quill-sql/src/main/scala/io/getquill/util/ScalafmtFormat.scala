@@ -5,7 +5,6 @@ import java.io.File
 import metaconfig._, Configured._
 import org.scalafmt.Formatted
 import org.scalafmt.Scalafmt
-import org.scalafmt.config.ScalafmtConfig
 import org.scalafmt.config.{ScalafmtRunner => SRunner}
 import org.scalafmt.util.LoggerOps._
 import io.getquill.util.CommonExtensions.Throwable._
@@ -15,8 +14,7 @@ import io.getquill.util.CommonExtensions.Throwable._
  */
 object ScalafmtFormat:
   def apply(code: String, showErrorTrace: Boolean = false): String =
-    val style = ScalafmtConfig.default
-    Scalafmt.format(code, style, Set.empty, "<input>") match
+    Scalafmt.format(code, org.scalafmt.config.ScalafmtConfig.default, Set.empty, "<input>") match
       case Formatted.Success(formattedCode) =>
         formattedCode
       case Formatted.Failure(e) =>

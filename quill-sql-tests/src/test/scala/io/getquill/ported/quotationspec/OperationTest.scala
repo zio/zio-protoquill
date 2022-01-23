@@ -26,19 +26,19 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
         inline def q = quote {
           (a: Int, b: Int) => a == b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
       }
       "succeeds when different numerics are used Int/Long" in {
         inline def q = quote {
           (a: Int, b: Long) => a == b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
       }
       "succeeds when different numerics are used Long/Int" in {
         inline def q = quote {
           (a: Long, b: Int) => a == b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
       }
       "fails if the types don't match" in {
         """
@@ -149,19 +149,19 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
       //     inline def q = quote {
       //       (a: Int, b: Int) => a === b
       //     }
-      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`==`, Ident("b"))
+      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
       //   }
       //   "normal - string" in {
       //     inline def q = quote {
       //       (a: String, b: String) => a === b
       //     }
-      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`==`, Ident("b"))
+      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
       //   }
       //   "succeeds when different numerics are used Int/Long" in {
       //     inline def q = quote {
       //       (a: Int, b: Long) => a === b
       //     }
-      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`==`, Ident("b"))
+      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
       //   }
       //   "succeeds when Option/Option" in {
       //     inline def q = quote {
@@ -225,13 +225,13 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
         inline def q = quote {
           (a: Int, b: Int) => a.equals(b)
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
       }
       "==" in {
         inline def q = quote {
           (a: Int, b: Int) => a == b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
       }
 
       case class Foo(id: Int)
@@ -243,19 +243,19 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
         inline def q = quote {
           (a: Foo, b: Foo with Foot) => a.equals(b)
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
       }
       "should succeed if left is subclass" in {
         inline def q = quote {
           (a: Foo with Foot, b: Foo) => a.equals(b)
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
       }
       "should succeed with refinements" in {
         inline def q = quote {
           (a: Foo with Foot, b: Foo with Foot) => a.equals(b)
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
       }
       "should fail if both are subclasses" in {
         "quote{ (a: Foo with Foot, b: Foo with Bart) => a.equals(b) }.ast.body" mustNot compile
@@ -269,19 +269,19 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
         inline def q = quote {
           (a: Int, b: Int) => a != b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`!=`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
       }
       "succeeds when different numerics are used Int/Long" in {
         inline def q = quote {
           (a: Int, b: Long) => a != b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`!=`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
       }
       "succeeds when different numerics are used Long/Int" in {
         inline def q = quote {
           (a: Long, b: Int) => a != b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`!=`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
       }
       "fails if the types don't match" in {
         """
@@ -387,13 +387,13 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
       //     inline def q = quote {
       //       (a: Int, b: Int) => a =!= b
       //     }
-      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`!=`, Ident("b"))
+      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
       //   }
       //   "succeeds when different numerics are used Int/Long" in {
       //     inline def q = quote {
       //       (a: Int, b: Long) => a =!= b
       //     }
-      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`!=`, Ident("b"))
+      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
       //   }
       //   "succeeds when Option/Option" in {
       //     inline def q = quote {

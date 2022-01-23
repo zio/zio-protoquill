@@ -84,9 +84,7 @@ object Extractors {
         case '{ Seq(${Varargs(props)}) } => Some(props.toList)
         case Unseal(Untype(Repeated(props, _))) => Some(props.map(_.asExpr))
         case other =>
-          //println("Could not parse sequence expression:")
-          //printer.lnf(term.asTerm)
-          report.throwError("Could not parse sequence expression:\n" + printer.str(term.asTerm))
+          report.throwError("Could not parse sequence expression:\n" + Format.Term(term.asTerm))
       }
     }
   }

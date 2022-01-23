@@ -41,6 +41,7 @@ import io.getquill._
 import io.getquill.parser.Lifter
 import io.getquill.OuterSelectWrap
 import io.getquill.util.CommonExtensions
+import io.getquill.generic.ElaborateTrivial
 
 trait ContextOperation[I, T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extractor: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]): Res
@@ -57,6 +58,12 @@ object Execution:
   enum ElaborationBehavior:
     case Elaborate
     case Skip
+  given ToExpr[ElaborationBehavior] with
+    def apply(eb: ElaborationBehavior)(using Quotes) =
+      import quotes.reflect._
+      eb match
+        case ElaborationBehavior.Elaborate => '{ ElaborationBehavior.Elaborate }
+        case ElaborationBehavior.Skip => '{ ElaborationBehavior.Skip }
 
   // Simple ID function that we use in a couple of places
   def identityConverter[T: Type](using Quotes) = '{ (t:T) => t }
@@ -272,7 +279,8 @@ object QueryExecution:
      * need to use ElaborateStructure or not. This is decided in the StaticTranslationMacro for static queries using a
      * different method. I.e. since StaticTranslationMacro knows the AST node it infers Action/Query from that).
      */
-    def executeDynamic[RawT: Type](quote: Expr[Quoted[QAC[I, RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior, quotationType: ElaborationBehavior) =
+    def executeDynamic[RawT: Type](quote: Expr[Quoted[QAC[I, RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior, elaborationBehavior: ElaborationBehavior) =
+      // Grab the ast from the quote and make that into an expression that we will pass into the dynamic evaluator
       // Expand the outermost quote using the macro and put it back into the quote
       // Is the expansion on T or RawT, need to investigate
       // Note that in the Static case, this is done by checking the Type of the root entity. If the root Entity
@@ -280,16 +288,13 @@ object QueryExecution:
       // we have Expr[Ast] instead of Ast in the times when we have Type[T]. We could Elaborate T during compile-time
       // and then decide to plug in the elaboration or not during runtime (depending on the type of Ast which would be runtime-checked)
       // but that would be less straightforward to do.
-      val elaboratedAst = quotationType match
-        case ElaborationBehavior.Elaborate => ElaborateStructure.ontoDynamicAst[RawT]('{ $quote.ast })
-        case ElaborationBehavior.Skip => '{ $quote.ast }
-
-      val elaboratedAstQuote = '{ $quote.copy(ast = $elaboratedAst) }
+      val pluckedAst = '{ $quote.ast }
+      val elaboratedAstQuote = '{ $quote.copy(ast = $pluckedAst) }
       val extractor: Expr[io.getquill.context.Extraction[ResultRow, Session, T]] = MakeExtractor[ResultRow, Session, T, RawT].dynamic(converter, extract)
 
       // TODO What about when an extractor is not neededX
       val spliceAsts = TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]
-      '{ RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Session, Ctx, Res]($elaboratedAstQuote, $contextOperation, $extractor, ${Expr(spliceAsts)}, $fetchSize) }
+      '{ RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Session, Ctx, Res]($elaboratedAstQuote, $contextOperation, $extractor, ${Expr(spliceAsts)}, $fetchSize, ${Expr(elaborationBehavior)}) }
     end executeDynamic
 
   end RunQuery
@@ -334,6 +339,7 @@ object PrepareDynamicExecution:
   import io.getquill.{ NamingStrategy => NamingStrategy }
   import io.getquill.idiom.Statement
   import io.getquill.ast.ReturningAction
+  import io.getquill.context.Execution.ElaborationBehavior
 
   def spliceQuotations(quoted: Quoted[_]): Ast =
     def spliceQuotationsRecurse(quoted: Quoted[_]): Ast =
@@ -376,6 +382,7 @@ object PrepareDynamicExecution:
     rawExtractor: Extraction[ResultRow, Session, T],
     idiom: D,
     naming: N,
+    elaborationBehavior: ElaborationBehavior,
     spliceBehavior: SpliceBehavior = SpliceBehavior.NeedsSplice
   ) =
     // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
@@ -385,12 +392,14 @@ object PrepareDynamicExecution:
     // extraction type is Extraction.Returning by in some cases the AST will be
     // FunctionApply(Function(ident, ReturningGenerated(...))), stuff). In those cases, we need
     // to do a beta-reduction first.
-    val (splicedAst, gatheredLifts) =
+    val (splicedAstRaw, gatheredLifts) =
       spliceBehavior match
         case SpliceBehavior.NeedsSplice => (spliceQuotations(quoted), gatherLifts(quoted))
         case SpliceBehavior.AlreadySpliced => (quoted.ast, quoted.lifts) // If already spliced, can skip all runtimeQuotes clauses since their asts have already been spliced, same with lifts
 
-    VerifyFreeVariables.runtime(splicedAst)
+    VerifyFreeVariables.runtime(splicedAstRaw)
+
+    val splicedAst = ElaborateTrivial(elaborationBehavior)(splicedAstRaw)
 
     // Pull out the all the Planter instances (for now they need to be EagerPlanters for Dynamic Queries)
     val lifts = gatheredLifts.map(lift => (lift.uid, lift)).toMap
@@ -458,6 +467,7 @@ object RunDynamicExecution:
   import io.getquill.{ NamingStrategy => NamingStrategy }
   import io.getquill.idiom.Statement
   import io.getquill.ast.ReturningAction
+  import io.getquill.context.Execution.ElaborationBehavior
 
   def apply[
     I,
@@ -474,12 +484,13 @@ object RunDynamicExecution:
     ctx: ContextOperation[I, T, D, N, PrepareRow, ResultRow, Session, Ctx, Res],
     rawExtractor: Extraction[ResultRow, Session, T],
     spliceAst: Boolean,
-    fetchSize: Option[Int]
+    fetchSize: Option[Int],
+    elaborationBehavior: ElaborationBehavior
   ): Res =
   {
     //println("===== Passed Ast: " + io.getquill.util.Messages.qprint(quoted.ast))
     val (queryString, outputAst, sortedLifts, extractor) =
-      PrepareDynamicExecution[I, T, RawT, D, N, PrepareRow, ResultRow, Session](quoted, rawExtractor, ctx.idiom, ctx.naming)
+      PrepareDynamicExecution[I, T, RawT, D, N, PrepareRow, ResultRow, Session](quoted, rawExtractor, ctx.idiom, ctx.naming, elaborationBehavior)
 
     // Use the sortedLifts to prepare the method that will prepare the SQL statement
     val prepare = (row: PrepareRow, session: Session) => LiftsExtractor.Dynamic[PrepareRow, Session](sortedLifts, row, session)
