@@ -37,8 +37,6 @@ import io.getquill.Literal
 import scala.annotation.targetName
 import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
-import java.awt.Dialog
-import org.scalafmt.config.ScalafmtRunner.Dialect
 import io.getquill.context.ProtoContext
 import io.getquill.context.AstSplicing
 import io.getquill.context.RowContext

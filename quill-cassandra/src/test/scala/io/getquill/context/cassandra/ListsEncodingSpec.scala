@@ -6,7 +6,6 @@ import io.getquill._
 
 class ListsEncodingSpec extends CollectionsSpec {
 
-
   val ctx = testSyncDB
   import ctx._
 
@@ -29,60 +28,66 @@ class ListsEncodingSpec extends CollectionsSpec {
     List(1f, 3f), List(5d), List(LocalDate.now()),
     List(Instant.now()), List(UUID.randomUUID()))
 
-  val q = quote(query[ListsEntity])
+  inline def q = quote(query[ListsEntity])
+  val qDynamic = quote(query[ListsEntity])
 
   "List encoders/decoders for CassandraTypes and CassandraMappers" in {
     ctx.run(q.insert(lift(e)))
     ctx.run(q.filter(_.id == 1)).head mustBe e
   }
 
-  "Empty lists and optional fields" in {
-    case class Entity(id: Int, texts: Option[List[String]], bools: Option[List[Boolean]], ints: List[Int])
-    val e = Entity(1, Some(List("1", "2")), None, Nil)
-    inline def q = quote(querySchema[Entity]("ListsEntity"))
-
-    ctx.run(q.insert(lift(e)))
-    val r = ctx.run(q.filter(_.id == 1)).head
-    ctx.run(q.filter(_.id == 1)).head mustBe e
+  "List encoders/decoders for CassandraTypes and CassandraMappers - Dynamic" in {
+    ctx.run(qDynamic.insert(lift(e)))
+    ctx.run(qDynamic.filter(_.id == 1)).head mustBe e
   }
 
-  "Mapped encoding for CassandraType" in {
-    case class StrEntity(id: Int, texts: List[StrWrap])
-    val e = StrEntity(1, List("1", "2").map(StrWrap.apply))
-    inline def q = quote(querySchema[StrEntity]("ListsEntity"))
+ "Empty lists and optional fields" in {
+   case class Entity(id: Int, texts: Option[List[String]], bools: Option[List[Boolean]], ints: List[Int])
+   val e = Entity(1, Some(List("1", "2")), None, Nil)
+   inline def q = quote(querySchema[Entity]("ListsEntity"))
 
-    ctx.run(q.insert(lift(e)))
-    ctx.run(q.filter(_.id == 1)).head mustBe e
-  }
+   ctx.run(q.insert(lift(e)))
+   val r = ctx.run(q.filter(_.id == 1)).head
+   ctx.run(q.filter(_.id == 1)).head mustBe e
+ }
 
-  "Mapped encoding for CassandraMapper types" in {
-    case class IntEntity(id: Int, ints: List[IntWrap])
-    val e = IntEntity(1, List(1, 2).map(IntWrap.apply))
-    inline def q = quote(querySchema[IntEntity]("ListsEntity"))
+ "Mapped encoding for CassandraType" in {
+   case class StrEntity(id: Int, texts: List[StrWrap])
+   val e = StrEntity(1, List("1", "2").map(StrWrap.apply))
+   inline def q = quote(querySchema[StrEntity]("ListsEntity"))
 
-    ctx.run(q.insert(lift(e)))
-    ctx.run(q.filter(_.id == 1)).head mustBe e
-  }
+   ctx.run(q.insert(lift(e)))
+   ctx.run(q.filter(_.id == 1)).head mustBe e
+ }
 
-  "Blob (Array[Byte]) support" in {
-    case class BlobsEntity(id: Int, blobs: List[Array[Byte]])
-    val e = BlobsEntity(1, List(Array(1.toByte, 2.toByte), Array(2.toByte)))
-    inline def q = quote(querySchema[BlobsEntity]("ListsEntity"))
+ "Mapped encoding for CassandraMapper types" in {
+   case class IntEntity(id: Int, ints: List[IntWrap])
+   val e = IntEntity(1, List(1, 2).map(IntWrap.apply))
+   inline def q = quote(querySchema[IntEntity]("ListsEntity"))
 
-    ctx.run(q.insert(lift(e)))
-    ctx.run(q.filter(_.id == 1))
-      .head.blobs.map(_.toList) mustBe e.blobs.map(_.toList)
-  }
+   ctx.run(q.insert(lift(e)))
+   ctx.run(q.filter(_.id == 1)).head mustBe e
+ }
 
-  "List in where clause / contains" in {
-    val e = ListFrozen(List(1, 2))
-    ctx.run(listFroz.insert(lift(e)))
-    ctx.run(listFroz.filter(_.id == lift(List(1, 2)))) mustBe List(e)
-    ctx.run(listFroz.filter(_.id == lift(List(1)))) mustBe Nil
+ "Blob (Array[Byte]) support" in {
+   case class BlobsEntity(id: Int, blobs: List[Array[Byte]])
+   val e = BlobsEntity(1, List(Array(1.toByte, 2.toByte), Array(2.toByte)))
+   inline def q = quote(querySchema[BlobsEntity]("ListsEntity"))
 
-    ctx.run(listFroz.filter(_.id.contains(2)).allowFiltering) mustBe List(e)
-    ctx.run(listFroz.filter(_.id.contains(3)).allowFiltering) mustBe Nil
-  }
+   ctx.run(q.insert(lift(e)))
+   ctx.run(q.filter(_.id == 1))
+     .head.blobs.map(_.toList) mustBe e.blobs.map(_.toList)
+ }
+
+ "List in where clause / contains" in {
+   val e = ListFrozen(List(1, 2))
+   ctx.run(listFroz.insert(lift(e)))
+   ctx.run(listFroz.filter(_.id == lift(List(1, 2)))) mustBe List(e)
+   ctx.run(listFroz.filter(_.id == lift(List(1)))) mustBe Nil
+
+   ctx.run(listFroz.filter(_.id.contains(2)).allowFiltering) mustBe List(e)
+   ctx.run(listFroz.filter(_.id.contains(3)).allowFiltering) mustBe Nil
+ }
 
   override protected def beforeEach(): Unit = {
     ctx.run(q.delete)

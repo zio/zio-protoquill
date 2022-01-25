@@ -417,23 +417,6 @@ object ElaborateStructure {
     insert
   }
 
-  // ofStaticAst
-  /** ElaborateStructure the query AST in a static query **/
-  def ontoAst[T](ast: Ast)(using Quotes, Type[T]): AMap = {
-    // TODO AST transformations turn into the Select clause which is how I know the elaboration is Decoding
-    //      however, this should really be a static argument passed into the method.
-    val bodyAst = productized[T](ElaborationSide.Decoding)
-    AMap(ast, Ident("x", Quat.Generic), bodyAst)
-  }
-
-  /** ElaborateStructure the query AST in a dynamic query **/
-  def ontoDynamicAst[T](queryAst: Expr[Ast])(using Quotes, Type[T]): Expr[AMap] = {
-    // TODO This method is used from the dynamic AST generation during the select clause which is how I know it's a decoding elaboration.
-    //      however, this should really be a static argument passed into the method.
-    val bodyAst = productized[T](ElaborationSide.Decoding)
-    '{ AMap($queryAst, Ident("x", Quat.Generic), ${Lifter(bodyAst)}) }
-  }
-
   def ofProductType[T: Type](baseName: String, side: ElaborationSide)(using Quotes): List[Ast] = {
     val expanded = base[T](Term(baseName, Branch), side)
     expanded.toAst.map(_._1)

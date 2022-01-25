@@ -195,8 +195,8 @@ object ParserHelpers:
     def rootParse: Parser
 
     sealed trait EqualityBehavior { def operator: BinaryOperator }
-    case object Equal extends EqualityBehavior { def operator: BinaryOperator = EqualityOperator.`==` }
-    case object NotEqual extends EqualityBehavior { def operator: BinaryOperator = EqualityOperator.`!=` }
+    case object Equal extends EqualityBehavior { def operator: BinaryOperator = EqualityOperator.`_==` }
+    case object NotEqual extends EqualityBehavior { def operator: BinaryOperator = EqualityOperator.`_!=` }
 
     /**
      * Taken from the identically named method in Parser.scala in Scala2-Quill. Much of this logic

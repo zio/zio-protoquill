@@ -78,7 +78,7 @@ object Load:
         case Some(value) =>
           Success(SymbolLoadType.Class(value.fullName))
         case None =>
-          trace"${Format.TypeRepr(loadClassType)} must not be a class type because it has no class symbol. Attempting to load it as a module.".andLog
+          trace"${Format.TypeRepr(loadClassType)} must not be a class type because it has no class symbol. Attempting to load it as a module.".andLog()
           if (!loadClassType.termSymbol.moduleClass.isNoSymbol)
             Success(SymbolLoadType.Module(loadClassType.termSymbol.moduleClass.fullName))
           else

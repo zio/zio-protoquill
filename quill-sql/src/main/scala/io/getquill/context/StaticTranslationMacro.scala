@@ -28,6 +28,7 @@ import io.getquill.idiom.Statement
 import io.getquill.QAC
 import io.getquill.NamingStrategy
 import io.getquill.context.Execution.ElaborationBehavior
+import io.getquill.generic.ElaborateTrivial
 import io.getquill.util.Format
 import io.getquill.util.Interpolator
 import io.getquill.util.Messages.TraceType
@@ -53,14 +54,7 @@ object StaticTranslationMacro {
     val unliftedAst = VerifyFreeVariables(Unlifter(astExpr))
 
     if (noRuntimeQuotations(unliftedAst)) {
-      val expandedAst = wrap match
-        // if the AST is a Query, e.g. Query(Entity[Person], ...) we expand it out until something like
-        // Map(Query(Entity[Person], ...), x, CaseClass(name: x.name, age: x.age)). This was based on the Scala2-Quill
-        // flatten method in ValueProjection.scala. Technically this can be performed in the SqlQuery from the Quat info
-        // but the old mechanism is still used because the Quat information might not be there.
-        case ElaborationBehavior.Elaborate => ElaborateStructure.ontoAst[T](unliftedAst)
-        case ElaborationBehavior.Skip => unliftedAst
-
+      val expandedAst = ElaborateTrivial(wrap)(unliftedAst)
       val (ast, stmt) = idiom.translate(expandedAst)(using naming)
 
       val liftColumns =
@@ -77,7 +71,7 @@ object StaticTranslationMacro {
           None
 
       val (unparticularQuery, externals) = Unparticular.Query.fromStatement(stmt, idiom.liftingPlaceholder)
-      Some((unparticularQuery, externals, returningAction, expandedAst))
+      Some((unparticularQuery, externals, returningAction, unliftedAst))
     } else {
       None
     }
@@ -148,7 +142,7 @@ object StaticTranslationMacro {
             if (HasDynamicSplicingHint.fail)
               report.throwError(str)
             else
-              if (io.getquill.util.Messages.tracesEnabled(TraceType.Warning))
+              if (io.getquill.util.Messages.tracesEnabled(TraceType.Standard))
                 println(s"[StaticTranslationError] ${str}")
               None
         }

@@ -14,6 +14,7 @@ import io.getquill.Quoted
 import io.getquill.metaprog.SummonParser
 import io.getquill.metaprog.SummonSerializationBehaviors
 import io.getquill.parser.engine.History
+import io.getquill.context.sql.norm.SimplifyFilterTrue
 
 
 object ExtractLifts {
@@ -57,6 +58,8 @@ object ExtractLifts {
     (extractLifts(body), extractRuntimeUnquotes(body))
 }
 
+
+
 object QuoteMacro {
 
   def apply[T](bodyRaw: Expr[T])(using Quotes, Type[T], Type[Parser]): Expr[Quoted[T]] = {
@@ -68,7 +71,7 @@ object QuoteMacro {
     val (serializeQuats, serializeAst) = SummonSerializationBehaviors()
 
     val rawAst = parser(body)
-    val ast = BetaReduction(rawAst)
+    val ast = SimplifyFilterTrue(BetaReduction(rawAst))
 
     val reifiedAst = Lifter.WithBehavior(serializeQuats, serializeAst)(ast)
 

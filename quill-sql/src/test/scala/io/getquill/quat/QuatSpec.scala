@@ -105,10 +105,10 @@ class QuatSpec extends AnyFreeSpec {
     val foo = Quat.Product("v" -> Quat.Value, "bar" -> bar)
     val example = Quat.Product("v" -> Quat.Value, "foo" -> foo)
     "path" in {
-      example.lookup("foo") mustEqual foo
-      example.lookup(List("foo", "bar")) mustEqual bar
-      example.lookup(List("foo", "bar", "baz")) mustEqual Quat.Value
-      example.lookup("blah") mustEqual Quat.Unknown
+      example.lookup("foo", true) mustEqual foo
+      example.lookup(List("foo", "bar"), true) mustEqual bar
+      example.lookup(List("foo", "bar", "baz"), true) mustEqual Quat.Value
+      example.lookup("blah", false) mustEqual Quat.Unknown
     }
   }
 

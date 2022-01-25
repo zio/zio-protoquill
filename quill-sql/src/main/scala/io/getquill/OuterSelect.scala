@@ -3,8 +3,7 @@ package io.getquill
 import io.getquill.util.Format
 
 /**
- * TODO Better use-centric explation of this feature
- * Mediates the selection of ElaborationBehavior for QueryExecution.
+ * TODO Not needed now since elabration does not do OntoAst?
  */
 enum OuterSelectWrap:
   case Always

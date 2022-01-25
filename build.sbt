@@ -120,11 +120,12 @@ lazy val `quill-sql` =
         "com.typesafe.scala-logging" % "scala-logging_2.13"
       ),
       libraryDependencies ++= Seq(
+        // Needs to be in-sync with both quill-engine and scalafmt-core or ClassNotFound
+        // errors will happen. Even if the pprint classes are actually there
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
-        ("io.getquill" %% "quill-core-portable" % "3.12.0").cross(CrossVersion.for3Use2_13),
-        ("io.getquill" %% "quill-sql-portable" % "3.12.0").cross(CrossVersion.for3Use2_13),
+        "io.getquill" %% "quill-engine" % "3.14.0",
         "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
-        ("org.scalameta" %% "scalafmt-core" % "3.1.0")
+        ("org.scalameta" %% "scalafmt-core" % "3.3.3")
           .excludeAll(
             ExclusionRule(organization = "com.lihaoyi", name = "sourcecode_2.13"),
             ExclusionRule(organization = "com.lihaoyi", name = "fansi_2.13"),
@@ -178,8 +179,7 @@ lazy val `quill-jasync` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.jasync-sql" % "jasync-common" % "1.1.4",
-        ("org.scala-lang.modules" %% "scala-java8-compat" % "1.0.1")
+        "com.github.jasync-sql" % "jasync-common" % "1.1.4"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -258,10 +258,9 @@ lazy val `quill-cassandra` =
     .settings(commonSettings: _*)
     .settings(releaseSettings: _*)
     .settings(
-      Test / fork := true,
+      Test / fork := false,
       libraryDependencies ++= Seq(
-        "com.datastax.oss" % "java-driver-core" % "4.13.0",
-        ("org.scala-lang.modules" %% "scala-java8-compat" % "0.9.1").withDottyCompat(scalaVersion.value)
+        "com.datastax.oss" % "java-driver-core" % "4.13.0"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -306,6 +305,14 @@ lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
 )
 
 lazy val basicSettings = Seq(
+  // ,
+  //        ("org.scala-lang.modules" %% "scala-java8-compat" % "1.0.1")
+  libraryDependencies ++= Seq(
+    ("org.scala-lang.modules" %% "scala-java8-compat" % "1.0.1")
+  ),
+  excludeDependencies ++= Seq(
+    ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
+  ),
   scalaVersion := {
     if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.0.2"
   },

@@ -105,11 +105,11 @@ class FlicersSpec extends Spec {
       val r = ctx.run(q)
       r.string.collapseSpace mustEqual
         """|SELECT
-          | CASE WHEN ? THEN p.first ELSE null END,
-          | CASE WHEN ? THEN p.last ELSE null END,
-          | CASE WHEN ? THEN p.age ELSE null END
-          | FROM PersonNest p
-          |""".stripMargin.collapseSpace
+           | CASE WHEN ? THEN p.first ELSE null END AS first,
+           | CASE WHEN ? THEN p.last ELSE null END AS last,
+           | CASE WHEN ? THEN p.age ELSE null END AS age
+           | FROM PersonNest p
+           |""".stripMargin.collapseSpace
 
       r.extractor(Row("first" -> "Joe", "last" -> "Bloggs", "age" -> 123), s) mustEqual
         PersonNest(Name("Joe","Bloggs"),123)

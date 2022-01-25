@@ -177,7 +177,8 @@ class CasePatMatchParser(val rootParse: Parser)(using Quotes) extends Parser(roo
       patMatch match
         case PatMatch.SimpleClause(ast) => ast
         case PatMatch.MultiClause(clauses: List[PatMatchClause]) => nestedIfs(clauses)
-        case PatMatch.AutoAddedTrivialClause => Constant(true, Quat.BooleanValue)
+        case PatMatch.AutoAddedTrivialClause =>
+          Constant(true, Quat.BooleanValue)
   }
 
   def nestedIfs(clauses: List[PatMatchClause]): Ast =
