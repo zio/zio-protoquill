@@ -9,7 +9,6 @@ import scala.reflect.classTag;
 import io.getquill.quat.Quat
 import io.getquill.util.Messages
 import io.getquill.ReturnAction
-import scala.meta.Term.Assign
 import scala.util.Try
 import io.getquill.util.Format
 import io.getquill.util.StringUtil.section

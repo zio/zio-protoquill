@@ -97,6 +97,14 @@ object Format {
         else
           linesTrimmedLast.mkString("\n")
 
-      unEnclose(ScalafmtFormat(encosedCode, showErrorTrace))
+      val formatted =
+        Try {
+          val formatCls = classOf[ScalafmtFormat.type]
+          val result = formatCls.getMethod("apply").invoke(null, encosedCode)
+          val resultStr = s"${result}"
+          resultStr
+        }.getOrElse(encosedCode)
+
+      unEnclose(formatted)
     }
 }

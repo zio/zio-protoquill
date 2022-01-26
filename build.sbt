@@ -52,7 +52,12 @@ lazy val bigdataModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
 )
 
 lazy val allModules =
-  baseModules ++ dbModules ++ jasyncModules ++ bigdataModules
+  baseModules ++ sqlTestModules ++ dbModules ++ jasyncModules ++ bigdataModules
+
+lazy val communityBuildModules =
+  Seq[sbt.ClasspathDep[sbt.ProjectReference]](
+    `quill-sql`, `quill-sql-tests`
+  )
 
 val filteredModules = {
   val modulesStr = sys.props.get("modules")
@@ -60,29 +65,37 @@ val filteredModules = {
 
   val modules = modulesStr match {
     case Some("base") =>
-      println("Compiling Base Modules")
+      println("SBT =:> Compiling Base Modules")
       baseModules
     case Some("sqltest") =>
-      println("Compiling SQL test Modules")
+      println("SBT =:> Compiling SQL test Modules")
       sqlTestModules
     case Some("db") =>
-      println("Compiling Database Modules")
+      println("SBT =:> Compiling Database Modules")
       dbModules
     case Some("async") =>
-      println("Compiling Async Database Modules")
+      println("SBT =:> Compiling Async Database Modules")
       jasyncModules
     case Some("bigdata") =>
-      println("Compiling Big Data Modules")
+      println("SBT =:> Compiling Big Data Modules")
       bigdataModules
     case Some("none") =>
-      println("Invoking Aggregate Project")
+      println("SBT =:> Invoking Aggregate Project")
       Seq[sbt.ClasspathDep[sbt.ProjectReference]]()
     case _ =>
-      println("Compiling All Modules")
-        allModules
+      println("SBT =:> No Modules Switch Specified, Compiling All Modules by Default")
+      allModules
   }
-  println(s"Returning modules list: ${modules.map(_.project)}")
-  modules
+
+  val filteredModules =
+    if(isCommunityBuild) {
+      println("SBT =:> Doing Community Build! Filtering Community-Build Modules Only")
+      modules.filter(communityBuildModules.contains(_))
+    } else
+      modules
+
+  println(s"=== Selected Modules ===\n${filteredModules.map(_.project.toString).toList.mkString("\n")}\n=== End Selected Modules ===")
+  filteredModules
 }
 
 lazy val `quill` = {
@@ -123,39 +136,21 @@ lazy val `quill-sql` =
         // Needs to be in-sync with both quill-engine and scalafmt-core or ClassNotFound
         // errors will happen. Even if the pprint classes are actually there
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
-        "io.getquill" %% "quill-engine" % "3.14.0",
+        "io.getquill" %% "quill-engine" % "add-quill-util-SNAPSHOT",
+        ("io.getquill" %% "quill-util" % "add-quill-util-SNAPSHOT")
+          .excludeAll({
+            if (isCommunityBuild)
+              Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))
+            else
+              Seq()
+          }: _*),
         "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
-        ("org.scalameta" %% "scalafmt-core" % "3.3.3")
-          .excludeAll(
-            ExclusionRule(organization = "com.lihaoyi", name = "sourcecode_2.13"),
-            ExclusionRule(organization = "com.lihaoyi", name = "fansi_2.13"),
-            ExclusionRule(organization = "com.lihaoyi", name = "pprint_2.13"),
-            ExclusionRule(organization = "org.scala-lang.modules", name = "scala-xml_2.13")
-          )
-          .cross(CrossVersion.for3Use2_13)
+        "org.scalatest" %% "scalatest" % "3.2.9" % Test,
+        "org.scalatest" %% "scalatest-mustmatchers" % "3.2.9" % Test,
+        "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test
       ),
-      // If it's a community-build we're using a scala incremental version so there's no scalatest for that
-      libraryDependencies ++= {
-        if (isCommunityBuild)
-          Seq()
-        else
-          Seq(
-            "org.scalatest" %% "scalatest" % "3.2.9" % Test,
-            "org.scalatest" %% "scalatest-mustmatchers" % "3.2.9" % Test,
-            "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test
-          )
-      },
-      // TODO remove this if in community build since there's no scalatest
       Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oGF")
-    ).dependsOn({
-      // If it's a community build, we cannot include scalatest since the scalatest for the corresponding
-      // incremental scala version does not exist. So we need to include this module that "shims-it-out" so we can just be able
-      // to compile stuff (i.e. on an incremental scala version)
-      if (isCommunityBuild)
-        Seq(`scalatest-shim` % "test->test")
-      else
-        Seq()
-    }: _*)
+    )
 
 // Moving heavy tests to separate module so it can be compiled in parallel with others
 lazy val `quill-sql-tests` =
