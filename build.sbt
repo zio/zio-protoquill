@@ -115,10 +115,6 @@ lazy val `quill` = {
     )
 }
 
-lazy val `scalatest-shim` =
-  (project in file("scalatest-shim"))
-    .settings(basicSettings: _*)
-
 lazy val `quill-sql` =
   (project in file("quill-sql"))
     .settings(commonSettings: _*)
@@ -136,8 +132,8 @@ lazy val `quill-sql` =
         // Needs to be in-sync with both quill-engine and scalafmt-core or ClassNotFound
         // errors will happen. Even if the pprint classes are actually there
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
-        "io.getquill" %% "quill-engine" % "add-quill-util-SNAPSHOT",
-        ("io.getquill" %% "quill-util" % "add-quill-util-SNAPSHOT")
+        "io.getquill" %% "quill-engine" % "3.15.0",
+        ("io.getquill" %% "quill-util" % "3.15.0")
           .excludeAll({
             if (isCommunityBuild)
               Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))

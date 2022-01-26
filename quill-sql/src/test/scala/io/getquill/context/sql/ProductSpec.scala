@@ -19,7 +19,7 @@ trait ProductSpec extends Spec {
   }
 
   inline def productInsert = quote {
-    (p: Product) => query[Product].insert(p).returningGenerated(_.id)
+    (p: Product) => query[Product].insertValue(p).returningGenerated(_.id)
   }
 
   inline def productInsertBatch = quote {

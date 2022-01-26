@@ -19,7 +19,7 @@ class JdbcEncodingSpec extends EncodingSpec {
 
   "encodes sets" in {
     testContext.run(query[EncodingTestEntity].delete)
-    testContext.run(liftQuery(insertValues).foreach(e => query[EncodingTestEntity].insert(e)))
+    testContext.run(liftQuery(insertValues).foreach(e => query[EncodingTestEntity].insertValue(e)))
     val q = quote {
       (set: Query[Int]) =>
         query[EncodingTestEntity].filter(t => set.contains(t.v6))
@@ -43,10 +43,10 @@ class JdbcEncodingSpec extends EncodingSpec {
     val res: (List[EncodingTestEntity], List[EncodingTestEntity]) = {
       val steps = {
         testContext.run(query[EncodingTestEntity].delete)
-        testContext.run(query[EncodingTestEntity].insert(lift(e1)))
+        testContext.run(query[EncodingTestEntity].insertValue(lift(e1)))
         val withoutNull = testContext.run(query[EncodingTestEntity])
         testContext.run(query[EncodingTestEntity].delete)
-        testContext.run(query[EncodingTestEntity].insert(lift(e2)))
+        testContext.run(query[EncodingTestEntity].insertValue(lift(e2)))
         val withNull = testContext.run(query[EncodingTestEntity])
         (withoutNull, withNull)
       }

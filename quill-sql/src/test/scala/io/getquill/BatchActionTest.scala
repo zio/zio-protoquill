@@ -26,8 +26,8 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   import ctx._
 
   case class Person(id: Int, name: String, age: Int)
-  inline def insertPeople = quote((p: Person) => query[Person].insert(p))
-  val insertPeopleDynamic = quote((p: Person) => query[Person].insert(p))
+  inline def insertPeople = quote((p: Person) => query[Person].insertValue(p))
+  val insertPeopleDynamic = quote((p: Person) => query[Person].insertValue(p))
 }
 
 class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect, Literal] {
@@ -40,11 +40,11 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
 
   "batch action with returning should work with" - {
     "insert - returning" in {
-      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p).returning(p => p.id)) }
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insertValue(p).returning(p => p.id)) }
       mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
     }
     "insert - returningGenerated" in {
-      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p).returningGenerated(p => p.id)) }
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insertValue(p).returningGenerated(p => p.id)) }
       mirror.triple mustEqual (
         "INSERT INTO Person (name,age) VALUES (?, ?) RETURNING id",
         // The ids should be removed from the lifts list since their corresponding columns are removed (i.e. in the expanded insert assignments)
@@ -55,13 +55,13 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
 
     // update returning with filter, not very useful but good baseline
     "update - returning" in {
-      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(p).returning(p => p.id)) }
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).updateValue(p).returning(p => p.id)) }
       mirror.triple mustEqual ("UPDATE Person SET id = ?, name = ?, age = ? WHERE id = ? RETURNING id", List(List(1, "Joe", 123, 1), List(2, "Jill", 456, 2)), Static)
     }
 
     // TODO dsl does not support this yet but would be quite useful
     //"update - returningGenerated" in {
-    //  val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(p).returningGenerated(p => p.id)) }
+    //  val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).updateValue(p).returningGenerated(p => p.id)) }
     //  //mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
     //}
   }
@@ -69,14 +69,14 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
   "batch action should work with" - {
     "dynamic splice" in {
       val q = quote {
-        liftQuery(people).foreach(p => query[Person].insert(p))
+        liftQuery(people).foreach(p => query[Person].insertValue(p))
       }
       val mirror = ctx.run(q)
       mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)),Dynamic)
     }
 
     "insert" in {
-      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insert(p)) }
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insertValue(p)) }
       mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)),Static)
     }
 
@@ -97,7 +97,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
 
     "update - object with meta" in {
       inline given UpdateMeta[Person] = updateMeta(_.id)
-      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(p)) }
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).updateValue(p)) }
       mirror.triple mustEqual (
         "UPDATE Person SET name = ?, age = ? WHERE id = ?",
         List(List("Joe", 123, 1), List("Jill", 456, 2)),

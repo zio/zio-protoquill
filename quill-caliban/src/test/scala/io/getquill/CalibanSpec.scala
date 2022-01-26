@@ -20,8 +20,8 @@ trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
     import FlatSchema._
     (for {
         _ <- Ctx.run(infix"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
-        _ <- Ctx.run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insert(row)))
-        _ <- Ctx.run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insert(row)))
+        _ <- Ctx.run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insertValue(row)))
+        _ <- Ctx.run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insertValue(row)))
       } yield ()
     ).provideLayer(zioDS).unsafeRunSync()
   }

@@ -24,7 +24,7 @@ class SimplePrepareSpec extends Spec {
 
     "batch" in {
       val list = List(Person("Joe", 1), Person("Jack", 2))
-      inline def q = quote { liftQuery(list).foreach(p => query[Person].insert(p)) }
+      inline def q = quote { liftQuery(list).foreach(p => query[Person].insertValue(p)) }
       val result = prepare(q)
       result.groups.length mustEqual 1
       result.groups(0)._1 mustEqual "INSERT INTO Person (name,age) VALUES (?, ?)"

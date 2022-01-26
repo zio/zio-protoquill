@@ -288,7 +288,7 @@ class ActionParser(val rootParse: Parser)(using Quotes)
     //        do the same thing for dynamic contexts witha log message
 
     // Form:    ( (Query[Perosn]).[action](....) ).returning[T]
-    // Example: ( query[Person].insert(lift(joe))).returning[Something]
+    // Example: ( query[Person].insertValue(lift(joe))).returning[Something]
     case '{ ($action: Insert[t]).returning[r] } =>
       report.throwError(s"A 'returning' clause must have arguments.")
     // NOTE: Need to make copies for Insert/Update/Delete because presently `Action` does not have a .returning method

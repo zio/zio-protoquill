@@ -169,7 +169,7 @@ object MiniQuillTest {
     // ============================ Testing Insert Returning =============================
     // {
     //   case class Person(id: Int, name: String, age: Int)
-    //   inline def q = quote { query[Person].insert(lift(Person(0, "Joe", 123))).returningGenerated(r => (r.name, r.id)) }
+    //   inline def q = quote { query[Person].insertValue(lift(Person(0, "Joe", 123))).returningGenerated(r => (r.name, r.id)) }
     //   println( run(q) )
     // }
 
@@ -224,7 +224,7 @@ object MiniQuillTest {
   //   // println(ctx.run(a).string == ("INSERT INTO Person (name,age) VALUES ('Joe', 123)"))
 
   //   inline def q = quote { (v: Person) =>
-  //     query[Person].insert(v)
+  //     query[Person].insertValue(v)
   //   }
 
   //   // TODO Make sure that 'v' is not used as an identifier in the insert macro, rather a new id is found

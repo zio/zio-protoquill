@@ -17,7 +17,7 @@ trait DepartmentsSpec extends Spec {
 
   inline def departmentInsert =
     quote {
-      (dpt: Department) => query[Department].insert(dpt)
+      (dpt: Department) => query[Department].insertValue(dpt)
     }
 
   val departmentEntries =
@@ -30,7 +30,7 @@ trait DepartmentsSpec extends Spec {
 
   inline def employeeInsert =
     quote {
-      (emp: Employee) => query[Employee].insert(emp)
+      (emp: Employee) => query[Employee].insertValue(emp)
     }
 
   val employeeEntries =
@@ -45,7 +45,7 @@ trait DepartmentsSpec extends Spec {
 
   inline def taskInsert =
     quote {
-      (tsk: Task) => query[Task].insert(tsk)
+      (tsk: Task) => query[Task].insertValue(tsk)
     }
 
   val taskEntries =
@@ -115,7 +115,7 @@ trait DepartmentsSpec extends Spec {
   inline def all[T] =
     (xs: Query[T]) => (p: T => Boolean) =>
       !any(xs)(x => !p(x))
-    
+
 
   inline def contains[T] =
     quote { (xs: Query[T]) => (u: T) =>

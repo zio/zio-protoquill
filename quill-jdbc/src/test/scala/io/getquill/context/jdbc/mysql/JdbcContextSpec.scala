@@ -60,7 +60,7 @@ class JdbcContextSpec extends Spec {
     // since the value will be inlined into the mustBe ___ call. That means both calls will
     // be run simultaneosly. This will cause mysql to block.
     val inserted = testContext.run {
-      qr4.insert(lift(TestEntity4(0))).returningGenerated(_.i)
+      qr4.insertValue(lift(TestEntity4(0))).returningGenerated(_.i)
     }
     testContext.run(qr4.filter(_.i == lift(inserted))).head.i mustBe inserted
   }

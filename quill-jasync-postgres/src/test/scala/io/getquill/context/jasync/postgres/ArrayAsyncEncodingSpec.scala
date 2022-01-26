@@ -18,7 +18,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
     inline def q = quote(query[ArraysTestEntity])
 
     "Support all sql base types and `Iterable` implementers" in {
-      await(ctx.run(q.insert(lift(e))))
+      await(ctx.run(q.insertValue(lift(e))))
       val actual = await(ctx.run(q)).head
       actual mustEqual e
       baseEntityDeepCheck(actual, e)
@@ -28,7 +28,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
       case class JodaTimes(timestamps: Seq[JodaLocalDateTime], dates: Seq[JodaLocalDate])
       val jE = JodaTimes(Seq(JodaLocalDateTime.now()), Seq(JodaLocalDate.now()))
       inline def jQ = quote(querySchema[JodaTimes]("ArraysTestEntity"))
-      await(ctx.run(jQ.insert(lift(jE))))
+      await(ctx.run(jQ.insertValue(lift(jE))))
       val actual = await(ctx.run(jQ)).head
       actual.timestamps mustBe jE.timestamps
       actual.dates mustBe jE.dates
@@ -38,7 +38,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
       case class JodaTimes(timestamps: Seq[JodaDateTime])
       val jE = JodaTimes(Seq(JodaDateTime.now()))
       inline def jQ = quote(querySchema[JodaTimes]("ArraysTestEntity"))
-      await(ctx.run(jQ.insert(lift(jE))))
+      await(ctx.run(jQ.insertValue(lift(jE))))
       val actual = await(ctx.run(jQ)).head
       actual.timestamps mustBe jE.timestamps
     }
@@ -47,7 +47,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
       case class Java8Times(timestamps: Seq[LocalDateTime], dates: Seq[LocalDate])
       val jE = Java8Times(Seq(LocalDateTime.now()), Seq(LocalDate.now()))
       inline def jQ = quote(querySchema[Java8Times]("ArraysTestEntity"))
-      await(ctx.run(jQ.insert(lift(jE))))
+      await(ctx.run(jQ.insertValue(lift(jE))))
       val actual = await(ctx.run(jQ)).head
       actual.timestamps mustBe jE.timestamps
       actual.dates mustBe jE.dates
@@ -55,7 +55,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
 
     "Support Iterable encoding basing on MappedEncoding" in {
       inline def wrapQ = quote(querySchema[WrapEntity]("ArraysTestEntity"))
-      await(ctx.run(wrapQ.insert(lift(wrapE))))
+      await(ctx.run(wrapQ.insertValue(lift(wrapE))))
       await(ctx.run(wrapQ)).head mustBe wrapE
     }
 
@@ -66,7 +66,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
           arrayDecoder[LocalDate, LocalDate, Col](identity)
       }
       import newCtx._
-      inline def insertQ = quote { query[ArraysTestEntity].insert(lift(e)) }
+      inline def insertQ = quote { query[ArraysTestEntity].insertValue(lift(e)) }
       await(newCtx.run(insertQ))
       intercept[IllegalStateException] {
         await(newCtx.run(query[ArraysTestEntity])).head mustBe e
@@ -75,7 +75,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
     }
 
     "Arrays in where clause" in {
-      await(ctx.run(q.insert(lift(e))))
+      await(ctx.run(q.insertValue(lift(e))))
       val actual1 = await(ctx.run(q.filter(_.texts == lift(List("test")))))
       val actual2 = await(ctx.run(q.filter(_.texts == lift(List("test2")))))
       baseEntityDeepCheck(actual1.head, e)
@@ -154,7 +154,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
       inline def realEntity = quote {
         querySchema[RealEncodingTestEntity]("EncodingTestEntity")
       }
-      await(ctx.run(realEntity.insert(lift(insertValue))))
+      await(ctx.run(realEntity.insertValue(lift(insertValue))))
 
       case class EncodingTestEntity(v1: List[String])
       intercept[IllegalStateException](await(ctx.run(query[EncodingTestEntity])))
@@ -165,7 +165,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
     val q = quote(query[ArraysTestEntity])
 
     "Support all sql base types and `Iterable` implementers" in {
-      await(ctx.run(q.insert(lift(e))))
+      await(ctx.run(q.insertValue(lift(e))))
       val actual = await(ctx.run(q)).head
       actual mustEqual e
       baseEntityDeepCheck(actual, e)
@@ -175,7 +175,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
       case class JodaTimes(timestamps: Seq[JodaLocalDateTime], dates: Seq[JodaLocalDate])
       val jE = JodaTimes(Seq(JodaLocalDateTime.now()), Seq(JodaLocalDate.now()))
       val jQ = quote(querySchema[JodaTimes]("ArraysTestEntity"))
-      await(ctx.run(jQ.insert(lift(jE))))
+      await(ctx.run(jQ.insertValue(lift(jE))))
       val actual = await(ctx.run(jQ)).head
       actual.timestamps mustBe jE.timestamps
       actual.dates mustBe jE.dates
@@ -185,7 +185,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
       case class JodaTimes(timestamps: Seq[JodaDateTime])
       val jE = JodaTimes(Seq(JodaDateTime.now()))
       val jQ = quote(querySchema[JodaTimes]("ArraysTestEntity"))
-      await(ctx.run(jQ.insert(lift(jE))))
+      await(ctx.run(jQ.insertValue(lift(jE))))
       val actual = await(ctx.run(jQ)).head
       actual.timestamps mustBe jE.timestamps
     }
@@ -194,7 +194,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
       case class Java8Times(timestamps: Seq[LocalDateTime], dates: Seq[LocalDate])
       val jE = Java8Times(Seq(LocalDateTime.now()), Seq(LocalDate.now()))
       val jQ = quote(querySchema[Java8Times]("ArraysTestEntity"))
-      await(ctx.run(jQ.insert(lift(jE))))
+      await(ctx.run(jQ.insertValue(lift(jE))))
       val actual = await(ctx.run(jQ)).head
       actual.timestamps mustBe jE.timestamps
       actual.dates mustBe jE.dates
@@ -202,7 +202,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
 
     "Support Iterable encoding basing on MappedEncoding" in {
       val wrapQ = quote(querySchema[WrapEntity]("ArraysTestEntity"))
-      await(ctx.run(wrapQ.insert(lift(wrapE))))
+      await(ctx.run(wrapQ.insertValue(lift(wrapE))))
       await(ctx.run(wrapQ)).head mustBe wrapE
     }
 
@@ -213,7 +213,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
           arrayDecoder[LocalDate, LocalDate, Col](identity)
       }
       import newCtx._
-      val insertQ = quote { query[ArraysTestEntity].insert(lift(e)) }
+      val insertQ = quote { query[ArraysTestEntity].insertValue(lift(e)) }
       await(newCtx.run(insertQ))
       intercept[IllegalStateException] {
         await(newCtx.run(query[ArraysTestEntity])).head mustBe e
@@ -222,7 +222,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
     }
 
     "Arrays in where clause" in {
-      await(ctx.run(q.insert(lift(e))))
+      await(ctx.run(q.insertValue(lift(e))))
       val actual1 = await(ctx.run(q.filter(_.texts == lift(List("test")))))
       val actual2 = await(ctx.run(q.filter(_.texts == lift(List("test2")))))
       baseEntityDeepCheck(actual1.head, e)
@@ -301,7 +301,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
       val realEntity = quote {
         querySchema[RealEncodingTestEntity]("EncodingTestEntity")
       }
-      await(ctx.run(realEntity.insert(lift(insertValue))))
+      await(ctx.run(realEntity.insertValue(lift(insertValue))))
 
       case class EncodingTestEntity(v1: List[String])
       intercept[IllegalStateException](await(ctx.run(query[EncodingTestEntity])))
