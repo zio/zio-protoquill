@@ -3,7 +3,6 @@ package io.getquill.metaprog
 import scala.quoted._
 
 import scala.collection.mutable.ArrayBuffer
-import scala.tools.nsc.doc.html.HtmlTags.P
 import io.getquill.util.Format
 import scala.util.Try
 
