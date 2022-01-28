@@ -82,6 +82,11 @@ trait QuoteDsl {
     inline def insertValue(inline value: T): Insert[T] = ${ InsertUpdateMacro[T, Insert]('entity, 'value) }
     inline def updateValue(inline value: T): Update[T] = ${ InsertUpdateMacro[T, Update]('entity, 'value) }
 
+    @deprecated("EntityQuery.insert(value) is deprecated due to upstream Scala 3 requirements. Use EntityQuery.insertValue(value) instead.", "3.13.0")
+    inline def insert(inline value: T): Insert[T] = ${ InsertUpdateMacro[T, Insert]('entity, 'value) }
+    @deprecated("EntityQuery.insert(value) is deprecated due to upstream Scala 3 requirements. Use EntityQuery.insertValue(value) instead.", "3.13.0")
+    inline def update(inline value: T): Update[T] = ${ InsertUpdateMacro[T, Update]('entity, 'value) }
+
   // Doing:          val p = quote { query[Person] }
   // and then doing: val q = quote { p.insert(_.name -> "blah") }
   //  or then doing: val q = quote { p.insertValue(lift(Person("Joe", 123))) }
@@ -94,4 +99,9 @@ trait QuoteDsl {
     inline def update(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Update[T] = unquote[EntityQuery[T]](quotedEntity).update(f, f2: _*)
     inline def insertValue(inline value: T): Insert[T] = unquote[EntityQuery[T]](quotedEntity).insertValue(value)
     inline def updateValue(inline value: T): Update[T] = unquote[EntityQuery[T]](quotedEntity).updateValue(value)
+
+    @deprecated("EntityQuery.insert(value) is deprecated due to upstream Scala 3 requirements. Use EntityQuery.insertValue(value) instead.", "3.13.0")
+    inline def insert(inline value: T): Insert[T] = unquote[EntityQuery[T]](quotedEntity).insertValue(value)
+    @deprecated("EntityQuery.insert(value) is deprecated due to upstream Scala 3 requirements. Use EntityQuery.insertValue(value) instead.", "3.13.0")
+    inline def update(inline value: T): Update[T] = unquote[EntityQuery[T]](quotedEntity).updateValue(value)
 }
