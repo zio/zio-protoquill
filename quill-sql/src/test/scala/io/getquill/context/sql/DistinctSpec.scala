@@ -12,7 +12,7 @@ trait DistinctSpec extends Spec {
   case class Couple(him: String, her: String)
 
   inline def peopleInsert =
-    quote((p: Person) => query[Person].insert(p))
+    quote((p: Person) => query[Person].insertValue(p))
 
   val peopleEntries = List(
     Person("A", 1),
@@ -23,7 +23,7 @@ trait DistinctSpec extends Spec {
   )
 
   inline def couplesInsert =
-    quote((c: Couple) => query[Couple].insert(c))
+    quote((c: Couple) => query[Couple].insertValue(c))
 
   val couplesEntries = List(
     Couple("B", "X"),

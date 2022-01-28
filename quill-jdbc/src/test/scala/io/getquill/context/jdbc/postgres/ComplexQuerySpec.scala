@@ -24,10 +24,10 @@ class ComplexQuerySpec extends Spec with BeforeAndAfter {
     implicit inline def testEntity2InsertMeta: InsertMeta[TestEntity2] = insertMeta[TestEntity2](_.o)
 
     inline def testEntityInsert =
-      quote((p: TestEntity) => query[TestEntity].insert(p))
+      quote((p: TestEntity) => query[TestEntity].insertValue(p))
 
     inline def testEntity2Insert =
-      quote((p: TestEntity2) => query[TestEntity2].insert(p))
+      quote((p: TestEntity2) => query[TestEntity2].insertValue(p))
 
     "join + nesting + infixes" in {
 

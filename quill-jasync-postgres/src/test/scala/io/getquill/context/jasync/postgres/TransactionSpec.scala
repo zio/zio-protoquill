@@ -27,16 +27,16 @@ class TransactionSpec extends PeopleSpec {
         for {
           _ <- testContext.run(query[Couple].delete)
           _ <- testContext.run(query[Person].delete)
-        } yield {}  
+        } yield {}
       }
     }
     Try {
       await {
         testContext.transaction { implicit ec =>
           for {
-            _ <- testContext.run(query[Couple].insert(lift(Couple("Alex", "Bert"))))
+            _ <- testContext.run(query[Couple].insertValue(lift(Couple("Alex", "Bert"))))
             _ <- scala.concurrent.Future { throw new RuntimeException("Blahblahblah") }
-            _ <- testContext.run(query[Person].insert(lift(Person("Alex", 60))))
+            _ <- testContext.run(query[Person].insertValue(lift(Person("Alex", 60))))
           } yield {}
         }
       }
@@ -54,18 +54,18 @@ class TransactionSpec extends PeopleSpec {
         for {
           _ <- testContext.run(query[Couple].delete)
           _ <- testContext.run(query[Person].delete)
-        } yield {}  
+        } yield {}
       }
     }
     await {
       testContext.transaction { implicit ec =>
         for {
-          _ <- testContext.run(query[Couple].insert(lift(Couple("Alex", "Bert"))))
-          _ <- testContext.run(query[Person].insert(lift(Person("Alex", 60))))
+          _ <- testContext.run(query[Couple].insertValue(lift(Couple("Alex", "Bert"))))
+          _ <- testContext.run(query[Person].insertValue(lift(Person("Alex", 60))))
         } yield {}
       }
     }
-    
+
     await(testContext.run(query[Couple])) mustEqual List(Couple("Alex", "Bert"))
     await(testContext.run(query[Person])) mustEqual List(Person("Alex", 60))
   }

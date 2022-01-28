@@ -27,7 +27,7 @@ class SetsEncodingSpec extends CollectionsSpec {
   inline def q = quote(query[SetsEntity])
 
   "Set encoders/decoders" in {
-    ctx.run(q.insert(lift(e)))
+    ctx.run(q.insertValue(lift(e)))
     ctx.run(q.filter(_.id == 1)).head mustBe e
   }
 
@@ -36,7 +36,7 @@ class SetsEncodingSpec extends CollectionsSpec {
     val e = Entity(1, Some(Set("1", "2")), None, Set())
     inline def q = quote(querySchema[Entity]("SetsEntity"))
 
-    ctx.run(q.insert(lift(e)))
+    ctx.run(q.insertValue(lift(e)))
     ctx.run(q.filter(_.id == 1)).head mustBe e
   }
 
@@ -45,7 +45,7 @@ class SetsEncodingSpec extends CollectionsSpec {
     val e = StrEntity(1, Set("1", "2").map(StrWrap.apply))
     inline def q = quote(querySchema[StrEntity]("SetsEntity"))
 
-    ctx.run(q.insert(lift(e)))
+    ctx.run(q.insertValue(lift(e)))
     ctx.run(q.filter(_.id == 1)).head mustBe e
   }
 
@@ -54,7 +54,7 @@ class SetsEncodingSpec extends CollectionsSpec {
     val e = IntEntity(1, Set(1, 2).map(IntWrap.apply))
     inline def q = quote(querySchema[IntEntity]("SetsEntity"))
 
-    ctx.run(q.insert(lift(e)))
+    ctx.run(q.insertValue(lift(e)))
     ctx.run(q.filter(_.id == 1)).head mustBe e
   }
 
@@ -63,14 +63,14 @@ class SetsEncodingSpec extends CollectionsSpec {
     val e = BlobsEntity(1, Set(Array(1.toByte, 2.toByte), Array(2.toByte)))
     inline def q = quote(querySchema[BlobsEntity]("SetsEntity"))
 
-    ctx.run(q.insert(lift(e)))
+    ctx.run(q.insertValue(lift(e)))
     ctx.run(q.filter(_.id == 1))
       .head.blobs.map(_.toSet) mustBe e.blobs.map(_.toSet)
   }
 
   "Set in where clause" in {
     val e = SetFrozen(Set(1, 2))
-    ctx.run(setFroz.insert(lift(e)))
+    ctx.run(setFroz.insertValue(lift(e)))
     ctx.run(setFroz.filter(_.id == lift(Set(1, 2)))) mustBe List(e)
     ctx.run(setFroz.filter(_.id == lift(Set(1)))) mustBe List()
   }

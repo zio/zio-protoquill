@@ -36,7 +36,7 @@ class ActionTest extends Spec with NonSerializingQuotation with TestEntities wit
       }
       "case class" in {
         inline def q = quote {
-          (t: TestEntity) => qr1.update(t)
+          (t: TestEntity) => qr1.updateValue(t)
         }
         val n = quote {
           (t: TestEntity) =>
@@ -74,7 +74,7 @@ class ActionTest extends Spec with NonSerializingQuotation with TestEntities wit
       }
       "case class" in {
         inline def q = quote {
-          (t: TestEntity) => qr1.insert(t)
+          (t: TestEntity) => qr1.insertValue(t)
         }
         val n = quote {
           (t: TestEntity) =>
@@ -151,7 +151,7 @@ class ActionTest extends Spec with NonSerializingQuotation with TestEntities wit
           ActionTestEntity(1),
           ActionTestEntity(2)
         )
-        inline def insertRow = quote((row: ActionTestEntity) => query[ActionTestEntity].insert(row))
+        inline def insertRow = quote((row: ActionTestEntity) => query[ActionTestEntity].insertValue(row))
         inline def q = quote {
           liftQuery(list).foreach(row => insertRow(row))
         }
@@ -170,7 +170,7 @@ class ActionTest extends Spec with NonSerializingQuotation with TestEntities wit
       //     ActionTestEntity(1),
       //     ActionTestEntity(2)
       //   )
-      //   val insert = quote((row: ActionTestEntity) => query[ActionTestEntity].insert(row))
+      //   val insert = quote((row: ActionTestEntity) => query[ActionTestEntity].insertValue(row))
       //   inline def q = quote(liftQuery(list).foreach(row => quote(insert(row))))
       //   quote(unquote(q)).ast mustEqual
       //     Foreach(CaseClassQueryLift("q.list", list, quatOf[ActionTestEntity]), Ident("row"), insert.ast.body)

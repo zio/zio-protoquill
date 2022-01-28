@@ -60,8 +60,8 @@ object Dao:
   def resetDatabase() =
     (for {
       _ <- run(infix"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
-      _ <- run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insert(row)))
-      _ <- run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insert(row)))
+      _ <- run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insertValue(row)))
+      _ <- run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insertValue(row)))
     } yield ()).implicitDS
 end Dao
 

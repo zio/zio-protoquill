@@ -8,10 +8,10 @@ trait OnConflictSpec extends Spec {
 
   object `onConflictIgnore` {
     inline def testQuery1 = quote {
-      qr1.insert(lift(TestEntity("", 1, 0, None, true))).onConflictIgnore
+      qr1.insertValue(lift(TestEntity("", 1, 0, None, true))).onConflictIgnore
     }
     inline def testQuery2 = quote {
-      qr1.insert(lift(TestEntity("", 1, 0, None, true))).onConflictIgnore
+      qr1.insertValue(lift(TestEntity("", 1, 0, None, true))).onConflictIgnore
     }
     val res1 = 1
     val res2 = 0
@@ -25,10 +25,10 @@ trait OnConflictSpec extends Spec {
   object `onConflictIgnore(_.i)` {
     val name = "ON CONFLICT (...) DO NOTHING"
     inline def testQuery1 = quote {
-      qr1.insert(lift(TestEntity("s", 2, 0, None, true))).onConflictIgnore(_.i)
+      qr1.insertValue(lift(TestEntity("s", 2, 0, None, true))).onConflictIgnore(_.i)
     }
     inline def testQuery2 = quote {
-      qr1.insert(lift(TestEntity("s", 2, 0, None, true))).onConflictIgnore(_.i)
+      qr1.insertValue(lift(TestEntity("s", 2, 0, None, true))).onConflictIgnore(_.i)
     }
     val res1 = 1
     val res2 = 0
@@ -55,7 +55,7 @@ trait OnConflictSpec extends Spec {
   object `onConflictUpdate((t, e) => ...)` extends onConflictUpdate(3) {
     inline def testQuery(e: TestEntity) = quote {
       query[TestEntity]
-        .insert(lift(e))
+        .insertValue(lift(e))
         .onConflictUpdate((t, e) => t.s -> (t.s + "-" + e.s), (t, _) => t.l -> (t.l + 1))
     }
   }
@@ -63,7 +63,7 @@ trait OnConflictSpec extends Spec {
   object `onConflictUpdate(_.i)((t, e) => ...)` extends onConflictUpdate(4) {
     inline def testQuery(e: TestEntity) = quote {
       qr1
-        .insert(lift(e))
+        .insertValue(lift(e))
         .onConflictUpdate(_.i)((t, e) => t.s -> (t.s + "-" + e.s), (t, _) => t.l -> (t.l + 1))
     }
   }

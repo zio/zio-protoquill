@@ -42,7 +42,7 @@ import io.getquill.parser.engine.History
  *
  * This macro essentially takes an insert of the form `query[T].insert(T(...))` and converts into the former form.
  *
- * Once we've parsed an insert e.g. `query[Person].insert(Person("Joe", "Bloggs"))` we then need to synthesize
+ * Once we've parsed an insert e.g. `query[Person]insertValue(Person("Joe", "Bloggs"))` we then need to synthesize
  * the insertions that this would represent e.g. `query[Person].insert(_.firstName -> "Joe", _.lastName -> "Bloggs")`
  *
  * Each function of field-insertion API basically takes the form
@@ -74,7 +74,7 @@ import io.getquill.parser.engine.History
  * Another possiblity is that the entity is lifted:
  * {code}
  *  case class Person(name: String, age: Option[Age]); Age(value: Int)
- *  quote { query[Person].insert(lift(Person("Joe", Age(345)))) }
+ *  quote { query[Person].insertValue(lift(Person("Joe", Age(345)))) }
  * {code}
  * TODO Finish doc
  *
@@ -196,8 +196,8 @@ object InsertUpdateMacro {
 
     /**
      * Inserted object
-     * can either be static: query[Person].insert(Person("Joe", "Bloggs"))
-     * or it can be lifted:  query[Person].insert(lift(Person("Joe", "Bloggs")))
+     * can either be static: query[Person]insertValue(Person("Joe", "Bloggs"))
+     * or it can be lifted:  query[Person].insertValue(lift(Person("Joe", "Bloggs")))
      *
      * In the later case, it will become:
      * {{
@@ -207,12 +207,12 @@ object InsertUpdateMacro {
      *   )
      * }}
      *
-     * For batch queries liftQuery(people).foreach(p => query[Person].insert(p))
+     * For batch queries liftQuery(people).foreach(p => query[Person].insertValue(p))
      * it will be just the ast Ident("p")
      */
     def parseInsertee(insertee: Expr[Any]): CaseClass | AIdent = {
       insertee match
-        // The case: query[Person].insert(lift(Person("Joe", "Bloggs")))
+        // The case: query[Person].insertValue(lift(Person("Joe", "Bloggs")))
         case QuotationLotExpr(exprType) =>
           exprType match
             // If clause is uprootable, pull it out. Note that any lifts inside don't need to be extracted here
@@ -223,15 +223,15 @@ object InsertUpdateMacro {
                 report.throwError(s"The lifted insertion element needs to be parsed as a Ast CaseClass but it is: ${ast}")
               ast.asInstanceOf[CaseClass]
             case _ =>
-              report.throwError("Cannot uproot lifted element. A lifted Insert element e.g. query[T].insert(lift(element)) must be lifted directly inside the lift clause.")
+              report.throwError("Cannot uproot lifted element. A lifted Insert element e.g. query[T].insertValue(lift(element)) must be lifted directly inside the lift clause.")
         // Otherwise the inserted element (i.e. the insertee) is static and should be parsed as an ordinary case class
-        // i.e. the case query[Person].insert(Person("Joe", "Bloggs")) (or the batch case)
+        // i.e. the case query[Person]insertValue(Person("Joe", "Bloggs")) (or the batch case)
         case _ =>
           parseStaticInsertee(insertee)
     }
 
     /**
-     * Parse the input to of query[Person].insert(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs")
+     * Parse the input to of query[Person]insertValue(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs")
      */
     def parseStaticInsertee(insertee: Expr[_]): CaseClass | AIdent = {
       val rawAst = parser(insertee)
@@ -249,7 +249,7 @@ object InsertUpdateMacro {
      * This function creates a series of assignments
      * of a elaborated product. However, each assignment just assigns to the identifier
      * which will be plugged in (i.e. BetaReduced) once the Ident is actually substituted.
-     * E.g. if we have something like this: `val ip = quote { (p: Person) => query[Person].insert(p) }`
+     * E.g. if we have something like this: `val ip = quote { (p: Person) => query[Person].insertValue(p) }`
      * and then later: `run(ip(lift(Person("Joe",123))))` then the assignments list is just based
      * on the `p` identifier of the `ip` quoted function i.e:
      * `(v:Person) => v.firstName -> p.firstName` this is achived by doing
@@ -329,18 +329,18 @@ object InsertUpdateMacro {
       val assignmentOfEntity =
         parseInsertee(insertee) match
           // if it is a CaseClass we either have a static thing e.g. query[Person].insert(Person("Joe", 123))
-          // or we have a lifted thing e.g. query[Person].insert(lift(Person("Joe", 123)))
+          // or we have a lifted thing e.g. query[Person].insertValue(lift(Person("Joe", 123)))
           // so we just process it based on what kind of pattern we encounter
           case astCaseClass: CaseClass => deduceAssignmentsFromCaseClass(astCaseClass)
-          // if it is a Ident, then we know we have a batch query i.e. liftQuery(people).foreach(p => query[Person].insert(p))
-          // we want to re-syntheize this as a lifted thing i.e. liftQuery(people).foreach(p => query[Person].insert(lift(p)))
+          // if it is a Ident, then we know we have a batch query i.e. liftQuery(people).foreach(p => query[Person].insertValue(p))
+          // we want to re-syntheize this as a lifted thing i.e. liftQuery(people).foreach(p => query[Person].insertValue(lift(p)))
           // and then reprocess the contents.
           // We don't want to do that here thought because we don't have the PrepareRow
           // so we can't lift content here into planters. Instead this is done in the BatchQueryExecution pipeline
           case astIdent: AIdent => deduceAssignmentsFromIdent(astIdent)
 
       // Insertion could have lifts and quotes inside, need to extract those.
-      // E.g. it can be 'query[Person].insert(lift(Person("Joe",123)))'' which becomes Quoted(CaseClass(name -> lift(x), age -> lift(y), List(ScalarLift("Joe", x), ScalarLift(123, y)), Nil).
+      // E.g. it can be 'query[Person].insertValue(lift(Person("Joe",123)))'' which becomes Quoted(CaseClass(name -> lift(x), age -> lift(y), List(ScalarLift("Joe", x), ScalarLift(123, y)), Nil).
       // (In some cases, maybe even the runtimeQuotes position could contain things)
       // However, the insertee itself must always be available statically (i.e. it must be a Uprootable Quotation)
       val (lifts, pluckedUnquotes) = ExtractLifts(inserteeRaw)

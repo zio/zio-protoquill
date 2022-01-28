@@ -5,18 +5,6 @@ import java.util.{ Date, UUID }
 import io.getquill.context.Context
 import io.getquill._
 
-case class EncodingTestType(value: String)
-
-case class Number(value: String) extends AnyVal
-
-object Number {
-  def withValidation(value: String): Option[Number] =
-    if (value.forall(_.isDigit))
-      Some(Number(value))
-    else
-      None
-}
-
 trait EncodingSpec extends Spec {
 
   val context: SqlContext[_, _] //with TestEncoders with TestDecoders
@@ -60,7 +48,7 @@ trait EncodingSpec extends Spec {
   }
 
   inline def insert = quote {
-    (e: EncodingTestEntity) => query[EncodingTestEntity].insert(e)
+    (e: EncodingTestEntity) => query[EncodingTestEntity].insertValue(e)
   }
 
   val insertValues =
@@ -170,7 +158,7 @@ trait EncodingSpec extends Spec {
 
   case class BarCode(description: String, uuid: Option[UUID] = None)
 
-  val insertBarCode = quote((b: BarCode) => query[BarCode].insert(b).returningGenerated(_.uuid))
+  val insertBarCode = quote((b: BarCode) => query[BarCode].insertValue(b).returningGenerated(_.uuid))
   val barCodeEntry = BarCode("returning UUID")
 
   inline def findBarCodeByUuid(uuid: UUID) = quote(query[BarCode].filter(_.uuid.forall(_ == lift(uuid))))

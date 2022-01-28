@@ -9,7 +9,7 @@ trait OnConflictSpec extends Spec {
 
   lazy val e = TestEntity("s1", 1, 1, None, true)
 
-  inline def ins = quote(query[TestEntity].insert(lift(e)))
+  inline def ins = quote(query[TestEntity].insertValue(lift(e)))
   inline def del = quote(query[TestEntity].delete)
 
   inline def `no target - ignore` = quote {
