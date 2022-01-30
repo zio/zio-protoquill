@@ -35,7 +35,7 @@ lazy val isCommunityRemoteBuild =
   sys.props.getOrElse("communityRemote", "false").toBoolean
 
 lazy val scalatestVersion =
-  if (isCommunityRemoteBuild) "3.2.8" else "3.2.9"
+  if (isCommunityRemoteBuild) "3.2.7" else "3.2.9"
 
 lazy val baseModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-sql`
