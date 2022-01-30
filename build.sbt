@@ -141,11 +141,11 @@ lazy val `quill-sql` =
               Seq()
           }: _*),
         "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
-        "org.scalatest" %% "scalatest" % "3.2.9" % Test,
-        "org.scalatest" %% "scalatest-mustmatchers" % "3.2.9" % Test,
+        "org.scalatest" %% "scalatest" % "3.2.8" % Test,
+        "org.scalatest" %% "scalatest-mustmatchers" % "3.2.8" % Test,
         "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test
-      ),
-      Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oGF")
+      )//,
+      //Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oGF")
     )
 
 // Moving heavy tests to separate module so it can be compiled in parallel with others
@@ -201,8 +201,8 @@ lazy val `quill-caliban` =
         "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
         "io.d11" %% "zhttp"      % "1.0.0.0-RC17" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
-        "org.scalatest" %% "scalatest" % "3.2.9" % Test,
-        "org.scalatest" %% "scalatest-mustmatchers" % "3.2.9" % Test,
+        "org.scalatest" %% "scalatest" % "3.2.8" % Test,
+        "org.scalatest" %% "scalatest-mustmatchers" % "3.2.8" % Test,
         "org.postgresql"          %  "postgresql"              % "42.2.18"             % Test,
       )
     )
