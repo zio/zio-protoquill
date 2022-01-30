@@ -28,8 +28,14 @@ releaseNextVersion := { ver =>
   newVer
 }
 
-val isCommunityBuild =
+lazy val isCommunityBuild =
   sys.props.getOrElse("community", "false").toBoolean
+
+lazy val isCommunityRemoteBuild =
+  sys.props.getOrElse("communityRemote", "false").toBoolean
+
+lazy val scalatestVersion =
+  if (isCommunityRemoteBuild) "3.2.8" else "3.2.9"
 
 lazy val baseModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-sql`
@@ -141,8 +147,8 @@ lazy val `quill-sql` =
               Seq()
           }: _*),
         "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
-        "org.scalatest" %% "scalatest" % "3.2.8" % Test,
-        "org.scalatest" %% "scalatest-mustmatchers" % "3.2.8" % Test,
+        "org.scalatest" %% "scalatest" % scalatestVersion % Test,
+        "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
         "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test
       )//,
       //Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oGF")
@@ -201,8 +207,8 @@ lazy val `quill-caliban` =
         "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
         "io.d11" %% "zhttp"      % "1.0.0.0-RC17" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
-        "org.scalatest" %% "scalatest" % "3.2.8" % Test,
-        "org.scalatest" %% "scalatest-mustmatchers" % "3.2.8" % Test,
+        "org.scalatest" %% "scalatest" % scalatestVersion % Test,
+        "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
         "org.postgresql"          %  "postgresql"              % "42.2.18"             % Test,
       )
     )
