@@ -28,10 +28,10 @@ releaseNextVersion := { ver =>
   newVer
 }
 
-lazy val isCommunityBuild =
+val isCommunityBuild =
   sys.props.getOrElse("community", "false").toBoolean
 
-lazy val isCommunityRemoteBuild =
+val isCommunityRemoteBuild =
   sys.props.getOrElse("communityRemote", "false").toBoolean
 
 lazy val scalatestVersion =
@@ -67,9 +67,12 @@ lazy val communityBuildModules =
 
 val filteredModules = {
   val modulesStr = sys.props.get("modules")
-  println(s"Modules Argument Value: ${modulesStr}")
+  println(s"SBT =:> Modules Argument Value: ${modulesStr}. community=${isCommunityBuild}, communityRemote=${isCommunityRemoteBuild}")
 
-  val modules = modulesStr match {
+  val selectedModules = modulesStr match {
+    case _ if (isCommunityBuild) =>
+      println("SBT =:> Doing Community Build! Filtering Community-Build Modules Only")
+      communityBuildModules
     case Some("base") =>
       println("SBT =:> Compiling Base Modules")
       baseModules
@@ -93,15 +96,8 @@ val filteredModules = {
       allModules
   }
 
-  val filteredModules =
-    if(isCommunityBuild) {
-      println("SBT =:> Doing Community Build! Filtering Community-Build Modules Only")
-      modules.filter(communityBuildModules.contains(_))
-    } else
-      modules
-
-  println(s"=== Selected Modules ===\n${filteredModules.map(_.project.toString).toList.mkString("\n")}\n=== End Selected Modules ===")
-  filteredModules
+  println(s"=== Selected Modules ===\n${selectedModules.map(_.project.toString).toList.mkString("\n")}\n=== End Selected Modules ===")
+  selectedModules
 }
 
 lazy val `quill` = {
