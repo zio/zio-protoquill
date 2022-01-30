@@ -282,7 +282,16 @@ lazy val `quill-cassandra-zio` =
 val includeFormatter =
   sys.props.getOrElse("formatScala", "false").toBoolean
 
-lazy val commonSettings = /* ReleasePlugin.extraReleaseCommands ++  */ basicSettings
+lazy val commonSettings =
+  basicSettings ++
+  {
+    if (isCommunityRemoteBuild)
+      Seq(
+        Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+      )
+    else
+      Seq()
+  }
 
 lazy val jdbcTestingLibraries = Seq(
   libraryDependencies ++= Seq(
