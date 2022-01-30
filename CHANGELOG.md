@@ -1,3 +1,13 @@
+# 3.16.0.Beta2.1
+
+- [Bump engine version](https://github.com/zio/zio-protoquill/pull/62)
+- [Remove deprecated EntityQuery.insert/update APIs](https://github.com/zio/zio-protoquill/pull/61)
+
+* Note: Similar to zio-quill/pull/2413 this change just removes the deprecated
+  `EntityQuery.insert(CaseClass)` and `EntityQuery.update(CaseClass)` APIs that have been updated
+  to `EntityQuery.insertValue(CaseClass)` and `EntityQuery.updateValue(CaseClass)`,
+  and it is the only change in this release. This is needed because of lampepfl/dotty#14043.
+
 # 3.15.0.Beta2.0
 
 - [Bump ZIO to 1.0.12](https://github.com/zio/zio-protoquill/pull/57)
