@@ -8,6 +8,8 @@ import java.io.{File => JFile}
 
 ThisBuild / versionScheme := Some("always")
 
+addCommandAlias("runCommunityBuild", "; quill-sql/test; quill-sql-tests/test; quill-cassandra/Test/compile")
+
 // During release cycles, GPG will expect passphrase user-input EVEN when --passphrase is specified
 // this should add --pinentry-loopback in order to disable that. See here for more info:
 // https://github.com/sbt/sbt-pgp/issues/178
@@ -62,7 +64,7 @@ lazy val allModules =
 
 lazy val communityBuildModules =
   Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-    `quill-sql`, `quill-sql-tests`
+    `quill-sql`, `quill-sql-tests`, `quill-cassandra`
   )
 
 val filteredModules = {
