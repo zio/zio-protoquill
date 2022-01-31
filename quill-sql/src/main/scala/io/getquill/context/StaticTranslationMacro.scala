@@ -32,8 +32,10 @@ import io.getquill.generic.ElaborateTrivial
 import io.getquill.util.Format
 import io.getquill.util.Interpolator
 import io.getquill.util.Messages.TraceType
+import io.getquill.util.ProtoMessages
+import io.getquill.context.StaticTranslationMacro
 
-object StaticTranslationMacro {
+object StaticTranslationMacro:
   import io.getquill.parser._
   import scala.quoted._ // Expr.summon is actually from here
   import io.getquill.Planter
@@ -129,7 +131,6 @@ object StaticTranslationMacro {
     quotedRaw: Expr[Quoted[QAC[I, T]]],
     wrap: ElaborationBehavior
   )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[StaticState] =
-  {
     import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
@@ -160,7 +161,7 @@ object StaticTranslationMacro {
 
         (quotedExpr, lifts) <-
           QuotedExpr.uprootableWithLiftsOpt(quoted).errPrint(
-            s"Could not uproot the quote: ${Format.Expr(quoted)}"
+            s"Could not uproot (i.e. compile-time extract) the quote: `${Format.Expr(quoted)}`. Make sure it is an `inline def`. If it already is, this may be a quill error."
           )
 
         (query, externals, returnAction, ast) <-
@@ -171,24 +172,49 @@ object StaticTranslationMacro {
 
       } yield {
         if (io.getquill.util.Messages.debugEnabled)
-          report.info(
-            "Compile Time Query Is: " +
-              (
-                if (io.getquill.util.Messages.prettyPrint)
-                  idiom.format(query.basicQuery)
-                else
-                  query.basicQuery
-              )
-          )
+          queryPrint(PrintType.Query(query.basicQuery), Some(idiom))
+
         StaticState(query, encodedLifts, returnAction, idiom)(ast)
       }
 
     if (tryStatic.isEmpty)
-      // TODO Only if a high trace level is enabled
-      //def additionalMessage = Format.Expr(quotedRaw)
-      def additionalMessage = ""
-      report.info(s"Dynamic Query Detected${additionalMessage}")
+      queryPrint(PrintType.Message(s"Dynamic Query Detected"), None)
 
     tryStatic
-  }
-}
+  end apply
+
+  private[getquill] enum PrintType:
+    case Query(str: String)
+    case Message(str: String)
+
+  private[getquill] def queryPrint(printType: PrintType, idiomOpt: Option[Idiom])(using Quotes) =
+    import quotes.reflect._
+    import io.getquill.util.IndentUtil._
+
+    val msg =
+      printType match
+        case PrintType.Query(queryString) =>
+          val formattedQueryString =
+            if (io.getquill.util.Messages.prettyPrint)
+              idiomOpt.map(idiom => idiom.format(queryString)).getOrElse(queryString)
+            else
+              queryString
+
+          if (ProtoMessages.useStdOut)
+            s"Quill Query:\n${formattedQueryString.multiline(1, "")}"
+          else
+            s"Quill Query: ${formattedQueryString}"
+
+        case PrintType.Message(str) =>
+          str
+      end match
+
+    if (ProtoMessages.useStdOut)
+      val posValue = Position.ofMacroExpansion
+      val pos = s"\nat: ${posValue.sourceFile}:${posValue.startLine + 1}:${posValue.startColumn + 1}"
+      println(msg + pos)
+    else
+      report.info(msg)
+  end queryPrint
+
+end StaticTranslationMacro

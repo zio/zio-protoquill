@@ -3,8 +3,15 @@ package io.getquill.context.sql
 import io.getquill.{ Literal, MirrorSqlDialect, Spec, SqlMirrorContext }
 import io.getquill.util.StringOps._
 import io.getquill._
+import io.getquill.context.SplicingBehaviorHint
+import io.getquill.context.SplicingBehavior
 
 class NestedDistinctSpec extends Spec {
+
+  // Make sure that all queries in this file are static, fail the compile if any are dynamic
+  given SplicingBehaviorHint with
+    override type BehaviorType = SplicingBehavior.FailOnDynamic
+
   val v = "foo"
 
   "nested distinct clauses should" - {
