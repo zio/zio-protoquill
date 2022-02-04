@@ -143,5 +143,5 @@ object StaticSpliceMacro {
         case Left(msg) => report.throwError(msg, valueRaw)
         case Right(value) => value
 
-    UnquoteMacro('{ Quoted[T](Infix(List(${Expr(spliceStr)}), List(), true, $quat),Nil, Nil) })
+    UnquoteMacro('{ Quoted[T](Infix(List(${Expr(spliceStr)}), List(), true, false, $quat),Nil, Nil) })
 }

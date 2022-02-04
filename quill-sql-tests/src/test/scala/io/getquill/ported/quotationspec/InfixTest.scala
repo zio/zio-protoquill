@@ -24,20 +24,32 @@ class InfixTest extends Spec with NonSerializingQuotation with Inside {
       inline def q = quote {
         infix"true".as[Boolean]
       }
-      quote(unquote(q)).ast mustEqual Infix(List("true"), Nil, false, Quat.BooleanValue)
+      quote(unquote(q)).ast mustEqual Infix(List("true"), Nil, false, false, Quat.BooleanValue)
+    }
+    "with `as` and `generic`" in {
+      inline def q = quote {
+        infix"true".generic.pure.as[Boolean]
+      }
+      quote(unquote(q)).ast mustEqual Infix(List("true"), Nil, true, false, Quat.Generic)
+    }
+    "with `as` and `transparent`" in {
+      inline def q = quote {
+        infix"true".transparent.pure.as[Boolean]
+      }
+      quote(unquote(q)).ast mustEqual Infix(List("true"), Nil, true, true, Quat.Generic)
     }
     "with no `as`" in {
       inline def q = quote {
         infix"true"
       }
-      quote(unquote(q)).ast mustEqual Infix(List("true"), Nil, false, Quat.Value)
+      quote(unquote(q)).ast mustEqual Infix(List("true"), Nil, false, false, Quat.Value)
     }
     "with params" in {
       inline def q = quote {
         (a: String, b: String) =>
           infix"$a || $b".as[String]
       }
-      quote(unquote(q)).ast.body mustEqual Infix(List("", " || ", ""), List(Ident("a"), Ident("b")), false, Quat.Value)
+      quote(unquote(q)).ast.body mustEqual Infix(List("", " || ", ""), List(Ident("a"), Ident("b")), false, false, Quat.Value)
     }
     // Dynamic infix not supported yet
     // "with dynamic string" - {

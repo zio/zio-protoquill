@@ -52,6 +52,8 @@ import io.getquill.parser.Lifter
 import io.getquill.metaprog.InjectableEagerPlanterExpr
 import _root_.io.getquill.norm.BetaReduction
 import io.getquill.context.Execution.ElaborationBehavior
+import io.getquill.quat.Quat
+import io.getquill.quat.QuatMaking
 
 trait BatchContextOperation[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: List[(PrepareRow, Session) => (List[Any], PrepareRow)], extractor: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo): Res
@@ -153,7 +155,8 @@ object DynamicBatchQueryExecution:
     // (i.e. note that to get lifts from QuotedRaw we need to go through runtimeQuotes of each quote recursively so it wouldn't be possible to know that anyway for a dynamic query during compile-time)
     perRowLifts: List[Planter[_, _, _]],
     extractionBehavior: BatchExtractBehavior,
-    rawExtractor: Extraction[ResultRow, Session, T]
+    rawExtractor: Extraction[ResultRow, Session, T],
+    topLevelQuat: Quat
   ) = {
     // since real quotation could possibly be nested, need to get all splice all quotes and get all lifts in all runtimeQuote sections first
     val ast = spliceQuotations(quotedRaw)
@@ -193,6 +196,7 @@ object DynamicBatchQueryExecution:
         batchContextOperation.idiom,
         batchContextOperation.naming,
         ElaborationBehavior.Skip,
+        topLevelQuat,
         SpliceBehavior.AlreadySpliced
       )
 
@@ -228,6 +232,8 @@ object BatchQueryExecution:
   ](quotedRaw: Expr[Quoted[BatchAction[A]]],
     batchContextOperation: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]])(using val qctx: Quotes):
     import quotes.reflect._
+
+    val topLevelQuat = QuatMaking.ofType[T]
 
     def extractionBehavior: BatchExtractBehavior =
       Type.of[A] match
@@ -291,7 +297,9 @@ object BatchQueryExecution:
         $caseClassExpr,
         $perRowLiftsExpr,
         $extractionBehaviorExpr,
-        $extractor
+        $extractor,
+        /// For the sake of viewing/debugging the quat macro code it is better not to serialize it here
+        ${Lifter.NotSerializing.quat(topLevelQuat)}
       ) }
 
     end applyDynamic
@@ -317,7 +325,7 @@ object BatchQueryExecution:
 
           val expandedQuotation = expandQuotation(Lifter(actionQueryAst), batchActionType, perRowLifts)
 
-          StaticTranslationMacro[I, T, D, N](expandedQuotation, ElaborationBehavior.Skip) match
+          StaticTranslationMacro[I, T, D, N](expandedQuotation, ElaborationBehavior.Skip, topLevelQuat) match
             case Some(state @ StaticState(query, filteredPerRowLifts, _, _)) =>
               // create an extractor for returning actions
               val extractor = MakeExtractor[ResultRow, Session, T, T].static(state, identityConverter, extractionBehavior)

@@ -26,5 +26,9 @@ class CustomOperationsParser(rootParse: Parser)(using Quotes) extends Parser(roo
     case '{ ($i: Int)**($j: Int) } =>
       Infix(
         List("power(", " ,", ")"),
-        List(rootParse(i), rootParse(j)), true, Quat.Value)
+        List(rootParse(i), rootParse(j)),
+        true,
+        false,
+        Quat.Value
+      )
 }
