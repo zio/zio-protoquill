@@ -2,13 +2,12 @@ package io.getquill.h2
 
 import java.sql.{ Connection, ResultSet }
 import io.getquill.PrepareZioJdbcSpecBase
-import io.getquill.Prefix
+
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
-  def prefix = Prefix("testH2DB")
   val context: testContext.type = testContext
   import testContext._
 

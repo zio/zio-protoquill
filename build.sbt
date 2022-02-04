@@ -136,7 +136,11 @@ lazy val `quill-sql` =
         // Needs to be in-sync with both quill-engine and scalafmt-core or ClassNotFound
         // errors will happen. Even if the pprint classes are actually there
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
-        "io.getquill" %% "quill-engine" % "3.16.0",
+        ("io.getquill" %% "quill-engine" % "3.16.0")
+          .excludeAll(
+            ExclusionRule(organization = "dev.zio")
+          ),
+        ("dev.zio" %% "zio" % "2.0.0-RC2"),
         ("io.getquill" %% "quill-util" % "3.16.0")
           .excludeAll({
             if (isCommunityBuild)
@@ -219,8 +223,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "1.0.12",
-        "dev.zio" %% "zio-streams" % "1.0.12"
+        "dev.zio" %% "zio" % "2.0.0-RC2",
+        "dev.zio" %% "zio-streams" % "2.0.0-RC2"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -268,9 +272,9 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.13.0",
-        "dev.zio" %% "zio" % "1.0.12",
-        "dev.zio" %% "zio-streams" % "1.0.12",
-        ("dev.zio" %% "zio-interop-guava" % "30.1.0.3").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
+        "dev.zio" %% "zio" % "2.0.0-RC2",
+        "dev.zio" %% "zio-streams" % "2.0.0-RC2",
+        ("dev.zio" %% "zio-interop-guava" % "31.0.0.0").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")
@@ -318,7 +322,7 @@ lazy val basicSettings = Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
   scalaVersion := {
-    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.0.2"
+    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.1.0"
   },
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
