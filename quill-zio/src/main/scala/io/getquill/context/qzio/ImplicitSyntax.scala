@@ -2,6 +2,9 @@ package io.getquill.context.qzio
 
 import zio.stream.ZStream
 import zio.{ IO, ZIO }
+import zio.ZEnvironment
+import izumi.reflect.Tag
+import zio.IsNotIntersection
 
 /**
  * Use to provide `run(myQuery)` calls with a context implicitly saving the need to provide things multiple times.
@@ -43,10 +46,10 @@ object ImplicitSyntax {
   final case class Implicit[R](env: R)
 
   implicit final class ImplicitSyntaxOps[R, E, A](private val self: ZIO[R, E, A]) extends AnyVal {
-    def implicitly(implicit r: Implicit[R]): IO[E, A] = self.provide(r.env)
+    def implicitly(implicit r: Implicit[R], tag: Tag[R], ev: IsNotIntersection[R]): IO[E, A] = self.provideService(r.env)
   }
 
   implicit final class StreamImplicitSyntaxOps[R, E, A](private val self: ZStream[R, E, A]) extends AnyVal {
-    def implicitly(implicit r: Implicit[R]): ZStream[Any, E, A] = self.provide(r.env)
+    def implicitly(implicit r: Implicit[R], tag: Tag[R], ev: IsNotIntersection[R]): ZStream[Any, E, A] = self.provideService(r.env)
   }
 }

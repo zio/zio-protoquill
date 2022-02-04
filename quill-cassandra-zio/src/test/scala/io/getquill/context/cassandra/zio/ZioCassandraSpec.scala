@@ -2,7 +2,7 @@ package io.getquill.context.cassandra.zio
 
 import io.getquill.util.LoadConfig
 import io.getquill.{ CassandraContextConfig, CassandraZioSession, Spec }
-import zio.{ Has, Runtime, ZIO }
+import zio.{ Runtime, ZEnvironment, ZIO }
 import zio.stream.{ Sink, ZStream }
 import io.getquill._
 
@@ -21,20 +21,20 @@ trait ZioCassandraSpec extends Spec {
     pool.close()
   }
 
-  def accumulate[T](stream: ZStream[Has[CassandraZioSession], Throwable, T]): ZIO[Has[CassandraZioSession], Throwable, List[T]] =
+  def accumulate[T](stream: ZStream[CassandraZioSession, Throwable, T]): ZIO[CassandraZioSession, Throwable, List[T]] =
     stream.run(Sink.collectAll).map(_.toList)
 
-  def result[T](stream: ZStream[Has[CassandraZioSession], Throwable, T]): List[T] =
-    Runtime.default.unsafeRun(stream.run(Sink.collectAll).map(_.toList).provide(Has(pool)))
+  def result[T](stream: ZStream[CassandraZioSession, Throwable, T]): List[T] =
+    Runtime.default.unsafeRun(stream.run(Sink.collectAll).map(_.toList).provideService(pool))
 
-  def result[T](qzio: ZIO[Has[CassandraZioSession], Throwable, T]): T =
-    Runtime.default.unsafeRun(qzio.provide(Has(pool)))
+  def result[T](qzio: ZIO[CassandraZioSession, Throwable, T]): T =
+    Runtime.default.unsafeRun(qzio.provideService(pool))
 
-  implicit class ZStreamTestExt[T](stream: ZStream[Has[CassandraZioSession], Throwable, T]) {
+  implicit class ZStreamTestExt[T](stream: ZStream[CassandraZioSession, Throwable, T]) {
     def runSyncUnsafe() = result[T](stream)
   }
 
-  implicit class ZioTestExt[T](qzio: ZIO[Has[CassandraZioSession], Throwable, T]) {
+  implicit class ZioTestExt[T](qzio: ZIO[CassandraZioSession, Throwable, T]) {
     def runSyncUnsafe() = result[T](qzio)
   }
 }

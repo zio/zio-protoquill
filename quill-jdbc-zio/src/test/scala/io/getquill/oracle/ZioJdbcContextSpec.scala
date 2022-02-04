@@ -1,7 +1,6 @@
 package io.getquill.oracle
 
 import io.getquill.ZioSpec
-import io.getquill.Prefix
 import zio.{ Task, ZIO }
 import javax.sql.DataSource
 import io.getquill._
@@ -9,7 +8,6 @@ import zio.ZLayer
 
 class ZioJdbcContextSpec extends ZioSpec {
 
-  override def prefix: Prefix = Prefix("testSqlServerDB")
   val context = testContext
   import testContext._
 

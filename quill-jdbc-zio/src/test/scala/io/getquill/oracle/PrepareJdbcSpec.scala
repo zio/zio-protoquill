@@ -2,13 +2,12 @@ package io.getquill.oracle
 
 import java.sql.ResultSet
 import io.getquill.PrepareZioJdbcSpecBase
-import io.getquill.Prefix
+
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
-  def prefix = Prefix("testOracleDB")
   val context: testContext.type = testContext
   import testContext._
 

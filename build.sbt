@@ -217,8 +217,8 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban" % "1.3.3",
-        "com.github.ghostdogpr" %% "caliban-zio-http"   % "1.3.3",
+        "com.github.ghostdogpr" %% "caliban" % "2.0.0-RC1",
+        "com.github.ghostdogpr" %% "caliban-zio-http"   % "2.0.0-RC1",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
@@ -238,8 +238,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "1.0.12",
-        "dev.zio" %% "zio-streams" % "1.0.12"
+        "dev.zio" %% "zio" % "2.0.0-RC2",
+        "dev.zio" %% "zio-streams" % "2.0.0-RC2"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -287,9 +287,9 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.13.0",
-        "dev.zio" %% "zio" % "1.0.12",
-        "dev.zio" %% "zio-streams" % "1.0.12",
-        ("dev.zio" %% "zio-interop-guava" % "30.1.0.3").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
+        "dev.zio" %% "zio" % "2.0.0-RC2",
+        "dev.zio" %% "zio-streams" % "2.0.0-RC2",
+        ("dev.zio" %% "zio-interop-guava" % "31.0.0.0").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")

@@ -6,13 +6,15 @@ import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.{ ExecutionInfo, ProtoContextSecundus, ContextVerbStream }
 import zio.Exit.{ Failure, Success }
 import zio.stream.ZStream
-import zio.{ FiberRef, Has, Runtime, UIO, ZIO, ZManaged }
+import zio.{ FiberRef, Runtime, UIO, ZEnvironment, ZIO, ZManaged }
 
 import java.sql.{ Array => _, _ }
 import javax.sql.DataSource
 import scala.util.Try
 import scala.annotation.targetName
 import io.getquill._
+import zio.ZIO.attemptBlocking
+import zio.ZIO.blocking
 
 /**
  * Quill context that executes JDBC queries inside of ZIO. Unlike most other contexts
@@ -63,7 +65,7 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
   def translateContext: TranslateRunner = ()
 
   override type Error = SQLException
-  override type Environment = Has[DataSource]
+  override type Environment = DataSource
   override type PrepareRow = PreparedStatement
   override type ResultRow = ResultSet
 
@@ -75,21 +77,21 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
   override type Session = Connection
 
   @targetName("runQueryDefault")
-  inline def run[T](inline quoted: Quoted[Query[T]]): ZIO[Has[DataSource], SQLException, List[T]] = InternalApi.runQueryDefault(quoted)
+  inline def run[T](inline quoted: Quoted[Query[T]]): ZIO[DataSource, SQLException, List[T]] = InternalApi.runQueryDefault(quoted)
   @targetName("runQuery")
-  inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): ZIO[Has[DataSource], SQLException, List[T]] = InternalApi.runQuery(quoted, wrap)
+  inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): ZIO[DataSource, SQLException, List[T]] = InternalApi.runQuery(quoted, wrap)
   @targetName("runQuerySingle")
-  inline def run[T](inline quoted: Quoted[T]): ZIO[Has[DataSource], SQLException, T] = InternalApi.runQuerySingle(quoted)
+  inline def run[T](inline quoted: Quoted[T]): ZIO[DataSource, SQLException, T] = InternalApi.runQuerySingle(quoted)
   @targetName("runAction")
-  inline def run[E](inline quoted: Quoted[Action[E]]): ZIO[Has[DataSource], SQLException, Long] = InternalApi.runAction(quoted)
+  inline def run[E](inline quoted: Quoted[Action[E]]): ZIO[DataSource, SQLException, Long] = InternalApi.runAction(quoted)
   @targetName("runActionReturning")
-  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): ZIO[Has[DataSource], SQLException, T] = InternalApi.runActionReturning[E, T](quoted)
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): ZIO[DataSource, SQLException, T] = InternalApi.runActionReturning[E, T](quoted)
   @targetName("runActionReturningMany")
-  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): ZIO[Has[DataSource], SQLException, List[T]] = InternalApi.runActionReturningMany[E, T](quoted)
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): ZIO[DataSource, SQLException, List[T]] = InternalApi.runActionReturningMany[E, T](quoted)
   @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[Has[DataSource], SQLException, List[Long]] = InternalApi.runBatchAction(quoted)
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[DataSource, SQLException, List[Long]] = InternalApi.runBatchAction(quoted)
   @targetName("runBatchActionReturning")
-  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): ZIO[Has[DataSource], SQLException, List[T]] =  InternalApi.runBatchActionReturning(quoted)
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): ZIO[DataSource, SQLException, List[T]] =  InternalApi.runBatchActionReturning(quoted)
 
   val currentConnection: FiberRef[Option[Connection]] =
     Runtime.default.unsafeRun(FiberRef.make(None))
@@ -164,24 +166,24 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
    *   release-conn
    * </pre>
    */
-  def transaction[R <: Has[DataSource], A](op: ZIO[R, Throwable, A]): ZIO[R, Throwable, A] = {
-    withBlocking(currentConnection.get.flatMap {
+  def transaction[R <: DataSource, A](op: ZIO[R, Throwable, A]): ZIO[R, Throwable, A] = {
+    blocking(currentConnection.get.flatMap {
       // We can just return the op in the case that there is already a connection set on the fiber ref
       // because the op is execute___ which will lookup the connection from the fiber ref via onConnection/onConnectionStream
       // This will typically happen for nested transactions e.g. transaction(transaction(a *> b) *> c)
       case Some(connection) => op
       case None =>
         val connection = for {
-          env <- ZIO.service[DataSource].toManaged_
-          connection <- managedBestEffort(blockingEffect(env.getConnection))
+          env <- ZIO.service[DataSource].toManaged
+          connection <- managedBestEffort(attemptBlocking(env.getConnection))
           // Get the current value of auto-commit
-          prevAutoCommit <- blockingEffect(connection.getAutoCommit).toManaged_
+          prevAutoCommit <- attemptBlocking(connection.getAutoCommit).toManaged
           // Disable auto-commit since we need to be able to roll back. Once everything is done, set it
           // to whatever the previous value was.
-          _ <- ZManaged.make(blockingEffect(connection.setAutoCommit(false))) { _ =>
-            blockingEffect(connection.setAutoCommit(prevAutoCommit)).orDie
+          _ <- ZManaged.acquireReleaseWith(attemptBlocking(connection.setAutoCommit(false))) { _ =>
+            attemptBlocking(connection.setAutoCommit(prevAutoCommit)).orDie
           }
-          _ <- ZManaged.make(currentConnection.set(Some(connection))) { _ =>
+          _ <- ZManaged.acquireReleaseWith(currentConnection.set(Some(connection))) { _ =>
             // Note. We are failing the fiber if auto-commit reset fails. For some circumstances this may be too aggresive.
             // If the connection pool e.g. Hikari resets this property for a recycled connection anyway doing it here
             // might not be necessary
@@ -189,28 +191,31 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
           }
           // Once the `use` of this outer-ZManaged is done, rollback the connection if needed
           _ <- ZManaged.finalizerExit {
-            case Success(_)     => withBlocking(UIO(connection.commit()))
-            case Failure(cause) => withBlocking(UIO(connection.rollback()))
+            case Success(_)     => blocking(UIO(connection.commit()))
+            case Failure(cause) => blocking(UIO(connection.rollback()))
           }
         } yield ()
 
-        connection.use_(op)
+        connection.useDiscard(op)
     })
   }
 
-  private def onConnection[T](qlio: ZIO[Has[Connection], SQLException, T]): ZIO[Has[DataSource], SQLException, T] =
+  private def onConnection[T](qlio: ZIO[Connection, SQLException, T]): ZIO[DataSource, SQLException, T] =
     currentConnection.get.flatMap {
       case Some(connection) =>
-        withBlocking(qlio.provide(Has(connection)))
+        blocking(qlio.provideService(connection))
       case None =>
-        withBlocking(qlio.provideLayer(DataSourceLayer.live))
+        blocking(qlio.provideLayer(DataSourceLayer.live))
     }
 
-  private def onConnectionStream[T](qstream: ZStream[Has[Connection], SQLException, T]): ZStream[Has[DataSource], SQLException, T] =
-    streamBlocker *> ZStream.fromEffect(currentConnection.get).flatMap {
+  private def onConnectionStream[T](qstream: ZStream[Connection, SQLException, T]): ZStream[DataSource, SQLException, T] =
+    streamBlocker *> ZStream.fromZIO(currentConnection.get).flatMap {
       case Some(connection) =>
-        qstream.provide(Has(connection))
+        qstream.provideService(connection)
       case None =>
-        qstream.provideLayer(DataSourceLayer.live).refineToOrDie[SQLException]
+        (for {
+          env <- ZStream.managed(DataSourceLayer.live.build)
+          r <- qstream.provideEnvironment(env)
+        } yield (r)).refineToOrDie[SQLException]
     }
 }

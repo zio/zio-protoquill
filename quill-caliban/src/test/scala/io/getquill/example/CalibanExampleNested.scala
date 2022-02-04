@@ -10,8 +10,8 @@ import io.getquill._
 import io.getquill.context.qzio.ImplicitSyntax._
 import io.getquill.context.ZioJdbc._
 import io.getquill.util.LoadConfig
-import zio.console.putStrLn
-import zio.{ App, ExitCode, Has, URIO, Task }
+import zio.Console.printLine
+import zio.{ App, ExitCode, URIO, Task }
 import java.io.Closeable
 import javax.sql.DataSource
 
@@ -30,7 +30,7 @@ object DaoNested:
   object Ctx extends PostgresZioJdbcContext(Literal)
   import Ctx._
   lazy val ds = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
-  given Implicit[Has[DataSource]] = Implicit(Has(ds))
+  given Implicit[DataSource] = Implicit(ds)
 
   inline def q(inline columns: List[String], inline filters: Map[String, String]) =
     quote {
@@ -97,7 +97,7 @@ object CalibanExampleNested extends zio.App:
     interpreter <- endpoints
     _ <- Server.start(
         port = 8088,
-        http = Http.route { case _ -> Root / "api" / "graphql" =>
+        http = Http.route[Request] { case _ -> Root / "api" / "graphql" =>
           ZHttpAdapter.makeHttpService(interpreter)
         }
       )
