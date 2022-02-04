@@ -1,15 +1,13 @@
 package io.getquill.sqlite
 
 import io.getquill.ZioSpec
-import io.getquill.Prefix
-import zio.{ Task, ZIO }
-import io.getquill._
-import zio.ZLayer
+import zio.{ Task, ZIO, ZLayer }
+import io.getquill.context.ZioJdbc._
 import javax.sql.DataSource
+import io.getquill._
 
 class ZioJdbcContextSpec extends ZioSpec {
 
-  def prefix = Prefix("testSqliteDB")
   val context = testContext
   import testContext._
 

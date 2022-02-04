@@ -136,14 +136,9 @@ lazy val `quill-sql` =
         // Needs to be in-sync with both quill-engine and scalafmt-core or ClassNotFound
         // errors will happen. Even if the pprint classes are actually there
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
-        "io.getquill" %% "quill-engine" % "3.16.1",
-        ("io.getquill" %% "quill-util" % "3.16.1")
-          .excludeAll({
-            if (isCommunityBuild)
-              Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))
-            else
-              Seq()
-          }: _*),
+        ("io.getquill" %% "quill-engine" % "3.17.0-RC1"),
+        ("dev.zio" %% "zio" % "2.0.0-RC2"),
+        ("io.getquill" %% "quill-util" % "3.17.0-RC1"),
         "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
@@ -198,8 +193,8 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban" % "1.3.3",
-        "com.github.ghostdogpr" %% "caliban-zio-http"   % "1.3.3",
+        "com.github.ghostdogpr" %% "caliban" % "2.0.0-RC1",
+        "com.github.ghostdogpr" %% "caliban-zio-http"   % "2.0.0-RC1",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
@@ -219,8 +214,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "1.0.12",
-        "dev.zio" %% "zio-streams" % "1.0.12"
+        "dev.zio" %% "zio" % "2.0.0-RC2",
+        "dev.zio" %% "zio-streams" % "2.0.0-RC2"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -268,9 +263,9 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.13.0",
-        "dev.zio" %% "zio" % "1.0.12",
-        "dev.zio" %% "zio-streams" % "1.0.12",
-        ("dev.zio" %% "zio-interop-guava" % "30.1.0.3").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
+        "dev.zio" %% "zio" % "2.0.0-RC2",
+        "dev.zio" %% "zio-streams" % "2.0.0-RC2",
+        ("dev.zio" %% "zio-interop-guava" % "31.0.0.0").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")

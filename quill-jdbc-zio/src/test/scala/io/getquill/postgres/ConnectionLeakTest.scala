@@ -3,22 +3,29 @@ package io.getquill.postgres
 import java.util.UUID
 import io.getquill.{ JdbcContextConfig, Literal, PostgresZioJdbcContext, ZioSpec }
 import io.getquill.context.sql.ProductSpec
-import io.getquill.Prefix
+
 import io.getquill.util.LoadConfig
 import io.getquill.context.ZioJdbc._
-import zio.{ Has, Runtime }
+import io.getquill.context.qzio.ImplicitSyntax.Implicit
+import zio.Runtime
 import io.getquill._
 
 import scala.util.Random
+import zio.Runtime.Managed
+import javax.sql.DataSource
+import zio.ZIO
+import zio.ZLayer
+import com.zaxxer.hikari.HikariDataSource
 
 class ConnectionLeakTest extends ProductSpec with ZioSpec {
 
-  override def prefix: Prefix = Prefix("testPostgresLeakDB")
-  val dataSource = JdbcContextConfig(LoadConfig("testPostgresLeakDB")).dataSource
+  implicit val pool: Implicit[Managed[HikariDataSource]] =
+    Implicit(zio.Runtime.unsafeFromLayer(ZLayer.succeed(JdbcContextConfig(LoadConfig("testPostgresLeakDB")).dataSource)))
+
   // Need to type this so that output of context.run(quote(query[Product].delete)) is correct
-    // (also so that .runSyncUnsafe() extension method even can be added)
-    val context: PostgresZioJdbcContext[Literal] = new PostgresZioJdbcContext(Literal)
-    import context._
+  // (also so that .runSyncUnsafe() extension method even can be added)
+  val context: PostgresZioJdbcContext[Literal] = new PostgresZioJdbcContext(Literal)
+  import context._
 
   override def beforeAll() = {
     super.beforeAll()
@@ -27,8 +34,9 @@ class ConnectionLeakTest extends ProductSpec with ZioSpec {
   }
 
   "insert and select without leaking" in {
-    val result =
-      Runtime.default.unsafeRun(context.underlying.transaction {
+
+    val execution =
+      context.underlying.transaction {
         import context.underlying._
         for {
           _ <- context.underlying.run {
@@ -41,16 +49,18 @@ class ConnectionLeakTest extends ProductSpec with ZioSpec {
           result <- context.underlying.run {
             query[Product].filter(p => query[Product].map(_.id).max.exists(_ == p.id))
           }
-        } yield (result)
+          head <- ZIO.succeed(result.headOption.map(_.id))
+        } yield (head)
       }
-        .map(_.headOption.map(_.id))
-        .onDataSource
-        .provide(Has(dataSource)))
+      .onDataSource
+
+    val result = pool.env.unsafeRun(execution)
 
     Thread.sleep(2000)
 
     result mustEqual Option(1)
-    dataSource.getHikariPoolMXBean.getActiveConnections mustEqual 0
+    val activeConnections = pool.env.unsafeRun(ZIO.service[HikariDataSource].map(_.getHikariPoolMXBean.getActiveConnections))
+    activeConnections mustEqual 0
 
     context.close()
   }
