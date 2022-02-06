@@ -198,8 +198,8 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban" % "1.2.4",
-        "com.github.ghostdogpr" %% "caliban-zio-http"   % "1.2.4",
+        "com.github.ghostdogpr" %% "caliban" % "1.3.3",
+        "com.github.ghostdogpr" %% "caliban-zio-http"   % "1.3.3",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
@@ -318,7 +318,7 @@ lazy val basicSettings = Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
   scalaVersion := {
-    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.0.2"
+    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.1.0"
   },
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
