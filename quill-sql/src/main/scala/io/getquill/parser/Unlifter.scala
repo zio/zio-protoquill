@@ -262,7 +262,7 @@ object Unlifter {
       case Is[Property]( '{ Property(${ast}, ${name}) } ) => Property(ast.unexpr, constString(name))
       case Is[ScalarTag]( '{ScalarTag(${uid})} ) => ScalarTag(constString(uid))
       case Is[QuotationTag]( '{ QuotationTag($uid) } ) => QuotationTag(constString(uid))
-      case Is[Infix]( '{ Infix($parts, $params, $pure, $quat) } ) => Infix(parts.unexpr, params.unexpr, pure.unexpr, quat.unexpr)
+      case Is[Infix]( '{ Infix($parts, $params, $pure, $transparent, $quat) } ) => Infix(parts.unexpr, params.unexpr, pure.unexpr, transparent.unexpr, quat.unexpr)
       case Is[Tuple]( '{ Tuple.apply($values) } ) => Tuple(values.unexpr)
       case Is[CaseClass]( '{ CaseClass(${values}: List[(String, Ast)]) } ) => CaseClass(values.unexpr)
       case Is[IterableOperation]( unliftTraversableOperation(o) ) => o

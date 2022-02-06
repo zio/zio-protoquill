@@ -27,6 +27,7 @@ import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
 import io.getquill._
 import io.getquill.context.Execution.ElaborationBehavior
+import io.getquill.quat.Quat
 
 /**
 * A QueryMeta allows contra-mapping some Query[T] to a combination of a Query[R] and then
@@ -141,7 +142,8 @@ object QueryMetaExtractor {
   }
 
   def applyImpl[T: Type, R: Type, D <: io.getquill.idiom.Idiom: Type, N <: io.getquill.NamingStrategy: Type](
-    quotedRaw: Expr[Quoted[Query[T]]]
+    quotedRaw: Expr[Quoted[Query[T]]],
+    topLevelQuat: Quat
   )(using Quotes): ( Expr[Quoted[Query[R]]], Expr[R => T], Option[StaticState] ) =
   {
     import quotes.reflect.{Try => TTry, _}
@@ -156,7 +158,7 @@ object QueryMetaExtractor {
             attemptStaticRequip[T, R](queryLot, queryLifts, quip) match {
 
               case Some(StaticRequip(requip, baq)) =>
-                val staticTranslation = StaticTranslationMacro[Nothing, R, D, N](requip, ElaborationBehavior.Elaborate)
+                val staticTranslation = StaticTranslationMacro[Nothing, R, D, N](requip, ElaborationBehavior.Elaborate, topLevelQuat)
                 (requip, baq, staticTranslation)
 
               case None =>

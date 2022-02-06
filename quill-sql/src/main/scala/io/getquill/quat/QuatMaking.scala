@@ -30,7 +30,6 @@ object QuatMaking:
   inline def inferQuat[T](value: T): Quat = ${ inferQuatImpl('value) }
   def inferQuatImpl[T: TType](value: Expr[T])(using quotes: Quotes): Expr[Quat] = {
     val quat = quatMaker().InferQuat.of[T]
-    println(io.getquill.util.Messages.qprint(quat))
     Lifter.quat(quat)
   }
 
@@ -42,7 +41,6 @@ object QuatMaking:
 
   def quatOfImpl[T: TType](using quotes: Quotes): Expr[Quat] = {
     val quat = quatMaker().InferQuat.of[T]
-    println(io.getquill.util.Messages.qprint(quat))
     Lifter.quat(quat)
   }
 

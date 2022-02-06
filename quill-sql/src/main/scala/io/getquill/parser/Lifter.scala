@@ -306,7 +306,7 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${a.expr}, ${liftOperator(operator).asInstanceOf[Expr[BinaryOperator]]}, ${b.expr})  }
       case ScalarTag(uid: String) => '{ScalarTag(${uid.expr})}
       case QuotationTag(uid: String) => '{QuotationTag(${uid.expr})}
-      case Infix(parts, params, pure, quat) => '{ Infix(${parts.expr}, ${params.expr}, ${pure.expr}, ${quat.expr}) }
+      case Infix(parts, params, pure, transparent, quat) => '{ Infix(${parts.expr}, ${params.expr}, ${pure.expr}, ${transparent.expr}, ${quat.expr}) }
       case OnConflict.Excluded(a) => '{ OnConflict.Excluded(${a.expr}) }
       case OnConflict.Existing(a) => '{ OnConflict.Existing(${a.expr}) }
       case NullValue => '{ NullValue }

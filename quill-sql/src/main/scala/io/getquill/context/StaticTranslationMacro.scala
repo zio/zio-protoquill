@@ -34,6 +34,7 @@ import io.getquill.util.Interpolator
 import io.getquill.util.Messages.TraceType
 import io.getquill.util.ProtoMessages
 import io.getquill.context.StaticTranslationMacro
+import io.getquill.quat.Quat
 
 object StaticTranslationMacro:
   import io.getquill.parser._
@@ -47,7 +48,7 @@ object StaticTranslationMacro:
   import io.getquill.NamingStrategy
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], wrap: ElaborationBehavior, idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
+  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], topLevelQuat: Quat, wrap: ElaborationBehavior, idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
@@ -57,7 +58,7 @@ object StaticTranslationMacro:
 
     if (noRuntimeQuotations(unliftedAst)) {
       val expandedAst = ElaborateTrivial(wrap)(unliftedAst)
-      val (ast, stmt) = idiom.translate(expandedAst)(using naming)
+      val (ast, stmt, _) = idiom.translate(expandedAst, topLevelQuat, ExecutionType.Static)(using naming)
 
       val liftColumns =
         (ast: Ast, stmt: Statement) => Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
@@ -129,7 +130,8 @@ object StaticTranslationMacro:
 
   def apply[I: Type, T: Type, D <: Idiom, N <: NamingStrategy](
     quotedRaw: Expr[Quoted[QAC[I, T]]],
-    wrap: ElaborationBehavior
+    wrap: ElaborationBehavior,
+    topLevelQuat: Quat
   )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[StaticState] =
     import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
@@ -165,7 +167,7 @@ object StaticTranslationMacro:
           )
 
         (query, externals, returnAction, ast) <-
-          processAst[T](quotedExpr.ast, wrap, idiom, naming).errPrint(s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}")
+          processAst[T](quotedExpr.ast, topLevelQuat, wrap, idiom, naming).errPrint(s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}")
 
         encodedLifts <-
           processLifts(lifts, externals).errPrint(s"Could not process the lifts:\n${lifts.map(_.toString).mkString(",\n")}")

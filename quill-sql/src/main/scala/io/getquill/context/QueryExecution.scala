@@ -42,6 +42,8 @@ import io.getquill.parser.Lifter
 import io.getquill.OuterSelectWrap
 import io.getquill.util.CommonExtensions
 import io.getquill.generic.ElaborateTrivial
+import io.getquill.quat.QuatMaking
+import io.getquill.quat.Quat
 
 trait ContextOperation[I, T, D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](val idiom: D, val naming: N) {
   def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extractor: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]): Res
@@ -156,8 +158,11 @@ object QueryExecution:
 
     def apply() =
       QAC match
+        // Query has this shape
         case '[QAC[Nothing, T]] => applyQuery(quotedOp)
+        // Insert / Delete / Update have this shape
         case '[QAC[I, Nothing]] => applyAction(quotedOp)
+        // Insert Returning has this shape
         case '[QAC[I, T]] =>
           if (!(TypeRepr.of[T] =:= TypeRepr.of[Any]))
             applyActionReturning(quotedOp) // ReturningAction is also a subtype of Action so check it before Action
@@ -185,12 +190,13 @@ object QueryExecution:
      * )
      */
     def applyQuery(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
+      val topLevelQuat = QuatMaking.ofType[T]
       summonQueryMetaTypeIfExists[T] match
         // Can we get a QueryMeta? Run that pipeline if we can
         case Some(queryMeta) =>
           queryMeta match { case '[rawT] => runWithQueryMeta[rawT](quoted) }
         case None =>
-          Try(StaticTranslationMacro[I, T, D, N](quoted, queryElaborationBehavior)) match
+          Try(StaticTranslationMacro[I, T, D, N](quoted, queryElaborationBehavior, topLevelQuat)) match
             case scala.util.Failure(e) =>
               import CommonExtensions.Throwable._
               val msg = s"Query splicing failed due to error: ${e.stackTraceToString}"
@@ -203,32 +209,35 @@ object QueryExecution:
             case scala.util.Success(Some(staticState)) =>
               executeStatic[T](staticState, identityConverter, ExtractBehavior.Extract) // Yes we can, do it!
             case scala.util.Success(None) =>
-              executeDynamic(quoted, identityConverter, ExtractBehavior.Extract, queryElaborationBehavior) // No we can't. Do dynamic
+              executeDynamic(quoted, identityConverter, ExtractBehavior.Extract, queryElaborationBehavior, topLevelQuat) // No we can't. Do dynamic
 
     def applyAction(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
-      StaticTranslationMacro[I, T, D, N](quoted, ElaborationBehavior.Skip) match
+      StaticTranslationMacro[I, T, D, N](quoted, ElaborationBehavior.Skip, Quat.Value) match
         case Some(staticState) =>
           executeStatic[T](staticState, identityConverter, ExtractBehavior.Skip)
         case None =>
-          executeDynamic(quoted, identityConverter, ExtractBehavior.Skip, ElaborationBehavior.Skip)
+          executeDynamic(quoted, identityConverter, ExtractBehavior.Skip, ElaborationBehavior.Skip, Quat.Value)
 
     def applyActionReturning(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
-      StaticTranslationMacro[I, T, D, N](quoted, ElaborationBehavior.Skip) match
+      val topLevelQuat = QuatMaking.ofType[T]
+      StaticTranslationMacro[I, T, D, N](quoted, ElaborationBehavior.Skip, topLevelQuat) match
         case Some(staticState) =>
           executeStatic[T](staticState, identityConverter, ExtractBehavior.ExtractWithReturnAction)
         case None =>
-          executeDynamic(quoted, identityConverter, ExtractBehavior.ExtractWithReturnAction, ElaborationBehavior.Skip)
+          executeDynamic(quoted, identityConverter, ExtractBehavior.ExtractWithReturnAction, ElaborationBehavior.Skip, Quat.Value)
 
     /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to T */
     def runWithQueryMeta[RawT: Type](quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
-      val (queryRawT, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted.asExprOf[Quoted[Query[T]]])
+      val topLevelQuat = QuatMaking.ofType[RawT]
+      val (queryRawT, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted.asExprOf[Quoted[Query[T]]], topLevelQuat)
       staticStateOpt match {
         case Some(staticState) =>
           executeStatic[RawT](staticState, converter, ExtractBehavior.Extract)
         case None =>
-          // NOTE: Can assume QuotationType is `Query` here since summonly a Query-meta is only allowed for Queries
-          // TODO refacotry QueryMetaExtractor to use QAC[I, T] => QAC[I, RawT] then use that
-          executeDynamic[RawT](queryRawT.asExprOf[Quoted[QAC[I, RawT]]], converter, ExtractBehavior.Extract, queryElaborationBehavior)
+          // Note: Can assume QuotationType is `Query` here since summonly a Query-meta is only allowed for Queries
+          // Also: A previous implementation of this used QAC[I, T] => QAC[I, RawT] directly but was scrapped due to some Dotty issues
+          // that later got fixed. If this implementation becomes cumbersome we can try that.
+          executeDynamic[RawT](queryRawT.asExprOf[Quoted[QAC[I, RawT]]], converter, ExtractBehavior.Extract, queryElaborationBehavior, topLevelQuat)
       }
 
     def resolveLazyLiftsStatic(lifts: List[Expr[Planter[?, ?, ?]]]): List[Expr[Planter[?, ?, ?]]] =
@@ -279,7 +288,7 @@ object QueryExecution:
      * need to use ElaborateStructure or not. This is decided in the StaticTranslationMacro for static queries using a
      * different method. I.e. since StaticTranslationMacro knows the AST node it infers Action/Query from that).
      */
-    def executeDynamic[RawT: Type](quote: Expr[Quoted[QAC[I, RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior, elaborationBehavior: ElaborationBehavior) =
+    def executeDynamic[RawT: Type](quote: Expr[Quoted[QAC[I, RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior, elaborationBehavior: ElaborationBehavior, topLevelQuat: Quat) =
       // Grab the ast from the quote and make that into an expression that we will pass into the dynamic evaluator
       // Expand the outermost quote using the macro and put it back into the quote
       // Is the expansion on T or RawT, need to investigate
@@ -294,7 +303,9 @@ object QueryExecution:
 
       // TODO What about when an extractor is not neededX
       val spliceAsts = TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]
-      '{ RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Session, Ctx, Res]($elaboratedAstQuote, $contextOperation, $extractor, ${Expr(spliceAsts)}, $fetchSize, ${Expr(elaborationBehavior)}) }
+      // Note, we don't want to serialize the Quat here because it is directly spliced into the execution method call an only once.
+      /// For the sake of viewing/debugging the quat macro code it is better not to serialize it here
+      '{ RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Session, Ctx, Res]($elaboratedAstQuote, $contextOperation, $extractor, ${Expr(spliceAsts)}, $fetchSize, ${Expr(elaborationBehavior)}, ${Lifter.NotSerializing.quat(topLevelQuat)}) }
     end executeDynamic
 
   end RunQuery
@@ -383,6 +394,7 @@ object PrepareDynamicExecution:
     idiom: D,
     naming: N,
     elaborationBehavior: ElaborationBehavior,
+    topLevelQuat: Quat,
     spliceBehavior: SpliceBehavior = SpliceBehavior.NeedsSplice
   ) =
     // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
@@ -408,7 +420,7 @@ object PrepareDynamicExecution:
     //println("=============== Dynamic Expanded Ast Is ===========\n" + io.getquill.util.Messages.qprint(splicedAst))
 
     // Tokenize the spliced AST
-    val (outputAst, stmt) = idiom.translate(splicedAst)(using naming)
+    val (outputAst, stmt, _) = idiom.translate(splicedAst, topLevelQuat, ExecutionType.Dynamic)(using naming)
     val naiveQury = Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
 
     val liftColumns =
@@ -485,12 +497,13 @@ object RunDynamicExecution:
     rawExtractor: Extraction[ResultRow, Session, T],
     spliceAst: Boolean,
     fetchSize: Option[Int],
-    elaborationBehavior: ElaborationBehavior
+    elaborationBehavior: ElaborationBehavior,
+    topLevelQuat: Quat
   ): Res =
   {
     //println("===== Passed Ast: " + io.getquill.util.Messages.qprint(quoted.ast))
     val (queryString, outputAst, sortedLifts, extractor) =
-      PrepareDynamicExecution[I, T, RawT, D, N, PrepareRow, ResultRow, Session](quoted, rawExtractor, ctx.idiom, ctx.naming, elaborationBehavior)
+      PrepareDynamicExecution[I, T, RawT, D, N, PrepareRow, ResultRow, Session](quoted, rawExtractor, ctx.idiom, ctx.naming, elaborationBehavior, topLevelQuat)
 
     // Use the sortedLifts to prepare the method that will prepare the SQL statement
     val prepare = (row: PrepareRow, session: Session) => LiftsExtractor.Dynamic[PrepareRow, Session](sortedLifts, row, session)

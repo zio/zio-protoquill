@@ -650,16 +650,18 @@ class InfixParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse)
   import io.getquill.dsl.InfixDsl
 
   def attempt =
-    case '{ ($i: InfixValue).pure.asCondition } => genericInfix(i)(true, Quat.BooleanExpression)
-    case '{ ($i: InfixValue).asCondition } => genericInfix(i)(false, Quat.BooleanExpression)
-    case '{ ($i: InfixValue).generic.pure.as[t] } => genericInfix(i)(true, Quat.Generic)
-    case '{ ($i: InfixValue).pure.as[t] } => genericInfix(i)(true, InferQuat.of[t])
-    case '{ ($i: InfixValue).as[t] } => genericInfix(i)(false, InferQuat.of[t])
-    case '{ ($i: InfixValue) } => genericInfix(i)(false, Quat.Value)
+    case '{ ($i: InfixValue).pure.asCondition } => genericInfix(i)(true, false, Quat.BooleanExpression)
+    case '{ ($i: InfixValue).asCondition } => genericInfix(i)(false, false, Quat.BooleanExpression)
+    case '{ ($i: InfixValue).generic.pure.as[t] } => genericInfix(i)(true, false, Quat.Generic)
+    case '{ ($i: InfixValue).transparent.pure.as[t] } => genericInfix(i)(true, true, Quat.Generic)
+    case '{ ($i: InfixValue).pure.as[t] } => genericInfix(i)(true, false, InferQuat.of[t])
+    case '{ ($i: InfixValue).as[t] } => genericInfix(i)(false, false, InferQuat.of[t])
+    case '{ ($i: InfixValue) } => genericInfix(i)(false, false, Quat.Value)
 
-  def genericInfix(i: Expr[_])(isPure: Boolean, quat: Quat)(using History) =
+  def genericInfix(i: Expr[_])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History) =
     val (parts, paramsExprs) = InfixComponents.unapply(i).getOrElse { ParserError(i, classOf[Infix]) }
-    Infix(parts.toList, paramsExprs.map(rootParse(_)).toList, isPure, quat)
+    val infixAst = Infix(parts.toList, paramsExprs.map(rootParse(_)).toList, isPure, isTransparent, quat)
+    Quat.improveInfixQuat(infixAst)
 
 
   object StringContextExpr:
@@ -715,7 +717,7 @@ class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootP
 
   def attempt = {
     case '{ ($str:String).like($other) } =>
-      Infix(List(""," like ",""), List(rootParse(str), rootParse(other)), true, Quat.Value)
+      Infix(List(""," like ",""), List(rootParse(str), rootParse(other)), true, false, Quat.Value)
 
     case expr @ NamedOp1(left, "==", right) =>
       equalityWithInnerTypechecksIdiomatic(left.asTerm, right.asTerm)(Equal)
@@ -743,7 +745,7 @@ class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootP
 
     case Unseal(Apply(Select(num, "toString"), List())) if isNumeric(num.tpe) =>
       val inner = rootParse(num.asExpr)
-      Infix(List("cast(", " as VARCHAR)"), List(inner), false, inner.quat)
+      Infix(List("cast(", " as VARCHAR)"), List(inner), false, false, inner.quat)
     case Unseal(Select(num, "toInt")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
     case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
     case Unseal(Select(num, "toFloat")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
@@ -754,7 +756,7 @@ class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootP
 
     // TODO not sure how I want to do this on an SQL level. Maybe implement using SQL function containers since
     // they should be more dialect-portable then just infix
-    case '{ ($str: String).length } => Infix(List("Len(",")"), List(rootParse(str)), true, Quat.Value)
+    case '{ ($str: String).length } => Infix(List("Len(",")"), List(rootParse(str)), true, false, Quat.Value)
 
     //String Operations Cases
     case NamedOp1(left, "+", right) if is[String](left) || is[String](right) =>
