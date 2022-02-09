@@ -15,8 +15,17 @@ import io.getquill.util.StringUtil.section
 import io.getquill.parser.DoSerialize
 
 object SerialHelper:
-  def fromSerializedJVM[T](serial: String): T = KryoAstSerializer.deserialize(serial).asInstanceOf[T]
-  def toSerializedJVM(ast: Ast): String = KryoAstSerializer.serialize(ast)
+  import io.getquill.quat.{ Quat => QQuat }
+
+  def fromSerializedJVM[T](serial: String): T = BooSerializer.Ast.deserialize(serial).asInstanceOf[T]
+  def toSerializedJVM(ast: Ast): String = BooSerializer.Ast.serialize(ast)
+  object Quat:
+    def fromSerializedJVM(serial: String): QQuat = BooSerializer.Quat.deserialize(serial)
+    def toSerializedJVM(quat: QQuat): String = BooSerializer.Quat.serialize(quat)
+  object QuatProduct:
+    def fromSerializedJVM(serial: String): QQuat.Product = BooSerializer.QuatProduct.deserialize(serial)
+    def toSerializedJVM(quat: QQuat.Product): String = BooSerializer.QuatProduct.serialize(quat)
+end SerialHelper
 
 trait LifterProxy {
   def default: Lifter
@@ -96,9 +105,9 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
           tryToSerialize[Ast](ast).asInstanceOf[Expr[T]]
 
         case quat: Quat.Product if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
-          '{ io.getquill.quat.Quat.Product.fromSerializedJVM(${Expr(quat.serializeJVM)}) }.asInstanceOf[Expr[T]]
+          '{ SerialHelper.QuatProduct.fromSerializedJVM(${Expr(SerialHelper.QuatProduct.toSerializedJVM(quat))}) }.asInstanceOf[Expr[T]]
         case quat: Quat if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
-          '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }.asInstanceOf[Expr[T]]
+          '{ SerialHelper.Quat.fromSerializedJVM(${Expr(SerialHelper.Quat.toSerializedJVM(quat))}) }.asInstanceOf[Expr[T]]
 
         case _ => liftOrThrow(element)
     def unapply(t: T)(using Quotes) = Some(apply(t))
