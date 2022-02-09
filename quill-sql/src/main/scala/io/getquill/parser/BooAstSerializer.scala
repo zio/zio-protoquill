@@ -12,39 +12,6 @@ import java.nio.ByteBuffer
 import java.util.Base64
 import scala.collection.mutable.LinkedHashMap
 
-// TODO Not sure why need to copy this from the quill-engine module. Maybe because it is only compiled for JS? Should investigate
-object QuatPicklers {
-  implicit object productPickler extends Pickler[Quat.Product] {
-    override def pickle(value: Quat.Product)(implicit state: PickleState): Unit = {
-      state.pickle(value.tpe)
-      state.pickle(value.fields)
-      state.pickle(value.renames)
-      ()
-    }
-    override def unpickle(implicit state: UnpickleState): Quat.Product = {
-      val a = state.unpickle[Quat.Product.Type]
-      val b = state.unpickle[LinkedHashMap[String, Quat]]
-      val c = state.unpickle[LinkedHashMap[String, String]]
-      Quat.Product.WithRenames(a, b, c)
-    }
-  }
-
-  implicit val quatProductTypePickler: Pickler[Quat.Product.Type] =
-    compositePickler[Quat.Product.Type]
-      .addConcreteType[Quat.Product.Type.Concrete.type]
-      .addConcreteType[Quat.Product.Type.Abstract.type]
-
-  implicit val quatProductPickler: Pickler[Quat] =
-    compositePickler[Quat]
-      .addConcreteType[Quat.Product](productPickler, scala.reflect.classTag[Quat.Product])
-      .addConcreteType[Quat.Generic.type]
-      .addConcreteType[Quat.Unknown.type]
-      .addConcreteType[Quat.Value.type]
-      .addConcreteType[Quat.BooleanValue.type]
-      .addConcreteType[Quat.BooleanExpression.type]
-      .addConcreteType[Quat.Null.type]
-}
-
 object AstPicklers {
   import QuatPicklers._
 
@@ -292,21 +259,62 @@ object AstPicklers {
   implicit val ifPickler: Pickler[If] = generatePickler[If]
   implicit val assignmentPickler: Pickler[Assignment] = generatePickler[Assignment]
   implicit val assignmentDualPickler: Pickler[AssignmentDual] = generatePickler[AssignmentDual]
-  implicit val unaryOperatorPickler: CompositePickler[UnaryOperator] =
-    compositePickler[UnaryOperator]
-      .addConcreteType[PrefixUnaryOperator](generatePickler[PrefixUnaryOperator], classTag[PrefixUnaryOperator])
-      .addConcreteType[PostfixUnaryOperator](generatePickler[PostfixUnaryOperator], classTag[PostfixUnaryOperator])
-  implicit val binaryOperatorPicker: Pickler[BinaryOperator] = generatePickler[BinaryOperator]
-  implicit val operatorPickler: Pickler[Operator] =
-    compositePickler[Operator]
+
+  given CompositePickler[PrefixUnaryOperator] =
+    compositePickler[PrefixUnaryOperator]
+      .addConcreteType[BooleanOperator.`!`.type]
+      .addConcreteType[NumericOperator.`-`.type]
+  given CompositePickler[PostfixUnaryOperator] =
+    compositePickler
+      .addConcreteType[StringOperator.`toUpperCase`.type]
+      .addConcreteType[StringOperator.`toLowerCase`.type]
+      .addConcreteType[StringOperator.`toLong`.type]
+      .addConcreteType[StringOperator.`toInt`.type]
+      .addConcreteType[SetOperator.`nonEmpty`.type]
+      .addConcreteType[SetOperator.`isEmpty`.type]
+  given CompositePickler[UnaryOperator] =
+    compositePickler
+      .join[PrefixUnaryOperator]
+      .join[PostfixUnaryOperator]
+
+  given CompositePickler[AggregationOperator] =
+    compositePickler
+      .addConcreteType[AggregationOperator.`min`.type]
+      .addConcreteType[AggregationOperator.`max`.type]
+      .addConcreteType[AggregationOperator.`avg`.type]
+      .addConcreteType[AggregationOperator.`sum`.type]
+      .addConcreteType[AggregationOperator.`size`.type]
+
+  given CompositePickler[BinaryOperator] =
+    compositePickler
+      .addConcreteType[EqualityOperator.`_==`.type]
+      .addConcreteType[EqualityOperator.`_!=`.type]
+      .addConcreteType[BooleanOperator.`&&`.type]
+      .addConcreteType[BooleanOperator.`||`.type]
+      .addConcreteType[StringOperator.`+`.type]
+      .addConcreteType[StringOperator.`startsWith`.type]
+      .addConcreteType[StringOperator.`split`.type]
+      .addConcreteType[NumericOperator.`-`.type]
+      .addConcreteType[NumericOperator.`+`.type]
+      .addConcreteType[NumericOperator.`*`.type]
+      .addConcreteType[NumericOperator.`>`.type]
+      .addConcreteType[NumericOperator.`>=`.type]
+      .addConcreteType[NumericOperator.`<`.type]
+      .addConcreteType[NumericOperator.`<=`.type]
+      .addConcreteType[NumericOperator.`/`.type]
+      .addConcreteType[NumericOperator.`%`.type]
+      .addConcreteType[SetOperator.`contains`.type]
+
+  given CompositePickler[Operator] =
+    compositePickler
       .join[UnaryOperator]
-      .addConcreteType[BinaryOperator](binaryOperatorPicker, classTag[BinaryOperator])
+      .join[BinaryOperator]
+
   implicit val operationPickler: CompositePickler[Operation] =
-    compositePickler[Operation]
+    compositePickler
       .addConcreteType[UnaryOperation]
       .addConcreteType[BinaryOperation]
       .addConcreteType[FunctionApply]
-
 
   // ==== Value Pickers ====
   sealed trait ConstantTypes { def v: Any }
@@ -349,7 +357,9 @@ object AstPicklers {
       ()
     }
     override def unpickle(implicit state: UnpickleState): Constant = {
-      Constant(state.unpickle(constantTypesPickler).v, state.unpickle[Quat])
+      val a = state.unpickle(constantTypesPickler).v
+      val b = state.unpickle[Quat]
+      Constant(a, b)
     }
   }
   implicit object caseClassPickler extends Pickler[CaseClass]:
@@ -361,11 +371,20 @@ object AstPicklers {
     override def unpickle(implicit state: UnpickleState): CaseClass =
       new CaseClass(state.unpickle[LinkedHashMap[String, Ast]].toList)
 
+  // NullPointerException when this is commented out (maybe file an issue with BooPickle?)
+  implicit object tuplePickler extends Pickler[Tuple]:
+    override def pickle(value: Tuple)(implicit state: PickleState): Unit =
+      state.pickle(value.values)
+      ()
+    override def unpickle(implicit state: UnpickleState): Tuple =
+      new Tuple(state.unpickle[List[Ast]])
+
+
   implicit val valuePickler: CompositePickler[Value] =
     compositePickler[Value]
       .addConcreteType[Constant](constantPickler, classTag[Constant])
       .addConcreteType[NullValue.type]
-      .addConcreteType[Tuple]
+      .addConcreteType[Tuple](tuplePickler, classTag[Tuple])
       .addConcreteType[CaseClass](caseClassPickler, classTag[CaseClass])
 
 
@@ -381,6 +400,36 @@ object AstPicklers {
     compositePickler[ReturningAction]
       .addConcreteType[Returning]
       .addConcreteType[ReturningGenerated]
+
+
+  // ========= OnConflict Picker =========
+  implicit object onConflictExcludedPickler extends Pickler[OnConflict.Excluded]:
+    override def pickle(value: OnConflict.Excluded)(implicit state: PickleState): Unit =
+      state.pickle(value.alias)
+      ()
+    override def unpickle(implicit state: UnpickleState): OnConflict.Excluded =
+      val id = state.unpickle[Ident]
+      new OnConflict.Excluded(id)
+
+  implicit object onConflictExistingPickler extends Pickler[OnConflict.Existing]:
+    override def pickle(value: OnConflict.Existing)(implicit state: PickleState): Unit =
+      state.pickle(value.alias)
+      ()
+    override def unpickle(implicit state: UnpickleState): OnConflict.Existing =
+      val id = state.unpickle[Ident]
+      new OnConflict.Existing(id)
+
+  implicit val onConflictTargetPickler: CompositePickler[OnConflict.Target] =
+    compositePickler[OnConflict.Target]
+      .addConcreteType[OnConflict.NoTarget.type]
+      .addConcreteType[OnConflict.Properties]
+  implicit val onConflictActionPickler: CompositePickler[OnConflict.Action] =
+    compositePickler[OnConflict.Action]
+      .addConcreteType[OnConflict.Ignore.type]
+      .addConcreteType[OnConflict.Update]
+
+
+  // ==== Action Picker ====
   implicit val actionPickler: CompositePickler[Action] =
     compositePickler[Action]
       .addConcreteType[Insert]
@@ -413,12 +462,14 @@ object AstPicklers {
       .join[OptionOperation]
       .join[IterableOperation]
       .addConcreteType(ifPickler, classTag[If])
-      .addConcreteType(assignmentPickler, classTag[Assignment])
-      .addConcreteType(assignmentDualPickler, classTag[AssignmentDual])
+      .addConcreteType[Assignment](assignmentPickler, classTag[Assignment])
+      .addConcreteType[AssignmentDual](assignmentDualPickler, classTag[AssignmentDual])
       .join[Operation]
       .join[Value]
       .addConcreteType[Block]
       .addConcreteType[Val]
+      .addConcreteType[OnConflict.Excluded](onConflictExcludedPickler, classTag[OnConflict.Excluded])
+      .addConcreteType[OnConflict.Existing](onConflictExistingPickler, classTag[OnConflict.Existing])
       .join[Action]
       .join[Tag]
 }

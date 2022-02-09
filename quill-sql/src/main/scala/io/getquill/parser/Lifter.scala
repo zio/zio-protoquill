@@ -363,10 +363,10 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
         import io.getquill.util.CommonExtensions.Throwable._
         val msg =
           s"""Could not unift-serialize the '${ast.getClass}':
-            "|${io.getquill.util.Messages.qprint(ast)}."
-            "|Performing a regular unlift instead. Due to exception:
+             |${io.getquill.util.Messages.qprint(ast)}.
+             |Performing a regular unlift instead. Due to exception:
              |${e.stackTraceToString}
-             |"""
+             |""".stripMargin
 
         println(s"WARNING: ${msg}")
         quotes.reflect.report.warning(msg)
