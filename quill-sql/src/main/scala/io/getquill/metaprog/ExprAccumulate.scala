@@ -20,9 +20,9 @@ object DeserializeAstInstances:
     class CustomExprMap extends ExprMap {
       def transform[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] =
         expr match
-          case '{ SerialHelper.fromSerializedJVM[a](${Expr(serial)}) } =>
+          case '{ SerialHelper.fromSerialized[a](${Expr(serial)}) } =>
             try {
-              val actualAst = SerialHelper.fromSerializedJVM[io.getquill.ast.Ast](serial)
+              val actualAst = SerialHelper.fromSerialized[io.getquill.ast.Ast](serial)
               val astExpr = Lifter.NotSerializing.liftableAst(actualAst)
 
               // Need to cast or may fail on an internal typecheck
