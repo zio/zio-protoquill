@@ -20,14 +20,24 @@ object DeserializeAstInstances:
     class CustomExprMap extends ExprMap {
       def transform[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] =
         expr match
-          case '{ SerialHelper.fromSerialized[a](${Expr(serial)}) } =>
+          case '{ SerialHelper.Quat.fromSerialized(${Expr(serial)}) } =>
             try {
-              val actualAst = SerialHelper.fromSerialized[io.getquill.ast.Ast](serial)
-              val astExpr = Lifter.NotSerializing.liftableAst(actualAst)
-
+              val actualQuat = SerialHelper.Quat.fromSerialized(serial)
+              val astExpr = Lifter.NotSerializing.liftableQuat(actualQuat)
               // Need to cast or may fail on an internal typecheck
               '{ $astExpr.asInstanceOf[TF] }
+            } catch {
+              case e =>
+                report.warning("Could Not Deserialize The AST During Investigation")
+                ('{ io.getquill.ast.Constant.auto("Could Not Deserialize") }).asExprOf[TF]
+            }
 
+          case '{ SerialHelper.QuatProduct.fromSerialized(${Expr(serial)}) } =>
+            try {
+              val actualQuat = SerialHelper.QuatProduct.fromSerialized(serial)
+              val astExpr = Lifter.NotSerializing.liftableQuat(actualQuat)
+              // Need to cast or may fail on an internal typecheck
+              '{ $astExpr.asInstanceOf[TF] }
             } catch {
               case e =>
                 report.warning("Could Not Deserialize The AST During Investigation")

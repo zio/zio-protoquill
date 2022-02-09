@@ -29,8 +29,6 @@ object Unlifter {
     def apply(expr: Expr[T])(using Quotes): T =
       import quotes.reflect._
       expr match
-        case '{ SerialHelper.fromSerialized[tt](${Expr(serial: String)}) } if (TypeRepr.of[tt] <:< TypeRepr.of[Ast]) =>
-          SerialHelper.fromSerialized[Ast](serial).asInstanceOf[T]
         // On JVM, a Quat must be serialized and then lifted from the serialized state i.e. as a FromSerialized using JVM (due to 64KB method limit)
         case '{ SerialHelper.QuatProduct.fromSerialized(${Expr(str: String)}) } =>
           SerialHelper.QuatProduct.fromSerialized(str).asInstanceOf[T]

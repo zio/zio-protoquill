@@ -16,9 +16,6 @@ import io.getquill.parser.DoSerialize
 
 object SerialHelper:
   import io.getquill.quat.{ Quat => QQuat }
-
-  def fromSerialized[T](serial: String): T = BooSerializer.Ast.deserialize(serial).asInstanceOf[T]
-  def toSerialized(ast: Ast): String = BooSerializer.Ast.serialize(ast)
   object Quat:
     def fromSerialized(serial: String): QQuat = BooSerializer.Quat.deserialize(serial)
     def toSerialized(quat: QQuat): String = BooSerializer.Quat.serialize(quat)
@@ -91,18 +88,10 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       import quotes.reflect._
       element match
 
-        case ast: Ast if (serializeAst == SerializeAst.None) =>
-          liftOrThrow(ast).asInstanceOf[Expr[T]]
         case quat: Quat if (serializeQuat == SerializeQuat.None) =>
           liftOrThrow(quat).asInstanceOf[Expr[T]]
-
-        case ast: Ast if (deserializeDisabled) =>
-          Lifter(SerializeQuat.None, SerializeAst.None).liftableAst(ast).asInstanceOf[Expr[T]]
         case quat: Quat if (deserializeDisabled) =>
           Lifter(SerializeQuat.None, SerializeAst.None).liftableQuat(quat).asInstanceOf[Expr[T]]
-
-        case ast: Ast if (serializeAst == SerializeAst.All) =>
-          tryToSerialize[Ast](ast).asInstanceOf[Expr[T]]
 
         case quat: Quat.Product if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
           '{ SerialHelper.QuatProduct.fromSerialized(${Expr(SerialHelper.QuatProduct.toSerialized(quat))}) }.asInstanceOf[Expr[T]]
@@ -231,7 +220,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
   given liftableEntity : NiceLiftable[Entity] with
     def lift =
-      //case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Entity](ast)
       case Entity.Opinionated(name: String, list, quat, renameable) => '{ Entity.Opinionated(${name.expr}, ${list .expr}, ${quat.expr}, ${renameable.expr})  }
 
   given liftableCaseClass: NiceLiftable[CaseClass] with
@@ -240,7 +228,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
   given liftableTuple: NiceLiftable[Tuple] with
     def lift =
-      case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Tuple](ast)
       case Tuple(values) => '{ Tuple(${values.expr}) }
 
   given orderingLiftable: NiceLiftable[Ordering] with
@@ -348,34 +335,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case BooleanOperator.&& => '{ BooleanOperator.&& }
       case BooleanOperator.! => '{ BooleanOperator.! }
   }
-
-  def tryToSerialize[T <: Ast: TType](ast: Ast)(using Quotes): Expr[T] =
-    import quotes.reflect.{ Try => _, _}
-    // Kryo can have issues if 'ast' is a lazy val (e.g. it will attempt to serialize Entity.Opinionated as though
-    // it is an actual object which will fail because it is actually an inner class. Should look into
-    // adding support for inner classes or remove them
-    Try {
-      val serial = SerialHelper.toSerialized(ast)
-      // Needs to be casted directly in here or else the type will not be written by Expr matchers correctly
-      '{ SerialHelper.fromSerialized[T](${Expr(serial)}) }
-    }.recoverWith {
-      case e =>
-        import io.getquill.util.CommonExtensions.Throwable._
-        val msg =
-          s"""Could not unift-serialize the '${ast.getClass}':
-             |${io.getquill.util.Messages.qprint(ast)}.
-             |Performing a regular unlift instead. Due to exception:
-             |${e.stackTraceToString}
-             |""".stripMargin
-
-        println(s"WARNING: ${msg}")
-        quotes.reflect.report.warning(msg)
-        Try(Lifter(serializeQuat, SerializeAst.None).liftableAst(ast).asInstanceOf[Expr[T]])
-    }.getOrElse {
-      val msg = s"Could not serialize the '${ast.getClass}' ${io.getquill.util.Messages.qprint(ast)}."
-      println(s"WARNING: ${msg}")
-      quotes.reflect.report.throwError(msg)
-    }
 }
 
 object Lifter extends LifterProxy {
