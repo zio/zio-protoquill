@@ -135,8 +135,9 @@ lazy val `quill-sql` =
       libraryDependencies ++= Seq(
         // Needs to be in-sync with both quill-engine and scalafmt-core or ClassNotFound
         // errors will happen. Even if the pprint classes are actually there
+        "io.suzaku" %% "boopickle" % "1.4.0",
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
-        "io.getquill" %% "quill-engine" % "3.16.1",
+        ("io.getquill" %% "quill-engine" % "3.16.1").excludeAll(ExclusionRule(organization = "com.twitter")),
         ("io.getquill" %% "quill-util" % "3.16.1")
           .excludeAll({
             if (isCommunityBuild)
