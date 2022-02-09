@@ -137,8 +137,8 @@ lazy val `quill-sql` =
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.4.0",
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
-        ("io.getquill" %% "quill-engine" % "3.16.1").excludeAll(ExclusionRule(organization = "com.twitter")),
-        ("io.getquill" %% "quill-util" % "3.16.1")
+        ("io.getquill" %% "quill-engine" % "3.16.3-SNAPSHOT").excludeAll(ExclusionRule(organization = "com.twitter")),
+        ("io.getquill" %% "quill-util" % "3.16.3-SNAPSHOT")
           .excludeAll({
             if (isCommunityBuild)
               Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))

@@ -22,11 +22,10 @@ object QuatPicklers {
       ()
     }
     override def unpickle(implicit state: UnpickleState): Quat.Product = {
-      Quat.Product.WithRenames(
-        state.unpickle[Quat.Product.Type],
-        state.unpickle[LinkedHashMap[String, Quat]],
-        state.unpickle[LinkedHashMap[String, String]]
-      )
+      val a = state.unpickle[Quat.Product.Type]
+      val b = state.unpickle[LinkedHashMap[String, Quat]]
+      val c = state.unpickle[LinkedHashMap[String, String]]
+      Quat.Product.WithRenames(a, b, c)
     }
   }
 
@@ -55,11 +54,15 @@ object AstPicklers {
     override def pickle(value: Ident)(implicit state: PickleState): Unit = {
       state.pickle(value.name)
       state.pickle(value.bestQuat)
-      state.pickle(value.visibility)
+      state.pickle(value.visibility)(visibilityPickler)
       ()
     }
     override def unpickle(implicit state: UnpickleState): Ident = {
-      Ident.Opinionated(state.unpickle[String], state.unpickle[Quat], state.unpickle[Visibility])
+      // Need to do this here because can't put things into the class by value
+      val a = state.unpickle[String]
+      val b = state.unpickle[Quat]
+      val vis = state.unpickle[Visibility](visibilityPickler)
+      Ident.Opinionated(a, b, vis)
     }
   }
 
@@ -68,11 +71,15 @@ object AstPicklers {
     override def pickle(value: Entity)(implicit state: PickleState): Unit =
       state.pickle(value.name)
       state.pickle(value.properties)
-      state.pickle(value.bestQuat)
+      state.pickle(value.quat) // need to access Quat.Product, the bestQuat member is just Quat because in some cases it can be Unknown
       state.pickle(value.renameable)
       ()
     override def unpickle(implicit state: UnpickleState): Entity =
-      new Entity(state.unpickle[String], state.unpickle[List[PropertyAlias]])(state.unpickle[Quat.Product])(state.unpickle[Renameable])
+      val a = state.unpickle[String]
+      val b = state.unpickle[List[PropertyAlias]]
+      val c = state.unpickle[Quat.Product]
+      val d = state.unpickle[Renameable]
+      new Entity(a, b)(c)(d)
 
   implicit object distinctPickler extends Pickler[Distinct]:
     override def pickle(value: Distinct)(implicit state: PickleState): Unit =
@@ -121,26 +128,21 @@ object AstPicklers {
       .addConcreteType[TupleOrdering]
       .join[PropertyOrdering](propertyOrderingPickler)
 
-  implicit object infixPickler extends Pickler[Infix] {
-    override def pickle(value: Infix)(implicit state: PickleState): Unit = {
+  implicit object infixPickler extends Pickler[Infix]:
+    override def pickle(value: Infix)(implicit state: PickleState): Unit =
       state.pickle(value.parts)
       state.pickle(value.params)
       state.pickle(value.pure)
       state.pickle(value.transparent)
       state.pickle(value.bestQuat)
       ()
-    }
-    override def unpickle(implicit state: UnpickleState): Infix = {
-      new Infix(
-        state.unpickle[List[String]],
-        state.unpickle[List[Ast]],
-        state.unpickle[Boolean],
-        state.unpickle[Boolean]
-      )(
-        state.unpickle[Quat]
-      )
-    }
-  }
+    override def unpickle(implicit state: UnpickleState): Infix =
+      val a = state.unpickle[List[String]]
+      val b = state.unpickle[List[Ast]]
+      val c = state.unpickle[Boolean]
+      val d = state.unpickle[Boolean]
+      val e = state.unpickle[Quat]
+      new Infix(a, b, c, d)(e)
 
   // ==== Function Picker ====
   implicit val functionPickler: Pickler[Function] = generatePickler[Function]
@@ -155,7 +157,10 @@ object AstPicklers {
       ()
     }
     override def unpickle(implicit state: UnpickleState): ExternalIdent = {
-      ExternalIdent.Opinionated(state.unpickle[String], state.unpickle[Quat], state.unpickle[Renameable])
+      val a = state.unpickle[String]
+      val b = state.unpickle[Quat]
+      val c = state.unpickle[Renameable]
+      ExternalIdent.Opinionated(a, b, c)
     }
   }
 
@@ -171,7 +176,23 @@ object AstPicklers {
       .addConcreteType[Renameable.Fixed.type]
       .addConcreteType[Renameable.ByStrategy.type]
 
-  implicit val propertyPickler: Pickler[Property] = generatePickler[Property]
+  // ==== Property Picker ====
+  implicit object propertyPickler extends Pickler[Property]:
+    override def pickle(value: Property)(implicit state: PickleState): Unit =
+      state.pickle(value.ast)
+      state.pickle(value.name)
+      state.pickle(value.renameable)
+      state.pickle(value.visibility)
+      ()
+    override def unpickle(implicit state: UnpickleState): Property =
+      new Property(
+        state.unpickle[Ast],
+        state.unpickle[String]
+      )(
+        state.unpickle[Renameable],
+        state.unpickle[Visibility]
+      )
+
 
   // ==== OptionOperation Pickers ====
   implicit object optionNonePickler extends Pickler[OptionNone]:
@@ -331,21 +352,21 @@ object AstPicklers {
       Constant(state.unpickle(constantTypesPickler).v, state.unpickle[Quat])
     }
   }
-  implicit object nullValuePicker extends Pickler[NullValue.type] {
-    case object NullValueFlag
-    override def pickle(value: NullValue.type)(implicit state: PickleState): Unit = {
-      state.pickle(NullValueFlag)
+  implicit object caseClassPickler extends Pickler[CaseClass]:
+    override def pickle(value: CaseClass)(implicit state: PickleState): Unit =
+      val map = LinkedHashMap[String, Ast]()
+      value.values.foreach((k, v) => map.addOne(k, v))
+      state.pickle(map)
       ()
-    }
-    override def unpickle(implicit state: UnpickleState): NullValue.type =
-      NullValue
-  }
+    override def unpickle(implicit state: UnpickleState): CaseClass =
+      new CaseClass(state.unpickle[LinkedHashMap[String, Ast]].toList)
+
   implicit val valuePickler: CompositePickler[Value] =
     compositePickler[Value]
       .addConcreteType[Constant](constantPickler, classTag[Constant])
-      .addConcreteType(nullValuePicker, classTag[NullValue.type])
+      .addConcreteType[NullValue.type]
       .addConcreteType[Tuple]
-      .addConcreteType[CaseClass]
+      .addConcreteType[CaseClass](caseClassPickler, classTag[CaseClass])
 
 
   // ==== Action Picker ====
