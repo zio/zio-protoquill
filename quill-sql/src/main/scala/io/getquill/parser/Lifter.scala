@@ -360,7 +360,14 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       '{ SerialHelper.fromSerializedJVM[T](${Expr(serial)}) }
     }.recoverWith {
       case e =>
-        val msg = s"Could not unift-serialize the '${ast.getClass}' ${io.getquill.util.Messages.qprint(ast)}. Performing a regular unlift instead."
+        import io.getquill.util.CommonExtensions.Throwable._
+        val msg =
+          s"""Could not unift-serialize the '${ast.getClass}':
+            "|${io.getquill.util.Messages.qprint(ast)}."
+            "|Performing a regular unlift instead. Due to exception:
+             |${e.stackTraceToString}
+             |"""
+
         println(s"WARNING: ${msg}")
         quotes.reflect.report.warning(msg)
         Try(Lifter(serializeQuat, SerializeAst.None).liftableAst(ast).asInstanceOf[Expr[T]])
