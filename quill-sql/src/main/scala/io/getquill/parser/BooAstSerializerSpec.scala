@@ -32,6 +32,14 @@ object BooSerializerSpec {
   def constant() = {
     println(repickle(Constant.auto("s")) == Constant.auto("s"))
     println(repickle(Constant.auto(123)) == Constant.auto(123))
+    println(repickle(Constant.auto(123L)) == Constant.auto(123L))
+    println(repickle(Constant.auto(123.toShort)) == Constant.auto(123.toShort))
+    val f = 123.toFloat
+    println(repickle(Constant.auto(f)) == Constant.auto(f))
+    val d = 123.toDouble
+    println(repickle(Constant.auto(d)) == Constant.auto(d))
+    println(repickle(Constant.auto(true)) == Constant.auto(true))
+    println(repickle(Constant.auto(())) == Constant.auto(()))
   }
 
   def insert() = {
@@ -95,7 +103,8 @@ object BooSerializerSpec {
       SortBy(
         Entity("TestEntity", Nil, TestEntityQuat),
         IdT("t"),
-        Tuple(List(PropT("t","i"), PropT("t","s"))), TupleOrdering(List(Desc, Asc))
+        Tuple(List(PropT("t","i"), PropT("t","s"))),
+        TupleOrdering(List(Desc, Asc))
       )
     println(repickle(v) == v)
   }
@@ -105,11 +114,11 @@ object BooSerializerSpec {
     // caseClass()
     // entity()
     // productQuat()
-    //constant()
+    constant()
     // insert()
     // onConflict()
     // tupleProperty()
     // binaryAndUnaryOp()
-    sortByWithEntity()
+    // sortByWithEntity()
   }
 }

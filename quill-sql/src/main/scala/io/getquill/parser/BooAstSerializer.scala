@@ -82,6 +82,13 @@ object AstPicklers {
       .addConcreteType[Nested](nestedPickler, classTag[Nested])
 
   // ==== Ordering Picker ====
+  implicit object tupleOrderingPicker extends Pickler[TupleOrdering]:
+    override def pickle(value: TupleOrdering)(implicit state: PickleState): Unit =
+      state.pickle(value.elems)
+      ()
+    override def unpickle(implicit state: UnpickleState): TupleOrdering =
+      new TupleOrdering(state.unpickle[List[Ordering]])
+
   implicit val propertyOrderingPickler: CompositePickler[PropertyOrdering] =
     compositePickler[PropertyOrdering]
       .addConcreteType[Asc.type]
@@ -92,7 +99,7 @@ object AstPicklers {
       .addConcreteType[DescNullsLast.type]
   implicit val orderingPickler: CompositePickler[Ordering] =
     compositePickler[Ordering]
-      .addConcreteType[TupleOrdering]
+      .addConcreteType[TupleOrdering](tupleOrderingPicker, classTag[TupleOrdering])
       .join[PropertyOrdering](propertyOrderingPickler)
 
   implicit object infixPickler extends Pickler[Infix]:
@@ -327,6 +334,7 @@ object AstPicklers {
     case class Byte(v: scala.Byte) extends ConstantTypes
     case class Boolean(v: scala.Boolean) extends ConstantTypes
     case class String(v: java.lang.String) extends ConstantTypes
+    case object Unit extends ConstantTypes { def v: Unit = () }
     def from(constant: Constant): ConstantTypes =
       constant.v match {
         case v: scala.Int        => ConstantTypes.Int(v)
@@ -337,6 +345,8 @@ object AstPicklers {
         case v: scala.Byte       => ConstantTypes.Byte(v)
         case v: scala.Boolean    => ConstantTypes.Boolean(v)
         case v: java.lang.String => ConstantTypes.String(v)
+        case v: Unit             => ConstantTypes.Unit
+        case other => throw new IllegalArgumentException(s"Serialization Failure: The type `${other}` is not a valid ast.Constant.")
       }
   }
   implicit object constantPickler extends Pickler[Constant] {
@@ -350,6 +360,7 @@ object AstPicklers {
         .addConcreteType[ConstantTypes.Byte]
         .addConcreteType[ConstantTypes.Boolean]
         .addConcreteType[ConstantTypes.String]
+        .addConcreteType[ConstantTypes.Unit.type]
 
     override def pickle(value: Constant)(implicit state: PickleState): Unit = {
       state.pickle(ConstantTypes.from(value))(constantTypesPickler)
