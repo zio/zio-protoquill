@@ -9,7 +9,7 @@ import io.getquill.quat.quatOf
 import io.getquill._
 import org.scalatest.Inside
 
-class ActionTest extends Spec with NonSerializingQuotation with TestEntities with Inside {
+class ActionTest extends Spec with TestEntities with Inside {
   case class ActionTestEntity(id: Int)
 
   extension (ast: Ast)

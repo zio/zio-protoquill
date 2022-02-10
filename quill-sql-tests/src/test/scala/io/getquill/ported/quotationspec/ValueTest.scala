@@ -7,7 +7,7 @@ import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.quat.Quat
 import io.getquill._
 
-class ValueTest extends Spec with NonSerializingQuotation with TestEntities {
+class ValueTest extends Spec with TestEntities {
   "value" - { //helloo
     "null" in {
       inline def s = quote ("s")

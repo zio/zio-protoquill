@@ -8,7 +8,7 @@ import org.scalatest._
 import io.getquill.quat.Quat
 import io.getquill.Spec
 
-class QuerySortByTest extends Spec with NonSerializingQuotation with Inside with TestEntities {
+class QuerySortByTest extends Spec with Inside with TestEntities {
   // val ctx = new MirrorContext(MirrorIdiom, Literal)
   // import ctx._
 

@@ -15,7 +15,7 @@ import scala.math.BigDecimal.{ double2bigDecimal, int2bigDecimal, javaBigDecimal
 case class CustomAnyValue(i: Int) extends AnyVal
 case class EmbeddedValue(s: String, i: Int) extends Embedded
 
-class QueryTest extends Spec with NonSerializingQuotation with TestEntities {
+class QueryTest extends Spec with TestEntities {
   // remove the === matcher from scalatest so that we can test === in Context.extra
   override def convertToEqualizer[T](left: T): Equalizer[T] = new Equalizer(left)
 

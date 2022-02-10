@@ -7,7 +7,7 @@ import io.getquill.context.sql.testContext
 import io.getquill.context.sql.testContext._
 import io.getquill._
 
-class InfixSpec extends Spec with NonSerializingQuotation {
+class InfixSpec extends Spec {
   "infix" - {
     "part of the query - pure" in {
       inline def q = quote {

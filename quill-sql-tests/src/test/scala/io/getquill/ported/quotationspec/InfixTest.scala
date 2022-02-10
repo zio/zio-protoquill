@@ -13,7 +13,7 @@ import io.getquill.ast.Implicits._
 import io.getquill.norm.NormalizeStringConcat
 import io.getquill._
 
-class InfixTest extends Spec with NonSerializingQuotation with Inside {
+class InfixTest extends Spec with Inside {
   extension (ast: Ast)
     def body: Ast = ast match
       case f: Function => f.body

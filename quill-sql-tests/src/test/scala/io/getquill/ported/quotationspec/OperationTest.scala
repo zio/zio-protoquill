@@ -13,7 +13,7 @@ import io.getquill.ast.Implicits._
 import io.getquill.norm.NormalizeStringConcat
 import io.getquill._
 
-class OperationTest extends Spec with NonSerializingQuotation with TestEntities with Inside {
+class OperationTest extends Spec with TestEntities with Inside {
 
   extension (ast: Ast)
     def body: Ast = ast match
