@@ -6,6 +6,7 @@ import io.getquill.Spec
 import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.quat.Quat
 import io.getquill._
+import io.getquill.PicklingHelper._
 
 class ValueTest extends Spec with TestEntities {
   "value" - { //helloo
@@ -18,12 +19,16 @@ class ValueTest extends Spec with TestEntities {
     }
     "constant" in {
       inline def q = quote(11L)
-      quote(unquote(q)).ast mustEqual Constant.auto(11L)
+      val v = Constant.auto(11L)
+      quote(unquote(q)).ast mustEqual v
+      repickle(v) mustEqual v
     }
     "tuple" - {
       "literal" in {
         inline def q = quote((1, "a"))
-        quote(unquote(q)).ast mustEqual Tuple(List(Constant.auto(1), Constant.auto("a")))
+        val v = Tuple(List(Constant.auto(1), Constant.auto("a")))
+        quote(unquote(q)).ast mustEqual v
+        repickle(v) mustEqual v
       }
       // "arrow assoc" - {
       //   // TODO Is this even allowed in dotty?
@@ -33,11 +38,15 @@ class ValueTest extends Spec with TestEntities {
       //   // }
       "normal arrow" in {
         inline def q = quote(1 -> "a" -> "b")
-        quote(unquote(q)).ast mustEqual Tuple(List(Tuple(List(Constant.auto(1), Constant.auto("a"))), Constant.auto("b")))
+        val v = Tuple(List(Tuple(List(Constant.auto(1), Constant.auto("a"))), Constant.auto("b")))
+        quote(unquote(q)).ast mustEqual v
+        repickle(v) mustEqual v
       }
       "explicit `Predef.ArrowAssoc`" in {
         inline def q = quote(Predef.ArrowAssoc("a").->[String]("b"))
-        quote(unquote(q)).ast mustEqual Tuple(List(Constant.auto("a"), Constant.auto("b")))
+        val v = Tuple(List(Constant.auto("a"), Constant.auto("b")))
+        quote(unquote(q)).ast mustEqual v
+        repickle(v) mustEqual v
       }
       // }
     }

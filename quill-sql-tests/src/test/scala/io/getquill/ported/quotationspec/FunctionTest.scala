@@ -6,6 +6,7 @@ import io.getquill.Spec
 import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.quat.Quat
 import io.getquill._
+import io.getquill.PicklingHelper._
 
 class FunctionTest extends Spec with TestEntities {
   object IsDynamic {
@@ -23,14 +24,18 @@ class FunctionTest extends Spec with TestEntities {
       inline def q = quote {
         (s: String) => s
       }
-      quote(unquote(q)).ast mustEqual Function(List(Ident("s")), Ident("s"))
+      val f = Function(List(Ident("s")), Ident("s"))
+      quote(unquote(q)).ast mustEqual f
+      repickle(f) mustEqual f
     }
     "with type parameter" in {
       inline def q[T] = quote {
         (q: Query[T]) => q
       }
-      IsDynamic(q.ast) mustEqual false
-      quote(unquote(q)).ast mustEqual Function(List(Ident("q")), Ident("q"))
+      // IsDynamic(q.ast) mustEqual false
+      val f = Function(List(Ident("q")), Ident("q"))
+      quote(unquote(q)).ast mustEqual f
+      repickle(f) mustEqual f
     }
   }
   "function apply" - {
@@ -41,13 +46,17 @@ class FunctionTest extends Spec with TestEntities {
       inline def q = quote {
         f("s")
       }
-      quote(unquote(q)).ast mustEqual Constant.auto("s")
+      val c = Constant.auto("s")
+      quote(unquote(q)).ast mustEqual c
+      repickle(c) mustEqual c
     }
     "function reference" in {
       inline def q = quote {
         (f: String => String) => f("a")
       }
-      quote(unquote(q)).ast.body mustEqual FunctionApply(Ident("f"), List(Constant.auto("a")))
+      val f = FunctionApply(Ident("f"), List(Constant.auto("a")))
+      quote(unquote(q)).ast.body mustEqual f
+      repickle(f) mustEqual f
     }
   }
 }
