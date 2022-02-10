@@ -1,3 +1,8 @@
+# 3.16.3.Beta2.3
+
+- [Bump engine/util to 3.16.3](https://github.com/zio/zio-protoquill/pull/74)
+- [Change AST Serialization to BooPickle](https://github.com/zio/zio-protoquill/pull/72)
+
 # 3.16.1.Beta2.2
 
 - [Bump engine to 3.16.1](https://github.com/zio/zio-protoquill/pull/65)
