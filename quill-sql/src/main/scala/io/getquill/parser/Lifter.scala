@@ -15,8 +15,17 @@ import io.getquill.util.StringUtil.section
 import io.getquill.parser.DoSerialize
 
 object SerialHelper:
-  def fromSerializedJVM[T](serial: String): T = KryoAstSerializer.deserialize(serial).asInstanceOf[T]
-  def toSerializedJVM(ast: Ast): String = KryoAstSerializer.serialize(ast)
+  import io.getquill.quat.{ Quat => QQuat }
+
+  def fromSerialized[T](serial: String): T = BooSerializer.Ast.deserialize(serial).asInstanceOf[T]
+  def toSerialized(ast: Ast): String = BooSerializer.Ast.serialize(ast)
+  object Quat:
+    def fromSerialized(serial: String): QQuat = BooSerializer.Quat.deserialize(serial)
+    def toSerialized(quat: QQuat): String = BooSerializer.Quat.serialize(quat)
+  object QuatProduct:
+    def fromSerialized(serial: String): QQuat.Product = BooSerializer.QuatProduct.deserialize(serial)
+    def toSerialized(quat: QQuat.Product): String = BooSerializer.QuatProduct.serialize(quat)
+end SerialHelper
 
 trait LifterProxy {
   def default: Lifter
@@ -49,7 +58,7 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
     def unapply(value: Expr[DoSerialize])(using Quotes): Boolean =
       import quotes.reflect._
       val memberSymbol = value.asTerm.tpe.termSymbol.memberType("BehaviorType")
-      value.asTerm.select(memberSymbol).tpe <:< TypeRepr.of[io.getquill.parser.SerializationBehavior.Serialize]
+      value.asTerm.select(memberSymbol).tpe <:< TypeRepr.of[io.getquill.parser.SerializationBehavior.SkipSerialize]
 
 
 
@@ -96,9 +105,9 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
           tryToSerialize[Ast](ast).asInstanceOf[Expr[T]]
 
         case quat: Quat.Product if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
-          '{ io.getquill.quat.Quat.Product.fromSerializedJVM(${Expr(quat.serializeJVM)}) }.asInstanceOf[Expr[T]]
+          '{ SerialHelper.QuatProduct.fromSerialized(${Expr(SerialHelper.QuatProduct.toSerialized(quat))}) }.asInstanceOf[Expr[T]]
         case quat: Quat if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
-          '{ io.getquill.quat.Quat.fromSerializedJVM(${Expr(quat.serializeJVM)}) }.asInstanceOf[Expr[T]]
+          '{ SerialHelper.Quat.fromSerialized(${Expr(SerialHelper.Quat.toSerialized(quat))}) }.asInstanceOf[Expr[T]]
 
         case _ => liftOrThrow(element)
     def unapply(t: T)(using Quotes) = Some(apply(t))
@@ -346,12 +355,19 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
     // it is an actual object which will fail because it is actually an inner class. Should look into
     // adding support for inner classes or remove them
     Try {
-      val serial = SerialHelper.toSerializedJVM(ast)
+      val serial = SerialHelper.toSerialized(ast)
       // Needs to be casted directly in here or else the type will not be written by Expr matchers correctly
-      '{ SerialHelper.fromSerializedJVM[T](${Expr(serial)}) }
+      '{ SerialHelper.fromSerialized[T](${Expr(serial)}) }
     }.recoverWith {
       case e =>
-        val msg = s"Could not unift-serialize the '${ast.getClass}' ${io.getquill.util.Messages.qprint(ast)}. Performing a regular unlift instead."
+        import io.getquill.util.CommonExtensions.Throwable._
+        val msg =
+          s"""Could not unift-serialize the '${ast.getClass}':
+             |${io.getquill.util.Messages.qprint(ast)}.
+             |Performing a regular unlift instead. Due to exception:
+             |${e.stackTraceToString}
+             |""".stripMargin
+
         println(s"WARNING: ${msg}")
         quotes.reflect.report.warning(msg)
         Try(Lifter(serializeQuat, SerializeAst.None).liftableAst(ast).asInstanceOf[Expr[T]])

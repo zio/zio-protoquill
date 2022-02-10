@@ -6,8 +6,9 @@ import io.getquill.Spec
 import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.quat.Quat
 import io.getquill._
+import io.getquill.PicklingHelper._
 
-class IdentAndPropertyTest extends Spec with NonSerializingQuotation with TestEntities {
+class IdentAndPropertyTest extends Spec with TestEntities {
   extension (ast: Ast)
     def body: Ast = ast match
       case f: Function => f.body
@@ -25,7 +26,9 @@ class IdentAndPropertyTest extends Spec with NonSerializingQuotation with TestEn
       inline def q = quote {
         qr1.map(t => t.s)
       }
-      quote(unquote(q)).ast.body mustEqual Property(Ident("t"), "s")
+      val p = Property(Ident("t"), "s")
+      quote(unquote(q)).ast.body mustEqual p
+      repickle(p) mustEqual p
     }
     // TODO Need to introduce clauses in the parser to fail on the below constructs
     // "option.get fails" in {
@@ -62,6 +65,8 @@ class IdentAndPropertyTest extends Spec with NonSerializingQuotation with TestEn
     inline def q = quote {
       qr1.map(t => t.s)
     }
-    quote(unquote(q)).ast.body mustEqual Property(Ident("t"), "s")
+    val p = Property(Ident("t"), "s")
+    quote(unquote(q)).ast.body mustEqual p
+    repickle(p) mustEqual p
   }
 }

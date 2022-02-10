@@ -8,8 +8,9 @@ import io.getquill.quat.Quat
 import io.getquill.quat.quatOf
 import io.getquill._
 import org.scalatest.Inside
+import io.getquill.PicklingHelper._
 
-class ActionTest extends Spec with NonSerializingQuotation with TestEntities with Inside {
+class ActionTest extends Spec with TestEntities with Inside {
   case class ActionTestEntity(id: Int)
 
   extension (ast: Ast)
@@ -26,13 +27,17 @@ class ActionTest extends Spec with NonSerializingQuotation with TestEntities wit
         inline def q = quote {
           qr1.update(t => t.s -> "s")
         }
-        quote(unquote(q)).ast mustEqual Update(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s"))))
+        val u = Update(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s"))))
+        quote(unquote(q)).ast mustEqual u
+        repickle(u) mustEqual u
       }
       "set field using another field" in {
         inline def q = quote {
           qr1.update(t => t.i -> (t.i + 1))
         }
-        quote(unquote(q)).ast mustEqual Update(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "i"), BinaryOperation(Property(Ident("t"), "i"), NumericOperator.`+`, Constant.auto(1)))))
+        val u = Update(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "i"), BinaryOperation(Property(Ident("t"), "i"), NumericOperator.`+`, Constant.auto(1)))))
+        quote(unquote(q)).ast mustEqual u
+        repickle(u) mustEqual u
       }
       "case class" in {
         inline def q = quote {
@@ -49,13 +54,17 @@ class ActionTest extends Spec with NonSerializingQuotation with TestEntities wit
             )
         }
 
-        quote(unquote(q)).ast mustEqual internalizeVLabel(n.ast)
+        val u = internalizeVLabel(n.ast)
+        quote(unquote(q)).ast mustEqual u
+        repickle(u) mustEqual u
       }
       "explicit `Predef.ArrowAssoc`" in {
         inline def q = quote {
           qr1.update(t => Predef.ArrowAssoc(t.s).->[String]("s"))
         }
-        quote(unquote(q)).ast mustEqual Update(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s"))))
+        val u = Update(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s"))))
+        quote(unquote(q)).ast mustEqual u
+        repickle(u) mustEqual u
       }
       // TODO Does Dotty even support this?
       // "unicode arrow must compile" in {
@@ -70,7 +79,9 @@ class ActionTest extends Spec with NonSerializingQuotation with TestEntities wit
         inline def q = quote {
           qr1.insert(t => t.s -> "s")
         }
-        quote(unquote(q)).ast mustEqual Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s"))))
+        val i = Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s"))))
+        quote(unquote(q)).ast mustEqual i
+        repickle(i) mustEqual i
       }
       "case class" in {
         inline def q = quote {
@@ -86,45 +97,55 @@ class ActionTest extends Spec with NonSerializingQuotation with TestEntities wit
               v => v.b -> t.b
             )
         }
-        quote(unquote(q)).ast mustEqual internalizeVLabel(n.ast)
+        val i = internalizeVLabel(n.ast)
+        quote(unquote(q)).ast mustEqual i
+        repickle(i) mustEqual i
       }
       "insert with conflict" - {
         "onConflictIgnore" in {
           inline def q = quote {
             qr1.insert(t => t.s -> "s").onConflictIgnore
           }
-          quote(unquote(q)).ast mustEqual OnConflict(
-            Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
-            OnConflict.NoTarget,
-            OnConflict.Ignore
-          )
+          val oc =
+            OnConflict(
+              Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
+              OnConflict.NoTarget,
+              OnConflict.Ignore
+            )
+          quote(unquote(q)).ast mustEqual oc
+          repickle(oc) mustEqual oc
         }
         "onConflictIgnore(_.i)" in {
           inline def q = quote {
             qr1.insert(t => t.s -> "s").onConflictIgnore(r => r.i)
           }
-          quote(unquote(q)).ast mustEqual OnConflict(
-            Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
-            OnConflict.Properties(List(Property(Ident("r"), "i"))),
-            OnConflict.Ignore
-          )
+          val oc =
+            OnConflict(
+              Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
+              OnConflict.Properties(List(Property(Ident("r"), "i"))),
+              OnConflict.Ignore
+            )
+          quote(unquote(q)).ast mustEqual oc
+          repickle(oc) mustEqual oc
         }
         "onConflictUpdate((t, e) => ...)" in {
           inline def q = quote {
             qr1.insert(t => t.s -> "s").onConflictUpdate((t, e) => t.s -> e.s, (t, e) => t.l -> e.l)
           }
-
           def IdT(name: String) = Ident(name, TestEntityQuat)
-          quote(unquote(q)).ast mustEqual OnConflict(
-            Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
-            OnConflict.NoTarget,
-            OnConflict.Update(
-              List(
-                AssignmentDual(IdT("t"), IdT("e"), Property(IdT("t"), "s"), Property(OnConflict.Excluded(IdT("e")), "s")),
-                AssignmentDual(IdT("t"), IdT("e"), Property(IdT("t"), "l"), Property(OnConflict.Excluded(IdT("e")), "l"))
+          val oc =
+            OnConflict(
+              Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
+              OnConflict.NoTarget,
+              OnConflict.Update(
+                List(
+                  AssignmentDual(IdT("t"), IdT("e"), Property(IdT("t"), "s"), Property(OnConflict.Excluded(IdT("e")), "s")),
+                  AssignmentDual(IdT("t"), IdT("e"), Property(IdT("t"), "l"), Property(OnConflict.Excluded(IdT("e")), "l"))
+                )
               )
             )
-          )
+          quote(unquote(q)).ast mustEqual oc
+          repickle(oc) mustEqual oc
         }
       }
       "batch delete" in {
@@ -141,6 +162,9 @@ class ActionTest extends Spec with NonSerializingQuotation with TestEntities wit
             body mustEqual delete.ast.body
             quat mustEqual Quat.Value
         }
+        // Since ScalarTag has different ID every time, need to do write result of q.ast before pickling
+        val a = q.ast
+        repickle(a) mustEqual a
       }
       "batch insert" in {
         // liftQuery requires a context since it does lifts
@@ -160,6 +184,9 @@ class ActionTest extends Spec with NonSerializingQuotation with TestEntities wit
             body mustEqual insertRow.ast.body
             quat mustEqual quatOf[ActionTestEntity]
         }
+        // Since ScalarTag has different ID every time, need to do write result of q.ast before pickling
+        val a = q.ast
+        repickle(a) mustEqual a
       }
       // TODO Double Quoting is not supported yet. Need to look into how to do this
       // "batch with Quoted[Action[T]]" in {

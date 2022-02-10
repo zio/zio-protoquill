@@ -12,8 +12,9 @@ import io.getquill.quat.Quat
 import io.getquill.ast.Implicits._
 import io.getquill.norm.NormalizeStringConcat
 import io.getquill._
+import io.getquill.PicklingHelper._
 
-class OperationTest extends Spec with NonSerializingQuotation with TestEntities with Inside {
+class OperationTest extends Spec with TestEntities with Inside {
 
   extension (ast: Ast)
     def body: Ast = ast match
@@ -26,19 +27,25 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
         inline def q = quote {
           (a: Int, b: Int) => a == b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "succeeds when different numerics are used Int/Long" in {
         inline def q = quote {
           (a: Int, b: Long) => a == b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "succeeds when different numerics are used Long/Int" in {
         inline def q = quote {
           (a: Long, b: Int) => a == b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "fails if the types don't match" in {
         """
@@ -110,19 +117,25 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
             inline def q = quote {
               (a: Option[Foo], b: Option[Foo]) => a == b
             }
-            quote(unquote(q)).ast.body mustEqual (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib))
+            val o = (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib))
+            quote(unquote(q)).ast.body mustEqual o
+            repickle(o) mustEqual o
           }
           "succeeds when Option[T]/Option[subclass T]" in {
             inline def q = quote {
               (a: Option[Foo], b: Option[Foo with Foot]) => a == b
             }
-            quote(unquote(q)).ast.body mustEqual (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib))
+            val o = (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib))
+            quote(unquote(q)).ast.body mustEqual o
+            repickle(o) mustEqual o
           }
           "succeeds when Option[subclass T]/Option[T]" in {
             inline def q = quote {
               (a: Option[Foo with Foot], b: Option[Foo]) => a == b
             }
-            quote(unquote(q)).ast.body mustEqual (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib))
+            val o = (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib))
+            quote(unquote(q)).ast.body mustEqual o
+            repickle(o) mustEqual o
           }
           "fails when Option[T]/Option[A]" in {
             """
@@ -225,13 +238,17 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
         inline def q = quote {
           (a: Int, b: Int) => a.equals(b)
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "==" in {
         inline def q = quote {
           (a: Int, b: Int) => a == b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
 
       case class Foo(id: Int)
@@ -243,19 +260,25 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
         inline def q = quote {
           (a: Foo, b: Foo with Foot) => a.equals(b)
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "should succeed if left is subclass" in {
         inline def q = quote {
           (a: Foo with Foot, b: Foo) => a.equals(b)
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "should succeed with refinements" in {
         inline def q = quote {
           (a: Foo with Foot, b: Foo with Foot) => a.equals(b)
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "should fail if both are subclasses" in {
         "quote{ (a: Foo with Foot, b: Foo with Bart) => a.equals(b) }.ast.body" mustNot compile
@@ -269,19 +292,25 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
         inline def q = quote {
           (a: Int, b: Int) => a != b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "succeeds when different numerics are used Int/Long" in {
         inline def q = quote {
           (a: Int, b: Long) => a != b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "succeeds when different numerics are used Long/Int" in {
         inline def q = quote {
           (a: Long, b: Int) => a != b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "fails if the types don't match" in {
         """
@@ -298,7 +327,9 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
           inline def q = quote {
             (a: Option[Int], b: Option[Int]) => a != b
           }
-          quote(unquote(q)).ast.body mustEqual (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(ib)) +||+ (ia +!=+ ib)
+          val o = (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(ib)) +||+ (ia +!=+ ib)
+          quote(unquote(q)).ast.body mustEqual o
+          repickle(o) mustEqual o
         }
         "fails when Option/T" in {
           """
@@ -352,13 +383,17 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
             inline def q = quote {
               (a: Option[Foo], b: Option[Foo with Foot]) => a != b
             }
-            quote(unquote(q)).ast.body mustEqual (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(ib)) +||+ (ia +!=+ ib)
+            val o = (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(ib)) +||+ (ia +!=+ ib)
+            quote(unquote(q)).ast.body mustEqual o
+            repickle(o) mustEqual o
           }
           "succeeds when Option[subclass T]/Option[T]" in {
             inline def q = quote {
               (a: Option[Foo with Foot], b: Option[Foo]) => a != b
             }
-            quote(unquote(q)).ast.body mustEqual (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(ib)) +||+ (ia +!=+ ib))
+            val o = (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(ib)) +||+ (ia +!=+ ib))
+            quote(unquote(q)).ast.body mustEqual o
+            repickle(o) mustEqual o
           }
           "fails when Option[T]/Option[A]" in {
             """
@@ -437,32 +472,42 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
       inline def q = quote {
         (a: Boolean, b: Boolean) => a && b
       }
-      quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), BooleanOperator.`&&`, Ident("b"))
+      val b = BinaryOperation(Ident("a"), BooleanOperator.`&&`, Ident("b"))
+      quote(unquote(q)).ast.body mustEqual b
+      repickle(b) mustEqual b
     }
     "||" in {
       inline def q = quote {
         (a: Boolean, b: Boolean) => a || b
       }
-      quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), BooleanOperator.`||`, Ident("b"))
+      val b = BinaryOperation(Ident("a"), BooleanOperator.`||`, Ident("b"))
+      quote(unquote(q)).ast.body mustEqual b
+      repickle(b) mustEqual b
     }
     "-" in {
       inline def q = quote {
         (a: Int, b: Int) => a - b
       }
-      quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), NumericOperator.`-`, Ident("b"))
+      val b = BinaryOperation(Ident("a"), NumericOperator.`-`, Ident("b"))
+      quote(unquote(q)).ast.body mustEqual b
+      repickle(b) mustEqual b
     }
     "+" - {
       "numeric" in {
         inline def q = quote {
           (a: Int, b: Int) => a + b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), NumericOperator.`+`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), NumericOperator.`+`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "string" in {
         inline def q = quote {
           (a: String, b: String) => a + b
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), StringOperator.`+`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), StringOperator.`+`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "string interpolation" - {
 
@@ -495,43 +540,57 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
       inline def q = quote {
         (a: Int, b: Int) => a * b
       }
-      quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), NumericOperator.`*`, Ident("b"))
+      val b = BinaryOperation(Ident("a"), NumericOperator.`*`, Ident("b"))
+      quote(unquote(q)).ast.body mustEqual b
+      repickle(b) mustEqual b
     }
     ">" in {
       inline def q = quote {
         (a: Int, b: Int) => a > b
       }
-      quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), NumericOperator.`>`, Ident("b"))
+      val b = BinaryOperation(Ident("a"), NumericOperator.`>`, Ident("b"))
+      quote(unquote(q)).ast.body mustEqual b
+      repickle(b) mustEqual b
     }
     ">=" in {
       inline def q = quote {
         (a: Int, b: Int) => a >= b
       }
-      quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), NumericOperator.`>=`, Ident("b"))
+      val b = BinaryOperation(Ident("a"), NumericOperator.`>=`, Ident("b"))
+      quote(unquote(q)).ast.body mustEqual b
+      repickle(b) mustEqual b
     }
     "<" in {
       inline def q = quote {
         (a: Int, b: Int) => a < b
       }
-      quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), NumericOperator.`<`, Ident("b"))
+      val b = BinaryOperation(Ident("a"), NumericOperator.`<`, Ident("b"))
+      quote(unquote(q)).ast.body mustEqual b
+      repickle(b) mustEqual b
     }
     "<=" in {
       inline def q = quote {
         (a: Int, b: Int) => a <= b
       }
-      quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), NumericOperator.`<=`, Ident("b"))
+      val b = BinaryOperation(Ident("a"), NumericOperator.`<=`, Ident("b"))
+      quote(unquote(q)).ast.body mustEqual b
+      repickle(b) mustEqual b
     }
     "/" in {
       inline def q = quote {
         (a: Int, b: Int) => a / b
       }
-      quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), NumericOperator.`/`, Ident("b"))
+      val b = BinaryOperation(Ident("a"), NumericOperator.`/`, Ident("b"))
+      quote(unquote(q)).ast.body mustEqual b
+      repickle(b) mustEqual b
     }
     "%" in {
       inline def q = quote {
         (a: Int, b: Int) => a % b
       }
-      quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), NumericOperator.`%`, Ident("b"))
+      val b = BinaryOperation(Ident("a"), NumericOperator.`%`, Ident("b"))
+      quote(unquote(q)).ast.body mustEqual b
+      repickle(b) mustEqual b
     }
 
     "contains" - {
@@ -540,7 +599,9 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
           (a: Query[TestEntity], b: TestEntity) =>
             a.contains(b)
         }
-        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), SetOperator.`contains`, Ident("b"))
+        val b = BinaryOperation(Ident("a"), SetOperator.`contains`, Ident("b"))
+        quote(unquote(q)).ast.body mustEqual b
+        repickle(b) mustEqual b
       }
       "within option operation" - {
         "forall" in {
@@ -548,18 +609,21 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
             b.forall(a.contains)
           }
           quote(unquote(q)).ast.body mustBe an[OptionOperation]
+          repickle(q.ast) mustEqual q.ast
         }
         "exists" in {
           inline def q = quote { (a: Query[Int], b: Option[Int]) =>
             b.exists(a.contains)
           }
           quote(unquote(q)).ast.body mustBe an[OptionOperation]
+          repickle(q.ast) mustEqual q.ast
         }
         "map" in {
           inline def q = quote { (a: Query[Int], b: Option[Int]) =>
             b.map(a.contains)
           }
           quote(unquote(q)).ast.body mustBe an[OptionOperation]
+          repickle(q.ast) mustEqual q.ast
         }
       }
       // "split" in {
@@ -582,49 +646,65 @@ class OperationTest extends Spec with NonSerializingQuotation with TestEntities 
       inline def q = quote {
         (a: Int) => -a
       }
-      quote(unquote(q)).ast.body mustEqual UnaryOperation(NumericOperator.`-`, Ident("a"))
+      val v = UnaryOperation(NumericOperator.`-`, Ident("a"))
+      quote(unquote(q)).ast.body mustEqual v
+      repickle(v) mustEqual v
     }
     "!" in {
       inline def q = quote {
         (a: Boolean) => !a
       }
-      quote(unquote(q)).ast.body mustEqual UnaryOperation(BooleanOperator.`!`, Ident("a"))
+      val v = UnaryOperation(BooleanOperator.`!`, Ident("a"))
+      quote(unquote(q)).ast.body mustEqual v
+      repickle(v) mustEqual v
     }
     "nonEmpty" in {
       inline def q = quote {
         qr1.nonEmpty
       }
-      quote(unquote(q)).ast mustEqual UnaryOperation(SetOperator.`nonEmpty`, Entity("TestEntity", Nil, TestEntityQuat))
+      val v = UnaryOperation(SetOperator.`nonEmpty`, Entity("TestEntity", Nil, TestEntityQuat))
+      quote(unquote(q)).ast mustEqual v
+      repickle(v) mustEqual v
     }
     "isEmpty" in {
       inline def q = quote {
         qr1.isEmpty
       }
-      quote(unquote(q)).ast mustEqual UnaryOperation(SetOperator.`isEmpty`, Entity("TestEntity", Nil, TestEntityQuat))
+      val v = UnaryOperation(SetOperator.`isEmpty`, Entity("TestEntity", Nil, TestEntityQuat))
+      quote(unquote(q)).ast mustEqual v
+      repickle(v) mustEqual v
     }
     "toUpperCase" in {
       inline def q = quote {
         qr1.map(t => t.s.toUpperCase)
       }
-      quote(unquote(q)).ast mustEqual Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toUpperCase`, Property(Ident("t"), "s")))
+      val v = Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toUpperCase`, Property(Ident("t"), "s")))
+      quote(unquote(q)).ast mustEqual v
+      repickle(v) mustEqual v
     }
     "toLowerCase" in {
       inline def q = quote {
         qr1.map(t => t.s.toLowerCase)
       }
-      quote(unquote(q)).ast mustEqual Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toLowerCase`, Property(Ident("t"), "s")))
+      val v = Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toLowerCase`, Property(Ident("t"), "s")))
+      quote(unquote(q)).ast mustEqual v
+      repickle(v) mustEqual v
     }
     "toLong" in {
       inline def q = quote {
         qr1.map(t => t.s.toLong)
       }
-      quote(unquote(q)).ast mustEqual Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toLong`, Property(Ident("t"), "s")))
+      val v = Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toLong`, Property(Ident("t"), "s")))
+      quote(unquote(q)).ast mustEqual v
+      repickle(v) mustEqual v
     }
     "toInt" in {
       inline def q = quote {
         qr1.map(t => t.s.toInt)
       }
-      quote(unquote(q)).ast mustEqual Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toInt`, Property(Ident("t"), "s")))
+      val v = Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toInt`, Property(Ident("t"), "s")))
+      quote(unquote(q)).ast mustEqual v
+      repickle(v) mustEqual v
     }
   }
 }
