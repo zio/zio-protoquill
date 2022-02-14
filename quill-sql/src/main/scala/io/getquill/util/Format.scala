@@ -99,11 +99,16 @@ object Format {
 
       val formatted =
         Try {
-          val formatCls = classOf[ScalafmtFormat.type]
-          val result = formatCls.getMethod("apply").invoke(null, encosedCode)
-          val resultStr = s"${result}"
-          resultStr
-        }.getOrElse(encosedCode)
+          // val formatCls = classOf[ScalafmtFormat.type]
+          // val result = formatCls.getMethod("apply").invoke(null, encosedCode)
+          // println("============ GOT HERE ===========")
+          // val resultStr = s"${result}"
+          // resultStr
+          ScalafmtFormat(encosedCode)
+        }.getOrElse {
+          println("====== WARNING: Scalafmt Not Detected ====")
+          encosedCode
+        }
 
       unEnclose(formatted)
     }
