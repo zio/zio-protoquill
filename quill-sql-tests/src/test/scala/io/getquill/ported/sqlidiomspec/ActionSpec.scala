@@ -7,6 +7,8 @@ import io.getquill.context.mirror.Row
 import io.getquill.context.sql.testContext
 import io.getquill.context.sql.testContext._
 import io.getquill._
+import io.getquill.context.ExecutionType.Static
+import io.getquill.context.ExecutionType.Dynamic
 
 class ActionSpec extends Spec {
   "action" - {
@@ -124,13 +126,102 @@ class ActionSpec extends Spec {
           "INSERT INTO TestEntity4 DEFAULT VALUES"
       }
     }
-    "update" - {
+    "inline updateValue " - {
+      "entity" in {
+        inline def q = quote {
+          qr1.filter(t => t.s == "s").updateValue(TestEntity("s", 1, 2L, Some(1), true))
+        }
+        testContext.run(q).string mustEqual
+          "UPDATE TestEntity SET s = 's', i = 1, l = 2, o = 1, b = true WHERE s = 's'"
+      }
+      "entity with filter" in {
+        inline def q = quote {
+          qr1.filter(t => t.s == "s").updateValue(TestEntity("s", 1, 2L, Some(1), true))
+        }
+        testContext.run(q).string mustEqual
+          "UPDATE TestEntity SET s = 's', i = 1, l = 2, o = 1, b = true WHERE s = 's'"
+      }
+      "entity with filter and lift" in {
+        inline def q = quote {
+          qr1.filter(t => t.s == lift("s")).updateValue(TestEntity("s", 1, 2L, Some(1), true))
+        }
+        testContext.run(q).triple mustEqual
+          ("UPDATE TestEntity SET s = 's', i = 1, l = 2, o = 1, b = true WHERE s = ?", List("s"), Static)
+      }
+    }
+    "updateValue" - {
+      val v = TestEntity("s", 1, 2L, Some(1), true)
       "with filter" in {
+        inline def q = quote {
+          qr1.filter(t => t.s == "s").updateValue(lift(v))
+        }
+        val result = testContext.run(q)
+        result.triple mustEqual
+          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = 's'", List("s", 1, 2L, Some(("_1", 1)), true), Static)
+      }
+      "with filter and lift" in {
+        inline def q = quote {
+          qr1.filter(t => t.s == lift("s")).updateValue(lift(v))
+        }
+        val result = testContext.run(q)
+        result.triple mustEqual
+          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Static)
+      }
+      "quoted with filter and lift" in {
+        inline def orig = quote {
+          qr1.filter(t => t.s == lift("s"))
+        }
+        inline def q = quote {
+          orig.updateValue(lift(v))
+        }
+        val result = testContext.run(q)
+        result.triple mustEqual
+          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Static)
+      }
+      "quoted dynamic with filter and lift" in {
+        val orig = quote {
+          qr1.filter(t => t.s == lift("s"))
+        }
+        inline def q = quote {
+          orig.updateValue(lift(v))
+        }
+        val result = testContext.run(q)
+        result.triple mustEqual
+          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Dynamic)
+      }
+      "fully dynamic with filter and lift" in {
+        val orig = quote {
+          qr1.filter(t => t.s == lift("s"))
+        }
         val q = quote {
+          orig.updateValue(lift(v))
+        }
+        testContext.run(q).triple mustEqual
+          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Dynamic)
+      }
+    }
+    "update" - {
+      "with filter - null" in {
+        inline def q = quote {
           qr1.filter(t => t.s == null).update(_.s -> "s")
         }
         testContext.run(q).string mustEqual
           "UPDATE TestEntity SET s = 's' WHERE s IS NULL"
+      }
+      "with filter" in {
+        inline def q = quote {
+          qr1.filter(t => t.s == "s").update(_.s -> "s")
+        }
+        testContext.run(q).string mustEqual
+          "UPDATE TestEntity SET s = 's' WHERE s = 's'"
+      }
+      "with filter and lift" in {
+        inline def q = quote {
+          qr1.filter(t => t.s == lift("s")).update(_.s -> "s")
+        }
+        val result = testContext.run(q)
+        result.triple mustEqual
+          ("UPDATE TestEntity SET s = 's' WHERE s = ?", List("s"), Static)
       }
       "without filter" in {
         val q = quote {

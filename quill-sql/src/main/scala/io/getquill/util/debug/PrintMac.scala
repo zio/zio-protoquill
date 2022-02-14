@@ -25,7 +25,7 @@ object PrintMac {
           any
 
       println("================= Tree =================")
-      println(Format(Printer.TreeShortCode.show(deser.asTerm)))
+      println(Format(Printer.TreeAnsiCode.show(deser.asTerm)))
 
       println("================= Matchers =================")
       println(Format(Printer.TreeStructure.show(Untype(deser.asTerm))))

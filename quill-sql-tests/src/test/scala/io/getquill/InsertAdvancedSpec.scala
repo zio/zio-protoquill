@@ -123,6 +123,51 @@ class InsertAdvancedSpec extends Spec with Inside {
         ctx.run(q).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe'", List(), Static)
         ctx.run(a).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', colAge = 123", List(), Static)
       }
+
+      "simple with schemaMeta with extra columns and update meta fully lifted" in {
+        inline def q = quote { query[Person].filter(e => e.name == "JoeJoe").updateValue(lift(Person("Joe", 123))) }
+        inline def a = quote { query[Person].filter(e => e.name == "JoeJoe").update(_.name -> "Joe", _.age -> 123) }
+        inline given personSchema: UpdateMeta[Person] = updateMeta[Person](_.age)
+        inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName", _.age -> "colAge")
+        ctx.run(q).triple mustEqual ("UPDATE tblPerson SET colName = ? WHERE colName = 'JoeJoe'", List("Joe"), Static)
+        ctx.run(a).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', colAge = 123 WHERE colName = 'JoeJoe'", List(), Static)
+      }
+
+      "simple with schemaMeta with extra columns and update meta fully lifted with filter lift" in {
+        inline def q = quote { query[Person].filter(e => e.name == lift("JoeJoe")).updateValue(lift(Person("Joe", 123))) }
+        inline def a = quote { query[Person].filter(e => e.name == lift("JoeJoe")).update(_.name -> "Joe", _.age -> 123) }
+        inline given personSchema: UpdateMeta[Person] = updateMeta[Person](_.age)
+        inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName", _.age -> "colAge")
+        ctx.run(q).triple mustEqual ("UPDATE tblPerson SET colName = ? WHERE colName = ?", List("Joe", "JoeJoe"), Static)
+        ctx.run(a).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', colAge = 123 WHERE colName = ?", List("JoeJoe"), Static)
+      }
+
+      "simple with schemaMeta with extra columns and update meta filter lift - included column" in {
+        inline def q = quote { query[Person].filter(e => e.name == lift("JoeJoe")).updateValue(Person(lift("Joe"), 123)) }
+        inline def a = quote { query[Person].filter(e => e.name == lift("JoeJoe")).update(_.name -> lift("Joe"), _.age -> 123) }
+        inline given personSchema: UpdateMeta[Person] = updateMeta[Person](_.age)
+        inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName", _.age -> "colAge")
+        ctx.run(q).triple mustEqual ("UPDATE tblPerson SET colName = ? WHERE colName = ?", List("Joe", "JoeJoe"), Static)
+        ctx.run(a).triple mustEqual ("UPDATE tblPerson SET colName = ?, colAge = 123 WHERE colName = ?", List("Joe", "JoeJoe"), Static)
+      }
+
+      "simple with schemaMeta with extra columns and update meta filter lift - excluded column" in {
+        inline def q = quote { query[Person].filter(e => e.name == lift("JoeJoe")).updateValue(Person("Joe", lift(123))) }
+        inline def a = quote { query[Person].filter(e => e.name == lift("JoeJoe")).update(_.name -> "Joe", _.age -> lift(123)) }
+        inline given personSchema: UpdateMeta[Person] = updateMeta[Person](_.age)
+        inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName", _.age -> "colAge")
+        ctx.run(q).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe' WHERE colName = ?", List("JoeJoe"), Static)
+        ctx.run(a).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', colAge = ? WHERE colName = ?", List(123, "JoeJoe"), Static)
+      }
+
+      "simple with schemaMeta with extra columns and update meta filter lift - filter by excluded column" in {
+        inline def q = quote { query[Person].filter(e => e.age == lift(123)).updateValue(Person("Joe", lift(123))) }
+        inline def a = quote { query[Person].filter(e => e.age == lift(123)).update(_.name -> "Joe", _.age -> lift(123)) }
+        inline given personSchema: UpdateMeta[Person] = updateMeta[Person](_.age)
+        inline given sm: SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName", _.age -> "colAge")
+        ctx.run(q).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe' WHERE colAge = ?", List(123), Static)
+        ctx.run(a).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', colAge = ? WHERE colAge = ?", List(123, 123), Static)
+      }
     }
 
     "simple - runtime" in {
