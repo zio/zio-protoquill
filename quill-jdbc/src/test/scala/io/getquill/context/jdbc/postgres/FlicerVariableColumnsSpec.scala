@@ -34,20 +34,8 @@ class FlicerVariableColumnsSpec extends Spec with Inside {
     inline def plan(inline columns: List[String]) =
       quote { infix"EXPLAIN ${q(columns)}".pure.as[Query[String]] }
 
-    /** Resulting Plan should be something like:
-     * 1) Hash Right Join  (cost=3182.00..7466.00 rows=100000 width=37)
-     * 2)  Hash Cond: (a.ownerid = p.id)
-     * 3)  ->  Seq Scan on addresst a  (cost=0.00..1540.00 rows=100000 width=9)
-     * 4)  ->  Hash  (cost=1541.00..1541.00 rows=100000 width=4)
-     * 5)        ->  Seq Scan on persont p  (cost=0.00..1541.00 rows=100000 width=4)
-     */
     "one column from the joined table is selected" in {
       val columns = List[String]("street")
-      val instructions = ctx.run(plan(columns), OuterSelectWrap.Never)
-      def inst(i: Int)(str: String) = instructions(i).contains(str)
-      (inst(0)("Hash Right Join") || inst(0)("Merge Left Join")) mustBe true
-      (inst(1)("Hash Cond") || inst(1)("Merge Cond")) mustBe true
-
       // Also check that the actual query works
       ctx.run(q(columns).take(5)) mustEqual
         List(Combo(null,Some("1")), Combo(null,Some("2")), Combo(null,Some("3")), Combo(null,Some("4")), Combo(null,Some("5")))
