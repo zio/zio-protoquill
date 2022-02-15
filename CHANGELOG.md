@@ -1,3 +1,7 @@
+# 3.16.3.Beta2.4
+
+- [Fixing case of filter(lift).insert/updateValue](https://github.com/zio/zio-protoquill/pull/76)
+
 # 3.16.3.Beta2.3
 
 - [Bump engine/util to 3.16.3](https://github.com/zio/zio-protoquill/pull/74)
