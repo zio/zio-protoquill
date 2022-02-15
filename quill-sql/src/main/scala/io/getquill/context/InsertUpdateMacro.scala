@@ -102,6 +102,13 @@ object InsertUpdateMacro {
   enum EntitySummonState[+T]:
     case Static(value: T, lifts: List[Expr[Planter[?, ?, ?]]]) extends EntitySummonState[T]
     case Dynamic(uid: String, quotation: Expr[Quoted[Any]]) extends EntitySummonState[Nothing]
+    def print(using Quotes): String =
+      this match
+        case Static(value, lifts) =>
+          s"EntitySummonState.Static($value, ${lifts.map(Format.Expr(_))})"
+        case Dynamic(uid, quotation) =>
+          s"EntitySummonState.Dynamic($uid, ${Format.Expr(quotation)})"
+
 
   // Summon state of a updateMeta/insertMeta that indicates which columns to ignore (i.e. whether an implicit one could be summoned and whether it is static (i.e. can produce a compile-time query or dynamic))
   enum IgnoresSummonState[+T]:
@@ -374,7 +381,6 @@ object InsertUpdateMacro {
      * This is used for the createFromPremade if we need to wrap it into insertReturning which is used for batch-returning query execution.
      */
     def createQuotation(summonState: EntitySummonState[Ast], assignmentOfEntity: List[Assignment], lifts: List[Expr[Planter[?, ?, ?]]], pluckedUnquotes: List[Expr[QuotationVase]]) = {
-      //println("******************* TOP OF APPLY **************")
       // Processed Assignments AST plus any lifts that may have come from the assignments AST themsevles.
       // That is usually the case when
       val assignmentList = processAssignmentsAndExclusions(assignmentOfEntity)
@@ -413,13 +419,14 @@ object InsertUpdateMacro {
           // Unquote the quotation and return
           quotation
 
-      // TODO Need a catch-all
-
-      // use the quoation macro to parse the value into a class expression
-      // use that with (v) => (v) -> (class-value) to create a quoation
-      // incorporate that into a new quotation, use the generated quotation's lifts and runtime lifts
-      // the output value
-      // use the Unquote macro to take it back to an 'Insert[T]'
+        case (entitySummon, assignmentsSummon) =>
+          report.throwError(
+            s"""Invalid entity-summon/assignments-summon state:
+               |${entitySummon.print}
+               |----------------
+               |${assignmentsSummon}
+               |""".stripMargin
+          )
     }
 
   end Pipeline
