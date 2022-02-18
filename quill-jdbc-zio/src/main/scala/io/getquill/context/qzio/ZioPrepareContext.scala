@@ -10,7 +10,7 @@ import zio.{ Has, Task, ZIO }
 import java.sql.{ Connection, PreparedStatement, ResultSet, SQLException }
 
 trait ZioPrepareContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
-  with PrepareContext[Dialect, Naming] {
+  with ContextVerbPrepare[Dialect, Naming] {
 
   private[getquill] val logger = ContextLogger(classOf[ZioPrepareContext[_, _]])
 

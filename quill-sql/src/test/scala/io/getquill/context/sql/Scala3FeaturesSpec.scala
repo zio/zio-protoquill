@@ -31,6 +31,10 @@ class Scala3FeaturesSpec extends Spec {
         case class ByName(name: String) extends Filter
         case class ByAge(from: Int, to: Int) extends Filter
 
+      enum FilterEnum:
+        case ByName(name: String) extends FilterEnum
+        case ByAge(from: Int, to: Int) extends FilterEnum
+
       // Can't do it like this:
       /*
       "with lift" in {
@@ -56,6 +60,20 @@ class Scala3FeaturesSpec extends Spec {
           ExecutionType.Static
         )
       }
+
+      // Crazy issue that I need to file
+      // "with lift - enum" in {
+      //   inline def filterPerson(inline q: Query[Person])(inline f: FilterEnum) =
+      //     inline f match
+      //       case FilterEnum.ByName(name) => q.filter(p => p.name == name)
+      //       case FilterEnum.ByAge(from, to) => q.filter(p => p.age > from && p.age < to)
+
+      //   ctx.run(filterPerson(query[Person])(FilterEnum.ByName(lift("Joe")))).triple mustEqual (
+      //     "SELECT p.name, p.age FROM Person p WHERE p.name = ?",
+      //     List("Joe"),
+      //     ExecutionType.Static
+      //   )
+      // }
 
       "regular" in {
         inline def filterPerson(inline q: Query[Person])(inline f: Filter) =

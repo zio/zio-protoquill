@@ -44,7 +44,7 @@ import scala.util.Try
 abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
   with JdbcComposition[Dialect, Naming]
   with ProtoContext[Dialect, Naming]
-  with StreamingContext[Dialect, Naming]
+  with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]
   /*with ZioTranslateContext*/ {
 

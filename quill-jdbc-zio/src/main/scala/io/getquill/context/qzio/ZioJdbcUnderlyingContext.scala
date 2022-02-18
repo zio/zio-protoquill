@@ -17,7 +17,7 @@ import scala.util.Try
 
 abstract class ZioJdbcUnderlyingContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
   with JdbcRunContext[Dialect, Naming]
-  with StreamingContext[Dialect, Naming]
+  with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]
   // with ZioTranslateContext
   {
