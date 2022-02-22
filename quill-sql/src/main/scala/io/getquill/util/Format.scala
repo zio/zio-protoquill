@@ -66,7 +66,7 @@ object Format {
             |  ${Format(Printer.TreeShortCode.show(term)) }
             |==== Extractors ===
             |  ${Format(Printer.TreeStructure.show(term))}
-            |""".stripMargin,
+            |""".stripMargin
       } else {
         Format(Printer.TreeShortCode.show(term))
       }
