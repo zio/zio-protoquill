@@ -139,6 +139,7 @@ lazy val `quill-sql` =
         "io.suzaku" %% "boopickle" % "1.4.0",
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
         ("io.getquill" %% "quill-engine" % "3.19.0").excludeAll(ExclusionRule(organization = "com.twitter")),
+        ("dev.zio" %% "zio" % "2.0.0-RC2"),
         ("io.getquill" %% "quill-util" % "3.19.0")
           .excludeAll({
             if (isCommunityBuild)
