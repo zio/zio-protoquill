@@ -18,6 +18,7 @@ import io.getquill.context.cassandra.CassandraStandardContext
 import io.getquill.context.Context
 import io.getquill.context.cassandra.CassandraPrepareContext
 import io.getquill.context.AsyncFutureCache
+import scala.annotation.targetName
 
 object CassandraZioContext extends CioOps {
   type CIO[T] = ZIO[Has[CassandraZioSession], Throwable, T]
@@ -79,6 +80,17 @@ class CassandraZioContext[N <: NamingStrategy](val naming: N)
   override type PrepareRow = BoundStatement
   override type ResultRow = Row
   override type Session = CassandraZioSession
+
+  @targetName("runQueryDefault")
+  inline def run[T](inline quoted: Quoted[Query[T]]): ZIO[Has[CassandraZioSession], Throwable, List[T]] = InternalApi.runQueryDefault(quoted)
+  @targetName("runQuery")
+  inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): ZIO[Has[CassandraZioSession], Throwable, List[T]] = InternalApi.runQuery(quoted, wrap)
+  @targetName("runQuerySingle")
+  inline def run[T](inline quoted: Quoted[T]): ZIO[Has[CassandraZioSession], Throwable, T] = InternalApi.runQuerySingle(quoted)
+  @targetName("runAction")
+  inline def run[E](inline quoted: Quoted[Action[E]]): ZIO[Has[CassandraZioSession], Throwable, Unit] = InternalApi.runAction(quoted)
+  @targetName("runBatchAction")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[Has[CassandraZioSession], Throwable, Unit] = InternalApi.runBatchAction(quoted)
 
   // Don't need a Runner method because for the Zio Cassandra Context the
   // ExecutionContext is provided by the ZIO runtime.

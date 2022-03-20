@@ -4,11 +4,13 @@ import java.io.Closeable
 import java.sql.{ Connection, PreparedStatement }
 import javax.sql.DataSource
 import io.getquill.context.sql.idiom.SqlIdiom
-import io.getquill.{ NamingStrategy, ReturnAction }
+import io.getquill._
 import io.getquill.context.{ ExecutionInfo, ProtoContext } // TranslateContext
 
 import scala.util.{ DynamicVariable, Try }
 import scala.util.control.NonFatal
+import io.getquill.Quoted
+import scala.annotation.targetName
 
 abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   extends JdbcContextBase[Dialect, Naming]
@@ -29,30 +31,25 @@ abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   override protected def context: Runner = ()
 
   val dataSource: DataSource with Closeable
+
+  @targetName("runQueryDefault")
+  inline def run[T](inline quoted: Quoted[Query[T]]): List[T] = InternalApi.runQueryDefault(quoted)
+  @targetName("runQuery")
+  inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): List[T] = InternalApi.runQuery(quoted, wrap)
+  @targetName("runQuerySingle")
+  inline def run[T](inline quoted: Quoted[T]): T = InternalApi.runQuerySingle(quoted)
+  @targetName("runAction")
+  inline def run[E](inline quoted: Quoted[Action[E]]): Long = InternalApi.runAction(quoted)
+  @targetName("runActionReturning")
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): T = InternalApi.runActionReturning[E, T](quoted)
+  @targetName("runBatchAction")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): List[Long] = InternalApi.runBatchAction(quoted)
+  @targetName("runBatchActionReturning")
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): List[T] =  InternalApi.runBatchActionReturning(quoted)
+
   override def wrap[T](t: => T): T = t
   override def push[A, B](result: A)(f: A => B): B = f(result)
   override def seq[A](list: List[A]): List[A] = list
-
-  // Need explicit return-type annotations due to scala/bug#8356. Otherwise macro system will not understand Result[Long]=Long etc...
-  // override def executeAction(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: Runner): Long =
-  //   super.executeAction(sql, prepare)(executionInfo, dc)
-  // override def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: Runner): List[T] =
-  //   super.executeQuery(sql, prepare, extractor)(executionInfo, dc)
-  // override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: Runner): T =
-  //   super.executeQuerySingle(sql, prepare, extractor)(executionInfo, dc)
-  // override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, dc: Runner): O =
-  //   super.executeActionReturning(sql, prepare, extractor, returningBehavior)(executionInfo, dc)
-  // override def executeBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: Runner): List[Long] =
-  //   super.executeBatchAction(groups)(executionInfo, dc)
-  // override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: Runner): List[T] =
-  //   super.executeBatchActionReturning(groups, extractor)(executionInfo, dc)
-
-  // override def prepareQuery(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: Runner): Connection => PreparedStatement =
-  //   super.prepareQuery(sql, prepare)(executionInfo, dc)
-  // override def prepareAction(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: Runner): PrepareActionResult =
-  //   super.prepareAction(sql, prepare)(executionInfo, dc)
-  // override def prepareBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: Runner): PrepareBatchActionResult =
-  //   super.prepareBatchAction(groups)(executionInfo, dc)
 
   protected val currentConnection = new DynamicVariable[Option[Connection]](None)
 

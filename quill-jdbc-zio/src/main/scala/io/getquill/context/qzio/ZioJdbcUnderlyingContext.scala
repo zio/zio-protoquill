@@ -5,7 +5,7 @@ import io.getquill.context.jdbc.JdbcContextVerbExecute
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.{ ExecutionInfo, ContextVerbStream }
 import io.getquill.util.ContextLogger
-import io.getquill.{ NamingStrategy, ReturnAction }
+import io.getquill._
 import zio.Exit.{ Failure, Success }
 import zio.stream.{ Stream, ZStream }
 import zio.{ Cause, Has, Task, UIO, ZIO, ZManaged }
@@ -14,6 +14,7 @@ import java.sql.{ Array => _, _ }
 import javax.sql.DataSource
 import scala.reflect.ClassTag
 import scala.util.Try
+import scala.annotation.targetName
 
 abstract class ZioJdbcUnderlyingContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
   with JdbcContextVerbExecute[Dialect, Naming]
@@ -34,6 +35,21 @@ abstract class ZioJdbcUnderlyingContext[Dialect <: SqlIdiom, Naming <: NamingStr
   override type RunBatchActionReturningResult[T] = List[T]
   override type Runner = Unit
   override protected def context: Runner = ()
+
+  @targetName("runQueryDefault")
+  inline def run[T](inline quoted: Quoted[Query[T]]): ZIO[Has[Connection], SQLException, List[T]] = InternalApi.runQueryDefault(quoted)
+  @targetName("runQuery")
+  inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): ZIO[Has[Connection], SQLException, List[T]] = InternalApi.runQuery(quoted, wrap)
+  @targetName("runQuerySingle")
+  inline def run[T](inline quoted: Quoted[T]): ZIO[Has[Connection], SQLException, T] = InternalApi.runQuerySingle(quoted)
+  @targetName("runAction")
+  inline def run[E](inline quoted: Quoted[Action[E]]): ZIO[Has[Connection], SQLException, Long] = InternalApi.runAction(quoted)
+  @targetName("runActionReturning")
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): ZIO[Has[Connection], SQLException, T] = InternalApi.runActionReturning[E, T](quoted)
+  @targetName("runBatchAction")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[Has[Connection], SQLException, List[Long]] = InternalApi.runBatchAction(quoted)
+  @targetName("runBatchActionReturning")
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): ZIO[Has[Connection], SQLException, List[T]] =  InternalApi.runBatchActionReturning(quoted)
 
   // Need explicit return-type annotations due to scala/bug#8356. Otherwise macro system will not understand Result[Long]=Task[Long] etc...
   override def executeAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): QCIO[Long] =
