@@ -1,7 +1,7 @@
 package io.getquill
 
 import com.typesafe.config.Config
-import io.getquill.context.jdbc.{ H2JdbcTypes, JdbcRunContext, MysqlJdbcTypes, OracleJdbcTypes, PostgresJdbcTypes, SqlServerExecuteOverride, SqlServerJdbcTypes, SqliteJdbcTypes }
+import io.getquill.context.jdbc.{ H2JdbcTypes, MysqlJdbcTypes, OracleJdbcTypes, PostgresJdbcTypes, SqlServerExecuteOverride, SqlServerJdbcTypes, SqliteJdbcTypes }
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.qzio.{ ZioJdbcContext, ZioJdbcUnderlyingContext }
 import io.getquill.util.LoadConfig
@@ -18,7 +18,6 @@ object PostgresZioJdbcContext {
   class Underlying[N <: NamingStrategy](val naming: N)
     extends ZioJdbcUnderlyingContext[PostgresDialect, N]
     with PostgresJdbcTypes[N]
-    with JdbcContextVerbs[PostgresDialect, N]
 }
 
 class SqlServerZioJdbcContext[N <: NamingStrategy](val naming: N)
@@ -32,7 +31,6 @@ object SqlServerZioJdbcContext {
   class Underlying[N <: NamingStrategy](val naming: N)
     extends ZioJdbcUnderlyingContext[SQLServerDialect, N]
     with SqlServerJdbcTypes[N]
-    with JdbcContextVerbs[SQLServerDialect, N]
     with SqlServerExecuteOverride[N]
 }
 
@@ -46,7 +44,6 @@ object H2ZioJdbcContext {
   class Underlying[N <: NamingStrategy](val naming: N)
     extends ZioJdbcUnderlyingContext[H2Dialect, N]
     with H2JdbcTypes[N]
-    with JdbcContextVerbs[H2Dialect, N]
 }
 
 class MysqlZioJdbcContext[N <: NamingStrategy](val naming: N)
@@ -59,7 +56,6 @@ object MysqlZioJdbcContext {
   class Underlying[N <: NamingStrategy](val naming: N)
     extends ZioJdbcUnderlyingContext[MySQLDialect, N]
     with MysqlJdbcTypes[N]
-    with JdbcContextVerbs[MySQLDialect, N]
 }
 
 class SqliteZioJdbcContext[N <: NamingStrategy](val naming: N)
@@ -72,7 +68,6 @@ object SqliteZioJdbcContext {
   class Underlying[N <: NamingStrategy](val naming: N)
     extends ZioJdbcUnderlyingContext[SqliteDialect, N]
     with SqliteJdbcTypes[N]
-    with JdbcContextVerbs[SqliteDialect, N]
 }
 
 class OracleZioJdbcContext[N <: NamingStrategy](val naming: N)
@@ -85,7 +80,6 @@ object OracleZioJdbcContext {
   class Underlying[N <: NamingStrategy](val naming: N)
     extends ZioJdbcUnderlyingContext[OracleDialect, N]
     with OracleJdbcTypes[N]
-    with JdbcContextVerbs[OracleDialect, N]
 }
 
 trait WithProbing[D <: SqlIdiom, N <: NamingStrategy] extends ZioJdbcUnderlyingContext[D, N] {

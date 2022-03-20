@@ -1,7 +1,7 @@
 package io.getquill.context.qzio
 
 import io.getquill.NamingStrategy
-import io.getquill.context.{ ExecutionInfo, PrepareContext }
+import io.getquill.context.{ ExecutionInfo, ContextVerbPrepare }
 import io.getquill.context.ZioJdbc._
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.util.ContextLogger
