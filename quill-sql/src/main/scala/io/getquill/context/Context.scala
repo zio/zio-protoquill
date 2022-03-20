@@ -74,29 +74,43 @@ object RunnerSummoningBehavior {
   object Member extends Member
 }
 
-sealed trait Extraction[-ResultRow, -Session, +T]
-object Extraction {
+sealed trait Extraction[-ResultRow, -Session, +T]:
+  /** Require an effect to be be simple and retrieve it. Effectful at compile-time since it can fail compilation */
+  def requireSimple() =
+    this match
+      case ext: Extraction.Simple[_, _, _] => ext
+      case _ => throw new IllegalArgumentException("Extractor required")
+  /** Require an effect to be be returning and retrieve it. Effectful at compile-time since it can fail compilation */
+  def requireReturning() =
+    this match
+      case ext: Extraction.Returning[_, _, _] => ext
+      case _ => throw new IllegalArgumentException("Returning Extractor required")
+
+
+object Extraction:
   case class Simple[ResultRow, Session, T](extract: (ResultRow, Session) => T) extends Extraction[ResultRow, Session, T]
   case class Returning[ResultRow, Session, T](extract: (ResultRow, Session) => T, returningBehavior: ReturnAction) extends Extraction[ResultRow, Session, T]
   case object None extends Extraction[Any, Any, Nothing]
-}
 
 import io.getquill.generic.DecodeAlternate
 
+trait ContextStandard[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]
+  extends Context[Idiom, Naming]
+  with ContextVerbPrepareLamba[Idiom, Naming]
 
-// TODO Needs to be portable (i.e. plug into current contexts when compiled with Scala 3)
-trait Context[Dialect <: Idiom, Naming <: NamingStrategy] extends ProtoContext[Dialect, Naming] with EncodingDsl with Closeable { self =>
 
+trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
+  extends ProtoContext[Dialect, Naming] with EncodingDsl with Closeable:
+  self =>
 
+  /**
+    * Base type used to determine whether there is an execution context that needs to be summoned to perform
+    * execution methods e.g. in the PostgresJasync contexts that use Scala Futures that need an ExecutionContext.
+    */
   type RunnerBehavior <: RunnerSummoningBehavior
-
-  // TODO Go back to this when implementing GenericDecoder using standard method
-  //implicit inline def autoDecoder[T]: BaseDecoder[T] = GenericDecoder.generic
-  // inline given dec[T](using dec: DecodeAlternate[T, ResultRow]): GenericDecoder[T, ResultRow] with
-  //   inline def decode(t: T) = ${ DecodeAlternate[T, ResultRow] }
+  protected def context: Runner = fail(s"Runner method not implemented for '${this.getClass.getName}' Context")
 
   implicit inline def dec[T]: GenericDecoder[ResultRow, Session, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, ResultRow, Session] }
-
 
   //def probe(statement: String): Try[_]
   // todo add 'prepare' i.e. encoders here
@@ -120,99 +134,69 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy] extends ProtoContext[D
       q.map(p => ColumnsFlicer[T, PrepareRow, Session](p, columns))
   }
 
-  protected def context: Runner = fail(s"Runner method not implemented for '${this.getClass.getName}' Context")
+  /** Internal API that cannot be made private due to how inline functions */
+  inline def _summonRunner() = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
 
-  // Think I need to implement 'run' here as opposed to in Context because an abstract
-  // inline method cannot be called. Should look into this further. E.g. maybe the 'inline' in
-  // the regular context can be non inline
   @targetName("runQueryDefault")
   inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] =
     run(quoted, OuterSelectWrap.Default)
 
+  // Must be lazy since idiom/naming are null (in some contexts) initially due to initialization order
+  private lazy val make = ContextOperation.Factory[Dialect, Naming, PrepareRow, ResultRow, Session, this.type](self.idiom, self.naming)
+
   @targetName("runQuery")
   inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): Result[RunQueryResult[T]] = {
-    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, Session, this.type, Result[RunQueryResult[T]]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
-        val extract = extraction match
-          case Extraction.Simple(extract) => extract
-          case _ => throw new IllegalArgumentException("Extractor required")
-
-        val runContext = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
-        self.executeQuery(sql, prepare, extract)(executionInfo, runContext)
+    val ca = make.op[Nothing, T, Result[RunQueryResult[T]]] { arg =>
+      val simpleExt = arg.extractor.requireSimple()
+      self.executeQuery(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
     }
-    // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
     QueryExecution.apply(quoted, ca, None, wrap)
   }
 
   @targetName("runQuerySingle")
   inline def run[T](inline quoted: Quoted[T]): Result[RunQuerySingleResult[T]] = {
-    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, Session, this.type, Result[RunQuerySingleResult[T]]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
-        val extract = extraction match
-          case Extraction.Simple(extract) => extract
-          case _ => throw new IllegalArgumentException("Extractor required")
-
-        val runContext = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
-        self.executeQuerySingle(sql, prepare, extract)(executionInfo, runContext)
+    val ca = make.op[Nothing, T, Result[RunQuerySingleResult[T]]] { arg =>
+      val simpleExt = arg.extractor.requireSimple()
+      self.executeQuerySingle(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
     }
-    // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
     QueryExecution.apply(QuerySingleAsQuery(quoted), ca, None)
   }
 
   @targetName("runAction")
   inline def run[E](inline quoted: Quoted[Action[E]]): Result[RunActionResult] = {
-    val ca = new ContextOperation[E, Any, Dialect, Naming, PrepareRow, ResultRow, Session, this.type, Result[RunActionResult]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Session, Any], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
-        val runContext = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
-        self.executeAction(sql, prepare)(executionInfo, runContext)
+    val ca = make.op[E, Any, Result[RunActionResult]] { arg =>
+      self.executeAction(arg.sql, arg.prepare.head)(arg.executionInfo, _summonRunner())
     }
     QueryExecution.apply(quoted, ca, None)
   }
 
   @targetName("runActionReturning")
   inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): Result[RunActionReturningResult[T]] = {
-    val ca = new ContextOperation[E, T, Dialect, Naming, PrepareRow, ResultRow, Session, this.type, Result[RunActionReturningResult[T]]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
-        // Need an extractor with special information that helps with the SQL returning specifics
-        val Extraction.Returning(extract, returningBehavior) =
-          // Just match on the type and throw an exception. The outside val right above will do the deconstruction
-          extraction match
-            // Can't check types inside Returning[_, _] during runtime due to type-erasure so scala will give a warning
-            case _: Extraction.Returning[_, _, _] => extraction
-            case _ => throw new IllegalArgumentException("Returning Extractor required")
-
-        val runContext = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
-        self.executeActionReturning(sql, prepare, extract, returningBehavior)(executionInfo, runContext)
+    val ca = make.op[E, T, Result[RunActionReturningResult[T]]] { arg =>
+      // Need an extractor with special information that helps with the SQL returning specifics
+      val returningExt = arg.extractor.requireReturning()
+      self.executeActionReturning(arg.sql, arg.prepare.head, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
     }
     QueryExecution.apply(quoted, ca, None)
   }
 
   @targetName("runBatchAction")
   inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
-    val ca = new BatchContextOperation[I, Nothing, A, Dialect, Naming, PrepareRow, ResultRow, Session, Result[RunBatchActionResult]](self.idiom, self.naming) {
-      def execute(sql: String, prepares: List[(PrepareRow, Session) => (List[Any], PrepareRow)], extraction: Extraction[ResultRow, Session, Nothing], executionInfo: ExecutionInfo) =
-        val runContext = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
-        // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-        val group = BatchGroup(sql, prepares)
-        self.executeBatchAction(List(group))(executionInfo, runContext)
+    val ca = make.batch[I, Nothing, A, Result[RunBatchActionResult]] { arg =>
+      // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
+      val group = BatchGroup(arg.sql, arg.prepare.toList)
+      self.executeBatchAction(List(group))(arg.executionInfo, _summonRunner())
     }
     BatchQueryExecution.apply(quoted, ca)
   }
 
   @targetName("runBatchActionReturning")
   inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionReturningResult[T]] = {
-    val ca = new BatchContextOperation[I, T, A, Dialect, Naming, PrepareRow, ResultRow, Session, Result[RunBatchActionReturningResult[T]]](self.idiom, self.naming) {
-      def execute(sql: String, prepares: List[(PrepareRow, Session) => (List[Any], PrepareRow)], extraction: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo) =
-        val runContext = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
-
-        val Extraction.Returning(extract, returningBehavior) =
-          extraction match
-            case _: Extraction.Returning[_, _, _] => extraction
-            case _ => throw new IllegalArgumentException("Returning Extractor required")
-
-        // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-        val group = BatchGroupReturning(sql, returningBehavior, prepares)
-        self.executeBatchActionReturning[T](List(group), extract)(executionInfo, runContext)
+    val ca = make.batch[I, T, A, Result[RunBatchActionReturningResult[T]]] { arg =>
+      val returningExt = arg.extractor.requireReturning()
+      // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
+      val group = BatchGroupReturning(arg.sql, returningExt.returningBehavior, arg.prepare.toList)
+      self.executeBatchActionReturning[T](List(group), returningExt.extract)(arg.executionInfo, _summonRunner())
     }
     BatchQueryExecution.apply(quoted, ca)
   }
@@ -225,105 +209,4 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy] extends ProtoContext[D
 
   // Can close context. Does nothing by default.
   def close(): Unit = ()
-}
-
-trait StreamingContext[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingStrategy] extends ProtoStreamContext[Dialect, Naming] {
-  self: Context[Dialect, Naming] =>
-
-  @targetName("streamQuery")
-  inline def stream[T](inline quoted: Quoted[Query[T]]): StreamResult[T] = {
-    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, Session, this.type, StreamResult[T]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
-        val extract = extraction match
-          case Extraction.Simple(extract) => extract
-          case _ => throw new IllegalArgumentException("Extractor required")
-
-        val runContext = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
-        self.streamQuery(fetchSize, sql, prepare, extract)(executionInfo, runContext)
-    }
-    // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
-    QueryExecution.apply(quoted, ca, None)
-  }
-
-  @targetName("streamQueryWithFetchSize")
-  inline def stream[T](inline quoted: Quoted[Query[T]], fetchSize: Int): StreamResult[T] = {
-    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, Session, this.type, StreamResult[T]](self.idiom, self.naming) {
-      def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
-        val extract = extraction match
-          case Extraction.Simple(extract) => extract
-          case _ => throw new IllegalArgumentException("Extractor required")
-
-        val runContext = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
-        self.streamQuery(fetchSize, sql, prepare, extract)(executionInfo, runContext)
-    }
-    // TODO Could make Quoted operation constructor that is a typeclass, not really necessary though
-    QueryExecution.apply(quoted, ca, Some(fetchSize))
-  }
-}
-
-trait PrepareContext[Dialect <: Idiom, Naming <: NamingStrategy] {
-  self: Context[Dialect, Naming] =>
-
-  type Result[T]
-  type Session
-  type Runner
-
-  type PrepareQueryResult //Usually: Session => Result[PrepareRow]
-  type PrepareActionResult //Usually: Session => Result[PrepareRow]
-  type PrepareBatchActionResult //Usually: Session => Result[List[PrepareRow]]
-
-  def prepareQuery(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: Runner): PrepareQueryResult
-  def prepareSingle(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: Runner): PrepareQueryResult
-  def prepareAction(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: Runner): PrepareActionResult
-  def prepareBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: Runner): PrepareBatchActionResult
-
-  @targetName("runPrepareQuery")
-  inline def prepare[T](inline quoted: Quoted[Query[T]]): PrepareQueryResult = {
-    val ca = new ContextOperation[Nothing, T, Dialect, Naming, PrepareRow, ResultRow, Session, this.type, PrepareQueryResult](self.idiom, self.naming) {
-      def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
-        val extract = extraction match
-          case Extraction.Simple(extract) => extract
-          case _ => throw new IllegalArgumentException("Extractor required")
-
-        val runContext = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
-        self.prepareQuery(sql, prepare)(executionInfo, runContext)
-    }
-    QueryExecution.apply(quoted, ca, None)
-  }
-
-  @targetName("runPrepareQuerySingle")
-  inline def prepare[T](inline quoted: Quoted[T]): PrepareQueryResult = prepare(QuerySingleAsQuery(quoted))
-
-  @targetName("runPrepareAction")
-  inline def prepare[E](inline quoted: Quoted[Action[E]]): PrepareActionResult = {
-    val ca = new ContextOperation[E, Any, Dialect, Naming, PrepareRow, ResultRow, Session, this.type, PrepareActionResult](self.idiom, self.naming) {
-      def execute(sql: String, prepare: (PrepareRow, Session) => (List[Any], PrepareRow), extraction: Extraction[ResultRow, Session, Any], executionInfo: ExecutionInfo, fetchSize: Option[Int]) =
-        val runContext = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
-        self.prepareAction(sql, prepare)(executionInfo, runContext)
-    }
-    QueryExecution.apply(quoted, ca, None)
-  }
-
-  @targetName("runPrepareBatchAction")
-  inline def prepare[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): PrepareBatchActionResult = {
-    val ca = new BatchContextOperation[I, Nothing, A, Dialect, Naming, PrepareRow, ResultRow, Session, PrepareBatchActionResult](self.idiom, self.naming) {
-      def execute(sql: String, prepares: List[(PrepareRow, Session) => (List[Any], PrepareRow)], extraction: Extraction[ResultRow, Session, Nothing], executionInfo: ExecutionInfo) =
-        val runContext = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
-        val group = BatchGroup(sql, prepares)
-        self.prepareBatchAction(List(group))(executionInfo, runContext)
-    }
-    BatchQueryExecution.apply(quoted, ca)
-  }
-}
-
-trait StagedPrepare[Dialect <: Idiom, Naming <: NamingStrategy] extends PrepareContext[Dialect, Naming] {
-  self: Context[Dialect, Naming] =>
-
-  type PrepareQueryResult = Session => Result[PrepareRow]
-  type PrepareActionResult = Session => Result[PrepareRow]
-  type PrepareBatchActionResult = Session => Result[List[PrepareRow]]
-}
-
-trait StandardContext[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]
-  extends Context[Idiom, Naming]
-  with StagedPrepare[Idiom, Naming]
+end Context

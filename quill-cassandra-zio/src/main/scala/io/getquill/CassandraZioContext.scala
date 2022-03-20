@@ -2,7 +2,7 @@ package io.getquill
 
 import com.datastax.oss.driver.api.core.cql.{ AsyncResultSet, BoundStatement, Row }
 import io.getquill.CassandraZioContext._
-import io.getquill.context.{ ExecutionInfo, StandardContext }
+import io.getquill.context.ExecutionInfo
 import io.getquill.context.cassandra.{ CassandraRowContext, CqlIdiom }
 import io.getquill.context.qzio.ZioContext
 import io.getquill.util.Messages.fail

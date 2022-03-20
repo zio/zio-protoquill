@@ -6,6 +6,7 @@ import io.getquill.Quoted
 import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
 
+// TODO Note needed, cleanup
 sealed trait Dummy
 object DummyInst extends Dummy
 
@@ -27,7 +28,8 @@ extends MirrorContextBase[Dialect, Naming] with AstSplicing
 
 trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
 extends Context[Dialect, Naming]
-with PrepareContext[Dialect, Naming]
+with ContextVerbPrepare[Dialect, Naming]
+with ContextVerbTranslate[Dialect, Naming]
 with MirrorDecoders
 with MirrorEncoders { self =>
   override type Result[T] = T
@@ -42,7 +44,9 @@ with MirrorEncoders { self =>
   override type Session = MirrorSession
 
   override type Runner = Unit
+  override type TranslateRunner = Unit
   override def context: Runner = ()
+  override def translateContext: Runner = ()
   def session: MirrorSession
 
   // TODO Not needed, get rid of this
@@ -115,4 +119,8 @@ with MirrorEncoders { self =>
       },
       info
     )
+
+  override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] =
+    val prepData = prepare(Row(), session)._2.data.map(_._2)
+    prepData.map(prepareParam)
 }

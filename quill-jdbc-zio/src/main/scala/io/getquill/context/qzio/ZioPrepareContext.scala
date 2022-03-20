@@ -1,7 +1,7 @@
 package io.getquill.context.qzio
 
 import io.getquill.NamingStrategy
-import io.getquill.context.{ ExecutionInfo, PrepareContext }
+import io.getquill.context.{ ExecutionInfo, ContextVerbPrepare }
 import io.getquill.context.ZioJdbc._
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.util.ContextLogger
@@ -10,7 +10,7 @@ import zio.{ Has, Task, ZIO }
 import java.sql.{ Connection, PreparedStatement, ResultSet, SQLException }
 
 trait ZioPrepareContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
-  with PrepareContext[Dialect, Naming] {
+  with ContextVerbPrepare[Dialect, Naming] {
 
   private[getquill] val logger = ContextLogger(classOf[ZioPrepareContext[_, _]])
 

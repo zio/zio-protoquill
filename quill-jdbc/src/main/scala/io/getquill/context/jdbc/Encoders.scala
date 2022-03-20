@@ -14,7 +14,7 @@ import io.getquill.MappedEncoding
 import io.getquill.generic._
 
 trait Encoders extends EncodingDsl {
-  this: JdbcComposition[_, _] =>
+  this: JdbcContextTypes[_, _] =>
 
   // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
   // type Index = Int (Defined in JdbcRunContext)

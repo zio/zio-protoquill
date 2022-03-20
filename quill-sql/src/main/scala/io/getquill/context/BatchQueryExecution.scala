@@ -55,9 +55,9 @@ import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.quat.Quat
 import io.getquill.quat.QuatMaking
 
-trait BatchContextOperation[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Res](val idiom: D, val naming: N) {
-  def execute(sql: String, prepare: List[(PrepareRow, Session) => (List[Any], PrepareRow)], extractor: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo): Res
-}
+// trait BatchContextOperation[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Res](val idiom: D, val naming: N) {
+//   def execute(sql: String, prepare: List[(PrepareRow, Session) => (List[Any], PrepareRow)], extractor: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo): Res
+// }
 
 private[getquill] enum BatchActionType:
   case Insert
@@ -146,10 +146,11 @@ object DynamicBatchQueryExecution:
     Session,
     D <: Idiom,
     N <: NamingStrategy,
+    Ctx <: Context[_, _],
     Res
   ](
     quotedRaw: Quoted[BatchAction[A]],
-    batchContextOperation: BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res],
+    batchContextOperation: ContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res],
     caseClassAst: ast.CaseClass,
     // These are computed based on the insertion-type I which is calculated before, not from quotedRaw
     // (i.e. note that to get lifts from QuotedRaw we need to go through runtimeQuotes of each quote recursively so it wouldn't be possible to know that anyway for a dynamic query during compile-time)
@@ -212,7 +213,7 @@ object DynamicBatchQueryExecution:
     // TODO this variable should go through BatchQueryExecution arguments and be propagated here
     val spliceAst = false
     val executionAst = if (spliceAst) outputAst else io.getquill.ast.NullValue
-    batchContextOperation.execute(queryString, prepares.toList, extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst))
+    batchContextOperation.execute(ContextOperation.Argument(queryString, prepares.toArray, extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst), None))
   }
 
 object BatchQueryExecution:
@@ -228,9 +229,10 @@ object BatchQueryExecution:
     Session: Type,
     D <: Idiom: Type,
     N <: NamingStrategy: Type,
+    Ctx <: Context[_, _],
     Res: Type
   ](quotedRaw: Expr[Quoted[BatchAction[A]]],
-    batchContextOperation: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]])(using val qctx: Quotes):
+    batchContextOperation: Expr[ContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res]])(using Quotes, Type[Ctx]):
     import quotes.reflect._
 
     val topLevelQuat = QuatMaking.ofType[T]
@@ -291,7 +293,7 @@ object BatchQueryExecution:
       val extractionBehaviorExpr = Expr(extractionBehavior)
       val extractor = MakeExtractor[ResultRow, Session, T, T].dynamic(identityConverter, extractionBehavior)
 
-      '{ DynamicBatchQueryExecution.apply[I, T, A, ResultRow, PrepareRow, Session, D, N,Res](
+      '{ DynamicBatchQueryExecution.apply[I, T, A, ResultRow, PrepareRow, Session, D, N, Ctx, Res](
         $quotedRaw,
         $batchContextOperation,
         $caseClassExpr,
@@ -347,7 +349,7 @@ object BatchQueryExecution:
                   val prepare = '{ (row: PrepareRow, session: Session) => LiftsExtractor.apply[PrepareRow, Session]($injectedLiftsExpr, row, session) }
                   prepare
                 }) }
-              '{ $batchContextOperation.execute(${Expr(query.basicQuery)}, $prepares.toList, $extractor, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)})) }
+              '{ $batchContextOperation.execute(ContextOperation.Argument(${Expr(query.basicQuery)}, $prepares.toArray, $extractor, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)}), None)) }
 
             case None =>
               // TODO report via trace debug
@@ -371,9 +373,10 @@ object BatchQueryExecution:
     Session,
     D <: Idiom,
     N <: NamingStrategy,
+    Ctx <: Context[_, _],
     Res
-  ](inline quoted: Quoted[BatchAction[A]], ctx: BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]) =
-    ${ applyImpl[I, T, A, ResultRow, PrepareRow, Session, D, N, Res]('quoted, 'ctx) }
+  ](inline quoted: Quoted[BatchAction[A]], ctx: ContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res]) =
+    ${ applyImpl[I, T, A, ResultRow, PrepareRow, Session, D, N, Ctx, Res]('quoted, 'ctx) }
 
   def applyImpl[
     I: Type,
@@ -384,9 +387,10 @@ object BatchQueryExecution:
     Session: Type,
     D <: Idiom: Type,
     N <: NamingStrategy: Type,
+    Ctx <: Context[_, _],
     Res: Type
   ](quoted: Expr[Quoted[BatchAction[A]]],
-    ctx: Expr[BatchContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Res]])(using qctx: Quotes): Expr[Res] =
-    new RunQuery[I, T, A, ResultRow, PrepareRow, Session, D, N, Res](quoted, ctx).apply()
+    ctx: Expr[ContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res]])(using Quotes, Type[Ctx]): Expr[Res] =
+    new RunQuery[I, T, A, ResultRow, PrepareRow, Session, D, N, Ctx, Res](quoted, ctx).apply()
 
 end BatchQueryExecution

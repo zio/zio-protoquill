@@ -10,7 +10,7 @@ import scala.math.BigDecimal.javaBigDecimal2bigDecimal
 import io.getquill.MappedEncoding
 
 trait Decoders {
-  this: JdbcComposition[_, _] =>
+  this: JdbcContextTypes[_, _] =>
 
   // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
   // type Index = Int (Defined in JdbcRunContext)
