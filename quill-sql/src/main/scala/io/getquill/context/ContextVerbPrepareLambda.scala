@@ -44,23 +44,10 @@ import io.getquill.metaprog.etc.ColumnsFlicer
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 
-trait ContextVerbStream[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingStrategy] extends ProtoStreamContext[Dialect, Naming]:
+trait ContextVerbPrepareLamba[Dialect <: Idiom, Naming <: NamingStrategy] extends ContextVerbPrepare[Dialect, Naming]:
   self: Context[Dialect, Naming] =>
 
-  // Must be lazy since idiom/naming are null (in some contexts) initially due to initialization order
-  private lazy val make = ContextOperation.Factory[Dialect, Naming, PrepareRow, ResultRow, Session, this.type](self.idiom, self.naming)
-
-  @targetName("streamQuery")
-  inline def stream[T](inline quoted: Quoted[Query[T]]): StreamResult[T] = _streamInternal[T](quoted, None)
-  @targetName("streamQueryWithFetchSize")
-  inline def stream[T](inline quoted: Quoted[Query[T]], fetchSize: Int): StreamResult[T] = _streamInternal[T](quoted, Some(fetchSize))
-
-  /** Internal API that cannot be made private due to how inline functions */
-  inline def _streamInternal[T](inline quoted: Quoted[Query[T]], fetchSize: Option[Int]): StreamResult[T] = {
-    val ca = make.op[Nothing, T, StreamResult[T]] { arg =>
-      val simpleExt = arg.extractor.requireSimple()
-      self.streamQuery(arg.fetchSize, arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
-    }
-    QueryExecution.apply(quoted, ca, fetchSize)
-  }
-end ContextVerbStream
+  type PrepareQueryResult = Session => Result[PrepareRow]
+  type PrepareActionResult = Session => Result[PrepareRow]
+  type PrepareBatchActionResult = Session => Result[List[PrepareRow]]
+end ContextVerbPrepareLamba

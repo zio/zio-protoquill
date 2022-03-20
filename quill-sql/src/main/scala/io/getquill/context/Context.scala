@@ -96,7 +96,7 @@ import io.getquill.generic.DecodeAlternate
 
 trait ContextStandard[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]
   extends Context[Idiom, Naming]
-  with ContextPrepareFunction[Idiom, Naming]
+  with ContextVerbPrepareLamba[Idiom, Naming]
 
 
 trait Context[Dialect <: Idiom, Naming <: NamingStrategy]

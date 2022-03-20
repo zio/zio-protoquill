@@ -1,7 +1,7 @@
 package io.getquill.context.qzio
 
 import io.getquill.context.ZioJdbc._
-import io.getquill.context.jdbc.JdbcComposition
+import io.getquill.context.jdbc.JdbcTypes
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.{ ExecutionInfo, PrepareContext, ProtoContext, StreamingContext }
 import io.getquill.{ NamingStrategy, ReturnAction }
@@ -42,7 +42,7 @@ import scala.util.Try
  * is only held open while it's host-connection exists.
  */
 abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
-  with JdbcComposition[Dialect, Naming]
+  with JdbcTypes[Dialect, Naming]
   with ProtoContext[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]

@@ -5,7 +5,7 @@ ProtoQuill is the continuation of [Quill: Free/Libre Compile-time Language Integ
 Not all Contexts and not all Functionality is Supported yet. Here is a rough list of both:
 
 Currently Supported:
- - Basic Quotation, Querying, Lifting, and Composition (Compile-Time and Dynamic)
+ - Basic Quotation, Querying, Lifting, and Types (Compile-Time and Dynamic)
  - Inner/Outer, Left/Right joins
  - Query.map/flatMap/concatMap/filter other [query constructs](https://getquill.io/#quotation-queries).
  - Insert, Update, Delete [Actions](https://getquill.io/#quotation-actions) (Compile-Time and Dynamic)
@@ -531,7 +531,7 @@ import io.getquill.CalibanIntegration._
 case class PersonT(id: Int, first: String, last: String, age: Int)
 case class AddressT(ownerId: Int, street: String)
 case class PersonAddress(id: Int, first: String, last: String, age: Int, street: Option[String])
-  
+
 // Create a query and add .filterColumns and .filterByKeys to the end
 inline def peopleAndAddresses(inline columns: List[String], inline filters: Map[String, String]) =
   quote {
@@ -542,7 +542,7 @@ inline def peopleAndAddresses(inline columns: List[String], inline filters: Map[
       .filterColumns(columns)
       .filterByKeys(filters)
   }
-  
+
 // Create a data-source that will pass along the column include/exclude and filter information
 object DataService:
   def personAddress(columns: List[String], filters: Map[String, String]) =
@@ -567,7 +567,7 @@ val endpoint =
         personAddress =>
           (productArgs =>
             DataService.personAddress(
-              quillColumns(personAddress) /* From CalibanIntegration module*/, 
+              quillColumns(personAddress) /* From CalibanIntegration module*/,
               productArgs.keyValues
             )
           )
@@ -594,7 +594,7 @@ val output =
       result      <- interpreter.execute(calibanQuery)
     } yield (result)
   )
-  
+
 // The following data will be returned:
 output.data.toString == """{"personAddress":[{"id":1,"first":"One","last":"A","street":"123 St"}]}"""
 ```
@@ -673,7 +673,7 @@ Don't take my word for it though, have a look at the examples under quill-caliba
 ```
 query{
   personAddressPlan(first: "One") {
-    plan 
+    plan
     pa {
       id
       street
