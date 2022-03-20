@@ -62,6 +62,17 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.info.executionType
       )
 
+  extension (m: MirrorContext[_, _]#ActionReturningMirror[_])
+    def triple =
+      (
+        m.string,
+        m.prepareRow match {
+          case r: io.getquill.context.mirror.Row =>
+            r.data.toList.map(_._2)
+        },
+        m.info.executionType
+      )
+
   extension [T](m: MirrorContext[_, _]#QueryMirror[_])
     def triple =
       (
