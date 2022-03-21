@@ -4,7 +4,6 @@ import io.getquill.context.ZioJdbc._
 import io.getquill.context.jdbc.JdbcContextTypes
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.{ ExecutionInfo, ProtoContext, ContextVerbStream }
-import io.getquill.{ NamingStrategy, ReturnAction }
 import zio.Exit.{ Failure, Success }
 import zio.stream.ZStream
 import zio.{ FiberRef, Has, Runtime, UIO, ZIO, ZManaged }
@@ -12,6 +11,8 @@ import zio.{ FiberRef, Has, Runtime, UIO, ZIO, ZManaged }
 import java.sql.{ Array => _, _ }
 import javax.sql.DataSource
 import scala.util.Try
+import scala.annotation.targetName
+import io.getquill._
 
 /**
  * Quill context that executes JDBC queries inside of ZIO. Unlike most other contexts
@@ -70,6 +71,21 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
   override type PrepareActionResult = QCIO[PrepareRow]
   override type PrepareBatchActionResult = QCIO[List[PrepareRow]]
   override type Session = Connection
+
+  @targetName("runQueryDefault")
+  inline def run[T](inline quoted: Quoted[Query[T]]): ZIO[Has[DataSource], SQLException, List[T]] = InternalApi.runQueryDefault(quoted)
+  @targetName("runQuery")
+  inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): ZIO[Has[DataSource], SQLException, List[T]] = InternalApi.runQuery(quoted, wrap)
+  @targetName("runQuerySingle")
+  inline def run[T](inline quoted: Quoted[T]): ZIO[Has[DataSource], SQLException, T] = InternalApi.runQuerySingle(quoted)
+  @targetName("runAction")
+  inline def run[E](inline quoted: Quoted[Action[E]]): ZIO[Has[DataSource], SQLException, Long] = InternalApi.runAction(quoted)
+  @targetName("runActionReturning")
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): ZIO[Has[DataSource], SQLException, T] = InternalApi.runActionReturning[E, T](quoted)
+  @targetName("runBatchAction")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[Has[DataSource], SQLException, List[Long]] = InternalApi.runBatchAction(quoted)
+  @targetName("runBatchActionReturning")
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): ZIO[Has[DataSource], SQLException, List[T]] =  InternalApi.runBatchActionReturning(quoted)
 
   val currentConnection: FiberRef[Option[Connection]] =
     Runtime.default.unsafeRun(FiberRef.make(None))

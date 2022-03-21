@@ -5,6 +5,7 @@ import io.getquill.context._
 import io.getquill.Quoted
 import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
+import scala.annotation.targetName
 
 // TODO Note needed, cleanup
 sealed trait Dummy
@@ -64,6 +65,21 @@ with MirrorEncoders { self =>
   case class ActionReturningMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], returningBehavior: ReturnAction, info: ExecutionInfo)
   case class BatchActionMirror(groups: List[(String, List[Row])], info: ExecutionInfo)
   case class BatchActionReturningMirror[T](groups: List[(String, ReturnAction, List[PrepareRow])], extractor: Extractor[T], info: ExecutionInfo)
+
+  @targetName("runQueryDefault")
+  inline def run[T](inline quoted: Quoted[Query[T]]): QueryMirror[T] = InternalApi.runQueryDefault(quoted)
+  @targetName("runQuery")
+  inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): QueryMirror[T] = InternalApi.runQuery(quoted, wrap)
+  @targetName("runQuerySingle")
+  inline def run[T](inline quoted: Quoted[T]): QueryMirror[T] = InternalApi.runQuerySingle(quoted)
+  @targetName("runAction")
+  inline def run[E](inline quoted: Quoted[Action[E]]): ActionMirror = InternalApi.runAction(quoted)
+  @targetName("runActionReturning")
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): ActionReturningMirror[T] = InternalApi.runActionReturning(quoted)
+  @targetName("runBatchAction")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): BatchActionMirror = InternalApi.runBatchAction(quoted)
+  @targetName("runBatchActionReturning")
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): BatchActionReturningMirror[T] =  InternalApi.runBatchActionReturning(quoted)
 
   override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner) =
     QueryMirror(string, prepare(Row(), session)._2, extractor, info)

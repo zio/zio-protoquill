@@ -7,6 +7,7 @@ import io.getquill.context.ExecutionInfo
 import io.getquill.util.{ ContextLogger, LoadConfig }
 
 import scala.jdk.CollectionConverters._
+import scala.annotation.targetName
 
 class CassandraSyncContext[N <: NamingStrategy](
   naming:                     N,
@@ -28,6 +29,17 @@ class CassandraSyncContext[N <: NamingStrategy](
   override type RunActionResult = Unit
   override type RunBatchActionResult = Unit
   override type Runner = Unit
+
+  @targetName("runQueryDefault")
+  inline def run[T](inline quoted: Quoted[Query[T]]): List[T] = InternalApi.runQueryDefault(quoted)
+  @targetName("runQuery")
+  inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): List[T] = InternalApi.runQuery(quoted, wrap)
+  @targetName("runQuerySingle")
+  inline def run[T](inline quoted: Quoted[T]): T = InternalApi.runQuerySingle(quoted)
+  @targetName("runAction")
+  inline def run[E](inline quoted: Quoted[Action[E]]): Unit = InternalApi.runAction(quoted)
+  @targetName("runBatchAction")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Unit = InternalApi.runBatchAction(quoted)
 
   override protected def context: Runner = ()
 

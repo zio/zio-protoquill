@@ -134,72 +134,83 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
       q.map(p => ColumnsFlicer[T, PrepareRow, Session](p, columns))
   }
 
-  /** Internal API that cannot be made private due to how inline functions */
-  inline def _summonRunner() = DatasourceContextInjectionMacro[RunnerBehavior, Runner, this.type](context)
+  /*
+   * In previous version of ProtoQuill there was no InternalApi and the `run` methods were used
+   * on a context directly. This caused a problem where doing something like:
+   *   val list: List[RightType] = run(query[WrongType])
+   * Will yield:
+   *   Found: ctx.Result[List[WrongType]] Required: List[RightType]
+   *
+   * This was even worse if the types were more complex e.g. for ZIO:
+   *   val list: ZIO[Has[DataSource], SQLException, List[RightType]] = run(query[WrongType])
+   *
+   * Will yield:
+   *   Found: QuillContext.Result[List[WrongType]] Required: ZIO[Has[DataSource], SQLException, List[RightType]]
+   *
+   * This is quite confusing. Therefore we define the methods in an object and then
+   * delegate to these in the individual contexts.
+   */
+  object InternalApi:
+    /** Internal API that cannot be made private due to how inline functions */
+    inline def _summonRunner() = DatasourceContextInjectionMacro[RunnerBehavior, Runner, self.type](context)
 
-  @targetName("runQueryDefault")
-  inline def run[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] =
-    run(quoted, OuterSelectWrap.Default)
+    inline def runQueryDefault[T](inline quoted: Quoted[Query[T]]): Result[RunQueryResult[T]] =
+      runQuery(quoted, OuterSelectWrap.Default)
 
-  // Must be lazy since idiom/naming are null (in some contexts) initially due to initialization order
-  private lazy val make = ContextOperation.Factory[Dialect, Naming, PrepareRow, ResultRow, Session, this.type](self.idiom, self.naming)
+    // Must be lazy since idiom/naming are null (in some contexts) initially due to initialization order
+    private lazy val make = ContextOperation.Factory[Dialect, Naming, PrepareRow, ResultRow, Session, self.type](self.idiom, self.naming)
 
-  @targetName("runQuery")
-  inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): Result[RunQueryResult[T]] = {
-    val ca = make.op[Nothing, T, Result[RunQueryResult[T]]] { arg =>
-      val simpleExt = arg.extractor.requireSimple()
-      self.executeQuery(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
+    inline def runQuery[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): Result[RunQueryResult[T]] = {
+      val ca = make.op[Nothing, T, Result[RunQueryResult[T]]] { arg =>
+        val simpleExt = arg.extractor.requireSimple()
+        self.executeQuery(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
+      }
+      QueryExecution.apply(quoted, ca, None, wrap)
     }
-    QueryExecution.apply(quoted, ca, None, wrap)
-  }
 
-  @targetName("runQuerySingle")
-  inline def run[T](inline quoted: Quoted[T]): Result[RunQuerySingleResult[T]] = {
-    val ca = make.op[Nothing, T, Result[RunQuerySingleResult[T]]] { arg =>
-      val simpleExt = arg.extractor.requireSimple()
-      self.executeQuerySingle(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
+    inline def runQuerySingle[T](inline quoted: Quoted[T]): Result[RunQuerySingleResult[T]] = {
+      val ca = make.op[Nothing, T, Result[RunQuerySingleResult[T]]] { arg =>
+        val simpleExt = arg.extractor.requireSimple()
+        self.executeQuerySingle(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
+      }
+      QueryExecution.apply(QuerySingleAsQuery(quoted), ca, None)
     }
-    QueryExecution.apply(QuerySingleAsQuery(quoted), ca, None)
-  }
 
-  @targetName("runAction")
-  inline def run[E](inline quoted: Quoted[Action[E]]): Result[RunActionResult] = {
-    val ca = make.op[E, Any, Result[RunActionResult]] { arg =>
-      self.executeAction(arg.sql, arg.prepare.head)(arg.executionInfo, _summonRunner())
+    inline def runAction[E](inline quoted: Quoted[Action[E]]): Result[RunActionResult] = {
+      val ca = make.op[E, Any, Result[RunActionResult]] { arg =>
+        self.executeAction(arg.sql, arg.prepare.head)(arg.executionInfo, _summonRunner())
+      }
+      QueryExecution.apply(quoted, ca, None)
     }
-    QueryExecution.apply(quoted, ca, None)
-  }
 
-  @targetName("runActionReturning")
-  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): Result[RunActionReturningResult[T]] = {
-    val ca = make.op[E, T, Result[RunActionReturningResult[T]]] { arg =>
-      // Need an extractor with special information that helps with the SQL returning specifics
-      val returningExt = arg.extractor.requireReturning()
-      self.executeActionReturning(arg.sql, arg.prepare.head, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
+    inline def runActionReturning[E, T](inline quoted: Quoted[ActionReturning[E, T]]): Result[RunActionReturningResult[T]] = {
+      val ca = make.op[E, T, Result[RunActionReturningResult[T]]] { arg =>
+        // Need an extractor with special information that helps with the SQL returning specifics
+        val returningExt = arg.extractor.requireReturning()
+        self.executeActionReturning(arg.sql, arg.prepare.head, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
+      }
+      QueryExecution.apply(quoted, ca, None)
     }
-    QueryExecution.apply(quoted, ca, None)
-  }
 
-  @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
-    val ca = make.batch[I, Nothing, A, Result[RunBatchActionResult]] { arg =>
-      // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-      val group = BatchGroup(arg.sql, arg.prepare.toList)
-      self.executeBatchAction(List(group))(arg.executionInfo, _summonRunner())
+    inline def runBatchAction[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
+      val ca = make.batch[I, Nothing, A, Result[RunBatchActionResult]] { arg =>
+        // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
+        val group = BatchGroup(arg.sql, arg.prepare.toList)
+        self.executeBatchAction(List(group))(arg.executionInfo, _summonRunner())
+      }
+      BatchQueryExecution.apply(quoted, ca)
     }
-    BatchQueryExecution.apply(quoted, ca)
-  }
 
-  @targetName("runBatchActionReturning")
-  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionReturningResult[T]] = {
-    val ca = make.batch[I, T, A, Result[RunBatchActionReturningResult[T]]] { arg =>
-      val returningExt = arg.extractor.requireReturning()
-      // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-      val group = BatchGroupReturning(arg.sql, returningExt.returningBehavior, arg.prepare.toList)
-      self.executeBatchActionReturning[T](List(group), returningExt.extract)(arg.executionInfo, _summonRunner())
+    inline def runBatchActionReturning[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionReturningResult[T]] = {
+      val ca = make.batch[I, T, A, Result[RunBatchActionReturningResult[T]]] { arg =>
+        val returningExt = arg.extractor.requireReturning()
+        // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
+        val group = BatchGroupReturning(arg.sql, returningExt.returningBehavior, arg.prepare.toList)
+        self.executeBatchActionReturning[T](List(group), returningExt.extract)(arg.executionInfo, _summonRunner())
+      }
+      BatchQueryExecution.apply(quoted, ca)
     }
-    BatchQueryExecution.apply(quoted, ca)
-  }
+  end InternalApi
 
   protected def handleSingleResult[T](list: List[T]) =
     list match {

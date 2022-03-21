@@ -6,6 +6,7 @@ import io.getquill.Prefix
 import io.getquill._
 import zio.ZLayer
 import javax.sql.DataSource
+import java.sql.SQLException
 
 class ZioJdbcContextSpec extends ZioSpec {
 

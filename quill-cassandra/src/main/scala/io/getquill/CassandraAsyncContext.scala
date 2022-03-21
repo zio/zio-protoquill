@@ -12,6 +12,7 @@ import scala.jdk.CollectionConverters._
 import scala.compat.java8.FutureConverters._
 
 import scala.concurrent.{ ExecutionContext, Future }
+import scala.annotation.targetName
 
 class CassandraAsyncContext[N <: NamingStrategy](
   naming:                     N,
@@ -45,6 +46,17 @@ class CassandraAsyncContext[N <: NamingStrategy](
   override type RunBatchActionResult = Unit
   // In ProtoQuill this is defined in CassandraRowContext and the Runner is ExecutionContext
   // override type Runner = Unit
+
+  @targetName("runQueryDefault")
+  inline def run[T](inline quoted: Quoted[Query[T]]): Future[List[T]] = InternalApi.runQueryDefault(quoted)
+  @targetName("runQuery")
+  inline def run[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): Future[List[T]] = InternalApi.runQuery(quoted, wrap)
+  @targetName("runQuerySingle")
+  inline def run[T](inline quoted: Quoted[T]): Future[T] = InternalApi.runQuerySingle(quoted)
+  @targetName("runAction")
+  inline def run[E](inline quoted: Quoted[Action[E]]): Future[Unit] = InternalApi.runAction(quoted)
+  @targetName("runBatchAction")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Future[Unit] = InternalApi.runBatchAction(quoted)
 
   // override def performIO[T](io: IO[T, _], transactional: Boolean = false)(implicit ec: ExecutionContext): Result[T] = {
   //   if (transactional) logger.underlying.warn("Cassandra doesn't support transactions, ignoring `io.transactional`")
