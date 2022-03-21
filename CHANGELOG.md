@@ -1,3 +1,8 @@
+# 3.16.3.Beta2.5
+
+- [Concrete run method signatures in contexts](https://github.com/zio/zio-protoquill/pull/83)
+- [Implement context `translate` methods](https://github.com/zio/zio-protoquill/pull/81)
+
 # 3.16.3.Beta2.4
 
 - [Fixing case of filter(lift).insert/updateValue](https://github.com/zio/zio-protoquill/pull/76)
