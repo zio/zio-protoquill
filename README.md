@@ -13,14 +13,12 @@ Currently Supported:
  - ZIO, Synchronous JDBC, and Jasync Postgres contexts.
  - SQL OnConflict Clauses
  - Prepare Query (i.e. `context.prepare(query)`)
+ - Translate Query (i.e. `context.translate(query)`)
  - Cassandra Contexts (using V4 drivers!)
 
-Currently Not Supported:
+Planned Future Support
  - Dynamic Query API (i.e. [this](https://getquill.io/#quotation-dynamic-queries-dynamic-query-api))
- - [Implicit Query](https://getquill.io/#quotation-implicit-query)
- - [IO Monad](https://getquill.io/#quotation-io-monad)
  - Monix JDBC (and Cassandra) Contexts (Coming Soon!)
- - Lagom Contexts
  - OrientDB Contexts
  - Spark Context
 
