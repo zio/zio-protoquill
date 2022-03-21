@@ -30,28 +30,28 @@ trait PrepareZioJdbcSpecBase extends ProductSpec with ZioSpec {
   def withOrderedIds(products: List[Product]) =
     products.zipWithIndex.map { case (product, id) => product.copy(id = id.toLong + 1) }
 
-  def singleInsert(prep: QCIO[PreparedStatement])(implicit runtime: Implicit[Runtime.Managed[DataSource]]) = {
+  def singleInsert(prep: QCIO[PreparedStatement])(implicit runtime: Implicit[Runtime.Scoped[DataSource]]) = {
     prep.flatMap(stmt =>
-      Task(stmt).acquireReleaseWithAuto { stmt => Task(stmt.execute()) }).onDataSource.runSyncUnsafe()
+      ZIO.attempt(stmt).acquireReleaseWithAuto { stmt => ZIO.attempt(stmt.execute()) }).onDataSource.runSyncUnsafe()
   }
 
-  def batchInsert(prep: QCIO[List[PreparedStatement]])(implicit runtime: Implicit[Runtime.Managed[DataSource]]) =
+  def batchInsert(prep: QCIO[List[PreparedStatement]])(implicit runtime: Implicit[Runtime.Scoped[DataSource]]) =
     prep.flatMap(stmts =>
       ZIO.collectAll(
         stmts.map(stmt =>
-          Task(stmt).acquireReleaseWithAuto { stmt => Task(stmt.execute()) })
+          ZIO.attempt(stmt).acquireReleaseWithAuto { stmt => ZIO.attempt(stmt.execute()) })
       )).onDataSource.runSyncUnsafe()
 
-  def extractResults[T](prepareStatement: QCIO[PreparedStatement])(extractor: (ResultSet, Connection) => T)(implicit runtime: Implicit[Runtime.Managed[DataSource]]) =
+  def extractResults[T](prepareStatement: QCIO[PreparedStatement])(extractor: (ResultSet, Connection) => T)(implicit runtime: Implicit[Runtime.Scoped[DataSource]]) =
     (for {
       conn <- ZIO.service[Connection]
       result <- prepareStatement.provideService(conn).acquireReleaseWithAuto { stmt =>
-        Task(stmt.executeQuery()).acquireReleaseWithAuto { rs =>
-          Task(ResultSetExtractor(rs, stmt.getConnection, extractor))
+        ZIO.attempt(stmt.executeQuery()).acquireReleaseWithAuto { rs =>
+          ZIO.attempt(ResultSetExtractor(rs, stmt.getConnection, extractor))
         }
       }
     } yield result).onDataSource.runSyncUnsafe()
 
-  def extractProducts(prep: QCIO[PreparedStatement])(implicit runtime: Implicit[Runtime.Managed[DataSource]]) =
+  def extractProducts(prep: QCIO[PreparedStatement])(implicit runtime: Implicit[Runtime.Scoped[DataSource]]) =
     extractResults(prep)(productExtractor)
 }

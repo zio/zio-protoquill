@@ -4,7 +4,8 @@ import com.datastax.oss.driver.api.core.CqlSession
 import com.typesafe.config.Config
 import io.getquill.context.{ AsyncFutureCache, CassandraSession, SyncCache }
 import io.getquill.util.LoadConfig
-import zio.{ ZIO, ZLayer, ZManaged }
+import zio.{ ZIO, ZLayer }
+import scala.tools.nsc.interpreter.Naming.sessionNames
 
 case class CassandraZioSession(
   override val session:                    CqlSession,
@@ -13,13 +14,15 @@ case class CassandraZioSession(
 
 object CassandraZioSession {
   val live: ZLayer[CassandraContextConfig, Throwable, CassandraZioSession] =
-    (for {
-      config <- ZManaged.service[CassandraContextConfig]
-      // Evaluate the configuration inside of 'effect' and then create the session from it
-      session <- ZManaged.fromAutoCloseable(
-        ZIO.attempt(CassandraZioSession(config.session, config.preparedStatementCacheSize))
-      )
-    } yield session).toLayer
+    ZLayer.scoped {
+      for {
+        config <- ZIO.service[CassandraContextConfig]
+        // Evaluate the configuration inside of 'effect' and then create the session from it
+        session <- ZIO.fromAutoCloseable(
+          ZIO.attempt(CassandraZioSession(config.session, config.preparedStatementCacheSize))
+        )
+      } yield session
+    }
 
   def fromContextConfig(config: CassandraContextConfig): ZLayer[Any, Throwable, CassandraZioSession] =
     ZLayer.succeed(config) >>> live

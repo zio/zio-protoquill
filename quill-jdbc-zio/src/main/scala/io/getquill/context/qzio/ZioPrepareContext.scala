@@ -31,7 +31,7 @@ trait ZioPrepareContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends Z
   def prepareSingle(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): QCIO[PreparedStatement] = {
     (for {
       conn <- ZIO.service[Session]
-      stmt <- Task(conn.prepareStatement(sql))
+      stmt <- ZIO.attempt(conn.prepareStatement(sql))
       ps <- Task {
         val (params, ps) = prepare(stmt, conn)
         logger.logQuery(sql, params)

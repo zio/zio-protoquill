@@ -139,7 +139,7 @@ lazy val `quill-sql` =
         "io.suzaku" %% "boopickle" % "1.4.0",
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
         ("io.getquill" %% "quill-engine" % "3.19.0").excludeAll(ExclusionRule(organization = "com.twitter")),
-        ("dev.zio" %% "zio" % "2.0.0-RC2"),
+        ("dev.zio" %% "zio" % "2.0.0-RC3"),
         ("io.getquill" %% "quill-util" % "3.19.0")
           .excludeAll({
             if (isCommunityBuild)
@@ -239,8 +239,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "2.0.0-RC2",
-        "dev.zio" %% "zio-streams" % "2.0.0-RC2"
+        "dev.zio" %% "zio" % "2.0.0-RC3",
+        "dev.zio" %% "zio-streams" % "2.0.0-RC3"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -288,8 +288,8 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.13.0",
-        "dev.zio" %% "zio" % "2.0.0-RC2",
-        "dev.zio" %% "zio-streams" % "2.0.0-RC2",
+        "dev.zio" %% "zio" % "2.0.0-RC3",
+        "dev.zio" %% "zio-streams" % "2.0.0-RC3",
         ("dev.zio" %% "zio-interop-guava" % "31.0.0.0").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
       )
     )

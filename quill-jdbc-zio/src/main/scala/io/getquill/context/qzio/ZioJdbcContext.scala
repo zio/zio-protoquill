@@ -6,7 +6,7 @@ import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.{ ExecutionInfo, ProtoContextSecundus, ContextVerbStream }
 import zio.Exit.{ Failure, Success }
 import zio.stream.ZStream
-import zio.{ FiberRef, Runtime, UIO, ZEnvironment, ZIO, ZManaged }
+import zio.{ FiberRef, Runtime, UIO, ZEnvironment, ZIO }
 
 import java.sql.{ Array => _, _ }
 import javax.sql.DataSource
@@ -174,29 +174,29 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
       case Some(connection) => op
       case None =>
         val connection = for {
-          env <- ZIO.service[DataSource].toManaged
-          connection <- managedBestEffort(attemptBlocking(env.getConnection))
+          env <- ZIO.service[DataSource]
+          connection <- scopedBestEffort(attemptBlocking(env.getConnection))
           // Get the current value of auto-commit
-          prevAutoCommit <- attemptBlocking(connection.getAutoCommit).toManaged
+          prevAutoCommit <- attemptBlocking(connection.getAutoCommit)
           // Disable auto-commit since we need to be able to roll back. Once everything is done, set it
           // to whatever the previous value was.
-          _ <- ZManaged.acquireReleaseWith(attemptBlocking(connection.setAutoCommit(false))) { _ =>
+          _ <- ZIO.acquireRelease(attemptBlocking(connection.setAutoCommit(false))) { _ =>
             attemptBlocking(connection.setAutoCommit(prevAutoCommit)).orDie
           }
-          _ <- ZManaged.acquireReleaseWith(currentConnection.set(Some(connection))) { _ =>
+          _ <- ZIO.acquireRelease(currentConnection.set(Some(connection))) { _ =>
             // Note. We are failing the fiber if auto-commit reset fails. For some circumstances this may be too aggresive.
             // If the connection pool e.g. Hikari resets this property for a recycled connection anyway doing it here
             // might not be necessary
             currentConnection.set(None)
           }
-          // Once the `use` of this outer-ZManaged is done, rollback the connection if needed
-          _ <- ZManaged.finalizerExit {
-            case Success(_)     => blocking(UIO(connection.commit()))
-            case Failure(cause) => blocking(UIO(connection.rollback()))
+          // Once the `use` of this outer-Scoped is done, rollback the connection if needed
+          _ <- ZIO.addFinalizerExit {
+            case Success(_)     => blocking(ZIO.succeed(connection.commit()))
+            case Failure(cause) => blocking(ZIO.succeed(connection.rollback()))
           }
         } yield ()
 
-        connection.useDiscard(op)
+        ZIO.scoped(connection *> op)
     })
   }
 
@@ -214,7 +214,7 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
         qstream.provideService(connection)
       case None =>
         (for {
-          env <- ZStream.managed(DataSourceLayer.live.build)
+          env <- ZStream.scoped(DataSourceLayer.live.build)
           r <- qstream.provideEnvironment(env)
         } yield (r)).refineToOrDie[SQLException]
     }

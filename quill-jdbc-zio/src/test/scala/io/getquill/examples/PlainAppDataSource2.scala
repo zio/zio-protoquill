@@ -7,6 +7,7 @@ import zio.Console.printLine
 import zio.{ Runtime, Task, ZLayer }
 import javax.sql.DataSource
 import io.getquill._
+import zio.ZIO
 
 object PlainAppDataSource2 {
 
@@ -19,7 +20,7 @@ object PlainAppDataSource2 {
   def hikariDataSource = new HikariDataSource(hikariConfig)
 
   val zioDS: ZLayer[Any, Throwable, DataSource] =
-    Task(hikariDataSource).toLayer
+    ZIO.attempt(hikariDataSource).toLayer
 
   def main(args: Array[String]): Unit = {
     val people = quote {

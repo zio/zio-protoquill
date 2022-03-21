@@ -11,7 +11,7 @@ import zio.Runtime
 import io.getquill._
 
 import scala.util.Random
-import zio.Runtime.Managed
+import zio.Runtime.Scoped
 import javax.sql.DataSource
 import zio.ZIO
 import zio.ZLayer
@@ -19,7 +19,7 @@ import com.zaxxer.hikari.HikariDataSource
 
 class ConnectionLeakTest extends ProductSpec with ZioSpec {
 
-  implicit val pool: Implicit[Managed[HikariDataSource]] =
+  implicit val pool: Implicit[Scoped[HikariDataSource]] =
     Implicit(zio.Runtime.unsafeFromLayer(ZLayer.succeed(JdbcContextConfig(LoadConfig("testPostgresLeakDB")).dataSource)))
 
   // Need to type this so that output of context.run(quote(query[Product].delete)) is correct
