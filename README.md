@@ -16,6 +16,9 @@ Currently Supported:
  - Translate Query (i.e. `context.translate(query)`)
  - Cassandra Contexts (using V4 drivers!)
 
+Not Supported:
+ - Implicit class based extensions. Please see the [Extensions](https://github.com/zio/zio-protoquill#extensions) section below on how to do this.
+
 Planned Future Support
  - Dynamic Query API (i.e. [this](https://getquill.io/#quotation-dynamic-queries-dynamic-query-api))
  - Monix JDBC (and Cassandra) Contexts (Coming Soon!)
