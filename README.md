@@ -27,7 +27,7 @@ Planned Future Support
 
 There are also quite a few new features that ProtoQuill has:
  - Scala Methods and Typeclasses Transforming ProtoQuill queries (see [Shareable Code](#shareable-code) and [Advanced Example](#advanced-example)).
- - [Custom Parsing](#custom-parsing) (Early API, still subject to change)
+ - [Custom Parsing](#custom-parsing) - Write parsers for custom user code!
  - [Co-Product Rows](#co-product-rows) (Highly experimental, use with caution!)
  - [Caliban-Integration](#caliban-integration) (Experimental deep integration with Caliban. Trivially filter/exclude any columns you want!)
  - [Dependent Contexts](https://github.com/zio/zio-quill#dependent-contexts) - In Scala2-Quill Dependent Contexts were demonstrated as a typical example of the limitations of working with Quoted blocks. In ProtoQuill these work as expected since there are no path dependant types in the ProtoQuill output. Have a look at this [scastie example](https://scastie.scala-lang.org/TO5dF87jQQegUGqmIQtbew) for more information.
@@ -400,7 +400,7 @@ To use co-product rows do the following:
 
 ## Custom Parsing
 
-WARNING: This feature is somewhat experimental and the API is subject to change. Please use with caution.
+The Parser API has been refined considerably in ProtoQuill Beta2 and it is now in a ready state.
 
 ### Reason for This
 
