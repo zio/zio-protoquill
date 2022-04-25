@@ -32,7 +32,7 @@ trait ZioPrepareContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends Z
     (for {
       conn <- ZIO.service[Session]
       stmt <- ZIO.attempt(conn.prepareStatement(sql))
-      ps <- Task {
+      ps <- ZIO.attempt {
         val (params, ps) = prepare(stmt, conn)
         logger.logQuery(sql, params)
         ps

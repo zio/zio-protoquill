@@ -93,8 +93,12 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
   @targetName("runBatchActionReturning")
   inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): ZIO[DataSource, SQLException, List[T]] =  InternalApi.runBatchActionReturning(quoted)
 
+  /**
+   * Since we are immediately executing the ZIO that creates this fiber ref whether it is global is not really relevant since it does not really use scope
+   * However if it were used for something else it would be scoped to the fiber-ref of the zio-jdbc context's creator i.e. the global scope.
+   */
   val currentConnection: FiberRef[Option[Connection]] =
-    Runtime.default.unsafeRun(FiberRef.make(None))
+    Runtime.default.unsafeRun(zio.Scope.global.extend(FiberRef.make(Option.empty[java.sql.Connection])))
 
   val underlying: ZioJdbcUnderlyingContext[Dialect, Naming]
 

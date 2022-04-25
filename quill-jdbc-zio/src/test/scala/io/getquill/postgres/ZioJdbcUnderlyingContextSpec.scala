@@ -57,7 +57,7 @@ class ZioJdbcUnderlyingContextSpec extends ZioSpec {
             testContext.underlying.transaction {
               ZIO.collectAll(Seq(
                 testContext.underlying.run(qr1.insert(_.i -> 18)),
-                Task {
+                ZIO.attempt {
                   throw new IllegalStateException
                 }
               ))

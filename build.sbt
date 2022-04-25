@@ -49,7 +49,9 @@ lazy val sqlTestModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
 )
 
 lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-jdbc`, `quill-doobie`, `quill-zio`, `quill-jdbc-zio`, `quill-caliban`
+  `quill-jdbc`, `quill-doobie`, `quill-zio`, `quill-jdbc-zio`
+  // Caliban does not have a ZIO RC5 library. Need to disable it until the ZIO2 release.
+  //, `quill-caliban`
 )
 
 lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
@@ -139,7 +141,7 @@ lazy val `quill-sql` =
         "io.suzaku" %% "boopickle" % "1.4.0",
         ("com.lihaoyi" %% "pprint" % "0.6.6"),
         ("io.getquill" %% "quill-engine" % "3.19.0").excludeAll(ExclusionRule(organization = "com.twitter")),
-        ("dev.zio" %% "zio" % "2.0.0-RC3"),
+        ("dev.zio" %% "zio" % "2.0.0-RC5"),
         ("io.getquill" %% "quill-util" % "3.19.0")
           .excludeAll({
             if (isCommunityBuild)
@@ -239,8 +241,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "2.0.0-RC3",
-        "dev.zio" %% "zio-streams" % "2.0.0-RC3"
+        "dev.zio" %% "zio" % "2.0.0-RC5",
+        "dev.zio" %% "zio-streams" % "2.0.0-RC5"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -288,8 +290,8 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.13.0",
-        "dev.zio" %% "zio" % "2.0.0-RC3",
-        "dev.zio" %% "zio-streams" % "2.0.0-RC3",
+        "dev.zio" %% "zio" % "2.0.0-RC5",
+        "dev.zio" %% "zio-streams" % "2.0.0-RC5",
         ("dev.zio" %% "zio-interop-guava" % "31.0.0.0").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
       )
     )
@@ -337,7 +339,7 @@ lazy val basicSettings = Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
   scalaVersion := {
-    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.1.0"
+    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.1.1"
   },
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log

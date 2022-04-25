@@ -13,7 +13,7 @@ object ServiceExample extends ZIOAppDefault {
   import DBModel._
 
   override def run = {
-    runApp.provideCustomLayer(DBManager.live).exitCode
+    runApp.provideLayer(DBManager.live).exitCode
   }
 
   def runApp =

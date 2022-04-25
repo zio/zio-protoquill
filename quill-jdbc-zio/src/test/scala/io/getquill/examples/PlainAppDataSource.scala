@@ -26,7 +26,7 @@ object PlainAppDataSource {
     val qzio =
       MyPostgresContext.run(people)
         .tap(result => printLine(result.toString))
-        .provideCustomLayer(zioDS)
+        .provide(zioDS)
 
     Runtime.default.unsafeRun(qzio)
     ()

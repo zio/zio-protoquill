@@ -31,6 +31,6 @@ object ZioAppExampleServices {
   }
 
   object DataServiceLive {
-    val layer = (DataServiceLive.apply _).toLayer
+    val layer = ZLayer.fromFunction(DataServiceLive.apply)
   }
 }

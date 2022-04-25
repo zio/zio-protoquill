@@ -41,7 +41,7 @@ class ResultSetIteratorSpec extends ZioSpec {
   "traverses correctly" in {
     val results =
       ZIO.service[DataSource].mapAttempt(ds => ds.getConnection).acquireReleaseWithAuto { conn =>
-        Task {
+        ZIO.attempt {
           val stmt = conn.prepareStatement("select * from person")
           val rs = new ResultSetIterator[String](stmt.executeQuery(), conn, extractor = (rs, conn) => { rs.getString(1) })
           val accum = ArrayBuffer[String]()
@@ -56,7 +56,7 @@ class ResultSetIteratorSpec extends ZioSpec {
   "can take head element" in {
     val result =
       ZIO.service[DataSource].mapAttempt(ds => ds.getConnection).acquireReleaseWithAuto { conn =>
-        Task {
+        ZIO.attempt {
           val stmt = conn.prepareStatement("select * from person where name = 'Alex'")
           val rs = new ResultSetIterator(stmt.executeQuery(), conn, extractor = (rs, conn) => { rs.getString(1) })
           rs.head

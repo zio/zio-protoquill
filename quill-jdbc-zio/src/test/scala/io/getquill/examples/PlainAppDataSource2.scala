@@ -20,7 +20,7 @@ object PlainAppDataSource2 {
   def hikariDataSource = new HikariDataSource(hikariConfig)
 
   val zioDS: ZLayer[Any, Throwable, DataSource] =
-    ZIO.attempt(hikariDataSource).toLayer
+    ZLayer(ZIO.attempt(hikariDataSource))
 
   def main(args: Array[String]): Unit = {
     val people = quote {
@@ -29,7 +29,7 @@ object PlainAppDataSource2 {
     val qzio =
       MyPostgresContext.run(people)
         .tap(result => printLine(result.toString))
-        .provideCustomLayer(zioDS)
+        .provide(zioDS)
 
     Runtime.default.unsafeRun(qzio)
     ()
