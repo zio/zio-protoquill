@@ -44,28 +44,6 @@ import io.getquill.metaprog.etc.ColumnsFlicer
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 
-/**
- * Metadata related to query execution. Note that AST should be lazy so as not to be evaluated
- * at runtime (which would happen with a by-value property since `{ ExecutionInfo(stuff, ast) } is spliced
- * into a query-execution site)
- * TODO As a future optimization (if needed) could we introduce a compiler argument that would not even
- * splice the ASTs during the execute___ call-sites in the Context?
- */
-class ExecutionInfo(val executionType: ExecutionType, queryAst: =>Ast):
-  def ast: Ast = queryAst
-object ExecutionInfo:
-  def apply(executionType: ExecutionType, ast: =>Ast) = new ExecutionInfo(executionType, ast)
-
-trait ProtoStreamContext[Dialect <: Idiom, Naming <: NamingStrategy] extends RowContext {
-  type PrepareRow
-  type ResultRow
-
-  type Runner
-  type StreamResult[T]
-
-  def streamQuery[T](fetchSize: Option[Int], sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: Runner): StreamResult[T]
-}
-
 sealed trait RunnerSummoningBehavior
 object RunnerSummoningBehavior {
   sealed trait Implicit extends RunnerSummoningBehavior
@@ -96,7 +74,7 @@ import io.getquill.generic.DecodeAlternate
 
 trait ContextStandard[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]
   extends Context[Idiom, Naming]
-  with ContextVerbPrepareLamba[Idiom, Naming]
+  with ContextVerbPrepareLambda[Idiom, Naming]
 
 
 trait Context[Dialect <: Idiom, Naming <: NamingStrategy]

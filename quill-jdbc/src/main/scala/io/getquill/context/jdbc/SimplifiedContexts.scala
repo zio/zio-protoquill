@@ -42,8 +42,9 @@ trait SqliteJdbcTypes[N <: NamingStrategy] extends JdbcContextTypes[SqliteDialec
   val idiom = SqliteDialect
 }
 
-trait SqlServerExecuteOverride[N <: NamingStrategy] {
-  this: JdbcContextVerbExecute[SQLServerDialect, N] =>
+/** Use extension in stead of self-pointer to `JdbcContextVerbExecute[SQLServerDialect, N]` here. Want identical
+ * implementation to Scala2-Quill and doing it via self-pointer in Scala2-Quill will cause override-conflict errors in SqlServerExecuteOverride. */
+trait SqlServerExecuteOverride[N <: NamingStrategy] extends JdbcContextVerbExecute[SQLServerDialect, N] {
 
   private val logger = ContextLogger(classOf[SqlServerExecuteOverride[_]])
 

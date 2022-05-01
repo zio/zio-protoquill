@@ -2,7 +2,7 @@ package io.getquill.context.jdbc
 
 import io.getquill._
 import io.getquill.context.sql.idiom.SqlIdiom
-import io.getquill.context.{ ExecutionInfo, ContextVerbPrepare, ContextVerbPrepareLamba }
+import io.getquill.context.{ ExecutionInfo, ContextVerbPrepare, ContextVerbPrepareLambda }
 
 import java.sql._
 import io.getquill.util.ContextLogger
@@ -10,7 +10,7 @@ import io.getquill.util.ContextLogger
 trait JdbcContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   extends JdbcContextVerbExecute[Dialect, Naming]
   with JdbcContextVerbPrepare[Dialect, Naming]
-  with ContextVerbPrepareLamba[Dialect, Naming] {
+  with ContextVerbPrepareLambda[Dialect, Naming] {
 
   // Need to re-define these here or they conflict with staged-prepare imported types
   override type PrepareQueryResult = Connection => Result[PreparedStatement]
