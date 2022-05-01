@@ -10,7 +10,7 @@ import scala.util.{ Success, Try }
 class CassandraContextSpec extends Spec {
   // val et = io.getquill.context.ExecutionType
   // val vvv = et.lifts
-  val unknown = ExecutionInfo(io.getquill.context.ExecutionType.Static, io.getquill.ast.NullValue)
+  val unknown = ExecutionInfo(io.getquill.context.ExecutionType.Static, io.getquill.ast.NullValue, io.getquill.quat.Quat.Value)
 
   "run non-batched action" - {
 
