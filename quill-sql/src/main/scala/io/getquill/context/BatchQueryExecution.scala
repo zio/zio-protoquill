@@ -213,7 +213,7 @@ object DynamicBatchQueryExecution:
     // TODO this variable should go through BatchQueryExecution arguments and be propagated here
     val spliceAst = false
     val executionAst = if (spliceAst) outputAst else io.getquill.ast.NullValue
-    batchContextOperation.execute(ContextOperation.Argument(queryString, prepares.toArray, extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst), None))
+    batchContextOperation.execute(ContextOperation.Argument(queryString, prepares.toArray, extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst, topLevelQuat), None))
   }
 
 object BatchQueryExecution:
@@ -349,7 +349,7 @@ object BatchQueryExecution:
                   val prepare = '{ (row: PrepareRow, session: Session) => LiftsExtractor.apply[PrepareRow, Session]($injectedLiftsExpr, row, session) }
                   prepare
                 }) }
-              '{ $batchContextOperation.execute(ContextOperation.Argument(${Expr(query.basicQuery)}, $prepares.toArray, $extractor, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)}), None)) }
+              '{ $batchContextOperation.execute(ContextOperation.Argument(${Expr(query.basicQuery)}, $prepares.toArray, $extractor, ExecutionInfo(ExecutionType.Static, ${Lifter(state.ast)}, ${Lifter.quat(topLevelQuat)}), None)) }
 
             case None =>
               // TODO report via trace debug

@@ -35,7 +35,7 @@ import io.getquill._
  *
  * If you are using a Plain Scala app however, you will need to manually run it e.g. using zio.Runtime
  * {{
- *   Runtime.default.unsafeRun(MyZioContext.run(query[Person]).provideLayer(zioDS))
+ *   Runtime.default.unsafeRun(MyZioContext.run(query[Person]).ContextTranslateProtoprovideLayer(zioDS))
  * }}
  *
  * Note however that the one exception to these cases are the `prepare` methods where a `ZIO[Has[Connection], SQLException, PreparedStatement]`

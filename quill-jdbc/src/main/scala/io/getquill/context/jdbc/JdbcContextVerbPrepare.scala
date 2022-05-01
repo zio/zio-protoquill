@@ -2,7 +2,7 @@ package io.getquill.context.jdbc
 
 import io.getquill._
 import io.getquill.context.sql.idiom.SqlIdiom
-import io.getquill.context.{ ExecutionInfo, ContextVerbPrepare, ContextVerbPrepareLamba }
+import io.getquill.context.{ ExecutionInfo, ContextVerbPrepare, ContextVerbPrepareLambda }
 
 import java.sql._
 import io.getquill.util.ContextLogger

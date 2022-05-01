@@ -218,14 +218,14 @@ object QueryExecution:
               report.throwError(msg)
             // Otherwise the regular pipeline
             case scala.util.Success(Some(staticState)) =>
-              executeStatic[T](staticState, identityConverter, ExtractBehavior.Extract) // Yes we can, do it!
+              executeStatic[T](staticState, identityConverter, ExtractBehavior.Extract, topLevelQuat) // Yes we can, do it!
             case scala.util.Success(None) =>
               executeDynamic(quoted, identityConverter, ExtractBehavior.Extract, queryElaborationBehavior, topLevelQuat) // No we can't. Do dynamic
 
     def applyAction(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
       StaticTranslationMacro[I, T, D, N](quoted, ElaborationBehavior.Skip, Quat.Value) match
         case Some(staticState) =>
-          executeStatic[T](staticState, identityConverter, ExtractBehavior.Skip)
+          executeStatic[T](staticState, identityConverter, ExtractBehavior.Skip, Quat.Value)
         case None =>
           executeDynamic(quoted, identityConverter, ExtractBehavior.Skip, ElaborationBehavior.Skip, Quat.Value)
 
@@ -233,7 +233,7 @@ object QueryExecution:
       val topLevelQuat = QuatMaking.ofType[T]
       StaticTranslationMacro[I, T, D, N](quoted, ElaborationBehavior.Skip, topLevelQuat) match
         case Some(staticState) =>
-          executeStatic[T](staticState, identityConverter, ExtractBehavior.ExtractWithReturnAction)
+          executeStatic[T](staticState, identityConverter, ExtractBehavior.ExtractWithReturnAction, topLevelQuat)
         case None =>
           executeDynamic(quoted, identityConverter, ExtractBehavior.ExtractWithReturnAction, ElaborationBehavior.Skip, Quat.Value)
 
@@ -243,7 +243,7 @@ object QueryExecution:
       val (queryRawT, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted.asExprOf[Quoted[Query[T]]], topLevelQuat)
       staticStateOpt match {
         case Some(staticState) =>
-          executeStatic[RawT](staticState, converter, ExtractBehavior.Extract)
+          executeStatic[RawT](staticState, converter, ExtractBehavior.Extract, topLevelQuat)
         case None =>
           // Note: Can assume QuotationType is `Query` here since summonly a Query-meta is only allowed for Queries
           // Also: A previous implementation of this used QAC[I, T] => QAC[I, RawT] directly but was scrapped due to some Dotty issues
@@ -277,7 +277,7 @@ object QueryExecution:
      * Execute static query via ctx.executeQuery method given we have the ability to do so
      * i.e. have a staticState
      */
-    def executeStatic[RawT: Type](state: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior): Expr[Res] =
+    def executeStatic[RawT: Type](state: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior, topLevelQuat: Quat): Expr[Res] =
       val lifts = resolveLazyLiftsStatic(state.lifts)
 
       // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
@@ -290,7 +290,7 @@ object QueryExecution:
       val astSplice =
         if (TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]) Lifter(state.ast)
         else '{ io.getquill.ast.NullValue }
-      '{ $contextOperation.execute(ContextOperation.Argument($particularQuery, Array($prepare), $extractor, ExecutionInfo(ExecutionType.Static, $astSplice), $fetchSize)) }
+      '{ $contextOperation.execute(ContextOperation.Argument($particularQuery, Array($prepare), $extractor, ExecutionInfo(ExecutionType.Static, $astSplice, ${Lifter.quat(topLevelQuat)}), $fetchSize)) }
     end executeStatic
 
     /**
@@ -521,7 +521,7 @@ object RunDynamicExecution:
 
     // Exclute the SQL Statement
     val executionAst = if (spliceAst) outputAst else io.getquill.ast.NullValue
-    ctx.execute(ContextOperation.Argument(queryString, Array(prepare), extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst), fetchSize))
+    ctx.execute(ContextOperation.Argument(queryString, Array(prepare), extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst, topLevelQuat), fetchSize))
   }
 
 end RunDynamicExecution
