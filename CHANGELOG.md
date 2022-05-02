@@ -1,3 +1,14 @@
+# 3.16.4.Beta2.6
+
+- [Enable context.translate in remaining contexts](https://github.com/zio/zio-protoquill/pull/91)
+- [Implement context `translate` methods](https://github.com/zio/zio-protoquill/pull/81)
+- [Adding extras module based on Scala2-Quill](https://github.com/zio/zio-protoquill/pull/90)
+- [Adding DistinctOn functionality from Scala2-Quill](https://github.com/zio/zio-protoquill/pull/89)
+- [Bump to 3.16.4](https://github.com/zio/zio-protoquill/pull/88)
+
+Note: This change should resolve the IntelliJ issue [SCL-20078](https://youtrack.jetbrains.com/issue/SCL-20078)
+but as of now still has the [SCL-19345](https://youtrack.jetbrains.com/issue/SCL-19345) issue.
+
 # 3.16.3.Beta2.5
 
 - [Concrete run method signatures in contexts](https://github.com/zio/zio-protoquill/pull/83)
