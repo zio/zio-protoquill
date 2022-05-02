@@ -20,7 +20,7 @@ abstract class ZioJdbcUnderlyingContext[Dialect <: SqlIdiom, Naming <: NamingStr
   with JdbcContextVerbExecute[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]
-  // with ZioTranslateContext
+  with ZioTranslateContext[Dialect, Naming]
   {
 
   override private[getquill] val logger = ContextLogger(classOf[ZioJdbcUnderlyingContext[_, _]])
@@ -34,7 +34,9 @@ abstract class ZioJdbcUnderlyingContext[Dialect <: SqlIdiom, Naming <: NamingStr
   override type RunBatchActionResult = List[Long]
   override type RunBatchActionReturningResult[T] = List[T]
   override type Runner = Unit
+  override type TranslateRunner = Unit
   override protected def context: Runner = ()
+  def translateContext: TranslateRunner = ()
 
   @targetName("runQueryDefault")
   inline def run[T](inline quoted: Quoted[Query[T]]): ZIO[Has[Connection], SQLException, List[T]] = InternalApi.runQueryDefault(quoted)
@@ -70,6 +72,10 @@ abstract class ZioJdbcUnderlyingContext[Dialect <: SqlIdiom, Naming <: NamingStr
     super.prepareAction(sql, prepare)(info, dc)
   override def prepareBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): QCIO[List[PreparedStatement]] =
     super.prepareBatchAction(groups)(info, dc)
+  override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(info: ExecutionInfo, dc: Runner): QCIO[String] =
+    super.translateQueryEndpoint(statement, prepare, extractor, prettyPrint)(info, dc)
+  override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(info: ExecutionInfo, dc: Runner): QCIO[List[String]] =
+    super.translateBatchQueryEndpoint(groups, prettyPrint)(info, dc)
 
   /** ZIO Contexts do not managed DB connections so this is a no-op */
   override def close(): Unit = ()
@@ -189,12 +195,11 @@ abstract class ZioJdbcUnderlyingContext[Dialect <: SqlIdiom, Naming <: NamingStr
     streamBlocker *> streamWithoutAutoCommit(typedStream).refineToOrDie[SQLException]
   }
 
-  // No Translate-Query in Dotty Yet
-  // override private[getquill] def prepareParams(statement: String, prepare: Prepare): QCIO[Seq[String]] = {
-  //   withConnectionWrapped { conn =>
-  //     prepare(conn.prepareStatement(statement), conn)._1.reverse.map(prepareParam)
-  //   }
-  // }
+  override private[getquill] def prepareParams(statement: String, prepare: Prepare): QCIO[Seq[String]] = {
+    withConnectionWrapped { conn =>
+      prepare(conn.prepareStatement(statement), conn)._1.reverse.map(prepareParam)
+    }
+  }
 
   // Generally these are not used in the ZIO context but have implementations in case they are needed
   override def wrap[T](t: => T): ZIO[Has[Connection], SQLException, T] = QCIO(t)
