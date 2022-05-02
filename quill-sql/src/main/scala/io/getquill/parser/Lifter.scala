@@ -289,6 +289,7 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case UnionAll(a, b) => '{ UnionAll(${a.expr}, ${b.expr}) }
       case Join(typ, a, b, identA, identB, body) => '{ Join(${typ.expr}, ${a.expr}, ${b.expr}, ${identA.expr}, ${identB.expr}, ${body.expr}) }
       case FlatJoin(typ, a, identA, on) => '{ FlatJoin(${typ.expr}, ${a.expr}, ${identA.expr}, ${on.expr}) }
+      case DistinctOn(query, alias, body) => '{ DistinctOn(${query.expr}, ${alias.expr}, ${body.expr}) }
       case Distinct(a: Ast) => '{ Distinct(${a.expr}) }
       case Nested(a: Ast) => '{ Nested(${a.expr}) }
 

@@ -49,4 +49,5 @@ class DistinctJdbcSpec extends DistinctSpec {
   "Ex 8 Distinct With Sort" in {
     testContext.run(`Ex 8 Distinct With Sort`) mustEqual `Ex 8 Distinct With Sort Result`
   }
+  // SQL Server does not support `Distinct On`
 }
