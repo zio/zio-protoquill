@@ -17,8 +17,6 @@ case class CustomAnyValue(i: Int) extends AnyVal
 case class EmbeddedValue(s: String, i: Int) extends Embedded
 
 class QueryTest extends Spec with TestEntities {
-  // remove the === matcher from scalatest so that we can test === in Context.extra
-  override def convertToEqualizer[T](left: T): Equalizer[T] = new Equalizer(left)
 
   // Needs to be defined outside of method otherwise Scala Bug "No TypeTag available for TestEnt" manifests.
   // See https://stackoverflow.com/a/16990806/1000455
