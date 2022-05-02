@@ -39,11 +39,10 @@ class CaseClassQueryJdbcSpec extends CaseClassQuerySpec {
     testContext.run(`Ex 3 Inline Record Usage`) should contain theSameElementsAs `Ex 3 Inline Record Usage exepected result`
   }
 
-  // Translate not supported yet
-  // "Example 4 - Ex 4 Mapped Union of Nicknames" in {
-  //   println(translate(`Ex 4 Mapped Union of Nicknames`))
-  //   testContext.run(`Ex 4 Mapped Union of Nicknames`) should contain theSameElementsAs `Ex 4 Mapped Union of Nicknames expected result`
-  // }
+  "Example 4 - Ex 4 Mapped Union of Nicknames" in {
+    println(testContext.translate(`Ex 4 Mapped Union of Nicknames`))
+    testContext.run(`Ex 4 Mapped Union of Nicknames`) should contain theSameElementsAs `Ex 4 Mapped Union of Nicknames expected result`
+  }
 
   "Example 4 - Ex 4 Mapped Union All of Nicknames" in {
     testContext.run(`Ex 4 Mapped Union All of Nicknames`) should contain theSameElementsAs `Ex 4 Mapped Union All of Nicknames expected result`

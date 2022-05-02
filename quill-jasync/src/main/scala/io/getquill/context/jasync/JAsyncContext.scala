@@ -3,10 +3,10 @@ package io.getquill.context.jasync
 import com.github.jasync.sql.db.pool.ConnectionPool
 import com.github.jasync.sql.db.{ ConcreteConnection, Connection, QueryResult }
 import io.getquill.context.sql.idiom.SqlIdiom
-//import io.getquill.monad.ScalaFutureIOMonad
 import io.getquill.util.ContextLogger
 import io.getquill.{ NamingStrategy, ReturnAction }
 import kotlin.jvm.functions.Function1
+import io.getquill.context.ContextVerbTranslate
 
 import java.util.concurrent.CompletableFuture
 import scala.compat.java8.FutureConverters
@@ -20,7 +20,7 @@ import io.getquill.context.RunnerSummoningBehavior
 
 abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteConnection](val idiom: D, val naming: N, pool: ConnectionPool[C])
   extends JAsyncContextBase[D, N]
-  //with ScalaFutureIOMonad
+  with ContextVerbTranslate[D, N]
 {
 
   private val logger = ContextLogger(classOf[JAsyncContext[_, _, _]])
@@ -67,15 +67,8 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
       })
     }
 
-  // Quill IO Monad not in Protoquill yet
-  // override def performIO[T](io: IO[T, _], transactional: Boolean = false)(implicit ec: ExecutionContext): Result[T] =
-  //   transactional match {
-  //     case false => super.performIO(io)
-  //     case true  => transaction(super.performIO(io)(_))
-  //   }
-
-  // TODO Remove from all contexts
   override def context: Runner = throw new IllegalStateException("Runner (ExecutionContext) of JAsyncContext is summoned implicitly, the member is unused.")
+  override def translateContext: TranslateRunner = throw new IllegalStateException("Runner (ExecutionContext) of JAsyncContext is summoned implicitly, the member is unused.")
 
   def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[T]] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
@@ -133,8 +126,7 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
       }
     }.map(_.flatten.toList)
 
-  // Used for TranslateContext. The functionality of context.translate is not in Protoquill yet.
-  //override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] =
-  //  prepare(Nil)._2.map(prepareParam)
+  override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] =
+    prepare(Nil, ())._2.map(prepareParam)
 
 }

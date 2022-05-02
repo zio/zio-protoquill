@@ -7,10 +7,11 @@ import io.getquill.context.sql.SqlContext
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.RunnerSummoningBehavior
 import scala.concurrent.ExecutionContext
+import io.getquill.context.ContextVerbTranslate
 
 trait JAsyncContextBase[D <: SqlIdiom, N <: NamingStrategy]
   extends Context[D, N]
-  //with TranslateContext
+  with ContextVerbTranslate[D, N]
   with SqlContext[D, N]
   with Decoders
   with Encoders {

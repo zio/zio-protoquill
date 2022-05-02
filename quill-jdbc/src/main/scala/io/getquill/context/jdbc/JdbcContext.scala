@@ -5,18 +5,18 @@ import java.sql.{ Connection, PreparedStatement }
 import javax.sql.DataSource
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill._
-import io.getquill.context.{ ExecutionInfo, ProtoContext } // TranslateContext
+import io.getquill.context.{ ExecutionInfo, ProtoContext, ContextVerbTranslate }
 
 import scala.util.{ DynamicVariable, Try }
 import scala.util.control.NonFatal
 import io.getquill.Quoted
 import scala.annotation.targetName
+import io.getquill.context.ContextVerbTranslate
 
 abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   extends JdbcContextBase[Dialect, Naming]
   with ProtoContext[Dialect, Naming]
-  //with TranslateContext
-  //with SyncIOMonad
+  with ContextVerbTranslate[Dialect, Naming]
   {
 
   // Need to override these with same values as JdbcRunContext because SyncIOMonad imports them. The imported values need to be overridden
@@ -28,7 +28,9 @@ abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   override type RunBatchActionResult = List[Long]
   override type RunBatchActionReturningResult[T] = List[T]
   override type Runner = Unit
+  override type TranslateRunner = Unit
   override protected def context: Runner = ()
+  def translateContext: TranslateRunner = ()
 
   val dataSource: DataSource with Closeable
 
@@ -89,17 +91,9 @@ abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
         }
     }
 
-  // Quill IO Monad Not defined in Dotty Quill
-  // override def performIO[T](io: IO[T, _], transactional: Boolean = false): Result[T] =
-  //   transactional match {
-  //     case false => super.performIO(io)
-  //     case true  => transaction(super.performIO(io))
-  //   }
-
-  // Preparation not defined in Dotty Quill Yet
-  // override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] = {
-  //   withConnectionWrapped { conn =>
-  //     prepare(conn.prepareStatement(statement), conn)._1.reverse.map(prepareParam)
-  //   }
-  // }
+  override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] = {
+    withConnectionWrapped { conn =>
+      prepare(conn.prepareStatement(statement), conn)._1.reverse.map(prepareParam)
+    }
+  }
 }

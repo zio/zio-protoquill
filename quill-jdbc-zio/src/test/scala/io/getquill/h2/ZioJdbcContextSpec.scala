@@ -57,11 +57,10 @@ class ZioJdbcContextSpec extends ZioSpec {
         r <- testContext.run(qr1)
       } yield r).runSyncUnsafe().map(_.i) mustEqual List(33)
     }
-    // For TranslateQuery, not supported in ProtoQuill yet
-    // "prepare" in {
-    //   testContext.prepareParams(
-    //     "select * from Person where name=? and age > ?", (ps, session) => (List("Sarah", 127), ps)
-    //   ).runSyncUnsafe() mustEqual List("127", "'Sarah'")
-    // }
+    "prepare" in {
+      testContext.prepareParams(
+        "select * from Person where name=? and age > ?", (ps, session) => (List("Sarah", 127), ps)
+      ).runSyncUnsafe() mustEqual List("127", "'Sarah'")
+    }
   }
 }
