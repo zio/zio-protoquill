@@ -547,33 +547,31 @@ class QueryParser(val rootParse: Parser)(using Quotes)
     case "groupBy" -@> '{ type r; ($q: Query[t]).groupBy[`r`](${Lambda1(ident1, tpe, body)}) } =>
       GroupBy(rootParse(q), cleanIdent(ident1, tpe), rootParse(body))
 
+    case "distinctOn" -@> '{ ($q: Query[t]).distinctOn[r](${Lambda1(ident, tpe, body)}) } =>
+      rootParse(q) match
+        case fj: FlatJoin => failFlatJoin("distinctOn")
+        case other => DistinctOn(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+
     case "distinct" --> '{ ($q: Query[t]).distinct } =>
       rootParse(q) match
-        case fj: FlatJoin => throw new IllegalArgumentException(
-          """
-            |The .distinct cannot be placed after a join clause in a for-comprehension. Put it before.
-            |For example. Change:
-            |  for { a <- query[A]; b <- query[B].join(...).distinct } to:
-            |  for { a <- query[A]; b <- query[B].distinct.join(...) }
-            |""".stripMargin
-        )
-        case other =>
-          Distinct(other)
+        case fj: FlatJoin => failFlatJoin("distinct")
+        case other => Distinct(other)
 
     case "nested" --> '{ ($q: Query[t]).nested } =>
       rootParse(q) match
-        case fj: FlatJoin => throw new IllegalArgumentException(
-          """
-            |The .nested cannot be placed after a join clause in a for-comprehension. Put it before.
-            |For example. Change:
-            |  for { a <- query[A]; b <- query[B].join(...).nested } to:
-            |  for { a <- query[A]; b <- query[B].nested.join(...) }
-            |""".stripMargin
-        )
-        case other =>
-          io.getquill.ast.Nested(other)
-
+        case fj: FlatJoin => failFlatJoin("nested")
+        case other => io.getquill.ast.Nested(other)
   }
+
+  def failFlatJoin(clauseName: String) =
+    report.throwError(
+      s"""
+        |The .${clauseName} cannot be placed after a join clause in a for-comprehension. Put it before.
+        |For example. Change:
+        |  for { a <- query[A]; b <- query[B].join(...).nested } to:
+        |  for { a <- query[A]; b <- query[B].nested.join(...) }
+        |""".stripMargin
+    )
 
   import io.getquill.JoinQuery
 

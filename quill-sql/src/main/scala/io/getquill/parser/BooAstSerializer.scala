@@ -78,6 +78,8 @@ object AstPicklers {
       .addConcreteType[UnionAll]
       .addConcreteType[Join]
       .addConcreteType[FlatJoin]
+      .addConcreteType[DistinctOn]
+      // For some reason, case classes that have only one parameter need a manually defined pickler
       .addConcreteType[Distinct](distinctPickler, classTag[Distinct])
       .addConcreteType[Nested](nestedPickler, classTag[Nested])
 

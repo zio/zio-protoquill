@@ -223,6 +223,7 @@ object Unlifter {
       case Is[GroupBy]( '{ GroupBy(${query}, ${alias}, ${body}: Ast) } ) => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
       case Is[SortBy]( '{ SortBy(${query}, ${alias}, ${criterias}, ${ordering}) } ) => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
       case Is[Distinct]( '{ Distinct(${a}) } )  => Distinct(a.unexpr)
+      case Is[DistinctOn]( '{ DistinctOn(${query}, ${alias}, $body) } )  => DistinctOn(query.unexpr, alias.unexpr, body.unexpr)
       case Is[Nested]( '{ Nested(${a}) } ) => Nested(a.unexpr)
       case Is[Union]( '{ Union($a, $b) } ) => Union(a.unexpr, b.unexpr)
       case Is[UnionAll]( '{ UnionAll($a, $b) } ) => UnionAll(a.unexpr, b.unexpr)

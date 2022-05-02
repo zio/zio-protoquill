@@ -49,4 +49,5 @@ class DistinctJdbcSpec extends DistinctSpec {
   "Ex 8 Distinct With Sort" in {
     testContext.run(`Ex 8 Distinct With Sort`) should contain theSameElementsAs `Ex 8 Distinct With Sort Result`
   }
+  // MySql does not support `Distinct On`
 }
