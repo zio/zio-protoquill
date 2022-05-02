@@ -51,6 +51,7 @@ trait ParserLibrary extends ParserFactory:
   protected def functionApplyParser(using Quotes)        = ParserChain.attempt(FunctionApplyParser(_))
   protected def valParser(using Quotes)                  = ParserChain.attempt(ValParser(_))
   protected def blockParser(using Quotes)                = ParserChain.attempt(BlockParser(_))
+  protected def extrasParser(using Quotes)               = ParserChain.attempt(ExtrasParser(_))
   protected def operationsParser(using Quotes)           = ParserChain.attempt(OperationsParser(_))
   protected def orderingParser(using Quotes)             = ParserChain.attempt(OrderingParser(_))
   protected def genericExpressionsParser(using Quotes)   = ParserChain.attempt(GenericExpressionsParser(_))
@@ -85,6 +86,7 @@ trait ParserLibrary extends ParserFactory:
         .orElse(valParser)
         .orElse(blockParser)
         .orElse(operationsParser)
+        .orElse(extrasParser)
         .orElse(ifElseParser)
         .orElse(complexValueParser) // must go before functionApplyParser since valueParser parsers '.apply on case class' and the functionApply would take that
         .orElse(functionApplyParser) // must go before genericExpressionsParser otherwise that will consume the 'apply' clauses
@@ -694,6 +696,36 @@ class InfixParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse)
 
 
 end InfixParser
+
+class ExtrasParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with ComparisonTechniques {
+  import quotes.reflect._
+  import extras._
+
+  private object ExtrasModule:
+    def unapply(term: Term) =
+      term.tpe <:< TypeRepr.of[extras.type]
+
+  private object ExtrasMethod:
+    def unapply(expr: Expr[_]): Option[(Term, String, Term)] =
+      expr.asTerm match
+        case
+          Apply(
+            Apply(
+              UntypeApply(Select(ExtrasModule(), op)),
+              List(left)
+            ),
+            List(right)
+          ) =>
+            Some((left, op, right))
+        case _ =>
+            None
+
+  def attempt =
+    case ExtrasMethod(a, "===", b) =>
+      equalityWithInnerTypechecksAnsi(a, b)(Equal)
+    case ExtrasMethod(a, "=!=", b) =>
+      equalityWithInnerTypechecksAnsi(a, b)(NotEqual)
+}
 
 class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with ComparisonTechniques {
   import quotes.reflect._

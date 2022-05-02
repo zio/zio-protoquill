@@ -15,6 +15,8 @@ import io.getquill._
 import io.getquill.PicklingHelper._
 
 class OperationTest extends Spec with TestEntities with Inside {
+  // remove the === matcher from scalatest so that we can test === in Context.extra
+  override def convertToEqualizer[T](left: T): Equalizer[T] = new Equalizer(left)
 
   extension (ast: Ast)
     def body: Ast = ast match
@@ -153,84 +155,85 @@ class OperationTest extends Spec with TestEntities with Inside {
           }
         }
       }
-      // "extras" - {
-      //   import extras._
-      //   val ia = Ident("a")
-      //   val ib = Ident("b")
 
-      //   "normal" in {
-      //     inline def q = quote {
-      //       (a: Int, b: Int) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
-      //   }
-      //   "normal - string" in {
-      //     inline def q = quote {
-      //       (a: String, b: String) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
-      //   }
-      //   "succeeds when different numerics are used Int/Long" in {
-      //     inline def q = quote {
-      //       (a: Int, b: Long) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
-      //   }
-      //   "succeeds when Option/Option" in {
-      //     inline def q = quote {
-      //       (a: Option[Int], b: Option[Int]) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib)
-      //   }
-      //   "succeeds when Option/T" in {
-      //     inline def q = quote {
-      //       (a: Option[Int], b: Int) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +==+ ib)
-      //   }
-      //   "succeeds when T/Option" in {
-      //     inline def q = quote {
-      //       (a: Int, b: Option[Int]) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +==+ ib)
-      //   }
-      //   "succeeds when Option/Option - Different Numerics" in {
-      //     inline def q = quote {
-      //       (a: Option[Int], b: Option[Long]) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib)
-      //   }
-      //   "succeeds when Option/T - Different Numerics" in {
-      //     inline def q = quote {
-      //       (a: Option[Int], b: Long) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +==+ ib)
-      //   }
-      //   "succeeds when T/Option - Different Numerics" in {
-      //     inline def q = quote {
-      //       (a: Int, b: Option[Long]) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +==+ ib)
-      //   }
-      //   "succeeds when Option/Option - String" in {
-      //     inline def q = quote {
-      //       (a: Option[String], b: Option[String]) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib)
-      //   }
-      //   "succeeds when Option/T - String" in {
-      //     inline def q = quote {
-      //       (a: Option[String], b: String) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +==+ ib)
-      //   }
-      //   "succeeds when T/Option - String" in {
-      //     inline def q = quote {
-      //       (a: String, b: Option[String]) => a === b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +==+ ib)
-      //   }
-      // }
+      "extras" - {
+        import extras._
+        val ia = Ident("a")
+        val ib = Ident("b")
+
+        "normal" in {
+          inline def q = quote {
+            (a: Int, b: Int) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        }
+        "normal - string" in {
+          inline def q = quote {
+            (a: String, b: String) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        }
+        "succeeds when different numerics are used Int/Long" in {
+          inline def q = quote {
+            (a: Int, b: Long) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
+        }
+        "succeeds when Option/Option" in {
+          inline def q = quote {
+            (a: Option[Int], b: Option[Int]) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib)
+        }
+        "succeeds when Option/T" in {
+          inline def q = quote {
+            (a: Option[Int], b: Int) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +==+ ib)
+        }
+        "succeeds when T/Option" in {
+          inline def q = quote {
+            (a: Int, b: Option[Int]) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +==+ ib)
+        }
+        "succeeds when Option/Option - Different Numerics" in {
+          inline def q = quote {
+            (a: Option[Int], b: Option[Long]) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib)
+        }
+        "succeeds when Option/T - Different Numerics" in {
+          inline def q = quote {
+            (a: Option[Int], b: Long) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +==+ ib)
+        }
+        "succeeds when T/Option - Different Numerics" in {
+          inline def q = quote {
+            (a: Int, b: Option[Long]) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +==+ ib)
+        }
+        "succeeds when Option/Option - String" in {
+          inline def q = quote {
+            (a: Option[String], b: Option[String]) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib)
+        }
+        "succeeds when Option/T - String" in {
+          inline def q = quote {
+            (a: Option[String], b: String) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +==+ ib)
+        }
+        "succeeds when T/Option - String" in {
+          inline def q = quote {
+            (a: String, b: Option[String]) => a === b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +==+ ib)
+        }
+      }
     }
 
     "equals" - {

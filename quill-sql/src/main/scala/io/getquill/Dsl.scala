@@ -54,6 +54,22 @@ object QueryDsl {
 trait QueryDsl {
   inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
   inline def select[T]: Query[T] = ${ QueryMacro[T] }
+
+  object extras:
+    extension [T](a: T)
+      def ===(b: T): Boolean =
+        (a, b) match
+          case (a: Option[_], b: Option[_]) => a.exists(av => b.exists(bv => av == bv))
+          case (a: Option[_], b)            => a.exists(av => av == b)
+          case (a, b: Option[_])            => b.exists(bv => bv == a)
+          case (a, b)                       => a == b
+
+      def =!=(b: T): Boolean =
+        (a, b) match
+          case (a: Option[_], b: Option[_]) => a.exists(av => b.exists(bv => av != bv))
+          case (a: Option[_], b)            => a.exists(av => av != b)
+          case (a, b: Option[_])            => b.exists(bv => bv != a)
+          case (a, b)                       => a != b
 }
 
 trait QuoteDsl {
