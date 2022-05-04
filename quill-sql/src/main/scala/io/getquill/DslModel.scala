@@ -12,7 +12,7 @@ import io.getquill.Query
 import io.getquill.EntityQuery
 
 object EntityQuery {
-  def apply[T] = new EntityQuery[T]() { }
+  def apply[T] = new EntityQuery[T]() {}
 }
 
 def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
@@ -46,7 +46,7 @@ private[getquill] trait InfixValue {
 }
 
 implicit class InfixInterpolator(val sc: StringContext) {
-  //@compileTimeOnly(NonQuotedException.message)
+  // @compileTimeOnly(NonQuotedException.message)
   def infix(args: Any*): InfixValue = NonQuotedException()
 }
 

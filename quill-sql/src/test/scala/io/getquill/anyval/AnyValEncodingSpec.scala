@@ -10,10 +10,10 @@ class AnyValEncodingSpec extends Spec {
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
-  case class Person(name: Name, age:Int)
+  case class Person(name: Name, age: Int)
 
   "simple anyval should encode and decode" in {
-    //val id = Rec(Blah("Joe", 123), "Bloggs")
+    // val id = Rec(Blah("Joe", 123), "Bloggs")
     val name = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
     println(mirror)

@@ -31,7 +31,7 @@ object QueryMacro:
 
           // In case it's only pointable, need to synthesize a new UID for the quotation
           case QuotationLotExpr(Pointable(_)) =>
-            UnquoteMacro('{$meta.entity})
+            UnquoteMacro('{ $meta.entity })
 
           case _ => report.throwError("Invalid Quotation:\n" + meta.show, meta)
         }

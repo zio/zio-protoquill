@@ -21,11 +21,12 @@ object ParserError:
     val term = io.getquill.metaprog.DeserializeAstInstances(expr).asTerm
     val message =
       throwInfo match
-        case ThrowInfo.Message(msg) => msg
+        case ThrowInfo.Message(msg)       => msg
         case ThrowInfo.AstClass(astClass) => s"Tree cannot be parsed to '${astClass.getSimpleName}'"
 
     val traces = Thread.currentThread.getStackTrace.take(50).map("  " + _.toString).mkString("\n")
-    report.throwError(s"""|
+    report.throwError(
+      s"""|
       |s"==== ${message} ====
       |  ${Format(Printer.TreeShortCode.show(term)) /* Or Maybe just expr? */}
       |==== Extractors ===

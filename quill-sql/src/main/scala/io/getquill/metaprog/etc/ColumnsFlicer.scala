@@ -5,14 +5,14 @@ import scala.reflect.ClassTag
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 import io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}
 import scala.compiletime.erasedValue
-import io.getquill.ast.Visibility.{ Hidden, Visible }
+import io.getquill.ast.Visibility.{Hidden, Visible}
 import scala.deriving._
 import scala.quoted._
 import io.getquill.context.LiftMacro
 import io.getquill.metaprog.TypeExtensions._
 import io.getquill.generic.ConstructType
 import io.getquill.generic.DeconstructElaboratedEntityLevels
-import io.getquill.generic.ElaborateStructure.{ TermType, Leaf, Branch }
+import io.getquill.generic.ElaborateStructure.{TermType, Leaf, Branch}
 import io.getquill.generic.ElaborateStructure.UdtBehavior
 
 object ColumnsFlicer {
@@ -27,7 +27,9 @@ class ColumnsFlicerMacro {
     import quotes.reflect._
     TypeRepr.of(using tpe) <:< TypeRepr.of[Product]
 
-  private def recurse[T, PrepareRow, Session, Fields, Types](using Quotes)(id: quotes.reflect.Term, fieldsTup: Type[Fields], typesTup: Type[Types])(columns: Expr[List[String]])(using baseType: Type[T], pr: Type[PrepareRow], sess: Type[Session]): List[(Type[_], Expr[_])] = {
+  private def recurse[T, PrepareRow, Session, Fields, Types](using
+      Quotes
+  )(id: quotes.reflect.Term, fieldsTup: Type[Fields], typesTup: Type[Types])(columns: Expr[List[String]])(using baseType: Type[T], pr: Type[PrepareRow], sess: Type[Session]): List[(Type[_], Expr[_])] = {
     import quotes.reflect._
     (fieldsTup, typesTup) match {
       case ('[field *: fields], '[tpe *: types]) =>
@@ -41,8 +43,8 @@ class ColumnsFlicerMacro {
 
         if (Expr.summon[GenericDecoder[_, Session, tpe, DecodingType.Specific]].isDefined) then
           // TODO Maybe use ==1 versus 'true' in this case. See how this plays out with VendorizeBooleans behavior
-          val liftClause = '{ $columns.contains(${Expr(fieldString)}) }
-          val liftedCondition = LiftMacro.apply[Boolean, PrepareRow, Session]( liftClause )
+          val liftClause = '{ $columns.contains(${ Expr(fieldString) }) }
+          val liftedCondition = LiftMacro.apply[Boolean, PrepareRow, Session](liftClause)
           val columnSplice: Expr[tpe] = '{ if ($liftedCondition) $childTTerm else null.asInstanceOf[tpe] }
           // construction of the comparison term:
           // if (lift(func(List[String].contains("firstName")))) person.firstName else null
@@ -59,7 +61,7 @@ class ColumnsFlicerMacro {
           expr +: rec
 
       case (_, '[EmptyTuple]) => Nil
-      case _ => report.throwError("Cannot generically derive Types In Expression:\n" + (fieldsTup, typesTup))
+      case _                  => report.throwError("Cannot generically derive Types In Expression:\n" + (fieldsTup, typesTup))
     }
   }
 
@@ -69,7 +71,7 @@ class ColumnsFlicerMacro {
       case Some(ev) => {
         // Otherwise, recursively summon fields
         ev match {
-          case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+          case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
             val fields = recurse[T, PrepareRow, Session, elementLabels, elementTypes](expr.asTerm, Type.of[elementLabels], Type.of[elementTypes])(columns)(using tpe)
             ConstructType[T](m, fields)
           case _ =>

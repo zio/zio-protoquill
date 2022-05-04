@@ -1,6 +1,5 @@
 package io.getquill.generic
 
-
 import scala.reflect.ClassTag
 import scala.quoted._
 import scala.deriving._
@@ -37,21 +36,23 @@ trait LowPriorityImplicits { self: EncodingDsl =>
       new AnyValEncoderContext[Encoder, Cls] {
         override def makeMappedEncoder[Base](mapped: MappedEncoding[Cls, Base], encoder: Encoder[Base]): Encoder[Cls] =
           self.mappedEncoder(mapped, encoder)
-      })
+      }
+    )
 
   implicit inline def anyValDecoder[Cls <: AnyVal]: Decoder[Cls] =
     MappedDecoderMaker[Decoder, Cls].apply(
       new AnyValDecoderContext[Decoder, Cls] {
         override def makeMappedDecoder[Base](mapped: MappedEncoding[Base, Cls], decoder: Decoder[Base]): Decoder[Cls] =
           self.mappedDecoder(mapped, decoder)
-    })
+      }
+    )
 }
 
-trait EncodingDsl extends LowPriorityImplicits { self => //extends LowPriorityImplicits
+trait EncodingDsl extends LowPriorityImplicits { self => // extends LowPriorityImplicits
   type PrepareRow
   type ResultRow
   type Session
-  //type Index = Int
+  // type Index = Int
 
   type EncoderMethod[T] = (Int, T, PrepareRow, Session) => PrepareRow
   type DecoderMethod[T] = (Int, ResultRow, Session) => T
@@ -72,7 +73,7 @@ trait EncodingDsl extends LowPriorityImplicits { self => //extends LowPriorityIm
 
   // For: Mapped := Foo(value: String), Base := String
   // Encoding follows: (MappedEncoding(Foo) => String) <=(contramap)= Encoder(Foo)
-  implicit def mappedEncoder  [Mapped, Base](implicit mapped: MappedEncoding[Mapped, Base], encoder: Encoder[Base]): Encoder[Mapped]
+  implicit def mappedEncoder[Mapped, Base](implicit mapped: MappedEncoding[Mapped, Base], encoder: Encoder[Base]): Encoder[Mapped]
 
   // For: Base := String, Mapped := Foo(value: String)
   // Decoding follows: (MappedEncoding(String) => Foo) =(map)=> Decoder(Foo)

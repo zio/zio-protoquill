@@ -16,7 +16,6 @@ import io.getquill.metaprog.SummonSerializationBehaviors
 import io.getquill.parser.engine.History
 import io.getquill.context.sql.norm.SimplifyFilterTrue
 
-
 object ExtractLifts {
   // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
   // appearing in the AST in multiple places.
@@ -25,7 +24,7 @@ object ExtractLifts {
     // eager Planters before the 'run' function, need to look thorugh eager/lazy
     // (planters) with the same UID and choose the ones that are eager for the same UID
     // i.e. since they would be the resolved ones
-    //val m =
+    // val m =
 
     // order of the lifts shuold not matter
     // PlanterExpr.findUnquotes(body).zipWithIndex           // preserve the original order
@@ -58,8 +57,6 @@ object ExtractLifts {
     (extractLifts(body), extractRuntimeUnquotes(body))
 }
 
-
-
 object QuoteMacro {
 
   def apply[T](bodyRaw: Expr[T])(using Quotes, Type[T], Type[Parser]): Expr[Quoted[T]] = {
@@ -77,6 +74,6 @@ object QuoteMacro {
 
     // Extract runtime quotes and lifts
     val (lifts, pluckedUnquotes) = ExtractLifts(bodyRaw)
-    '{ Quoted[T](${reifiedAst}, ${Expr.ofList(lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
+    '{ Quoted[T](${ reifiedAst }, ${ Expr.ofList(lifts) }, ${ Expr.ofList(pluckedUnquotes) }) }
   }
 }

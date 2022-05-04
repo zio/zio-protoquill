@@ -1,12 +1,11 @@
 package io.getquill.context
 
-
 import scala.quoted._
 import io.getquill.norm.BetaReduction
 import io.getquill.util.Load
 import io.getquill.parser.ParserFactory
 import io.getquill.generic.ElaborateStructure
-import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, Update => AUpdate, _ }
+import io.getquill.ast.{Ident => AIdent, Insert => AInsert, Update => AUpdate, _}
 import io.getquill.Quoted
 import io.getquill.parser.Lifter
 import io.getquill.parser.Unlifter
@@ -28,13 +27,13 @@ object MetaMacro:
     // Pull out individual args from the apply
     val excludes = excludesRaw match
       case Varargs(exprs) => exprs
-      case _ => quotes.reflect.report.throwError(s"Could not parse: ${excludesRaw.show} as a varargs parameter")
+      case _              => quotes.reflect.report.throwError(s"Could not parse: ${excludesRaw.show} as a varargs parameter")
 
     // Parse those into Function(params, Property) asts
     val excludeAstMethods =
       excludes.map(exclude => parser(exclude))
 
-      // Excract the 'Property' elements from there
+    // Excract the 'Property' elements from there
     val excludeAstProps =
       excludeAstMethods.map {
         case Function(List(param), prop @ Property(_, _)) =>
@@ -53,9 +52,9 @@ end MetaMacro
 object InsertMetaMacro:
   def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[InsertMeta[T]] =
     val (excludeTuple, uuid) = MetaMacro[T](excludesRaw)
-    '{ InsertMeta(Quoted[T](${Lifter.tuple(excludeTuple)}, Nil, Nil), $uuid) }
+    '{ InsertMeta(Quoted[T](${ Lifter.tuple(excludeTuple) }, Nil, Nil), $uuid) }
 
 object UpdateMetaMacro:
   def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[UpdateMeta[T]] =
     val (excludeTuple, uuid) = MetaMacro[T](excludesRaw)
-    '{ UpdateMeta(Quoted[T](${Lifter.tuple(excludeTuple)}, Nil, Nil), $uuid) }
+    '{ UpdateMeta(Quoted[T](${ Lifter.tuple(excludeTuple) }, Nil, Nil), $uuid) }

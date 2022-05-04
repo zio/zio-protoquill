@@ -3,7 +3,6 @@ package io.getquill
 import io.getquill.context.Context
 import io.getquill.quat.Quat
 
-
 trait TestEntities {
   // Has a context self type in Scala2-Quill however, for Protoquill
   // Dialect, Naming type requirements are stricter so trying to avoid the use of Context[_, _] self type

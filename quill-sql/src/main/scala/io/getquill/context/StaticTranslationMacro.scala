@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ ReturnAction }
+import io.getquill.{ReturnAction}
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -17,12 +17,12 @@ import io.getquill.Planter
 import io.getquill.ast.Ast
 import io.getquill.ast.ScalarTag
 import io.getquill.idiom.Idiom
-import io.getquill.ast.{ Transform, QuotationTag }
+import io.getquill.ast.{Transform, QuotationTag}
 import io.getquill.QuotationLot
 import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.idiom.ReifyStatement
-import io.getquill.ast.{ Query => AQuery, _ }
+import io.getquill.ast.{Query => AQuery, _}
 import scala.util.{Success, Failure}
 import io.getquill.idiom.Statement
 import io.getquill.QAC
@@ -48,7 +48,7 @@ object StaticTranslationMacro:
   import io.getquill.NamingStrategy
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], topLevelQuat: Quat, wrap: ElaborationBehavior, idiom: Idiom, naming: NamingStrategy)(using Quotes):Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
+  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], topLevelQuat: Quat, wrap: ElaborationBehavior, idiom: Idiom, naming: NamingStrategy)(using Quotes): Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
@@ -63,15 +63,16 @@ object StaticTranslationMacro:
       val liftColumns =
         (ast: Ast, stmt: Statement) => Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
 
-      val returningAction = expandedAst match
-        // If we have a returning action, we need to compute some additional information about how to return things.
-        // Different database dialects handle these things differently. Some allow specifying a list of column-names to
-        // return from the query. Others compute this information from the query data directly. This information is stored
-        // in the dialect and therefore is computed here.
-        case r: ReturningAction =>
-          Some(io.getquill.norm.ExpandReturning.applyMap(r)(liftColumns)(idiom, naming))
-        case _ =>
-          None
+      val returningAction =
+        expandedAst match
+          // If we have a returning action, we need to compute some additional information about how to return things.
+          // Different database dialects handle these things differently. Some allow specifying a list of column-names to
+          // return from the query. Others compute this information from the query data directly. This information is stored
+          // in the dialect and therefore is computed here.
+          case r: ReturningAction =>
+            Some(io.getquill.norm.ExpandReturning.applyMap(r)(liftColumns)(idiom, naming))
+          case _ =>
+            None
 
       val (unparticularQuery, externals) = Unparticular.Query.fromStatement(stmt, idiom.liftingPlaceholder)
       Some((unparticularQuery, externals, returningAction, unliftedAst))
@@ -129,10 +130,10 @@ object StaticTranslationMacro:
     } yield (idiom, namingStrategy)
 
   def apply[I: Type, T: Type, D <: Idiom, N <: NamingStrategy](
-    quotedRaw: Expr[Quoted[QAC[I, T]]],
-    wrap: ElaborationBehavior,
-    topLevelQuat: Quat
-  )(using qctx:Quotes, dialectTpe:Type[D], namingType:Type[N]): Option[StaticState] =
+      quotedRaw: Expr[Quoted[QAC[I, T]]],
+      wrap: ElaborationBehavior,
+      topLevelQuat: Quat
+  )(using qctx: Quotes, dialectTpe: Type[D], namingType: Type[N]): Option[StaticState] =
     import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr

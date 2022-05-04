@@ -29,7 +29,7 @@ object StaticSpliceMacro {
         // Recurses through a series of selects do the core identifier e.g:
         // Select(Select(Ident("core"), "foo"), "bar") => recurseInto( {Select(Ident("core"), "foo")}, "bar" +: List("baz") )
         case IgnoreApplyNoargs(Select(inner, pathNode)) => recurseInto(inner, pathNode +: accum)
-        case id: Ident => Some((id, accum))
+        case id: Ident                                  => Some((id, accum))
         // If at the core of the nested selects is not a Ident, this does not match
         case other => None
 
@@ -39,16 +39,16 @@ object StaticSpliceMacro {
         // recurse on Module.Something
         case select: Select => recurseInto(select)
         // recurse on Module.SomethingAply() from which the empty-args apply i.e. `()` needs to be ignored
-        case select @ IgnoreApplyNoargs(_:Select) => recurseInto(select)
-        case id: Ident => Some((id, List()))
-        case _ => None
+        case select @ IgnoreApplyNoargs(_: Select) => recurseInto(select)
+        case id: Ident                             => Some((id, List()))
+        case _                                     => None
   end SelectPath
 
   extension [T](opt: Option[T])
     def nullAsNone =
       opt match
         case Some(null) => None
-        case _ => opt
+        case _          => opt
 
   object DefTerm:
     def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
@@ -83,7 +83,7 @@ object StaticSpliceMacro {
       }
 
   def apply[T: Type](valueRaw: Expr[T])(using Quotes): Expr[T] =
-    import quotes.reflect.{ Try => _, _ }
+    import quotes.reflect.{Try => _, _}
     import ReflectivePathChainLookup.StringOps._
     import io.getquill.ast._
 
@@ -101,10 +101,9 @@ object StaticSpliceMacro {
     val (pathRoot, selectPath) =
       Untype(value) match
         case SelectPath(pathRoot, selectPath) => (pathRoot, selectPath)
-        case other =>
+        case other                            =>
           // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
           report.throwError(s"Could not load a static value `${Format.Term(value)}` from ${Printer.TreeStructure.show(other)}")
-
 
     val (ownerTpe, path) =
       pathRoot match
@@ -132,16 +131,16 @@ object StaticSpliceMacro {
       s"Could not statically splice ${Format.Term(value)} because ${error}"
 
     val spliceEither =
-        for {
-          castSplice <- Try(splicedValue.current.asInstanceOf[T]).toEither.mapLeft(e => errorMsg(e.getMessage))
-          splicer    <- StaticSplice.Summon[T].mapLeft(str => errorMsg(str))
-          splice     <- Try(splicer(castSplice)).toEither.mapLeft(e => errorMsg(e.getMessage))
-        } yield splice
+      for {
+        castSplice <- Try(splicedValue.current.asInstanceOf[T]).toEither.mapLeft(e => errorMsg(e.getMessage))
+        splicer <- StaticSplice.Summon[T].mapLeft(str => errorMsg(str))
+        splice <- Try(splicer(castSplice)).toEither.mapLeft(e => errorMsg(e.getMessage))
+      } yield splice
 
     val spliceStr =
       spliceEither match
-        case Left(msg) => report.throwError(msg, valueRaw)
+        case Left(msg)    => report.throwError(msg, valueRaw)
         case Right(value) => value
 
-    UnquoteMacro('{ Quoted[T](Infix(List(${Expr(spliceStr)}), List(), true, false, $quat),Nil, Nil) })
+    UnquoteMacro('{ Quoted[T](Infix(List(${ Expr(spliceStr) }), List(), true, false, $quat), Nil, Nil) })
 }

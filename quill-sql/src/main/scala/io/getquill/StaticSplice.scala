@@ -22,7 +22,7 @@ object StaticSplice:
 
   object Summon:
     def apply[T: Type](using Quotes): Either[String, StaticSplice[T]] =
-      import quotes.reflect.{ Try => TTry, _}
+      import quotes.reflect.{Try => TTry, _}
       for {
         summonValue <- Expr.summon[StaticSplice[T]].toEitherOr(s"a StaticSplice[${Format.TypeOf[T]}] cannot be summoned")
         // Summoning StaticSplice[T] will given (SpliceString: StaticSplice[String])
@@ -31,7 +31,7 @@ object StaticSplice:
         staticSpliceType = Untype(summonValue.asTerm.underlyingArgument).tpe.widen
 
         untypedModule <- Load.Module.fromTypeRepr(staticSpliceType).toEither.mapLeft(_.getMessage)
-        module        <- Try(untypedModule.asInstanceOf[StaticSplice[T]]).toEither.mapLeft(_.getMessage)
+        module <- Try(untypedModule.asInstanceOf[StaticSplice[T]]).toEither.mapLeft(_.getMessage)
       } yield (module)
 
   object SpliceString extends StaticSplice[String]:
@@ -67,6 +67,5 @@ object StaticSplice:
     def apply(value: java.time.LocalDate) =
       value.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
   inline given StaticSplice[java.time.LocalDate] = SpliceLocalDate
-
 
 end StaticSplice

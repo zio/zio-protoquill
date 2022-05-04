@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ ReturnAction }
+import io.getquill.{ReturnAction}
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -51,9 +51,9 @@ trait ContextVerbPrepare[Dialect <: Idiom, Naming <: NamingStrategy]:
   type Session
   type Runner
 
-  type PrepareQueryResult //Usually: Session => Result[PrepareRow]
-  type PrepareActionResult //Usually: Session => Result[PrepareRow]
-  type PrepareBatchActionResult //Usually: Session => Result[List[PrepareRow]]
+  type PrepareQueryResult // Usually: Session => Result[PrepareRow]
+  type PrepareActionResult // Usually: Session => Result[PrepareRow]
+  type PrepareBatchActionResult // Usually: Session => Result[List[PrepareRow]]
 
   def prepareQuery(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: Runner): PrepareQueryResult
   def prepareSingle(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: Runner): PrepareQueryResult

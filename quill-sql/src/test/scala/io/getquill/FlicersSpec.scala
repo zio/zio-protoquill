@@ -94,7 +94,7 @@ class FlicersSpec extends Spec {
       }
       val r = ctx.run(q)
       r.extractor(Row("firstName" -> "Joe", "lastName" -> "Bloggs", "age" -> 123), s) mustEqual
-        PersonFlat("Joe","Bloggs",123)
+        PersonFlat("Joe", "Bloggs", 123)
     }
 
     "Filter Nested columns" in {
@@ -112,7 +112,7 @@ class FlicersSpec extends Spec {
            |""".stripMargin.collapseSpace
 
       r.extractor(Row("first" -> "Joe", "last" -> "Bloggs", "age" -> 123), s) mustEqual
-        PersonNest(Name("Joe","Bloggs"),123)
+        PersonNest(Name("Joe", "Bloggs"), 123)
     }
   }
 }

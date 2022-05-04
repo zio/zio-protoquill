@@ -4,7 +4,7 @@ import scala.reflect.ClassTag
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 import _root_.io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}
 import scala.compiletime.erasedValue
-import _root_.io.getquill.ast.Visibility.{ Hidden, Visible }
+import _root_.io.getquill.ast.Visibility.{Hidden, Visible}
 import scala.deriving._
 import scala.quoted._
 import _root_.io.getquill.parser.Lifter

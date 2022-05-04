@@ -25,14 +25,14 @@ object MirrorSession {
 }
 
 class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
-extends MirrorContextBase[Dialect, Naming] with AstSplicing
+    extends MirrorContextBase[Dialect, Naming] with AstSplicing
 
 trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
-extends Context[Dialect, Naming]
-with ContextVerbPrepare[Dialect, Naming]
-with ContextVerbTranslate[Dialect, Naming]
-with MirrorDecoders
-with MirrorEncoders { self =>
+    extends Context[Dialect, Naming]
+    with ContextVerbPrepare[Dialect, Naming]
+    with ContextVerbTranslate[Dialect, Naming]
+    with MirrorDecoders
+    with MirrorEncoders { self =>
   override type Result[T] = T
   override type RunQueryResult[T] = QueryMirror[T]
   override type RunQuerySingleResult[T] = QueryMirror[T]
@@ -79,7 +79,7 @@ with MirrorEncoders { self =>
   @targetName("runBatchAction")
   inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): BatchActionMirror = InternalApi.runBatchAction(quoted)
   @targetName("runBatchActionReturning")
-  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): BatchActionReturningMirror[T] =  InternalApi.runBatchActionReturning(quoted)
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): BatchActionReturningMirror[T] = InternalApi.runBatchActionReturning(quoted)
 
   override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner) =
     QueryMirror(string, prepare(Row(), session)._2, extractor, info)
@@ -107,7 +107,8 @@ with MirrorEncoders { self =>
       groups.map {
         case BatchGroupReturning(string, returningBehavior, prepare) =>
           (string, returningBehavior, prepare.map(_(Row(), session)._2))
-      }, extractor,
+      },
+      extractor,
       info
     )
 

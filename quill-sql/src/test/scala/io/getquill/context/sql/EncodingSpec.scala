@@ -1,46 +1,46 @@
 package io.getquill.context.sql
 
 import java.time.LocalDate
-import java.util.{ Date, UUID }
+import java.util.{Date, UUID}
 import io.getquill.context.Context
 import io.getquill._
 
 trait EncodingSpec extends Spec {
 
-  val context: SqlContext[_, _] //with TestEncoders with TestDecoders
+  val context: SqlContext[_, _] // with TestEncoders with TestDecoders
 
   import context._
 
   case class EncodingTestEntity(
-    v1:  String,
-    v2:  BigDecimal,
-    v3:  Boolean,
-    v4:  Byte,
-    v5:  Short,
-    v6:  Int,
-    v7:  Long,
-    v8:  Float,
-    v9:  Double,
-    v10: Array[Byte],
-    v11: Date,
-    v12: EncodingTestType,
-    v13: LocalDate,
-    v14: UUID,
-    o1:  Option[String],
-    o2:  Option[BigDecimal],
-    o3:  Option[Boolean],
-    o4:  Option[Byte],
-    o5:  Option[Short],
-    o6:  Option[Int],
-    o7:  Option[Long],
-    o8:  Option[Float],
-    o9:  Option[Double],
-    o10: Option[Array[Byte]],
-    o11: Option[Date],
-    o12: Option[EncodingTestType],
-    o13: Option[LocalDate],
-    o14: Option[UUID],
-    o15: Option[Number]
+      v1: String,
+      v2: BigDecimal,
+      v3: Boolean,
+      v4: Byte,
+      v5: Short,
+      v6: Int,
+      v7: Long,
+      v8: Float,
+      v9: Double,
+      v10: Array[Byte],
+      v11: Date,
+      v12: EncodingTestType,
+      v13: LocalDate,
+      v14: UUID,
+      o1: Option[String],
+      o2: Option[BigDecimal],
+      o3: Option[Boolean],
+      o4: Option[Byte],
+      o5: Option[Short],
+      o6: Option[Int],
+      o7: Option[Long],
+      o8: Option[Float],
+      o9: Option[Double],
+      o10: Option[Array[Byte]],
+      o11: Option[Date],
+      o12: Option[EncodingTestType],
+      o13: Option[LocalDate],
+      o14: Option[UUID],
+      o15: Option[Number]
   )
 
   inline def delete = quote {
@@ -92,8 +92,8 @@ trait EncodingSpec extends Spec {
         0.toShort,
         0,
         0L,
-        0F,
-        0D,
+        0f,
+        0d,
         Array[Byte](), // In ProtoQuill, Dotty requires this to be typed
         new Date(0),
         EncodingTestType(""),

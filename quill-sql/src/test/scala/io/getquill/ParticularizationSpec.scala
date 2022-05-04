@@ -3,7 +3,7 @@ package io.getquill
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
 
-class ParticularizationSpec extends  Spec {
+class ParticularizationSpec extends Spec {
 
   case class Ent(foo: String, bar: String)
 

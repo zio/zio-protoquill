@@ -10,6 +10,6 @@ object SimplifyFilterTrue extends StatelessTransformer {
   override def apply(ast: Ast): Ast =
     ast match {
       case Filter(q: Query, id, `trueVal`) => super.apply(q)
-      case _ => super.apply(ast)
+      case _                               => super.apply(ast)
     }
 }

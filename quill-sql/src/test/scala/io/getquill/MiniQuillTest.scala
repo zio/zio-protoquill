@@ -8,16 +8,15 @@ import scala.language.implicitConversions
 //import io.getquill.InsertMeta
 import io.getquill.util.debug.PrintMac
 
-
 object MiniQuillTest {
 
-  val ctx = new MirrorContext(PostgresDialect, Literal) //helloooooooo
+  val ctx = new MirrorContext(PostgresDialect, Literal) // helloooooooo
   import ctx._
 
   def main(args: Array[String]): Unit = {
 
-    //case class Person(id: Int, name: String, age: Int)
-    //case class Address(street: String, zip: Int, personId: Int)
+    // case class Person(id: Int, name: String, age: Int)
+    // case class Address(street: String, zip: Int, personId: Int)
 
     // case class PersonName(name: String)
 
@@ -33,14 +32,12 @@ object MiniQuillTest {
     //   query[PersonName]
     // }
 
-
     case class Person(name: String, age: Int)
 
     inline def q = quote {
       query[Person].map(_.age).sum
     }
     println(ctx.run(q))
-
 
     // inline def q = quote {
     //   query[Person].filter(p => p.name == lift("joe")) //helooo
@@ -157,13 +154,12 @@ object MiniQuillTest {
     //   println( run(q) ) // hello
     // }
 
-
     // TODO Exclude a column (via InsertMeta) from Optional object (i.e and multiple excludes)
     // TODO Exclude a column (via InsertMeta)from Insert meta with Insert Schema (i.e and multiple excludes)
     // TODO Exclude a column (via InsertMeta)from Optional object Insert meta with Insert Schema (i.e and multiple excludes)
 
     // println(q.ast)
-    //println( run(q) )
+    // println( run(q) )
 
     // hello
     // ============================ Testing Insert Returning =============================
@@ -180,16 +176,7 @@ object MiniQuillTest {
 
   def infixAndLiftQuery() = {
 
-    //hellooooooooooooooo
-
-
-
-
-
-
-
-
-
+    // hellooooooooooooooo
 
   }
 

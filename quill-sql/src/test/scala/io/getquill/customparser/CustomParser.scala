@@ -23,7 +23,7 @@ class CustomOperationsParser(rootParse: Parser)(using Quotes) extends Parser(roo
   import quotes.reflect._
   import CustomOps._
   def attempt =
-    case '{ ($i: Int)**($j: Int) } =>
+    case '{ ($i: Int) ** ($j: Int) } =>
       Infix(
         List("power(", " ,", ")"),
         List(rootParse(i), rootParse(j)),

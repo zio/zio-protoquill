@@ -4,7 +4,6 @@ import scala.language.implicitConversions
 
 import io.getquill.Quoted
 
-
 import io.getquill.ast._
 import io.getquill.QuotationLot
 import io.getquill.QuotationVase
@@ -49,7 +48,7 @@ class GenericDecoderCoproductTest extends Spec {
       typeValue match {
         case "circle" => classTag[Shape.Circle]
         case "square" => classTag[Shape.Square]
-        case _ => throw new IllegalArgumentException(s"Cannot resolve type: ${typeValue})")
+        case _        => throw new IllegalArgumentException(s"Cannot resolve type: ${typeValue})")
       }
     }
   }

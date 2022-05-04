@@ -10,7 +10,7 @@ import io.getquill.metaprog.PlanterExpr
 import io.getquill.LazyPlanter
 import io.getquill.Planter
 import io.getquill.ast.Ast
-import io.getquill.ast.{ Map => AMap, _ }
+import io.getquill.ast.{Map => AMap, _}
 import io.getquill.util.Interleave
 import io.getquill.idiom.StatementInterpolator._
 import scala.annotation.tailrec
@@ -68,12 +68,11 @@ object Particularize:
         liftType match
           case LiftChoice.ListLift(lifts) =>
             // using index 1 since SQL prepares start with $1 typically
-            val liftsPlaceholder = '{ ${lifts.expr}.zipWithIndex.map((_, index) => $runtimeLiftingPlaceholder($initialIndex + index)).mkString(", ") }
-            val liftsLength = '{ ${lifts.expr}.length }
+            val liftsPlaceholder = '{ ${ lifts.expr }.zipWithIndex.map((_, index) => $runtimeLiftingPlaceholder($initialIndex + index)).mkString(", ") }
+            val liftsLength = '{ ${ lifts.expr }.length }
             (liftsLength, liftsPlaceholder, liftType)
           case LiftChoice.SingleLift(lift) =>
             (Expr(1), '{ $runtimeLiftingPlaceholder($initialIndex) }, liftType)
-
 
       object Matrowl:
         sealed trait Ground:
@@ -116,31 +115,30 @@ object Particularize:
        */
       case class Matrowl private (doneWorks: List[Expr[String]], below: Matrowl | Matrowl.Ground):
         def dropIn(doneWork: Expr[String]): Matrowl =
-          //println(s"Dropping: ${Format.Expr(doneWork)} into ${this.toString}")
+          // println(s"Dropping: ${Format.Expr(doneWork)} into ${this.toString}")
           this.copy(doneWorks = doneWork +: this.doneWorks)
         def stack: Matrowl =
-          //println(s"Stack New Matrowl ():=> ${this.toString}")
+          // println(s"Stack New Matrowl ():=> ${this.toString}")
           Matrowl(List(), this)
         def pop: (List[Expr[String]], Matrowl) =
-          //println(s"Pop Top Matrowl: ${this.toString}")
+          // println(s"Pop Top Matrowl: ${this.toString}")
           below match
-            case m: Matrowl => (doneWorks, m)
+            case m: Matrowl        => (doneWorks, m)
             case e: Matrowl.Ground => report.throwError("Tokenization error, attempted to pop a bottom-level element")
         def pop2: (List[Expr[String]], List[Expr[String]], Matrowl) =
-          //println(s"Pop Two Matrowls...")
+          // println(s"Pop Two Matrowls...")
           val (one, firstBelow) = pop
           val (two, secondBelow) = firstBelow.pop
           (one, two, secondBelow)
         def isBottom: Boolean =
           below match
-            case m: Matrowl => false
+            case m: Matrowl        => false
             case e: Matrowl.Ground => true
         def scoop: List[Expr[String]] =
-          //println(s"Scoop From Matrowl: ${this.toString}")
+          // println(s"Scoop From Matrowl: ${this.toString}")
           doneWorks
         override def toString = s"(${doneWorks.map(Format.Expr(_)).mkString(", ")}) -> ${below.toString}"
       end Matrowl
-
 
       enum Work:
         case AlreadyDone(expr: Expr[String])
@@ -155,13 +153,12 @@ object Particularize:
       extension (stringExprs: Seq[Expr[String]])
         def mkStringExpr = stringExprs.foldLeft(Expr(""))((concatonation, nextExpr) => '{ $concatonation + $nextExpr })
 
-
       def token2Expr(token: Token): Expr[String] = {
         @tailrec
         def apply(
-          workList: List[Work],
-          matrowl: Matrowl,
-          placeholderCount:   Expr[Int] // I.e. the index of the '?' that is inserted in the query (that represents a lift) or the $N if an actual number is used (e.g. in the H2 context)
+            workList: List[Work],
+            matrowl: Matrowl,
+            placeholderCount: Expr[Int] // I.e. the index of the '?' that is inserted in the query (that represents a lift) or the $N if an actual number is used (e.g. in the H2 context)
         ): Expr[String] = workList match {
           case Nil =>
             if (!matrowl.isBottom)
@@ -169,7 +166,7 @@ object Particularize:
             matrowl.scoop.reverse.mkStringExpr
           case head :: tail =>
             head match {
-              case Work.Stack => apply(tail, matrowl.stack, placeholderCount)
+              case Work.Stack          => apply(tail, matrowl.stack, placeholderCount)
               case Work.Pop2(finished) =>
                 // we expect left := workIfListNotEmpty and right := workIfListEmpty
                 // this is the logical completion of the SetContainsToken(a, op, ScalarTagToken(tag)) case
@@ -178,8 +175,8 @@ object Particularize:
                 val finishedExpr = finished(left.reverse.mkStringExpr, right.reverse.mkStringExpr)
                 apply(tail, restOfMatrowl.dropIn(finishedExpr), placeholderCount)
 
-              case Work.AlreadyDone(expr)       =>    apply(tail, matrowl.dropIn(expr), placeholderCount)
-              case Work.Token(StringToken(s2))  =>    apply(tail, matrowl.dropIn(Expr(s2)), placeholderCount)
+              case Work.AlreadyDone(expr)      => apply(tail, matrowl.dropIn(expr), placeholderCount)
+              case Work.Token(StringToken(s2)) => apply(tail, matrowl.dropIn(Expr(s2)), placeholderCount)
               case Work.Token(SetContainsToken(a, op, b @ ScalarTagToken(tag))) =>
                 val (liftsLength, liftsExpr, liftChoice) = placeholders(tag.uid, placeholderCount)
                 liftChoice match
@@ -189,11 +186,12 @@ object Particularize:
                     val workIfListNotEmpty = Work.Token(stmt"$a $op (") :: Work.AlreadyDone(liftsExpr) :: Work.Token(stmt")") :: Nil
                     val workIfListEmpty = List(Work.Token(emptySetContainsToken(a)))
                     val complete =
-                      (workIfListNotEmpty: Expr[String], workIfListEmpty: Expr[String]) => '{
-                        if ($liftsLength != 0) $workIfListNotEmpty else $workIfListEmpty
-                      }
+                      (workIfListNotEmpty: Expr[String], workIfListEmpty: Expr[String]) =>
+                        '{
+                          if ($liftsLength != 0) $workIfListNotEmpty else $workIfListEmpty
+                        }
                     val work = Work.StackL ::: workIfListEmpty ::: Work.StackL ::: workIfListNotEmpty ::: List(Work.Pop2(complete))
-                    //println(s"** Push Two Variants ** - \nWork is: ${work}\nTail is: ${tail}")
+                    // println(s"** Push Two Variants ** - \nWork is: ${work}\nTail is: ${tail}")
                     // We can spliced liftsLength combo even if we're not splicing in the array itself (i.e. in cases)
                     // where we're splicing the empty token. That's fine since when we're splicing the empty token, the
                     // array length is zero.
@@ -201,7 +199,7 @@ object Particularize:
 
                   // Otherwise it's just a regular scalar-token expansion
                   case _ =>
-                    //println(s"** Push One Variant ** - \nWork is: ${stmt"$a $op ($b)"}\nTail is: ${tail}")
+                    // println(s"** Push One Variant ** - \nWork is: ${stmt"$a $op ($b)"}\nTail is: ${tail}")
                     apply(Work.Token(stmt"$a $op ($b)") +: tail, matrowl, placeholderCount)
 
               // The next two variants cannot be a list operation now since that was handled in the
@@ -209,11 +207,11 @@ object Particularize:
               // They can be set-operations on a lift but not one that can be empty
               case Work.Token(SetContainsToken(a, op, b)) =>
                 apply(Work.Token(stmt"$a $op ($b)") +: tail, matrowl, placeholderCount)
-              case Work.Token(ScalarTagToken(tag))        =>
+              case Work.Token(ScalarTagToken(tag)) =>
                 val (liftsLength, liftsExpr, _) = placeholders(tag.uid, placeholderCount)
                 apply(tail, matrowl.dropIn(liftsExpr), '{ $placeholderCount + $liftsLength })
 
-              case Work.Token(Statement(tokens))          =>
+              case Work.Token(Statement(tokens)) =>
                 apply(tokens.map(Work.Token(_)) ::: tail, matrowl, placeholderCount)
               case Work.Token(_: ScalarLiftToken) =>
                 throw new UnsupportedOperationException("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
@@ -226,8 +224,6 @@ object Particularize:
       token2Expr(statement)
     }
   end Static
-
-
 
   object Dynamic:
     /** Convenience constructor for doing particularization from an Unparticular.Query */
@@ -267,29 +263,29 @@ object Particularize:
       def isEmptyListLift(uid: String) =
         getLifts(uid) match
           case LiftChoice.ListLift(lifts) => lifts.values.isEmpty
-          case _ => false
+          case _                          => false
 
       def token2String(token: Token): String = {
         @tailrec
         def apply(
-          workList: List[Token],
-          sqlResult: Seq[String],
-          placeholderIndex: Int // I.e. the index of the '?' that is inserted in the query (that represents a lift)
+            workList: List[Token],
+            sqlResult: Seq[String],
+            placeholderIndex: Int // I.e. the index of the '?' that is inserted in the query (that represents a lift)
         ): String = workList match {
           case Nil => sqlResult.reverse.foldLeft("")((concatonation, nextExpr) => concatonation + nextExpr)
           case head :: tail =>
             head match {
-              case StringToken(s2)            => apply(tail, s2 +: sqlResult, placeholderIndex)
+              case StringToken(s2) => apply(tail, s2 +: sqlResult, placeholderIndex)
               case SetContainsToken(a, op, b) =>
                 b match
                   case ScalarTagToken(tag) if isEmptyListLift(tag.uid) =>
                     apply(emptySetContainsToken(a) +: tail, sqlResult, placeholderIndex)
                   case _ =>
                     apply(stmt"$a $op ($b)" +: tail, sqlResult, placeholderIndex)
-              case ScalarTagToken(tag)        =>
+              case ScalarTagToken(tag) =>
                 val (liftsLength, lifts) = placeholders(tag.uid, placeholderIndex)
                 apply(tail, lifts +: sqlResult, placeholderIndex + liftsLength)
-              case Statement(tokens)          => apply(tokens.foldRight(tail)(_ +: _), sqlResult, placeholderIndex)
+              case Statement(tokens) => apply(tokens.foldRight(tail)(_ +: _), sqlResult, placeholderIndex)
               case _: ScalarLiftToken =>
                 throw new UnsupportedOperationException("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
               case _: QuotationTagToken =>
@@ -302,6 +298,5 @@ object Particularize:
       token2String(statements)
     }
   end Dynamic
-
 
 end Particularize

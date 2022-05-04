@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ ReturnAction }
+import io.getquill.{ReturnAction}
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -57,13 +57,13 @@ sealed trait Extraction[-ResultRow, -Session, +T]:
   def requireSimple() =
     this match
       case ext: Extraction.Simple[_, _, _] => ext
-      case _ => throw new IllegalArgumentException("Extractor required")
+      case _                               => throw new IllegalArgumentException("Extractor required")
+
   /** Require an effect to be be returning and retrieve it. Effectful at compile-time since it can fail compilation */
   def requireReturning() =
     this match
       case ext: Extraction.Returning[_, _, _] => ext
-      case _ => throw new IllegalArgumentException("Returning Extractor required")
-
+      case _                                  => throw new IllegalArgumentException("Returning Extractor required")
 
 object Extraction:
   case class Simple[ResultRow, Session, T](extract: (ResultRow, Session) => T) extends Extraction[ResultRow, Session, T]
@@ -73,26 +73,25 @@ object Extraction:
 import io.getquill.generic.DecodeAlternate
 
 trait ContextStandard[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]
-  extends Context[Idiom, Naming]
-  with ContextVerbPrepareLambda[Idiom, Naming]
-
+    extends Context[Idiom, Naming]
+    with ContextVerbPrepareLambda[Idiom, Naming]
 
 trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
-  extends ProtoContext[Dialect, Naming] with EncodingDsl with Closeable:
+    extends ProtoContext[Dialect, Naming] with EncodingDsl with Closeable:
   self =>
 
   /**
-    * Base type used to determine whether there is an execution context that needs to be summoned to perform
-    * execution methods e.g. in the PostgresJasync contexts that use Scala Futures that need an ExecutionContext.
-    */
+   * Base type used to determine whether there is an execution context that needs to be summoned to perform
+   * execution methods e.g. in the PostgresJasync contexts that use Scala Futures that need an ExecutionContext.
+   */
   type RunnerBehavior <: RunnerSummoningBehavior
   protected def context: Runner = fail(s"Runner method not implemented for '${this.getClass.getName}' Context")
 
   implicit inline def dec[T]: GenericDecoder[ResultRow, Session, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, ResultRow, Session] }
 
-  //def probe(statement: String): Try[_]
+  // def probe(statement: String): Try[_]
   // todo add 'prepare' i.e. encoders here
-  //def executeAction(cql: String, prepare: Prepare = identityPrepare)(implicit executionContext: ExecutionContext): Result[RunActionResult]
+  // def executeAction(cql: String, prepare: Prepare = identityPrepare)(implicit executionContext: ExecutionContext): Result[RunActionResult]
 
   inline def lift[T](inline runtimeValue: T): T =
     ${ LiftMacro[T, PrepareRow, Session]('runtimeValue) } // Needs PrepareRow in order to be able to summon encoders
@@ -101,12 +100,13 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
     ${ LiftQueryMacro[T, U, PrepareRow, Session]('runtimeValue) }
 
   extension [T](inline q: Query[T]) {
+
     /**
      * When using this with FilterColumns make sure it comes FIRST. Otherwise the columns are you filtering
      * may have been nullified in the SQL before the filteration has actually happened.
      */
     inline def filterByKeys(inline map: Map[String, String]) =
-      q.filter(p => MapFlicer[T, PrepareRow, Session](p, map, null, (a, b) => (a == b) || (b == (null) ) ))
+      q.filter(p => MapFlicer[T, PrepareRow, Session](p, map, null, (a, b) => (a == b) || (b == (null))))
 
     inline def filterColumns(inline columns: List[String]) =
       q.map(p => ColumnsFlicer[T, PrepareRow, Session](p, columns))
