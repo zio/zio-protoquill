@@ -26,15 +26,13 @@ import io.getquill.context.LiftMacro
 import io.getquill._
 import io.getquill.dsl.InfixDsl
 import io.getquill.context.StaticSpliceMacro
+import scala.language.implicitConversions
 
 implicit val defaultParser: ParserLibrary = ParserLibrary
 
 object Dsl extends Dsl // BaseParserFactory.type doesn't seem to work with the LoadModule used in quoteImpl
 
-trait Dsl extends QuoteDsl with QueryDsl with MetaDsl
-
-trait MetaDsl extends QueryDsl {
-
+trait Dsl {
   inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, String))*): SchemaMeta[T] =
     ${ SchemaMetaMacro[T]('this, 'entity, 'columns) }
 
@@ -43,15 +41,11 @@ trait MetaDsl extends QueryDsl {
 
   /** Automatic implicit ordering DSL for: `query[Person].sortBy(_.field)(<here>)` */
   implicit def implicitOrd[T]: Ord[T] = Ord.ascNullsFirst
-}
 
-object QueryDsl {
   extension (str: String) {
     def like(other: String): Boolean = ???
   }
-}
 
-trait QueryDsl {
   inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
   inline def select[T]: Query[T] = ${ QueryMacro[T] }
 
@@ -70,10 +64,6 @@ trait QueryDsl {
           case (a: Option[_], b)            => a.exists(av => av != b)
           case (a, b: Option[_])            => b.exists(bv => bv != a)
           case (a, b)                       => a != b
-}
-
-trait QuoteDsl {
-  import scala.language.implicitConversions
 
   inline def static[T](inline value: T): T = ${ StaticSpliceMacro('value) }
 

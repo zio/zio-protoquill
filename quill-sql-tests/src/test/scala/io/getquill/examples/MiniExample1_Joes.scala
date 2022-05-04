@@ -2,10 +2,10 @@ package io.getquill.examples
 
 import scala.language.implicitConversions
 import io.getquill._
-import io.getquill.QueryDsl._
+
 
 object MiniExample1_Joes {
-  
+
   case class Person(name: String, age: Int)
 
 

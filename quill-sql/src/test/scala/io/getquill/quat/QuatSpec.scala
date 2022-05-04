@@ -5,7 +5,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers._
 import org.scalatest._
 import io.getquill.quat._
-import io.getquill.QueryDsl._
+
 import io.getquill._
 
 object TestEnum:

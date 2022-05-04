@@ -37,5 +37,5 @@ object UdtMeta:
         case None =>
           val typeName = TypeRepr.of[T].widen.typeSymbol.name
           // TODO quill.trace.types 'summoning' level should enable this
-          //println(s"MetaDsl not found. Making one with the type name: ${typeName}")
+          //println(s"Dsl not found. Making one with the type name: ${typeName}")
           UdtMetaDslMacro[T](Expr(typeName), Expr.ofList(Seq()))
