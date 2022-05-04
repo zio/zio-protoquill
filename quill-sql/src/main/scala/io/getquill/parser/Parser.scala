@@ -9,7 +9,6 @@ import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
 import io.getquill.Dsl
-import io.getquill.QueryDsl
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
 import io.getquill.metaprog.QuotationLotExpr
@@ -25,7 +24,7 @@ import io.getquill.metaprog.Pointable
 import io.getquill.metaprog.Extractors._
 import io.getquill.util.printer
 import io.getquill._
-import io.getquill.MetaDsl
+import io.getquill.Dsl
 import io.getquill.Ord
 import io.getquill.Embedded
 import io.getquill.metaprog.Is
@@ -201,8 +200,8 @@ class OrderingParser(val rootParse: Parser)(using Quotes) extends Parser(rootPar
   import quotes.reflect._
 
   def attempt: History ?=> PartialFunction[Expr[_], Ordering] = {
-    case '{ ($ordDsl: MetaDsl).implicitOrd } => AscNullsFirst
-    case '{ implicitOrd }                    => AscNullsFirst
+    case '{ ($ordDsl: Dsl).implicitOrd } => AscNullsFirst
+    case '{ implicitOrd }                => AscNullsFirst
 
     // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
     case Unseal(Apply(TypeApply(Select(Ident("Ord"), "apply"), _), args)) =>
@@ -711,8 +710,10 @@ class ExtrasParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse
 
 class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with ComparisonTechniques {
   import quotes.reflect._
-  import QueryDsl._
   import io.getquill.ast.Infix
+  // Note that if we import Dsl._ here then the "like" construct
+  // will be parsed from the Dsl.extensions as opposed to the exported ones?
+  // need to look into potential differences in these imports.
 
   // Handles named operations, ie Argument Operation Argument
   object NamedOp1 {

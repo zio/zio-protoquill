@@ -3,7 +3,7 @@ package io.getquill.examples
 import scala.language.implicitConversions
 import io.getquill._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
-import io.getquill.QueryDsl._
+
 import java.sql.Connection
 
 object MiniExample_LiftByKeys {
