@@ -17,7 +17,7 @@ class StaticSpliceSpec extends Spec {
     ctx.run { query[Person].filter(p => p.name == static(Mod.modDef)) }.string mustEqual
       "SELECT p.name, p.age FROM Person p WHERE p.name = 'modDefValue'"
     ctx.run { query[Person].filter(p => p.name == static(Mod.modAp())) }.string mustEqual
-     "SELECT p.name, p.age FROM Person p WHERE p.name = 'modApValue'"
+      "SELECT p.name, p.age FROM Person p WHERE p.name = 'modApValue'"
 
     ctx.run { query[Person].filter(p => p.name == static(Mod.Foo.fooVal)) }.string mustEqual
       "SELECT p.name, p.age FROM Person p WHERE p.name = 'fooValValue'"

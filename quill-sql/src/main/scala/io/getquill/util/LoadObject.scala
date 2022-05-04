@@ -7,7 +7,6 @@ import scala.util.Failure
 import scala.quoted._
 import io.getquill.util.Messages.TraceType
 
-
 // TODO Note that this does not seem to work when .type is used directly.
 // For example, in Dsl.scala, I tried using BaseParserFactory.type
 // but then created a delegate trait BaseParsreFactory for the object BaseParseFactory
@@ -53,7 +52,7 @@ object Load:
       } yield objectLoad
 
     def apply[T: Type](using Quotes): Try[T] =
-      import quotes.reflect.{ TypeRepr => TTypeRepr, _ }
+      import quotes.reflect.{TypeRepr => TTypeRepr, _}
       val tryLoad = fromTypeRepr(TTypeRepr.of[T])
       tryLoad.map(_.asInstanceOf[T])
   end Module
@@ -91,6 +90,6 @@ end Load
 inline def loadMac[T]: String = ${ loadMacImpl[T] }
 def loadMacImpl[T: Type](using Quotes): Expr[String] = {
   val loaded = Load.Module[T]
-  println( loaded )
+  println(loaded)
   Expr(loaded.toString)
 }

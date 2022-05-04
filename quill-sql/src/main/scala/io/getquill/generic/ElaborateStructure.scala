@@ -1,11 +1,10 @@
 package io.getquill.generic
 
-
 import scala.reflect.ClassTag
 import scala.compiletime.{erasedValue, summonFrom, constValue}
 import io.getquill.ast.{Tuple => AstTuple, Map => AMap, Query => AQuery, _}
 import scala.compiletime.erasedValue
-import io.getquill.ast.Visibility.{ Hidden, Visible }
+import io.getquill.ast.Visibility.{Hidden, Visible}
 import scala.deriving._
 import scala.quoted._
 import io.getquill.parser.Lifter
@@ -111,7 +110,7 @@ object ElaborateStructure {
     def asLeaf = this.copy(typeType = Leaf, children = List())
     def paths =
       def pathsRecurse(node: Term, topLevel: Boolean = false): List[String] =
-        def emptyIfTop(str: String) = if(topLevel) "" else str
+        def emptyIfTop(str: String) = if (topLevel) "" else str
         node match
           case Term(name, _, Nil, _) => List(name)
           case Term(name, _, childProps, _) =>
@@ -123,7 +122,7 @@ object ElaborateStructure {
     // Used by coproducts, merges all fields of a term with another if this is valid
     // Note that T is only needed for the error message. Maybe take it out once we store Types inside of Term
     def merge[T: Type](other: Term)(using quotes: Quotes) = {
-      import quotes.reflect.{ Term => TTerm, _ }
+      import quotes.reflect.{Term => TTerm, _}
 
       // Terms must both have the same name
       if (this.name != other.name)
@@ -163,9 +162,12 @@ object ElaborateStructure {
 
     // Not sure if Branch Terms should have hidden properties
     def property(parent: Ast, name: String, termType: TermType) =
-      Property.Opinionated(parent, name, Renameable.neutral,
+      Property.Opinionated(
+        parent,
+        name,
+        Renameable.neutral,
         termType match {
-          case Leaf => Visible
+          case Leaf   => Visible
           case Branch => Hidden
         }
       )
@@ -180,11 +182,11 @@ object ElaborateStructure {
           // Add field name to the output: x.width -> (x.width, width)
           output.map(ast => (ast, name))
 
-
         case Term(name, tt, list, false) =>
           val output =
             list.flatMap(elem =>
-              toAst(elem, property(parent, name, tt)))
+              toAst(elem, property(parent, name, tt))
+            )
           // Add field name to the output
           output.map((ast, childName) => (ast, name + childName))
 
@@ -271,7 +273,7 @@ object ElaborateStructure {
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct =>
         base[tpe](node, side) :: collectFields(node, Type.of[fields], Type.of[types], side)
       case (_, '[EmptyTuple]) => Nil
-      case _ => report.throwError("Cannot Derive Sum during Type Flattening of Expression:\n" + (fieldsTup, typesTup))
+      case _                  => report.throwError("Cannot Derive Sum during Type Flattening of Expression:\n" + (fieldsTup, typesTup))
     }
   }
 
@@ -281,7 +283,7 @@ object ElaborateStructure {
 
     def constValue[T: Type]: String =
       TypeRepr.of[T] match {
-        case ConstantType(IntConstant(value)) => value.toString
+        case ConstantType(IntConstant(value))    => value.toString
         case ConstantType(StringConstant(value)) => value.toString
         // Macro error
       }
@@ -298,23 +300,23 @@ object ElaborateStructure {
           case '[tpe] =>
             if (Type.of[tpe].isProduct)
               val childTerm = Term(Type.of[field].constValue, Branch, optional = true)
-              //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
+              // println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
               val baseTerm = base[tpe](childTerm, side)
               flatten(node, Type.of[fields], Type.of[types], side, baseTerm +: accum)
             else
               val childTerm = Term(Type.of[field].constValue, Leaf, optional = true)
-              //println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
+              // println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
               flatten(node, Type.of[fields], Type.of[types], side, childTerm +: accum)
 
-      case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct && Type.of[tpe].notOption  =>
+      case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct && Type.of[tpe].notOption =>
         val childTerm = Term(Type.of[field].constValue, Branch)
-        //println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
+        // println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
         val baseTerm = base[tpe](childTerm, side)
         flatten(node, Type.of[fields], Type.of[types], side, baseTerm +: accum)
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].notOption =>
         val childTerm = Term(Type.of[field].constValue, Leaf)
-        //println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
+        // println(s"------ Non-Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
         flatten(node, Type.of[fields], Type.of[types], side, childTerm +: accum)
 
       case (_, '[EmptyTuple]) => accum.reverse
@@ -345,32 +347,33 @@ object ElaborateStructure {
    * {{ Term(name, Term(x, Branch), Leaf)) }}.
    * That means that we need to know whether to look for an encoder as opposed to a decoder
    * when trying to wrap this type.
-   *
    */
   def base[T: Type](term: Term, side: ElaborationSide, udtBehavior: UdtBehavior = UdtBehavior.Leaf)(using Quotes): Term = {
     import quotes.reflect.{Term => QTerm, _}
 
     // for errors/warnings
-    def encDecText = side match
-      case ElaborationSide.Encoding => "encodeable"
-      case ElaborationSide.Decoding => "decodeable"
+    def encDecText =
+      side match
+        case ElaborationSide.Encoding => "encodeable"
+        case ElaborationSide.Decoding => "decodeable"
 
-    val isAutomaticLeaf = side match
-      // Not sure why the UDT part is needed since it shuold always have a GenericEncoder/Decoder anyway
-      case _ if (TypeRepr.of[T] <:< TypeRepr.of[io.getquill.Udt]) =>
-        //println(s"------- TREATING UDT as Leaf ${Format.TypeOf[T]}")
-        // If we are elaborating a UDT and are told to wrap normally, make sure that this is done
-        // even if an encoder exists for the UDT. Otherwise, automatically treat the UDT as a Leaf entity
-        // (since an encoder for it should have been derived by the macro that used UdtBehavior.Derive)
-        udtBehavior match
-          case UdtBehavior.Leaf => true
-          case UdtBehavior.Derive => false
-      case ElaborationSide.Encoding =>
-        //println(s"------- ALREDY EXISTS Encoder for ${Format.TypeOf[T]}")
-        Expr.summon[GenericEncoder[T, _, _]].isDefined
-      case ElaborationSide.Decoding =>
-        //println(s"------- ALREDY EXISTS Decoder for ${Format.TypeOf[T]}")
-        Expr.summon[GenericDecoder[_, _, T, DecodingType.Specific]].isDefined
+    val isAutomaticLeaf =
+      side match
+        // Not sure why the UDT part is needed since it shuold always have a GenericEncoder/Decoder anyway
+        case _ if (TypeRepr.of[T] <:< TypeRepr.of[io.getquill.Udt]) =>
+          // println(s"------- TREATING UDT as Leaf ${Format.TypeOf[T]}")
+          // If we are elaborating a UDT and are told to wrap normally, make sure that this is done
+          // even if an encoder exists for the UDT. Otherwise, automatically treat the UDT as a Leaf entity
+          // (since an encoder for it should have been derived by the macro that used UdtBehavior.Derive)
+          udtBehavior match
+            case UdtBehavior.Leaf   => true
+            case UdtBehavior.Derive => false
+        case ElaborationSide.Encoding =>
+          // println(s"------- ALREDY EXISTS Encoder for ${Format.TypeOf[T]}")
+          Expr.summon[GenericEncoder[T, _, _]].isDefined
+        case ElaborationSide.Decoding =>
+          // println(s"------- ALREDY EXISTS Decoder for ${Format.TypeOf[T]}")
+          Expr.summon[GenericDecoder[_, _, T, DecodingType.Specific]].isDefined
 
     // TODO Back here. Should have a input arg that asks whether elaboration is
     //      on the encoding or on the decoding side.
@@ -381,19 +384,19 @@ object ElaborateStructure {
     // See if there is a generic encoder for it. Since there are no derived generic encoders,
     // (only Generic Decoders), it is a good way to tell if something is a value type or not.
     if (isAutomaticLeaf)
-        term.asLeaf
-      // Otherwise, summon the mirror and wrap the value
+      term.asLeaf
+    // Otherwise, summon the mirror and wrap the value
     else
       // if there is a decoder for the term, just return the term
       Expr.summon[Mirror.Of[T]] match
         case Some(ev) =>
           // Otherwise, recursively summon fields
           ev match
-            case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+            case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
               val children = flatten(term, Type.of[elementLabels], Type.of[elementTypes], side)
               term.withChildren(children)
             // TODO Make sure you can summon a ColumnResolver if there is a SumMirror, otherwise this kind of decoding should be impossible
-            case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
+            case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
               // Find field infos (i.e. Term objects) for all potential types that this coproduct could be
               val alternatives = collectFields(term, Type.of[elementLabels], Type.of[elementTypes], side)
               // Then merge them together to get one term representing all of their fields types.
@@ -401,7 +404,9 @@ object ElaborateStructure {
               // You would get Term(width, height, radius)
               alternatives.reduce((termA, termB) => termA.merge[T](termB))
             case _ =>
-              report.throwError(s"Althought a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator. It's mirror is ${Format.Expr(ev)}")
+              report.throwError(
+                s"Althought a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator. It's mirror is ${Format.Expr(ev)}"
+              )
         case None =>
           report.throwError(s"A mirror of the type ${Format.TypeOf[T]} cannot be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator.")
   }
@@ -425,10 +430,7 @@ object ElaborateStructure {
   def ofAribtraryType[T: Type](baseName: String, side: ElaborationSide)(using Quotes): Ast =
     productized(side, baseName)
 
-
   /**
-   *
-   *
    * Example:
    *   case class Person(name: String, age: Option[Int])
    *   val p = Person("Joe")
@@ -488,12 +490,12 @@ object ElaborateStructure {
     def innerType(tpe: Type[_]) =
       tpe match
         case '[Option[t]] => Type.of[t]
-        case _ => tpe
+        case _            => tpe
 
     def isOptional(tpe: Type[_]) =
       tpe match
         case '[Option[t]] => true
-        case _ => false
+        case _            => false
 
     def summonElaboration[T: Type] =
       val elaboration = ElaborateStructure.Term.ofProduct[T](side, udtBehavior = udtBehavior)
@@ -531,8 +533,10 @@ object ElaborateStructure {
         case '[t] =>
           if (TypeRepr.of[t] =:= TypeRepr.of[Any])
             lazy val showableExprPath = '{ (input: T) => ${ exprPath('input) } }
-            report.warning(s"The following the expression was typed `Any`: ${Format.Expr(showableExprPath)}. Will likely not be able to summon an encoder for this (the actual type was: ${Format.TypeOf[T]} in ${Format.TypeRepr(showableExprPath.asTerm.tpe)})  (the other param was ${Format.TypeOf[T]}.")
-          '{ ${exprPath(productValue)}.asInstanceOf[t] }
+            report.warning(s"The following the expression was typed `Any`: ${Format.Expr(showableExprPath)}. Will likely not be able to summon an encoder for this (the actual type was: ${Format.TypeOf[T]} in ${Format.TypeRepr(
+              showableExprPath.asTerm.tpe
+            )})  (the other param was ${Format.TypeOf[T]}.")
+          '{ ${ exprPath(productValue) }.asInstanceOf[t] }
     }
     if (labels.length != pathLambdas.length)
       report.throwError(s"List of (${labels.length}) labels: ${labels} does not match list of (${paths.length}) paths that they represent: ${paths.map(Format.Expr(_))}")
@@ -545,11 +549,12 @@ object ElaborateStructure {
 
   private[getquill] def decomposedLiftsOfProductValue[T: Type](elaboration: Term)(using Quotes): List[(Expr[T] => Expr[_], Type[_])] =
     DeconstructElaboratedEntityLevels[T](elaboration)
+
   /**
    * Flatten the elaboration from 'node' into a completely flat product type
    * Technicallly don't need Type T but it's very useful to know for errors and it's an internal API so I'll keep it for now
    */
-  private[getquill] def productValueToAst[T: Type](node: Term /* i.e. the elaboration */)(using Quotes): (String, Ast) =
+  private[getquill] def productValueToAst[T: Type](node: Term /* i.e. the elaboration */ )(using Quotes): (String, Ast) =
     def toAstRec(node: Term, parentTerm: String, topLevel: Boolean = false): (String, Ast) =
       def notTopLevel(str: String) = if (topLevel) "" else str
       node match

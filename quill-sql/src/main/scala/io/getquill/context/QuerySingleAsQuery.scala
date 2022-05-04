@@ -20,7 +20,7 @@ object QuerySingleAsQuery:
     import quotes.reflect._
     quoted match
       case UprootableWithLifts(QuotedExpr(ast, _, _), lifts) =>
-        '{ Quoted[Query[T]]($ast, ${Expr.ofList(lifts.map(_.plant))}, Nil) }
+        '{ Quoted[Query[T]]($ast, ${ Expr.ofList(lifts.map(_.plant)) }, Nil) }
       case _ =>
         '{ Quoted[Query[T]]($quoted.ast, $quoted.lifts, $quoted.runtimeQuotes) }
 

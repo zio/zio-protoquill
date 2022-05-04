@@ -4,7 +4,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.must.Matchers
 
-import scala.concurrent.{ Await, Future }
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 import io.getquill.Quoted
 import io.getquill.EagerPlanter
@@ -115,9 +115,10 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
     }
     object `(+)` {
       def apply(a: Ast, b: Ast) = BinaryOperation(a, StringOperator.+, b)
-      def unapply(ast: Ast) = ast match
-        case BinaryOperation(a, StringOperator.+, b) => Some(a, b)
-        case _ => None
+      def unapply(ast: Ast) =
+        ast match
+          case BinaryOperation(a, StringOperator.+, b) => Some(a, b)
+          case _                                       => None
     }
   }
 

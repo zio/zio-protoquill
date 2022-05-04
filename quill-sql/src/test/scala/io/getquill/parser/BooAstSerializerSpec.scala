@@ -67,7 +67,7 @@ class BooSerializerSpec extends Spec {
 
   "tupleProperty" in {
     val QV = Quat.Value
-    //val v = Tuple(List(Property(Ident("person", Quat.Product("name" -> QV, "age" -> QV)), "name")))
+    // val v = Tuple(List(Property(Ident("person", Quat.Product("name" -> QV, "age" -> QV)), "name")))
     val v = Tuple(List(Ident("person", Quat.Value)))
     assert(repickle(v) == v)
   }
@@ -98,7 +98,7 @@ class BooSerializerSpec extends Spec {
       SortBy(
         Entity("TestEntity", Nil, TestEntityQuat),
         IdT("t"),
-        Tuple(List(PropT("t","i"), PropT("t","s"))),
+        Tuple(List(PropT("t", "i"), PropT("t", "s"))),
         TupleOrdering(List(Desc, Asc))
       )
     assert(repickle(v) == v)

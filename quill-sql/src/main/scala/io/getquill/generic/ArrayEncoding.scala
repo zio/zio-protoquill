@@ -12,7 +12,7 @@ import scala.language.higherKinds
 import io.getquill.MappedEncoding
 
 trait ArrayEncoding extends EncodingDsl {
-  //self: SqlContext[_, _] =>
+  // self: SqlContext[_, _] =>
 
   type CBF[T, Col] = Factory[T, Col]
 
@@ -41,20 +41,24 @@ trait ArrayEncoding extends EncodingDsl {
   implicit def arrayLocalDateDecoder[Col <: Seq[LocalDate]](implicit bf: CBF[LocalDate, Col]): Decoder[Col]
 
   implicit def arrayMappedEncoder[I, O, Col[X] <: Seq[X]](
-    implicit
-    mapped: MappedEncoding[I, O],
-    e:      Encoder[Seq[O]]
+      implicit
+      mapped: MappedEncoding[I, O],
+      e: Encoder[Seq[O]]
   ): Encoder[Col[I]] = {
     mappedEncoder[Col[I], Seq[O]](MappedEncoding((col: Col[I]) => col.map(mapped.f)), e)
   }
 
   implicit def arrayMappedDecoder[I, O, Col[X] <: Seq[X]](
-    implicit
-    mapped: MappedEncoding[I, O],
-    d:      Decoder[Seq[I]],
-    bf:     Factory[O, Col[O]]
+      implicit
+      mapped: MappedEncoding[I, O],
+      d: Decoder[Seq[I]],
+      bf: Factory[O, Col[O]]
   ): Decoder[Col[O]] = {
-    mappedDecoder[Seq[I], Col[O]](MappedEncoding((col: Seq[I]) =>
-      col.foldLeft(bf.newBuilder)((b, x) => b += mapped.f(x)).result), d)
+    mappedDecoder[Seq[I], Col[O]](
+      MappedEncoding((col: Seq[I]) =>
+        col.foldLeft(bf.newBuilder)((b, x) => b += mapped.f(x)).result
+      ),
+      d
+    )
   }
 }

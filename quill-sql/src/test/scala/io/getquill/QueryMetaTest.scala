@@ -3,8 +3,6 @@ package io.getquill
 import scala.language.implicitConversions
 import io.getquill.QuotationLot
 
-
-
 import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.Quoted
 import io.getquill.Planter
@@ -63,7 +61,7 @@ class QueryMetaTest extends Spec with Inside {
     }
 
     "static meta" - {
-      implicit inline def qm: QueryMeta[PersonName, String] = { //hellooo
+      implicit inline def qm: QueryMeta[PersonName, String] = { // hellooo
         queryMeta[PersonName, String](
           quote {
             (q: Query[PersonName]) => q.map(p => p.name)
@@ -81,8 +79,8 @@ class QueryMetaTest extends Spec with Inside {
       "dynamic query shuold yield dynamic requst" in {
         val people = quote { query[PersonName] }
         val result = ctx.run(people)
-        //println("Result: " + result.string)
-        //println("=== Result: " + io.getquill.util.Messages.qprint(result.info.ast))
+        // println("Result: " + result.string)
+        // println("=== Result: " + io.getquill.util.Messages.qprint(result.info.ast))
         result.string mustEqual """querySchema("PersonName").map(p => p.name)"""
         result.info.executionType mustEqual ExecutionType.Dynamic
       }

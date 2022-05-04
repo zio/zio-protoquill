@@ -45,13 +45,13 @@ class Scala3FeaturesSpec extends Spec {
 
         ctx.run(filterPerson(query[Person])(Filter.ByName("Joe")))
       }
-      */
+       */
 
       // Need to do it like this
       "with lift" in {
         inline def filterPerson(inline q: Query[Person])(inline f: Filter) =
           inline f match
-            case Filter.ByName(name) => q.filter(p => p.name == name)
+            case Filter.ByName(name)    => q.filter(p => p.name == name)
             case Filter.ByAge(from, to) => q.filter(p => p.age > from && p.age < to)
 
         ctx.run(filterPerson(query[Person])(Filter.ByName(lift("Joe")))).triple mustEqual (
@@ -78,7 +78,7 @@ class Scala3FeaturesSpec extends Spec {
       "regular" in {
         inline def filterPerson(inline q: Query[Person])(inline f: Filter) =
           inline f match
-            case Filter.ByName(name) => q.filter(p => p.name == name)
+            case Filter.ByName(name)    => q.filter(p => p.name == name)
             case Filter.ByAge(from, to) => q.filter(p => p.age > from && p.age < to)
 
         ctx.run(filterPerson(query[Person])(Filter.ByName("Joe"))).triple mustEqual (

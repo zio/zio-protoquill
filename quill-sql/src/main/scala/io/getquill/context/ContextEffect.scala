@@ -2,7 +2,6 @@ package io.getquill.context
 
 import scala.language.higherKinds
 
-
 // TODO In the Scala 2 Quill, move this into the Portable module
 /**
  * In order to be able to reuse methods in the Jdbc Context as well as others, there must be a way
@@ -10,6 +9,7 @@ import scala.language.higherKinds
  * generic manner.
  */
 trait ContextEffect[F[_]] {
+
   /**
    * Lift an element or block of code in the context into the specified effect.
    */

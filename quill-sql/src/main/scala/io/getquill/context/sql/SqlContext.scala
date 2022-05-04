@@ -2,16 +2,16 @@ package io.getquill.context.sql
 
 import java.time.LocalDate
 
-import io.getquill.idiom.{ Idiom => BaseIdiom }
-import java.util.{ Date, UUID }
+import io.getquill.idiom.{Idiom => BaseIdiom}
+import java.util.{Date, UUID}
 
 import io.getquill.context.Context
 import io.getquill.NamingStrategy
 import io.getquill.generic.EncodingDsl
 
 trait SqlContext[Idiom <: BaseIdiom, Naming <: NamingStrategy]
-  extends Context[Idiom, Naming]
-  with EncodingDsl {
+    extends Context[Idiom, Naming]
+    with EncodingDsl {
 
   implicit def optionDecoder[T](implicit d: Decoder[T]): Decoder[Option[T]]
   implicit def optionEncoder[T](implicit d: Encoder[T]): Encoder[Option[T]]

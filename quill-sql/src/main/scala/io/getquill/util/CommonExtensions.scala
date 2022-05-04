@@ -13,21 +13,21 @@ object CommonExtensions:
       def asTryFail(e: Throwable): Try[T] =
         opt match
           case Some(v) => Success(v)
-          case None => Failure(e)
+          case None    => Failure(e)
 
   object Either:
     extension [T](opt: Option[T])
       def toEitherOr[L](leftValue: L) =
         opt match
           case Some(value) => Right(value)
-          case None => Left(leftValue)
+          case None        => Left(leftValue)
 
     extension [L, R](either: Either[L, R])
       def mapLeft[L1](f: L => L1): Either[L1, R] =
         either.left.map(f)
       def discardLeft(f: L => Nothing): R =
         either match
-          case Left(l) => f(l)
+          case Left(l)      => f(l)
           case Right(value) => value
   end Either
 

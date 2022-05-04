@@ -44,9 +44,7 @@ trait OptionQuerySpec extends Spec {
   )
 
   inline def `Simple Map with GetOrElse` = quote {
-    query[Address].map(
-      a => (a.street, a.otherExtraInfo.map(info => info + " suffix").getOrElse("baz"))
-    )
+    query[Address].map(a => (a.street, a.otherExtraInfo.map(info => info + " suffix").getOrElse("baz")))
   }
   val `Simple Map with GetOrElse Result` = List(
     ("123 Fake Street", "something suffix"),
@@ -56,9 +54,7 @@ trait OptionQuerySpec extends Spec {
   )
 
   inline def `Simple Map with Condition and GetOrElse` = quote {
-    query[Address].map(
-      a => (a.street, a.otherExtraInfo.map(info => if (info == "something") "foo" else "bar").getOrElse("baz"))
-    )
+    query[Address].map(a => (a.street, a.otherExtraInfo.map(info => if (info == "something") "foo" else "bar").getOrElse("baz")))
   }
   val `Simple Map with Condition and GetOrElse Result` = List(
     ("123 Fake Street", "foo"),

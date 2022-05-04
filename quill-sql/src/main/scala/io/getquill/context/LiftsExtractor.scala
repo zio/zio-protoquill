@@ -14,7 +14,7 @@ object LiftsExtractor:
   object Dynamic:
     def apply[PrepareRowTemp, Session](allLifts: List[Planter[_, _, _]], row: PrepareRowTemp, session: Session) =
       val lifts = allLifts.map {
-        case e: EagerPlanter[_, _, _] => e
+        case e: EagerPlanter[_, _, _]     => e
         case e: EagerListPlanter[_, _, _] => e
         case l: LazyPlanter[_, _, _] =>
           throw new IllegalArgumentException(s"The value ${l.value} has a lazy lift which was spliced into a Dynamic Query. Lazy Lifts are only allowed for Compile-Time queries.")
@@ -59,7 +59,7 @@ object LiftsExtractor:
         case ((idx, values, row), lift) =>
           val (increment, newRow, value) =
             lift match
-              case eager: EagerPlanter[_, _, _] => encodeSingleElement(eager, idx, row)
+              case eager: EagerPlanter[_, _, _]         => encodeSingleElement(eager, idx, row)
               case eagerList: EagerListPlanter[_, _, _] => encodeElementList(eagerList, idx, row)
               case _ =>
                 throw new IllegalArgumentException(s"Lifts must be extracted from EagerLift or EagerList Lift but ${lift} found")

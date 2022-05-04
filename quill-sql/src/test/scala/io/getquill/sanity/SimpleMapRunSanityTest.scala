@@ -32,7 +32,7 @@ class SimpleMapRunSanityTest extends Spec {
     val ctx = new MirrorContext(MirrorIdiom, Literal)
     import ctx._
     val output = ctx.run(qq).string
-     output mustEqual """querySchema("SanePerson").map(p => p.name)"""
+    output mustEqual """querySchema("SanePerson").map(p => p.name)"""
   }
 
 }

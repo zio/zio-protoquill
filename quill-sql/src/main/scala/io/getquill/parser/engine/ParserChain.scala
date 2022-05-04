@@ -26,7 +26,7 @@ object ParserChain:
 
   private final case class OrElse(left: ParserChain, right: ParserChain)(using Quotes) extends ParserChain:
     def name = s"${left.name}_or_${right.name}"
-    protected def build(rootParse:Parser): Parser =
+    protected def build(rootParse: Parser): Parser =
       new Parser(rootParse):
         def attempt =
           val leftOrRightMatch: PartialFunction[Expr[_], Option[Ast]] =

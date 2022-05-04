@@ -14,16 +14,16 @@ case class Row(data: (String, Any)*) {
         None
   }
 
-  private def maxNumberedRow = 
-    dataMap.keySet.foldLeft(0) { (currIndex, key) =>  
+  private def maxNumberedRow =
+    dataMap.keySet.foldLeft(0) { (currIndex, key) =>
       key match {
         case TupleIndex(index) if (index > currIndex) => index
-        case _ => currIndex
+        case _                                        => currIndex
       }
     }
   private def nextNumberedRow = maxNumberedRow + 1
   private def nextTupleIndex = s"_${nextNumberedRow}"
-    
+
   def add(value: Any) = Row((data :+ (nextTupleIndex, value)): _*)
   def add(key: String, value: Any) = Row((data :+ (key, value)): _*)
 
@@ -39,7 +39,7 @@ case class Row(data: (String, Any)*) {
       case other => throw new RuntimeException(s"Invalid column type. Expected '${t.runtimeClass}', but got '$other'")
     }
 
-  def indexOfKey(key: String) = 
+  def indexOfKey(key: String) =
     val output = data.indexWhere(d => d._1 == key)
     if (output == -1) throw new IllegalArgumentException(s"Cannot find a property called '${key}'")
     output

@@ -1,13 +1,11 @@
-
 package io.getquill.context
-
 
 import scala.quoted._
 import io.getquill.norm.BetaReduction
 import io.getquill.util.Load
 import io.getquill.parser.ParserFactory
 import io.getquill.generic.ElaborateStructure
-import io.getquill.ast.{ Ident => AIdent, Insert => AInsert, Update => AUpdate, _ }
+import io.getquill.ast.{Ident => AIdent, Insert => AInsert, Update => AUpdate, _}
 import io.getquill.parser.Lifter
 import io.getquill.parser.Unlifter
 import io.getquill.metaprog.QuotationLotExpr
@@ -95,7 +93,7 @@ object InsertUpdateMacro {
     def retrieveAssignmentTuple(quoted: Quoted[_]): Set[Ast] =
       quoted.ast match
         case Tuple(values) if (values.forall(_.isInstanceOf[Property])) => values.toSet
-        case other => throw new IllegalArgumentException(s"Invalid values in InsertMeta: ${other}. An InsertMeta AST must be a tuple of Property elements.")
+        case other                                                      => throw new IllegalArgumentException(s"Invalid values in InsertMeta: ${other}. An InsertMeta AST must be a tuple of Property elements.")
   }
 
   // Summon state of a schemaMeta (i.e. whether an implicit one could be summoned and whether it is static (i.e. can produce a compile-time query or dynamic))
@@ -108,7 +106,6 @@ object InsertUpdateMacro {
           s"EntitySummonState.Static($value, ${lifts.map(Format.Expr(_))})"
         case Dynamic(uid, quotation) =>
           s"EntitySummonState.Dynamic($uid, ${Format.Expr(quotation)})"
-
 
   // Summon state of a updateMeta/insertMeta that indicates which columns to ignore (i.e. whether an implicit one could be summoned and whether it is static (i.e. can produce a compile-time query or dynamic))
   enum IgnoresSummonState[+T]:
@@ -171,9 +168,9 @@ object InsertUpdateMacro {
 
           case _ =>
             report.throwError(s"Cannot process illegal insert meta: ${Format.Expr(schema)}")
-              // TODO Make an option to ignore dynamic entity schemas and return the plain entity?
-              //println("WARNING: Only inline schema-metas are supported for insertions so far. Falling back to a plain entity.")
-              //plainEntity
+    // TODO Make an option to ignore dynamic entity schemas and return the plain entity?
+    // println("WARNING: Only inline schema-metas are supported for insertions so far. Falling back to a plain entity.")
+    // plainEntity
     end InserteeSchema
 
     enum MacroType:
@@ -193,7 +190,6 @@ object InsertUpdateMacro {
           case MacroType.Insert => Expr.summon[InsertMeta[T]]
           case MacroType.Update => Expr.summon[UpdateMeta[T]]
 
-
     object IgnoredColumns:
       def summon: IgnoresSummonState[Set[Ast]] =
         // If someone has defined a: given meta: InsertMeta[Person] = insertMeta[Person](_.id) or UpdateMeta[Person] = updateMeta[Person](_.id)
@@ -212,8 +208,8 @@ object InsertUpdateMacro {
                 IgnoresSummonState.Dynamic(uid, quotation)
               case _ =>
                 report.throwError(s"The ${MacroType.asString}Meta form is invalid. It is Pointable: ${io.getquill.util.Format.Expr(actionMeta)}. It must be either Uprootable or Pluckable i.e. it has at least a UID that can be identified.")
-                // TODO Configuration to ignore dynamic insert metas?
-                //println("WARNING: Only inline insert-metas are supported for insertions so far. Falling back to a insertion of all fields.")
+          // TODO Configuration to ignore dynamic insert metas?
+          // println("WARNING: Only inline insert-metas are supported for insertions so far. Falling back to a insertion of all fields.")
           case None =>
             IgnoresSummonState.Static(Set.empty)
 
@@ -261,8 +257,8 @@ object InsertUpdateMacro {
       val ast = BetaReduction(rawAst)
       ast match
         case cc: CaseClass => cc
-        case id: AIdent => id
-        case _ => report.throwError(s"Parsed Insert Macro AST is not a Case Class: ${qprint(ast).plainText} (or a batch-query Ident)")
+        case id: AIdent    => id
+        case _             => report.throwError(s"Parsed Insert Macro AST is not a Case Class: ${qprint(ast).plainText} (or a batch-query Ident)")
     }
 
     /**
@@ -293,7 +289,7 @@ object InsertUpdateMacro {
     def deduceAssignmentsFromCaseClass(insertee: CaseClass) = {
       // Expand into a AST
       // T:Person(name:Str, age:Option[Age]) Age(value: Int) -> Ast: List(v.name, v.age.map(v => v.value))
-      val expansionList = ElaborateStructure.ofProductType[T](VIdent.name, ElaborationSide.Encoding)  // Elaboration side is Encoding since this is for an entity being inserted
+      val expansionList = ElaborateStructure.ofProductType[T](VIdent.name, ElaborationSide.Encoding) // Elaboration side is Encoding since this is for an entity being inserted
 
       // Now synthesize (v) => vAssignmentProperty -> assignmentValue
       // e.g. (v:Person) => v.firstName -> "Joe"
@@ -342,7 +338,6 @@ object InsertUpdateMacro {
           // ... and return the filtered assignments
           AssignmentList.Dynamic(liftedFilteredAssignments)
 
-
     /**
      * Note that the only reason Parser is needed here is to pass it into parseInsertee.
      * The batch pipeline driven by createFromPremade currently doesn't need it.
@@ -371,7 +366,9 @@ object InsertUpdateMacro {
       val quotation =
         createQuotation(
           InserteeSchema(schemaRaw.asTerm.underlyingArgument.asExprOf[EntityQuery[T]]).summon,
-          assignmentOfEntity, lifts, pluckedUnquotes
+          assignmentOfEntity,
+          lifts,
+          pluckedUnquotes
         )
       UnquoteMacro(quotation)
     }
@@ -391,13 +388,13 @@ object InsertUpdateMacro {
         case (EntitySummonState.Static(entity, previousLifts), AssignmentList.Static(assignmentsAst)) =>
           // Lift it into an `Insert` ast, put that into a `quotation`, then return that `quotation.unquote` i.e. ready to splice into the quotation from which this `.insert` macro has been called
           val action = MacroType.ofThis() match
-              case MacroType.Insert =>
-                AInsert(entity, assignmentsAst)
-              case MacroType.Update =>
-                AUpdate(entity, assignmentsAst)
+            case MacroType.Insert =>
+              AInsert(entity, assignmentsAst)
+            case MacroType.Update =>
+              AUpdate(entity, assignmentsAst)
 
           // Now create the quote and lift the action. This is more efficient then the alternative because the whole action AST can be serialized
-          val quotation = '{ Quoted[A[T]](${Lifter(action)}, ${Expr.ofList(previousLifts ++ lifts)}, ${Expr.ofList(pluckedUnquotes)}) }
+          val quotation = '{ Quoted[A[T]](${ Lifter(action) }, ${ Expr.ofList(previousLifts ++ lifts) }, ${ Expr.ofList(pluckedUnquotes) }) }
           // Unquote the quotation and return
           quotation
 
@@ -406,16 +403,16 @@ object InsertUpdateMacro {
         case (EntitySummonState.Dynamic(uid, entityQuotation), assignmentsList) =>
           // Need to create a ScalarTag representing a splicing of the entity (then going to add the actual thing into a QuotationVase and add to the pluckedUnquotes)
           val action = MacroType.ofThis() match
-              case MacroType.Insert =>
-                // If the assignments list is dynamic, its 'assignmentsList.splice' just puts in the Expr. If it is static, it will call the lifter so splice it.
-                '{ AInsert(QuotationTag(${Expr(uid)}), ${assignmentsList.splice}) }
-              case MacroType.Update =>
-                '{ AUpdate(QuotationTag(${Expr(uid)}), ${assignmentsList.splice}) }
+            case MacroType.Insert =>
+              // If the assignments list is dynamic, its 'assignmentsList.splice' just puts in the Expr. If it is static, it will call the lifter so splice it.
+              '{ AInsert(QuotationTag(${ Expr(uid) }), ${ assignmentsList.splice }) }
+            case MacroType.Update =>
+              '{ AUpdate(QuotationTag(${ Expr(uid) }), ${ assignmentsList.splice }) }
 
           // Create the QuotationVase in which this dynamic quotation will go
-          val runtimeQuote = '{ QuotationVase($entityQuotation, ${Expr(uid)}) }
+          val runtimeQuote = '{ QuotationVase($entityQuotation, ${ Expr(uid) }) }
           // Then create the quotation, adding the new runtimeQuote to the list of pluckedUnquotes
-          val quotation = '{ Quoted[A[T]](${action}, ${Expr.ofList(lifts)}, $runtimeQuote +: ${Expr.ofList(pluckedUnquotes)}) }
+          val quotation = '{ Quoted[A[T]](${ action }, ${ Expr.ofList(lifts) }, $runtimeQuote +: ${ Expr.ofList(pluckedUnquotes) }) }
           // Unquote the quotation and return
           quotation
 

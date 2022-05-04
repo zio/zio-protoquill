@@ -48,7 +48,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
       mirror.triple mustEqual (
         "INSERT INTO Person (name,age) VALUES (?, ?) RETURNING id",
         // The ids should be removed from the lifts list since their corresponding columns are removed (i.e. in the expanded insert assignments)
-        List(List(/*1,*/ "Joe", 123), List(/*2,*/ "Jill", 456)),
+        List(List( /*1,*/ "Joe", 123), List( /*2,*/ "Jill", 456)),
         Static
       )
     }
@@ -60,10 +60,10 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
     }
 
     // TODO dsl does not support this yet but would be quite useful
-    //"update - returningGenerated" in {
+    // "update - returningGenerated" in {
     //  val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).updateValue(p).returningGenerated(p => p.id)) }
     //  //mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
-    //}
+    // }
   }
 
   "batch action should work with" - {
@@ -72,12 +72,12 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
         liftQuery(people).foreach(p => query[Person].insertValue(p))
       }
       val mirror = ctx.run(q)
-      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)),Dynamic)
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Dynamic)
     }
 
     "insert" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insertValue(p)) }
-      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)),Static)
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
     }
 
     "insert with function splice" in {

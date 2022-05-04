@@ -3,7 +3,7 @@ package io.getquill.util.printer
 import pprint.{PPrinter, Tree, Util}
 
 import fansi.Str
-import pprint.{ Renderer, Tree, Truncated }
+import pprint.{Renderer, Tree, Truncated}
 import scala.quoted._
 import io.getquill.util.FromMessages
 

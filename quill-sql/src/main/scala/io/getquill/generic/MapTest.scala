@@ -17,34 +17,22 @@ object MapTest {
     // }
   }
 
-
-
-  //given TypeTest[Foo, Bar] = ???
+  // given TypeTest[Foo, Bar] = ???
 
   trait Compare[X, Y] {
     def compare(x: X)(using TypeTest[X, Y]): Boolean =
       x match {
         case y: Y => true
-        case _ => false
+        case _    => false
       }
   }
 
   trait CompareList[X, Y] {
-    def compare(x: List[X])(using TypeTest[List[X & Y], List[Y]],
-      TypeTest[List[X], List[X & Y]],
-      TypeTest[List[X], List[Y]],
-      TypeTest[X, Y],
-      TypeTest[X & Y, Y],
-      TypeTest[X, X & Y]
-    ): Boolean =
+    def compare(x: List[X])(using TypeTest[List[X & Y], List[Y]], TypeTest[List[X], List[X & Y]], TypeTest[List[X], List[Y]], TypeTest[X, Y], TypeTest[X & Y, Y], TypeTest[X, X & Y]): Boolean =
       x match {
         case y: List[Y] => true
-        case _ => false
+        case _          => false
       }
   }
-
-
-
-
 
 }

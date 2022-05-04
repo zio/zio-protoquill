@@ -9,6 +9,7 @@ import java.io.{File => JFile}
 ThisBuild / versionScheme := Some("always")
 
 addCommandAlias("runCommunityBuild", "; quill-sql/test; quill-sql-tests/test; quill-cassandra/Test/compile")
+addCommandAlias("fmt", "all scalafmt test:scalafmt")
 
 // During release cycles, GPG will expect passphrase user-input EVEN when --passphrase is specified
 // this should add --pinentry-loopback in order to disable that. See here for more info:

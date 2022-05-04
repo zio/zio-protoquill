@@ -27,13 +27,12 @@ object Parser:
     def prefilter(expr: Expr[_]): Boolean =
       expr.asTerm.tpe <:< TypeRepr.of[Criteria]
 
-    /** Optimizes 'Clause' by allowing a more efficient 'prematch' criteria to be used */
+  /** Optimizes 'Clause' by allowing a more efficient 'prematch' criteria to be used */
   trait Prefilter(using Quotes) extends Parser:
     def prefilter(expr: Expr[_]): Boolean
     private[engine] override def attemptProper: History ?=> PartialFunction[Expr[_], Ast] =
       new PartialFunction[Expr[_], Ast]:
         def apply(expr: Expr[_]): Ast = attempt.apply(expr)
         def isDefinedAt(expr: Expr[_]): Boolean = prefilter(expr) && attempt.isDefinedAt(expr)
-
 
 end Parser

@@ -27,10 +27,10 @@ object VerifyFreeVariables:
   def apply(ast: Ast)(using Quotes) =
     import quotes.reflect._
     verify(ast) match
-      case Right(ast) => ast
+      case Right(ast)  => ast
       case Left(error) => report.throwError(error)
 
   def runtime(ast: Ast) =
     verify(ast) match
-      case Right(ast) => ast
+      case Right(ast)  => ast
       case Left(error) => throw new IllegalStateException(error)

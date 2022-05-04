@@ -9,32 +9,36 @@ class MirrorEncodingSpec extends Spec {
 
   "simple encoder/decoder - class" in {
     class Name(val value: String)
-    case class Person(name: Name, age:Int)
+    case class Person(name: Name, age: Int)
     implicit val encodeName: MappedEncoding[Name, String] = MappedEncoding[Name, String](_.value)
     implicit val decodeName: MappedEncoding[String, Name] = MappedEncoding[String, Name](str => Name(str))
 
     val name = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
-    mirror.triple mustEqual ((
-      "SELECT p.name, p.age FROM Person p WHERE p.name = ?",
-      List("Joe"),
-      ExecutionType.Static
-    ))
+    mirror.triple mustEqual (
+      (
+        "SELECT p.name, p.age FROM Person p WHERE p.name = ?",
+        List("Joe"),
+        ExecutionType.Static
+      )
+    )
   }
 
   "simple encoder/decoder - case class" in {
     case class Name(value: String)
-    case class Person(name: Name, age:Int)
+    case class Person(name: Name, age: Int)
     implicit val encodeName: MappedEncoding[Name, String] = MappedEncoding[Name, String](_.value)
     implicit val decodeName: MappedEncoding[String, Name] = MappedEncoding[String, Name](str => Name(str))
 
     val name = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
-    mirror.triple mustEqual ((
-      "SELECT p.name, p.age FROM Person p WHERE p.name = ?",
-      List("Joe"),
-      ExecutionType.Static //hello
-    ))
+    mirror.triple mustEqual (
+      (
+        "SELECT p.name, p.age FROM Person p WHERE p.name = ?",
+        List("Joe"),
+        ExecutionType.Static // hello
+      )
+    )
   }
 
   // This should technically work but does not compile because in the ExpandNestedQueries.scala phase it causes a:
@@ -62,23 +66,27 @@ class MirrorEncodingSpec extends Spec {
   // TODO Test this with the mirror dialect. Also possible a dialect that supports nested property names e.g. the SparkIdiom
   "simple encoder/decoder - case clas - do not need encoder or decoder" in {
     case class Name(value: String)
-    case class Person(name: Name, age:Int)
+    case class Person(name: Name, age: Int)
 
     val name = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
-    mirror.triple mustEqual ((
-      "SELECT p.value, p.age FROM Person p WHERE p.name = ?",
-      List("Joe"),
-      ExecutionType.Static
-    ))
+    mirror.triple mustEqual (
+      (
+        "SELECT p.value, p.age FROM Person p WHERE p.name = ?",
+        List("Joe"),
+        ExecutionType.Static
+      )
+    )
 
     // When you refer to the value of the parameter "all the way inside" the p.name.value then it will collapse
     // the property p.name.value once the query is synthesized.
     val mirror2 = ctx.run(query[Person].filter(p => p.name.value == lift("Joe")))
-    mirror2.triple mustEqual ((
-      "SELECT p.value, p.age FROM Person p WHERE p.value = ?",
-      List("Joe"),
-      ExecutionType.Static
-    ))
+    mirror2.triple mustEqual (
+      (
+        "SELECT p.value, p.age FROM Person p WHERE p.value = ?",
+        List("Joe"),
+        ExecutionType.Static
+      )
+    )
   }
 }

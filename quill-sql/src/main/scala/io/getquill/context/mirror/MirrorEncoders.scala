@@ -21,7 +21,7 @@ trait MirrorEncoders extends EncodingDsl {
   def encoder[T]: MirrorEncoder[T] = MirrorEncoder((index: Int, value: T, row: PrepareRow, session: Session) => row.add(value))
 
   implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], e: Encoder[O]): Encoder[I] =
-     MirrorEncoder((index: Int, value: I, row: PrepareRow, session: Session) => e(index, mapped.f(value), row, session))
+    MirrorEncoder((index: Int, value: I, row: PrepareRow, session: Session) => e(index, mapped.f(value), row, session))
 
   implicit def optionEncoder[T](implicit d: Encoder[T]): Encoder[Option[T]] =
     MirrorEncoder((index: Int, value: Option[T], row: PrepareRow, session: Session) => {

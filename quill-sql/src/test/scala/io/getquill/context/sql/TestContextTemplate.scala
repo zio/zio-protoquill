@@ -7,10 +7,10 @@ import io.getquill.norm.EqualityBehavior.NonAnsiEquality
 import io.getquill._
 
 class TestContextTemplate[Dialect <: SqlIdiom, Naming <: NamingStrategy](dialect: Dialect, naming: Naming)
-  extends SqlMirrorContext(dialect, naming)
-  with TestEntities
-  with TestEncoders
-  with TestDecoders {
+    extends SqlMirrorContext(dialect, naming)
+    with TestEntities
+    with TestEncoders
+    with TestDecoders {
 
   def withNaming[N <: NamingStrategy](naming: N)(f: TestContextTemplate[Dialect, N] => Any): Unit = {
     val ctx = new TestContextTemplate[Dialect, N](dialect, naming)

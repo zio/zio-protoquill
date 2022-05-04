@@ -5,7 +5,7 @@ import io.getquill._
 class TranslateSanityTest extends Spec {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
-  case class Person(name: String, age:Int)
+  case class Person(name: String, age: Int)
 
   "simple translate" in {
     val q = quote {

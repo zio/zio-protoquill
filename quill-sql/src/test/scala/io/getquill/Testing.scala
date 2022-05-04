@@ -12,5 +12,5 @@ object Testing {
   // testing a quote that depends on a runtime-quote in a runtime-quote
 
   // TODO See what tests there are of quill quotations and see if they can be ported
-  
+
 }

@@ -95,27 +95,31 @@ trait DepartmentsSpec extends Spec {
   inline def nestedOrg =
     quote {
       for {
-          d <- query[Department]
+        d <- query[Department]
       } yield {
-          (d.dpt,
+        (
+          d.dpt,
           for {
-              e <- query[Employee] if (d.dpt == e.dpt)
+            e <- query[Employee] if (d.dpt == e.dpt)
           } yield {
-              (e.emp,
+            (
+              e.emp,
               for {
-                  t <- query[Task] if (e.emp == t.emp)
+                t <- query[Task] if (e.emp == t.emp)
               } yield {
-                  t.tsk
-              })
-          })
+                t.tsk
+              }
+            )
+          }
+        )
       }
     }
 
   // TODO Typing error if add `quote` around this. Examine that more closely
   inline def all[T] =
-    (xs: Query[T]) => (p: T => Boolean) =>
-      !any(xs)(x => !p(x))
-
+    (xs: Query[T]) =>
+      (p: T => Boolean) =>
+        !any(xs)(x => !p(x))
 
   inline def contains[T] =
     quote { (xs: Query[T]) => (u: T) =>

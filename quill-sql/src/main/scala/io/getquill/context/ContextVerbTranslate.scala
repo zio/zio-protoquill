@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ ReturnAction }
+import io.getquill.{ReturnAction}
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -46,7 +46,7 @@ import io.getquill.OuterSelectWrap
 import scala.annotation.tailrec
 
 trait ContextVerbTranslate[Dialect <: Idiom, Naming <: NamingStrategy]
-  extends ContextTranslateMacro[Dialect, Naming]:
+    extends ContextTranslateMacro[Dialect, Naming]:
   self: Context[Dialect, Naming] =>
   override type TranslateResult[T] = T
   override def wrap[T](t: => T): T = t
@@ -54,7 +54,7 @@ trait ContextVerbTranslate[Dialect <: Idiom, Naming <: NamingStrategy]
   override def seq[A](list: List[A]): List[A] = list
 
 trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
-extends ContextTranslateProto[Dialect, Naming]:
+    extends ContextTranslateProto[Dialect, Naming]:
   self: Context[Dialect, Naming] =>
 
   type TranslateResult[T]
@@ -67,7 +67,7 @@ extends ContextTranslateProto[Dialect, Naming]:
   def inline$context$i1(x$0: Context[Dialect, Naming] & ContextTranslateMacro[Dialect, Naming]): ContextTranslateMacro.this.Runner in trait ContextTranslateMacro
   have the same type after erasure.
   (Note that RunnerBehavior however can be the same)
-  */
+   */
   type TranslateRunner
   type RunnerBehavior <: RunnerSummoningBehavior
   def translateContext: TranslateRunner

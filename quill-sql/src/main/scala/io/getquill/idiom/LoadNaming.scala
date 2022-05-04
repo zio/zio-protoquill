@@ -68,16 +68,15 @@ object LoadNaming {
   def macImpl[T: TType](t: Expr[T])(using Quotes): Expr[String] = {
     import quotes.reflect._
     val loadedStrategies = strategies[T]
-    //println( loadedStrategies )
+    // println( loadedStrategies )
     Expr(loadedStrategies.toString) // maybe list of string?
   }
 }
-
 
 inline def macLoadNamingStrategy[T](t: T): String = ${ macLoadNamingStrategyImpl[T]('t) }
 def macLoadNamingStrategyImpl[T: TType](t: Expr[T])(using Quotes): Expr[String] = {
   import quotes.reflect._
   val loadedStrategies = LoadNaming.static[T]
-  //println( loadedStrategies )
+  // println( loadedStrategies )
   Expr(loadedStrategies.toString) // maybe list of string?
 }

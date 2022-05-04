@@ -23,7 +23,7 @@ class SimpleMapSanityTest extends Spec {
       q.map(p => p.name)
     }
     val quat = quatOf[SanePerson]
-     qq.ast mustEqual Map(Entity("SanePerson", List(), quat.probit), Ident("p", quat), Property(Ident("p", quat), "name"))
+    qq.ast mustEqual Map(Entity("SanePerson", List(), quat.probit), Ident("p", quat), Property(Ident("p", quat), "name"))
   }
 
 }
