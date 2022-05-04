@@ -1,3 +1,9 @@
+# 3.16.4.Beta2.7
+
+- [Working around semver and multi-inherit limitations in IntelliJ SCL-19345](https://github.com/zio/zio-protoquill/actions/runs/2270134936)
+
+Note: This release is to try to resolve some IntelliJ issues regarding SCL-19345. There are no functionality changes.
+
 # 3.16.4.Beta2.6
 
 - [Enable context.translate in remaining contexts](https://github.com/zio/zio-protoquill/pull/91)
