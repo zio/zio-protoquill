@@ -133,7 +133,7 @@ object StaticSpliceMacro {
     val spliceEither =
       for {
         castSplice <- Try(splicedValue.current.asInstanceOf[T]).toEither.mapLeft(e => errorMsg(e.getMessage))
-        splicer <- StaticSplice.Summon[T].mapLeft(str => errorMsg(str))
+        splicer <- StaticSplice.summon[T].mapLeft(str => errorMsg(str))
         splice <- Try(splicer(castSplice)).toEither.mapLeft(e => errorMsg(e.getMessage))
       } yield splice
 

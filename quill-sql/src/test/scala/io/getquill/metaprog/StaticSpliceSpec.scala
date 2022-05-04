@@ -1,6 +1,6 @@
 package io.getquill.metaprog
 
-import io.getquill._
+import io.getquill.{given, _}
 import io.getquill.util.prep.Mod
 
 class StaticSpliceSpec extends Spec {

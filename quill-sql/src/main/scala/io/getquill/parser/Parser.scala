@@ -8,7 +8,7 @@ import scala.quoted._
 import scala.annotation.StaticAnnotation
 import scala.deriving._
 import io.getquill.Embedable
-import io.getquill.Dsl
+
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
 import io.getquill.metaprog.QuotationLotExpr
@@ -24,7 +24,7 @@ import io.getquill.metaprog.Pointable
 import io.getquill.metaprog.Extractors._
 import io.getquill.util.printer
 import io.getquill._
-import io.getquill.Dsl
+
 import io.getquill.Ord
 import io.getquill.Embedded
 import io.getquill.metaprog.Is
@@ -200,8 +200,7 @@ class OrderingParser(val rootParse: Parser)(using Quotes) extends Parser(rootPar
   import quotes.reflect._
 
   def attempt: History ?=> PartialFunction[Expr[_], Ordering] = {
-    case '{ ($ordDsl: Dsl).implicitOrd } => AscNullsFirst
-    case '{ implicitOrd }                => AscNullsFirst
+    case '{ implicitOrd } => AscNullsFirst
 
     // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
     case Unseal(Apply(TypeApply(Select(Ident("Ord"), "apply"), _), args)) =>
@@ -630,8 +629,6 @@ class QueryScalarsParser(val rootParse: Parser)(using Quotes) extends Parser(roo
 class InfixParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with Assignments:
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
 
-  import io.getquill.dsl.InfixDsl
-
   def attempt =
     case '{ ($i: InfixValue).pure.asCondition }       => genericInfix(i)(true, false, Quat.BooleanExpression)
     case '{ ($i: InfixValue).asCondition }            => genericInfix(i)(false, false, Quat.BooleanExpression)
@@ -681,7 +678,6 @@ end InfixParser
 
 class ExtrasParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with ComparisonTechniques {
   import quotes.reflect._
-  import extras._
 
   private object ExtrasModule:
     def unapply(term: Term) =
@@ -692,7 +688,7 @@ class ExtrasParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse
       expr.asTerm match
         case Apply(
               Apply(
-                UntypeApply(Select(ExtrasModule(), op)),
+                UntypeApply(Ident(op)),
                 List(left)
               ),
               List(right)
