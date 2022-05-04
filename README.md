@@ -1,6 +1,6 @@
 # Introduction
 
-ProtoQuill is the continuation of [Quill: Free/Libre Compile-time Language Integrated Queries for Scala](https://getquill.io/). Althought is is already considerably feature-full, it is still very-much in beta so please use it carefuly. For those migrating, or exploring migration from Scala2-Quill, most Queries written in Scala2-Quill should work readily in ProtoQuill but they will become Dynamic. Change them to `inline def` expressions and they should once-again be compile-time (see the [Rationale](#rationale-for-inline) section for some info on why I chose to do this). Also see the [Migration Notes](#migration-notes) section.
+ProtoQuill is the continuation of [Quill: Free/Libre Compile-time Language Integrated Queries for Scala](https://getquill.io/). Although is is already considerably feature-full, it is still very-much in beta so please use it carefuly. For those migrating, or exploring migration from Scala2-Quill, most Queries written in Scala2-Quill should work readily in ProtoQuill but they will become Dynamic. Change them to `inline def` expressions and they should once-again be compile-time (see the [Rationale](#rationale-for-inline) section for some info on why I chose to do this). Also see the [Migration Notes](#migration-notes) section.
 
 Not all Contexts and not all Functionality is Supported yet. Here is a rough list of both:
 
