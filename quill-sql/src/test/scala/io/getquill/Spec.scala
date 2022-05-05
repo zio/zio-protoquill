@@ -19,7 +19,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   val QEP = Quat.Product.empty
   def QP(fields: String*) = Quat.LeafProduct(fields: _*)
 
-  extension (m: MirrorContext[_, _]#BatchActionReturningMirror[_])
+  extension (m: MirrorContextBase[_, _]#BatchActionReturningMirror[_])
     def triple =
       if (m.groups.length != 1) fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
       val (queryString, returnAction, prepares) = m.groups(0)
@@ -35,7 +35,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.info.executionType
       )
 
-  extension (m: MirrorContext[_, _]#BatchActionMirror)
+  extension (m: MirrorContextBase[_, _]#BatchActionMirror)
     def triple =
       if (m.groups.length != 1) fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
       val (queryString, prepares) = m.groups(0)
@@ -51,7 +51,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.info.executionType
       )
 
-  extension (m: MirrorContext[_, _]#ActionMirror)
+  extension (m: MirrorContextBase[_, _]#ActionMirror)
     def triple =
       (
         m.string,
@@ -62,7 +62,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.info.executionType
       )
 
-  extension (m: MirrorContext[_, _]#ActionReturningMirror[_])
+  extension (m: MirrorContextBase[_, _]#ActionReturningMirror[_])
     def triple =
       (
         m.string,
@@ -73,7 +73,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.info.executionType
       )
 
-  extension [T](m: MirrorContext[_, _]#QueryMirror[_])
+  extension [T](m: MirrorContextBase[_, _]#QueryMirror[_])
     def triple =
       (
         m.string,
@@ -84,7 +84,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.info.executionType
       )
 
-  extension [T, D <: Idiom, N <: NamingStrategy](ctx: MirrorContext[D, N])
+  extension [T, D <: Idiom, N <: NamingStrategy](ctx: MirrorContextBase[D, N])
     inline def pull(inline q: Query[T]) =
       val r = ctx.run(q)
       (
