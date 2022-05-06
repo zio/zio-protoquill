@@ -41,7 +41,7 @@ trait JdbcContextVerbExecute[Dialect <: SqlIdiom, Naming <: NamingStrategy] exte
     }
 
   // Not overridden in JdbcRunContext in Scala2-Quill because this method is not defined in the context
-  override def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[List[T]] =
+  override protected def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[List[T]] =
     withConnectionWrapped { conn =>
       val (params, ps) = prepare(conn.prepareStatement(sql), conn)
       logger.logQuery(sql, params)
@@ -50,7 +50,7 @@ trait JdbcContextVerbExecute[Dialect <: SqlIdiom, Naming <: NamingStrategy] exte
     }
 
   // Not overridden in JdbcRunContext in Scala2-Quill because this method is not defined in the context
-  override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[T] =
+  override protected def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[T] =
     handleSingleWrappedResult(executeQuery(sql, prepare, extractor)(info, dc))
 
   // Not overridden in JdbcRunContext in Scala2-Quill because this method is not defined in the context

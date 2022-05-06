@@ -63,13 +63,13 @@ class CassandraAsyncContext[N <: NamingStrategy](
   //   super.performIO(io)
   // }
 
-  def executeQuery[T](cql: String, prepare: Prepare, extractor: Extractor[T])(info: ExecutionInfo, dc: ExecutionContext): Result[RunQueryResult[T]] = {
+  protected def executeQuery[T](cql: String, prepare: Prepare, extractor: Extractor[T])(info: ExecutionInfo, dc: ExecutionContext): Result[RunQueryResult[T]] = {
     implicit val ec = dc
     val statement = prepareAsyncAndGetStatement(cql, prepare, this, logger)
     statement.map(st => session.execute(st).asScala.toList.map(row => extractor(row, this)))
   }
 
-  def executeQuerySingle[T](cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[RunQuerySingleResult[T]] = {
+  protected def executeQuerySingle[T](cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[RunQuerySingleResult[T]] = {
     implicit val ec = dc
     executeQuery(cql, prepare, extractor)(info, dc).map(handleSingleResult)
   }

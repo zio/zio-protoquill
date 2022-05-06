@@ -54,28 +54,17 @@ abstract class ZioJdbcUnderlyingContext[Dialect <: SqlIdiom, Naming <: NamingStr
   inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): ZIO[Has[Connection], SQLException, List[T]] =  InternalApi.runBatchActionReturning(quoted)
 
   // Need explicit return-type annotations due to scala/bug#8356. Otherwise macro system will not understand Result[Long]=Task[Long] etc...
-  override def executeAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): QCIO[Long] =
-    super.executeAction(sql, prepare)(info, dc)
-  override def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QCIO[List[T]] =
-    super.executeQuery(sql, prepare, extractor)(info, dc)
-  override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QCIO[T] =
-    super.executeQuerySingle(sql, prepare, extractor)(info, dc)
-  override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner): QCIO[O] =
-    super.executeActionReturning(sql, prepare, extractor, returningBehavior)(info, dc)
-  override def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): QCIO[List[Long]] =
-    super.executeBatchAction(groups)(info, dc)
-  override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner): QCIO[List[T]] =
-    super.executeBatchActionReturning(groups, extractor)(info, dc)
-  override def prepareQuery(sql: String, prepare: Prepare)(info: ExecutionInfo, dc: Runner): QCIO[PreparedStatement] =
-    super.prepareQuery(sql, prepare)(info, dc)
-  override def prepareAction(sql: String, prepare: Prepare)(info: ExecutionInfo, dc: Runner): QCIO[PreparedStatement] =
-    super.prepareAction(sql, prepare)(info, dc)
-  override def prepareBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): QCIO[List[PreparedStatement]] =
-    super.prepareBatchAction(groups)(info, dc)
-  override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(info: ExecutionInfo, dc: Runner): QCIO[String] =
-    super.translateQueryEndpoint(statement, prepare, extractor, prettyPrint)(info, dc)
-  override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(info: ExecutionInfo, dc: Runner): QCIO[List[String]] =
-    super.translateBatchQueryEndpoint(groups, prettyPrint)(info, dc)
+  override def executeAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): QCIO[Long] = super.executeAction(sql, prepare)(info, dc)
+  override protected def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QCIO[List[T]] = super.executeQuery(sql, prepare, extractor)(info, dc)
+  override protected def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QCIO[T] = super.executeQuerySingle(sql, prepare, extractor)(info, dc)
+  override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner): QCIO[O] = super.executeActionReturning(sql, prepare, extractor, returningBehavior)(info, dc)
+  override def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): QCIO[List[Long]] = super.executeBatchAction(groups)(info, dc)
+  override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner): QCIO[List[T]] = super.executeBatchActionReturning(groups, extractor)(info, dc)
+  override def prepareQuery(sql: String, prepare: Prepare)(info: ExecutionInfo, dc: Runner): QCIO[PreparedStatement] = super.prepareQuery(sql, prepare)(info, dc)
+  override def prepareAction(sql: String, prepare: Prepare)(info: ExecutionInfo, dc: Runner): QCIO[PreparedStatement] = super.prepareAction(sql, prepare)(info, dc)
+  override def prepareBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): QCIO[List[PreparedStatement]] = super.prepareBatchAction(groups)(info, dc)
+  override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(info: ExecutionInfo, dc: Runner): QCIO[String] = super.translateQueryEndpoint(statement, prepare, extractor, prettyPrint)(info, dc)
+  override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(info: ExecutionInfo, dc: Runner): QCIO[List[String]] = super.translateBatchQueryEndpoint(groups, prettyPrint)(info, dc)
 
   /** ZIO Contexts do not managed DB connections so this is a no-op */
   override def close(): Unit = ()

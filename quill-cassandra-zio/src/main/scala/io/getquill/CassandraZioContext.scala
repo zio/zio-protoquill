@@ -148,11 +148,11 @@ class CassandraZioContext[N <: NamingStrategy](val naming: N)
   private[getquill] def simpleBlocking[R, E, A](zio: ZIO[R, E, A]): ZIO[R, E, A] =
     Blocking.Service.live.blocking(zio)
 
-  def executeQuery[T](cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): CIO[List[T]] = simpleBlocking {
+  protected def executeQuery[T](cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): CIO[List[T]] = simpleBlocking {
     streamQuery[T](None, cql, prepare, extractor)(info, dc).runCollect.map(_.toList)
   }
 
-  def executeQuerySingle[T](cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): CIO[T] = simpleBlocking {
+  protected def executeQuerySingle[T](cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): CIO[T] = simpleBlocking {
     for {
       csession <- ZIO.service[CassandraZioSession]
       rs <- execute(cql, prepare, csession, Some(1)) //pull only one record from the DB explicitly.

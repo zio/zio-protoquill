@@ -81,10 +81,10 @@ trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
   @targetName("runBatchActionReturning")
   inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): BatchActionReturningMirror[T] = InternalApi.runBatchActionReturning(quoted)
 
-  override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner) =
+  override protected def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner) =
     QueryMirror(string, prepare(Row(), session)._2, extractor, info)
 
-  override def executeQuerySingle[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner) =
+  override protected def executeQuerySingle[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner) =
     QueryMirror(string, prepare(Row(), session)._2, extractor, info)
 
   override def executeAction(string: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): Result[RunActionResult] =

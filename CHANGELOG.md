@@ -71,7 +71,7 @@ but as of now still has the [SCL-19345](https://youtrack.jetbrains.com/issue/SCL
 
 # 3.10.0.Beta1.5
 
-* [Move to 3.10.0 of base and zio. ProtoContext now in portable.](https://github.com/getquill/protoquill/commit/39c62ab2e6400f9cf4b3d87740900f55fd69ab12)
+* [Move to 3.10.0 of base and zio. NewProtoContext now in portable.](https://github.com/getquill/protoquill/commit/39c62ab2e6400f9cf4b3d87740900f55fd69ab12)
 * [Implement static operator for splicing constants](https://github.com/getquill/protoquill/pull/16)
 * [Pass Session to all Encoders/Decoders, implement static operator](https://github.com/getquill/protoquill/pull/18)
 * [Lift & Serialize when update-macro state is static. More efficient.](https://github.com/getquill/protoquill/pull/19)

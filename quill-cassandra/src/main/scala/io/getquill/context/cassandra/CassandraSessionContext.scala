@@ -12,7 +12,7 @@ import io.getquill.context.RowContext
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration._
 import scala.util.Try
-import io.getquill.context.ProtoContext
+import io.getquill.context.NewProtoContext
 
 abstract class CassandraSessionContext[N <: NamingStrategy]
   extends CassandraPrepareContext[N]
@@ -62,7 +62,7 @@ trait CassandraStandardContext[N <: NamingStrategy]
   with CassandraTypes {
   /*with UdtEncoding*/
 
-  // Overriding them as defined in ProtoContext
+  // Overriding them as defined in NewProtoContext
   override type RunActionReturningResult[T] = Unit
   override type RunBatchActionReturningResult[T] = Unit
 

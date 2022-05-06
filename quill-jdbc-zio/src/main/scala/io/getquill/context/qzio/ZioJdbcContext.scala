@@ -3,7 +3,7 @@ package io.getquill.context.qzio
 import io.getquill.context.ZioJdbc._
 import io.getquill.context.jdbc.JdbcContextTypes
 import io.getquill.context.sql.idiom.SqlIdiom
-import io.getquill.context.{ ExecutionInfo, ProtoContext, ContextVerbStream }
+import io.getquill.context.{ ExecutionInfo, NewProtoContext, ContextVerbStream }
 import zio.Exit.{ Failure, Success }
 import zio.stream.ZStream
 import zio.{ FiberRef, Has, Runtime, UIO, ZIO, ZManaged }
@@ -44,7 +44,7 @@ import io.getquill._
  */
 abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
   with JdbcContextTypes[Dialect, Naming]
-  with ProtoContext[Dialect, Naming]
+  with NewProtoContext[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]
   with ZioTranslateContext[Dialect, Naming] {
@@ -102,10 +102,10 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
   def executeAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): QIO[Long] =
     onConnection(underlying.executeAction(sql, prepare)(info, dc))
 
-  def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QIO[List[T]] =
+  protected def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QIO[List[T]] =
     onConnection(underlying.executeQuery[T](sql, prepare, extractor)(info, dc))
 
-  override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QIO[T] =
+  override protected def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QIO[T] =
     onConnection(underlying.executeQuerySingle[T](sql, prepare, extractor)(info, dc))
 
   override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: Runner): QIO[String] =

@@ -37,7 +37,7 @@ import io.getquill.Literal
 import scala.annotation.targetName
 import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
-import io.getquill.context.ProtoContext
+import io.getquill.context.NewProtoContext
 import io.getquill.context.AstSplicing
 import io.getquill.context.RowContext
 import io.getquill.metaprog.etc.ColumnsFlicer
@@ -77,7 +77,7 @@ trait ContextStandard[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy
     with ContextVerbPrepareLambda[Idiom, Naming]
 
 trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
-    extends ProtoContext[Dialect, Naming] with EncodingDsl with Closeable:
+    extends NewProtoContext[Dialect, Naming] with EncodingDsl with Closeable:
   self =>
 
   /**

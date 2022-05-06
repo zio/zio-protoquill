@@ -70,7 +70,7 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
   override def context: Runner = throw new IllegalStateException("Runner (ExecutionContext) of JAsyncContext is summoned implicitly, the member is unused.")
   override def translateContext: TranslateRunner = throw new IllegalStateException("Runner (ExecutionContext) of JAsyncContext is summoned implicitly, the member is unused.")
 
-  def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[T]] = {
+  protected def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[T]] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
     val (params, values) = prepare(Nil, ())
     logger.logQuery(sql, params)
@@ -78,7 +78,7 @@ abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteCo
       .map(_.getRows.asScala.iterator.map(row => extractor(row, ())).toList)
   }
 
-  def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[T] =
+  protected def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[T] =
     implicit val ec = dc
     executeQuery(sql, prepare, extractor)(executionInfo, dc).map(handleSingleResult)
 
