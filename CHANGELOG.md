@@ -1,8 +1,15 @@
-# 3.16.4.Beta2.7
+# 3.16.4-Beta28
+
+- [Move to top-level. Increment with a dummy version.](https://github.com/zio/zio-protoquill/commit/8597a5f3d45bf5e68fcb8f2df1e2aa510213c5dd)
+- [Another IntelliJ (SCL-20185) Workaround](https://github.com/zio/zio-protoquill/commit/6c4f75d9a40804b17dd9182009b9ab8e5d8c0c93)
+
+Note: Changing the version convention due to findings of [SCL-19345](https://youtrack.jetbrains.com/issue/SCL-19345). This should allow correct Scala 3 code identification in IntelliJ. Also moving DSL to top level since Tasty reader seems to process that correctly.
+
+# 3.16.4-Beta2.7
 
 - [Working around semver and multi-inherit limitations in IntelliJ SCL-19345](https://github.com/zio/zio-protoquill/actions/runs/2270134936)
 
-Note: This release is to try to resolve some IntelliJ issues regarding SCL-19345. There are no functionality changes.
+Note: This release is to try to resolve some IntelliJ issues regarding SCL-19345. There are no functionality changes. For this reason I had to change the version convention.
 
 # 3.16.4.Beta2.6
 
