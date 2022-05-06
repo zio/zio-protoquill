@@ -19,7 +19,7 @@ object ZioAppDataSource extends ZIOAppDefault {
       query[Person].filter(p => p.name == "Alex")
     }
     MyPostgresContext.run(people)
-      .provideService(dataSource)
+      .provideEnvironment(ZEnvironment(dataSource))
       .tap(result => printLine(result.toString))
       .exitCode
   }

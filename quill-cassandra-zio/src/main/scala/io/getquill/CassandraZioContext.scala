@@ -158,7 +158,7 @@ class CassandraZioContext[N <: NamingStrategy](val naming: N)
   def executeAction(cql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): CIO[Unit] = simpleBlocking {
     for {
       csession <- ZIO.service[CassandraZioSession]
-      r <- prepareRowAndLog(cql, prepare).provideService(csession)
+      r <- prepareRowAndLog(cql, prepare).provideEnvironment(ZEnvironment(csession))
       _ <- ZIO.fromCompletionStage(csession.session.executeAsync(r))
     } yield ()
   }
@@ -173,7 +173,7 @@ class CassandraZioContext[N <: NamingStrategy](val naming: N)
           groups.flatMap {
             case BatchGroup(cql, prepare) =>
               prepare
-                .map(prep => executeAction(cql, prep)(info, dc).provideService(env))
+                .map(prep => executeAction(cql, prep)(info, dc).provideEnvironment(ZEnvironment(env)))
           }
         ZIO.collectAll(batchGroups)
       }

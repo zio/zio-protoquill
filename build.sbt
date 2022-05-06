@@ -291,8 +291,7 @@ lazy val `quill-cassandra-zio` =
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.13.0",
         "dev.zio" %% "zio" % "2.0.0-RC6",
-        "dev.zio" %% "zio-streams" % "2.0.0-RC6",
-        ("dev.zio" %% "zio-interop-guava" % "31.0.0.0").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
+        "dev.zio" %% "zio-streams" % "2.0.0-RC6"
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")

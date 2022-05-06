@@ -20,7 +20,7 @@ class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioSpec with BeforeAnd
   "single" in {
     val prepareInsert = prepare(query[Product].insertValue(lift(productEntries.head)))
     singleInsert(prepareInsert) mustEqual false
-    extractProducts(prepareQuery) === List(productEntries.head)
+    extractProducts(prepareQuery) must contain theSameElementsAs List(productEntries.head)
   }
 
   "batch" in {
@@ -29,6 +29,6 @@ class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioSpec with BeforeAnd
     )
 
     batchInsert(prepareBatchInsert).distinct mustEqual List(false)
-    extractProducts(prepareQuery) === withOrderedIds(productEntries)
+    extractProducts(prepareQuery) must contain theSameElementsAs withOrderedIds(productEntries)
   }
 }

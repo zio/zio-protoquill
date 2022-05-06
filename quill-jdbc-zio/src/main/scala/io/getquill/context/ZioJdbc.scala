@@ -69,7 +69,7 @@ object ZioJdbc {
     import io.getquill.context.qzio.ImplicitSyntax._
     def implicitDS(implicit implicitEnv: Implicit[DataSource]): ZIO[Any, SQLException, T] =
       (for {
-        q <- qzio.provideService(implicitEnv.env)
+        q <- qzio.provideEnvironment(ZEnvironment(implicitEnv.env))
       } yield q).refineToOrDie[SQLException]
   }
 
@@ -80,7 +80,7 @@ object ZioJdbc {
         r <- ZIO.environment[R]
         q <- qzio
           .provideSomeLayer[DataSource](ZLayer.succeedEnvironment(r))
-          .provideService(implicitEnv.env)
+          .provideEnvironment(ZEnvironment(implicitEnv.env))
       } yield q).refineToOrDie[SQLException]
   }
 
@@ -97,7 +97,7 @@ object ZioJdbc {
       (for {
         q <- qzio
           .provideSomeLayer(DataSourceLayer.live)
-          .provideService(implicitEnv.env)
+          .provideEnvironment(ZEnvironment(implicitEnv.env))
       } yield q).refineToOrDie[SQLException]
   }
 

@@ -11,7 +11,7 @@ import io.getquill.context.qzio.ImplicitSyntax._
 import io.getquill.context.ZioJdbc._
 import io.getquill.util.LoadConfig
 import zio.Console.printLine
-import zio.{ App, ExitCode, URIO, Task }
+import zio.{ ZIOApp, ExitCode, URIO, Task }
 import java.io.Closeable
 import javax.sql.DataSource
 
@@ -64,7 +64,7 @@ object DaoNested:
     } yield ()).implicitDS
 end DaoNested
 
-object CalibanExampleNested extends zio.App:
+object CalibanExampleNested extends zio.ZIOAppDefault:
   private val logger = ContextLogger(classOf[CalibanExampleNested.type])
 
   case class Queries(
@@ -104,7 +104,7 @@ object CalibanExampleNested extends zio.App:
       .forever
   } yield ()
 
-  override def run(args: List[String]): ZIO[ZEnv, Nothing, ExitCode] =
+  override def run =
     myApp.exitCode
 
 end CalibanExampleNested
