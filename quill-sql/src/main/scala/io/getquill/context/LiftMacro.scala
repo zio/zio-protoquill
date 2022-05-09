@@ -80,6 +80,12 @@ object LiftMacro {
       }
     }
 
+  private[getquill] def liftInjectedScalar[T, PrepareRow, Session](using qctx: Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow], sessionTpe: Type[Session]): (ScalarTag, Expr[InjectableEagerPlanter[_, PrepareRow, Session]]) = {
+    import qctx.reflect._
+    val uuid = java.util.UUID.randomUUID.toString
+    (ScalarTag(uuid), injectableLiftValue[T, PrepareRow, Session]('{ (t: T) => t }, uuid))
+  }
+
   // TODO Injected => Injectable
   private[getquill] def liftInjectedProduct[T, PrepareRow, Session](using qctx: Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow], sessionTpe: Type[Session]): (CaseClass, List[Expr[InjectableEagerPlanter[_, PrepareRow, Session]]]) = {
     import qctx.reflect._
