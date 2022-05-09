@@ -80,6 +80,40 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
       mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
     }
 
+    case class Vip(vipId: Int, vipName: String, vipAge: Int, other: String)
+    "insert - different-objects" in {
+      val vips = List(Vip(1, "Joe", 123, "Something"), Vip(2, "Jill", 456, "Something"))
+      val mirror = ctx.run { liftQuery(vips).foreach(v => query[Person].insertValue(Person(v.vipId, v.vipName, v.vipAge))) }
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+    }
+
+    "update - liftQuery scalars" in {
+      val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => query[Person].filter(p => p.id == i).update(_.age -> 111)) }
+      mirror.triple mustEqual ("UPDATE Person SET age = 111 WHERE id = ?", List(List(1), List(2), List(3)), Static)
+    }
+
+    // NOTE: Not going to be supported in the near term because the type from liftQuery is very hard to reconstruct
+    // should have a warning about not allowing different entity in liftQuery([Ent]).foreach(query[Ent]) though
+    // "update - liftQuery scalars - dynamic" in {
+    //   val updateDynamic = quote {
+    //     (i: Int) => query[Person].filter(p => p.id == i).update(_.age -> 111)
+    //   }
+    //   val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
+    //   mirror.triple mustEqual ("UPDATE Person SET age = 111 WHERE id = ?", List(List(1), List(2), List(3)), Static)
+    // }
+
+    // NOTE: This kind of AST expansion is not supported yet
+    // "update - extra lift" in {
+    //   val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(p => p.id == lift(123) /*see if p symbol override works*/ ).insertValue(p)) }
+    //   mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+    // }
+
+    // NOTE: This kind of AST expansion is not supported yet
+    // "update - extra list lift" in {
+    //   val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(p => liftQuery(List(1,2,3)).contains(p.id)).insertValue(p)) }
+    //   mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+    // }
+
     "insert with function splice" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => insertPeople(p)) }
       mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)

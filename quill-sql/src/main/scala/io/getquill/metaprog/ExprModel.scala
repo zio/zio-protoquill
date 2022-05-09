@@ -43,7 +43,8 @@ sealed trait PlanterExpr[T: scala.quoted.Type, PrepareRow: scala.quoted.Type, Se
   def plant(using Quotes): Expr[Planter[T, PrepareRow, Session]] // TODO Change to 'replant' ?
   def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], bindings: List[quotes.reflect.Definition]): PlanterExpr[T, PrepareRow, Session]
 
-case class EagerListPlanterExpr[T: Type, PrepareRow: Type, Session: Type](uid: String, expr: Expr[List[T]], encoder: Expr[GenericEncoder[T, PrepareRow, Session]])(using Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow, Session]:
+case class EagerListPlanterExpr[T, PrepareRow: Type, Session: Type](uid: String, expr: Expr[List[T]], encoder: Expr[GenericEncoder[T, PrepareRow, Session]])(using val tpe: Type[T], queryTpe: Type[Query[T]])
+    extends PlanterExpr[Query[T], PrepareRow, Session]:
   def plant(using Quotes): Expr[EagerListPlanter[T, PrepareRow, Session]] =
     '{ EagerListPlanter[T, PrepareRow, Session]($expr, $encoder, ${ Expr(uid) }) }
   def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], bindings: List[quotes.reflect.Definition]) =

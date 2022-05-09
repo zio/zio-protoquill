@@ -49,7 +49,7 @@ lazy val sqlTestModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
 )
 
 lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-jdbc`, `quill-zio`, `quill-jdbc-zio`, `quill-caliban`
+  `quill-jdbc`, `quill-doobie`, `quill-zio`, `quill-jdbc-zio`, `quill-caliban`
 )
 
 lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
@@ -168,6 +168,20 @@ lazy val `quill-jdbc` =
     .settings(releaseSettings: _*)
     .settings(jdbcTestingSettings: _*)
     .dependsOn(`quill-sql` % "compile->compile;test->test")
+
+ThisBuild / libraryDependencySchemes += "org.typelevel" %% "cats-effect" % "always"
+lazy val `quill-doobie` =
+  (project in file("quill-doobie"))
+    .settings(commonSettings: _*)
+    .settings(releaseSettings: _*)
+    .settings(jdbcTestingSettings: _*)
+    .settings(
+      libraryDependencies ++= Seq(
+        "org.tpolecat" %% "doobie-core" % "1.0.0-RC2",
+        "org.tpolecat" %% "doobie-postgres" % "1.0.0-RC2" % Test
+      )
+    )
+    .dependsOn(`quill-jdbc` % "compile->compile;test->test")
 
 lazy val `quill-jasync` =
   (project in file("quill-jasync"))
