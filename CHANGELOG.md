@@ -1,3 +1,7 @@
+# 3.16.5-Beta29
+
+- [Integrating Doobie Support](https://github.com/zio/zio-protoquill/pull/98)
+
 # 3.16.4-Beta28
 
 - [Move to top-level. Increment with a dummy version.](https://github.com/zio/zio-protoquill/commit/8597a5f3d45bf5e68fcb8f2df1e2aa510213c5dd)
