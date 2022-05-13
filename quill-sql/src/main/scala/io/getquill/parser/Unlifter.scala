@@ -19,6 +19,22 @@ object UnlifterType {
 object Unlifter {
   import UnlifterType._
 
+  object ast:
+    def unapply(ast: Expr[Ast])(using Quotes): Option[Ast] =
+      import quotes.reflect._
+      // println(s"==================== Unlifting: ${Format.Expr(ast)} =================}")
+      ast match
+        case Is[Ast](ast) => unliftAst.attempt(ast)
+        case other        => report.throwError(s"Cannot unlift ${Format.Expr(ast)} to a ast because it's type is: ${Format.TypeRepr(ast.asTerm.tpe)}")
+
+  object caseClass:
+    def unapply(ast: Expr[Ast])(using Quotes): Option[CaseClass] =
+      import quotes.reflect._
+      // println(s"==================== Unlifting: ${Format.Expr(ast)} =================}")
+      ast match
+        case Is[CaseClass](ast) => unliftCaseClass.attempt(ast)
+        case other              => report.throwError(s"Cannot unlift ${Format.Expr(ast)} to a CaseClass because it's type is: ${Format.TypeRepr(ast.asTerm.tpe)}")
+
   def apply(ast: Expr[Ast]): Quotes ?=> Ast = unliftAst.apply(ast) // can also do ast.lift but this makes some error messages simpler
 
   extension [T](t: Expr[T])(using FromExpr[T], Quotes)
@@ -26,25 +42,30 @@ object Unlifter {
 
   trait NiceUnliftable[T: ClassTag] extends FromExpr[T] { // : ClassTag
     def unlift: Quotes ?=> PartialFunction[Expr[T], T]
-    def apply(expr: Expr[T])(using Quotes): T =
+    def attempt(expr: Expr[T])(using Quotes): Option[T] =
       import quotes.reflect._
       expr match
         case '{ SerialHelper.fromSerialized[tt](${ Expr(serial: String) }) } if (TypeRepr.of[tt] <:< TypeRepr.of[Ast]) =>
-          SerialHelper.fromSerialized[Ast](serial).asInstanceOf[T]
+          Some(SerialHelper.fromSerialized[Ast](serial).asInstanceOf[T])
         // On JVM, a Quat must be serialized and then lifted from the serialized state i.e. as a FromSerialized using JVM (due to 64KB method limit)
         case '{ SerialHelper.QuatProduct.fromSerialized(${ Expr(str: String) }) } =>
-          SerialHelper.QuatProduct.fromSerialized(str).asInstanceOf[T]
+          Some(SerialHelper.QuatProduct.fromSerialized(str).asInstanceOf[T])
         case '{ SerialHelper.Quat.fromSerialized(${ Expr(str: String) }) } =>
-          SerialHelper.Quat.fromSerialized(str).asInstanceOf[T]
+          Some(SerialHelper.Quat.fromSerialized(str).asInstanceOf[T])
         case _ =>
-          unlift.lift(expr).getOrElse {
-            report.throwError(
-              s"Could not Unlift AST type ${classTag[T].runtimeClass.getSimpleName} from the element:\n" +
-                s"${section(Format.Expr.Detail(expr))}\n" +
-                s"of the Quill Abstract Syntax Tree",
-              expr
-            )
-          }
+          unlift.lift(expr)
+
+    def apply(expr: Expr[T])(using Quotes): T =
+      import quotes.reflect._
+      attempt(expr)
+        .getOrElse {
+          report.throwError(
+            s"Could not Unlift AST type ${classTag[T].runtimeClass.getSimpleName} from the element:\n" +
+              s"${section(Format.Expr.Detail(expr))}\n" +
+              s"of the Quill Abstract Syntax Tree",
+            expr
+          )
+        }
 
     /**
      * For things that contain subclasses, don't strictly check the super type and fail the match
@@ -265,7 +286,7 @@ object Unlifter {
       case Is[QuotationTag]('{ QuotationTag($uid) })                                     => QuotationTag(constString(uid))
       case Is[Infix]('{ Infix($parts, $params, $pure, $transparent, $quat) })            => Infix(parts.unexpr, params.unexpr, pure.unexpr, transparent.unexpr, quat.unexpr)
       case Is[Tuple]('{ Tuple.apply($values) })                                          => Tuple(values.unexpr)
-      case Is[CaseClass]('{ CaseClass(${ values }: List[(String, Ast)]) })               => CaseClass(values.unexpr)
+      case Is[CaseClass](ast)                                                            => unliftCaseClass(ast)
       case Is[IterableOperation](unliftTraversableOperation(o))                          => o
       // TODO Is the matching covariant? In that case can do "case '{ $oo: OptionOperation } and then strictly throw an error"
       case Is[OptionOperation](ast)                              => unliftOptionOperation(ast)
@@ -274,6 +295,10 @@ object Unlifter {
       case Is[OnConflict.Existing]('{ OnConflict.Existing($a) }) => OnConflict.Existing(a.unexpr)
       case '{ NullValue }                                        => NullValue
   }
+
+  given unliftCaseClass: NiceUnliftable[CaseClass] with
+    def unlift =
+      case '{ CaseClass(${ values }: List[(String, Ast)]) } => CaseClass(values.unexpr)
 
   given unliftOperator: NiceUnliftable[Operator] with {
     def unlift =

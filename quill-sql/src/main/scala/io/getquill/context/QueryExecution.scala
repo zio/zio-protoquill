@@ -44,6 +44,7 @@ import io.getquill.util.CommonExtensions
 import io.getquill.generic.ElaborateTrivial
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
+import io.getquill.ast.External
 
 object ContextOperation:
   case class Argument[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](
@@ -413,7 +414,10 @@ object PrepareDynamicExecution:
       naming: N,
       elaborationBehavior: ElaborationBehavior,
       topLevelQuat: Quat,
-      spliceBehavior: SpliceBehavior = SpliceBehavior.NeedsSplice
+      spliceBehavior: SpliceBehavior = SpliceBehavior.NeedsSplice,
+      // For a batch query, these are the other lifts besides the primary liftQuery lifts.
+      // This should be empty & ignored for all other query types.
+      additionalLifts: List[Planter[?, ?, ?]] = List()
   ) =
     // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
     // which means that the compiler has not done the splicing for us. We need to do this ourselves.
@@ -430,9 +434,6 @@ object PrepareDynamicExecution:
     VerifyFreeVariables.runtime(splicedAstRaw)
 
     val splicedAst = ElaborateTrivial(elaborationBehavior)(splicedAstRaw)
-
-    // Pull out the all the Planter instances (for now they need to be EagerPlanters for Dynamic Queries)
-    val lifts = gatheredLifts.map(lift => (lift.uid, lift)).toMap
 
     // TODO Should make this enable-able via a logging configuration
     // println("=============== Dynamic Expanded Ast Is ===========\n" + io.getquill.util.Messages.qprint(splicedAst))
@@ -467,25 +468,114 @@ object PrepareDynamicExecution:
     // Get the UIDs from the lifts, if they are something unexpected (e.g. Lift elements from Quill 2.x) throw an exception
     val liftTags =
       externals.map {
-        case ScalarTag(uid) => uid
-        case other          => throw new IllegalArgumentException(s"Invalid Lift Tag: ${other}")
+        case tag @ ScalarTag(_) => tag
+        case other              => throw new IllegalArgumentException(s"Invalid Lift Tag: ${other}")
       }
 
-    val queryString = Particularize.Dynamic(unparticularQuery, gatheredLifts, idiom.liftingPlaceholder, idiom.emptySetContainsToken)
+    val queryString = Particularize.Dynamic(unparticularQuery, gatheredLifts ++ additionalLifts, idiom.liftingPlaceholder, idiom.emptySetContainsToken)
 
     // Match the ScalarTags we pulled out earlier (in ReifyStatement) with corresponding Planters because
     // the Planters can be out of order (I.e. in a different order then the ?s in the SQL query that they need to be spliced into).
     // The ScalarTags are comming directly from the tokenized AST however and their order should be correct.
     // also, some of they may be filtered out
-    val sortedLifts = liftTags.map { tag =>
-      lifts.get(tag) match
-        case Some(lift) => lift
-        case None       => throw new IllegalArgumentException(s"Could not lookup value for the tag: ${tag}")
-    }
+    val (sortedLifts, sortedSecondaryLifts) =
+      processLifts(gatheredLifts, liftTags, additionalLifts) match
+        case Right((sl, ssl)) => (sl, ssl)
+        case Left(msg) =>
+          throw new IllegalArgumentException(
+            s"Could not process the lifts:\n" +
+              s"${gatheredLifts.map(_.toString).mkString("====\n")}" +
+              (if (additionalLifts.nonEmpty) s"${additionalLifts.map(_.toString).mkString("====\n")}" else "") +
+              s"Due to an error: $msg"
+          )
 
-    (queryString, outputAst, sortedLifts, extractor)
+    (queryString, outputAst, sortedLifts, extractor, sortedSecondaryLifts)
 
   end apply
+
+  private[getquill] def processLifts(
+      lifts: List[Planter[_, _, _]],
+      matchingExternals: List[External],
+      secondaryLifts: List[Planter[_, _, _]] = List()
+  ): Either[String, (List[Planter[_, _, _]], List[Planter[_, _, _]])] =
+    val encodeablesMap =
+      lifts.map(e => (e.uid, e)).toMap
+
+    val secondaryEncodeablesMap =
+      secondaryLifts.map(e => (e.uid, e)).toMap
+
+    val uidsOfScalarTags =
+      matchingExternals.collect {
+        case tag: ScalarTag => tag.uid
+      }
+
+    enum UidStatus:
+      // Most normal lifts and the liftQuery of batches
+      case Primary(uid: String, planter: Planter[?, ?, ?])
+      // In batch queries, any lifts that are not part of the initial liftQuery
+      case Secondary(uid: String, planter: Planter[?, ?, ?])
+      // Lift planter was not found, this means an error
+      case NotFound(uid: String)
+      def print: String = this match
+        case Primary(uid, planter)   => s"PrimaryPlanter($uid, ${planter})"
+        case Secondary(uid, planter) => s"SecondaryPlanter($uid, ${planter})"
+        case NotFound(uid)           => s"NotFoundPlanter($uid)"
+
+    val sortedEncodeables =
+      uidsOfScalarTags
+        .map { uid =>
+          encodeablesMap.get(uid) match
+            case Some(element) => UidStatus.Primary(uid, element)
+            case None =>
+              secondaryEncodeablesMap.get(uid) match
+                case Some(element) => UidStatus.Secondary(uid, element)
+                case None          => UidStatus.NotFound(uid)
+        }
+
+    object HasNotFoundUids:
+      def unapply(statuses: List[UidStatus]) =
+        val collected =
+          statuses.collect {
+            case UidStatus.NotFound(uid) => uid
+          }
+        if (collected.nonEmpty) Some(collected) else None
+
+    object PrimaryThenSecondary:
+      def unapply(statuses: List[UidStatus]) =
+        val (primaries, secondaries) =
+          statuses.partition {
+            case UidStatus.Primary(_, _) => true
+            case _                       => false
+          }
+        val primariesFound = primaries.collect { case p: UidStatus.Primary => p }
+        val secondariesFound = secondaries.collect { case s: UidStatus.Secondary => s }
+        val goodPartitioning =
+          primariesFound.length == primaries.length && secondariesFound.length == secondaries.length
+        if (goodPartitioning)
+          Some((primariesFound.map(_.planter), secondariesFound.map(_.planter)))
+        else
+          None
+
+    val outputEncodeables =
+      sortedEncodeables match
+        case HasNotFoundUids(uids) =>
+          Left(s"Invalid Transformations Encountered. Cannot find lift with IDs: ${uids}.")
+        case PrimaryThenSecondary(primaryPlanters, secondaryPlanters /*or List() if none*/ ) =>
+          Right((primaryPlanters, secondaryPlanters))
+        case other =>
+          Left(
+            s"Invalid transformation primary and secondary encoders were mixed.\n" +
+              s"All secondary planters must come after all primary ones but found:\n" +
+              s"${other.map(_.print).mkString("=====\n")}"
+          )
+
+    // TODO This should be logged if some fine-grained debug logging is enabled. Maybe as part of some phase that can be enabled via -Dquill.trace.types config
+    // val remaining = encodeables.removedAll(uidsOfScalarTags)
+    // if (!remaining.isEmpty)
+    //   println(s"Ignoring the following lifts: [${remaining.map((_, v) => Format.Expr(v.plant)).mkString(", ")}]")
+    outputEncodeables
+  end processLifts
+
 end PrepareDynamicExecution
 
 /**
@@ -521,7 +611,7 @@ object RunDynamicExecution:
       topLevelQuat: Quat
   ): Res = {
     // println("===== Passed Ast: " + io.getquill.util.Messages.qprint(quoted.ast))
-    val (queryString, outputAst, sortedLifts, extractor) =
+    val (queryString, outputAst, sortedLifts, extractor, _) =
       PrepareDynamicExecution[I, T, RawT, D, N, PrepareRow, ResultRow, Session](quoted, rawExtractor, ctx.idiom, ctx.naming, elaborationBehavior, topLevelQuat)
 
     // Use the sortedLifts to prepare the method that will prepare the SQL statement

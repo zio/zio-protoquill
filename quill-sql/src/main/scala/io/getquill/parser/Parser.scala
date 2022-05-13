@@ -867,8 +867,11 @@ class ComplexValueParser(rootParse: Parser)(using Quotes)
       val argsAst = args.map(rootParse(_))
       CaseClass(fields.zip(argsAst))
 
-    case id @ Unseal(i @ TIdent(x)) =>
-      cleanIdent(i.symbol.name, InferQuat.ofType(i.tpe))
+    case orig @ Unseal(i @ TIdent(x)) =>
+      val id = cleanIdent(i.symbol.name, InferQuat.ofType(i.tpe))
+      if (id.toString.contains("Ast"))
+        println(s"------------- Parsed: $id from ${Format.Expr(orig)}")
+      id
   }
 }
 

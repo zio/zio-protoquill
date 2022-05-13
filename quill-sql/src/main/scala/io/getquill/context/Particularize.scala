@@ -17,6 +17,7 @@ import scala.annotation.tailrec
 import io.getquill.idiom._
 import scala.quoted._
 import io.getquill.util.Format
+import io.getquill.metaprog.InjectableEagerPlanterExpr
 
 /**
  * For a query that has a filter(p => liftQuery(List("Joe","Jack")).contains(p.name)) we need to turn
@@ -28,6 +29,12 @@ import io.getquill.util.Format
  * which has to be manipulated inside of a '{ ... } block.
  */
 object Particularize:
+  // ====================================== TODO additional-lifts case here too ======================================
+  // ====================================== TODO additional-lifts case here too ======================================
+  // ====================================== TODO additional-lifts case here too ======================================
+  // ====================================== TODO additional-lifts case here too ======================================
+  // ====================================== TODO additional-lifts case here too ======================================
+  // the following should test for that: update - extra lift + scalars + liftQuery/setContains
   object Static:
     /** Convenience constructor for doing particularization from an Unparticular.Query */
     def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Expr[Planter[_, _, _]]], runtimeLiftingPlaceholder: Expr[Int => String], emptySetContainsToken: Token => Token)(using Quotes): Expr[String] =
@@ -38,7 +45,7 @@ object Particularize:
 
       enum LiftChoice:
         case ListLift(value: EagerListPlanterExpr[Any, PrepareRowTemp, Session])
-        case SingleLift(value: EagerPlanterExpr[Any, PrepareRowTemp, Session])
+        case SingleLift(value: PlanterExpr[Any, PrepareRowTemp, Session])
 
       val listLifts: Map[String, EagerListPlanterExpr[Any, PrepareRowTemp, Session]] =
         lifts.collect {
@@ -52,9 +59,16 @@ object Particularize:
             planterExpr.asInstanceOf[EagerPlanterExpr[Any, PrepareRowTemp, Session]]
         }.map(lift => (lift.uid, lift)).toMap
 
+      val injectableLifts: Map[String, InjectableEagerPlanterExpr[Any, PrepareRowTemp, Session]] =
+        lifts.collect {
+          case PlanterExpr.Uprootable(planterExpr: InjectableEagerPlanterExpr[_, _, _]) =>
+            planterExpr.asInstanceOf[InjectableEagerPlanterExpr[Any, PrepareRowTemp, Session]]
+        }.map(lift => (lift.uid, lift)).toMap
+
       def getLifts(uid: String): LiftChoice =
         listLifts.get(uid).map(LiftChoice.ListLift(_))
           .orElse(singleLifts.get(uid).map(LiftChoice.SingleLift(_)))
+          .orElse(injectableLifts.get(uid).map(LiftChoice.SingleLift(_)))
           .getOrElse {
             throw new IllegalArgumentException(s"Cannot find list-lift with UID ${uid} (from all the lifts ${lifts.map(io.getquill.util.Format.Expr(_))})")
           }
@@ -227,7 +241,12 @@ object Particularize:
 
   object Dynamic:
     /** Convenience constructor for doing particularization from an Unparticular.Query */
-    def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Planter[_, _, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token): String =
+    def apply[PrepareRowTemp](
+        query: Unparticular.Query,
+        lifts: List[Planter[_, _, _]],
+        liftingPlaceholder: Int => String,
+        emptySetContainsToken: Token => Token
+    ): String =
       raw(query.realQuery, lifts, liftingPlaceholder, emptySetContainsToken)
 
     private[getquill] def raw[PrepareRowTemp, Session](statements: Statement, lifts: List[Planter[_, _, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token): String = {
@@ -237,7 +256,6 @@ object Particularize:
 
       val listLifts = lifts.collect { case e: EagerListPlanter[_, _, _] => e.asInstanceOf[EagerListPlanter[Any, PrepareRowTemp, Session]] }.map(lift => (lift.uid, lift)).toMap
       val singleLifts = lifts.collect { case e: EagerPlanter[_, _, _] => e.asInstanceOf[EagerPlanter[Any, PrepareRowTemp, Session]] }.map(lift => (lift.uid, lift)).toMap
-      // For dynamic lifts, it is possible that we have injectable lifts that have not yet been resolved
       val injectableLifts = lifts.collect { case e: InjectableEagerPlanter[_, _, _] => e.asInstanceOf[InjectableEagerPlanter[Any, PrepareRowTemp, Session]] }.map(lift => (lift.uid, lift)).toMap
 
       def getLifts(uid: String): LiftChoice =

@@ -59,7 +59,7 @@ object DeserializeAstInstances:
 end DeserializeAstInstances
 
 object ExprAccumulate {
-  def apply[T: Type, ExpectedType](input: Expr[Any])(matcher: PartialFunction[Expr[Any], T])(using Quotes): List[T] = {
+  def apply[T: Type, ExpectedType](input: Expr[Any], recurseWhenMatched: Boolean = true)(matcher: PartialFunction[Expr[Any], T])(using Quotes): List[T] = {
     import quotes.reflect._
 
     val buff: ArrayBuffer[T] = new ArrayBuffer[T]()
@@ -101,17 +101,27 @@ object ExprAccumulate {
         expr.asTerm.tpe <:< TypeRepr.of[io.getquill.quat.Quat]
 
       def transform[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] = {
-        if (!isQuat(expr))
-          matcher.lift(expr) match
-            case Some(result) =>
-              buff += result
-            case None =>
+        val found =
+          if (!isQuat(expr))
+            matcher.lift(expr) match
+              case Some(result) =>
+                buff += result
+                true
+              case None =>
+                false
+          else
+            false
+
+        // if we haven't found anything recurse
+        // if we have found something and are told to continue recursion then continue recursion
+        val continue = !found || recurseWhenMatched
 
         expr.asTerm match
           // Not including this causes execption "scala.tasty.reflect.ExprCastError: Expr: [ : Nothing]" in certain situations
           case Repeated(Nil, Inferred()) => expr
           case _ if (isQuat(expr))       => expr
-          case _                         => transformChildren[TF](expr)
+          case _ if continue             => transformChildren[TF](expr)
+          case _                         => expr
       }
     }
 

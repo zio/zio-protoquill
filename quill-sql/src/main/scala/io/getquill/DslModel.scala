@@ -74,7 +74,7 @@ case class LazyPlanter[T, PrepareRow, Session](value: T, uid: String) extends Pl
 }
 
 // Equivalent to CaseClassValueLift
-case class EagerEntitiesPlanter[T, PrepareRow, Session](value: Iterable[T], uid: String) extends Planter[Query[T], PrepareRow, Session] {
+case class EagerEntitiesPlanter[T, PrepareRow, Session](value: Iterable[T], uid: String, fieldGetters: List[InjectableEagerPlanter[?, PrepareRow, Session]], fieldClass: ast.CaseClass) extends Planter[Query[T], PrepareRow, Session] {
   def unquote: Query[T] =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }

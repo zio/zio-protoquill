@@ -14,6 +14,7 @@ import io.getquill.context.ExecutionType.Dynamic
 import io.getquill.context.Context
 import io.getquill.quote
 import io.getquill.query
+import io.getquill.util.debug.PrintMac
 
 trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   // Need SqlContext here otherwise there will be encoder-not-found issues in 'insertPeople' since that does lifting
@@ -22,7 +23,7 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   // load the base-object `Idiom` because that is the minimal thing that the Dialect parameter needs
   // (and it seems LoadModule in BatchQueryExecution does not yet know what the values of the _, _ in Context[_, _]
   // are supposed to be)
-  val ctx: Context[D, N]
+  val ctx: Context[D, N] //
   import ctx._
 
   case class Person(id: Int, name: String, age: Int)
@@ -92,27 +93,81 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
       mirror.triple mustEqual ("UPDATE Person SET age = 111 WHERE id = ?", List(List(1), List(2), List(3)), Static)
     }
 
-    // NOTE: Not going to be supported in the near term because the type from liftQuery is very hard to reconstruct
-    // should have a warning about not allowing different entity in liftQuery([Ent]).foreach(query[Ent]) though
-    // "update - liftQuery scalars - dynamic" in {
-    //   val updateDynamic = quote {
-    //     (i: Int) => query[Person].filter(p => p.id == i).update(_.age -> 111)
-    //   }
-    //   val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
-    //   mirror.triple mustEqual ("UPDATE Person SET age = 111 WHERE id = ?", List(List(1), List(2), List(3)), Static)
-    // }
+    "update - liftQuery scalars - dynamic" in {
+      val updateDynamic = quote {
+        (i: Int) => query[Person].filter(p => p.id == i).update(_.age -> 111)
+      }
+      val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
+      mirror.triple mustEqual ("UPDATE Person SET age = 111 WHERE id = ?", List(List(1), List(2), List(3)), Dynamic)
+    }
 
-    // NOTE: This kind of AST expansion is not supported yet
-    // "update - extra lift" in {
-    //   val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(p => p.id == lift(123) /*see if p symbol override works*/ ).insertValue(p)) }
-    //   mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
-    // }
+    "update - extra lift" in {
+      // Future UseCase Note a filtered-insert does not make sense this way, should have a specific warning about it (i.e. that it's not supported because it's a filtered insert)
+      // val mirror = ctx.run { query[Person].filter(p => p.id == 123).insertValue(people(0)) }
+      //
+      val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(p => p.id == lift(36)).updateValue(p)) }
+      mirror.triple mustEqual ("UPDATE Person SET id = ?, name = ?, age = ? WHERE id = ?", List(List(1, "Joe", 123, 36), List(2, "Jill", 456, 36)), Static)
+    }
 
-    // NOTE: This kind of AST expansion is not supported yet
-    // "update - extra list lift" in {
-    //   val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(p => liftQuery(List(1,2,3)).contains(p.id)).insertValue(p)) }
-    //   mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
-    // }
+    "update - extra lift + scalars" in {
+      val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => query[Person].filter(p => p.id == lift(36)).update(_.age -> i)) }
+      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id = ?", List(List(1, 36), List(2, 36), List(3, 36)), Static)
+    }
+
+    "update - extra lift + scalars + multi-use" in {
+      val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => query[Person].filter(p => p.id == i && p.age == lift(123)).update(_.age -> i)) }
+      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id = ? AND age = ?", List(List(1, 1, 123), List(2, 2, 123), List(3, 3, 123)), Static)
+    }
+
+    "update - extra lift + scalars + liftQuery/setContains" in {
+      val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => query[Person].filter(p => liftQuery(List(36, 49)).contains(p.id)).update(_.age -> i)) }
+      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id IN (?, ?)", List(List(1, 36, 49), List(2, 36, 49), List(3, 36, 49)), Static)
+    }
+
+    "update - extra lift + scalars + liftQuery/setContains + others" in {
+      val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => query[Person].filter(p => liftQuery(List(36, 49)).contains(p.id) && p.id == lift(789)).update(_.age -> i)) }
+      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id IN (?, ?) AND id = ?", List(List(1, 36, 49, 789), List(2, 36, 49, 789), List(3, 36, 49, 789)), Static)
+    }
+
+    "update - extra lift - dynamic" in {
+      val updateDynamic = quote {
+        (p: Person) => query[Person].filter(p => p.id == lift(36)).updateValue(p)
+      }
+      val mirror = ctx.run { liftQuery(people).foreach(p => updateDynamic(p)) }
+      mirror.triple mustEqual ("UPDATE Person SET id = ?, name = ?, age = ? WHERE id = ?", List(List(1, "Joe", 123, 36), List(2, "Jill", 456, 36)), Dynamic)
+    }
+
+    "update - extra lift - dynamic + scalars" in {
+      val updateDynamic = quote {
+        (i: Int) => query[Person].filter(p => p.id == lift(36)).update(_.age -> i)
+      }
+      val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
+      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id = ?", List(List(1, 36), List(2, 36), List(3, 36)), Dynamic)
+    }
+
+    "update - extra lift - dynamic + scalars + multi-use" in {
+      val updateDynamic = quote {
+        (i: Int) => query[Person].filter(p => p.id == i && p.age == lift(123)).update(_.age -> i)
+      }
+      val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
+      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id = ? AND age = ?", List(List(1, 1, 123), List(2, 2, 123), List(3, 3, 123)), Dynamic)
+    }
+
+    "update - extra lift - dynamic + scalars + liftQuery/setContains" in {
+      val updateDynamic = quote {
+        (i: Int) => query[Person].filter(p => liftQuery(List(36, 49)).contains(p.id)).update(_.age -> i)
+      }
+      val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
+      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id IN (?, ?)", List(List(1, 36, 49), List(2, 36, 49), List(3, 36, 49)), Dynamic)
+    }
+
+    "update - extra lift - dynamic + scalars + liftQuery/setContains + others" in {
+      val updateDynamic = quote {
+        (i: Int) => query[Person].filter(p => liftQuery(List(36, 49)).contains(p.id) && p.id == lift(789)).update(_.age -> i)
+      }
+      val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
+      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id IN (?, ?) AND id = ?", List(List(1, 36, 49, 789), List(2, 36, 49, 789), List(3, 36, 49, 789)), Dynamic)
+    }
 
     "insert with function splice" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => insertPeople(p)) }
