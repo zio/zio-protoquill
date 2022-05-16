@@ -9,7 +9,7 @@ Currently Supported:
  - Inner/Outer, Left/Right joins
  - Query.map/flatMap/concatMap/filter other [query constructs](https://getquill.io/#quotation-queries).
  - Insert, Update, Delete [Actions](https://getquill.io/#quotation-actions) (Compile-Time and Dynamic)
- - Batch Insert, Batch Update, and Batch Delete Actions (currently only Compile-Time)
+ - Batch Insert, Batch Update, and Batch Delete Actions, both Compile-Time and Runtime! (Scala2-Quill only supports Compile-Time batch queries)
  - ZIO, Synchronous JDBC, and Jasync Postgres contexts.
  - SQL OnConflict Clauses
  - Prepare Query (i.e. `context.prepare(query)`)
@@ -161,6 +161,23 @@ ProtoQuill supports Insert/Update/Delete actions as well as their batch variatio
 Please refer to [quotation-actions](https://getquill.io/#quotation-actions) in the Scala2-Quill documentation for more information.
 Keep in mind that in ProtoQuill for these to generate compile-time queries, they need to be `inline def`.
 The `onConflict` instructions are not yet supported in ProtoQuill.
+
+In the latest release, ProtoQuill supports the full range of batch queries that Scala2-Quill supports, including:
+```scala
+// batch queries with different entities
+liftQuery(vips).foreach(v => query[Person].insertValue(Person(v.first + v.last, v.age)))
+
+// batch queries with scalars
+liftQuery(List(1,2,3)).foreach(i => query[Person].filter(p => p.id == i).update(_.age -> 123))
+
+// batch queries with additional lifts
+liftQuery(people).foreach(p => query[Person].filter(p => p.age > lift(123)).contains(p.age)).updateValue(p))
+// ...even with additional liftQuery clauses!
+liftQuery(people).foreach(p => query[Person].filter(p => p.age > lift(123) && liftQuery(List(1,2,3)).contains(p.age)).updateValue(p))
+
+// batch queries with `returning` clauses
+liftQuery(vips).foreach(v => query[Person].insertValue(Person(v.first + v.last, v.age)).returning(_.id))
+```
 
 ### Metas
 
@@ -486,7 +503,6 @@ For this reason, ProtoQuill supports an easy extension syntax for custom parsing
    run(joes) // SELECT p.name, p.age FROM Person p WHERE p.name = 'Joe'
    ```
  - If you have not implemented `io.getquill._` or are importing components one by one, you will need to add this import. Unlike in Scala2-Quill where methods such as `query`, `quote`, etc... come from your context (e.g. in `val ctx = new PostgresJdbcContext(...); import ctx._`), in ProtoQuill these methods come from the [Dsl object](https://github.com/getquill/protoquill/blob/master/quill-sql/src/main/scala/io/getquill/Dsl.scala) which is exported to `io.getquill`. If you want to import the minimal amount of components, you will at least need `io.getquill.quote` and `io.getquill.query`.
- - TBD: Dynamic Batch Queries are not supported, batch queries that have multiple clauses Need to be inline. In order to be able to cross-compile them, make the entire batch-query be in a single run expression (this may be too expensive so I will try to introduce dynamic batch to ProtoQuill based on user-ask).
  - TBD: Warnings will occur when there are encoders for some type T but not decoders for it. This is due to possible Quat issues.
  - TBD: The `Embedded` construct is not strictly required in some cases (review cases, Embedded[T] summon is also supported).
 
