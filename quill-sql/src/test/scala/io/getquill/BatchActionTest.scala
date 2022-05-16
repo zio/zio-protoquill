@@ -169,6 +169,50 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
       mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id IN (?, ?) AND id = ?", List(List(1, 36, 49, 789), List(2, 36, 49, 789), List(3, 36, 49, 789)), Dynamic)
     }
 
+    case class MyPerson(id: Int, name: String, birthYear: Int)
+    "update via tuple" in {
+      val birthYearUpdates = List((3431, 1983), (2976, 1972), (1511, 1991))
+      val a = ctx.run {
+        liftQuery(birthYearUpdates).foreach {
+          case (id, year) =>
+            query[MyPerson].filter(p => p.id == id).update(p => p.birthYear -> year)
+        }
+      }
+      a.triple mustEqual ("UPDATE MyPerson SET birthYear = ? WHERE id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Static)
+
+      val b = ctx.run {
+        liftQuery(birthYearUpdates).foreach((id, year) =>
+          query[MyPerson].filter(p => p.id == id).update(p => p.birthYear -> year)
+        )
+      }
+      b.triple mustEqual ("UPDATE MyPerson SET birthYear = ? WHERE id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Static)
+    }
+
+    "update via tuple - dynamic" in {
+      val updateDynamic = quote {
+        (id: Int, year: Int) => query[MyPerson].filter(p => p.id == id).update(p => p.birthYear -> year)
+      }
+
+      val birthYearUpdates = List((3431, 1983), (2976, 1972), (1511, 1991))
+      val a = ctx.run {
+        liftQuery(birthYearUpdates).foreach {
+          case (id, year) => updateDynamic(id, year)
+        }
+      }
+      a.triple mustEqual ("UPDATE MyPerson SET birthYear = ? WHERE id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Dynamic)
+
+      val b = ctx.run {
+        liftQuery(birthYearUpdates).foreach((id, year) => updateDynamic(id, year))
+      }
+      b.triple mustEqual ("UPDATE MyPerson SET birthYear = ? WHERE id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Dynamic)
+
+      // Does not work, variable tracking has an issue
+      // val b = ctx.run {
+      //   liftQuery(birthYearUpdates).foreach(updateDynamic(_, _))
+      // }
+      // b.triple mustEqual ("UPDATE MyPerson SET birthYear = ? WHERE id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Dynamic)
+    }
+
     "insert with function splice" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => insertPeople(p)) }
       mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
