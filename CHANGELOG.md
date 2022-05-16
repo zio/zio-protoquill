@@ -1,3 +1,7 @@
+# 3.16.5-Beta31
+
+- [Fix Batch Insertion/Update for tuple-based fields](https://github.com/zio/zio-protoquill/pull/103)
+
 # 3.16.5-Beta30
 
 - [Enhance Batch Queries. Support multiple lifts.](https://github.com/zio/zio-protoquill/pull/100)
