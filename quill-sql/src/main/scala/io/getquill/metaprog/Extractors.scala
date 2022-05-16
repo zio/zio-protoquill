@@ -172,17 +172,17 @@ object Extractors {
   }
 
   extension (expr: Expr[_]) {
-    def `.`(property: String)(using Quotes) = {
+    def `.(caseField)`(property: String)(using Quotes) = {
       import quotes.reflect._
       val cls =
         expr.asTerm.tpe.widen.classSymbol.getOrElse {
           report.throwError(s"Cannot find class symbol of the property ${expr.show}", expr)
         }
       val method =
-        cls.memberFields // using memberFields might be more efficient but with it we have no control over the error messages since if method doesn't exist, exception is thrown right away
+        cls.caseFields
           .find(sym => sym.name == property)
           .getOrElse {
-            report.throwError(s"Cannot find property '${property}' of (${expr.show}:${cls.name}) fields are: ${cls.memberFields.map(_.name)}", expr)
+            report.throwError(s"Cannot find property '${property}' of (${expr.show}:${cls.name}) fields are: ${cls.caseFields.map(_.name)}", expr)
           }
 
       '{ (${ Select(expr.asTerm, method).asExpr }) }
