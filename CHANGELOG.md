@@ -1,3 +1,7 @@
+# 3.16.5-Beta30
+
+- [Enhance Batch Queries. Support multiple lifts.](https://github.com/zio/zio-protoquill/pull/100)
+
 # 3.16.5-Beta29
 
 - [Integrating Doobie Support](https://github.com/zio/zio-protoquill/pull/98)
