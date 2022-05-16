@@ -35,7 +35,13 @@ trait LifterProxy {
   def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = default.liftableAssignment(ast)
   def entity(ast: Entity): Quotes ?=> Expr[Entity] = default.liftableEntity(ast)
   def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = default.liftableTuple(ast)
-  def caseClass(ast: CaseClass): Quotes ?=> Expr[CaseClass] = default.liftableCaseClass(ast)
+  def caseClass(ast: CaseClass): Quotes ?=> Expr[CaseClass] =
+    // Need to use lift directly since using liftableCaseClass.apply serializes to Ast which can result
+    // in: Expecting io.getquill.ast.CaseClass but got io.getquill.ast.Ast errors. It is hard to understand
+    // why that is the case but likely because of how the '{ EagerEntitiesPlanter(..., caseClassAst) } interprets
+    // the caseClassAst variable before extracting it from the quotation.
+    default.liftableCaseClass.lift(ast)
+
   def ident(ast: AIdent): Quotes ?=> Expr[AIdent] = default.liftableIdent(ast)
   def quat(quat: Quat): Quotes ?=> Expr[Quat] = default.liftableQuat(quat)
   def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] = default.liftableReturnAction(returnAction)
@@ -76,6 +82,7 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
     def lift: (Quotes) ?=> PartialFunction[T, Expr[T]]
 
     private[getquill] def liftOrThrow(element: T)(using Quotes): Expr[T] =
+      // println(s"================ Doing Lift or throw on: ${element}: ${io.getquill.util.Messages.qprint(element)} ===============")
       import quotes.reflect._
       lift.lift(element).getOrElse {
         report.throwError(
@@ -87,21 +94,19 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
     def apply(element: T)(using Quotes): Expr[T] =
       import quotes.reflect._
+      import io.getquill.util.CommonExtensions._
+      // println(s"================ Doing Apply on: ${element}: ${io.getquill.util.Messages.qprint(element)} ===============")
       element match
-
         case ast: Ast if (serializeAst == SerializeAst.None) =>
           liftOrThrow(ast).asInstanceOf[Expr[T]]
         case quat: Quat if (serializeQuat == SerializeQuat.None) =>
           liftOrThrow(quat).asInstanceOf[Expr[T]]
-
         case ast: Ast if (deserializeDisabled) =>
           Lifter(SerializeQuat.None, SerializeAst.None).liftableAst(ast).asInstanceOf[Expr[T]]
         case quat: Quat if (deserializeDisabled) =>
           Lifter(SerializeQuat.None, SerializeAst.None).liftableQuat(quat).asInstanceOf[Expr[T]]
-
         case ast: Ast if (serializeAst == SerializeAst.All) =>
           tryToSerialize[Ast](ast).asInstanceOf[Expr[T]]
-
         case quat: Quat.Product if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
           '{ SerialHelper.QuatProduct.fromSerialized(${ Expr(SerialHelper.QuatProduct.toSerialized(quat)) }) }.asInstanceOf[Expr[T]]
         case quat: Quat if (Lifter.doSerializeQuat(quat, serializeQuat)) =>
@@ -237,7 +242,9 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
   given liftableCaseClass: NiceLiftable[CaseClass] with
     def lift =
-      case CaseClass(lifts) => '{ CaseClass(${ lifts.expr }) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
+      case ast if (serializeAst == SerializeAst.All) => tryToSerialize[CaseClass](ast)
+      case cc @ CaseClass(lifts) =>
+        '{ CaseClass(${ lifts.expr }) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
 
   given liftableTuple: NiceLiftable[Tuple] with
     def lift =

@@ -15,6 +15,8 @@ import io.getquill.metaprog.SummonParser
 import io.getquill.metaprog.SummonSerializationBehaviors
 import io.getquill.parser.engine.History
 import io.getquill.context.sql.norm.SimplifyFilterTrue
+import io.getquill.parser.Unlifter
+import io.getquill.util.Format
 
 object ExtractLifts {
   // Find all lifts, dedupe by UID since lifts can be inlined multiple times hence
@@ -61,6 +63,7 @@ object QuoteMacro {
 
   def apply[T](bodyRaw: Expr[T])(using Quotes, Type[T], Type[Parser]): Expr[Quoted[T]] = {
     import quotes.reflect._
+
     // NOTE Can disable underlyingArgument here if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val body = bodyRaw.asTerm.underlyingArgument.asExpr
 
@@ -71,6 +74,11 @@ object QuoteMacro {
     val ast = SimplifyFilterTrue(BetaReduction(rawAst))
 
     val reifiedAst = Lifter.WithBehavior(serializeQuats, serializeAst)(ast)
+    val u = Unlifter(reifiedAst)
+    u match
+      case id @ io.getquill.ast.Ident("Ast", _) =>
+        println(s"******** Lifted $id (quat: ${io.getquill.util.Messages.qprint(id.quat)}) from ${Format.Expr(reifiedAst)} from ${io.getquill.util.Messages.qprint(io.getquill.util.Messages.qprint(rawAst))}")
+      case _ =>
 
     // Extract runtime quotes and lifts
     val (lifts, pluckedUnquotes) = ExtractLifts(bodyRaw)

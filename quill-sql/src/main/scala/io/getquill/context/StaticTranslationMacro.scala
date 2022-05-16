@@ -97,30 +97,89 @@ object StaticTranslationMacro:
    * that contains the UUIDs of lifted elements. We check against list to make
    * sure that that only needed lifts are used and in the right order.
    */
-  private[getquill] def processLifts(lifts: List[PlanterExpr[_, _, _]], matchingExternals: List[External])(using Quotes): Option[List[PlanterExpr[_, _, _]]] =
+  private[getquill] def processLifts(
+      lifts: List[PlanterExpr[_, _, _]],
+      matchingExternals: List[External],
+      secondaryLifts: List[PlanterExpr[_, _, _]] = List()
+  )(using Quotes): Either[String, (List[PlanterExpr[_, _, _]], List[PlanterExpr[_, _, _]])] =
     import quotes.reflect.report
 
     val encodeablesMap =
       lifts.map(e => (e.uid, e)).toMap
+
+    val secondaryEncodeablesMap =
+      secondaryLifts.map(e => (e.uid, e)).toMap
 
     val uidsOfScalarTags =
       matchingExternals.collect {
         case tag: ScalarTag => tag.uid
       }
 
+    enum UidStatus:
+      // Most normal lifts and the liftQuery of batches
+      case Primary(uid: String, planter: PlanterExpr[?, ?, ?])
+      // In batch queries, any lifts that are not part of the initial liftQuery
+      case Secondary(uid: String, planter: PlanterExpr[?, ?, ?])
+      // Lift planter was not found, this means an error
+      case NotFound(uid: String)
+      def print: String = this match
+        case Primary(uid, planter)   => s"PrimaryPlanter($uid, ${Format.Expr(planter.plant)})"
+        case Secondary(uid, planter) => s"SecondaryPlanter($uid, ${Format.Expr(planter.plant)})"
+        case NotFound(uid)           => s"NotFoundPlanter($uid)"
+
     val sortedEncodeables =
-      uidsOfScalarTags.map { uid =>
-        encodeablesMap.get(uid) match
-          case Some(encodeable) => encodeable
-          case None =>
-            report.throwError(s"Invalid Transformations Encountered. Cannot find lift with ID: ${uid}.")
-      }
+      uidsOfScalarTags
+        .map { uid =>
+          encodeablesMap.get(uid) match
+            case Some(element) => UidStatus.Primary(uid, element)
+            case None =>
+              secondaryEncodeablesMap.get(uid) match
+                case Some(element) => UidStatus.Secondary(uid, element)
+                case None          => UidStatus.NotFound(uid)
+        }
+
+    object HasNotFoundUids:
+      def unapply(statuses: List[UidStatus]) =
+        val collected =
+          statuses.collect {
+            case UidStatus.NotFound(uid) => uid
+          }
+        if (collected.nonEmpty) Some(collected) else None
+
+    object PrimaryThenSecondary:
+      def unapply(statuses: List[UidStatus]) =
+        val (primaries, secondaries) =
+          statuses.partition {
+            case UidStatus.Primary(_, _) => true
+            case _                       => false
+          }
+        val primariesFound = primaries.collect { case p: UidStatus.Primary => p }
+        val secondariesFound = secondaries.collect { case s: UidStatus.Secondary => s }
+        val goodPartitioning =
+          primariesFound.length == primaries.length && secondariesFound.length == secondaries.length
+        if (goodPartitioning)
+          Some((primariesFound.map(_.planter), secondariesFound.map(_.planter)))
+        else
+          None
+
+    val outputEncodeables =
+      sortedEncodeables match
+        case HasNotFoundUids(uids) =>
+          Left(s"Invalid Transformations Encountered. Cannot find lift with IDs: ${uids}.")
+        case PrimaryThenSecondary(primaryPlanters, secondaryPlanters /*or List() if none*/ ) =>
+          Right((primaryPlanters, secondaryPlanters))
+        case other =>
+          Left(
+            s"Invalid transformation primary and secondary encoders were mixed.\n" +
+              s"All secondary planters must come after all primary ones but found:\n" +
+              s"${other.map(_.print).mkString("=====\n")}"
+          )
 
     // TODO This should be logged if some fine-grained debug logging is enabled. Maybe as part of some phase that can be enabled via -Dquill.trace.types config
     // val remaining = encodeables.removedAll(uidsOfScalarTags)
     // if (!remaining.isEmpty)
     //   println(s"Ignoring the following lifts: [${remaining.map((_, v) => Format.Expr(v.plant)).mkString(", ")}]")
-    Some(sortedEncodeables)
+    outputEncodeables
   end processLifts
 
   def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using Quotes, Type[D], Type[N]): Try[(Idiom, NamingStrategy)] =
@@ -132,15 +191,18 @@ object StaticTranslationMacro:
   def apply[I: Type, T: Type, D <: Idiom, N <: NamingStrategy](
       quotedRaw: Expr[Quoted[QAC[I, T]]],
       wrap: ElaborationBehavior,
-      topLevelQuat: Quat
+      topLevelQuat: Quat,
+      // Optional lifts that need to be passed in if they exist e.g. in the liftQuery(...).foreach(p => query[P].filter(pq => pq.id == lift(foo)).updateValue(p))
+      // the `lift(foo)` needs to be additionally passed in because it is not part of the original lifts
+      additionalLifts: List[PlanterExpr[?, ?, ?]] = List()
   )(using qctx: Quotes, dialectTpe: Type[D], namingType: Type[N]): Option[StaticState] =
     import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
 
-    extension [T](opt: Option[T]) {
+    extension [T](opt: Option[T])
       def errPrint(str: => String) =
-        opt match {
+        opt match
           case s: Some[T] => s
           case None =>
             if (HasDynamicSplicingHint.fail)
@@ -149,8 +211,19 @@ object StaticTranslationMacro:
               if (io.getquill.util.Messages.tracesEnabled(TraceType.Standard))
                 println(s"[StaticTranslationError] ${str}")
               None
-        }
-    }
+
+    extension [T](opt: Either[String, T])
+      def errPrintEither(str: => String) =
+        opt match
+          case Right(v) => Some(v)
+          case Left(errorStr) =>
+            val msg = str + errorStr
+            if (HasDynamicSplicingHint.fail)
+              report.throwError(msg)
+            else
+              if (io.getquill.util.Messages.tracesEnabled(TraceType.Standard))
+                println(s"[StaticTranslationError] ${msg}")
+              None
 
     val tryStatic =
       for {
@@ -170,14 +243,19 @@ object StaticTranslationMacro:
         (query, externals, returnAction, ast) <-
           processAst[T](quotedExpr.ast, topLevelQuat, wrap, idiom, naming).errPrint(s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}")
 
-        encodedLifts <-
-          processLifts(lifts, externals).errPrint(s"Could not process the lifts:\n${lifts.map(_.toString).mkString(",\n")}")
+        (primaryLifts, secondaryLifts) <-
+          processLifts(lifts, externals, additionalLifts).errPrintEither(
+            s"Could not process the lifts:\n" +
+              s"${lifts.map(_.toString).mkString("====\n")}" +
+              (if (additionalLifts.nonEmpty) s"${additionalLifts.map(_.toString).mkString("====\n")}" else "") +
+              s"Due to an error: "
+          )
 
       } yield {
         if (io.getquill.util.Messages.debugEnabled)
           queryPrint(PrintType.Query(query.basicQuery), Some(idiom))
 
-        StaticState(query, encodedLifts, returnAction, idiom)(ast)
+        StaticState(query, primaryLifts, returnAction, idiom, secondaryLifts)(ast)
       }
 
     if (tryStatic.isEmpty)

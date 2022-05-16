@@ -57,13 +57,6 @@ import io.getquill.quat.QuatMaking
 import io.getquill.metaprog.EagerListPlanterExpr
 import io.getquill.metaprog.EagerPlanterExpr
 
-// trait BatchContextOperation[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Res](val idiom: D, val naming: N) {
-//   def execute(sql: String, prepare: List[(PrepareRow, Session) => (List[Any], PrepareRow)], extractor: Extraction[ResultRow, Session, T], executionInfo: ExecutionInfo): Res
-// }
-
-case class Shard[T](members: List[T]):
-  def add(t: T) = Shard(members :+ t)
-
 private[getquill] enum BatchActionType:
   case Insert
   case Update
@@ -107,25 +100,42 @@ object PrepareBatchComponents:
             case other =>
               Left(s"Malformed batch entity: ${other}. Batch insertion entities must have the form Returning/ReturningGenerated(Insert(Entity, Nil: List[Assignment]), _, _)")
 
-    // TODO NOT NECESSARILY A CASE CLASS ANOT NOT NECESSARILY THE TYPE BEING INSERTED. NEED TO TEST WITH DIFF
-    // TYPES BEING ENCODED AND INSERTED TOO
-    // e.g. liftQuery(Vip, Vip).foreach(v => query[Person].insertValue(Person(v.name, v.age)))
-    // OR WITH SCALARS
-    // e.g. liftQuery(1, 2).foreach(i => query[Person].insertValue(Person("Joe", i)))
-
-    // (continue to beta-reduce out the foreach-ident if an error has not happened)
     componentsOrError.map { (foreachIdent, actionQueryAstRaw, bType) =>
       // The primary idea that drives batch query execution is the realization that you
       // can beta reduce out the foreach identifier replacing it with lift tags.
       // For example if we have something like:
-      // actionQueryAstRaw: liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(_.name == p.name))
+      // actionQueryAstRaw: liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(_.name -> p.name))
       // where Person(id: Int, name: String, age: Int)
-      // all we need do do is to take the caseClassAst which is ast.CaseClass(p.id -> ScalarTag(A), p.name -> ScalarTag(B), p.age -> ScalarTag(C))
-      // (and corresponding perRowLifts (EagerPlanter(A), EagerPlanter(B), EagerPlanter(C)))
-      // then do a beta reduction which will turn our actionQueryAstRaw into:
-      // actionQueryAstRaw: liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == ScalarTag(A)).update(_.name == ScalarTag(B)))
+      // all we need do do is to take the caseClassAst (of Person) which is:
+      //   ast.CaseClass(p.id -> ScalarTag(A), p.name -> ScalarTag(B), p.age -> ScalarTag(C))
+      //   or for short:
+      //   CC(p.id-STA, p.name-STB, p.age-STC)
+      // and corresponding perRowLifts:
+      //   (EagerPlanter(A), EagerPlanter(B), EagerPlanter(C)))
+      // then do a beta reduction which will turn our
+      // actionQueryAstRaw from:
+      //   liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == `CC(p.id-STA, p.name-STB, p.age-STC)`.id).update(_.name -> `CC(p.id-STA, p.name-STB, p.age-STC)`.name))
+      // into:
+      //   liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == ScalarTag(A)).update(_.name -> ScalarTag(B)))
       // this will ultimately yield a query that looks like: UPDATE Person SET name = ? WHERE id = ? and for each person entity
-      // the corresponding values will be plugged in
+      // the corresponding values will be plugged in.
+      //
+      // Note that the types of liftQuery(people) and query[Person] need not be the same. For example, for something like this:
+      //   case class Vip(id: Int, firstName: String, lastName: String, age: Int)
+      // actionQueryAstRaw is:
+      //   liftQuery(vips:List[Vip]).foreach(v => query[Person].filter(pf => pf.id == v.id).update(_.name -> v.firstName + v.lastName))
+      // ast.CaseClass of Vip will be:
+      //   ast.CaseClass(p.id -> ScalarTag(A), p.firstName -> ScalarTag(B), p.lastName -> ScalarTag(C), p.age -> ScalarTag(D)) and
+      //   or for short:
+      //   CC(p.id-STA, p.firstName-STB, p.lastName-STC, p.age-STD)
+      // lifts still are:
+      //   (EagerPlanter(A), EagerPlanter(B), EagerPlanter(C)))
+      // So this:
+      //   liftQuery(vips:List[Vip]).foreach(v => query[Person].filter(pf => pf.id == v.id).update(_.name -> v.firstName + v.lastName))
+      //   will become this:
+      //   liftQuery(vips:List[Vip]).foreach(v => query[Person].filter(pf => pf.id == `CC(p.id-STA, p.firstName-STB, p.lastName-STC, p.age-STD)`.id).update(_.name -> `CC(p.id-STA, p.firstName-STB, p.lastName-STC, p.age-STD)`.firstName + `CC(p.id-STA, p.firstName-STB, p.lastName-STC, p.age-STD)`.lastName))
+      //   and reduces to:
+      //   liftQuery(vips:List[Vip]).foreach(v => query[Person].filter(pf => pf.id == ScalarTag(A)).update(_.name -> ScalarTag(B) + ScalarTag(C)))
       val actionQueryAst = BetaReduction(actionQueryAstRaw, foreachIdent -> foreachIdentAst)
       // println(s"==== Reduced AST: ${io.getquill.util.Messages.qprint(actionQueryAst)}")
       (actionQueryAst, bType)
@@ -146,6 +156,62 @@ object DynamicBatchQueryExecution:
   import BatchQueryExecutionModel._
   import PrepareDynamicExecution._
 
+  extension [T](element: Either[String, T])
+    def rightOrException() =
+      element match
+        case Right(value) => value
+        case Left(error)  => throw new IllegalArgumentException(error)
+
+  // NOTE We don't need to process secondary planters anymore because that list is not being used.
+  // It is handled by the static state. Can removing everything having to do with secondary planters list in a future PR.
+  sealed trait PlanterKind
+  object PlanterKind:
+    case class PrimaryEntitiesList(planter: EagerEntitiesPlanter[?, ?, ?]) extends PlanterKind
+    case class PrimaryScalarList(planter: EagerListPlanter[?, ?, ?]) extends PlanterKind
+    case class Other(planter: Planter[?, ?, ?]) extends PlanterKind
+
+  def organizePlanters(planters: List[Planter[?, ?, ?]]) =
+    planters.foldLeft((Option.empty[PlanterKind.PrimaryEntitiesList | PlanterKind.PrimaryScalarList], List.empty[PlanterKind.Other])) {
+      case ((None, list), planter: EagerEntitiesPlanter[?, ?, ?]) =>
+        val planterKind = PlanterKind.PrimaryEntitiesList(planter)
+        (Some(planterKind), list)
+      case ((None, list), planter: EagerListPlanter[?, ?, ?]) =>
+        val planterKind = PlanterKind.PrimaryScalarList(planter)
+        (Some(planterKind), list)
+      case ((primary @ Some(_), list), planter) =>
+        (primary, list :+ PlanterKind.Other(planter))
+      // this means we haven't found the primary planter yet (don't think this can happen because nothing can be before liftQuery), keep going
+      case ((primary @ None, list), planter) =>
+        throw new IllegalArgumentException("Invalid planter traversal")
+    } match {
+      case (Some(primary), categorizedPlanters) => (primary, categorizedPlanters)
+      case (None, _)                            => throw new IllegalArgumentException(s"Could not find an entities list-lift (i.e. liftQuery(entities/scalars) in liftQuery(...).foreach()) in lifts: ${planters}")
+    }
+
+  def extractPrimaryComponents[I, PrepareRow, Session](
+      primaryPlanter: PlanterKind.PrimaryEntitiesList | PlanterKind.PrimaryScalarList,
+      ast: Ast,
+      extractionBehavior: BatchQueryExecutionModel.BatchExtractBehavior
+  ) =
+    primaryPlanter match
+      // In the case of liftQuery(entities)
+      case PlanterKind.PrimaryEntitiesList(planter) =>
+        val (actionQueryAst, batchActionType) = PrepareBatchComponents[I, PrepareRow](ast, planter.fieldClass, extractionBehavior).rightOrException()
+        (actionQueryAst, batchActionType, planter.fieldGetters.asInstanceOf[List[InjectableEagerPlanter[?, PrepareRow, Session]]])
+      // In the case of liftQuery(scalars)
+      // Note, we could have potential other liftQuery(scalars) later in the query for example:
+      // liftQuery(List("Joe","Jack","Jill")).foreach(query[Person].filter(name => liftQuery(1,2,3 /*ids of Joe,Jack,Jill respectively*/).contains(p.id)).update(_.name -> name))
+      // Therefore we cannot assume that there is only one
+      case PlanterKind.PrimaryScalarList(planter) =>
+        val uuid = java.util.UUID.randomUUID.toString
+        val (foreachReplacementAst, perRowLift) =
+          (ScalarTag(uuid), InjectableEagerPlanter((t: Any) => t, planter.encoder.asInstanceOf[io.getquill.generic.GenericEncoder[Any, PrepareRow, Session]], uuid))
+        // create the full batch-query Ast using the value of actual query of the batch statement i.e. I in:
+        // liftQuery[...](...).foreach(p => query[I].insertValue(p))
+        val (actionQueryAst, batchActionType) = PrepareBatchComponents[I, PrepareRow](ast, foreachReplacementAst, extractionBehavior).rightOrException()
+        // return the combined batch components
+        (actionQueryAst, batchActionType, List(perRowLift))
+
   def apply[
       I,
       T,
@@ -160,10 +226,6 @@ object DynamicBatchQueryExecution:
   ](
       quotedRaw: Quoted[BatchAction[A]],
       batchContextOperation: ContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res],
-      caseClassAst: ast.CaseClass,
-      // These are computed based on the insertion-type I which is calculated before, not from quotedRaw
-      // (i.e. note that to get lifts from QuotedRaw we need to go through runtimeQuotes of each quote recursively so it wouldn't be possible to know that anyway for a dynamic query during compile-time)
-      perRowLifts: List[Planter[_, _, _]],
       extractionBehavior: BatchExtractBehavior,
       rawExtractor: Extraction[ResultRow, Session, T],
       topLevelQuat: Quat
@@ -175,19 +237,28 @@ object DynamicBatchQueryExecution:
     // println(s"===== Spliced Ast: ====\n${io.getquill.util.Messages.qprint(ast)}")
     // println(s"===== Initial Lifts: ====\n${io.getquill.util.Messages.qprint(lifts)}")
 
-    val entities =
-      lifts match
-        case EagerEntitiesPlanter(value, _) :: Nil => value
-        case _                                     => throw new IllegalStateException(s"Invalid lifts instance: ${quotedRaw.lifts}. Must be a single InjectableEagerPlanter instance")
+    // Given: Person(name, age)
+    // For the query:
+    //   liftQuery(List(Person("Joe", 123))).foreach(p => query[Person].insertValue(p))
+    //   it would be (CaseClass(name->lift(A), age->lift(B)), BatchActionType.Insert, List(InjectableEagerLift(A), InjectableEagerLift(B))))
+    // Same thing regardless of what kind of object is in the insert:
+    //   liftQuery(List("foo")).foreach(name => query[Person].update(_.name -> name))
+    //   it would be (CaseClass(name->lift(A), age->lift(B)), BatchActionType.Update, List(InjectableEagerLift(A), InjectableEagerLift(B))))
+    //
+    // That is why it is important to find the actual EagerEntitiesPlanterExpr (i.e. the part defined by `query[Person]`). That
+    // way we know the actual entity that needs to be lifted.
+    val (primaryPlanter, categorizedPlanters) = organizePlanters(lifts)
 
-    val (actionQueryAst, batchActionType) =
-      PrepareBatchComponents[I, PrepareRow](ast, caseClassAst, extractionBehavior) match
-        case Right(value) => value
-        case Left(error) =>
-          throw new IllegalStateException(error)
-
-    // println(s"===== ActionQueryAst: ====\n${io.getquill.util.Messages.qprint(actionQueryAst)}")
-    // println(s"===== Per-Row Lifts: ====\n${io.getquill.util.Messages.qprint(perRowLifts)}")
+    // Use some custom functionality in the lift macro to prepare the case class an injectable lifts
+    // e.g. if T is Person(name: String, age: Int) and we do liftQuery(people:List[Person]).foreach(p => query[Person].insertValue(p))
+    // Then:
+    //   ast = CaseClass(name -> lift(UUID1), age -> lift(UUID2))  // NOTE: lift in the AST means a ScalarTag
+    //   lifts = List(InjectableEagerLift(p.name, UUID1), InjectableEagerLift(p.age, UUID2))
+    // e.g. if T is String and we do liftQuery(people:List[String]).foreach(p => query[Person].insertValue(Person(p, 123)))
+    // Then:
+    //   ast = lift(UUID1)  // I.e. ScalarTag(UUID1) since lift in the AST means a ScalarTag
+    //   lifts = List(InjectableEagerLift(p, UUID1))
+    val (actionQueryAst, batchActionType, perRowLifts) = extractPrimaryComponents[I, PrepareRow, Session](primaryPlanter, ast, extractionBehavior)
 
     // equivalent to static expandQuotation result
     val dynamicExpandedQuotation =
@@ -197,9 +268,7 @@ object DynamicBatchQueryExecution:
         // We need lifts for 'Delete' because it could have a WHERE clause
         case BatchActionType.Delete => Quoted[Delete[I]](actionQueryAst, perRowLifts, Nil)
 
-    // println(s"===== Dynamically Expanded Quotation: ====\n${io.getquill.util.Messages.qprint(dynamicExpandedQuotation)}")
-
-    val (queryString, outputAst, sortedLifts, extractor) =
+    val (queryString, outputAst, sortedLifts, extractor, sortedSecondaryLifts) =
       PrepareDynamicExecution[I, T, T, D, N, PrepareRow, ResultRow, Session](
         dynamicExpandedQuotation,
         rawExtractor,
@@ -207,19 +276,33 @@ object DynamicBatchQueryExecution:
         batchContextOperation.naming,
         ElaborationBehavior.Skip,
         topLevelQuat,
-        SpliceBehavior.AlreadySpliced
+        SpliceBehavior.AlreadySpliced,
+        categorizedPlanters.map(_.planter)
       )
 
-    // println(s"===== Entities: ====\n${io.getquill.util.Messages.qprint(entities.toList)}")
-
-    val prepares =
+    def expandLiftQueryMembers(filteredPerRowLifts: List[Planter[?, ?, ?]], entities: Iterable[?]) =
       entities.map { entity =>
-        val lifts = sortedLifts.asInstanceOf[List[InjectableEagerPlanter[_, _, _]]].map(lift => lift.withInject(entity))
-        // println(s"===== Prepared Lifts: ====\n${io.getquill.util.Messages.qprint(lifts)}")
-        (row: PrepareRow, session: Session) => LiftsExtractor.Dynamic[PrepareRow, Session](lifts, row, session)
+        sortedLifts.asInstanceOf[List[InjectableEagerPlanter[_, _, _]]].map(lift => lift.withInject(entity))
       }
 
-    // TODO this variable should go through BatchQueryExecution arguments and be propagated here
+    // Get the planters needed for every element lift (see primaryPlanterLifts in BatchStatic for more detail)
+    val primaryPlanterLifts =
+      primaryPlanter match
+        case PlanterKind.PrimaryEntitiesList(entitiesPlanter) =>
+          expandLiftQueryMembers(sortedLifts, entitiesPlanter.value).toList
+        case PlanterKind.PrimaryScalarList(scalarsPlanter) =>
+          expandLiftQueryMembers(sortedLifts, scalarsPlanter.values).toList
+
+    // Get other lifts that are needed (again, see primaryPlanterLifts in BatchStatic for more detail). Then combine them
+    val combinedPlanters =
+      primaryPlanterLifts.map(perEntityPlanters => perEntityPlanters ++ sortedSecondaryLifts)
+
+    val prepares =
+      combinedPlanters.map(perRowLifts =>
+        (row: PrepareRow, session: Session) =>
+          LiftsExtractor.Dynamic[PrepareRow, Session](perRowLifts, row, session)
+      )
+
     val spliceAst = false
     val executionAst = if (spliceAst) outputAst else io.getquill.ast.NullValue
     batchContextOperation.execute(ContextOperation.Argument(queryString, prepares.toArray, extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst, topLevelQuat), None))
@@ -256,50 +339,27 @@ object BatchQueryExecution:
         case _ =>
           report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.TypeOf[A]}")
 
-    def prepareLifts(): (ast.CaseClass, List[Expr[InjectableEagerPlanter[_, PrepareRow, Session]]]) =
-      // Use some custom functionality in the lift macro to prepare the case class an injectable lifts
-      // e.g. if T is Person(name: String, age: Int) and we do liftQuery(people:List[Person]).foreach(p => query[Person].insertValue(p))
-      // Then:
-      //   ast = CaseClass(name -> lift(UUID1), age -> lift(UUID2))
-      //   lifts = List(InjectableEagerLift(p.name, UUID1), InjectableEagerLift(p.age, UUID2))
-      val (caseClassAst, perRowLifts) = LiftMacro.liftInjectedProduct[I, PrepareRow, Session]
-
-      // println(s"Case class AST: ${io.getquill.util.Messages.qprint(caseClassAst)}")
-      // println("========= CaseClass =========\n" + io.getquill.util.Messages.qprint(caseClassAst))
-      // Assuming that all lifts of the batch query are injectable
-
-      // Verify that all of the lists are InjectableEagerPlanterExpr
-      // TODO Need to examine this assumption
-      // Maybe if user does liftQuery(people).foreach(p => query[Person].insert(_.name -> lift(p.name), _.age -> lift(123)))
-      // then this won't be the case because the latter lift is not injectable i.e. it comes directly from the entity
-      perRowLifts.foreach {
-        case PlanterExpr.Uprootable(expr @ InjectableEagerPlanterExpr(_, _, _)) => expr
-        case PlanterExpr.Uprootable(expr) =>
-          report.throwError(s"wrong kind of uprootable ${(expr)}")
-        case other => report.throwError(s"The lift expression ${Format(Printer.TreeStructure.show(other.asTerm))} is not valid for batch queries because it is not injectable")
-      }
-      (caseClassAst, perRowLifts)
-    end prepareLifts
-
     /**
      * (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insertValue(p))
      * Create a quotation with the elaborated entity
      * e.g. given    liftQuery(people).foreach(p => query[Person].insert[Person](p))
      * then create a liftQuery(people).foreach(p => query[Person].insert[Person](_.name -> lift(p.name), _.age -> lift(p.age)))
      */
-    def expandQuotation(actionQueryAstExpr: Expr[Ast], batchActionType: BatchActionType, perRowLifts: List[Expr[InjectableEagerPlanter[_, PrepareRow, Session]]]) =
+    def expandQuotation(actionQueryAstExpr: Expr[Ast], batchActionType: BatchActionType, perRowLifts: Expr[List[InjectableEagerPlanter[_, PrepareRow, Session]]]) =
       batchActionType match
-        case BatchActionType.Insert => '{ Quoted[Insert[I]]($actionQueryAstExpr, ${ Expr.ofList(perRowLifts) }, Nil) }
-        case BatchActionType.Update => '{ Quoted[Update[I]]($actionQueryAstExpr, ${ Expr.ofList(perRowLifts) }, Nil) }
+        case BatchActionType.Insert => '{ Quoted[Insert[I]]($actionQueryAstExpr, ${ perRowLifts }, Nil) }
+        case BatchActionType.Update => '{ Quoted[Update[I]]($actionQueryAstExpr, ${ perRowLifts }, Nil) }
         // We need lifts for 'Delete' because it could have a WHERE clause
-        case BatchActionType.Delete => '{ Quoted[Delete[I]]($actionQueryAstExpr, ${ Expr.ofList(perRowLifts) }, Nil) }
+        case BatchActionType.Delete => '{ Quoted[Delete[I]]($actionQueryAstExpr, ${ perRowLifts }, Nil) }
 
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
 
+    /**
+     * *********************************************************************************************************
+     * ************************************** Prepare Dynamic Batch Query **************************************
+     * *********************************************************************************************************
+     */
     def applyDynamic(): Expr[Res] =
-      val (caseClass, perRowLifts) = prepareLifts()
-      val caseClassExpr = Lifter.NotSerializingAst.caseClass(caseClass)
-      val perRowLiftsExpr = Expr.ofList(perRowLifts)
       val extractionBehaviorExpr = Expr(extractionBehavior)
       val extractor = MakeExtractor[ResultRow, Session, T, T].dynamic(identityConverter, extractionBehavior)
 
@@ -307,8 +367,6 @@ object BatchQueryExecution:
         DynamicBatchQueryExecution.apply[I, T, A, ResultRow, PrepareRow, Session, D, N, Ctx, Res](
           $quotedRaw,
           $batchContextOperation,
-          $caseClassExpr,
-          $perRowLiftsExpr,
           $extractionBehaviorExpr,
           $extractor,
           // / For the sake of viewing/debugging the quat macro code it is better not to serialize it here
@@ -326,9 +384,8 @@ object BatchQueryExecution:
       UntypeExpr(quoted) match
         case QuotedExpr.UprootableWithLifts(QuotedExpr(quoteAst, _, _), planters) =>
           val unliftedAst = Unlifter(quoteAst)
-
           val comps = BatchStatic[I, PrepareRow, Session](unliftedAst, planters, extractionBehavior)
-          val expandedQuotation = expandQuotation(Lifter(comps.actionQueryAst), comps.batchActionType, comps.perRowLifts)
+          val expandedQuotation = expandQuotation(comps.actionQueryAst, comps.batchActionType, comps.perRowLifts)
 
           def expandLiftQueryMembers(filteredPerRowLifts: List[PlanterExpr[?, ?, ?]], entities: Expr[Iterable[?]]) =
             '{
@@ -353,8 +410,8 @@ object BatchQueryExecution:
               )
             }
 
-          StaticTranslationMacro[I, T, D, N](expandedQuotation, ElaborationBehavior.Skip, topLevelQuat) match
-            case Some(state @ StaticState(query, filteredPerRowLifts, _, _)) =>
+          StaticTranslationMacro[I, T, D, N](expandedQuotation, ElaborationBehavior.Skip, topLevelQuat, comps.categorizedPlanters.map(_.planter)) match
+            case Some(state @ StaticState(query, filteredPerRowLifts, _, _, secondaryLifts)) =>
               // create an extractor for returning actions
               val extractor = MakeExtractor[ResultRow, Session, T, T].static(state, identityConverter, extractionBehavior)
 
@@ -392,18 +449,12 @@ object BatchQueryExecution:
               //     List(lift(Jim.name), lift(Jim.age)), lift(somethingElse) <- per-entity lifts of Jim
               //   )
               val otherPlanters =
-                Expr.ofList(
-                  comps.categorizedPlanters.drop(1).map {
-                    case BatchStatic.PlanterKind.Other(planter: EagerListPlanterExpr[_, _, _]) =>
-                      planter.asInstanceOf[EagerListPlanterExpr[?, ?, ?]].plant
-                    case other =>
-                      report.throwError(s"Invalid planter: ${other}")
-                  }
-                )
+                Expr.ofList(secondaryLifts.map(_.plant))
               val combinedPlanters =
                 '{ $primaryPlanterLifts.map(perEntityPlanters => perEntityPlanters ++ $otherPlanters) }
 
-              // println(s"====================== PreparesList: ${Format.Expr(combinedPlanters)} =================")
+              // println(s"============= Other Planters ===========\n${Format.Expr(otherPlanters)} ")
+              // println(s"============= Combined Planters ===========\n${Format.Expr(combinedPlanters)} ")
 
               val prepares = '{
                 $combinedPlanters.map(perRowList =>
@@ -412,8 +463,11 @@ object BatchQueryExecution:
                 )
               }
 
+              val allPlanterExprs = (filteredPerRowLifts ++ secondaryLifts).map(_.plant)
+              val particularQuery = Particularize.Static(state.query, allPlanterExprs, '{ $batchContextOperation.idiom.liftingPlaceholder }, state.idiom.emptySetContainsToken)
+
               '{
-                $batchContextOperation.execute(ContextOperation.Argument(${ Expr(query.basicQuery) }, $prepares.toArray, $extractor, ExecutionInfo(ExecutionType.Static, ${ Lifter(state.ast) }, ${ Lifter.quat(topLevelQuat) }), None))
+                $batchContextOperation.execute(ContextOperation.Argument($particularQuery, $prepares.toArray, $extractor, ExecutionInfo(ExecutionType.Static, ${ Lifter(state.ast) }, ${ Lifter.quat(topLevelQuat) }), None))
               }
 
             case None =>
@@ -429,6 +483,11 @@ object BatchQueryExecution:
 
   end RunQuery
 
+  /**
+   * ********************************************************************************************************
+   * ************************************** Prepare Static Batch Query **************************************
+   * ********************************************************************************************************
+   */
   inline def apply[
       I,
       T,
@@ -461,10 +520,10 @@ end BatchQueryExecution
 
 object BatchStatic:
   case class Components[PrepareRow, Session](
-      actionQueryAst: Ast,
+      actionQueryAst: Expr[Ast],
       batchActionType: BatchActionType,
-      perRowLifts: List[Expr[InjectableEagerPlanter[?, PrepareRow, Session]]],
-      categorizedPlanters: List[PlanterKind],
+      perRowLifts: Expr[List[InjectableEagerPlanter[?, PrepareRow, Session]]],
+      categorizedPlanters: List[PlanterKind.Other],
       primaryPlanter: PlanterKind.PrimaryEntitiesList | PlanterKind.PrimaryScalarList
   )
 
@@ -474,70 +533,66 @@ object BatchStatic:
     case class PrimaryScalarList(planter: EagerListPlanterExpr[?, ?, ?]) extends PlanterKind
     case class Other(planter: PlanterExpr[?, ?, ?]) extends PlanterKind
 
-  // Given: Person(name, age)
-  // For the query:
-  //   liftQuery(List(Person("Joe", 123))).foreach(p => query[Person].insertValue(p))
-  //   it would be (CaseClass(name->lift(A), age->lift(B)), BatchActionType.Insert, List(InjectableEagerLift(A), InjectableEagerLift(B))))
-  // Same thing regardless of what kind of object is in the insert:
-  //   liftQuery(List("foo")).foreach(name => query[Person].update(_.name -> name))
-  //   it would be (CaseClass(name->lift(A), age->lift(B)), BatchActionType.Update, List(InjectableEagerLift(A), InjectableEagerLift(B))))
-  //
-  // That is why it is important to find the actual EagerEntitiesPlanterExpr (i.e. the part defined by `query[Person]`). That
-  // way we know the actual entity that needs to be lifted.
+  def organizePlanters(planters: List[PlanterExpr[?, ?, ?]])(using Quotes) =
+    import quotes.reflect._
+    planters.foldLeft((Option.empty[PlanterKind.PrimaryEntitiesList | PlanterKind.PrimaryScalarList], List.empty[PlanterKind.Other])) {
+      case ((None, list), planter: EagerEntitiesPlanterExpr[?, ?, ?]) =>
+        val planterKind = PlanterKind.PrimaryEntitiesList(planter)
+        (Some(planterKind), list)
+      case ((None, list), planter: EagerListPlanterExpr[?, ?, ?]) =>
+        val planterKind = PlanterKind.PrimaryScalarList(planter)
+        (Some(planterKind), list)
+      case ((primary @ Some(_), list), planter) =>
+        (primary, list :+ PlanterKind.Other(planter))
+      // this means we haven't found the primary planter yet (don't think this can happen because nothing can be before liftQuery), keep going
+      case ((primary @ None, list), planter) =>
+        report.throwError("Invalid planter traversal")
+    } match {
+      case (Some(primary), categorizedPlanters) => (primary, categorizedPlanters)
+      case (None, _)                            => report.throwError(s"Could not find an entities list-lift (i.e. liftQuery(entities/scalars) in liftQuery(...).foreach()) in lifts: ${planters.map(p => Format.Expr(p.plant))}")
+    }
+
+  def extractPrimaryComponents[I: Type, PrepareRow: Type, Session: Type](
+      primaryPlanter: PlanterKind.PrimaryEntitiesList | PlanterKind.PrimaryScalarList,
+      ast: Ast,
+      extractionBehavior: BatchQueryExecutionModel.BatchExtractBehavior
+  )(using Quotes) =
+    primaryPlanter match
+      // In the case of liftQuery(entities)
+      case PlanterKind.PrimaryEntitiesList(planter) =>
+        val (actionQueryAst, batchActionType) = PrepareBatchComponents[I, PrepareRow](ast, planter.fieldClass, extractionBehavior).rightOrThrow()
+        (Lifter(actionQueryAst), batchActionType, planter.fieldGetters.asInstanceOf[Expr[List[InjectableEagerPlanter[?, PrepareRow, Session]]]])
+      // In the case of liftQuery(scalars)
+      // Note, we could have potential other liftQuery(scalars) later in the query for example:
+      // liftQuery(List("Joe","Jack","Jill")).foreach(query[Person].filter(name => liftQuery(1,2,3 /*ids of Joe,Jack,Jill respectively*/).contains(p.id)).update(_.name -> name))
+      // Therefore we cannot assume that there is only one
+      case PlanterKind.PrimaryScalarList(planter) =>
+        planter.tpe match
+          case '[tt] =>
+            val uuid = java.util.UUID.randomUUID.toString
+            val (foreachReplacementAst, perRowLift) =
+              (ScalarTag(uuid), '{ InjectableEagerPlanter((t: tt) => t, ${ planter.encoder.asInstanceOf[Expr[io.getquill.generic.GenericEncoder[tt, PrepareRow, Session]]] }, ${ Expr(uuid) }) })
+            // create the full batch-query Ast using the value of actual query of the batch statement i.e. I in:
+            // liftQuery[...](...).foreach(p => query[I].insertValue(p))
+            val (actionQueryAst, batchActionType) = PrepareBatchComponents[I, PrepareRow](ast, foreachReplacementAst, extractionBehavior).rightOrThrow()
+            // return the combined batch components
+            (Lifter(actionQueryAst), batchActionType, Expr.ofList(List(perRowLift)))
+
   def apply[I: Type, PrepareRow: Type, Session: Type](ast: Ast, planters: List[PlanterExpr[?, ?, ?]], extractionBehavior: BatchQueryExecutionModel.BatchExtractBehavior)(using Quotes) =
     import quotes.reflect._
-    val (primaryPlanter, categorizedPlanters) =
-      planters.foldLeft((Option.empty[PlanterKind.PrimaryEntitiesList | PlanterKind.PrimaryScalarList], List.empty[PlanterKind])) {
-        case ((None, list), planter: EagerEntitiesPlanterExpr[?, ?, ?]) =>
-          val planterKind = PlanterKind.PrimaryEntitiesList(planter)
-          (Some(planterKind), list :+ planterKind)
-        case ((None, list), planter: EagerListPlanterExpr[?, ?, ?]) =>
-          val planterKind = PlanterKind.PrimaryScalarList(planter)
-          (Some(planterKind), list :+ planterKind)
-        case ((primary @ Some(_), list), planter) =>
-          (primary, list :+ PlanterKind.Other(planter))
-        // this means we haven't found the primary planter yet (don't think this can happen because nothing can be before liftQuery), keep going
-        case ((primary @ None, list), planter) =>
-          report.throwError("Invalid planter traversal")
-      } match {
-        case (Some(primary), categorizedPlanters) => (primary, categorizedPlanters)
-        case (None, _)                            => report.throwError(s"Could not find an entities list-lift (i.e. liftQuery(entities/scalars) in liftQuery(...).foreach()) in lifts: ${planters.map(p => Format.Expr(p.plant))}")
-      }
 
-    // TODO check that there are no EagerEntitiesPlanterExpr other than in the primary planter
-    val (actionQueryAst, batchActionType, perRowLifts) =
-      primaryPlanter match {
-        // In the case of liftQuery(entities)
-        case PlanterKind.PrimaryEntitiesList(planter) =>
-          planter.tpe match
-            case '[t] => PrepareLiftQueryComponents[t, I, PrepareRow, Session](ast, extractionBehavior)
+    // Given: Person(name, age)
+    // For the query:
+    //   liftQuery(List(Person("Joe", 123))).foreach(p => query[Person].insertValue(p))
+    //   it would be (CaseClass(name->lift(A), age->lift(B)), BatchActionType.Insert, List(InjectableEagerLift(A), InjectableEagerLift(B))))
+    // Same thing regardless of what kind of object is in the insert:
+    //   liftQuery(List("foo")).foreach(name => query[Person].update(_.name -> name))
+    //   it would be (CaseClass(name->lift(A), age->lift(B)), BatchActionType.Update, List(InjectableEagerLift(A), InjectableEagerLift(B))))
+    //
+    // That is why it is important to find the actual EagerEntitiesPlanterExpr (i.e. the part defined by `query[Person]`). That
+    // way we know the actual entity that needs to be lifted.
+    val (primaryPlanter, categorizedPlanters) = organizePlanters(planters)
 
-        // In the case of liftQuery(scalars)
-        // Note, we could have potential other liftQuery(scalars) later in the query for example:
-        // liftQuery(List("Joe","Jack","Jill")).foreach(query[Person].filter(name => liftQuery(1,2,3 /*ids of Joe,Jack,Jill respectively*/).contains(p.id)).update(_.name -> name))
-        // Therefore we cannot assume that there is only one
-        case PlanterKind.PrimaryScalarList(planter) =>
-          planter.tpe match
-            case '[t] => PrepareLiftQueryComponents[t, I, PrepareRow, Session](ast, extractionBehavior)
-      }
-    Components[PrepareRow, Session](actionQueryAst, batchActionType, perRowLifts, categorizedPlanters, primaryPlanter)
-  end apply
-
-end BatchStatic
-
-object PrepareLiftQueryComponents:
-  def apply[LiftQueryT: Type, I: Type, PrepareRow: Type, Session: Type](ast: Ast, extractionBehavior: BatchQueryExecutionModel.BatchExtractBehavior)(using Quotes) =
-    import quotes.reflect._
-    val (foreachReplacementAst, perRowLifts) = prepareLiftQueryLifts[LiftQueryT, PrepareRow, Session]
-    val (actionQueryAst, batchActionType) =
-      PrepareBatchComponents[I, PrepareRow](ast, foreachReplacementAst, extractionBehavior) match
-        case Right(value) => value
-        case Left(error) =>
-          report.throwError(error)
-    (actionQueryAst, batchActionType, perRowLifts)
-
-  private def prepareLiftQueryLifts[LiftQueryT: Type, PrepareRow: Type, Session: Type](using Quotes): (ast.Ast, List[Expr[InjectableEagerPlanter[_, PrepareRow, Session]]]) =
-    import quotes.reflect._
     // Use some custom functionality in the lift macro to prepare the case class an injectable lifts
     // e.g. if T is Person(name: String, age: Int) and we do liftQuery(people:List[Person]).foreach(p => query[Person].insertValue(p))
     // Then:
@@ -547,24 +602,17 @@ object PrepareLiftQueryComponents:
     // Then:
     //   ast = lift(UUID1)  // I.e. ScalarTag(UUID1) since lift in the AST means a ScalarTag
     //   lifts = List(InjectableEagerLift(p, UUID1))
-    val (ast, fieldLifts) =
-      QuatMaking.ofType[LiftQueryT] match
-        case _: Quat.Product =>
-          LiftMacro.liftInjectedProduct[LiftQueryT, PrepareRow, Session]
-        case other =>
-          val (ast, lift) = LiftMacro.liftInjectedScalar[LiftQueryT, PrepareRow, Session]
-          (ast, List(lift))
+    // TODO check that there are no EagerEntitiesPlanterExpr other than in the primary planter
+    val (actionQueryAst, batchActionType, perRowLifts) = extractPrimaryComponents[I, PrepareRow, Session](primaryPlanter, ast, extractionBehavior)
 
-    // println(s"Case class AST: ${io.getquill.util.Messages.qprint(caseClassAst)}")
-    // println("========= CaseClass =========\n" + io.getquill.util.Messages.qprint(caseClassAst))
-    // Assuming that all lifts of the batch query are injectable
+    Components[PrepareRow, Session](actionQueryAst, batchActionType, perRowLifts, categorizedPlanters, primaryPlanter)
+  end apply
 
-    fieldLifts.foreach {
-      case PlanterExpr.Uprootable(expr @ InjectableEagerPlanterExpr(_, _, _)) => expr
-      case PlanterExpr.Uprootable(expr) =>
-        report.throwError(s"wrong kind of uprootable ${(expr)}")
-      case other => report.throwError(s"The lift expression ${Format(Printer.TreeStructure.show(other.asTerm))} is not valid for batch queries because it is not injectable")
-    }
-    (ast, fieldLifts)
-  end prepareLiftQueryLifts
-end PrepareLiftQueryComponents
+  extension [T](element: Either[String, T])(using Quotes)
+    def rightOrThrow() =
+      import quotes.reflect._
+      element match
+        case Right(value) => value
+        case Left(error)  => report.throwError(error)
+
+end BatchStatic

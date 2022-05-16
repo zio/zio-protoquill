@@ -8,6 +8,8 @@ import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.ExprAccumulate
 import io.getquill.util.Format
 import io.getquill._
+import io.getquill.parser.Lifter
+import io.getquill.parser.Unlifter
 
 /* As the different kinds of parsing in Quill-Dotty became more complex, the need for an
 overarching model of "how stuff works" became necessary. There are several places in the
@@ -83,9 +85,15 @@ case class LazyPlanterExpr[T: Type, PrepareRow: Type, Session: Type](uid: String
     import quotes.reflect._
     this.copy[T, PrepareRow, Session](expr = Inlined(call, bindings, this.expr.asTerm).asExprOf[T])
 
-case class EagerEntitiesPlanterExpr[T, PrepareRow: Type, Session: Type](uid: String, expr: Expr[Iterable[T]])(using val tpe: Type[T], queryTpe: Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow, Session]:
+case class EagerEntitiesPlanterExpr[T, PrepareRow: Type, Session: Type](
+    uid: String,
+    expr: Expr[Iterable[T]],
+    fieldGetters: Expr[List[InjectableEagerPlanter[?, PrepareRow, Session]]],
+    fieldClass: ast.CaseClass
+)(using val tpe: Type[T], queryTpe: Type[Query[T]]) extends PlanterExpr[Query[T], PrepareRow, Session]:
   def plant(using Quotes): Expr[EagerEntitiesPlanter[T, PrepareRow, Session]] =
-    '{ EagerEntitiesPlanter[T, PrepareRow, Session]($expr, ${ Expr(uid) }) }
+    val fieldClassExpr = Lifter.caseClass(fieldClass)
+    '{ EagerEntitiesPlanter[T, PrepareRow, Session]($expr, ${ Expr(uid) }, $fieldGetters, $fieldClassExpr) }
   def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], bindings: List[quotes.reflect.Definition]) =
     import quotes.reflect._
     this.copy[T, PrepareRow, Session](expr = Inlined(call, bindings, this.expr.asTerm).asExprOf[Iterable[T]])
@@ -142,8 +150,13 @@ object PlanterExpr {
 
         case Is[LazyPlanter[_, _, _]]('{ LazyPlanter.apply[qt, prep, session]($liftValue, ${ Expr(uid: String) }) }) =>
           Some(LazyPlanterExpr[qt, prep, session](uid, liftValue).asInstanceOf[PlanterExpr[_, _, _]])
-        case Is[EagerEntitiesPlanter[_, _, _]]('{ EagerEntitiesPlanter.apply[qt, prep, session]($liftValue, ${ Expr(uid: String) }) }) =>
-          Some(EagerEntitiesPlanterExpr[qt, prep, session](uid, liftValue).asInstanceOf[EagerEntitiesPlanterExpr[_, _, _]])
+        case Is[EagerEntitiesPlanter[_, _, _]]('{ EagerEntitiesPlanter.apply[qt, prep, session]($liftValue, ${ Expr(uid: String) }, $fieldGetters, ${ Unlifter.ast(fieldClassAst) }) }) =>
+          val fieldClass =
+            fieldClassAst match
+              case cc: ast.CaseClass => cc
+              case _ =>
+                report.throwError(s"Found wrong type when unlifting liftQuery class. Expected a case class, was: ${io.getquill.util.Messages.qprint(fieldClassAst)}")
+          Some(EagerEntitiesPlanterExpr[qt, prep, session](uid, liftValue, fieldGetters, fieldClass).asInstanceOf[EagerEntitiesPlanterExpr[_, _, _]])
         case other =>
           None
       }
@@ -177,10 +190,13 @@ object PlanterExpr {
   }
 
   def findUnquotes(expr: Expr[Any])(using Quotes): List[PlanterExpr[_, _, _]] =
-    ExprAccumulate(expr) {
+    ExprAccumulate(expr, recurseWhenMatched = false) {
       // Since we are also searching expressions inside spliced quotatations (in the Lifts slot) those things are not unquoted
-      // so we to search all planter expressions, not just the unquotes
-      case PlanterExpr.Uprootable(planter) => planter
+      // so we to search all planter expressions, not just the unquotes.
+      // Note however that once we have found a lift we do not need to recurse searching lifts inside of it. There is
+      // one case in EagerEntitiesPlanterExpr where InjectableEagerLift is inside it but we do not care about
+      // recursing into those because they are unlifted when dealing with the EagerEntitiesPlanterExpr parent
+      case expr @ PlanterExpr.Uprootable(planter) => planter
     }
 
   // TODO Find a way to propogate PrepareRow into here
@@ -345,7 +361,6 @@ object QuotationLotExpr {
         case `(QuotationLot).unquote`(QuotationLotExpr(vaseExpr)) =>
           Some(vaseExpr)
         case _ =>
-          // println("=============== NOT MATCHED ===============")
           None
       }
   }

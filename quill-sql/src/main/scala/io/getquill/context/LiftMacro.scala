@@ -35,6 +35,7 @@ import io.getquill.parser.Lifter
 import io.getquill.CaseClassLift
 import io.getquill.ast.CaseClass
 import io.getquill.InjectableEagerPlanter
+import io.getquill.util.Format
 
 object LiftQueryMacro {
   private[getquill] def newUuid = java.util.UUID.randomUUID().toString
@@ -46,9 +47,16 @@ object LiftQueryMacro {
     quat match
       case _: Quat.Product =>
         // Not sure why cast back to iterable is needed here but U param is not needed once it is inside of the planter
-        '{ EagerEntitiesPlanter($entity.asInstanceOf[Iterable[T]], ${ Expr(newUuid) }).unquote } // [T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
+        val (lifterClass, lifters) =
+          LiftMacro.liftInjectedProduct[T, PrepareRow, Session]
+        val lifterClassExpr = Lifter.caseClass(lifterClass)
+        val liftedLiftersExpr = Expr.ofList(lifters)
+        val returning =
+          '{ EagerEntitiesPlanter($entity.asInstanceOf[Iterable[T]], ${ Expr(newUuid) }, ${ liftedLiftersExpr }, ${ lifterClassExpr }).unquote }
+        returning
       case _ =>
         val encoder = LiftMacro.summonEncoderOrFail[T, PrepareRow, Session](entity)
+        // [T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
         '{ EagerListPlanter($entity.asInstanceOf[Iterable[T]].toList, $encoder, ${ Expr(newUuid) }).unquote }
   }
 }
@@ -80,17 +88,10 @@ object LiftMacro {
       }
     }
 
-  private[getquill] def liftInjectedScalar[T, PrepareRow, Session](using qctx: Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow], sessionTpe: Type[Session]): (ScalarTag, Expr[InjectableEagerPlanter[_, PrepareRow, Session]]) = {
-    import qctx.reflect._
-    val uuid = java.util.UUID.randomUUID.toString
-    (ScalarTag(uuid), injectableLiftValue[T, PrepareRow, Session]('{ (t: T) => t }, uuid))
-  }
-
   // TODO Injected => Injectable
   private[getquill] def liftInjectedProduct[T, PrepareRow, Session](using qctx: Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow], sessionTpe: Type[Session]): (CaseClass, List[Expr[InjectableEagerPlanter[_, PrepareRow, Session]]]) = {
     import qctx.reflect._
     val (caseClassAstInitial, liftsInitial) = liftInjectedProductComponents[T, PrepareRow]
-    // println("========= CaseClass Initial =========\n" + io.getquill.util.Messages.qprint(caseClassAstInitial))
     val TaggedLiftedCaseClass(caseClassAst, lifts) = TaggedLiftedCaseClass(caseClassAstInitial, liftsInitial).reKeyWithUids()
     val liftPlanters =
       lifts.map((liftKey, lift) =>
@@ -112,7 +113,6 @@ object LiftMacro {
 
     // Get the elaboration and AST once so that it will not have to be parsed out of the liftedCombo (since they are normally returned by ElaborateStructure.ofProductValue)
     val elaborated = ElaborateStructure.Term.ofProduct[T](ElaborationSide.Encoding)
-    // println("========= Elaboration =========\n" + io.getquill.util.Messages.qprint(elaborated))
     val (_, caseClassAst) = ElaborateStructure.productValueToAst[T](elaborated)
     val caseClass = caseClassAst.asInstanceOf[io.getquill.ast.CaseClass]
 
