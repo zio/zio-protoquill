@@ -162,6 +162,45 @@ object Extractors {
       }
   }
 
+  sealed trait FieldLookupCategory
+  object FieldLookup:
+    private def check(using Quotes)(tpe: quotes.reflect.TypeRepr, fieldName: String)(categories: FieldLookupCategory*): Option[(quotes.reflect.Symbol, FieldLookupCategory)] =
+      import quotes.reflect._
+      val typeSymbol = tpe.typeSymbol
+      def lookupCaseFields = typeSymbol.caseFields.find(m => m.name == fieldName && m.paramSymss == List()).map((_, CaseField: FieldLookupCategory))
+      def lookupZeroArgsMethods = typeSymbol.methodMembers.find(m => m.name == fieldName && m.paramSymss == List()).map((_, ZeroArgsMethod: FieldLookupCategory))
+      def lookupFields = typeSymbol.fieldMembers.find(m => m.name == fieldName).map((_, Field: FieldLookupCategory))
+      // use an iterator so don't have to lookup fields from categoies if we've already found something
+      categories.iterator.map {
+        case CaseField      => lookupCaseFields
+        case ZeroArgsMethod => lookupZeroArgsMethods
+        case Field          => lookupFields
+      }.find(_.nonEmpty).flatten
+
+    case object CaseField extends FieldLookupCategory
+    case object ZeroArgsMethod extends FieldLookupCategory
+    case object Field extends FieldLookupCategory
+
+    def caseFieldOrError(using Quotes)(tpe: quotes.reflect.TypeRepr, fieldName: String, fieldInstance: Option[Expr[_]] = None, additionalMsg: String = "") =
+      fieldOrError(tpe, fieldName, fieldInstance, additionalMsg)(CaseField)
+
+    def fieldOrError(using Quotes)(tpe: quotes.reflect.TypeRepr, fieldName: String, fieldInstance: Option[Expr[_]] = None, additionalMsg: String = "")(categories: FieldLookupCategory*) =
+      import quotes.reflect._
+      FieldLookup.check(tpe, fieldName)(categories: _*) match
+        case Some((sym, CaseField))      => (sym, tpe.widen.memberType(sym).widen)
+        case Some((sym, ZeroArgsMethod)) => (sym, tpe.widen.memberType(sym).widen)
+        case Some((sym, Field))          => (sym, tpe.widen.memberType(sym).widen)
+        case _ =>
+          val msg =
+            s"Cannot find the field (or zero-args method) $fieldName in of ${fieldInstance.map(_.show + ":").getOrElse("")}${tpe.show}" +
+              (if (categories.toList == List(CaseField)) s"case fields are: ${tpe.typeSymbol.caseFields.map(_.name)}" else "") +
+              (if (additionalMsg != "") " " + additionalMsg else "")
+          fieldInstance match
+            case None       => report.throwError(msg)
+            case Some(expr) => report.throwError(msg, expr)
+
+  end FieldLookup
+
   object `.` {
     def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String)] =
       import quotes.reflect._
@@ -174,16 +213,7 @@ object Extractors {
   extension (expr: Expr[_]) {
     def `.(caseField)`(property: String)(using Quotes) = {
       import quotes.reflect._
-      val cls =
-        expr.asTerm.tpe.widen.classSymbol.getOrElse {
-          report.throwError(s"Cannot find class symbol of the property ${expr.show}", expr)
-        }
-      val method =
-        cls.caseFields
-          .find(sym => sym.name == property)
-          .getOrElse {
-            report.throwError(s"Cannot find property '${property}' of (${expr.show}:${cls.name}) fields are: ${cls.caseFields.map(_.name)}", expr)
-          }
+      val (method, _) = FieldLookup.caseFieldOrError(expr.asTerm.tpe.widen, property, Some(expr))
 
       '{ (${ Select(expr.asTerm, method).asExpr }) }
     }
