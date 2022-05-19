@@ -1,14 +1,17 @@
 package io.getquill
 
 import io.getquill.ast.Ast
-import io.getquill.parser._
-import scala.quoted._
+import io.getquill.parser.*
+
+import scala.quoted.*
 import scala.annotation.StaticAnnotation
 import io.getquill.util.printer.AstPrinter
-import scala.deriving._
+
+import scala.deriving.*
 import io.getquill.generic.GenericEncoder
 import io.getquill.parser.ParserFactory
 import io.getquill.quotation.NonQuotedException
+
 import scala.annotation.compileTimeOnly
 import scala.compiletime.summonFrom
 import io.getquill.EntityQuery
@@ -23,8 +26,12 @@ import io.getquill.context.QueryMacro
 import io.getquill.context.QuoteMacro
 import io.getquill.context.UnquoteMacro
 import io.getquill.context.LiftMacro
-import io.getquill._
+import io.getquill.*
 import io.getquill.context.StaticSpliceMacro
+
+import java.sql.Timestamp
+import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, OffsetTime, ZonedDateTime}
+import java.util.Date
 import scala.language.implicitConversions
 
 implicit val defaultParser: ParserLibrary = ParserLibrary
@@ -96,3 +103,77 @@ extension [T](inline quotedEntity: Quoted[EntityQuery[T]])
   inline def update(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Update[T] = unquote[EntityQuery[T]](quotedEntity).update(f, f2: _*)
   inline def insertValue(inline value: T): Insert[T] = unquote[EntityQuery[T]](quotedEntity).insertValue(value)
   inline def updateValue(inline value: T): Update[T] = unquote[EntityQuery[T]](quotedEntity).updateValue(value)
+
+extension (a: Date)
+  def ===(b: Date): Boolean = a.getTime == b.getTime
+  def =!=(b: Date): Boolean = a.getTime != b.getTime
+  def >(b: Date): Boolean = a.getTime > b.getTime
+  def >=(b: Date): Boolean = a.getTime >= b.getTime
+  def <(b: Date): Boolean = a.getTime < b.getTime
+  def <=(b: Date): Boolean = a.getTime <= b.getTime
+
+extension (a: Timestamp)
+  def ===(b: Timestamp): Boolean = a.getTime == b.getTime
+  def =!=(b: Timestamp): Boolean = a.getTime != b.getTime
+  def >(b: Timestamp): Boolean = a.getTime > b.getTime
+  def >=(b: Timestamp): Boolean = a.getTime >= b.getTime
+  def <(b: Timestamp): Boolean = a.getTime < b.getTime
+  def <=(b: Timestamp): Boolean = a.getTime <= b.getTime
+
+extension (a: Instant)
+  def ===(b: Instant): Boolean = a.equals(b)
+  def =!=(b: Instant): Boolean = !a.equals(b)
+  def >(b: Instant): Boolean = a.isAfter(b)
+  def >=(b: Instant): Boolean = a.equals(b) || a.isAfter(b)
+  def <(b: Instant): Boolean = a.isBefore(b)
+  def <=(b: Instant): Boolean = a.equals(b) || a.isBefore(b)
+
+extension (a: LocalDate)
+  def ===(b: LocalDate): Boolean = a.equals(b)
+  def =!=(b: LocalDate): Boolean = !a.equals(b)
+  def >(b: LocalDate): Boolean = a.isAfter(b)
+  def >=(b: LocalDate): Boolean = a.equals(b) || a.isAfter(b)
+  def <(b: LocalDate): Boolean = a.isBefore(b)
+  def <=(b: LocalDate): Boolean = a.equals(b) || a.isBefore(b)
+
+extension (a: LocalDateTime)
+  def ===(b: LocalDateTime): Boolean = a.equals(b)
+  def =!=(b: LocalDateTime): Boolean = !a.equals(b)
+  def >(b: LocalDateTime): Boolean = a.isAfter(b)
+  def >=(b: LocalDateTime): Boolean = a.equals(b) || a.isAfter(b)
+  def <(b: LocalDateTime): Boolean = a.isBefore(b)
+  def <=(b: LocalDateTime): Boolean = a.equals(b) || a.isBefore(b)
+
+extension (a: LocalTime)
+  def ===(b: LocalTime): Boolean = a.equals(b)
+  def =!=(b: LocalTime): Boolean = !a.equals(b)
+  def >(b: LocalTime): Boolean = a.isAfter(b)
+  def >=(b: LocalTime): Boolean = a.equals(b) || a.isAfter(b)
+  def <(b: LocalTime): Boolean = a.isBefore(b)
+  def <=(b: LocalTime): Boolean = a.equals(b) || a.isBefore(b)
+
+extension (a: OffsetTime)
+  def ===(b: OffsetTime): Boolean = a.equals(b)
+  def =!=(b: OffsetTime): Boolean = !a.equals(b)
+  def >(b: OffsetTime): Boolean = a.isAfter(b)
+  def >=(b: OffsetTime): Boolean = a.equals(b) || a.isAfter(b)
+  def <(b: OffsetTime): Boolean = a.isBefore(b)
+  def <=(b: OffsetTime): Boolean = a.equals(b) || a.isBefore(b)
+
+extension (a: OffsetDateTime)
+  def ===(b: OffsetDateTime): Boolean = a.equals(b)
+  def =!=(b: OffsetDateTime): Boolean = !a.equals(b)
+  def >(b: OffsetDateTime): Boolean = a.isAfter(b)
+  def >=(b: OffsetDateTime): Boolean = a.equals(b) || a.isAfter(b)
+  def <(b: OffsetDateTime): Boolean = a.isBefore(b)
+  def <=(b: OffsetDateTime): Boolean = a.equals(b) || a.isBefore(b)
+
+extension (a: ZonedDateTime)
+  def ===(b: ZonedDateTime): Boolean = a.equals(b)
+  def =!=(b: ZonedDateTime): Boolean = !a.equals(b)
+  def >(b: ZonedDateTime): Boolean = a.isAfter(b)
+  def >=(b: ZonedDateTime): Boolean = a.equals(b) || a.isAfter(b)
+  def <(b: ZonedDateTime): Boolean = a.isBefore(b)
+  def <=(b: ZonedDateTime): Boolean = a.equals(b) || a.isBefore(b)
+
+

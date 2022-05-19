@@ -702,6 +702,20 @@ class ExtrasParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse
       equalityWithInnerTypechecksAnsi(a, b)(Equal)
     case ExtrasMethod(a, "=!=", b) =>
       equalityWithInnerTypechecksAnsi(a, b)(NotEqual)
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[LocalDate](a) && is[LocalDate](b) =>
+      BinaryOperation(astParser(a), op, astParser(b))
+
+  object ComparisonOpLabel {
+    def unapply(str: String): Option[BinaryOperator] =
+      str match {
+        case ">"  => Some(NumericOperator.`>`)
+        case ">"  => Some(NumericOperator.`>`)
+        case "<"  => Some(NumericOperator.`<`)
+        case ">=" => Some(NumericOperator.`>=`)
+        case "<=" => Some(NumericOperator.`<=`)
+        case _    => None
+      }
+  }
 }
 
 class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with ComparisonTechniques {
