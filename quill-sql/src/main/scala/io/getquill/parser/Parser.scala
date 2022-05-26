@@ -31,6 +31,9 @@ import io.getquill.metaprog.Is
 import io.getquill.generic.ElaborationSide
 import io.getquill.parser.engine._
 import io.getquill.context.VerifyFreeVariables
+import java.util.Date
+import java.sql.Timestamp
+import java.time.*
 
 trait ParserFactory:
   def assemble(using Quotes): ParserLibrary.ReadyParser
@@ -101,7 +104,6 @@ object ParserLibrary extends ParserLibrary:
       parser(expr)(using History.Root)
 
 class FunctionApplyParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
-  import quotes.reflect._
   import io.getquill.norm.capture.AvoidAliasConflict
 
   // case q"new { def apply[..t1](...$params) = $body }" =>
@@ -115,8 +117,6 @@ class FunctionApplyParser(rootParse: Parser)(using Quotes) extends Parser(rootPa
 }
 
 class FunctionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) with Helpers {
-  import quotes.reflect._
-
   import io.getquill.norm.capture.AvoidAliasConflict
 
   // case q"new { def apply[..t1](...$params) = $body }" =>
@@ -140,14 +140,12 @@ class FunctionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) 
 class ValParser(val rootParse: Parser)(using Quotes)
     extends Parser(rootParse)
     with PatternMatchingValues:
-  import quotes.reflect._
   def attempt =
     case Unseal(ValDefTerm(ast)) => ast
 
 class BlockParser(val rootParse: Parser)(using Quotes)
     extends Parser(rootParse)
     with PatternMatchingValues {
-  import quotes.reflect.{Block => TBlock, _}
 
   def attempt = {
     case block @ Unseal(TBlock(parts, lastPart)) if (parts.length > 0) =>
@@ -165,7 +163,6 @@ class BlockParser(val rootParse: Parser)(using Quotes)
 }
 
 class CasePatMatchParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PatternMatchingValues {
-  import quotes.reflect.{Constant => TConstant, _}
 
   def attempt = {
     case Unseal(PatMatchTerm(patMatch)) =>
@@ -187,7 +184,6 @@ class TraversableOperationParser(val rootParse: Parser)(using Quotes)
     extends Parser(rootParse)
     with Parser.PrefilterType[Boolean]
     with PatternMatchingValues:
-  import quotes.reflect._
   def attempt =
     case '{ ($col: collection.Map[k, v]).contains($body) } =>
       MapContains(rootParse(col), rootParse(body))
@@ -197,7 +193,6 @@ class TraversableOperationParser(val rootParse: Parser)(using Quotes)
       ListContains(rootParse(col), rootParse(body))
 
 class OrderingParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PatternMatchingValues {
-  import quotes.reflect._
 
   def attempt: History ?=> PartialFunction[Expr[_], Ordering] = {
     case '{ implicitOrd } => AscNullsFirst
@@ -219,7 +214,6 @@ class OrderingParser(val rootParse: Parser)(using Quotes) extends Parser(rootPar
 
 // TODO Pluggable-in unlifter via implicit? Quotation generic should have it in the root?
 class QuotationParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
-  import quotes.reflect.{Ident => TIdent, Apply => TApply, _}
 
   def attempt = {
 
@@ -252,7 +246,6 @@ class ActionParser(val rootParse: Parser)(using Quotes)
     with Parser.PrefilterType[Action[_]]
     with Assignments
     with PropertyParser:
-  import quotes.reflect.{Constant => TConstant, _}
 
   def combineAndCheckAndParse[T: Type, A <: Ast](first: Expr[T], others: Seq[Expr[T]])(checkClause: Expr[_] => Unit)(parseClause: Expr[_] => A): Seq[A] =
     val assignments = (first.asTerm +: others.map(_.asTerm).filterNot(isNil(_)))
@@ -395,7 +388,6 @@ class BatchActionParser(val rootParse: Parser)(using Quotes)
     extends Parser(rootParse)
     with Parser.PrefilterType[BatchAction[_]]
     with Assignments {
-  import quotes.reflect.{Constant => TConstant, _}
 
   def attempt = {
     case '{ type a <: Action[_] with QAC[_, _]; ($q: Query[t]).foreach[`a`, b](${ Lambda1(ident, tpe, body) })($unq) } =>
@@ -405,7 +397,6 @@ class BatchActionParser(val rootParse: Parser)(using Quotes)
 }
 
 class IfElseParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
-  import quotes.reflect.{Constant => TConstant, _}
 
   def attempt =
     case '{
@@ -419,9 +410,7 @@ class IfElseParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
 // are not necessarily an Option[_] e.g. Option[t].isEmpty needs to match on a clause whose type is Boolean
 // That's why we need to use the 'Is' object and optimize it that way here
 class OptionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) with Helpers {
-  import quotes.reflect.{Constant => TConstant, _}
-
-  import MatchingOptimizers._
+  import MatchingOptimizers.*
 
   extension (quat: Quat)
     def isProduct = quat.isInstanceOf[Quat.Product]
@@ -479,8 +468,7 @@ class QueryParser(val rootParse: Parser)(using Quotes)
     with Parser.PrefilterType[Query[_]]
     with PropertyAliases
     with Helpers:
-  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
-  import MatchingOptimizers._
+  import MatchingOptimizers.*
 
   def attempt = {
     case '{ type t; EntityQuery.apply[`t`] } =>
@@ -580,8 +568,6 @@ class SetOperationsParser(val rootParse: Parser)(using Quotes)
     with Parser.PrefilterType[Boolean]
     with PropertyAliases:
 
-  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
-
   def attempt =
     case '{ type t; type u >: `t`; ($q: Query[`t`]).nonEmpty } =>
       UnaryOperation(SetOperator.`nonEmpty`, rootParse(q))
@@ -597,7 +583,6 @@ end SetOperationsParser
  * parses things like query.sum, query.size etc... when needed.
  */
 class QueryScalarsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PropertyAliases {
-  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
 
   def attempt = {
     case '{ type t; type u >: `t`; ($q: Query[`t`]).value[`u`] }   => rootParse(q)
@@ -627,7 +612,6 @@ class QueryScalarsParser(val rootParse: Parser)(using Quotes) extends Parser(roo
 // }
 
 class InfixParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with Assignments:
-  import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
 
   def attempt =
     case '{ ($i: InfixValue).pure.asCondition }       => genericInfix(i)(true, false, Quat.BooleanExpression)
@@ -677,7 +661,6 @@ class InfixParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse)
 end InfixParser
 
 class ExtrasParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with ComparisonTechniques {
-  import quotes.reflect._
 
   private object ExtrasModule:
     def unapply(term: Term) =
@@ -702,8 +685,24 @@ class ExtrasParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse
       equalityWithInnerTypechecksAnsi(a, b)(Equal)
     case ExtrasMethod(a, "=!=", b) =>
       equalityWithInnerTypechecksAnsi(a, b)(NotEqual)
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[Date](a) && is[Datee](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[Timestamp](a) && is[Timestamp](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[Instant](a) && is[Instant](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
     case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[LocalDate](a) && is[LocalDate](b) =>
-      BinaryOperation(astParser(a), op, astParser(b))
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[LocalDateTime](a) && is[LocalDateTime](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[LocalTime](a) && is[LocalTime](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[OffsetDateTime](a) && is[OffsetDateTime](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[OffsetTime](a) && is[OffsetTime](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[ZonedDateTime](a) && is[ZonedDateTime](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
 
   object ComparisonOpLabel {
     def unapply(str: String): Option[BinaryOperator] =
@@ -719,7 +718,6 @@ class ExtrasParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse
 }
 
 class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with ComparisonTechniques {
-  import quotes.reflect._
   import io.getquill.ast.Infix
   // Note that if we import Dsl._ here then the "like" construct
   // will be parsed from the Dsl.extensions as opposed to the exported ones?
@@ -842,7 +840,6 @@ class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootP
 class ValueParser(rootParse: Parser)(using Quotes)
     extends Parser(rootParse)
     with QuatMaking {
-  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
 
   def attempt = {
     // Parse Null values
@@ -865,7 +862,6 @@ class ComplexValueParser(rootParse: Parser)(using Quotes)
     extends Parser(rootParse)
     with QuatMaking
     with Helpers {
-  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
 
   def attempt = {
     case ArrowFunction(prop, value) =>
@@ -890,7 +886,6 @@ class ComplexValueParser(rootParse: Parser)(using Quotes)
 }
 
 class GenericExpressionsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PropertyParser {
-  import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
 
   def attempt = {
     case expr @ ImplicitClassExtensionPattern(clsName, constructorArg, methodName) =>
