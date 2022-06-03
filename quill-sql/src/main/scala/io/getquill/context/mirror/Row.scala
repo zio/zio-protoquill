@@ -2,12 +2,13 @@ package io.getquill.context.mirror
 
 import scala.reflect.ClassTag
 import scala.collection.mutable.LinkedHashMap
+import scala.annotation.targetName
 
 object Row:
   case class Data(key: String, value: Any)
+  @targetName("columns")
   def apply(values: (String, Any)*) = new Row(values.map((k, v) => Data(k, v)).toList)
-  def single(value: Any) = fromList(value)
-  def fromList(values: Any*) = new Row(values.zipWithIndex.map((v, i) => Data(s"_${i + 1}", v)).toList)
+  def apply(values: Any*) = new Row(values.zipWithIndex.map((v, i) => Data(s"_${i + 1}", v)).toList)
 
 case class Row(elements: List[Row.Data]) {
   private lazy val dataMap = LinkedHashMap(elements.map(d => (d.key, d.value)): _*)

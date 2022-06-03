@@ -174,18 +174,18 @@ object Extractors {
   extension (expr: Expr[_]) {
     def `.(caseField)`(property: String)(using Quotes) = {
       import quotes.reflect._
-      val cls =
-        expr.asTerm.tpe.widen.classSymbol.getOrElse {
-          report.throwError(s"Cannot find class symbol of the property ${expr.show}", expr)
-        }
-      val method =
-        cls.caseFields
-          .find(sym => sym.name == property)
-          .getOrElse {
-            report.throwError(s"Cannot find property '${property}' of (${expr.show}:${cls.name}) fields are: ${cls.caseFields.map(_.name)}", expr)
-          }
+      val cls = expr.asTerm.tpe.widen.typeSymbol
+      if (!cls.flags.is(Flags.Case))
+        report.throwError(s"The class ${cls} is not a case class")
+      else
+        val method =
+          cls.caseFields
+            .find(sym => sym.name == property)
+            .getOrElse {
+              report.throwError(s"Cannot find property '${property}' of (${expr.show}:${cls.name}) fields are: ${cls.caseFields.map(_.name)}", expr)
+            }
 
-      '{ (${ Select(expr.asTerm, method).asExpr }) }
+        '{ (${ Select(expr.asTerm, method).asExpr }) }
     }
   }
 

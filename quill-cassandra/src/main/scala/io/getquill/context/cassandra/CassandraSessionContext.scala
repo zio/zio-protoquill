@@ -80,6 +80,12 @@ trait CassandraRowContext extends RowContext {
   override type PrepareRow = BoundStatement
   override type ResultRow = Row
 
+  override type NullChecker = CassandraNullChecker
+  class CassandraNullChecker extends BaseNullChecker {
+    override def apply(index: Index, row: Row): Boolean = row.isNull(index)
+  }
+  implicit val nullChecker: NullChecker = new CassandraNullChecker()
+
   // Usually this is io.getquill.context.CassandraSession so you can use udtValueOf but not always e.g. for Lagom it is different
   type Session <: UdtValueLookup
 }

@@ -24,21 +24,21 @@ class OptionalProductEncodingSpec extends Spec {
     // Row(a.owner, a.street, p.id, p.name.first, p.name.last, p.age)
 
     // Row(123    , "St"    , 123 , null, null, 44) => (Address(123, "st"), Some(Person(123, None, 44)))
-    result.extractor(Row.fromList(123, "St", 123, null, null, 44), MirrorSession.default) mustEqual
+    result.extractor(Row(123, "St", 123, null, null, 44), MirrorSession.default) mustEqual
       (((Address(123, "St"), Some(Person(123, None, 44)))))
 
-    result.extractor(Row.fromList(123, "St", null, null, null, null), MirrorSession.default) mustEqual
+    result.extractor(Row(123, "St", null, null, null, null), MirrorSession.default) mustEqual
       ((Address(123, "St"), None))
 
-    result.extractor(Row.fromList(123, "St", 123, null, null, null), MirrorSession.default) mustEqual
+    result.extractor(Row(123, "St", 123, null, null, null), MirrorSession.default) mustEqual
       ((Address(123, "St"), Some(Person(123, None, 0))))
 
     // Row(123    , "St"    , 123 , "Joe", null, null) => (Address(123, "st"), Some(Person(123, Name("Joe", 0), 0)))
-    result.extractor(Row.fromList(123, "St", 123, "Joe", null, null), MirrorSession.default) mustEqual
+    result.extractor(Row(123, "St", 123, "Joe", null, null), MirrorSession.default) mustEqual
       ((Address(123, "St"), Some(Person(123, Some(Name("Joe", 0)), 0))))
 
     // Row(123    , "St"    , 123 , null, 1337, null) => (Address(123, "st"), Some(Person(123, Name(null, 1337), 0)))
-    result.extractor(Row.fromList(123, "St", 123, null, 1337, null), MirrorSession.default) mustEqual
+    result.extractor(Row(123, "St", 123, null, 1337, null), MirrorSession.default) mustEqual
       ((Address(123, "St"), Some(Person(123, Some(Name(null, 1337)), 0))))
 
   }
@@ -57,13 +57,13 @@ class OptionalProductEncodingSpec extends Spec {
         } yield (p, a)
       }
 
-    result.extractor(Row.fromList(123, "St", 123, null, null, null), MirrorSession.default) mustEqual
+    result.extractor(Row(123, "St", 123, null, null, null), MirrorSession.default) mustEqual
       ((Address(123, "St"), Some(Person(123, None))))
 
-    result.extractor(Row.fromList(123, "St", 123, "Joe", null, null), MirrorSession.default) mustEqual
+    result.extractor(Row(123, "St", 123, "Joe", null, null), MirrorSession.default) mustEqual
       ((Address(123, "St"), Some(Person(123, Some(Name("Joe", None))))))
 
-    result.extractor(Row.fromList(123, "St", 123, null, 1337, null), MirrorSession.default) mustEqual
+    result.extractor(Row(123, "St", 123, null, 1337, null), MirrorSession.default) mustEqual
       ((Address(123, "St"), Some(Person(123, Some(Name(null, Some(InnerName(1337, null))))))))
   }
 
@@ -80,10 +80,10 @@ class OptionalProductEncodingSpec extends Spec {
         } yield (p, a)
       }
 
-    result.extractor(Row.fromList(123, "St", 123, "Joe", null, null), MirrorSession.default) mustEqual
-      ((Address(123, "St"), Some(Person(123, Some(Name("Joe", None)), 0))))
+    result.extractor(Row(123, "St", 123, "Joe", null, null), MirrorSession.default) mustEqual
+      ((Address(123, "St"), Some(Person(123, Some(Name("Joe", None)), 0)))) //
 
-    result.extractor(Row.fromList(123, "St", 123, null, 1337, null), MirrorSession.default) mustEqual
+    result.extractor(Row(123, "St", 123, null, 1337, null), MirrorSession.default) mustEqual
       ((Address(123, "St"), Some(Person(123, Some(Name(null, Some(1337))), 0))))
 
   }
