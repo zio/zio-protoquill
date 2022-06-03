@@ -174,9 +174,10 @@ object Extractors {
   extension (expr: Expr[_]) {
     def `.(caseField)`(property: String)(using Quotes) = {
       import quotes.reflect._
-      val cls = expr.asTerm.tpe.widen.typeSymbol
+      val tpe = expr.asTerm.tpe
+      val cls = tpe.widen.typeSymbol
       if (!cls.flags.is(Flags.Case))
-        report.throwError(s"The class ${cls} is not a case class")
+        report.throwError(s"The class ${Format.TypeRepr(expr.asTerm.tpe)} (symbol: ${cls}) is not a case class in the expression: ${Format.Expr(expr)}")
       else
         val method =
           cls.caseFields
