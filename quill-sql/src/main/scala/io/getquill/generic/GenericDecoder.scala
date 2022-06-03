@@ -163,7 +163,89 @@ object GenericDecoder {
         FlattenData(Type.of[Option[T]], constructOrNone, nullCheck)
   }
 
-  def construct[T: Type](types: List[Type[_]], terms: List[Expr[_]], m: Expr[Mirror.ProductOf[T]])(using Quotes) = {
+  def decodeProduct[T: Type](flattenData: List[FlattenData], m: Expr[Mirror.ProductOf[T]])(using Quotes) =
+    import quotes.reflect._
+
+    // E.g. for Person("Joe", 123) the types of the decoded columns i.e. List(Type[String], Type[Int])
+    // Once you are in a product that has a product inside e.g. Person(name: Name("Joe", "Bloggs"), age: 123)
+    // they will be types of the constructor i.e. List(Type[Name], Type[Int])
+    val types = flattenData.map(_.tpe)
+
+    // E.g. for Person("Joe", 123) the decoder(0,row,session), decoder(1,row,session) columns
+    // that turn into Decoder[String]("Joe"), Decoder[Int](123) respectively.
+    // (or for Option[T] columns: Decoder[Option[String]]("Joe")))
+    // Once you are in a product that has a product inside e.g. Person(name: Name("Joe", "Bloggs"), age: 123)
+    // they will be the constructor and/or any other field-decoders:
+    // List((new Name(Decoder("Joe") || Decoder("Bloggs")), Decoder(123))
+    // This is what needs to be fed into the constructor of the outer-entity i.e.
+    // new Person((new Name(Decoder("Joe") || Decoder("Bloggs")), Decoder(123))
+    val productElments = flattenData.map(_.decodedExpr)
+    // actually doing the construction i.e. `new Person(...)`
+    val constructed = ConstructDecoded[T](types, productElments, m)
+
+    // E.g. for Person("Joe", 123) the List(q"!nullChecker(0,row)", q"!nullChecker(1,row)") columns
+    // that eventually turn into List(!NullChecker("Joe"), !NullChecker(123)) columns.
+    // Once you are in a product that has a product inside e.g. Person(name: Name("Joe", "Bloggs"), age: 123)
+    // they will be the concatonations of the Or-clauses e.g.
+    // List( (NullChecker("Joe") || NullChecker("Bloggs")), NullChecker(123))
+    // This is what needs to be the null-checker of the outer entity i.e.
+    // if ((NullChecker("Joe") || NullChecker("Bloggs")) || NullChecker(123)) Some(new Name(...)) else None
+    val nullChecks = flattenData.map(_._3).reduce((a, b) => '{ $a || $b })
+
+    // Pass the constructor of and the column-check expression upstream. We need to pass
+    // both because there could be outer products that need to null check columns here.
+    // For example, if you have Option(Person(name: Option(Name("Joe", "Bloggs")), age: 123))
+    // which basically means, Option(Person(name: Option(Name(DecodeString(column:1), DecodeString(column:2))), DecodeInt(column:3)))
+    // given that the row is Row("Joe", "Bloggs", 123)
+    // you could be inside the decoder for `Name` which means you have null-checkers NullCheck(column:1), and NullCheck(column:2)
+    // that the outer Person object needs to know about since it can also be None (since something is None only if ALL the columns it has are None)
+    // that actual check is done in the decodeOptional method
+    FlattenData(Type.of[T], constructed, nullChecks)
+  end decodeProduct
+
+  private def isOption[T: Type](using Quotes) =
+    import quotes.reflect._
+    TypeRepr.of[T] <:< TypeRepr.of[Option[Any]]
+
+  def decode[T: Type, ResultRow: Type, Session: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): FlattenData = {
+    import quotes.reflect._
+    // if there is a decoder for the term, just return the term
+    if (isOption[T]) {
+      Type.of[T] match
+        case '[Option[tpe]] =>
+          decodeOptional[tpe, ResultRow, Session](index, resultRow, session)
+    } else
+      Expr.summon[Mirror.Of[T]] match
+        case Some(ev) =>
+          // Otherwise, recursively summon fields
+          ev match {
+            case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
+              // do not treat optional objects as coproduts, a Specific (i.e. EncodingType.Specific) Option-decoder
+              // is defined in the EncodingDsl
+              report.throwError("Not supported")
+
+            case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
+              val children = flatten(index, resultRow, session)(Type.of[elementLabels], Type.of[elementTypes]).reverse
+              decodeProduct[T](children, m)
+
+            case _ => report.throwError("Tuple decoder could not be summoned")
+          }
+
+        case _ =>
+          report.throwError("Tuple decoder could not be summoned")
+  }
+
+  def summon[T: Type, ResultRow: Type, Session: Type](using quotes: Quotes): Expr[GenericDecoder[ResultRow, Session, T, DecodingType.Generic]] =
+    import quotes.reflect._
+    '{
+      new GenericDecoder[ResultRow, Session, T, DecodingType.Generic] {
+        def apply(index: Int, resultRow: ResultRow, session: Session) = ${ GenericDecoder.decode[T, ResultRow, Session]('index, 'resultRow, 'session).decodedExpr }.asInstanceOf[T]
+      }
+    }
+}
+
+object ConstructDecoded {
+  def apply[T: Type](types: List[Type[_]], terms: List[Expr[_]], m: Expr[Mirror.ProductOf[T]])(using Quotes) = {
     import quotes.reflect._
     // Get the constructor
     val tpe = TypeRepr.of[T]
@@ -198,79 +280,4 @@ object GenericDecoder {
       '{ $m.fromProduct(${ Expr.ofTupleFromSeq(terms) }) }.asExprOf[T]
     }
   }
-
-  private def isOption[T: Type](using Quotes) =
-    import quotes.reflect._
-    TypeRepr.of[T] <:< TypeRepr.of[Option[Any]]
-
-  def decode[T: Type, ResultRow: Type, Session: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): FlattenData = {
-    import quotes.reflect._
-    // if there is a decoder for the term, just return the term
-    if (isOption[T]) {
-      Type.of[T] match
-        case '[Option[tpe]] =>
-          decodeOptional[tpe, ResultRow, Session](index, resultRow, session)
-    } else
-      Expr.summon[Mirror.Of[T]] match
-        case Some(ev) =>
-          // Otherwise, recursively summon fields
-          ev match {
-            case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
-              // do not treat optional objects as coproduts, a Specific (i.e. EncodingType.Specific) Option-decoder
-              // is defined in the EncodingDsl
-              report.throwError("Not supported")
-
-            case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
-              val children = flatten(index, resultRow, session)(Type.of[elementLabels], Type.of[elementTypes]).reverse
-
-              // E.g. for Person("Joe", 123) the types of the decoded columns i.e. List(Type[String], Type[Int])
-              // Once you are in a product that has a product inside e.g. Person(name: Name("Joe", "Bloggs"), age: 123)
-              // they will be types of the constructor i.e. List(Type[Name], Type[Int])
-              val types = children.map(_.tpe)
-
-              // E.g. for Person("Joe", 123) the decoder(0,row,session), decoder(1,row,session) columns
-              // that turn into Decoder[String]("Joe"), Decoder[Int](123) respectively.
-              // (or for Option[T] columns: Decoder[Option[String]]("Joe")))
-              // Once you are in a product that has a product inside e.g. Person(name: Name("Joe", "Bloggs"), age: 123)
-              // they will be the constructor and/or any other field-decoders:
-              // List((new Name(Decoder("Joe") || Decoder("Bloggs")), Decoder(123))
-              // This is what needs to be fed into the constructor of the outer-entity i.e.
-              // new Person((new Name(Decoder("Joe") || Decoder("Bloggs")), Decoder(123))
-              val productElments = children.map(_._2)
-              // actually doing the construction i.e. `new Person(...)`
-              val constructed = construct[T](types, productElments, m)
-
-              // E.g. for Person("Joe", 123) the List(q"!nullChecker(0,row)", q"!nullChecker(1,row)") columns
-              // that eventually turn into List(!NullChecker("Joe"), !NullChecker(123)) columns.
-              // Once you are in a product that has a product inside e.g. Person(name: Name("Joe", "Bloggs"), age: 123)
-              // they will be the concatonations of the Or-clauses e.g.
-              // List( (NullChecker("Joe") || NullChecker("Bloggs")), NullChecker(123))
-              // This is what needs to be the null-checker of the outer entity i.e.
-              // if ((NullChecker("Joe") || NullChecker("Bloggs")) || NullChecker(123)) Some(new Name(...)) else None
-              val nullChecks = children.map(_._3).reduce((a, b) => '{ $a || $b })
-
-              // Pass the constructor of and the column-check expression upstream. We need to pass
-              // both because there could be outer products that need to null check columns here.
-              // For example, if you have Option(Person(name: Option(Name("Joe", "Bloggs")), age: 123))
-              // which basically means, Option(Person(name: Option(Name(DecodeString(column:1), DecodeString(column:2))), DecodeInt(column:3)))
-              // given that the row is Row("Joe", "Bloggs", 123)
-              // you could be inside the decoder for `Name` which means you have null-checkers NullCheck(column:1), and NullCheck(column:2)
-              // that the outer Person object needs to know about since it can also be None (since something is None only if ALL the columns it has are None)
-              // that actual check is done in the decodeOptional method
-              FlattenData(Type.of[T], constructed, nullChecks)
-
-            case _ => report.throwError("Tuple decoder could not be summoned")
-          }
-
-        case _ =>
-          report.throwError("Tuple decoder could not be summoned")
-  }
-
-  def summon[T: Type, ResultRow: Type, Session: Type](using quotes: Quotes): Expr[GenericDecoder[ResultRow, Session, T, DecodingType.Generic]] =
-    import quotes.reflect._
-    '{
-      new GenericDecoder[ResultRow, Session, T, DecodingType.Generic] {
-        def apply(index: Int, resultRow: ResultRow, session: Session) = ${ GenericDecoder.decode[T, ResultRow, Session]('index, 'resultRow, 'session).decodedExpr }.asInstanceOf[T]
-      }
-    }
 }
