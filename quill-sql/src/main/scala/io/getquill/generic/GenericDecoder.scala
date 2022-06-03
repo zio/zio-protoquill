@@ -109,9 +109,9 @@ object GenericDecoder {
 
       // In the case that this is a leaf node
       case Some(_) =>
-        val decoder = Summon.decoder[ResultRow, Session, T]('{ $baseIndex + ${ Expr(index) } }, resultRow, session)
+        val decoder = Summon.decoder[ResultRow, Session, Option[T]]('{ $baseIndex + ${ Expr(index) } }, resultRow, session)
         val nullChecker = Summon.nullChecker[ResultRow, Session]('{ $baseIndex + ${ Expr(index) } }, resultRow)
-        FlattenData(Type.of[T], decoder, '{ !${ nullChecker } }, index)
+        FlattenData(Type.of[Option[T]], decoder, '{ !${ nullChecker } }, index)
 
       // This is the cases where we have a optional-product element. It could either be a top level
       // element e.g. Option[Row] or a nested element i.e. the Option[Name] in Person(name: Option[Name], age: Int)

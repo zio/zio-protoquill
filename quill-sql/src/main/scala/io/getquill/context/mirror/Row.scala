@@ -6,10 +6,13 @@ import scala.collection.mutable.LinkedHashMap
 object Row:
   case class Data(key: String, value: Any)
   def apply(values: (String, Any)*) = new Row(values.map((k, v) => Data(k, v)).toList)
+  def single(value: Any) = fromList(value)
   def fromList(values: Any*) = new Row(values.zipWithIndex.map((v, i) => Data(s"_${i + 1}", v)).toList)
 
-case class Row(data: List[Row.Data]) {
-  private lazy val dataMap = LinkedHashMap(data.map(d => (d.key, d.value)): _*)
+case class Row(elements: List[Row.Data]) {
+  private lazy val dataMap = LinkedHashMap(elements.map(d => (d.key, d.value)): _*)
+
+  def data = elements.map(r => (r.key, r.value))
 
   object TupleIndex {
     def unapply(str: String): Option[Int] =
@@ -48,6 +51,6 @@ case class Row(data: List[Row.Data]) {
   private def nextNumberedRow = maxNumberedRow + 1
   private def nextTupleIndex = s"_${nextNumberedRow}"
 
-  def add(value: Any) = Row(data :+ Row.Data(nextTupleIndex, value))
-  def add(key: String, value: Any) = Row(data :+ Row.Data(key, value))
+  def add(value: Any) = Row(elements :+ Row.Data(nextTupleIndex, value))
+  def add(key: String, value: Any) = Row(elements :+ Row.Data(key, value))
 }

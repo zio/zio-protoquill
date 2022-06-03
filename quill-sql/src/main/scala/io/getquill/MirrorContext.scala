@@ -7,23 +7,6 @@ import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
 import scala.annotation.targetName
 
-// TODO Note needed, cleanup
-sealed trait Dummy
-object DummyInst extends Dummy
-
-// TODO Dialect <: Idiom, Naming <: NamingStrategy are not actually needed so can remove them but that causes a compile-time error. Need to figure that out
-// TODO Modify some major unit tests with embedded etc... to make sure this works in all cases
-trait MirrorColumnResolving[Dialect <: Idiom, Naming <: NamingStrategy] { self: MirrorContextBase[Dialect, Naming] =>
-  given mirrorResover: ColumnResolver with {
-    def apply(resultRow: Row, columnName: String): Int = resultRow.indexOfKey(columnName)
-  }
-}
-
-case class MirrorSession(name: String)
-object MirrorSession {
-  def default = MirrorSession("DefaultMirrorSession")
-}
-
 class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
     extends MirrorContextBase[Dialect, Naming] with AstSplicing
 
@@ -43,6 +26,7 @@ trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
   override type RunBatchActionReturningResult[T] = BatchActionReturningMirror[T]
   override type RunBatchActionResult = BatchActionMirror
   override type Session = MirrorSession
+  override type Extractor[T] = (ResultRow, MirrorSession) => T
 
   override type Runner = Unit
   override type TranslateRunner = Unit

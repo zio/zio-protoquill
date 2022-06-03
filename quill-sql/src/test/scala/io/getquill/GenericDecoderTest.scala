@@ -24,6 +24,7 @@ import scala.reflect.classTag
 import io.getquill.context.mirror.Row
 import io.getquill.quote
 import io.getquill.query
+import io.getquill.context.mirror.MirrorSession
 
 class GenericDecoderTest extends Spec {
   import StaticEnumExample._
@@ -33,27 +34,28 @@ class GenericDecoderTest extends Spec {
 
   case class Person(name: String, age: Int)
 
-  "domain-model product using row-typer" - {
-    given RowTyper[Shape] with
-      def apply(row: Row) =
-        row.apply[String]("type") match
-          case "square" => classTag[Shape.Square]
-          case "circle" => classTag[Shape.Circle]
+  // Ignoring co-products for now
+  // "domain-model product using row-typer" - {
+  //   given RowTyper[Shape] with
+  //     def apply(row: Row) =
+  //       row.apply[String]("type") match
+  //         case "square" => classTag[Shape.Square]
+  //         case "circle" => classTag[Shape.Circle]
 
-    "test product type" in {
-      val s = io.getquill.MirrorSession.default
-      inline def q = quote { query[Shape].filter(s => s.id == 18) }
-      val result = ctx.run(q)
+  //   "test product type" in {
+  //     val s = io.getquill.MirrorSession.default
+  //     inline def q = quote { query[Shape].filter(s => s.id == 18) }
+  //     val result = ctx.run(q)
 
-      val squareRow = Row("type" -> "square", "id" -> 18, "radius" -> 890, "width" -> 123, "height" -> 456)
-      result.extractor(squareRow, s) mustEqual Shape.Square(18, 123, 456)
-      val circleRow = Row("type" -> "circle", "id" -> 18, "radius" -> 890, "width" -> 123, "height" -> 456)
-      result.extractor(circleRow, s) mustEqual Shape.Circle(18, 890)
-    }
-  }
+  //     val squareRow = Row("type" -> "square", "id" -> 18, "radius" -> 890, "width" -> 123, "height" -> 456)
+  //     result.extractor(squareRow, s) mustEqual Shape.Square(18, 123, 456)
+  //     val circleRow = Row("type" -> "circle", "id" -> 18, "radius" -> 890, "width" -> 123, "height" -> 456)
+  //     result.extractor(circleRow, s) mustEqual Shape.Circle(18, 890)
+  //   }
+  // }
 
   "simple examples" - {
-    val s = io.getquill.MirrorSession.default
+    val s = MirrorSession.default
 
     "test tuple type" in {
       inline def q = quote { query[Person].map(p => (p.name, p.age)) }
