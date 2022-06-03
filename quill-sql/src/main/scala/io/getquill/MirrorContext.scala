@@ -50,6 +50,12 @@ trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
   override def translateContext: Runner = ()
   def session: MirrorSession
 
+  override type NullChecker = MirrorNullChecker
+  class MirrorNullChecker extends BaseNullChecker {
+    override def apply(index: Int, row: Row): Boolean = row.nullAt(index)
+  }
+  implicit val nullChecker: NullChecker = new MirrorNullChecker()
+
   // TODO Not needed, get rid of this
   implicit val d: Dummy = DummyInst
 

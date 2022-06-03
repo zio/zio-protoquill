@@ -90,23 +90,13 @@ object GenericDecoder {
         // database columns (i.e. since we're using table-per-class which means the table contains all the columns from all the co-product types)
         // if we have a 'column resolver' then we are trying to get the index by name instead by the number. So we lookup if a column resolver exists and use it.
         val resolvedIndex = resolveIndexOrFallback[ResultRow](index, resultRow, fieldValue)
-        val result = {
-          val tpe = Type.of[tpe]
-          val decoder = Summon.decoder[ResultRow, Session, tpe](resolvedIndex, resultRow, session)
-          val nullChecker = '{ !${ Summon.nullChecker[ResultRow, Session](resolvedIndex, resultRow) } }
-          FlattenData(tpe, decoder, nullChecker)
-        }
+        val result = decode[tpe, ResultRow, Session](resolvedIndex, resultRow, session)
         flatten[ResultRow, Session, fields, types]('{ $index + ${ Expr(air) } }, resultRow, session)(Type.of[fields], Type.of[types], result +: accum)
 
       case ('[field *: fields], '[tpe *: types]) =>
         val fieldValue = Type.of[field].constValue
         val resolvedIndex = resolveIndexOrFallback[ResultRow](index, resultRow, fieldValue)
-        val result = {
-          val tpe = Type.of[tpe]
-          val decoder = Summon.decoder[ResultRow, Session, tpe](resolvedIndex, resultRow, session)
-          val nullChecker = '{ !${ Summon.nullChecker[ResultRow, Session](resolvedIndex, resultRow) } }
-          FlattenData(tpe, decoder, nullChecker)
-        }
+        val result = decode[tpe, ResultRow, Session](resolvedIndex, resultRow, session)
         flatten[ResultRow, Session, fields, types]('{ $index + 1 }, resultRow, session)(Type.of[fields], Type.of[types], result +: accum)
 
       case (_, '[EmptyTuple]) => accum
@@ -204,8 +194,11 @@ object GenericDecoder {
             case _ => report.throwError("Tuple decoder could not be summoned")
           }
 
-        case _ =>
-          report.throwError("Tuple decoder could not be summoned")
+        // Otherwise it's a leaf-node. Summon a decoder and null-checker and return it
+        case None =>
+          val decoder = Summon.decoder[ResultRow, Session, T](index, resultRow, session)
+          val nullChecker = Summon.nullChecker[ResultRow, Session](index, resultRow)
+          FlattenData(Type.of[T], decoder, nullChecker)
   end decode
 
   def summon[T: Type, ResultRow: Type, Session: Type](using quotes: Quotes): Expr[GenericDecoder[ResultRow, Session, T, DecodingType.Generic]] =
