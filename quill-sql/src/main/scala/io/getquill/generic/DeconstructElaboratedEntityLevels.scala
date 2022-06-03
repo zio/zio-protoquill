@@ -88,8 +88,8 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
                   // e.g. nest Person => Person.name into Name => Name.first to get Person => Person.name.first
                   val pathToField =
                     // When Cls := Person(name: Name) and Name(first: String, last: String) ...
-                    (input: Expr[Cls]) =>
-                      castNextField(castFieldGetter(input))
+                    (outerClass: Expr[Cls]) =>
+                      castNextField(castFieldGetter(outerClass))
 
                   // println(s"Path to field '${nextField}' is: ${Format.Expr(pathToField)}")
                   // if you have Person(name: Option[Name]), Name(first: String, last: String) then the fieldTypeRepr is going to be Option[Name]
@@ -103,9 +103,9 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
                         output
                       case ('[ft], '[Option[nt]]) =>
                         lazy val pathToFieldShowable =
-                          '{ (input: Cls) => ${ pathToField('input) } }
+                          '{ (classShowable: Cls) => ${ pathToField('classShowable) } }
                         lazy val fieldGetterShowable =
-                          '{ (input: Cls) => ${ fieldGetter('input) } }
+                          '{ (classGettable: Cls) => ${ fieldGetter('classGettable) } }
                         report.throwError(
                           s"Child Type ${Format.TypeOf[nt]} of the expression ${Format.Expr(pathToFieldShowable)} " +
                             s"is not optional but the parent type ${Format.TypeOf[ft]} of the parent expression ${Format.Expr(fieldGetterShowable)}" +

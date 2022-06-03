@@ -177,7 +177,10 @@ object Extractors {
       val tpe = expr.asTerm.tpe
       val cls = tpe.widen.typeSymbol
       if (!cls.flags.is(Flags.Case))
-        report.throwError(s"The class ${Format.TypeRepr(expr.asTerm.tpe)} (symbol: ${cls}) is not a case class in the expression: ${Format.Expr(expr)}")
+        report.throwError(
+          s"The class ${Format.TypeRepr(expr.asTerm.tpe)} (symbol: ${cls}) is not a case class in the expression: ${Format.Expr(expr)}\n" +
+            s"Therefore you cannot lookup the property `${property}` on it!"
+        )
       else
         val method =
           cls.caseFields
