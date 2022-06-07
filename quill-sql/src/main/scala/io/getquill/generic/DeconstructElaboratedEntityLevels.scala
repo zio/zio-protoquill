@@ -33,8 +33,12 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
   import io.getquill.generic.ElaborateStructure.Term
 
   private def isOption[T: Type] =
-    import quotes.reflect._
     TypeRepr.of[T] <:< TypeRepr.of[Option[Any]]
+
+  private def isTypeOption(tpe: scala.quoted.Type[_]) =
+    tpe match
+      case '[tt] =>
+        TypeRepr.of[tt] <:< TypeRepr.of[Option[Any]]
 
   System.setProperty("quill.trace.enabled", "true")
   System.setProperty("quill.trace.types", "elab")
@@ -100,45 +104,52 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
               case _ =>
                 // Note that getting the types to line up here is very tricky.
                 val output =
-                  recurseNest[tt](fieldTerm, nextIsOptional).map { (childTerm, nextField, nextType) =>
-                    trace"Computing child term ${Format.Type(fieldType)}.${childTerm.name}:${Format.Type(nextType)}".andLog()
+                  recurseNest[tt](fieldTerm, nextIsOptional).map { (childTerm, childField, childType) =>
+                    trace"Computing child term ${Format.TypeOf[Cls]}.${fieldTerm.name}:${Format.Type(fieldType)} -> ${childTerm.name}:${Format.Type(childType)}".andLog()
 
-                    val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any] => Expr[_]] // e.g. Person => Person.name (where name is a case class Name(first: String, last: String))
-                    val castNextField = nextField.asInstanceOf[Expr[Any] => Expr[_]] // e.g. Name => Name.first
+                    // Cls: Option[LastNameAge]
+                    // fieldTerm: Option[LastNameAge].age
+                    // fieldType: Option[LastNameAge].age:Age
+                    // childTerm: Age.age
+                    // childType: Age.age:Option[Int]
+                    // Problem: Option[LastNameAge].age
+
                     // e.g. nest Person => Person.name into Name => Name.first to get Person => Person.name.first
                     val pathToField =
-                      // When Cls := Person(name: Name) and Name(first: String, last: String) ...
-                      (outerClass: Expr[Cls]) =>
-                        castNextField(castFieldGetter(outerClass))
+                      (Type.of[Cls], fieldType) match
+                        case ('[Option[cls]], '[ft]) if !isTypeOption(fieldType) =>
+                          childType match
+                            case '[Option[nt]] =>
+                              val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any] => Expr[Option[ft]]]
+                              val castNextField = childField.asInstanceOf[Expr[ft] => Expr[Option[nt]]]
+                              trace"Trying Cls as Option[${Format.TypeOf[cls]}], childType as Option[${Format.TypeOf[nt]}]".andLog()
+                              (outerClass: Expr[Cls]) =>
+                                '{ ${ castFieldGetter(outerClass) }.flatMap[nt](flattenClsVal => ${ castNextField('flattenClsVal) }) }
+                            case '[nt] =>
+                              val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any] => Expr[Option[ft]]]
+                              val castNextField = childField.asInstanceOf[Expr[ft] => Expr[nt]]
+                              (outerClass: Expr[Cls]) =>
+                                '{ ${ castFieldGetter(outerClass) }.map[nt](clsVal => ${ castNextField('clsVal) }) }
+                        case _ =>
+                          val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any] => Expr[_]] // e.g. Person => Person.name (where name is a case class Name(first: String, last: String))
+                          val castNextField = childField.asInstanceOf[Expr[Any] => Expr[_]] // e.g. Name => Name.first
+                          (outerClass: Expr[Cls]) => castNextField(castFieldGetter(outerClass))
 
                     lazy val debugInput = '{ (outerClass: Cls) => ${ pathToField('outerClass) } }
-                    trace"Path to field '${nextField}' is: ${Format.Expr(debugInput)}".andLog()
+                    trace"Path to field '${childField}' is: ${Format.Expr(debugInput)}".andLog()
+
                     // if you have Person(name: Option[Name]), Name(first: String, last: String) then the fieldTypeRepr is going to be Option[Name]
                     // that means that the child type (which is going to be person.name.map(_.first)) needs to be Option[String] instead of [String]
-                    val childType =
-                      (fieldType, nextType) match
-                        case ('[Option[ft]], '[Option[nt]]) => nextType
+                    val computedChildType =
+                      (fieldType, childType) match
+                        case ('[Option[ft]], '[Option[nt]]) => childType
                         case ('[Option[ft]], '[nt]) =>
-                          val output = optionalize(nextType)
-                          println(s"Optionalizing nextType ${Format.Type(nextType)} into ${Format.Type(output)}")
+                          val output = optionalize(childType)
+                          println(s"Optionalizing childType ${Format.Type(childType)} into ${Format.Type(output)}")
                           output
-                        case ('[ft], '[Option[nt]]) =>
-                          lazy val pathToFieldShowable =
-                            '{ (classShowable: Cls) => ${ pathToField('classShowable) } }
-                          lazy val fieldGetterShowable =
-                            '{ (classGettable: Cls) => ${ fieldGetter('classGettable) } }
-                          report.throwError(
-                            s"Child Type ${Format.TypeOf[nt]} of the expression ${Format.Expr(pathToFieldShowable)} " +
-                              s"is not optional but the parent type ${Format.TypeOf[ft]} of the parent expression ${Format.Expr(fieldGetterShowable)}" +
-                              s"is. This should not be possible.\n" +
-                              s"== The Parent is: ${(node)}\n" +
-                              s"== The Parent field is: ${(fieldTerm)}\n" +
-                              s"== The Child field is: ${(childTerm)}\n" +
-                              s"== The field is: ${Format.Expr(fieldGetterShowable)}\n" +
-                              s"== The objects are: ${Format.TypeOf[ft]} -> ${Format.Type(nextType)}"
-                          )
-                        case _ => nextType
-                    (childTerm, pathToField, childType)
+                        case _ => childType
+
+                    (childTerm, pathToField, computedChildType)
                   }
                 // println(s"====== Nested Getters: ${output.map(_.show)}")
                 output.asInstanceOf[List[(Term, Expr[Any] => Expr[_], Type[_])]]
