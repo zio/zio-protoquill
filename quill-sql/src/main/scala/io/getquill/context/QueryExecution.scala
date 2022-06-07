@@ -88,15 +88,14 @@ object Execution:
   /** Summon decoder for a given Type and Row type (ResultRow) */
   def summonDecoderOrThrow[ResultRow: Type, Session: Type, DecoderT: Type]()(using Quotes): Expr[GenericDecoder[ResultRow, Session, DecoderT, DecodingType]] =
     import quotes.reflect.{Try => _, _}
-    // First try summoning a specific encoder, if that doesn't work, summon the generic one
+    // First try summoning a specific encoder, if that doesn't work, use the generic one.
+    // Note that we could do Expr.summon[GenericDecoder[..., DecodingType.Generic]] to summon it
+    // but if we do that an error is thrown via report.throwError during summoning then it would just be not summoned and the
+    // and no error would be returned to the user. Therefore it is better to just invoke the method here.
     Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Specific]] match
       case Some(decoder) => decoder
       case None =>
-        Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]] match
-          case Some(decoder) => decoder
-          case None =>
-            println(s"Error summoning Decoder: could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
-            report.throwError(s"Decoder could not be summoned during query execution for the type ${io.getquill.util.Format.TypeOf[DecoderT]}")
+        GenericDecoder.summon[DecoderT, ResultRow, Session]
 
   /** See if there there is a QueryMeta mapping T to some other type RawT */
   def summonQueryMetaTypeIfExists[T: Type](using Quotes) =

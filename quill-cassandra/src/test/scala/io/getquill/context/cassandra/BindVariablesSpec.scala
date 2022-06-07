@@ -14,6 +14,6 @@ class BindVariablesSpec extends Spec {
       }
     val mirror = mirrorContext.run(q(2))
     mirror.string mustEqual "SELECT s, i, l, o, b FROM TestEntity WHERE i = ?"
-    mirror.prepareRow mustEqual Row.fromList(2)
+    mirror.prepareRow mustEqual Row(2)
   }
 }

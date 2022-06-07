@@ -13,6 +13,7 @@ import io.getquill.quat.Quat
 import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
 import io.getquill.Query
+import io.getquill.context.mirror.Row
 
 abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   val QV = Quat.Value
@@ -29,11 +30,18 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
           // being explicit here about the fact that this is done per prepare element i.e. all of them are supposed to be Row instances
           prep match {
             case r: io.getquill.context.mirror.Row =>
-              r.data.toList.map(_._2)
+              r.data.map(data => deIndexify(data._2))
           }
         },
         m.info.executionType
       )
+
+  private def deIndexify(value: Any): Any =
+    value match
+      case Some((Row.TupleIndex(a) -> b)) => Some(deIndexify(b))
+      case list: Seq[Any]                 => list.map(deIndexify(_))
+      case Row.TupleIndex(a) -> b         => b
+      case other                          => other
 
   extension (m: MirrorContextBase[_, _]#BatchActionMirror)
     def triple =
@@ -45,7 +53,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
           // being explicit here about the fact that this is done per prepare element i.e. all of them are supposed to be Row instances
           prep match {
             case r: io.getquill.context.mirror.Row =>
-              r.data.toList.map(_._2)
+              r.data.map(data => deIndexify(data._2))
           }
         },
         m.info.executionType
@@ -57,7 +65,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.string,
         m.prepareRow match {
           case r: io.getquill.context.mirror.Row =>
-            r.data.toList.map(_._2)
+            r.data.map(data => deIndexify(data._2))
         },
         m.info.executionType
       )
@@ -68,7 +76,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.string,
         m.prepareRow match {
           case r: io.getquill.context.mirror.Row =>
-            r.data.toList.map(_._2)
+            r.data.map(data => deIndexify(data._2))
         },
         m.info.executionType
       )
@@ -79,7 +87,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.string,
         m.prepareRow match {
           case r: io.getquill.context.mirror.Row =>
-            r.data.toList.map(_._2)
+            r.data.map(data => deIndexify(data._2))
         },
         m.info.executionType
       )
