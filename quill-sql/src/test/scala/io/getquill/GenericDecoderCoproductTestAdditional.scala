@@ -22,21 +22,27 @@ import scala.collection.mutable.LinkedHashMap
 import scala.reflect.ClassTag
 import scala.reflect.classTag
 import io.getquill.generic.DecodingType
+import io.getquill.generic.GenericNullChecker
 
 object GenericDecoderCoproductTestAdditional {
-  // TODO Resore this when moving back to original way of doing generic decoders
-  // implicit inline def autoDecoder[T]:GenericDecoder[MyResult, T] = GenericDecoder.generic
-
   implicit inline def autoDecoder[T]: GenericDecoder[MyResult, MySession, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, MyResult, MySession] }
 
-  sealed trait MySession
+  sealed trait MySession {
+    type BaseNullChecker = GenericNullChecker[MyResult, MySession]
+    type NullChecker = MirrorNullChecker
+    class MirrorNullChecker extends BaseNullChecker {
+      override def apply(index: Int, row: MyResult): Boolean = row.nullAt(index)
+    }
+    implicit val nullChecker: NullChecker = new MirrorNullChecker()
+  }
   object MySession extends MySession
 
   case class MyResult(values: (String, Any)*) {
     lazy val list = LinkedHashMap[String, Any](values.toList: _*)
-    def get(i: Int): String = list.values.toList(i - 1).toString
+    def nullAt(i: Int) = list.values.toList(i) == null
+    def get(i: Int): String = list.values.toList(i).toString
     def get(key: String): String = list.apply(key).toString
-    def resolve(key: String): Int = list.keysIterator.toList.indexOf(key) + 1
+    def resolve(key: String): Int = list.keysIterator.toList.indexOf(key)
   }
 
   given GenericDecoder[MyResult, MySession, String, DecodingType.Specific] with

@@ -157,7 +157,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = 's'", List("s", 1, 2L, Some(("_1", 1)), true), Static)
+          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = 's'", List("s", 1, 2L, Some(1), true), Static)
       }
       "with filter and lift" in {
         inline def q = quote {
@@ -165,7 +165,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Static)
+          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(1), true, "s"), Static)
       }
       "quoted with filter and lift" in {
         inline def orig = quote {
@@ -176,7 +176,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Static)
+          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(1), true, "s"), Static)
       }
       "quoted dynamic with filter and lift" in {
         val orig = quote {
@@ -187,7 +187,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Dynamic)
+          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(1), true, "s"), Dynamic)
       }
       "fully dynamic with filter and lift" in {
         val orig = quote {
@@ -197,7 +197,7 @@ class ActionSpec extends Spec {
           orig.updateValue(lift(v))
         }
         testContext.run(q).triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Dynamic)
+          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(1), true, "s"), Dynamic)
       }
     }
     "update" - {

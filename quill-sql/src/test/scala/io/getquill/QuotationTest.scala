@@ -18,6 +18,7 @@ import io.getquill.quat.quatOf
 import io.getquill.quat.Quat
 import io.getquill.quote
 import io.getquill.query
+import io.getquill.context.mirror.MirrorSession
 
 import org.scalatest._
 
@@ -186,7 +187,7 @@ class QuotationTest extends Spec with Inside {
       q must matchPattern {
         case Quoted(ScalarTag(tagUid), List(EagerPlanter("hello", encoder, vaseUid)), List()) if (tagUid == vaseUid) =>
       }
-      List(Row.single("hello")) mustEqual q.encodeEagerLifts(new Row(), io.getquill.MirrorSession.default)
+      List(Row("hello")) mustEqual q.encodeEagerLifts(Row(), MirrorSession.default)
     }
 
     "spliced lift" in {
@@ -201,7 +202,7 @@ class QuotationTest extends Spec with Inside {
               List(QuotationVase(Quoted(ScalarTag(scalarTagId), List(EagerPlanter("hello", encoder, planterId)), Nil), quotationVaseId))
             ) if (quotationTagId == quotationVaseId && scalarTagId == planterId && encoder.eq(summon[Encoder[String]])) =>
       }
-      List(Row.single("hello")) mustEqual q.encodeEagerLifts(new Row(), io.getquill.MirrorSession.default)
+      List(Row("hello")) mustEqual q.encodeEagerLifts(Row(), MirrorSession.default)
     }
     "query with a lift and plus operator" in {
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)

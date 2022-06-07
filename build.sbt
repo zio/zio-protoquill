@@ -158,6 +158,9 @@ lazy val `quill-sql` =
 lazy val `quill-sql-tests` =
   (project in file("quill-sql-tests"))
     .settings(commonSettings: _*)
+    .settings(
+       Test / testOptions += Tests.Argument("-oF")
+    )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
 
 //lazy val `quill-sql-all` = (project in file(".")).aggregate(`quill-sql`, `quill-sql-tests`)

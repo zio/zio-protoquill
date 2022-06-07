@@ -18,8 +18,6 @@ class InsertAdvancedSpec extends Spec with Inside {
 
   case class Person(name: String, age: Int)
 
-  // TODO, next up we need to have this: query[Person].insertValue(lift(Person("Joe", 123))), that's a case class lift
-
   "insert for simple entity should work for" - {
     // Insert(Entity("Person", List()), List(Assignment(Id("x1"), Property(Id("x1"), "name"), "Joe"), Assignment(Id("x2"), Property(Id("x2"), "age"), 123)))
     "simple, inline query" - {

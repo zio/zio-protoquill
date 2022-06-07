@@ -14,7 +14,7 @@ class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec {
   inline def q = quote(query[ArraysTestEntity])
   val corrected = e.copy(timestamps = e.timestamps.map(d => new Timestamp(d.getTime)))
 
-  "Support all sql base types and `Seq` implementers" in {
+  "Support all sql base types and `Seq` implementers" in { //
     ctx.run(q.insertValue(lift(corrected)))
     val actual = ctx.run(q).head
     actual mustEqual corrected
