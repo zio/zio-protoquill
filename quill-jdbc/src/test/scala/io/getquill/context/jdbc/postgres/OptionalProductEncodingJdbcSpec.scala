@@ -14,7 +14,7 @@ class OptionalProductEncodingJdbcSpec extends OptionalNestedSpec {
     ()
   }
 
-  "2.Optional Inner Product" - {
+  "2.Optional Inner Product" - { ////
 
     import `2.Optional Inner Product with Optional Leaf`._
     "2.Ex3 Auto - Null inner leaf" in {
@@ -22,6 +22,14 @@ class OptionalProductEncodingJdbcSpec extends OptionalNestedSpec {
       context.run(data.insertValue(lift(result)))
       context.run(data) mustEqual List(result)
     }
+
+    // [error] -- Error: /home/alexi/git/protoquill/quill-jdbc/src/test/scala/io/getquill/context/jdbc/postgres/OptionalProductEncodingJdbcSpec.scala:22:39
+    // [error] 22 |      context.run(data.insertValue(lift(result)))
+    // [error]    |                                   ^^^^^^^^^^^^
+    // [error]    |The class Option[Age] (symbol: class Option) is not a case class in the expression: classShowable.map[Age](((prop: LastNameAge) => prop.age))
+    // [error]    |Therefore you cannot lookup the property `age` on it!
+    // [error]    | This location contains code that was inlined from OptionalProductEncodingJdbcSpec.scala:22
+
   }
 
 }
