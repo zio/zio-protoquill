@@ -40,9 +40,6 @@ trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
   }
   implicit val nullChecker: NullChecker = new MirrorNullChecker()
 
-  // TODO Not needed, get rid of this
-  implicit val d: Dummy = DummyInst
-
   case class QueryMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], info: ExecutionInfo) {
     def string(pretty: Boolean): String =
       if (pretty)

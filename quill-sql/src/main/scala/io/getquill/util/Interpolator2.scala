@@ -10,6 +10,7 @@ import io.getquill.util.IndentUtil._
 import scala.collection.mutable
 import scala.util.matching.Regex
 
+// Copy of Interpolator in Scala2-Quill various things fixed. Shuold look into merging back.
 class Interpolator2(
     traceType: TraceType,
     defaultIndent: Int = 0,

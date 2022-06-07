@@ -115,7 +115,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
                         case ('[Option[fto]], '[Option[nt]]) => childType
                         case ('[Option[fto]], '[nt]) =>
                           val output = optionalize(childType)
-                          println(s"Optionalizing childType ${Format.Type(childType)} into ${Format.Type(output)}")
+                          trace"Optionalizing childType ${Format.Type(childType)} into ${Format.Type(output)}".andLog()
                           output
                         case _ => childType
 
