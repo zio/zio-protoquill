@@ -40,10 +40,6 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
       case '[tt] =>
         TypeRepr.of[tt] <:< TypeRepr.of[Option[Any]]
 
-  System.setProperty("quill.trace.enabled", "true")
-  System.setProperty("quill.trace.types", "elab")
-  io.getquill.util.Messages.resetCache()
-
   val interp = new Interpolator2(TraceType.Elaboration, 1)
   import interp._
 
@@ -107,30 +103,45 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
                   recurseNest[tt](fieldTerm, nextIsOptional).map { (childTerm, childField, childType) =>
                     trace"Computing child term ${Format.TypeOf[Cls]}.${fieldTerm.name}:${Format.Type(fieldType)} -> ${childTerm.name}:${Format.Type(childType)}".andLog()
 
-                    // Cls: Option[LastNameAge]
-                    // fieldTerm: Option[LastNameAge].age
-                    // fieldType: Option[LastNameAge].age:Age
-                    // childTerm: Age.age
-                    // childType: Age.age:Option[Int]
-                    // Problem: Option[LastNameAge].age
-
-                    // e.g. nest Person => Person.name into Name => Name.first to get Person => Person.name.first
                     val pathToField =
                       (Type.of[Cls], fieldType) match
+                        // Some strange nesting situations where the there are multiple non-optional levels from an optional
+                        // Person(Option[Name(first:First(value:Option[String]))])
+                        //   Cls: Option[Name]
+                        //   fieldTerm: Option[Name].first
+                        //   fieldType: Option[LastNameAge].first:First
+                        //   childTerm: First.value
+                        //   childType: First.value:Option[String]
+                        //   Problem: can't call: Option[Name].first
+                        //            must be Option[Name].flatMap(_.first), eventually must be Option[Name].flatMap(_.first.value)
+                        //
+                        // Or possibly:
+                        // Person(Option[Name(first:First(value:String))])
+                        //   Cls: Option[Name]
+                        //   fieldTerm: Option[Name].first
+                        //   fieldType: Option[LastNameAge].first:First
+                        //   childTerm: First.value
+                        //   childType: First.value:String
+                        //   Problem: can't call: Option[Name].first
+                        //            must be Option[Name].map(_.first), eventually must be Option[Name].flatMap(_.first.value)
+                        //
+                        // In all these cases,
                         case ('[Option[cls]], '[ft]) if !isTypeOption(fieldType) =>
                           childType match
                             case '[Option[nt]] =>
                               val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any] => Expr[Option[ft]]]
                               val castNextField = childField.asInstanceOf[Expr[ft] => Expr[Option[nt]]]
-                              trace"Trying Cls as Option[${Format.TypeOf[cls]}], childType as Option[${Format.TypeOf[nt]}]".andLog()
+                              trace"Trying Cls as Option[${Format.TypeOf[cls]}].flatMap, childType as Option[${Format.TypeOf[nt]}]".andLog()
                               (outerClass: Expr[Cls]) =>
                                 '{ ${ castFieldGetter(outerClass) }.flatMap[nt](flattenClsVal => ${ castNextField('flattenClsVal) }) }
                             case '[nt] =>
                               val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any] => Expr[Option[ft]]]
                               val castNextField = childField.asInstanceOf[Expr[ft] => Expr[nt]]
+                              trace"Trying Cls as Option[${Format.TypeOf[cls]}].map, childType as Option[${Format.TypeOf[nt]}]".andLog()
                               (outerClass: Expr[Cls]) =>
                                 '{ ${ castFieldGetter(outerClass) }.map[nt](clsVal => ${ castNextField('clsVal) }) }
                         case _ =>
+                          // e.g. nest Person => Person.name into Name => Name.first to get Person => Person.name.first
                           val castFieldGetter = fieldGetter.asInstanceOf[Expr[Any] => Expr[_]] // e.g. Person => Person.name (where name is a case class Name(first: String, last: String))
                           val castNextField = childField.asInstanceOf[Expr[Any] => Expr[_]] // e.g. Name => Name.first
                           (outerClass: Expr[Cls]) => castNextField(castFieldGetter(outerClass))
@@ -165,10 +176,8 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
     import quotes.reflect._
     expr.asTerm.tpe.asType match
       case '[Option[Option[t]]] =>
-        // println(s"~~~~~~~~~~~~~ Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
         flattenOptions('{ ${ expr.asExprOf[Option[Option[t]]] }.flatten[t] })
       case _ =>
-        // println(s"~~~~~~~~~~~~~ Non-Option For ${Printer.TreeShortCode.show(expr.asTerm)} ~~~~~~~~~~~~~")
         expr
 
   private[getquill] def elaborateObjectOneLevel[Cls: Type](node: Term): List[(Term, Expr[Cls] => Expr[_], TypeRepr)] = {
