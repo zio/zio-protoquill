@@ -57,7 +57,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
     // update returning with filter, not very useful but good baseline
     "update - returning" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).updateValue(p).returning(p => p.id)) }
-      mirror.triple mustEqual ("UPDATE Person SET id = ?, name = ?, age = ? WHERE id = ? RETURNING id", List(List(1, "Joe", 123, 1), List(2, "Jill", 456, 2)), Static)
+      mirror.triple mustEqual ("UPDATE Person AS pf SET id = ?, name = ?, age = ? WHERE pf.id = ? RETURNING id", List(List(1, "Joe", 123, 1), List(2, "Jill", 456, 2)), Static)
     }
 
     // TODO dsl does not support this yet but would be quite useful
@@ -90,7 +90,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
 
     "update - liftQuery scalars" in {
       val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => query[Person].filter(p => p.id == i).update(_.age -> 111)) }
-      mirror.triple mustEqual ("UPDATE Person SET age = 111 WHERE id = ?", List(List(1), List(2), List(3)), Static)
+      mirror.triple mustEqual ("UPDATE Person AS p SET age = 111 WHERE p.id = ?", List(List(1), List(2), List(3)), Static)
     }
 
     "update - liftQuery scalars - dynamic" in {
@@ -98,7 +98,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
         (i: Int) => query[Person].filter(p => p.id == i).update(_.age -> 111)
       }
       val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
-      mirror.triple mustEqual ("UPDATE Person SET age = 111 WHERE id = ?", List(List(1), List(2), List(3)), Dynamic)
+      mirror.triple mustEqual ("UPDATE Person AS p SET age = 111 WHERE p.id = ?", List(List(1), List(2), List(3)), Dynamic)
     }
 
     "update - extra lift" in {
@@ -106,27 +106,27 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
       // val mirror = ctx.run { query[Person].filter(p => p.id == 123).insertValue(people(0)) }
       //
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(p => p.id == lift(36)).updateValue(p)) }
-      mirror.triple mustEqual ("UPDATE Person SET id = ?, name = ?, age = ? WHERE id = ?", List(List(1, "Joe", 123, 36), List(2, "Jill", 456, 36)), Static)
+      mirror.triple mustEqual ("UPDATE Person AS p SET id = ?, name = ?, age = ? WHERE p.id = ?", List(List(1, "Joe", 123, 36), List(2, "Jill", 456, 36)), Static)
     }
 
     "update - extra lift + scalars" in {
       val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => query[Person].filter(p => p.id == lift(36)).update(_.age -> i)) }
-      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id = ?", List(List(1, 36), List(2, 36), List(3, 36)), Static)
+      mirror.triple mustEqual ("UPDATE Person AS p SET age = ? WHERE p.id = ?", List(List(1, 36), List(2, 36), List(3, 36)), Static)
     }
 
     "update - extra lift + scalars + multi-use" in {
       val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => query[Person].filter(p => p.id == i && p.age == lift(123)).update(_.age -> i)) }
-      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id = ? AND age = ?", List(List(1, 1, 123), List(2, 2, 123), List(3, 3, 123)), Static)
+      mirror.triple mustEqual ("UPDATE Person AS p SET age = ? WHERE p.id = ? AND p.age = ?", List(List(1, 1, 123), List(2, 2, 123), List(3, 3, 123)), Static)
     }
 
     "update - extra lift + scalars + liftQuery/setContains" in {
       val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => query[Person].filter(p => liftQuery(List(36, 49)).contains(p.id)).update(_.age -> i)) }
-      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id IN (?, ?)", List(List(1, 36, 49), List(2, 36, 49), List(3, 36, 49)), Static)
+      mirror.triple mustEqual ("UPDATE Person AS p SET age = ? WHERE p.id IN (?, ?)", List(List(1, 36, 49), List(2, 36, 49), List(3, 36, 49)), Static)
     }
 
     "update - extra lift + scalars + liftQuery/setContains + others" in {
       val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => query[Person].filter(p => liftQuery(List(36, 49)).contains(p.id) && p.id == lift(789)).update(_.age -> i)) }
-      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id IN (?, ?) AND id = ?", List(List(1, 36, 49, 789), List(2, 36, 49, 789), List(3, 36, 49, 789)), Static)
+      mirror.triple mustEqual ("UPDATE Person AS p SET age = ? WHERE p.id IN (?, ?) AND p.id = ?", List(List(1, 36, 49, 789), List(2, 36, 49, 789), List(3, 36, 49, 789)), Static)
     }
 
     "update - extra lift - dynamic" in {
@@ -134,7 +134,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
         (p: Person) => query[Person].filter(p => p.id == lift(36)).updateValue(p)
       }
       val mirror = ctx.run { liftQuery(people).foreach(p => updateDynamic(p)) }
-      mirror.triple mustEqual ("UPDATE Person SET id = ?, name = ?, age = ? WHERE id = ?", List(List(1, "Joe", 123, 36), List(2, "Jill", 456, 36)), Dynamic)
+      mirror.triple mustEqual ("UPDATE Person AS p SET id = ?, name = ?, age = ? WHERE p.id = ?", List(List(1, "Joe", 123, 36), List(2, "Jill", 456, 36)), Dynamic)
     }
 
     "update - extra lift - dynamic + scalars" in {
@@ -142,7 +142,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
         (i: Int) => query[Person].filter(p => p.id == lift(36)).update(_.age -> i)
       }
       val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
-      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id = ?", List(List(1, 36), List(2, 36), List(3, 36)), Dynamic)
+      mirror.triple mustEqual ("UPDATE Person AS p SET age = ? WHERE p.id = ?", List(List(1, 36), List(2, 36), List(3, 36)), Dynamic)
     }
 
     "update - extra lift - dynamic + scalars + multi-use" in {
@@ -150,7 +150,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
         (i: Int) => query[Person].filter(p => p.id == i && p.age == lift(123)).update(_.age -> i)
       }
       val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
-      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id = ? AND age = ?", List(List(1, 1, 123), List(2, 2, 123), List(3, 3, 123)), Dynamic)
+      mirror.triple mustEqual ("UPDATE Person AS p SET age = ? WHERE p.id = ? AND p.age = ?", List(List(1, 1, 123), List(2, 2, 123), List(3, 3, 123)), Dynamic)
     }
 
     "update - extra lift - dynamic + scalars + liftQuery/setContains" in {
@@ -158,7 +158,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
         (i: Int) => query[Person].filter(p => liftQuery(List(36, 49)).contains(p.id)).update(_.age -> i)
       }
       val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
-      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id IN (?, ?)", List(List(1, 36, 49), List(2, 36, 49), List(3, 36, 49)), Dynamic)
+      mirror.triple mustEqual ("UPDATE Person AS p SET age = ? WHERE p.id IN (?, ?)", List(List(1, 36, 49), List(2, 36, 49), List(3, 36, 49)), Dynamic)
     }
 
     "update - extra lift - dynamic + scalars + liftQuery/setContains + others" in {
@@ -166,7 +166,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
         (i: Int) => query[Person].filter(p => liftQuery(List(36, 49)).contains(p.id) && p.id == lift(789)).update(_.age -> i)
       }
       val mirror = ctx.run { liftQuery(List(1, 2, 3)).foreach(i => updateDynamic(i)) }
-      mirror.triple mustEqual ("UPDATE Person SET age = ? WHERE id IN (?, ?) AND id = ?", List(List(1, 36, 49, 789), List(2, 36, 49, 789), List(3, 36, 49, 789)), Dynamic)
+      mirror.triple mustEqual ("UPDATE Person AS p SET age = ? WHERE p.id IN (?, ?) AND p.id = ?", List(List(1, 36, 49, 789), List(2, 36, 49, 789), List(3, 36, 49, 789)), Dynamic)
     }
 
     case class MyPerson(id: Int, name: String, birthYear: Int)
@@ -178,14 +178,14 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
             query[MyPerson].filter(p => p.id == id).update(p => p.birthYear -> year)
         }
       }
-      a.triple mustEqual ("UPDATE MyPerson SET birthYear = ? WHERE id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Static)
+      a.triple mustEqual ("UPDATE MyPerson AS p SET birthYear = ? WHERE p.id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Static)
 
       val b = ctx.run {
         liftQuery(birthYearUpdates).foreach((id, year) =>
           query[MyPerson].filter(p => p.id == id).update(p => p.birthYear -> year)
         )
       }
-      b.triple mustEqual ("UPDATE MyPerson SET birthYear = ? WHERE id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Static)
+      b.triple mustEqual ("UPDATE MyPerson AS p SET birthYear = ? WHERE p.id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Static)
     }
 
     "update via tuple - dynamic" in {
@@ -199,12 +199,12 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
           case (id, year) => updateDynamic(id, year)
         }
       }
-      a.triple mustEqual ("UPDATE MyPerson SET birthYear = ? WHERE id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Dynamic)
+      a.triple mustEqual ("UPDATE MyPerson AS p SET birthYear = ? WHERE p.id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Dynamic)
 
       val b = ctx.run {
         liftQuery(birthYearUpdates).foreach((id, year) => updateDynamic(id, year))
       }
-      b.triple mustEqual ("UPDATE MyPerson SET birthYear = ? WHERE id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Dynamic)
+      b.triple mustEqual ("UPDATE MyPerson AS p SET birthYear = ? WHERE p.id = ?", List(List(1983, 3431), List(1972, 2976), List(1991, 1511)), Dynamic)
 
       // Does not work, variable tracking has an issue
       // val b = ctx.run {
@@ -225,14 +225,14 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
 
     "update" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).update(_.name -> p.name, _.age -> p.age)) }
-      mirror.triple mustEqual ("UPDATE Person SET name = ?, age = ? WHERE id = ?", List(List("Joe", 123, 1), List("Jill", 456, 2)), Static)
+      mirror.triple mustEqual ("UPDATE Person AS pf SET name = ?, age = ? WHERE pf.id = ?", List(List("Joe", 123, 1), List("Jill", 456, 2)), Static)
     }
 
     "update - object with meta" in {
       inline given UpdateMeta[Person] = updateMeta(_.id)
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).updateValue(p)) }
       mirror.triple mustEqual (
-        "UPDATE Person SET name = ?, age = ? WHERE id = ?",
+        "UPDATE Person AS pf SET name = ?, age = ? WHERE pf.id = ?",
         List(List("Joe", 123, 1), List("Jill", 456, 2)),
         Static
       )
@@ -240,7 +240,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
 
     "delete" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).delete) }
-      mirror.triple mustEqual ("DELETE FROM Person WHERE id = ?", List(List(1), List(2)), Static)
+      mirror.triple mustEqual ("DELETE FROM Person AS pf WHERE pf.id = ?", List(List(1), List(2)), Static)
     }
   }
 }

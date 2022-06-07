@@ -6,7 +6,7 @@ import scala.collection.mutable.ArrayBuffer
 import io.getquill.util.Format
 import scala.util.Try
 
-/** Remove all instances of SerialHelper.fromSerializedJVM from a tree (for printing purposes) */
+/** Remove all instances of SerialHelper.fromSerialized from a tree (for printing purposes) */
 object DeserializeAstInstances:
   def apply[T: Type](input: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect.{Try => _, _}

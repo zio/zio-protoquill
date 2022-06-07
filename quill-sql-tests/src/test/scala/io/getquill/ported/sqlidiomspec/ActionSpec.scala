@@ -132,21 +132,21 @@ class ActionSpec extends Spec {
           qr1.filter(t => t.s == "s").updateValue(TestEntity("s", 1, 2L, Some(1), true))
         }
         testContext.run(q).string mustEqual
-          "UPDATE TestEntity SET s = 's', i = 1, l = 2, o = 1, b = true WHERE s = 's'"
+          "UPDATE TestEntity AS t SET s = 's', i = 1, l = 2, o = 1, b = true WHERE t.s = 's'"
       }
       "entity with filter" in {
         inline def q = quote {
           qr1.filter(t => t.s == "s").updateValue(TestEntity("s", 1, 2L, Some(1), true))
         }
         testContext.run(q).string mustEqual
-          "UPDATE TestEntity SET s = 's', i = 1, l = 2, o = 1, b = true WHERE s = 's'"
+          "UPDATE TestEntity AS t SET s = 's', i = 1, l = 2, o = 1, b = true WHERE t.s = 's'"
       }
       "entity with filter and lift" in {
         inline def q = quote {
           qr1.filter(t => t.s == lift("s")).updateValue(TestEntity("s", 1, 2L, Some(1), true))
         }
         testContext.run(q).triple mustEqual
-          ("UPDATE TestEntity SET s = 's', i = 1, l = 2, o = 1, b = true WHERE s = ?", List("s"), Static)
+          ("UPDATE TestEntity AS t SET s = 's', i = 1, l = 2, o = 1, b = true WHERE t.s = ?", List("s"), Static)
       }
     }
     "updateValue" - {
@@ -157,7 +157,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = 's'", List("s", 1, 2L, Some(1), true), Static)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = 's'", List("s", 1, 2L, Some(1), true), Static)
       }
       "with filter and lift" in {
         inline def q = quote {
@@ -165,7 +165,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(1), true, "s"), Static)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Static)
       }
       "quoted with filter and lift" in {
         inline def orig = quote {
@@ -176,7 +176,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(1), true, "s"), Static)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Static)
       }
       "quoted dynamic with filter and lift" in {
         val orig = quote {
@@ -187,7 +187,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(1), true, "s"), Dynamic)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Dynamic)
       }
       "fully dynamic with filter and lift" in {
         val orig = quote {
@@ -197,7 +197,7 @@ class ActionSpec extends Spec {
           orig.updateValue(lift(v))
         }
         testContext.run(q).triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(1), true, "s"), Dynamic)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Dynamic)
       }
     }
     "update" - {
@@ -206,14 +206,14 @@ class ActionSpec extends Spec {
           qr1.filter(t => t.s == null).update(_.s -> "s")
         }
         testContext.run(q).string mustEqual
-          "UPDATE TestEntity SET s = 's' WHERE s IS NULL"
+          "UPDATE TestEntity AS t SET s = 's' WHERE t.s IS NULL"
       }
       "with filter" in {
         inline def q = quote {
           qr1.filter(t => t.s == "s").update(_.s -> "s")
         }
         testContext.run(q).string mustEqual
-          "UPDATE TestEntity SET s = 's' WHERE s = 's'"
+          "UPDATE TestEntity AS t SET s = 's' WHERE t.s = 's'"
       }
       "with filter and lift" in {
         inline def q = quote {
@@ -221,7 +221,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = 's' WHERE s = ?", List("s"), Static)
+          ("UPDATE TestEntity AS t SET s = 's' WHERE t.s = ?", List("s"), Static)
       }
       "without filter" in {
         val q = quote {
@@ -251,7 +251,7 @@ class ActionSpec extends Spec {
           qr1.filter(t => t.s == null).delete
         }
         testContext.run(q).string mustEqual
-          "DELETE FROM TestEntity WHERE s IS NULL"
+          "DELETE FROM TestEntity AS t WHERE t.s IS NULL"
       }
       "without filter" in {
         val q = quote {
