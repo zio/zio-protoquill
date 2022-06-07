@@ -3,8 +3,8 @@ package io.getquill
 import io.getquill.context.mirror.Row
 import io.getquill.context.ExecutionType
 
-class InsertAdvancedSpec extends Spec {
-  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+class InsertLiftedSpec extends Spec {
+  val ctx = new MirrorContext(MirrorSqlDialect, Literal) // //
   import ctx._
 
   "Lifted Insert should work for" - {
