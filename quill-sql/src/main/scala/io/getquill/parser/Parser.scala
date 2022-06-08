@@ -879,8 +879,8 @@ class GenericExpressionsParser(val rootParse: Parser)(using Quotes) extends Pars
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
 
   def attempt = {
-    case expr @ ImplicitClassExtensionPattern(clsName, constructorArg, methodName) =>
-      report.throwError(ImplicitClassExtensionPattern.errorMessage(expr, clsName, constructorArg, methodName), expr)
+    case expr @ ImplicitClassExtensionPattern(cls, constructorArg) =>
+      report.throwError(ImplicitClassExtensionPattern.errorMessage(expr, cls, constructorArg), expr)
 
     case AnyProperty(property) => property
 
