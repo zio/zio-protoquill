@@ -1,3 +1,11 @@
+# 3.18.0
+
+- [Correct decoding Option[Product] and fix complex insertValue encoders](https://github.com/zio/zio-protoquill/pull/109)
+
+#### Migration Notes:
+- Similar to [2504](https://github.com/zio/zio-quill/pull/2504) in Scala2-Quill, [109](https://github.com/zio/zio-protoquill/pull/109) in ProtoQuill changes the handling of optional-product rows. Whereas before, if any non-optional column of an optional-product row was null, then entre optional-product would be null. Now however, an optional-product will only be null if every column inside is null. For example, before, if a query returning `Person(name:Option(Name(first:String, last:String)), age: Int)` resulted in the row `ResultRow("Joe", null, 123)` before the entity would be decoded into `Person(None, 123)` (i.e. the optional-product `Option[Name]` would decode to `None`).<br>
+  Now however, `Option[Name]` only decodes to `None` if every column inside it is null. This means that the `ResultRow("Joe", null, 123)` decodes to `Person(Name("Joe", 0 /*default-placeholder for null*/), 123)`. Only when the both `first` and `last` columns in Name are null i.e. `ResultRow(null, null, 123)` will the result be: `Person(None, 123)`.
+
 # 3.16.5-Beta31
 
 - [Fix Batch Insertion/Update for tuple-based fields](https://github.com/zio/zio-protoquill/pull/103)
