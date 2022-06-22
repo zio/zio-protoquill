@@ -3,7 +3,7 @@ package io.getquill.context.qzio
 import io.getquill.context.ZioJdbc._
 import io.getquill.context.jdbc.JdbcContextTypes
 import io.getquill.context.sql.idiom.SqlIdiom
-import io.getquill.context.{ ExecutionInfo, ProtoContext, ContextVerbStream }
+import io.getquill.context.{ ExecutionInfo, ProtoContextSecundus, ContextVerbStream }
 import zio.Exit.{ Failure, Success }
 import zio.stream.ZStream
 import zio.{ FiberRef, Has, Runtime, UIO, ZIO, ZManaged }
@@ -44,7 +44,7 @@ import io.getquill._
  */
 abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
   with JdbcContextTypes[Dialect, Naming]
-  with ProtoContext[Dialect, Naming]
+  with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]
   with ZioTranslateContext[Dialect, Naming] {

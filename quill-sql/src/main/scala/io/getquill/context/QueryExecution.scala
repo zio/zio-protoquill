@@ -47,7 +47,7 @@ import io.getquill.quat.Quat
 import io.getquill.ast.External
 
 object ContextOperation:
-  case class Argument[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](
+  case class Argument[I, T, DecodeT, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](
       sql: String,
       prepare: Array[(PrepareRow, Session) => (List[Any], PrepareRow)],
       extractor: Extraction[ResultRow, Session, T],
@@ -55,13 +55,15 @@ object ContextOperation:
       fetchSize: Option[Int]
   )
   case class Factory[D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _]](val idiom: D, val naming: N):
+    def opCustomOut[I, T, DecodeT, Res] =
+      ContextOperation[I, T, DecodeT, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res](idiom, naming)
     def op[I, T, Res] =
-      ContextOperation[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res](idiom, naming)
+      ContextOperation[I, T, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res](idiom, naming)
     def batch[I, T, A <: QAC[I, T] with Action[I], Res] =
-      ContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res](idiom, naming)
+      ContextOperation[I, T, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res](idiom, naming)
 
-case class ContextOperation[I, T, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](val idiom: D, val naming: N)(
-    val execute: (ContextOperation.Argument[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res]) => Res
+case class ContextOperation[I, T, DecodeT, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](val idiom: D, val naming: N)(
+    val execute: (ContextOperation.Argument[I, T, DecodeT, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res]) => Res
 )
 
 /** Enums and helper methods for QueryExecution and BatchQueryExecution */
@@ -151,6 +153,7 @@ object QueryExecution:
   class RunQuery[
       I: Type,
       T: Type,
+      DecodeT: Type,
       ResultRow: Type,
       PrepareRow: Type,
       Session: Type,
@@ -160,7 +163,7 @@ object QueryExecution:
       Res: Type
   ](
       quotedOp: Expr[Quoted[QAC[I, T]]],
-      contextOperation: Expr[ContextOperation[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
+      contextOperation: Expr[ContextOperation[I, T, DecodeT, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
       fetchSize: Expr[Option[Int]],
       wrap: Expr[OuterSelectWrap]
   )(using val qctx: Quotes, QAC: Type[QAC[I, T]]):
@@ -172,7 +175,7 @@ object QueryExecution:
         // Query has this shape
         case '[QAC[Nothing, T]] => applyQuery(quotedOp)
         // Insert / Delete / Update have this shape
-        case '[QAC[I, Nothing]] => applyAction(quotedOp)
+        case '[QAC[I, T]] => applyAction(quotedOp)
         // Insert Returning has this shape
         case '[QAC[I, T]] =>
           if (!(TypeRepr.of[T] =:= TypeRepr.of[Any]))
@@ -317,7 +320,7 @@ object QueryExecution:
       // Note, we don't want to serialize the Quat here because it is directly spliced into the execution method call an only once.
       // / For the sake of viewing/debugging the quat macro code it is better not to serialize it here
       '{
-        RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Session, Ctx, Res](
+        RunDynamicExecution.apply[I, T, DecodeT, RawT, D, N, PrepareRow, ResultRow, Session, Ctx, Res](
           $elaboratedAstQuote,
           $contextOperation,
           $extractor,
@@ -334,6 +337,7 @@ object QueryExecution:
   inline def apply[
       I,
       T,
+      DecodeT,
       ResultRow,
       PrepareRow,
       Session,
@@ -341,12 +345,13 @@ object QueryExecution:
       N <: NamingStrategy,
       Ctx <: Context[_, _],
       Res
-  ](inline quotedOp: Quoted[QAC[I, T]], ctx: ContextOperation[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res], fetchSize: Option[Int], inline wrap: OuterSelectWrap = OuterSelectWrap.Default) =
+  ](inline quotedOp: Quoted[QAC[I, T]], ctx: ContextOperation[I, T, DecodeT, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res], fetchSize: Option[Int], inline wrap: OuterSelectWrap = OuterSelectWrap.Default) =
     ${ applyImpl('quotedOp, 'ctx, 'fetchSize, 'wrap) }
 
   def applyImpl[
       I: Type,
       T: Type,
+      DecodeT: Type,
       ResultRow: Type,
       PrepareRow: Type,
       Session: Type,
@@ -356,10 +361,10 @@ object QueryExecution:
       Res: Type
   ](
       quotedOp: Expr[Quoted[QAC[I, T]]],
-      ctx: Expr[ContextOperation[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
+      ctx: Expr[ContextOperation[I, T, DecodeT, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
       fetchSize: Expr[Option[Int]],
       wrap: Expr[OuterSelectWrap]
-  )(using qctx: Quotes): Expr[Res] = new RunQuery[I, T, ResultRow, PrepareRow, Session, D, N, Ctx, Res](quotedOp, ctx, fetchSize, wrap).apply()
+  )(using qctx: Quotes): Expr[Res] = new RunQuery[I, T, DecodeT, ResultRow, PrepareRow, Session, D, N, Ctx, Res](quotedOp, ctx, fetchSize, wrap).apply()
 
 end QueryExecution
 
@@ -592,6 +597,7 @@ object RunDynamicExecution:
   def apply[
       I,
       T,
+      DecodeT,
       RawT,
       D <: Idiom,
       N <: NamingStrategy,
@@ -602,7 +608,7 @@ object RunDynamicExecution:
       Res
   ](
       quoted: Quoted[QAC[I, RawT]],
-      ctx: ContextOperation[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res],
+      ctx: ContextOperation[I, T, DecodeT, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res],
       rawExtractor: Extraction[ResultRow, Session, T],
       spliceAst: Boolean,
       fetchSize: Option[Int],

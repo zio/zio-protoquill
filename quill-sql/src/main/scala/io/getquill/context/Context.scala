@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ReturnAction}
+import io.getquill.ReturnAction
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -37,39 +37,12 @@ import io.getquill.Literal
 import scala.annotation.targetName
 import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
-import io.getquill.context.ProtoContext
+import io.getquill.context.ProtoContextSecundus
 import io.getquill.context.AstSplicing
 import io.getquill.context.RowContext
 import io.getquill.metaprog.etc.ColumnsFlicer
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
-
-sealed trait RunnerSummoningBehavior
-object RunnerSummoningBehavior {
-  sealed trait Implicit extends RunnerSummoningBehavior
-  object Implicit extends Implicit
-  sealed trait Member extends RunnerSummoningBehavior
-  object Member extends Member
-}
-
-sealed trait Extraction[-ResultRow, -Session, +T]:
-  /** Require an effect to be be simple and retrieve it. Effectful at compile-time since it can fail compilation */
-  def requireSimple() =
-    this match
-      case ext: Extraction.Simple[_, _, _] => ext
-      case _                               => throw new IllegalArgumentException("Extractor required")
-
-  /** Require an effect to be be returning and retrieve it. Effectful at compile-time since it can fail compilation */
-  def requireReturning() =
-    this match
-      case ext: Extraction.Returning[_, _, _] => ext
-      case _                                  => throw new IllegalArgumentException("Returning Extractor required")
-
-object Extraction:
-  case class Simple[ResultRow, Session, T](extract: (ResultRow, Session) => T) extends Extraction[ResultRow, Session, T]
-  case class Returning[ResultRow, Session, T](extract: (ResultRow, Session) => T, returningBehavior: ReturnAction) extends Extraction[ResultRow, Session, T]
-  case object None extends Extraction[Any, Any, Nothing]
-
 import io.getquill.generic.DecodeAlternate
 
 trait ContextStandard[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]
@@ -77,7 +50,7 @@ trait ContextStandard[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy
     with ContextVerbPrepareLambda[Idiom, Naming]
 
 trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
-    extends ProtoContext[Dialect, Naming] with EncodingDsl with Closeable:
+    extends ProtoContextSecundus[Dialect, Naming] with EncodingDsl with Closeable:
   self =>
 
   /**
@@ -169,6 +142,15 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
       }
       QueryExecution.apply(quoted, ca, None)
     }
+
+    // inline def runActionReturningMany[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): Result[RunActionReturningResult[List[T]]] = {
+    //   val ca = make.op[E, T, Result[RunActionReturningResult[List[T]]]] { arg =>
+    //     // Need an extractor with special information that helps with the SQL returning specifics
+    //     val returningExt = arg.extractor.requireReturning()
+    //     self.executeActionReturningMany(arg.sql, arg.prepare.head, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
+    //   }
+    //   QueryExecution.apply(quoted, ca, None)
+    // }
 
     inline def runBatchAction[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
       val ca = make.batch[I, Nothing, A, Result[RunBatchActionResult]] { arg =>

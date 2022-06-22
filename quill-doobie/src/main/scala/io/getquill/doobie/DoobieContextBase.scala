@@ -23,13 +23,13 @@ import io.getquill.context.jdbc.JdbcContextBase
 import io.getquill.util.ContextLogger
 import scala.language.implicitConversions
 import io.getquill.context.jdbc.JdbcContextTypes
-import io.getquill.context.ProtoContext
+import io.getquill.context.ProtoContextSecundus
 import scala.annotation.targetName
 
 /** Base trait from which vendor-specific variants are derived. */
 trait DoobieContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   extends JdbcContextTypes[Dialect, Naming]
-    with ProtoContext[Dialect, Naming]
+    with ProtoContextSecundus[Dialect, Naming]
     with ContextVerbStream[Dialect, Naming] {
 
   override type Result[A] = ConnectionIO[A]

@@ -5,7 +5,7 @@ import java.sql.{ Connection, PreparedStatement }
 import javax.sql.DataSource
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill._
-import io.getquill.context.{ ExecutionInfo, ProtoContext, ContextVerbTranslate }
+import io.getquill.context.{ ExecutionInfo, ProtoContextSecundus, ContextVerbTranslate }
 
 import scala.util.{ DynamicVariable, Try }
 import scala.util.control.NonFatal
@@ -15,7 +15,7 @@ import io.getquill.context.ContextVerbTranslate
 
 abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   extends JdbcContextBase[Dialect, Naming]
-  with ProtoContext[Dialect, Naming]
+  with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbTranslate[Dialect, Naming]
   {
 
