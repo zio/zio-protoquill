@@ -40,7 +40,7 @@ trait ProtoContextSecundus[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingS
   def executeQuerySingle[T](string: String, prepare: Prepare, extractor: Extractor[T])(executionInfo: ExecutionInfo, rn: Runner): Result[RunQuerySingleResult[T]]
   def executeAction(sql: String, prepare: Prepare)(executionInfo: ExecutionInfo, rn: Runner): Result[RunActionResult]
   def executeActionReturning[T](sql: String, prepare: Prepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, rn: Runner): Result[RunActionReturningResult[T]]
-  // def executeActionReturningMany[T](sql: String, prepare: Prepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, rn: Runner): Result[RunActionReturningResult[List[T]]]
+  def executeActionReturningMany[T](sql: String, prepare: Prepare, extractor: Extractor[T], returningBehavior: ReturnAction)(executionInfo: ExecutionInfo, rn: Runner): Result[RunActionReturningResult[List[T]]]
   def executeBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, rn: Runner): Result[RunBatchActionResult]
   def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(executionInfo: ExecutionInfo, rn: Runner): Result[RunBatchActionReturningResult[T]]
 }

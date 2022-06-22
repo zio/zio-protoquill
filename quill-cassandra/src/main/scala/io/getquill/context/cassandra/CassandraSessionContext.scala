@@ -70,6 +70,9 @@ trait CassandraStandardContext[N <: NamingStrategy]
   override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner) =
     fail("Cassandra doesn't support `returning`.")
 
+  override def executeActionReturningMany[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner) =
+    fail("Cassandra doesn't support `returningMany`.")
+
   override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner) =
     fail("Cassandra doesn't support `returning`.")
 }

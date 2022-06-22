@@ -54,6 +54,8 @@ trait DoobieContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   inline def run[E](inline quoted: Quoted[Action[E]]): ConnectionIO[Long] = InternalApi.runAction(quoted)
   @targetName("runActionReturning")
   inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): ConnectionIO[T] = InternalApi.runActionReturning[E, T](quoted)
+  @targetName("runActionReturningMany")
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): ConnectionIO[List[T]] = InternalApi.runActionReturningMany[E, T](quoted)
   @targetName("runBatchAction")
   inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ConnectionIO[List[Long]] = InternalApi.runBatchAction(quoted)
   @targetName("runBatchActionReturning")
@@ -156,11 +158,22 @@ trait DoobieContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy]
     info: ExecutionInfo,
     dc: Runner,
   ): ConnectionIO[A] =
-    prepareConnections[A](returningBehavior)(sql) {
+    executeActionReturningMany[A](sql, prepare, extractor, returningBehavior)(info, dc).map(handleSingleResult(sql, _))
+
+  override def executeActionReturningMany[A](
+    sql: String,
+    prepare: Prepare = identityPrepare,
+    extractor: Extractor[A],
+    returningBehavior: ReturnAction,
+  )(
+    info: ExecutionInfo,
+    dc: Runner,
+  ): ConnectionIO[List[A]] =
+    prepareConnections[List[A]](returningBehavior)(sql) {
       useConnection { implicit connection =>
         prepareAndLog(sql, prepare) *>
           FPS.executeUpdate *>
-          HPS.getGeneratedKeys(HRS.getUnique(extractor))
+          HPS.getGeneratedKeys[List[A]](HRS.list(extractor))
       }
     }
 

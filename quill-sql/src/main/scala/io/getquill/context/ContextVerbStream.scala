@@ -61,6 +61,6 @@ trait ContextVerbStream[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingStra
       val simpleExt = arg.extractor.requireSimple()
       self.streamQuery(arg.fetchSize, arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, InternalApi._summonRunner())
     }
-    QueryExecution.apply(quoted, ca, fetchSize)
+    QueryExecution.apply(ca)(quoted, fetchSize)
   }
 end ContextVerbStream

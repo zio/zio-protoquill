@@ -70,7 +70,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.info.executionType
       )
 
-  extension (m: MirrorContextBase[_, _]#ActionReturningMirror[_])
+  extension (m: MirrorContextBase[_, _]#ActionReturningMirror[_, _])
     def triple =
       (
         m.string,

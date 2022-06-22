@@ -44,6 +44,7 @@ import io.getquill.metaprog.etc.ColumnsFlicer
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 import io.getquill.generic.DecodeAlternate
+import com.typesafe.scalalogging.Logger
 
 trait ContextStandard[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]
     extends Context[Idiom, Naming]
@@ -116,7 +117,7 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
         val simpleExt = arg.extractor.requireSimple()
         self.executeQuery(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
       }
-      QueryExecution.apply(quoted, ca, None, wrap)
+      QueryExecution.apply(ca)(quoted, None, wrap)
     }
 
     inline def runQuerySingle[T](inline quoted: Quoted[T]): Result[RunQuerySingleResult[T]] = {
@@ -124,14 +125,14 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
         val simpleExt = arg.extractor.requireSimple()
         self.executeQuerySingle(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
       }
-      QueryExecution.apply(QuerySingleAsQuery(quoted), ca, None)
+      QueryExecution.apply(ca)(QuerySingleAsQuery(quoted), None)
     }
 
     inline def runAction[E](inline quoted: Quoted[Action[E]]): Result[RunActionResult] = {
       val ca = make.op[E, Any, Result[RunActionResult]] { arg =>
         self.executeAction(arg.sql, arg.prepare.head)(arg.executionInfo, _summonRunner())
       }
-      QueryExecution.apply(quoted, ca, None)
+      QueryExecution.apply(ca)(quoted, None)
     }
 
     inline def runActionReturning[E, T](inline quoted: Quoted[ActionReturning[E, T]]): Result[RunActionReturningResult[T]] = {
@@ -140,17 +141,17 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
         val returningExt = arg.extractor.requireReturning()
         self.executeActionReturning(arg.sql, arg.prepare.head, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
       }
-      QueryExecution.apply(quoted, ca, None)
+      QueryExecution.apply(ca)(quoted, None)
     }
 
-    // inline def runActionReturningMany[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): Result[RunActionReturningResult[List[T]]] = {
-    //   val ca = make.op[E, T, Result[RunActionReturningResult[List[T]]]] { arg =>
-    //     // Need an extractor with special information that helps with the SQL returning specifics
-    //     val returningExt = arg.extractor.requireReturning()
-    //     self.executeActionReturningMany(arg.sql, arg.prepare.head, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
-    //   }
-    //   QueryExecution.apply(quoted, ca, None)
-    // }
+    inline def runActionReturningMany[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): Result[RunActionReturningResult[List[T]]] = {
+      val ca = make.op[E, T, Result[RunActionReturningResult[List[T]]]] { arg =>
+        // Need an extractor with special information that helps with the SQL returning specifics
+        val returningExt = arg.extractor.requireReturning()
+        self.executeActionReturningMany(arg.sql, arg.prepare.head, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
+      }
+      QueryExecution.apply(ca)(quoted, None)
+    }
 
     inline def runBatchAction[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
       val ca = make.batch[I, Nothing, A, Result[RunBatchActionResult]] { arg =>
@@ -158,7 +159,7 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
         val group = BatchGroup(arg.sql, arg.prepare.toList)
         self.executeBatchAction(List(group))(arg.executionInfo, _summonRunner())
       }
-      BatchQueryExecution.apply(quoted, ca)
+      BatchQueryExecution.apply(ca)(quoted)
     }
 
     inline def runBatchActionReturning[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionReturningResult[T]] = {
@@ -168,15 +169,27 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
         val group = BatchGroupReturning(arg.sql, returningExt.returningBehavior, arg.prepare.toList)
         self.executeBatchActionReturning[T](List(group), returningExt.extract)(arg.executionInfo, _summonRunner())
       }
-      BatchQueryExecution.apply(quoted, ca)
+      BatchQueryExecution.apply(ca)(quoted)
     }
   end InternalApi
 
-  protected def handleSingleResult[T](list: List[T]) =
+  protected def handleSingleResult[T](sql: String, list: List[T]) =
     list match {
+      case Nil =>
+        fail(s"Expected a single result from the query: `${sql}` but got a empty result-set!")
       case value :: Nil => value
-      case other        => fail(s"Expected a single result but got $other")
+      case other        =>
+        // Note. If we want to cross-compile to ScalaJS this will only work for the JVM variant. Have a look at ContextLog
+        // in Scala2-Quill for an approach on how to do that.
+        Logger(s"Expected a single result from the query: `${sql}` but got: ${abbrevList(other)}. Only the 1st result will be returned!")
+        other.head
     }
+
+  private def abbrevList[T](list: List[T]) =
+    if (list.length > 10)
+      list.take(10).mkString("List(", ",", "...)")
+    else
+      list.toString()
 
   // Can close context. Does nothing by default.
   def close(): Unit = ()

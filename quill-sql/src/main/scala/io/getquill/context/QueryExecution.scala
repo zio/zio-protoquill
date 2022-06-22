@@ -47,7 +47,7 @@ import io.getquill.quat.Quat
 import io.getquill.ast.External
 
 object ContextOperation:
-  case class Argument[I, T, DecodeT, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](
+  case class Argument[I, T, A <: QAC[I, _] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](
       sql: String,
       prepare: Array[(PrepareRow, Session) => (List[Any], PrepareRow)],
       extractor: Extraction[ResultRow, Session, T],
@@ -55,15 +55,13 @@ object ContextOperation:
       fetchSize: Option[Int]
   )
   case class Factory[D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _]](val idiom: D, val naming: N):
-    def opCustomOut[I, T, DecodeT, Res] =
-      ContextOperation[I, T, DecodeT, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res](idiom, naming)
     def op[I, T, Res] =
-      ContextOperation[I, T, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res](idiom, naming)
+      ContextOperation[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res](idiom, naming)
     def batch[I, T, A <: QAC[I, T] with Action[I], Res] =
-      ContextOperation[I, T, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res](idiom, naming)
+      ContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res](idiom, naming)
 
-case class ContextOperation[I, T, DecodeT, A <: QAC[I, T] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](val idiom: D, val naming: N)(
-    val execute: (ContextOperation.Argument[I, T, DecodeT, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res]) => Res
+case class ContextOperation[I, T, A <: QAC[I, _] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](val idiom: D, val naming: N)(
+    val execute: (ContextOperation.Argument[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res]) => Res
 )
 
 /** Enums and helper methods for QueryExecution and BatchQueryExecution */
@@ -152,8 +150,10 @@ object QueryExecution:
 
   class RunQuery[
       I: Type,
+      // Output type of the Quoted. E.g. People for query[People] or List[People] for query[People].returningMany(p => p)
+      // Also when a QueryMeta[OutputT, RawT] is used (e.g. `QueryMeta[PersonName, String]: queryMeta(Query[PersonName] => String)(String => PersonName)`)
+      // then OutputT is the output type that gets converted out from RawT.
       T: Type,
-      DecodeT: Type,
       ResultRow: Type,
       PrepareRow: Type,
       Session: Type,
@@ -162,26 +162,29 @@ object QueryExecution:
       Ctx <: Context[_, _]: Type,
       Res: Type
   ](
-      quotedOp: Expr[Quoted[QAC[I, T]]],
-      contextOperation: Expr[ContextOperation[I, T, DecodeT, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
+      quotedOp: Expr[Quoted[QAC[_, _]]],
+      contextOperation: Expr[ContextOperation[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
       fetchSize: Expr[Option[Int]],
       wrap: Expr[OuterSelectWrap]
-  )(using val qctx: Quotes, QAC: Type[QAC[I, T]]):
+  )(using val qctx: Quotes, QAC: Type[QAC[_, _]]):
     import qctx.reflect.{Try => _, _}
     import Execution._
 
     def apply() =
-      QAC match
+      // Since QAC type doesn't have the needed info (i.e. it's parameters are existential) hence
+      // it cannot be checked if they are nothing etc... so instead we need to check the type
+      // on the actual quoted term.
+      quotedOp.asTerm.tpe.asType match
         // Query has this shape
-        case '[QAC[Nothing, T]] => applyQuery(quotedOp)
+        case '[Quoted[QAC[Nothing, _]]] => applyQuery(quotedOp)
         // Insert / Delete / Update have this shape
-        case '[QAC[I, T]] => applyAction(quotedOp)
-        // Insert Returning has this shape
-        case '[QAC[I, T]] =>
+        case '[Quoted[QAC[_, Nothing]]] => applyAction(quotedOp)
+        // Insert Returning, ReturningMany, etc... has this shape
+        case '[Quoted[QAC[_, _]]] =>
           if (!(TypeRepr.of[T] =:= TypeRepr.of[Any]))
             applyActionReturning(quotedOp) // ReturningAction is also a subtype of Action so check it before Action
           else
-            // In certain situations (i.e. if a user does infix"stuff".as[Actoin[Stuff]] something will be directly specified
+            // In certain situations (i.e. if a user does infix"stuff".as[Action[Stuff]] something will be directly specified
             // as an Action[T] without there being a `& QAC[T, Nothing]` as part of the type. In that case, the `ModificationEntity`
             // will just be `Any`. We need to manually detect that case since it requires no return type)
             applyAction(quotedOp)
@@ -203,14 +206,14 @@ object QueryExecution:
      * if this seems to work well, make the same change to other apply___ methods here.
      * )
      */
-    def applyQuery(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
+    def applyQuery(quoted: Expr[Quoted[QAC[_, _]]]): Expr[Res] =
       val topLevelQuat = QuatMaking.ofType[T]
       summonQueryMetaTypeIfExists[T] match
         // Can we get a QueryMeta? Run that pipeline if we can
         case Some(queryMeta) =>
           queryMeta match { case '[rawT] => runWithQueryMeta[rawT](quoted) }
         case None =>
-          Try(StaticTranslationMacro[I, T, D, N](quoted, queryElaborationBehavior, topLevelQuat)) match
+          Try(StaticTranslationMacro[D, N](quoted, queryElaborationBehavior, topLevelQuat)) match
             case scala.util.Failure(e) =>
               import CommonExtensions.Throwable._
               val msg = s"Query splicing failed due to error: ${e.stackTraceToString}"
@@ -225,23 +228,23 @@ object QueryExecution:
             case scala.util.Success(None) =>
               executeDynamic(quoted, identityConverter, ExtractBehavior.Extract, queryElaborationBehavior, topLevelQuat) // No we can't. Do dynamic
 
-    def applyAction(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
-      StaticTranslationMacro[I, T, D, N](quoted, ElaborationBehavior.Skip, Quat.Value) match
+    def applyAction(quoted: Expr[Quoted[QAC[_, _]]]): Expr[Res] =
+      StaticTranslationMacro[D, N](quoted, ElaborationBehavior.Skip, Quat.Value) match
         case Some(staticState) =>
           executeStatic[T](staticState, identityConverter, ExtractBehavior.Skip, Quat.Value)
         case None =>
           executeDynamic(quoted, identityConverter, ExtractBehavior.Skip, ElaborationBehavior.Skip, Quat.Value)
 
-    def applyActionReturning(quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
+    def applyActionReturning(quoted: Expr[Quoted[QAC[_, _]]]): Expr[Res] =
       val topLevelQuat = QuatMaking.ofType[T]
-      StaticTranslationMacro[I, T, D, N](quoted, ElaborationBehavior.Skip, topLevelQuat) match
+      StaticTranslationMacro[D, N](quoted, ElaborationBehavior.Skip, topLevelQuat) match
         case Some(staticState) =>
           executeStatic[T](staticState, identityConverter, ExtractBehavior.ExtractWithReturnAction, topLevelQuat)
         case None =>
           executeDynamic(quoted, identityConverter, ExtractBehavior.ExtractWithReturnAction, ElaborationBehavior.Skip, Quat.Value)
 
-    /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to T */
-    def runWithQueryMeta[RawT: Type](quoted: Expr[Quoted[QAC[I, T]]]): Expr[Res] =
+    /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to OutputT */
+    def runWithQueryMeta[RawT: Type](quoted: Expr[Quoted[QAC[_, _]]]): Expr[Res] =
       val topLevelQuat = QuatMaking.ofType[RawT]
       val (queryRawT, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted.asExprOf[Quoted[Query[T]]], topLevelQuat)
       staticStateOpt match {
@@ -302,7 +305,7 @@ object QueryExecution:
      * need to use ElaborateStructure or not. This is decided in the StaticTranslationMacro for static queries using a
      * different method. I.e. since StaticTranslationMacro knows the AST node it infers Action/Query from that).
      */
-    def executeDynamic[RawT: Type](quote: Expr[Quoted[QAC[I, RawT]]], converter: Expr[RawT => T], extract: ExtractBehavior, elaborationBehavior: ElaborationBehavior, topLevelQuat: Quat) =
+    def executeDynamic[RawT: Type](quote: Expr[Quoted[QAC[?, ?]]], converter: Expr[RawT => T], extract: ExtractBehavior, elaborationBehavior: ElaborationBehavior, topLevelQuat: Quat) =
       // Grab the ast from the quote and make that into an expression that we will pass into the dynamic evaluator
       // Expand the outermost quote using the macro and put it back into the quote
       // Is the expansion on T or RawT, need to investigate
@@ -320,7 +323,7 @@ object QueryExecution:
       // Note, we don't want to serialize the Quat here because it is directly spliced into the execution method call an only once.
       // / For the sake of viewing/debugging the quat macro code it is better not to serialize it here
       '{
-        RunDynamicExecution.apply[I, T, DecodeT, RawT, D, N, PrepareRow, ResultRow, Session, Ctx, Res](
+        RunDynamicExecution.apply[I, T, RawT, D, N, PrepareRow, ResultRow, Session, Ctx, Res](
           $elaboratedAstQuote,
           $contextOperation,
           $extractor,
@@ -345,7 +348,7 @@ object QueryExecution:
       N <: NamingStrategy,
       Ctx <: Context[_, _],
       Res
-  ](inline quotedOp: Quoted[QAC[I, T]], ctx: ContextOperation[I, T, DecodeT, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res], fetchSize: Option[Int], inline wrap: OuterSelectWrap = OuterSelectWrap.Default) =
+  ](ctx: ContextOperation[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res])(inline quotedOp: Quoted[QAC[_, _]], fetchSize: Option[Int], inline wrap: OuterSelectWrap = OuterSelectWrap.Default) =
     ${ applyImpl('quotedOp, 'ctx, 'fetchSize, 'wrap) }
 
   def applyImpl[
@@ -360,11 +363,11 @@ object QueryExecution:
       Ctx <: Context[_, _]: Type,
       Res: Type
   ](
-      quotedOp: Expr[Quoted[QAC[I, T]]],
-      ctx: Expr[ContextOperation[I, T, DecodeT, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
+      quotedOp: Expr[Quoted[QAC[_, _]]],
+      ctx: Expr[ContextOperation[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
       fetchSize: Expr[Option[Int]],
       wrap: Expr[OuterSelectWrap]
-  )(using qctx: Quotes): Expr[Res] = new RunQuery[I, T, DecodeT, ResultRow, PrepareRow, Session, D, N, Ctx, Res](quotedOp, ctx, fetchSize, wrap).apply()
+  )(using qctx: Quotes): Expr[Res] = new RunQuery[I, T, ResultRow, PrepareRow, Session, D, N, Ctx, Res](quotedOp, ctx, fetchSize, wrap).apply()
 
 end QueryExecution
 
@@ -597,7 +600,6 @@ object RunDynamicExecution:
   def apply[
       I,
       T,
-      DecodeT,
       RawT,
       D <: Idiom,
       N <: NamingStrategy,
@@ -608,7 +610,7 @@ object RunDynamicExecution:
       Res
   ](
       quoted: Quoted[QAC[I, RawT]],
-      ctx: ContextOperation[I, T, DecodeT, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res],
+      ctx: ContextOperation[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res],
       rawExtractor: Extraction[ResultRow, Session, T],
       spliceAst: Boolean,
       fetchSize: Option[Int],

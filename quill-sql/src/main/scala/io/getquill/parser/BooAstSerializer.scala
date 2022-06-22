@@ -256,6 +256,7 @@ object AstPicklers {
       .addConcreteType[OptionApply](optionApplyPickler, classTag[OptionApply])
       .addConcreteType[OptionOrNull](optionOrNullPickler, classTag[OptionOrNull])
       .addConcreteType[OptionGetOrNull](optionGetOrNullPickler, classTag[OptionGetOrNull])
+      .addConcreteType[FilterIfDefined]
 
   // ==== IterableOperation Picker ====
   implicit val iterableOperationPickler: CompositePickler[IterableOperation] =

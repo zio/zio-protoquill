@@ -101,20 +101,19 @@ class OptionOperationTest extends Spec with Inside {
       quote(unquote(q)).ast.asFunction.body mustEqual o
       repickle(o) mustEqual o
     }
-    // TODO Need to import extras and write parser for them
-    // "orNull" in {
-    //   inline def q = quote {
-    //     (o: Option[String]) => o.orNull
-    //   }
-    //   quote(unquote(q)).ast.asFunction.body mustEqual OptionOrNull(Ident("o"))
-    // }
-    // TODO Need to import extras and write parser for them
-    // "getOrNull" in {
-    //   inline def q = quote {
-    //     (o: Option[Int]) => o.getOrNull
-    //   }
-    //   quote(unquote(q)).ast.asFunction.body mustEqual OptionGetOrNull(Ident("o"))
-    // }
+    "orNull" in {
+      inline def q = quote {
+        (o: Option[String]) => o.orNull
+      }
+      quote(unquote(q)).ast.asFunction.body mustEqual OptionOrNull(Ident("o"))
+    }
+    "getOrNull" in {
+      import extras._
+      inline def q = quote {
+        (o: Option[Int]) => o.getOrNull
+      }
+      quote(unquote(q)).ast.asFunction.body mustEqual OptionGetOrNull(Ident("o"))
+    }
     "None" in {
       inline def q = quote(None)
       val o = OptionNone(Quat.Null)
