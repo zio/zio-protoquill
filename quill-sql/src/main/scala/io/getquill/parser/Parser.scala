@@ -300,6 +300,10 @@ class ActionParser(val rootParse: Parser)(using Quotes)
       // // Verify that the AST in the returning-body is valid
       // idiomReturnCapability.verifyAst(bodyAst)
       Returning(rootParse(action), ident, bodyAst)
+    case '{ ($action: Insert[t]).returningMany[r](${ Lambda1(id, tpe, body) }) } =>
+      val ident = cleanIdent(id, tpe)
+      val bodyAst = reprocessReturnClause(ident, rootParse(body), action, Type.of[t])
+      Returning(rootParse(action), ident, bodyAst)
 
     case '{ ($action: Insert[t]).onConflictIgnore } =>
       OnConflict(rootParse(action), OnConflict.NoTarget, OnConflict.Ignore)
@@ -334,7 +338,16 @@ class ActionParser(val rootParse: Parser)(using Quotes)
       val ident = cleanIdent(id, tpe)
       val bodyAst = reprocessReturnClause(ident, rootParse(body), action, Type.of[t])
       Returning(rootParse(action), ident, bodyAst)
+    case '{ ($action: Update[t]).returningMany[r](${ Lambda1(id, tpe, body) }) } =>
+      val ident = cleanIdent(id, tpe)
+      val bodyAst = reprocessReturnClause(ident, rootParse(body), action, Type.of[t])
+      Returning(rootParse(action), ident, bodyAst)
+
     case '{ ($action: Delete[t]).returning[r](${ Lambda1(id, tpe, body) }) } =>
+      val ident = cleanIdent(id, tpe)
+      val bodyAst = reprocessReturnClause(ident, rootParse(body), action, Type.of[t])
+      Returning(rootParse(action), ident, bodyAst)
+    case '{ ($action: Delete[t]).returningMany[r](${ Lambda1(id, tpe, body) }) } =>
       val ident = cleanIdent(id, tpe)
       val bodyAst = reprocessReturnClause(ident, rootParse(body), action, Type.of[t])
       Returning(rootParse(action), ident, bodyAst)
@@ -422,6 +435,7 @@ class OptionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) wi
   import quotes.reflect.{Constant => TConstant, _}
 
   import MatchingOptimizers._
+  import extras._
 
   extension (quat: Quat)
     def isProduct = quat.isInstanceOf[Quat.Product]
@@ -469,6 +483,19 @@ class OptionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) wi
 
     case "contains" -@> '{ type t; ($o: Option[`t`]).contains($body: `t`) } =>
       OptionContains(rootParse(o), rootParse(body))
+
+    case '{ ($o: Option[t]).orNull($refl) } => // back here
+      OptionOrNull(rootParse(o))
+
+    case '{ ($o: Option[t]).getOrNull } =>
+      OptionGetOrNull(rootParse(o))
+
+    case '{ ($o: Option[t]).filterIfDefined(${ Lambda1(id, idType, body) }) } =>
+      val queryAst = rootParse(o)
+      if (queryAst.quat.isProduct)
+        report.throwError("filterIfDefined only allowed on individual columns, not on case classes or tuples.")
+      else
+        FilterIfDefined(queryAst, cleanIdent(id, idType), rootParse(body))
   }
 }
 

@@ -48,7 +48,7 @@ object StaticTranslationMacro:
   import io.getquill.NamingStrategy
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], topLevelQuat: Quat, wrap: ElaborationBehavior, idiom: Idiom, naming: NamingStrategy)(using Quotes): Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
+  private[getquill] def processAst(astExpr: Expr[Ast], topLevelQuat: Quat, wrap: ElaborationBehavior, idiom: Idiom, naming: NamingStrategy)(using Quotes): Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
@@ -188,8 +188,8 @@ object StaticTranslationMacro:
       namingStrategy <- LoadNaming.static[N]
     } yield (idiom, namingStrategy)
 
-  def apply[I: Type, T: Type, D <: Idiom, N <: NamingStrategy](
-      quotedRaw: Expr[Quoted[QAC[I, T]]],
+  def apply[D <: Idiom, N <: NamingStrategy](
+      quotedRaw: Expr[Quoted[QAC[?, ?]]],
       wrap: ElaborationBehavior,
       topLevelQuat: Quat,
       // Optional lifts that need to be passed in if they exist e.g. in the liftQuery(...).foreach(p => query[P].filter(pq => pq.id == lift(foo)).updateValue(p))
@@ -241,7 +241,7 @@ object StaticTranslationMacro:
           )
 
         (query, externals, returnAction, ast) <-
-          processAst[T](quotedExpr.ast, topLevelQuat, wrap, idiom, naming).errPrint(s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}")
+          processAst(quotedExpr.ast, topLevelQuat, wrap, idiom, naming).errPrint(s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}")
 
         (primaryLifts, secondaryLifts) <-
           processLifts(lifts, externals, additionalLifts).errPrintEither(

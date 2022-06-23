@@ -48,6 +48,8 @@ abstract class ZioJdbcUnderlyingContext[Dialect <: SqlIdiom, Naming <: NamingStr
   inline def run[E](inline quoted: Quoted[Action[E]]): ZIO[Has[Connection], SQLException, Long] = InternalApi.runAction(quoted)
   @targetName("runActionReturning")
   inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): ZIO[Has[Connection], SQLException, T] = InternalApi.runActionReturning[E, T](quoted)
+  @targetName("runActionReturningMany")
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): ZIO[Has[Connection], SQLException, List[T]] = InternalApi.runActionReturningMany[E, T](quoted)
   @targetName("runBatchAction")
   inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[Has[Connection], SQLException, List[Long]] = InternalApi.runBatchAction(quoted)
   @targetName("runBatchActionReturning")
@@ -62,6 +64,8 @@ abstract class ZioJdbcUnderlyingContext[Dialect <: SqlIdiom, Naming <: NamingStr
     super.executeQuerySingle(sql, prepare, extractor)(info, dc)
   override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner): QCIO[O] =
     super.executeActionReturning(sql, prepare, extractor, returningBehavior)(info, dc)
+  override def executeActionReturningMany[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner): QCIO[List[O]] =
+    super.executeActionReturningMany(sql, prepare, extractor, returningBehavior)(info, dc)
   override def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): QCIO[List[Long]] =
     super.executeBatchAction(groups)(info, dc)
   override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner): QCIO[List[T]] =

@@ -22,7 +22,7 @@ trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
   override type PrepareRow = Row
   override type ResultRow = Row
   override type RunActionResult = ActionMirror
-  override type RunActionReturningResult[T] = ActionReturningMirror[T]
+  override type RunActionReturningResult[T] = ActionReturningMirror[_, T]
   override type RunBatchActionReturningResult[T] = BatchActionReturningMirror[T]
   override type RunBatchActionResult = BatchActionMirror
   override type Session = MirrorSession
@@ -49,7 +49,7 @@ trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
   }
 
   case class ActionMirror(string: String, prepareRow: PrepareRow, info: ExecutionInfo)
-  case class ActionReturningMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], returningBehavior: ReturnAction, info: ExecutionInfo)
+  case class ActionReturningMirror[T, R](string: String, prepareRow: PrepareRow, extractor: Extractor[T], returningBehavior: ReturnAction, info: ExecutionInfo)
   case class BatchActionMirror(groups: List[(String, List[Row])], info: ExecutionInfo)
   case class BatchActionReturningMirror[T](groups: List[(String, ReturnAction, List[PrepareRow])], extractor: Extractor[T], info: ExecutionInfo)
 
@@ -62,7 +62,9 @@ trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
   @targetName("runAction")
   inline def run[E](inline quoted: Quoted[Action[E]]): ActionMirror = InternalApi.runAction(quoted)
   @targetName("runActionReturning")
-  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): ActionReturningMirror[T] = InternalApi.runActionReturning(quoted)
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): ActionReturningMirror[T, T] = InternalApi.runActionReturning(quoted).asInstanceOf[ActionReturningMirror[T, T]]
+  @targetName("runActionReturningMany")
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): ActionReturningMirror[T, List[T]] = InternalApi.runActionReturningMany(quoted).asInstanceOf[ActionReturningMirror[T, List[T]]]
   @targetName("runBatchAction")
   inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): BatchActionMirror = InternalApi.runBatchAction(quoted)
   @targetName("runBatchActionReturning")
@@ -78,7 +80,10 @@ trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
     ActionMirror(string, prepare(Row(), session)._2, info)
 
   def executeActionReturning[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner): Result[RunActionReturningResult[T]] =
-    ActionReturningMirror[T](sql, prepare(Row(), session)._2, extractor, returningBehavior, info)
+    ActionReturningMirror[T, T](sql, prepare(Row(), session)._2, extractor, returningBehavior, info)
+
+  def executeActionReturningMany[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner): Result[RunActionReturningResult[List[T]]] =
+    ActionReturningMirror[T, List[T]](sql, prepare(Row(), session)._2, extractor, returningBehavior, info)
 
   override def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): Result[RunBatchActionResult] =
     BatchActionMirror(

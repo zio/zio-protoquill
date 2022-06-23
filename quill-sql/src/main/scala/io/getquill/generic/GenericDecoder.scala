@@ -182,6 +182,10 @@ object GenericDecoder {
     import quotes.reflect._
     TypeRepr.of[T] <:< TypeRepr.of[Option[Any]]
 
+  private def isBuiltInType[T: Type](using Quotes) =
+    import quotes.reflect._
+    isOption[T] || (TypeRepr.of[T] <:< TypeRepr.of[Seq[_]])
+
   def decode[T: Type, ResultRow: Type, Session: Type](index: Int, baseIndex: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session], overriddenIndex: Option[Expr[Int]] = None)(using Quotes): FlattenData =
     import quotes.reflect._
     // index of a possible decoder element if we need one
@@ -204,7 +208,7 @@ object GenericDecoder {
             case Some(ev) =>
               // Otherwise, recursively summon fields
               ev match
-                case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
+                case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } if (!isBuiltInType[T]) =>
                   // do not treat optional objects as coproduts, a Specific (i.e. EncodingType.Specific) Option-decoder
                   // is defined in the EncodingDsl
                   DecodeSum[T, ResultRow, Session, elementTypes](index, baseIndex, resultRow, session)
@@ -213,7 +217,7 @@ object GenericDecoder {
                   val children = flatten(index, baseIndex, resultRow, session)(Type.of[elementLabels], Type.of[elementTypes]).reverse
                   decodeProduct[T](children, m)
 
-                case _ => report.throwError("Tuple decoder could not be summoned")
+                case _ => report.throwError(s"Decoder for ${Format.TypeOf[T]} could not be summoned. It has no decoder and is not a recognized Product or Sum type.")
               end match
             case _ =>
               report.throwError(s"No Decoder found for ${Format.TypeOf[T]} and it is not a class representing a group of columns")

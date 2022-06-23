@@ -37,7 +37,7 @@ import io.getquill.Literal
 import scala.annotation.targetName
 import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
-import io.getquill.context.ProtoContext
+import io.getquill.context.ProtoContextSecundus
 import io.getquill.context.AstSplicing
 import io.getquill.context.RowContext
 import io.getquill.metaprog.etc.ColumnsFlicer
@@ -86,7 +86,7 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
       val simpleExt = arg.extractor.requireSimple()
       self.translateQueryEndpoint(arg.sql, arg.prepare.head, simpleExt.extract, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
-    QueryExecution.apply(quoted, ca, None)
+    QueryExecution.apply(ca)(quoted, None)
   }
 
   @targetName("translateQuerySingle")
@@ -97,7 +97,7 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
       val simpleExt = arg.extractor.requireSimple()
       self.translateQueryEndpoint(arg.sql, arg.prepare.head, simpleExt.extract, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
-    QueryExecution.apply(QuerySingleAsQuery(quoted), ca, None)
+    QueryExecution.apply(ca)(QuerySingleAsQuery(quoted), None)
   }
 
   @targetName("translateAction")
@@ -107,7 +107,7 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
     val ca = make.op[E, Any, TranslateResult[String]] { arg =>
       self.translateQueryEndpoint(arg.sql, arg.prepare.head, prettyPrint = prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
-    QueryExecution.apply(quoted, ca, None)
+    QueryExecution.apply(ca)(quoted, None)
   }
 
   @targetName("translateActionReturning")
@@ -118,7 +118,7 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
       val returningExt = arg.extractor.requireReturning()
       self.translateQueryEndpoint(arg.sql, arg.prepare.head, returningExt.extract, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
-    QueryExecution.apply(quoted, ca, None)
+    QueryExecution.apply(ca)(quoted, None)
   }
 
   @targetName("translateBatchAction")
@@ -130,7 +130,7 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
       val group = BatchGroup(arg.sql, arg.prepare.toList)
       self.translateBatchQueryEndpoint(List(group), prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
-    BatchQueryExecution.apply(quoted, ca)
+    BatchQueryExecution.apply(ca)(quoted)
   }
 
   @targetName("translateBatchActionReturning")
@@ -143,7 +143,7 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
       val group = BatchGroupReturning(arg.sql, returningExt.returningBehavior, arg.prepare.toList)
       self.translateBatchQueryReturningEndpoint(List(group), prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
-    BatchQueryExecution.apply(quoted, ca)
+    BatchQueryExecution.apply(ca)(quoted)
   }
 end ContextTranslateMacro
 

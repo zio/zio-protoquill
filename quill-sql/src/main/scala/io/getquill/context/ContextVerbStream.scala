@@ -37,7 +37,7 @@ import io.getquill.Literal
 import scala.annotation.targetName
 import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
-import io.getquill.context.ProtoContext
+import io.getquill.context.ProtoContextSecundus
 import io.getquill.context.AstSplicing
 import io.getquill.context.RowContext
 import io.getquill.metaprog.etc.ColumnsFlicer
@@ -61,6 +61,6 @@ trait ContextVerbStream[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingStra
       val simpleExt = arg.extractor.requireSimple()
       self.streamQuery(arg.fetchSize, arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, InternalApi._summonRunner())
     }
-    QueryExecution.apply(quoted, ca, fetchSize)
+    QueryExecution.apply(ca)(quoted, fetchSize)
   }
 end ContextVerbStream

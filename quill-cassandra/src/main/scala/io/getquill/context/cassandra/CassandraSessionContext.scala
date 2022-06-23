@@ -12,7 +12,7 @@ import io.getquill.context.RowContext
 import scala.concurrent.{ Await, ExecutionContext, Future }
 import scala.concurrent.duration._
 import scala.util.Try
-import io.getquill.context.ProtoContext
+import io.getquill.context.ProtoContextSecundus
 import io.getquill.generic.GenericNullChecker
 
 abstract class CassandraSessionContext[N <: NamingStrategy]
@@ -63,12 +63,15 @@ trait CassandraStandardContext[N <: NamingStrategy]
   with CassandraTypes {
   /*with UdtEncoding*/
 
-  // Overriding them as defined in ProtoContext
+  // Overriding them as defined in ProtoContextSecundus
   override type RunActionReturningResult[T] = Unit
   override type RunBatchActionReturningResult[T] = Unit
 
   override def executeActionReturning[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner) =
     fail("Cassandra doesn't support `returning`.")
+
+  override def executeActionReturningMany[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner) =
+    fail("Cassandra doesn't support `returningMany`.")
 
   override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner) =
     fail("Cassandra doesn't support `returning`.")

@@ -410,7 +410,7 @@ object BatchQueryExecution:
               )
             }
 
-          StaticTranslationMacro[I, T, D, N](expandedQuotation, ElaborationBehavior.Skip, topLevelQuat, comps.categorizedPlanters.map(_.planter)) match
+          StaticTranslationMacro[D, N](expandedQuotation, ElaborationBehavior.Skip, topLevelQuat, comps.categorizedPlanters.map(_.planter)) match
             case Some(state @ StaticState(query, filteredPerRowLifts, _, _, secondaryLifts)) =>
               // create an extractor for returning actions
               val extractor = MakeExtractor[ResultRow, Session, T, T].static(state, identityConverter, extractionBehavior)
@@ -499,7 +499,7 @@ object BatchQueryExecution:
       N <: NamingStrategy,
       Ctx <: Context[_, _],
       Res
-  ](inline quoted: Quoted[BatchAction[A]], ctx: ContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res]) =
+  ](ctx: ContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res])(inline quoted: Quoted[BatchAction[A]]) =
     ${ applyImpl[I, T, A, ResultRow, PrepareRow, Session, D, N, Ctx, Res]('quoted, 'ctx) }
 
   def applyImpl[

@@ -5,7 +5,7 @@ import java.sql.{ Connection, PreparedStatement }
 import javax.sql.DataSource
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill._
-import io.getquill.context.{ ExecutionInfo, ProtoContext, ContextVerbTranslate }
+import io.getquill.context.{ ExecutionInfo, ProtoContextSecundus, ContextVerbTranslate }
 
 import scala.util.{ DynamicVariable, Try }
 import scala.util.control.NonFatal
@@ -15,7 +15,7 @@ import io.getquill.context.ContextVerbTranslate
 
 abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   extends JdbcContextBase[Dialect, Naming]
-  with ProtoContext[Dialect, Naming]
+  with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbTranslate[Dialect, Naming]
   {
 
@@ -44,6 +44,8 @@ abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   inline def run[E](inline quoted: Quoted[Action[E]]): Long = InternalApi.runAction(quoted)
   @targetName("runActionReturning")
   inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): T = InternalApi.runActionReturning[E, T](quoted)
+  @targetName("runActionReturningMany")
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): List[T] = InternalApi.runActionReturningMany[E, T](quoted)
   @targetName("runBatchAction")
   inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): List[Long] = InternalApi.runBatchAction(quoted)
   @targetName("runBatchActionReturning")

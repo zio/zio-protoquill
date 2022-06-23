@@ -223,6 +223,9 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case OptionNonEmpty(a)           => '{ OptionNonEmpty(${ a.expr }) }
       case OptionIsDefined(a)          => '{ OptionIsDefined(${ a.expr }) }
       case OptionGetOrElse(a, b)       => '{ OptionGetOrElse(${ a.expr }, ${ b.expr }) }
+      case OptionGetOrNull(a)          => '{ OptionGetOrNull(${ a.expr }) }
+      case OptionOrNull(a)             => '{ OptionOrNull(${ a.expr }) }
+      case FilterIfDefined(a, b, c)    => '{ FilterIfDefined(${ a.expr }, ${ b.expr }, ${ c.expr }) }
       case OptionContains(a, b)        => '{ OptionContains(${ a.expr }, ${ b.expr }) }
       case OptionMap(a, b, c)          => '{ OptionMap(${ a.expr }, ${ b.expr }, ${ c.expr }) }
       case OptionFlatMap(a, b, c)      => '{ OptionFlatMap(${ a.expr }, ${ b.expr }, ${ c.expr }) }

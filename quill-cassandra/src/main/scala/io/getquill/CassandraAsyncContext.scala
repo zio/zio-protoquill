@@ -71,7 +71,7 @@ class CassandraAsyncContext[N <: NamingStrategy](
 
   def executeQuerySingle[T](cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[RunQuerySingleResult[T]] = {
     implicit val ec = dc
-    executeQuery(cql, prepare, extractor)(info, dc).map(handleSingleResult)
+    executeQuery(cql, prepare, extractor)(info, dc).map(handleSingleResult(cql, _))
   }
 
   def executeAction(cql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: Runner): Result[RunActionResult] = {

@@ -45,8 +45,16 @@ extension (str: String) {
 inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
 inline def select[T]: Query[T] = ${ QueryMacro[T] }
 
+extension [T](o: Option[T])
+  def filterIfDefined(f: T => Boolean): Boolean = NonQuotedException()
+
 object extras:
   extension [T](a: T)
+    def getOrNull: T =
+      throw new IllegalArgumentException(
+        "Cannot use getOrNull outside of database queries since only database value-types (e.g. Int, Double, etc...) can be null."
+      )
+
     def ===(b: T): Boolean =
       (a, b) match
         case (a: Option[_], b: Option[_]) => a.exists(av => b.exists(bv => av == bv))
