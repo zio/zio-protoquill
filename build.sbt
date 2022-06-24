@@ -330,7 +330,7 @@ lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
 lazy val basicSettings = Seq(
   Test / testOptions += Tests.Argument("-oI"),
   libraryDependencies ++= Seq(
-    ("org.scala-lang.modules" %% "scala-java8-compat" % "1.0.1")
+    ("org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2")
   ),
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
