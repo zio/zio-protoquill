@@ -222,7 +222,7 @@ lazy val `quill-caliban` =
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
-        "io.d11" %% "zhttp"      % "1.0.0.0-RC17" % Test,
+        "io.d11" %% "zhttp"      % "1.0.0.0-RC29" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
