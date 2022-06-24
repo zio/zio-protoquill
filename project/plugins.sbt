@@ -8,7 +8,7 @@ addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.6.1")
 
 addSbtPlugin("ch.epfl.lamp" % "sbt-dotty" % "0.5.5")
 
-addSbtPlugin("com.github.gseitz" % "sbt-release" % "1.0.13")
+addSbtPlugin("com.github.sbt" % "sbt-release" % "1.0.15")
 
 addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.1.2")
 
