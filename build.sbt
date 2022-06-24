@@ -312,7 +312,7 @@ lazy val commonSettings =
 
 lazy val jdbcTestingLibraries = Seq(
   libraryDependencies ++= Seq(
-    "com.zaxxer"              %  "HikariCP"                % "3.4.5",
+    "com.zaxxer"              %  "HikariCP"                % "5.0.1",
     "mysql"                   %  "mysql-connector-java"    % "8.0.22"             % Test,
     "com.h2database"          %  "h2"                      % "1.4.200"            % Test,
     "org.postgresql"          %  "postgresql"              % "42.2.18"             % Test,
