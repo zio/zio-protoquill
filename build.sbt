@@ -238,8 +238,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "1.0.12",
-        "dev.zio" %% "zio-streams" % "1.0.12"
+        "dev.zio" %% "zio" % "1.0.15",
+        "dev.zio" %% "zio-streams" % "1.0.15"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -287,8 +287,8 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.13.0",
-        "dev.zio" %% "zio" % "1.0.12",
-        "dev.zio" %% "zio-streams" % "1.0.12",
+        "dev.zio" %% "zio" % "1.0.15",
+        "dev.zio" %% "zio-streams" % "1.0.15",
         ("dev.zio" %% "zio-interop-guava" % "30.1.0.3").excludeAll(ExclusionRule(organization = "dev.zio")).cross(CrossVersion.for3Use2_13)
       )
     )
