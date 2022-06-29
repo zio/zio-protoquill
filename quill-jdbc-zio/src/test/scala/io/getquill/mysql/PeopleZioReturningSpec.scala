@@ -5,7 +5,7 @@ import io.getquill._
 
 class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec {
 
-  override def prefix: Prefix = Prefix("testMysqlDB")
+
   val context: testContext.type = testContext
   import testContext._
 
