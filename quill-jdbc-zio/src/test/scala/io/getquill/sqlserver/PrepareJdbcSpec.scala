@@ -2,13 +2,12 @@ package io.getquill.sqlserver
 
 import java.sql.{ Connection, ResultSet }
 import io.getquill.PrepareZioJdbcSpecBase
-import io.getquill.Prefix
+
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
-  override def prefix: Prefix = Prefix("testSqlServerDB")
   val context: testContext.type = testContext
   import testContext._
 

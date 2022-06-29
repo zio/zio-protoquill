@@ -3,8 +3,7 @@ package io.getquill.context.qzio
 import io.getquill.NamingStrategy
 import io.getquill.context.{ Context, ContextEffect }
 import io.getquill.idiom.Idiom
-import zio.{ Has, ZIO }
-import zio.blocking.Blocking
+import zio.ZIO
 import io.getquill.context.ContextTranslateMacro
 
 trait ZioTranslateContext[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]

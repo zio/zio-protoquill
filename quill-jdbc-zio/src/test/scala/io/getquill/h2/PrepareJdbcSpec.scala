@@ -2,13 +2,12 @@ package io.getquill.h2
 
 import java.sql.{ Connection, ResultSet }
 import io.getquill.PrepareZioJdbcSpecBase
-import io.getquill.Prefix
+
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
-  def prefix = Prefix("testH2DB")
   val context: testContext.type = testContext
   import testContext._
 
@@ -21,7 +20,7 @@ class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
   "single" in {
     val prepareInsert = prepare(query[Product].insertValue(lift(productEntries.head)))
     singleInsert(prepareInsert) mustEqual false
-    extractProducts(prepareQuery) === List(productEntries.head)
+    extractProducts(prepareQuery) must contain theSameElementsAs List(productEntries.head)
   }
 
   "batch" in {
@@ -30,6 +29,6 @@ class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
     )
 
     batchInsert(prepareBatchInsert).distinct mustEqual List(false)
-    extractProducts(prepareQuery) === withOrderedIds(productEntries)
+    extractProducts(prepareQuery) must contain theSameElementsAs withOrderedIds(productEntries)
   }
 }
