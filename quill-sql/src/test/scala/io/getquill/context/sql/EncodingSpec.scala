@@ -4,6 +4,8 @@ import java.time.LocalDate
 import java.util.{Date, UUID}
 import io.getquill.context.Context
 import io.getquill._
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 trait EncodingSpec extends Spec {
 
@@ -64,7 +66,7 @@ trait EncodingSpec extends Spec {
         34.4f,
         42d,
         Array(1.toByte, 2.toByte),
-        new Date(31200000),
+        Date.from(LocalDateTime.of(2013, 11, 23, 0, 0, 0, 0).toInstant(ZoneOffset.UTC)),
         EncodingTestType("s2"),
         LocalDate.of(2013, 11, 23),
         UUID.randomUUID(),
@@ -78,7 +80,7 @@ trait EncodingSpec extends Spec {
         Some(34.4f),
         Some(42d),
         Some(Array(1.toByte, 2.toByte)),
-        Some(new Date(31200000)),
+        Some(Date.from(LocalDateTime.of(2013, 11, 23, 0, 0, 0, 0).toInstant(ZoneOffset.UTC))),
         Some(EncodingTestType("s4")),
         Some(LocalDate.of(2013, 11, 23)),
         Some(UUID.randomUUID()),
