@@ -6,6 +6,6 @@ import zio.Runtime.Scoped
 import javax.sql.DataSource
 
 package object oracle {
-  implicit val pool: Implicit[Scoped[DataSource]] = Implicit(zio.Runtime.unsafeFromLayer(DataSourceLayer.fromPrefix("testOracleDB")))
+  implicit val pool: Implicit[Scoped[DataSource]] = zio.Unsafe.unsafe { Implicit(zio.Runtime.unsafe.fromLayer(DataSourceLayer.fromPrefix("testOracleDB"))) }
   object testContext extends OracleZioJdbcContext(Literal) with TestEntities
 }

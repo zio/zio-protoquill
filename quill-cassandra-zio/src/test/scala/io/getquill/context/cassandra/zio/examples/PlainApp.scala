@@ -3,6 +3,7 @@ package io.getquill.context.cassandra.zio.examples
 import io.getquill.{ CassandraZioContext, _ }
 import zio.Runtime
 import zio.Console.printLine
+import zio.Unsafe
 
 object PlainApp {
 
@@ -23,7 +24,9 @@ object PlainApp {
         .tap(result => printLine(result.toString))
         .provide(zioSession)
 
-    Runtime.default.unsafeRun(czio)
+    Unsafe.unsafe {
+      Runtime.default.unsafe.run(czio).getOrThrow()
+    }
     ()
   }
 }

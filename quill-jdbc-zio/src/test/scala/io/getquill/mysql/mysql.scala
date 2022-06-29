@@ -6,6 +6,6 @@ import zio.Runtime.Scoped
 import javax.sql.DataSource
 
 package object mysql {
-  implicit val pool: Implicit[Scoped[DataSource]] = Implicit(zio.Runtime.unsafeFromLayer(DataSourceLayer.fromPrefix("testMysqlDB")))
+  implicit val pool: Implicit[Scoped[DataSource]] = zio.Unsafe.unsafe { Implicit(zio.Runtime.unsafe.fromLayer(DataSourceLayer.fromPrefix("testMysqlDB"))) }
   object testContext extends MysqlZioJdbcContext(Literal) with TestEntities
 }

@@ -6,7 +6,7 @@ import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.{ ExecutionInfo, ProtoContextSecundus, ContextVerbStream }
 import zio.Exit.{ Failure, Success }
 import zio.stream.ZStream
-import zio.{ FiberRef, Runtime, UIO, ZEnvironment, ZIO }
+import zio.{ FiberRef, Runtime, UIO, Unsafe, ZEnvironment, ZIO }
 
 import java.sql.{ Array => _, _ }
 import javax.sql.DataSource
@@ -98,7 +98,9 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
    * However if it were used for something else it would be scoped to the fiber-ref of the zio-jdbc context's creator i.e. the global scope.
    */
   val currentConnection: FiberRef[Option[Connection]] =
-    Runtime.default.unsafeRun(zio.Scope.global.extend(FiberRef.make(Option.empty[java.sql.Connection])))
+    Unsafe.unsafe {
+      Runtime.default.unsafe.run(zio.Scope.global.extend(FiberRef.make(Option.empty[java.sql.Connection]))).getOrThrow()
+    }
 
   val underlying: ZioJdbcUnderlyingContext[Dialect, Naming]
 

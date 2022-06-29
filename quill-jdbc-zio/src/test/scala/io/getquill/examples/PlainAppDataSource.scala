@@ -7,6 +7,7 @@ import io.getquill.{ JdbcContextConfig, Literal, PostgresZioJdbcContext }
 import zio.Console.printLine
 import zio.Runtime
 import io.getquill._
+import zio.Unsafe
 
 object PlainAppDataSource {
 
@@ -28,7 +29,9 @@ object PlainAppDataSource {
         .tap(result => printLine(result.toString))
         .provide(zioDS)
 
-    Runtime.default.unsafeRun(qzio)
+    Unsafe.unsafe {
+      Runtime.default.unsafe.run(qzio)
+    }
     ()
   }
 }

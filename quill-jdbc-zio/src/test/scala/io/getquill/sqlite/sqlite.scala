@@ -6,6 +6,6 @@ import zio.Runtime.Scoped
 import javax.sql.DataSource
 
 package object sqlite {
-  implicit val pool: Implicit[Scoped[DataSource]] = Implicit(zio.Runtime.unsafeFromLayer(DataSourceLayer.fromPrefix("testSqliteDB")))
+  implicit val pool: Implicit[Scoped[DataSource]] = zio.Unsafe.unsafe { Implicit(zio.Runtime.unsafe.fromLayer(DataSourceLayer.fromPrefix("testSqliteDB"))) }
   object testContext extends SqliteZioJdbcContext(Literal) with TestEntities
 }
