@@ -1,3 +1,7 @@
+# 4.0.0
+
+- [Bump to ZIO 2.0.0 Release Version](https://github.com/zio/zio-protoquill/pull/146)
+
 # 3.19.0
 
 - [Update to Jasync 2. Additional Jasync SSL Configs](https://github.com/zio/zio-protoquill/pull/142)
