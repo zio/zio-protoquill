@@ -8,7 +8,7 @@ import io.getquill.MappedEncoding
 import java.time.ZonedDateTime
 
 trait Encoders {
-  this: JAsyncContextBase[_, _] =>
+  this: JAsyncContextTypes[_, _] =>
 
   type Encoder[T] = AsyncEncoder[T]
 

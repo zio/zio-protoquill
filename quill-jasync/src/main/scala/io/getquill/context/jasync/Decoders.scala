@@ -13,10 +13,7 @@ import io.getquill.util.Messages.fail
 import scala.reflect.{ ClassTag, classTag }
 
 trait Decoders {
-  this: JAsyncContextBase[_, _] =>
-
-  // Have not generalized index for Protoquill yet
-  type Index = Int
+  this: JAsyncContextTypes[_, _] =>
 
   type Decoder[T] = AsyncDecoder[T]
 

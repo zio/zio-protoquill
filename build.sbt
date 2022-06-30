@@ -213,6 +213,23 @@ lazy val `quill-jasync-postgres` =
     )
     .dependsOn(`quill-jasync` % "compile->compile;test->test")
 
+
+lazy val `quill-jasync-zio` =
+  (project in file("quill-jasync-zio"))
+    .settings(commonSettings: _*)
+    .settings(releaseSettings: _*)
+    .settings(
+      Test / fork := true,
+      libraryDependencies ++= Seq(
+        "com.github.jasync-sql" % "jasync-common" % "2.0.6",
+        "dev.zio" %% "zio" % "2.0.0",
+        "dev.zio" %% "zio-streams" % "2.0.0"
+      )
+    )
+    .dependsOn(`quill-sql` % "compile->compile;test->test")
+    .dependsOn(`quill-zio` % "compile->compile;test->test")
+    .dependsOn(`quill-jasync` % "compile->compile;test->test")
+
 lazy val `quill-caliban` =
   (project in file("quill-caliban"))
     .settings(commonSettings: _*)
