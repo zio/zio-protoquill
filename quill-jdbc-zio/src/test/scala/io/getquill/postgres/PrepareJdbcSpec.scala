@@ -1,6 +1,5 @@
 package io.getquill.postgres
 
-import io.getquill.Prefix
 import io.getquill.{ PrepareZioJdbcSpecBase, ZioSpec }
 import org.scalatest.BeforeAndAfter
 import io.getquill._
@@ -9,7 +8,6 @@ import java.sql.{ Connection, ResultSet }
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioSpec with BeforeAndAfter {
 
-  override def prefix: Prefix = Prefix("testPostgresDB")
   val context: testContext.type = testContext
   import testContext._
 
@@ -22,7 +20,7 @@ class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioSpec with BeforeAnd
   "single" in {
     val prepareInsert = prepare(query[Product].insertValue(lift(productEntries.head)))
     singleInsert(prepareInsert) mustEqual false
-    extractProducts(prepareQuery) === List(productEntries.head)
+    extractProducts(prepareQuery) must contain theSameElementsAs List(productEntries.head)
   }
 
   "batch" in {
@@ -31,6 +29,6 @@ class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioSpec with BeforeAnd
     )
 
     batchInsert(prepareBatchInsert).distinct mustEqual List(false)
-    extractProducts(prepareQuery) === withOrderedIds(productEntries)
+    extractProducts(prepareQuery) must contain theSameElementsAs withOrderedIds(productEntries)
   }
 }

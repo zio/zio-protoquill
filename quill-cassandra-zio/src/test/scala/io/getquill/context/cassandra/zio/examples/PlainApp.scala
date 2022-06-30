@@ -2,7 +2,8 @@ package io.getquill.context.cassandra.zio.examples
 
 import io.getquill.{ CassandraZioContext, _ }
 import zio.Runtime
-import zio.console.putStrLn
+import zio.Console.printLine
+import zio.Unsafe
 
 object PlainApp {
 
@@ -20,10 +21,12 @@ object PlainApp {
     }
     val czio =
       MyZioPostgresContext.run(people)
-        .tap(result => putStrLn(result.toString))
-        .provideCustomLayer(zioSession)
+        .tap(result => printLine(result.toString))
+        .provide(zioSession)
 
-    Runtime.default.unsafeRun(czio)
+    Unsafe.unsafe {
+      Runtime.default.unsafe.run(czio).getOrThrow()
+    }
     ()
   }
 }
