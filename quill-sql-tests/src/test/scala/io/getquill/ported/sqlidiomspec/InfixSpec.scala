@@ -21,14 +21,14 @@ class InfixSpec extends Spec {
         qr1.map(t => infix"CONCAT(${t.s}, ${t.s})".as[String])
       }
       testContext.run(q).string mustEqual
-        "SELECT t._1 FROM (SELECT CONCAT(t.s, t.s) AS _1 FROM TestEntity t) AS t"
+        "SELECT CONCAT(t.s, t.s) FROM TestEntity t"
     }
     "part of the query" in {
       inline def q = quote {
         qr1.map(t => infix"CONCAT(${t.s}, ${t.s})".as[String])
       }
       testContext.run(q).string mustEqual
-        "SELECT t._1 FROM (SELECT CONCAT(t.s, t.s) AS _1 FROM TestEntity t) AS t"
+        "SELECT CONCAT(t.s, t.s) FROM TestEntity t"
     }
     "source query" in {
       case class Entity(i: Int)

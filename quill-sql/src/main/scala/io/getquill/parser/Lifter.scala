@@ -67,8 +67,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       value.asTerm.select(memberSymbol).tpe <:< TypeRepr.of[io.getquill.parser.SerializationBehavior.SkipSerialize]
 
   trait NiceLiftable[T: ClassTag] extends ToExpr[T]:
-    // TODO Can we Change to 'using Quotes' without changing all the signitures? Would be simplier to extend
-
     def deserializeDisabled(using Quotes): Boolean =
       import quotes.reflect._
       Expr.summon[DoSerialize] match
@@ -82,7 +80,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
     def lift: (Quotes) ?=> PartialFunction[T, Expr[T]]
 
     private[getquill] def liftOrThrow(element: T)(using Quotes): Expr[T] =
-      // println(s"================ Doing Lift or throw on: ${element}: ${io.getquill.util.Messages.qprint(element)} ===============")
       import quotes.reflect._
       lift.lift(element).getOrElse {
         report.throwError(
@@ -95,7 +92,6 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
     def apply(element: T)(using Quotes): Expr[T] =
       import quotes.reflect._
       import io.getquill.util.CommonExtensions._
-      // println(s"================ Doing Apply on: ${element}: ${io.getquill.util.Messages.qprint(element)} ===============")
       element match
         case ast: Ast if (serializeAst == SerializeAst.None) =>
           liftOrThrow(ast).asInstanceOf[Expr[T]]
@@ -114,6 +110,7 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
         case _ => liftOrThrow(element)
     def unapply(t: T)(using Quotes) = Some(apply(t))
+  end NiceLiftable
 
   // Technically not part of the AST this needs to be lifted in the QueryExecution and returned to the executeActionReturning context clause
   given liftableReturnAction: NiceLiftable[ReturnAction] with
@@ -293,16 +290,19 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case ConcatMap(query: Ast, alias: AIdent, body: Ast)                  => '{ ConcatMap(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
       case SortBy(query: Ast, alias: AIdent, criterias: Ast, ordering: Ast) => '{ SortBy(${ query.expr }, ${ alias.expr }, ${ criterias.expr }, ${ ordering.expr }) }
       case GroupBy(query: Ast, alias: AIdent, body: Ast)                    => '{ GroupBy(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
-      case Aggregation(operator, query)                                     => '{ Aggregation(${ operator.expr }, ${ query.expr }) }
-      case Take(query: Ast, num: Ast)                                       => '{ Take(${ query.expr }, ${ num.expr }) }
-      case Drop(query: Ast, num: Ast)                                       => '{ Drop(${ query.expr }, ${ num.expr }) }
-      case Union(a, b)                                                      => '{ Union(${ a.expr }, ${ b.expr }) }
-      case UnionAll(a, b)                                                   => '{ UnionAll(${ a.expr }, ${ b.expr }) }
-      case Join(typ, a, b, identA, identB, body)                            => '{ Join(${ typ.expr }, ${ a.expr }, ${ b.expr }, ${ identA.expr }, ${ identB.expr }, ${ body.expr }) }
-      case FlatJoin(typ, a, identA, on)                                     => '{ FlatJoin(${ typ.expr }, ${ a.expr }, ${ identA.expr }, ${ on.expr }) }
-      case DistinctOn(query, alias, body)                                   => '{ DistinctOn(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
-      case Distinct(a: Ast)                                                 => '{ Distinct(${ a.expr }) }
-      case Nested(a: Ast)                                                   => '{ Nested(${ a.expr }) }
+      case GroupByMap(query: Ast, byAlias: AIdent, byBody: Ast, mapAlias: AIdent, mapBody: Ast) =>
+        '{ GroupByMap(${ query.expr }, ${ byAlias.expr }, ${ byBody.expr }, ${ mapAlias.expr }, ${ mapBody.expr }) }
+
+      case Aggregation(operator, query)          => '{ Aggregation(${ operator.expr }, ${ query.expr }) }
+      case Take(query: Ast, num: Ast)            => '{ Take(${ query.expr }, ${ num.expr }) }
+      case Drop(query: Ast, num: Ast)            => '{ Drop(${ query.expr }, ${ num.expr }) }
+      case Union(a, b)                           => '{ Union(${ a.expr }, ${ b.expr }) }
+      case UnionAll(a, b)                        => '{ UnionAll(${ a.expr }, ${ b.expr }) }
+      case Join(typ, a, b, identA, identB, body) => '{ Join(${ typ.expr }, ${ a.expr }, ${ b.expr }, ${ identA.expr }, ${ identB.expr }, ${ body.expr }) }
+      case FlatJoin(typ, a, identA, on)          => '{ FlatJoin(${ typ.expr }, ${ a.expr }, ${ identA.expr }, ${ on.expr }) }
+      case DistinctOn(query, alias, body)        => '{ DistinctOn(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
+      case Distinct(a: Ast)                      => '{ Distinct(${ a.expr }) }
+      case Nested(a: Ast)                        => '{ Nested(${ a.expr }) }
 
   given liftableAst: NiceLiftable[Ast] with {
     def lift =

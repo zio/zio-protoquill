@@ -15,6 +15,7 @@ import io.getquill.metaprog.Extractors
 import io.getquill.util.Format
 import io.getquill.util.Interpolator2
 import io.getquill.util.Messages.TraceType
+import io.getquill.metaprog.SummonTranspileConfig
 
 object DeconstructElaboratedEntityLevels {
   def apply[ProductCls: Type](elaboration: Term)(using Quotes) =
@@ -40,7 +41,8 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
       case '[tt] =>
         TypeRepr.of[tt] <:< TypeRepr.of[Option[Any]]
 
-  val interp = new Interpolator2(TraceType.Elaboration, 1)
+  val transpileConfig = SummonTranspileConfig()
+  val interp = new Interpolator2(TraceType.Elaboration, transpileConfig.traceConfig, 1)
   import interp._
 
   sealed trait ElaboratedField

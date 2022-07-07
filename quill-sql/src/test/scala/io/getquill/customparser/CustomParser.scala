@@ -8,6 +8,7 @@ import io.getquill.ast.Infix
 import io.getquill.quat.Quat
 import io.getquill.parser.engine.ParserChain
 import io.getquill.parser.engine.Parser
+import io.getquill.norm.TranspileConfig
 
 object CustomOps {
   extension (i: Int)
@@ -15,7 +16,7 @@ object CustomOps {
 }
 
 object CustomParser extends ParserLibrary:
-  override def operationsParser(using Quotes) =
+  override def operationsParser(using Quotes, TranspileConfig) =
     ParserChain.attempt(OperationsParser(_)) orElse
       ParserChain.attempt(CustomOperationsParser(_))
 

@@ -2,7 +2,6 @@ package io.getquill.metaprog
 
 import scala.quoted._
 import scala.quoted.Varargs
-import io.getquill.util.printer
 import io.getquill.util.Format
 
 class Is[T: Type]:

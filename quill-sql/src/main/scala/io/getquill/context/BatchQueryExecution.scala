@@ -56,6 +56,9 @@ import io.getquill.quat.Quat
 import io.getquill.quat.QuatMaking
 import io.getquill.metaprog.EagerListPlanterExpr
 import io.getquill.metaprog.EagerPlanterExpr
+import io.getquill.metaprog.SummonTranspileConfig
+import io.getquill.norm.TranspileConfig
+import io.getquill.metaprog.TranspileConfigLiftable
 
 private[getquill] enum BatchActionType:
   case Insert
@@ -228,7 +231,8 @@ object DynamicBatchQueryExecution:
       batchContextOperation: ContextOperation[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res],
       extractionBehavior: BatchExtractBehavior,
       rawExtractor: Extraction[ResultRow, Session, T],
-      topLevelQuat: Quat
+      topLevelQuat: Quat,
+      transpileConfig: TranspileConfig
   ) = {
     // since real quotation could possibly be nested, need to get all splice all quotes and get all lifts in all runtimeQuote sections first
     val ast = spliceQuotations(quotedRaw)
@@ -276,6 +280,7 @@ object DynamicBatchQueryExecution:
         batchContextOperation.naming,
         ElaborationBehavior.Skip,
         topLevelQuat,
+        transpileConfig,
         SpliceBehavior.AlreadySpliced,
         categorizedPlanters.map(_.planter)
       )
@@ -362,7 +367,7 @@ object BatchQueryExecution:
     def applyDynamic(): Expr[Res] =
       val extractionBehaviorExpr = Expr(extractionBehavior)
       val extractor = MakeExtractor[ResultRow, Session, T, T].dynamic(identityConverter, extractionBehavior)
-
+      val transpileConfig = SummonTranspileConfig()
       '{
         DynamicBatchQueryExecution.apply[I, T, A, ResultRow, PrepareRow, Session, D, N, Ctx, Res](
           $quotedRaw,
@@ -370,7 +375,8 @@ object BatchQueryExecution:
           $extractionBehaviorExpr,
           $extractor,
           // / For the sake of viewing/debugging the quat macro code it is better not to serialize it here
-          ${ Lifter.NotSerializing.quat(topLevelQuat) }
+          ${ Lifter.NotSerializing.quat(topLevelQuat) },
+          ${ TranspileConfigLiftable(transpileConfig) }
         )
       }
 
