@@ -45,6 +45,9 @@ import io.getquill.generic.ElaborateTrivial
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.Quat
 import io.getquill.ast.External
+import io.getquill.norm.TranspileConfig
+import io.getquill.metaprog.TranspileConfigLiftable
+import io.getquill.metaprog.SummonTranspileConfig
 
 object ContextOperation:
   case class Argument[I, T, A <: QAC[I, _] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](
@@ -320,6 +323,7 @@ object QueryExecution:
 
       // TODO What about when an extractor is not neededX
       val spliceAsts = TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]
+      val transpileConfig = SummonTranspileConfig()
       // Note, we don't want to serialize the Quat here because it is directly spliced into the execution method call an only once.
       // / For the sake of viewing/debugging the quat macro code it is better not to serialize it here
       '{
@@ -330,7 +334,8 @@ object QueryExecution:
           ${ Expr(spliceAsts) },
           $fetchSize,
           ${ Expr(elaborationBehavior) },
-          ${ Lifter.NotSerializing.quat(topLevelQuat) }
+          ${ Lifter.NotSerializing.quat(topLevelQuat) },
+          ${ TranspileConfigLiftable(transpileConfig) }
         )
       }
     end executeDynamic
@@ -421,6 +426,7 @@ object PrepareDynamicExecution:
       naming: N,
       elaborationBehavior: ElaborationBehavior,
       topLevelQuat: Quat,
+      transpileConfig: TranspileConfig,
       spliceBehavior: SpliceBehavior = SpliceBehavior.NeedsSplice,
       // For a batch query, these are the other lifts besides the primary liftQuery lifts.
       // This should be empty & ignored for all other query types.
@@ -446,7 +452,7 @@ object PrepareDynamicExecution:
     // println("=============== Dynamic Expanded Ast Is ===========\n" + io.getquill.util.Messages.qprint(splicedAst))
 
     // Tokenize the spliced AST
-    val (outputAst, stmt, _) = idiom.translate(splicedAst, topLevelQuat, ExecutionType.Dynamic)(using naming)
+    val (outputAst, stmt, _) = idiom.translate(splicedAst, topLevelQuat, ExecutionType.Dynamic, transpileConfig)(using naming)
     val naiveQury = Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
 
     val liftColumns =
@@ -459,7 +465,7 @@ object PrepareDynamicExecution:
         // return from the query. Others compute this information from the query data directly. This information is stored
         // in the dialect and therefore is computed here.
         case returningActionAst: ReturningAction =>
-          Some(io.getquill.norm.ExpandReturning.applyMap(returningActionAst)(liftColumns)(idiom, naming))
+          Some(io.getquill.norm.ExpandReturning.applyMap(returningActionAst)(liftColumns)(idiom, naming, transpileConfig))
         case _ =>
           None
 
@@ -615,11 +621,12 @@ object RunDynamicExecution:
       spliceAst: Boolean,
       fetchSize: Option[Int],
       elaborationBehavior: ElaborationBehavior,
-      topLevelQuat: Quat
+      topLevelQuat: Quat,
+      transpileConfig: TranspileConfig
   ): Res = {
     // println("===== Passed Ast: " + io.getquill.util.Messages.qprint(quoted.ast))
     val (queryString, outputAst, sortedLifts, extractor, _) =
-      PrepareDynamicExecution[I, T, RawT, D, N, PrepareRow, ResultRow, Session](quoted, rawExtractor, ctx.idiom, ctx.naming, elaborationBehavior, topLevelQuat)
+      PrepareDynamicExecution[I, T, RawT, D, N, PrepareRow, ResultRow, Session](quoted, rawExtractor, ctx.idiom, ctx.naming, elaborationBehavior, topLevelQuat, transpileConfig)
 
     // Use the sortedLifts to prepare the method that will prepare the SQL statement
     val prepare = (row: PrepareRow, session: Session) => LiftsExtractor.Dynamic[PrepareRow, Session](sortedLifts, row, session)

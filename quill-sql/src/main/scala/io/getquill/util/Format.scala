@@ -50,6 +50,7 @@ object Format {
       import quotes.reflect._
       tpe match
         case '[tt] => Printer.TypeReprShortCode.show(quotes.reflect.TypeRepr.of[tt])
+        case _     => tpe
   }
 
   object Expr {

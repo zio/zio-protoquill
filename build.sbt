@@ -139,10 +139,10 @@ lazy val `quill-sql` =
         // Needs to be in-sync with both quill-engine and scalafmt-core or ClassNotFound
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.4.0",
-        ("com.lihaoyi" %% "pprint" % "0.6.6"),
-        ("io.getquill" %% "quill-engine" % "4.0.0").excludeAll(ExclusionRule(organization = "com.twitter")),
-        ("dev.zio" %% "zio" % "2.0.0"),
-        ("io.getquill" %% "quill-util" % "4.0.0")
+        "com.lihaoyi" %% "pprint" % "0.6.6",
+        "io.getquill" %% "quill-engine" % "4.0.1-SNAPSHOT",
+        "dev.zio" %% "zio" % "2.0.0",
+        ("io.getquill" %% "quill-util" % "4.0.1-SNAPSHOT")
           .excludeAll({
             if (isCommunityBuild)
               Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))
@@ -153,8 +153,7 @@ lazy val `quill-sql` =
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
         "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test
-      )//,
-      //Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oGF")
+      )
     )
 
 // Moving heavy tests to separate module so it can be compiled in parallel with others
@@ -338,7 +337,7 @@ lazy val basicSettings = Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
   scalaVersion := {
-    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.1.1"
+    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.1.3"
   },
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log

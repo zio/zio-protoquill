@@ -240,11 +240,14 @@ object Unlifter {
 
   given unliftQuery: NiceUnliftable[AQuery] with
     def unlift =
-      case Is[Entity](ent)                                                                => unliftEntity(ent)
-      case Is[Map]('{ Map(${ query }, ${ alias }, ${ body }: Ast) })                      => Map(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[FlatMap]('{ FlatMap(${ query }, ${ alias }, ${ body }: Ast) })              => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[Filter]('{ Filter(${ query }, ${ alias }, ${ body }: Ast) })                => Filter(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[GroupBy]('{ GroupBy(${ query }, ${ alias }, ${ body }: Ast) })              => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Entity](ent)                                                   => unliftEntity(ent)
+      case Is[Map]('{ Map(${ query }, ${ alias }, ${ body }: Ast) })         => Map(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[FlatMap]('{ FlatMap(${ query }, ${ alias }, ${ body }: Ast) }) => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Filter]('{ Filter(${ query }, ${ alias }, ${ body }: Ast) })   => Filter(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[GroupBy]('{ GroupBy(${ query }, ${ alias }, ${ body }: Ast) }) => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[GroupByMap]('{ GroupByMap(${ query }, ${ byAlias }, ${ byBody }, ${ mapAlias }, ${ mapBody }) }) =>
+        GroupByMap(query.unexpr, byAlias.unexpr, byBody.unexpr, mapAlias.unexpr, mapBody.unexpr)
+
       case Is[SortBy]('{ SortBy(${ query }, ${ alias }, ${ criterias }, ${ ordering }) }) => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
       case Is[Distinct]('{ Distinct(${ a }) })                                            => Distinct(a.unexpr)
       case Is[DistinctOn]('{ DistinctOn(${ query }, ${ alias }, $body) })                 => DistinctOn(query.unexpr, alias.unexpr, body.unexpr)
