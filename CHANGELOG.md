@@ -1,3 +1,16 @@
+# 4.1.0
+
+- [Integrating groupByMap from Scala2-Quill. Also EnableTrace/DisablePhase](https://github.com/zio/zio-protoquill/pull/151)
+
+# 4.0.0
+
+- [Bump to ZIO 2.0.0 Release Version](https://github.com/zio/zio-protoquill/pull/146)
+
+# 3.19.0
+
+- [Update to Jasync 2. Additional Jasync SSL Configs](https://github.com/zio/zio-protoquill/pull/142)
+- [Implement insert/update/delete.returningMany](https://github.com/zio/zio-protoquill/pull/117)
+
 # 3.18.0
 
 - [Correct decoding Option[Product] and fix complex insertValue encoders](https://github.com/zio/zio-protoquill/pull/109)

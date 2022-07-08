@@ -3,7 +3,6 @@ package io.getquill
 import io.getquill.parser._
 import scala.quoted._
 import scala.annotation.StaticAnnotation
-import io.getquill.util.printer.AstPrinter
 import scala.deriving._
 import io.getquill.generic.GenericEncoder
 import io.getquill.quotation.NonQuotedException

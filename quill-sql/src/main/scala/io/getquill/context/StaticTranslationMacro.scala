@@ -35,6 +35,7 @@ import io.getquill.util.Messages.TraceType
 import io.getquill.util.ProtoMessages
 import io.getquill.context.StaticTranslationMacro
 import io.getquill.quat.Quat
+import io.getquill.metaprog.SummonTranspileConfig
 
 object StaticTranslationMacro:
   import io.getquill.parser._
@@ -55,10 +56,11 @@ object StaticTranslationMacro:
       CollectAst.byType[QuotationTag](ast).isEmpty
 
     val unliftedAst = VerifyFreeVariables(Unlifter(astExpr))
+    val transpileConfig = SummonTranspileConfig()
 
     if (noRuntimeQuotations(unliftedAst)) {
       val expandedAst = ElaborateTrivial(wrap)(unliftedAst)
-      val (ast, stmt, _) = idiom.translate(expandedAst, topLevelQuat, ExecutionType.Static)(using naming)
+      val (ast, stmt, _) = idiom.translate(expandedAst, topLevelQuat, ExecutionType.Static, transpileConfig)(using naming)
 
       val liftColumns =
         (ast: Ast, stmt: Statement) => Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
@@ -70,7 +72,7 @@ object StaticTranslationMacro:
           // return from the query. Others compute this information from the query data directly. This information is stored
           // in the dialect and therefore is computed here.
           case r: ReturningAction =>
-            Some(io.getquill.norm.ExpandReturning.applyMap(r)(liftColumns)(idiom, naming))
+            Some(io.getquill.norm.ExpandReturning.applyMap(r)(liftColumns)(idiom, naming, transpileConfig))
           case _ =>
             None
 

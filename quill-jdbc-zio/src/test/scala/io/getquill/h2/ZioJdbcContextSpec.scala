@@ -1,13 +1,11 @@
 package io.getquill.h2
 
 import io.getquill.ZioSpec
-import io.getquill.Prefix
 import zio.{ Task, ZIO }
 import io.getquill._
 
 class ZioJdbcContextSpec extends ZioSpec {
 
-  def prefix = Prefix("testH2DB")
   val context = testContext
   import testContext._
 
@@ -39,13 +37,13 @@ class ZioJdbcContextSpec extends ZioSpec {
             testContext.transaction {
               ZIO.collectAll(Seq(
                 testContext.run(qr1.insert(_.i -> 18)),
-                Task {
+                ZIO.attempt {
                   throw new IllegalStateException
                 }
               ))
             }
         }.catchSome {
-          case e: Exception => Task(e.getClass.getSimpleName)
+          case e: Exception => ZIO.attempt(e.getClass.getSimpleName)
         }
         r <- testContext.run(qr1)
       } yield (e, r.isEmpty)).runSyncUnsafe() mustEqual (("IllegalStateException", true))

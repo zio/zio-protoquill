@@ -1,16 +1,15 @@
 package io.getquill.postgres
 
 import io.getquill.ZioSpec
-import zio.{ Task, ZIO }
-import io.getquill.Prefix
-import io.getquill._
-import zio.ZLayer
+import zio.{ Task, ZIO, ZLayer }
+import io.getquill.context.ZioJdbc._
+
 import javax.sql.DataSource
 import java.sql.SQLException
+import io.getquill._
 
 class ZioJdbcContextSpec extends ZioSpec {
 
-  override def prefix: Prefix = Prefix("testPostgresDB")
   val context = testContext
   import testContext._
 
@@ -54,13 +53,13 @@ class ZioJdbcContextSpec extends ZioSpec {
             testContext.transaction {
               ZIO.collectAll(Seq(
                 testContext.run(qr1.insert(_.i -> 18)),
-                Task {
+                ZIO.attempt {
                   throw new IllegalStateException
                 }
               ))
             }
         }.catchSome {
-          case e: Exception => Task(e.getClass.getSimpleName)
+          case e: Exception => ZIO.attempt(e.getClass.getSimpleName)
         }
         r <- testContext.run(qr1)
       } yield (e, r.isEmpty)).runSyncUnsafe() mustEqual (("IllegalStateException", true))
