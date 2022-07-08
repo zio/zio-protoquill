@@ -10,18 +10,25 @@ import io.getquill.util.IndentUtil._
 import scala.collection.mutable
 import scala.util.matching.Regex
 
-// Copy of Interpolator in Scala2-Quill various things fixed. Shuold look into merging back.
+case class TraceConfig(enabledTraces: List[TraceType])
+object TraceConfig {
+  val Empty = new TraceConfig(List())
+}
+
 class Interpolator2(
     traceType: TraceType,
+    traceConfig: TraceConfig,
     defaultIndent: Int = 0,
     color: Boolean = Messages.traceColors,
     qprint: AstPrinter = Messages.qprint,
     out: PrintStream = System.out,
-    tracesEnabled: (TraceType) => Boolean = Messages.tracesEnabled(_)
+    globalTracesEnabled: (TraceType) => Boolean = Messages.tracesEnabled(_)
 ) {
   implicit class InterpolatorExt(sc: StringContext) {
     def trace(elements: Any*) = new Traceable(sc, elements)
   }
+
+  def tracesEnabled(traceType: TraceType) = traceConfig.enabledTraces.contains(traceType) || globalTracesEnabled(traceType)
 
   class Traceable(sc: StringContext, elementsSeq: Seq[Any]) {
 
@@ -33,13 +40,13 @@ class Interpolator2(
     private case class Simple(value: String) extends PrintElement
     private case object Separator extends PrintElement
 
-    extension (str: String)
+    implicit class StrOps(str: String) {
       def reallyFitsOnOneLine: Boolean = {
         val output = !str.contains("\n") && !str.contains("\r")
         // println(s"*********************** STRING FITS ONE ONE LINE = ${output} - ${str}")
         output
       }
-      def reallyMultiline(indent: Int, prefix: String, prependNewline: Boolean = false): String =
+      def reallyMultiline(indent: Int, prefix: String, prependNewline: Boolean = false): String = {
         // Split a string and indent.... if it is actually multi-line. Since this typically is used
         // on parts of strings of a parent-string which may be multline, but the individual elements
         // might not be which results in strange things like:
@@ -52,6 +59,8 @@ class Interpolator2(
           prepend + str.split("\n").map(elem => indent.prefix + prefix + elem).mkString("\n")
         else
           str
+      }
+    }
 
     private def generateStringForCommand(value: Any, indent: Int) = {
       val objectString = qprint(value).string(color)
@@ -197,6 +206,27 @@ class Interpolator2(
           // evaluate the command, this will activate any traces that were inside of it
           val (result, logData) = command
           out.println(generateStringForCommand(logData, indent))
+
+          result
+        case None =>
+          command
+      }
+    }
+
+    def andReturnIf[T](command: => T)(showIf: T => Boolean) = {
+      logIfEnabled() match {
+        case Some((output, indent)) =>
+          // Even though we usually want to evaluate the command after the initial log was done
+          // (so that future logs are nested under this one after the intro text but not
+          // before the return) but we cann't do that in this case because the switch indicating
+          // whether to output anything or not is dependant on the return value.
+          val result = command
+
+          if (showIf(result))
+            out.println(output)
+
+          if (showIf(result))
+            out.println(generateStringForCommand(result, indent))
 
           result
         case None =>

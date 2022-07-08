@@ -1,3 +1,7 @@
+# 4.1.0
+
+- [Integrating groupByMap from Scala2-Quill. Also EnableTrace/DisablePhase](https://github.com/zio/zio-protoquill/pull/151)
+
 # 4.0.0
 
 - [Bump to ZIO 2.0.0 Release Version](https://github.com/zio/zio-protoquill/pull/146)

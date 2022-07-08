@@ -26,8 +26,10 @@ import io.getquill.Update
 import io.getquill.util.Format
 import io.getquill.generic.ElaborationSide
 import io.getquill.metaprog.SummonParser
+import io.getquill.metaprog.SummonTranspileConfig
 import _root_.io.getquill.ActionReturning
 import io.getquill.parser.engine.History
+import io.getquill.norm.TranspileConfig
 
 /**
  * TODO Right now this is just insert but we can easily extend to update and delete
@@ -119,6 +121,7 @@ object InsertUpdateMacro {
   class Pipeline[T: Type, A[T] <: Insert[T] | Update[T]: Type](using Quotes) extends QuatMaking with QuatMakingBase:
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
+    given TranspileConfig = SummonTranspileConfig()
     val parser = SummonParser().assemble
 
     case class InserteeSchema(schemaRaw: Expr[EntityQuery[T]]):
