@@ -86,7 +86,7 @@ object ParserHelpers:
       end CheckTypes
 
       def OrFail(expr: Expr[_])(using Quotes, History) =
-        unapply(expr).getOrElse { ParserError(expr, classOf[Assignment]) }
+        unapply(expr).getOrElse { failParse(expr, classOf[Assignment]) }
 
       def unapply(expr: Expr[_])(using Quotes, History): Option[Assignment] =
         UntypeExpr(expr) match
@@ -96,7 +96,7 @@ object ParserHelpers:
 
       object Double:
         def OrFail(expr: Expr[_])(using Quotes, History) =
-          unapply(expr).getOrElse { ParserError(expr, classOf[AssignmentDual]) }
+          unapply(expr).getOrElse { failParse(expr, classOf[AssignmentDual]) }
         def unapply(expr: Expr[_])(using Quotes, History): Option[AssignmentDual] =
           UntypeExpr(expr) match
             case TwoComponents(ident1, identTpe1, ident2, identTpe2, prop, value) =>
@@ -169,7 +169,7 @@ object ParserHelpers:
     object PropertyAliasExpr {
       def OrFail[T: Type](expr: Expr[Any]) = expr match
         case PropertyAliasExpr(propAlias) => propAlias
-        case _                            => ParserError(expr, classOf[PropertyAlias])
+        case _                            => failParse(expr, classOf[PropertyAlias])
 
       def unapply[T: Type](expr: Expr[Any]): Option[PropertyAlias] =
         expr match

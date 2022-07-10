@@ -207,7 +207,7 @@ class OrderingParser(val rootParse: Parser)(using Quotes, TranspileConfig) exten
     // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
     case Unseal(Apply(TypeApply(Select(Ident("Ord"), "apply"), _), args)) =>
       // parse all sub-orderings if this is a composite
-      val subOrderings = args.map(_.asExpr).map(ordExpression => attempt.lift(ordExpression).getOrElse(ParserError(ordExpression, classOf[Ordering])))
+      val subOrderings = args.map(_.asExpr).map(ordExpression => attempt.lift(ordExpression).getOrElse(failParse(ordExpression, classOf[Ordering])))
       TupleOrdering(subOrderings)
 
     case '{ Ord.asc[t] }            => Asc
@@ -663,15 +663,19 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
     case '{ ($i: InfixValue) }                        => genericInfix(i)(false, false, Quat.Value)
 
   def genericInfix(i: Expr[_])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History) =
-    val (parts, paramsExprs) = InfixComponents.unapply(i).getOrElse { ParserError(i, classOf[Infix]) }
-    val infixAst = Infix(parts.toList, paramsExprs.map(rootParse(_)).toList, isPure, isTransparent, quat)
-    Quat.improveInfixQuat(infixAst)
+    val (parts, paramsExprs) = InfixComponents.unapply(i).getOrElse { failParse(i, classOf[Infix]) }
+    if (parts.exists(_.endsWith("#"))) {
+      PrepareDynamicInfix(parts.toList, paramsExprs.toList)(isPure, isTransparent, quat)
+    } else {
+      val infixAst = Infix(parts.toList, paramsExprs.map(rootParse(_)).toList, isPure, isTransparent, quat)
+      Quat.improveInfixQuat(infixAst)
+    }
 
   object StringContextExpr:
     def staticOrFail(expr: Expr[String]) =
       expr match
         case Expr(str: String) => str
-        case _                 => ParserError(expr, "All String-parts of a 'infix' statement must be static strings")
+        case _                 => failParse(expr, "All String-parts of a 'infix' statement must be static strings")
     def unapply(expr: Expr[_]) =
       expr match
         case '{ StringContext.apply(${ Varargs(parts) }: _*) } =>
@@ -693,10 +697,99 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
         case Unseal(TApply(InlineGenericIdent(), List(value))) =>
           unapply(value.asExpr)
         case '{ InfixInterpolator($partsExpr).infix(${ Varargs(params) }: _*) } =>
-          val parts = StringContextExpr.unapply(partsExpr).getOrElse { ParserError(partsExpr, "Cannot parse a valid StringContext") }
+          val parts = StringContextExpr.unapply(partsExpr).getOrElse { failParse(partsExpr, "Cannot parse a valid StringContext") }
           Some((parts, params))
         case _ =>
           None
+
+  private object PrepareDynamicInfix:
+    def apply(parts: List[String], params: List[Expr[Any]])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History): Dynamic =
+      // Basically the way it works is like this
+      //
+      // infix"foo#${bar}baz" becomes:
+      //   InfixInterpolator(List("foo#", "baz"), List(bar:Expr)) should become:
+      //   List( Part('{"foo" /*# is dropped*/ + String.valueOf($bar:Expr)}), Part('{"baz"}) )
+      //
+      // infix"foo${bar}baz" becomes:
+      //   InfixInterpolator(List("foo", "baz"), List(bar:Expr)) should become:
+      //   List( Part('{"foo"}), Param(bar:Expr), Part('{"baz"})  )
+      import InfixElement._
+      val elements =
+        parts.zipWithIndex.flatMap {
+          case (part, index) if (index < params.length) =>
+            if (part.endsWith("#")) {
+              // InfixInterpolator(List("foo#", ...), List(bar:Expr)) should become:
+              //   Part('{"foo" + String.valueOf($bar:Expr)}') :: Nil
+              Part('{ ${ Expr(part.dropRight(1)) } + String.valueOf(${ params(index) }) }) :: Nil
+            } else {
+              // InfixInterpolator(List("foo", ...), List(bar:Expr)) should become:
+              //   Part('{"foo"}) :: Param(bar:Expr) :: Nil
+              Part(Expr(part)) :: Param(params(index)) :: Nil
+            }
+          // We are on the last element (i.e. no more params after this)
+          // there cannot be a # here because it could not come before the dollar sign i.e. infix"#${param} #no more params here"
+          case (part, index) =>
+            Part(Expr(part)) :: Nil
+        }
+
+      val fused =
+        (elements.foldLeft(List.empty[InfixElement]) {
+          // Shorthand:
+          // fus: fusion, add: addition
+          // acc: accum, ele: element
+          // LE: List.empty (a.k.a Nil)
+          // Part("foo") is really Part('{"foo"}) or Part(Expr("foo"))
+          // (m1) is the 1st match clause below, (m2) is the 2nd one
+
+          // Here are two examples of thos this works
+          //
+          // List( Part('{"foo"}), Part('{"bar"}), Part('{"baz"}) ) =>
+          //   (0 ) LE                                                - remaining:List( Part('{"bar"}), Part('{"baz"}) ) =>
+          //   (m2) elm:Part("foo") :: acc:LE                         - remaining:List( Part('{"bar"}), Part('{"baz"}) ) =>
+          //   (m1) fus:Part(fusion:"foo" + add:"bar") :: LE          - remaining:List( Part('{"baz"}) ) =>
+          //   (m1) fus:Part(fusion:"foo" + "bar" + add:"baz")) :: LE - remaining:List() =>
+          //
+          // List( Part("foo"), Param(bar), Part("baz") ) =>
+          //   (0 ) LE                                                                         - remaining:List( Part('{"foo"}), Part('{"bar"}), Part('{"baz"}), Part('{"blin"}) ) =>
+          //   (m2) elm:Part("foo") :: acc:LE                                                  - remaining:List( Param(bar), Part('{"baz"}), Part('{"blin"}) ) =>
+          //   (m2) elm:Param(bar)  :: acc:(Part('{"foo"})) :: LE)                             - remaining:List( Part('{"baz"}), Part('{"blin"}) ) =>
+          //   (m2) elm:Part("baz") :: acc:(Param(bar) :: Part("foo")) :: LE)                  - remaining:List( Part('{"blin"}) ) =>
+          //   (m1) fus:Part("baz") :: acc:(Part("blin") }) :: Param(bar) :: Part("foo") :: LE - remaining: List()
+          //
+          // Note that once the process is done the elements are reversed
+
+          // (m1)
+          case (Part(fusion) :: tail, Part(addition)) =>
+            Part('{ $fusion + $addition }) :: tail
+          // (m2)
+          case (accum, element) =>
+            element :: accum
+        }).reverse
+
+      val newParts =
+        fused.collect {
+          case Part(v) => v
+        }
+
+      val newParams =
+        fused.collect {
+          case Param(v) => Lifter(rootParse(v))
+        }
+
+      // If there is a lift that one of the static parts has, the lift should be extracted anyway
+      // from the outer quote. Have a look at the "with lift" test in InfixText.scala for more detail
+      Dynamic(
+        '{
+          Quoted(Infix(${ Expr.ofList(newParts) }, ${ Expr.ofList(newParams) }, ${ Expr(isPure) }, ${ Expr(isTransparent) }, ${ Lifter.quat(quat) }), Nil, Nil)
+        },
+        quat
+      )
+    end apply
+
+    enum InfixElement:
+      case Part(value: Expr[String])
+      case Param(value: Expr[Any])
+  end PrepareDynamicInfix
 
 end InfixParser
 
