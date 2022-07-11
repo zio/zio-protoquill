@@ -1,3 +1,7 @@
+# 4.1.0-V2
+
+- [Implementing dynamic splices via #${splice} like Scala2-Quill](https://github.com/zio/zio-protoquill/pull/153)
+
 # 4.1.0
 
 - [Integrating groupByMap from Scala2-Quill. Also EnableTrace/DisablePhase](https://github.com/zio/zio-protoquill/pull/151)
