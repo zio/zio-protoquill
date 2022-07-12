@@ -25,6 +25,7 @@ import io.getquill.context.LiftMacro
 import io.getquill._
 import io.getquill.context.StaticSpliceMacro
 import scala.language.implicitConversions
+import scala.annotation.targetName
 
 implicit val defaultParser: ParserLibrary = ParserLibrary
 
@@ -83,15 +84,19 @@ inline def insertMeta[T](inline exclude: (T => Any)*): InsertMeta[T] = ${ Insert
 
 inline def updateMeta[T](inline exclude: (T => Any)*): UpdateMeta[T] = ${ UpdateMetaMacro[T]('exclude) }
 
-inline def lazyLift[T](inline vv: T): T = ${ LiftMacro.applyLazy[T, Nothing]('vv) }
+//inline def lazyLift[T](inline vv: T): T = ${ LiftMacro.applyLazy[T, Nothing]('vv) }
 
-inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = ${ QuoteMacro[T]('bodyExpr) }
+inline def quote[T](inline bodyExpr: Quoted[T]): Quoted[T] = //${ QuoteMacro[T]('bodyExpr) }
+  quote(unquote(bodyExpr))
 
 inline def quote[T](inline bodyExpr: T): Quoted[T] = ${ QuoteMacro[T]('bodyExpr) }
 
-inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ UnquoteMacro[T]('quoted) }
+inline def unquote[T](inline quoted: Quoted[T]): T = ${ UnquoteMacro[T]('quoted) }
 
-inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteMacro[T]('body) }
+@targetName("unquoteIdentity")
+inline def unquote[T](inline quoted: T): T = quoted
+
+//inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteMacro[T]('body) }
 
 extension [T](inline entity: EntityQuery[T])
   // Note that although this is in the static DSL if you lift a case class inside the insert or anything else, it will try to do a standard lift for that

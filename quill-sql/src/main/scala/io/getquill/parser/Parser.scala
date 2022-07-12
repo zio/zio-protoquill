@@ -551,14 +551,16 @@ class QueryParser(val rootParse: Parser)(using Quotes, TranspileConfig)
         case "unionAll" => UnionAll(rootParse(a), rootParse(b))
         case "++"       => UnionAll(rootParse(a), rootParse(b))
 
-    case ("join" -@> '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])) }) withOnClause(OnClause(ident1, tpe1, ident2, tpe2, on)) =>
-      Join(InnerJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
-    case ("leftJoin" -@> '{ type t1; type t2; ($q1: Query[`t1`]).leftJoin[`t1`, `t2`](($q2: Query[`t2`])) }) withOnClause(OnClause(ident1, tpe1, ident2, tpe2, on)) =>
-      Join(LeftJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
-    case ("rightJoin" -@> '{ type t1; type t2; ($q1: Query[`t1`]).rightJoin[`t1`, `t2`](($q2: Query[`t2`])) }) withOnClause(OnClause(ident1, tpe1, ident2, tpe2, on)) =>
-      Join(RightJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
-    case ("fullJoin" -@> '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])) }) withOnClause(OnClause(ident1, tpe1, ident2, tpe2, on)) =>
-      Join(FullJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
+    case -:[Query[_]](q1) `.` methodName -@ -:[Query[_]](q2) withOnClause(OnClause(ident1, tpe1, ident2, tpe2, on)) =>
+      methodName match
+        case "join" =>
+          Join(InnerJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
+        case "leftJoin" =>
+          Join(LeftJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
+        case "rightJoin" =>
+          Join(RightJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
+        case "fullJoin" =>
+          Join(FullJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
 
     case "take" -@> '{ type t; ($q: Query[`t`]).take($n: Int) } => Take(rootParse(q), rootParse(n))
     case "drop" -@> '{ type t; ($q: Query[`t`]).drop($n: Int) } => Drop(rootParse(q), rootParse(n))
