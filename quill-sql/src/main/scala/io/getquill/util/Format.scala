@@ -3,6 +3,8 @@ package io.getquill.util
 import scala.util.{Try, Success, Failure}
 import scala.quoted._
 import io.getquill.util.ProtoMessages
+import io.getquill.metaprog.DeserializeAstInstances
+import io.getquill.Quoted
 
 object Format {
   // import org.scalafmt.interfaces.Scalafmt
@@ -53,10 +55,29 @@ object Format {
         case _     => tpe
   }
 
+  object QuotedExpr {
+    import io.getquill.metaprog.{QuotationLotExpr, Uprootable, Pluckable, Pointable}
+    import io.getquill.parser.Unlifter
+
+    def apply(expr: Expr[Quoted[_]])(using Quotes) =
+      expr match
+        case QuotationLotExpr(quotationLot) =>
+          quotationLot match {
+            case Uprootable(uid, astTree, inlineLifts) =>
+              case class Quoted(ast: io.getquill.ast.Ast, lifts: List[String], runtimeQuotes: String = "Nil")
+              val ast = Unlifter(astTree)
+              io.getquill.util.Messages.qprint(Quoted(ast, inlineLifts.map(l => Format.Expr(l.plant))))
+            case Pluckable(uid, astTree, _) => Format.Expr(expr)
+            case other                      => Format.Expr(expr)
+          }
+        case _ => Format.Expr(expr)
+  }
+
   object Expr {
     def apply(expr: Expr[_], showErrorTrace: Boolean = false)(using Quotes) =
       import quotes.reflect._
-      Format(Printer.TreeShortCode.show(expr.asTerm), showErrorTrace)
+      val deserExpr = DeserializeAstInstances(expr)
+      Format(Printer.TreeShortCode.show(deserExpr.asTerm), showErrorTrace)
 
     def Detail(expr: Expr[_])(using Quotes) =
       import quotes.reflect._
@@ -105,7 +126,14 @@ object Format {
         // println("============ GOT HERE ===========")
         // val resultStr = s"${result}"
         // resultStr
-        ScalafmtFormat(encosedCode)
+        ScalafmtFormat(
+          // Various other cleanup needed to make the formatter happy
+          encosedCode
+            .replace("_*", "_")
+            .replace("_==", "==")
+            .replace("_!=", "!="),
+          showErrorTrace
+        )
       }.getOrElse {
         println("====== WARNING: Scalafmt Not Detected ====")
         encosedCode
