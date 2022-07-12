@@ -521,24 +521,35 @@ class QueryParser(val rootParse: Parser)(using Quotes, TranspileConfig)
       val e: Entity = Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), InferQuat.of[t].probit, Renameable.Fixed)
       e
 
-    case "map" -@> '{ ($q: Query[qt]).map[mt](${ Lambda1(ident, tpe, body) }) } =>
-      Map(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
-
-    case "flatMap" -@> '{ ($q: Query[qt]).flatMap[mt](${ Lambda1(ident, tpe, body) }) } =>
-      FlatMap(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
-
-    case "filter" -@> '{ ($q: Query[qt]).filter(${ Lambda1(ident, tpe, body) }) } =>
-      Filter(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
-
-    case "withFilter" -@> '{ ($q: Query[qt]).withFilter(${ Lambda1(ident, tpe, body) }) } =>
-      Filter(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+    case q `.` methodName -@ Lambda1(ident, tpe, body) if is[Query[_]](q) =>
+      methodName match
+        case "map" =>
+          Map(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+        case "flatMap" =>
+          FlatMap(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+        case "filter" =>
+          Filter(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+        case "withFilter" =>
+          Filter(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+        case "groupBy" =>
+          GroupBy(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+        case "distinctOn" =>
+          rootParse(q) match
+            case fj: FlatJoin => failFlatJoin("distinctOn")
+            case other        => DistinctOn(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+        case "join" =>
+          FlatJoin(InnerJoin, rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+        case "leftJoin" =>
+          FlatJoin(LeftJoin, rootParse(q), cleanIdent(ident, tpe), rootParse(body))
 
     case "concatMap" -@@> '{ type t1; type t2; ($q: Query[qt]).concatMap[`t1`, `t2`](${ Lambda1(ident, tpe, body) })($unknown_stuff) } => // ask Alex why is concatMap like this? what's unkonwn_stuff?
       ConcatMap(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
 
-    case "union" -@> '{ ($a: Query[t]).union($b) }       => Union(rootParse(a), rootParse(b))
-    case "unionAll" -@> '{ ($a: Query[t]).unionAll($b) } => UnionAll(rootParse(a), rootParse(b))
-    case "++" -@> '{ ($a: Query[t]).++($b) }             => UnionAll(rootParse(a), rootParse(b))
+    case a `.` methodName -@ b if is[Query[_]](a) && is[Query[_]](b) =>
+      methodName match
+        case "union"    => Union(rootParse(a), rootParse(b))
+        case "unionAll" => UnionAll(rootParse(a), rootParse(b))
+        case "++"       => UnionAll(rootParse(a), rootParse(b))
 
     case ("join" -@> '{ type t1; type t2; ($q1: Query[`t1`]).join[`t1`, `t2`](($q2: Query[`t2`])) }) withOnClause(OnClause(ident1, tpe1, ident2, tpe2, on)) =>
       Join(InnerJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
@@ -549,11 +560,6 @@ class QueryParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     case ("fullJoin" -@> '{ type t1; type t2; ($q1: Query[`t1`]).fullJoin[`t1`, `t2`](($q2: Query[`t2`])) }) withOnClause(OnClause(ident1, tpe1, ident2, tpe2, on)) =>
       Join(FullJoin, rootParse(q1), rootParse(q2), cleanIdent(ident1, tpe1), cleanIdent(ident2, tpe2), rootParse(on))
 
-    case "join" -@> '{ type t1; ($q1: Query[`t1`]).join[`t1`](${ Lambda1(ident1, tpe, on) }) } =>
-      FlatJoin(InnerJoin, rootParse(q1), cleanIdent(ident1, tpe), rootParse(on))
-    case "leftJoin" -@> '{ type t1; ($q1: Query[`t1`]).leftJoin[`t1`](${ Lambda1(ident1, tpe, on) }) } =>
-      FlatJoin(LeftJoin, rootParse(q1), cleanIdent(ident1, tpe), rootParse(on))
-
     case "take" -@> '{ type t; ($q: Query[`t`]).take($n: Int) } => Take(rootParse(q), rootParse(n))
     case "drop" -@> '{ type t; ($q: Query[`t`]).drop($n: Int) } => Drop(rootParse(q), rootParse(n))
 
@@ -561,16 +567,8 @@ class QueryParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     case "sortBy" -@@> '{ type r; ($q: Query[t]).sortBy[`r`](${ Lambda1(ident1, tpe, body) })($ord: Ord[`r`]) } =>
       SortBy(rootParse(q), cleanIdent(ident1, tpe), rootParse(body), rootParse(ord))
 
-    case "groupBy" -@> '{ type r; ($q: Query[t]).groupBy[`r`](${ Lambda1(ident1, tpe, body) }) } =>
-      GroupBy(rootParse(q), cleanIdent(ident1, tpe), rootParse(body))
-
     case "groupByMap" -@@> '{ ($q: Query[t]).groupByMap[g, r](${ Lambda1(byIdent, byTpe, byBody) })(${ Lambda1(mapIdent, mapTpe, mapBody) }) } =>
       GroupByMap(rootParse(q), cleanIdent(byIdent, byTpe), rootParse(byBody), cleanIdent(mapIdent, mapTpe), rootParse(mapBody))
-
-    case "distinctOn" -@> '{ ($q: Query[t]).distinctOn[r](${ Lambda1(ident, tpe, body) }) } =>
-      rootParse(q) match
-        case fj: FlatJoin => failFlatJoin("distinctOn")
-        case other        => DistinctOn(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
 
     case "distinct" --> '{ ($q: Query[t]).distinct } =>
       rootParse(q) match

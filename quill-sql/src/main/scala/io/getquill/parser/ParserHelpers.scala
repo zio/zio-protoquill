@@ -176,9 +176,9 @@ object ParserHelpers:
           case Lambda1(_, _, '{ ($prop: Any).->[v](${ ConstExpr(alias: String) }) }) =>
             def path(tree: Expr[_]): List[String] =
               tree match
-                case a `.` b =>
+                case a `<dot>` b =>
                   path(a) :+ b
-                case '{ (${ a `.` b }: Option[t]).map[r](${ Lambda1(arg, tpe, body) }) } =>
+                case '{ (${ a `<dot>` b }: Option[t]).map[r](${ Lambda1(arg, tpe, body) }) } =>
                   path(a) ++ (b :: path(body))
                 case _ =>
                   Nil

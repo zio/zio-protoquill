@@ -44,8 +44,8 @@ object Extractors {
         term match
           // case Apply(Select(body, method), args) => Some((body, method, args))
           // case Apply(TypeApply(Select(body, method), _), args) => Some((body, method, args))
-          case Applys(Select(body, method), args) => Some((body, method, args))
-          case _                                  => None
+          case Applys.Term(Select(body, method), args) => Some((body, method, args))
+          case _                                       => None
   }
 
   /**
@@ -54,20 +54,25 @@ object Extractors {
    * foo.method(bar) or foo.method[T](bar)
    */
   object Applys:
-    def unapply(using Quotes)(term: quotes.reflect.Term) =
+    def unapply(expr: Expr[_])(using Quotes) =
       import quotes.reflect._
-      term match
-        // TypeApply predicate has to be first because the 2nd one with match everything
-        case Apply(TypeApply(predicate, _), args) => Some((predicate, args))
-        case Apply(predicate, args)               => Some((predicate, args))
-        case _                                    => None
+      Applys.Term.unapply(expr.asTerm).map((predicate, args) => (predicate.asExpr, args.map(_.asExpr)))
+
+    object Term:
+      def unapply(using Quotes)(term: quotes.reflect.Term) =
+        import quotes.reflect._
+        term match
+          // TypeApply predicate has to be first because the 2nd one with match everything
+          case Apply(TypeApply(predicate, _), args) => Some((predicate, args))
+          case Apply(predicate, args)               => Some((predicate, args))
+          case _                                    => None
 
   object SelectApply1 {
     def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String, Expr[_])] =
       import quotes.reflect._
       term match {
-        case Unseal(Applys(Select(body, method), List(arg))) => Some((body.asExpr, method, arg.asExpr))
-        case _                                               => None
+        case Unseal(Applys.Term(Select(body, method), List(arg))) => Some((body.asExpr, method, arg.asExpr))
+        case _                                                    => None
       }
   }
 
@@ -161,7 +166,7 @@ object Extractors {
       }
   }
 
-  object `.` {
+  object `<dot>` {
     def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String)] =
       import quotes.reflect._
       term match {
@@ -622,6 +627,38 @@ object Extractors {
    * and then only proceecd into the quoted-matcher if that is the case.
    */
   object MatchingOptimizers:
+    // case (q1 `.` "join" -@ q2)
+    // case (q1 `.` "sortBy" -@@ (q2, q3))
+    // case (q1 `.` "sortBy" -@|@ (q2, q3))
+    // case (q1 `.` "distinct" --)
+
+    sealed trait ArgsList
+    // case class -@(method: String, arg: Expr[_]) extends ArgsList
+    // case class -@@(method: String, args: (Expr[_], Expr[_])) extends ArgsList
+    // case class -@|@(method: String, args: (Expr[_], Expr[_])) extends ArgsList
+    case class `.`(body: Expr[_], method: String)
+
+    class -:[T: Type]:
+      def unapply(expr: Expr[_])(using Quotes) =
+        import quotes.reflect._
+        if (expr.asTerm.tpe <:< TypeRepr.of[T])
+          Some(expr)
+        else
+          None
+
+    object -@ :
+      def unapply(using Quotes)(expr: Expr[_]) =
+        import quotes.reflect._
+        // Doing UntypeExpr will make this match foo.bar as well as foo.bar[T] but it might be slower
+        expr match
+          case SelectApplyN(body, methodName, List(arg)) =>
+            Some((`.`(body, methodName), arg))
+          // case SelectApplyN(body, methodName, List(arg1, arg2)) =>
+          //   Some((body, -@@(methodName, (arg1, arg2))))
+          // case Applys(SelectApplyN(body, methodName, List(list1Arg)), List(list2Arg)) =>
+          //   Some((body, -@|@(methodName, (list1Arg, list2Arg))))
+          case _ => None
+
     object --> :
       def unapply(using Quotes)(expr: Expr[_]) =
         import quotes.reflect._
@@ -643,7 +680,7 @@ object Extractors {
       def unapply(using Quotes)(expr: Expr[_]) =
         import quotes.reflect._
         expr.asTerm match
-          case Applys(SelectApplyN.Term(_, methodName, _), _) =>
+          case Applys.Term(SelectApplyN.Term(_, methodName, _), _) =>
             Some((methodName, expr))
           case _ => None
   end MatchingOptimizers
