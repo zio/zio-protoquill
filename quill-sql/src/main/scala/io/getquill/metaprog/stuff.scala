@@ -5,20 +5,33 @@ import io.getquill.quotation.NonQuotedException.apply
 import io.getquill.quotation.NonQuotedException
 
 object Forwarders:
-  trait Unquoteable[Q[_], T]:
-    inline def unquote(inline t: Q[T]): T
+  trait Unquoteable[In] {
+    type Out
+    inline def unquote(inline value: In): Out
+  }
+  object Unquoteable extends UnquoteableUnwrappableLowPriority {
+    trait WithOut[In, Out0] extends Unquoteable[In] { type Out = Out0 }
+    inline def apply[In](using inline ev: Unquoteable[In]): Unquoteable[In] = ev
+    inline given quotedIsQuoteable[T]: WithOut[Quoted[T], T] with
+      type Out = T
+      inline def unquote(inline value: Quoted[T]): T = io.getquill.unquote(value)
+  }
+  trait UnquoteableUnwrappableLowPriority {
+    given everyIsQuoteable[T]: Unquoteable.WithOut[T, T] with
+      type Out = T
+      inline def unquote(inline value: T): T = value
+  }
 
-  given [T]: Unquoteable[Quoted, T] with
-    inline def unquote(inline t: Quoted[T]): T = io.getquill.unquote(t)
+  extension [A, B](inline f: A => B) {
+    inline def apply(inline a: Quoted[A]): B = f(io.getquill.unquote(a))
+  }
 
-  type Self[T] = T
-  given [T]: Unquoteable[Self, T] with
-    inline def unquote[T](inline t: T): T = t
+  extension [A, B](inline f: Quoted[A => B]) {
+    inline def apply[X](inline a: X)(using inline unquoteable: Unquoteable.WithOut[X, A]): B =
+      io.getquill.unquote(f).apply(unquoteable.unquote(a))
+  }
 
-  // inline def unquote[Q, T](inline t: Q[T])(using un: Unquoteable[Q, T]) = un.unquote(t)
-
-  extension [Q[_], A, B](inline f: Q[A => B])(using u: Unquoteable[Q, A => B])
-    inline def apply1(inline a: Quoted[A]) = u.unquote(f).apply(io.getquill.unquote(a))
+// (p: People => p.name)/*Quoted[T] / T*/.apply(person /*Quoted[T], T*/)
 
 // extension [A, B](inline f: A => B)
 //   inline def apply1(inline a: Quoted[A]): B = f.apply(io.getquill.unquote(a))
@@ -45,46 +58,58 @@ object Forwarders:
 //   inline def orElse[B >: A](inline alternative: Option[B]): Option[B] = unquote(oa).orElse(alternative)
 // }
 
-// extension [Q[_], T](inline query: Q[Query[T]])(using un: Unquoteable[Q[T]]) {
-//   inline def filter(f: Q[T => Boolean]): Query[T] = unquote(query).filter(unquote(f))
+// extension [A, B](inline f: A => B) {
+//   inline def apply(inline a: Quoted[A]): B = f(io.getquill.unquote(a))
+// }
 
-//   // inline def map[R](inline f: T => R): Query[R] = unquote(query).map(f)
-//   // inline def flatMap[R](inline f: T => Query[R]): Query[R] = unquote(query).flatMap(f)
-//   // inline def distinctOn[R](inline f: T => R): Query[T] = unquote(query).distinctOn(f)
+// extension [A, B](inline f: Quoted[A => B]) {
+//   inline def apply[X](inline a: X)(using inline unquoteable: Unquoteable.WithOut[X, A]): B =
+//     io.getquill.unquote(f).apply(unquoteable.unquote(a))
+// }
 
-//   // inline def ++[U >: T](inline q: Query[U]): Query[U] = unquote(query).++(q)
-//   // inline def unionAll[U >: T](inline q: Query[U]): Query[U] = unquote(query).unionAll(q)
-//   // inline def union[U >: T](inline q: Query[U]): Query[U] = unquote(query).union(q)
-//   // inline def join[A >: T, B](inline q: Query[B]): JoinQuery[A, B, (A, B)] = unquote(query).join(q)
-//   // inline def leftJoin[A >: T, B](inline q: Query[B]): JoinQuery[A, B, (A, Option[B])] = unquote(query).leftJoin(q)
-//   // inline def rightJoin[A >: T, B](inline q: Query[B]): JoinQuery[A, B, (Option[A], B)] = unquote(query).rightJoin(q)
-//   // inline def fullJoin[A >: T, B](inline q: Query[B]): JoinQuery[A, B, (Option[A], Option[B])] = unquote(query).fullJoin(q)
+  extension [T](inline query: Quoted[Query[T]])
+    inline def filter[X](f: X)(using inline unquoteable: Unquoteable.WithOut[X, T => Boolean]): Query[T] = io.getquill.unquote(query).filter(unquoteable.unquote(f))
 
-//   // inline def take(inline n: Int): Query[T] = unquote(query).take(n)
-//   // inline def drop(inline n: Int): Query[T] = unquote(query).drop(n)
+// This seems to work! I don't understand how it works but it doesn't even throw an "methods are same after overloading" exception
+//inline def filter[X, R](f: X)(using inline unquoteable: Unquoteable.WithOut[X, T => R]): Query[T] = ??? // io.getquill.unquote(query).filter(unquoteable.unquote(f))
 
-//   // inline def concatMap[R, U](inline f: T => U)(implicit ev: U => Iterable[R]): Query[R] = unquote(query).concatMap(f)
-//   // inline def withFilter(inline f: T => Boolean): Query[T] = unquote(query).withFilter(f)
+// inline def map[R](inline f: T => R): Query[R] = unquote(query).map(f)
+// inline def flatMap[R](inline f: T => Query[R]): Query[R] = unquote(query).flatMap(f)
+// inline def distinctOn[R](inline f: T => R): Query[T] = unquote(query).distinctOn(f)
 
-//   // inline def sortBy[R](inline f: T => R)(implicit ord: Ord[R]): Query[T] = unquote(query).sortBy(f)
-//   // inline def groupBy[R](inline f: T => R): Query[(R, Query[T])] = unquote(query).groupBy(f)
-//   // inline def groupByMap[G, R](inline by: T => G)(inline mapTo: T => R): Query[R] = unquote(query).groupByMap(by)(mapTo)
-//   // inline def value[U >: T]: Option[T] = unquote(query).value
-//   // inline def min[U >: T]: Option[T] = unquote(query).min
-//   // inline def max[U >: T]: Option[T] = unquote(query).max
-//   // inline def avg[U >: T](implicit inline n: Numeric[U]): Option[BigDecimal] = unquote(query).avg
-//   // inline def sum[U >: T](implicit inline n: Numeric[U]): Option[T] = unquote(query).sum
-//   // inline def size: Long = unquote(query).size
-//   // inline def join[A >: T](inline on: A => Boolean): Query[A] = unquote(query).join(on)
-//   // inline def leftJoin[A >: T](inline on: A => Boolean): Query[Option[A]] = unquote(query).leftJoin(on)
-//   // inline def rightJoin[A >: T](inline on: A => Boolean): Query[Option[A]] = unquote(query).rightJoin(on)
-//   // inline def contains[B >: T](inline value: B): Boolean = unquote(query).contains(value)
-//   // inline def nonEmpty: Boolean = unquote(query).nonEmpty
-//   // inline def isEmpty: Boolean = unquote(query).isEmpty
-//   // inline def distinct: Query[T] = unquote(query).distinct
-//   // inline def nested: Query[T] = unquote(query).nested
-//   // inline def foreach[A <: QAC[_, _] with Action[_], B](inline f: T => B)(implicit unquoteProxy: B => A): BatchAction[A] =
-//   //   unquote(query).foreach(f)
+// inline def ++[U >: T](inline q: Query[U]): Query[U] =. unquote(query).++(q)
+// inline def unionAll[U >: T](inline q: Query[U]): Query[U] = unquote(query).unionAll(q)
+// inline def union[U >: T](inline q: Query[U]): Query[U] = unquote(query).union(q)
+// inline def join[A >: T, B](inline q: Query[B]): JoinQuery[A, B, (A, B)] = unquote(query).join(q)
+// inline def leftJoin[A >: T, B](inline q: Query[B]): JoinQuery[A, B, (A, Option[B])] = unquote(query).leftJoin(q)
+// inline def rightJoin[A >: T, B](inline q: Query[B]): JoinQuery[A, B, (Option[A], B)] = unquote(query).rightJoin(q)
+// inline def fullJoin[A >: T, B](inline q: Query[B]): JoinQuery[A, B, (Option[A], Option[B])] = unquote(query).fullJoin(q)
+
+// inline def take(inline n: Int): Query[T] = unquote(query).take(n)
+// inline def drop(inline n: Int): Query[T] = unquote(query).drop(n)
+
+// inline def concatMap[R, U](inline f: T => U)(implicit ev: U => Iterable[R]): Query[R] = unquote(query).concatMap(f)
+// inline def withFilter(inline f: T => Boolean): Query[T] = unquote(query).withFilter(f)
+
+// inline def sortBy[R](inline f: T => R)(implicit ord: Ord[R]): Query[T] = unquote(query).sortBy(f)
+// inline def groupBy[R](inline f: T => R): Query[(R, Query[T])] = unquote(query).groupBy(f)
+// inline def groupByMap[G, R](inline by: T => G)(inline mapTo: T => R): Query[R] = unquote(query).groupByMap(by)(mapTo)
+// inline def value[U >: T]: Option[T] = unquote(query).value
+// inline def min[U >: T]: Option[T] = unquote(query).min
+// inline def max[U >: T]: Option[T] = unquote(query).max
+// inline def avg[U >: T](implicit inline n: Numeric[U]): Option[BigDecimal] = unquote(query).avg
+// inline def sum[U >: T](implicit inline n: Numeric[U]): Option[T] = unquote(query).sum
+// inline def size: Long = unquote(query).size
+// inline def join[A >: T](inline on: A => Boolean): Query[A] = unquote(query).join(on)
+// inline def leftJoin[A >: T](inline on: A => Boolean): Query[Option[A]] = unquote(query).leftJoin(on)
+// inline def rightJoin[A >: T](inline on: A => Boolean): Query[Option[A]] = unquote(query).rightJoin(on)
+// inline def contains[B >: T](inline value: B): Boolean = unquote(query).contains(value)
+// inline def nonEmpty: Boolean = unquote(query).nonEmpty
+// inline def isEmpty: Boolean = unquote(query).isEmpty
+// inline def distinct: Query[T] = unquote(query).distinct
+// inline def nested: Query[T] = unquote(query).nested
+// inline def foreach[A <: QAC[_, _] with Action[_], B](inline f: T => B)(implicit unquoteProxy: B => A): BatchAction[A] =
+//   unquote(query).foreach(f)
 // }
 
 // extension [A, B, R](inline query: Quoted[JoinQuery[A, B, R]]) {
