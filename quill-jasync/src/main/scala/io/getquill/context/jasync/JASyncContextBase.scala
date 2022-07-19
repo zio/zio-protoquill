@@ -10,7 +10,7 @@ import scala.concurrent.ExecutionContext
 import io.getquill.context.ContextVerbTranslate
 import java.time.ZoneId
 
-trait JAsyncContextBase[D <: SqlIdiom, N <: NamingStrategy]
+trait JAsyncContextBase[D <: SqlIdiom, +N <: NamingStrategy]
   extends Context[D, N]
   with ContextVerbTranslate[D, N]
   with SqlContext[D, N]

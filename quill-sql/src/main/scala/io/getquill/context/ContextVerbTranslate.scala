@@ -45,7 +45,7 @@ import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 import scala.annotation.tailrec
 
-trait ContextVerbTranslate[Dialect <: Idiom, Naming <: NamingStrategy]
+trait ContextVerbTranslate[+Dialect <: Idiom, +Naming <: NamingStrategy]
     extends ContextTranslateMacro[Dialect, Naming]:
   self: Context[Dialect, Naming] =>
   override type TranslateResult[T] = T
@@ -53,7 +53,7 @@ trait ContextVerbTranslate[Dialect <: Idiom, Naming <: NamingStrategy]
   override def push[A, B](result: A)(f: A => B): B = f(result)
   override def seq[A](list: List[A]): List[A] = list
 
-trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
+trait ContextTranslateMacro[+Dialect <: Idiom, +Naming <: NamingStrategy]
     extends ContextTranslateProto[Dialect, Naming]:
   self: Context[Dialect, Naming] =>
 
@@ -147,7 +147,7 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
   }
 end ContextTranslateMacro
 
-trait ContextTranslateProto[Dialect <: Idiom, Naming <: NamingStrategy]:
+trait ContextTranslateProto[+Dialect <: Idiom, +Naming <: NamingStrategy]:
   self: Context[Dialect, Naming] =>
 
   type TranslateResult[T]

@@ -48,7 +48,7 @@ object CassandraZioContext {
  * in Scala2-Quill because presence of `prepare___` methods is not enforced. Due to stricter type requirements
  * in Dotty however, this is not allowed here.
  */
-class CassandraZioContext[N <: NamingStrategy](val naming: N)
+class CassandraZioContext[+N <: NamingStrategy](val naming: N)
   extends CassandraStandardContext[N]
   with ZioContext[CqlIdiom, N]
   with Context[CqlIdiom, N] {

@@ -44,7 +44,7 @@ import zio.ZIO.blocking
  * is being returned. In those situations the acquire-action-release pattern does not make any sense because the `PrepareStatement`
  * is only held open while it's host-connection exists.
  */
-abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
+abstract class ZioJdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
   with JdbcContextTypes[Dialect, Naming]
   with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
@@ -59,6 +59,8 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
   override type RunActionReturningResult[T] = T
   override type RunBatchActionResult = List[Long]
   override type RunBatchActionReturningResult[T] = List[T]
+
+  // Needed for TranslateContext in ProtoQuill
   override type Runner = Unit
   override type TranslateRunner = Unit
   override protected def context: Runner = ()
@@ -69,8 +71,7 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
   override type PrepareRow = PreparedStatement
   override type ResultRow = ResultSet
 
-  // No `translate` in Dotty yet
-  // override type TranslateResult[T] = ZIO[Environment, Error, T]
+  override type TranslateResult[T] = ZIO[Environment, Error, T]
   override type PrepareQueryResult = QCIO[PrepareRow]
   override type PrepareActionResult = QCIO[PrepareRow]
   override type PrepareBatchActionResult = QCIO[List[PrepareRow]]
@@ -118,10 +119,10 @@ abstract class ZioJdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] ext
   override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QIO[T] =
     onConnection(underlying.executeQuerySingle[T](sql, prepare, extractor)(info, dc))
 
-  override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: Runner): QIO[String] =
+  override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: Runner): TranslateResult[String] =
     onConnection(underlying.translateQueryEndpoint[T](statement, prepare, extractor, prettyPrint)(executionInfo, dc))
 
-  override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: Runner): QIO[List[String]] =
+  override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: Runner): TranslateResult[List[String]] =
     onConnection(underlying.translateBatchQueryEndpoint(groups.asInstanceOf[List[ZioJdbcContext.this.underlying.BatchGroup]], prettyPrint)(executionInfo, dc))
 
   def streamQuery[T](fetchSize: Option[Int], sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QStream[T] =
