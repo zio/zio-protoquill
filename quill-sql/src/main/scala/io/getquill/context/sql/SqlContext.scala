@@ -9,7 +9,7 @@ import io.getquill.context.Context
 import io.getquill.NamingStrategy
 import io.getquill.generic.EncodingDsl
 
-trait SqlContext[Idiom <: BaseIdiom, Naming <: NamingStrategy]
+trait SqlContext[+Idiom <: BaseIdiom, +Naming <: NamingStrategy]
     extends Context[Idiom, Naming]
     with EncodingDsl {
 

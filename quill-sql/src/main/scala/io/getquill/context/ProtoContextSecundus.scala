@@ -17,7 +17,7 @@ import io.getquill.quat.Quat
  * as a guard-rail against API drift i.e. so that the Scala2-Quill and ProtoQuill internal-context
  * APIs remain largely the same.
  */
-trait ProtoContextSecundus[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingStrategy] extends RowContext {
+trait ProtoContextSecundus[+Dialect <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy] extends RowContext {
   type PrepareRow
   type ResultRow
 
@@ -71,7 +71,7 @@ object ExecutionType {
   case object Unknown extends ExecutionType
 }
 
-trait ProtoStreamContext[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingStrategy] extends RowContext {
+trait ProtoStreamContext[+Dialect <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy] extends RowContext {
   type PrepareRow
   type ResultRow
 

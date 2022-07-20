@@ -7,7 +7,7 @@ import io.getquill.context.{ ExecutionInfo, ContextVerbPrepare, ContextVerbPrepa
 import java.sql._
 import io.getquill.util.ContextLogger
 
-trait JdbcContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy]
+trait JdbcContextBase[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   extends JdbcContextVerbExecute[Dialect, Naming]
   with JdbcContextVerbPrepare[Dialect, Naming]
   with ContextVerbPrepareLambda[Dialect, Naming] {

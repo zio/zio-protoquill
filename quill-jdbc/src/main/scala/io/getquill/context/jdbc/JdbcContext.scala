@@ -13,7 +13,7 @@ import io.getquill.Quoted
 import scala.annotation.targetName
 import io.getquill.context.ContextVerbTranslate
 
-abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
+abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   extends JdbcContextBase[Dialect, Naming]
   with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbTranslate[Dialect, Naming]

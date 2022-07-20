@@ -7,7 +7,7 @@ import io.getquill.norm.EqualityBehavior.NonAnsiEquality
 import io.getquill.context.sql.TestEncoders
 import io.getquill.context.sql.TestDecoders
 
-class TestMirrorContextTemplate[Dialect <: Idiom, Naming <: NamingStrategy](dialect: Dialect, naming: Naming)
+class TestMirrorContextTemplate[+Dialect <: Idiom, +Naming <: NamingStrategy](dialect: Dialect, naming: Naming)
   extends MirrorContext[Dialect, Naming](dialect, naming) with TestEntities {
 
   def withDialect[I <: Idiom](dialect: I)(f: TestMirrorContextTemplate[I, Naming] => Any): Unit = {

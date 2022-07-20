@@ -11,7 +11,7 @@ import io.getquill.util.ContextLogger
 trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   object Ctx extends PostgresZioJdbcContext(Literal)
   import Ctx._
-  lazy val zioDS = DataSourceLayer.fromPrefix("testPostgresDB")
+  lazy val zioDS = Quill.DataSource.fromPrefix("testPostgresDB")
 
   private val logger = ContextLogger(this.getClass)
 

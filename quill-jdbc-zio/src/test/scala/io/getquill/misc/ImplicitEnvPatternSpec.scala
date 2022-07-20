@@ -1,4 +1,4 @@
-package io.getquill.postgres
+package io.getquill.misc
 
 import io.getquill.{ JdbcContextConfig, PeopleZioSpec }
 
@@ -9,7 +9,7 @@ import io.getquill.util.LoadConfig
 import zio.ZIO
 import io.getquill._
 
-class ImplicitEnvPatternSpec extends PeopleZioSpec {
+class ImplicitEnvPatternSpec extends PeopleZioProxySpec {
 
   // Need to specify prefix to use for the setup
 
@@ -36,12 +36,12 @@ class ImplicitEnvPatternSpec extends PeopleZioSpec {
     def coras = testContext.run(query[Person].filter(p => p.name == "Cora"))
   }
 
-  def makeDataSource() = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
+  def makeDataSource() = io.getquill.postgres.pool
 
   "dataSource based context should fetch results" in {
     val (alexes, berts, coras) =
       ZIO.scoped {
-        ZIO.fromAutoCloseable(ZIO.attempt(makeDataSource())).flatMap { ds =>
+        ZIO.attempt(makeDataSource()).flatMap { ds =>
           for {
             svc <- ZIO.attempt(MyService(ds))
             alexes <- svc.alexes

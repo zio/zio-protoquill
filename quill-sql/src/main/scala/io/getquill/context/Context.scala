@@ -46,11 +46,11 @@ import io.getquill.OuterSelectWrap
 import io.getquill.generic.DecodeAlternate
 import com.typesafe.scalalogging.Logger
 
-trait ContextStandard[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]
+trait ContextStandard[+Idiom <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy]
     extends Context[Idiom, Naming]
     with ContextVerbPrepareLambda[Idiom, Naming]
 
-trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
+trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
     extends ProtoContextSecundus[Dialect, Naming] with EncodingDsl with Closeable:
   self =>
 

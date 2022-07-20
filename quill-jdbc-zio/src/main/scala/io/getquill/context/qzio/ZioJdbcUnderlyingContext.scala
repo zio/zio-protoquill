@@ -17,7 +17,7 @@ import scala.reflect.ClassTag
 import scala.util.Try
 import scala.annotation.targetName
 
-abstract class ZioJdbcUnderlyingContext[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
+abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
   with JdbcContextVerbExecute[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]

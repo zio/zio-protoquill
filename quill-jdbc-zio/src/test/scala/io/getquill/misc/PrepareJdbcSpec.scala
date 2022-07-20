@@ -1,4 +1,4 @@
-package io.getquill.postgres
+package io.getquill.misc
 
 import io.getquill.{ PrepareZioJdbcSpecBase, ZioSpec }
 import org.scalatest.BeforeAndAfter
@@ -6,7 +6,7 @@ import io.getquill._
 
 import java.sql.{ Connection, ResultSet }
 
-class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioSpec with BeforeAndAfter {
+class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioProxySpec with BeforeAndAfter {
 
   val context: testContext.type = testContext
   import testContext._

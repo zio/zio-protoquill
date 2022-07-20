@@ -349,7 +349,7 @@ lazy val basicSettings = Seq(
   //   //Tests.Argument(TestFrameworks.ScalaTest, "-h", "testresults")
   // ),
   scalacOptions ++= Seq(
-    "-language:implicitConversions",
+    "-language:implicitConversions", "-explain"
   )
 )
 

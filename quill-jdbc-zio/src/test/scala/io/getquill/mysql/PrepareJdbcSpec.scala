@@ -1,15 +1,18 @@
 package io.getquill.mysql
 
 import java.sql.{ Connection, ResultSet }
+import javax.sql.DataSource
 import io.getquill.PrepareZioJdbcSpecBase
+import io.getquill.context.qzio.ImplicitSyntax.Implicit
 
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
-  val context = testContext
-  import testContext._
+  implicit val ds: Implicit[DataSource] = Implicit(pool)
+  val context: testContext.underlying.type = testContext.underlying
+  import testContext.underlying._
 
   before {
     testContext.run(query[Product].delete).runSyncUnsafe()

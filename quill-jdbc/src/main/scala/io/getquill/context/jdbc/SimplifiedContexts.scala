@@ -5,7 +5,7 @@ import io.getquill._
 import io.getquill.context.ExecutionInfo
 import io.getquill.util.ContextLogger
 
-trait PostgresJdbcTypes[N <: NamingStrategy] extends JdbcContextTypes[PostgresDialect, N]
+trait PostgresJdbcTypes[+N <: NamingStrategy] extends JdbcContextTypes[PostgresDialect, N]
   with BooleanObjectEncoding
   with UUIDObjectEncoding
   with ArrayDecoders
@@ -21,21 +21,21 @@ trait PostgresJdbcTypes[N <: NamingStrategy] extends JdbcContextTypes[PostgresDi
   }
 }
 
-trait H2JdbcTypes[N <: NamingStrategy] extends JdbcContextTypes[H2Dialect, N]
+trait H2JdbcTypes[+N <: NamingStrategy] extends JdbcContextTypes[H2Dialect, N]
   with BooleanObjectEncoding
   with UUIDObjectEncoding {
 
   val idiom = H2Dialect
 }
 
-trait MysqlJdbcTypes[N <: NamingStrategy] extends JdbcContextTypes[MySQLDialect, N]
+trait MysqlJdbcTypes[+N <: NamingStrategy] extends JdbcContextTypes[MySQLDialect, N]
   with BooleanObjectEncoding
   with UUIDStringEncoding {
 
   val idiom = MySQLDialect
 }
 
-trait SqliteJdbcTypes[N <: NamingStrategy] extends JdbcContextTypes[SqliteDialect, N]
+trait SqliteJdbcTypes[+N <: NamingStrategy] extends JdbcContextTypes[SqliteDialect, N]
   with BooleanObjectEncoding
   with UUIDObjectEncoding {
 
@@ -44,7 +44,7 @@ trait SqliteJdbcTypes[N <: NamingStrategy] extends JdbcContextTypes[SqliteDialec
 
 /** Use extension in stead of self-pointer to `JdbcContextVerbExecute[SQLServerDialect, N]` here. Want identical
  * implementation to Scala2-Quill and doing it via self-pointer in Scala2-Quill will cause override-conflict errors in SqlServerExecuteOverride. */
-trait SqlServerExecuteOverride[N <: NamingStrategy] extends JdbcContextVerbExecute[SQLServerDialect, N] {
+trait SqlServerExecuteOverride[+N <: NamingStrategy] extends JdbcContextVerbExecute[SQLServerDialect, N] {
 
   private val logger = ContextLogger(classOf[SqlServerExecuteOverride[_]])
 
@@ -56,14 +56,14 @@ trait SqlServerExecuteOverride[N <: NamingStrategy] extends JdbcContextVerbExecu
     }
 }
 
-trait SqlServerJdbcTypes[N <: NamingStrategy] extends JdbcContextTypes[SQLServerDialect, N]
+trait SqlServerJdbcTypes[+N <: NamingStrategy] extends JdbcContextTypes[SQLServerDialect, N]
   with BooleanObjectEncoding
   with UUIDStringEncoding {
 
   val idiom = SQLServerDialect
 }
 
-trait OracleJdbcTypes[N <: NamingStrategy] extends JdbcContextTypes[OracleDialect, N]
+trait OracleJdbcTypes[+N <: NamingStrategy] extends JdbcContextTypes[OracleDialect, N]
   with BooleanIntEncoding
   with UUIDStringEncoding {
 
