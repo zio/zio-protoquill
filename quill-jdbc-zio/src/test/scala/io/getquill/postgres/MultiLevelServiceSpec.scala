@@ -7,9 +7,8 @@ import zio.{ Unsafe, ZIO, ZLayer }
 import java.sql.SQLException
 import javax.sql.DataSource
 
-case class Person(name: String, age: Int) //
-
 class MultiLevelServiceSpec extends ZioSpec {
+  case class Person(name: String, age: Int)
 
   val context: testContext.type = testContext
   import testContext._

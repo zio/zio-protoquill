@@ -349,9 +349,8 @@ lazy val basicSettings = Seq(
   //   //Tests.Argument(TestFrameworks.ScalaTest, "-h", "testresults")
   // ),
   scalacOptions ++= Seq(
-    "-language:implicitConversions"
+    "-language:implicitConversions", "-explain"
   )
-  // Add -explain here for more detil
 )
 
 lazy val releaseSettings = ReleasePlugin.extraReleaseCommands ++ Seq(
