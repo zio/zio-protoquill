@@ -1,5 +1,7 @@
 package io.getquill.sqlite
 
+import io.getquill.context.qzio.ImplicitSyntax.Implicit
+import javax.sql.DataSource
 import java.sql.{ Connection, ResultSet }
 import io.getquill.PrepareZioJdbcSpecBase
 
@@ -8,8 +10,9 @@ import io.getquill._
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
-  val context: testContext.type = testContext
-  import testContext._
+  implicit val ds: Implicit[DataSource] = Implicit(pool)
+  val context: testContext.underlying.type = testContext.underlying
+  import testContext.underlying._
 
   before {
     testContext.run(query[Product].delete).runSyncUnsafe()

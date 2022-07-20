@@ -6,14 +6,14 @@ import zio._
 import io.getquill.context.qzio.ResultSetIterator
 import io.getquill._
 import io.getquill.postgres._
+import io.getquill.context.qzio.ImplicitSyntax.Implicit
 
 import scala.collection.mutable.ArrayBuffer
 import javax.sql.DataSource
 
-class ResultSetIteratorSpec extends ZioSpec {
+class ResultSetIteratorSpec extends ZioProxySpec {
 
-  val ds = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
-
+  implicit val pool: Implicit[DataSource] = Implicit(io.getquill.postgres.pool)
   val ctx = new PostgresZioJdbcContext(Literal)
   import ctx._
 

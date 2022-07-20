@@ -1,4 +1,4 @@
-package io.getquill.postgres
+package io.getquill.misc
 
 import io.getquill.context.ZioJdbc._
 import io.getquill.ZioSpec
@@ -7,7 +7,7 @@ import io.getquill._
 
 import javax.sql.DataSource
 
-class ZioJdbcUnderlyingContextSpec extends ZioSpec {
+class ZioJdbcUnderlyingContextSpec extends ZioProxySpec {
 
   val context = testContext.underlying
   import testContext.underlying._
@@ -35,7 +35,7 @@ class ZioJdbcUnderlyingContextSpec extends ZioSpec {
           } yield qry
         }
         r <- testContext.underlying.run(qr1)
-      } yield r).onSomeDataSource.provideSomeLayer(ZLayer.service[DataSource] >>> ZLayer.succeed(33)).runSyncUnsafe().map(_.i) mustEqual List(33)
+      } yield r).onSomeDataSource.provideSomeLayer(ZLayer.succeed(33)).runSyncUnsafe().map(_.i) mustEqual List(33)
     }
     "success - stream" in {
       (for {

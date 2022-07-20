@@ -5,7 +5,8 @@ import org.scalatest.matchers.should.Matchers._
 import io.getquill._
 
 import io.getquill.context.ZioJdbc._
-import io.getquill.postgres._ // Implicitly use the postgres connection pool
+import io.getquill.context.qzio.ImplicitSyntax.Implicit
+import javax.sql.DataSource
 
 /**
  * This is a long-running test that will cause a OutOfMemory exception if
@@ -17,7 +18,8 @@ import io.getquill.postgres._ // Implicitly use the postgres connection pool
  *
  * As a default, this test will run as part of the suite without blowing up.
  */
-class StreamResultsOrBlowUpSpec extends ZioSpec {
+class StreamResultsOrBlowUpSpec extends ZioProxySpec {
+  implicit val pool: Implicit[DataSource] = Implicit(io.getquill.postgres.pool)
 
   case class Person(name: String, age: Int)
 

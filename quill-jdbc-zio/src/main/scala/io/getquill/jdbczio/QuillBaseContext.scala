@@ -44,7 +44,7 @@ trait QuillBaseContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends 
   override type TranslateResult[T] = ZIO[Environment, Error, T]
   override type Session = Connection
 
-  lazy val underlying: ZioJdbcContext[Dialect, Naming] = dsDelegate
+  final lazy val underlying: ZioJdbcContext[Dialect, Naming] = dsDelegate
   private[getquill] val dsDelegate: ZioJdbcContext[Dialect, Naming]
 
   override def close() = ()

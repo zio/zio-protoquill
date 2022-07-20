@@ -12,7 +12,7 @@ class PostgresZioJdbcContext[+N <: NamingStrategy](val naming: N)
   extends ZioJdbcContext[PostgresDialect, N]
   with PostgresJdbcTypes[N] {
 
-  val underlying: ZioJdbcUnderlyingContext[PostgresDialect, N] = new PostgresZioJdbcContext.Underlying[N](naming)
+  val connDelegate: ZioJdbcUnderlyingContext[PostgresDialect, N] = new PostgresZioJdbcContext.Underlying[N](naming)
 }
 object PostgresZioJdbcContext {
   class Underlying[+N <: NamingStrategy](val naming: N)
@@ -24,7 +24,7 @@ class SqlServerZioJdbcContext[+N <: NamingStrategy](val naming: N)
   extends ZioJdbcContext[SQLServerDialect, N]
   with SqlServerJdbcTypes[N] {
 
-  val underlying: ZioJdbcUnderlyingContext[SQLServerDialect, N] = new SqlServerZioJdbcContext.Underlying[N](naming)
+  val connDelegate: ZioJdbcUnderlyingContext[SQLServerDialect, N] = new SqlServerZioJdbcContext.Underlying[N](naming)
 }
 
 object SqlServerZioJdbcContext {
@@ -38,7 +38,7 @@ class H2ZioJdbcContext[+N <: NamingStrategy](val naming: N)
   extends ZioJdbcContext[H2Dialect, N]
   with H2JdbcTypes[N] {
 
-  val underlying: ZioJdbcUnderlyingContext[H2Dialect, N] = new H2ZioJdbcContext.Underlying[N](naming)
+  val connDelegate: ZioJdbcUnderlyingContext[H2Dialect, N] = new H2ZioJdbcContext.Underlying[N](naming)
 }
 object H2ZioJdbcContext {
   class Underlying[+N <: NamingStrategy](val naming: N)
@@ -50,7 +50,7 @@ class MysqlZioJdbcContext[+N <: NamingStrategy](val naming: N)
   extends ZioJdbcContext[MySQLDialect, N]
   with MysqlJdbcTypes[N] {
 
-  val underlying: ZioJdbcUnderlyingContext[MySQLDialect, N] = new MysqlZioJdbcContext.Underlying[N](naming)
+  val connDelegate: ZioJdbcUnderlyingContext[MySQLDialect, N] = new MysqlZioJdbcContext.Underlying[N](naming)
 }
 object MysqlZioJdbcContext {
   class Underlying[+N <: NamingStrategy](val naming: N)
@@ -62,7 +62,7 @@ class SqliteZioJdbcContext[+N <: NamingStrategy](val naming: N)
   extends ZioJdbcContext[SqliteDialect, N]
   with SqliteJdbcTypes[N] {
 
-  val underlying: ZioJdbcUnderlyingContext[SqliteDialect, N] = new SqliteZioJdbcContext.Underlying[N](naming)
+  val connDelegate: ZioJdbcUnderlyingContext[SqliteDialect, N] = new SqliteZioJdbcContext.Underlying[N](naming)
 }
 object SqliteZioJdbcContext {
   class Underlying[+N <: NamingStrategy](val naming: N)
@@ -74,7 +74,7 @@ class OracleZioJdbcContext[+N <: NamingStrategy](val naming: N)
   extends ZioJdbcContext[OracleDialect, N]
   with OracleJdbcTypes[N] {
 
-  val underlying: ZioJdbcUnderlyingContext[OracleDialect, N] = new OracleZioJdbcContext.Underlying[N](naming)
+  val connDelegate: ZioJdbcUnderlyingContext[OracleDialect, N] = new OracleZioJdbcContext.Underlying[N](naming)
 }
 object OracleZioJdbcContext {
   class Underlying[+N <: NamingStrategy](val naming: N)
