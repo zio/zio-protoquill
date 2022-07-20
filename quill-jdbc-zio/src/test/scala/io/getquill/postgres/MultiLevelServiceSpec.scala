@@ -6,22 +6,33 @@ import zio.{ Unsafe, ZIO, ZLayer }
 
 import java.sql.SQLException
 import javax.sql.DataSource
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.must.Matchers
 
-class MultiLevelServiceSpec extends ZioSpec {
+object MultiLevelServiceSpec {
   case class Person(name: String, age: Int)
+}
 
-  val context: testContext.type = testContext
-  import testContext._
+class MultiLevelServiceSpec extends AnyFreeSpec with BeforeAndAfterAll with Matchers {
+  import MultiLevelServiceSpec._
+
   val entries = List(Person("Joe", 1), Person("Jack", 2))
 
   override def beforeAll() = {
     super.beforeAll()
-    testContext.transaction {
-      for {
-        _ <- testContext.run(query[Person].delete)
-        _ <- testContext.run(liftQuery(entries).foreach(p => query[Person].insertValue(p)))
-      } yield ()
-    }.runSyncUnsafe() //
+    val testContext = new Quill.PostgresService(Literal, io.getquill.postgres.pool)
+    import testContext._
+    Unsafe.unsafe {
+      zio.Runtime.default.unsafe.run(
+        testContext.transaction {
+          for {
+            _ <- testContext.run(query[Person].delete)
+            _ <- testContext.run(liftQuery(entries).foreach(p => query[Person].insertValue(p)))
+          } yield ()
+        }
+      ).getOrThrow()
+    }
   }
 
   case class DataService(quill: Quill[PostgresDialect, Literal]) {
