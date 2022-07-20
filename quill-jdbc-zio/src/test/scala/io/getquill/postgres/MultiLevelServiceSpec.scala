@@ -7,9 +7,9 @@ import zio.{ Unsafe, ZIO, ZLayer }
 import java.sql.SQLException
 import javax.sql.DataSource
 
-case class Person(name: String, age: Int)
+case class Person(name: String, age: Int) //
 
-class MultiLevelServiceSpec extends PeopleZioSpec with ZioSpec {
+class MultiLevelServiceSpec extends ZioSpec {
 
   val context: testContext.type = testContext
   import testContext._
@@ -20,7 +20,7 @@ class MultiLevelServiceSpec extends PeopleZioSpec with ZioSpec {
     testContext.transaction {
       for {
         _ <- testContext.run(query[Person].delete)
-        _ <- testContext.run(liftQuery(entries).foreach(p => peopleInsert(p)))
+        _ <- testContext.run(liftQuery(entries).foreach(p => query[Person].insertValue(p)))
       } yield ()
     }.runSyncUnsafe() //
   }
@@ -33,7 +33,7 @@ class MultiLevelServiceSpec extends PeopleZioSpec with ZioSpec {
     //inline def peopleByNameNative2(inline name: String) = quote { people.filter(p => p.name == name) }
     inline def peopleByName = quote { (name: String) => people.filter(p => p.name == name) }
     def getAllPeople(): ZIO[Any, SQLException, List[Person]] = qrun(people)
-    def getPeopleByName(name: String): ZIO[Any, SQLException, List[Person]] = qrun(query[Person].filter(p => p.name == lift(name)))
+    def getPeopleByName(name: String): ZIO[Any, SQLException, List[Person]] = qrun(peopleByName(lift(name)))
   }
   case class ApplicationLive(dataService: DataService) {
     import dataService._

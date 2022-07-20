@@ -92,5 +92,5 @@ trait CassandraRowContext extends RowContext {
   implicit val nullChecker: NullChecker = new CassandraNullChecker()
 
   // Usually this is io.getquill.context.CassandraSession so you can use udtValueOf but not always e.g. for Lagom it is different
-  type Sessio+N <: UdtValueLookup
+  type Session <: UdtValueLookup
 }
