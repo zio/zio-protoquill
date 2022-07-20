@@ -33,10 +33,7 @@ class MultiLevelServiceSpec extends PeopleZioSpec with ZioSpec {
     //inline def peopleByNameNative2(inline name: String) = quote { people.filter(p => p.name == name) }
     inline def peopleByName = quote { (name: String) => people.filter(p => p.name == name) }
     def getAllPeople(): ZIO[Any, SQLException, List[Person]] = qrun(people)
-    def getPeopleByName(name: String): ZIO[Any, SQLException, List[Person]] = {
-      io.getquill.util.debug.PrintMac(people.filter(p => p.name == lift(name)))
-      qrun(people.filter(p => p.name == lift(name)))
-    }
+    def getPeopleByName(name: String): ZIO[Any, SQLException, List[Person]] = qrun(query[Person].filter(p => p.name == lift(name)))
   }
   case class ApplicationLive(dataService: DataService) {
     import dataService._
@@ -62,30 +59,31 @@ class MultiLevelServiceSpec extends PeopleZioSpec with ZioSpec {
     def getAllPeople() = ZIO.serviceWithZIO[ApplicationLive](_.getAllPeople())
   }
 
-  // "All Composition variations must work" in {
+  "All Composition variations must work" in {
 
-  //   val dataSourceLive = ZLayer.succeed(io.getquill.postgres.pool)
-  //   val postgresServiceLive = ZLayer.fromFunction(Quill.PostgresService(Literal, _: DataSource))
+    val dataSourceLive = ZLayer.succeed(io.getquill.postgres.pool)
+    val postgresServiceLive = ZLayer.fromFunction(Quill.PostgresService(Literal, _: DataSource))
+    val combinedLayer = dataSourceLive >>> postgresServiceLive >>> dataServiceLive >>> applicationLive
 
-  //   val (a, b, c, d, e) =
-  //     Unsafe.unsafe {
-  //       zio.Runtime.default.unsafe.run(
-  //         (for {
-  //           a <- Application.getJoes()
-  //           b <- Application.getPeopleByName("Joe")
-  //           c <- Application.getPeopleByName2("Joe")
-  //           c1 <- Application.getPeopleByName2A("Joe")
-  //           d <- Application.getPeopleByName3("Joe")
-  //           e <- Application.getAllPeople()
-  //         } yield (a, b, c, d, e)).provide(applicationLive, dataServiceLive, dataSourceLive, postgresServiceLive)
-  //       ).getOrThrow()
-  //     }
+    val (a, b, c, d, e) =
+      Unsafe.unsafe {
+        zio.Runtime.default.unsafe.run(
+          (for {
+            a <- Application.getJoes()
+            b <- Application.getPeopleByName("Joe")
+            c <- Application.getPeopleByName2("Joe")
+            c1 <- Application.getPeopleByName2A("Joe")
+            d <- Application.getPeopleByName3("Joe")
+            e <- Application.getAllPeople()
+          } yield (a, b, c, d, e)).provideLayer(combinedLayer)
+        ).getOrThrow()
+      }
 
-  //   val joes = entries.filter(_.name == "Joe")
-  //   a mustEqual joes
-  //   b mustEqual joes
-  //   c mustEqual joes
-  //   d mustEqual joes
-  //   e.toSet mustEqual entries.toSet
-  // }
+    val joes = entries.filter(_.name == "Joe")
+    a mustEqual joes
+    b mustEqual joes
+    c mustEqual joes
+    d mustEqual joes
+    e.toSet mustEqual entries.toSet
+  }
 }
