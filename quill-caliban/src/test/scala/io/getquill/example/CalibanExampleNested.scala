@@ -5,7 +5,7 @@ import caliban.schema.Annotations.GQLDescription
 import caliban.{RootResolver, ZHttpAdapter}
 import zhttp.http._
 import zhttp.service.Server
-import zio.{ExitCode, ZEnv, ZIO}
+import zio.{ExitCode, ZIO}
 import io.getquill._
 import io.getquill.context.qzio.ImplicitSyntax._
 import io.getquill.context.ZioJdbc._
@@ -97,7 +97,7 @@ object CalibanExampleNested extends zio.ZIOAppDefault:
     interpreter <- endpoints
     _ <- Server.start(
         port = 8088,
-        http = Http.route[Request] { case _ -> Root / "api" / "graphql" =>
+        http = Http.collectHttp[Request] { case _ -> !! / "api" / "graphql" =>
           ZHttpAdapter.makeHttpService(interpreter)
         }
       )
