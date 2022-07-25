@@ -1,7 +1,7 @@
 package io.getquill.context.jdbc
 
 import java.sql.{ Date, Timestamp, Types }
-import java.time.{ LocalDate, LocalDateTime }
+import java.time.{ Instant, LocalDate, LocalDateTime }
 import java.util.{ Calendar, TimeZone }
 import java.{ sql, util }
 
@@ -11,7 +11,7 @@ import io.getquill.MappedEncoding
 // Need to add this to extend EncodingDsl which now defines Encoder[T] and Decoder[T]
 // in terms of GenericEncoder/GenericDecoder. Will need to add GenericEncoder to quill-core-portable
 // and redefine encoders in this way to get cross-portability
-import io.getquill.generic._
+import io.getquill.generic.*
 
 trait Encoders extends EncodingDsl {
   this: JdbcContextTypes[_, _] =>
@@ -68,4 +68,7 @@ trait Encoders extends EncodingDsl {
   implicit val localDateTimeEncoder: Encoder[LocalDateTime] =
     encoder(Types.TIMESTAMP, (index, value, row) =>
       row.setTimestamp(index, Timestamp.valueOf(value), Calendar.getInstance(dateTimeZone)))
+  implicit val instantEncoder: Encoder[Instant] =
+    encoder(Types.TIMESTAMP, (index, value, row) =>
+      row.setTimestamp(index, Timestamp.from(value)))
 }
