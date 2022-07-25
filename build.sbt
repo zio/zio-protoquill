@@ -221,7 +221,7 @@ lazy val `quill-caliban` =
         "com.github.ghostdogpr" %% "caliban-zio-http"   % "1.3.3",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
-        "ch.qos.logback" % "logback-classic" % "1.2.11" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
         "io.d11" %% "zhttp"      % "1.0.0.0-RC17" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
