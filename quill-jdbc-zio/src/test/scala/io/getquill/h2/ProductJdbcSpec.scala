@@ -1,13 +1,12 @@
 package io.getquill.h2
 
 import io.getquill.ZioSpec
-import io.getquill.Prefix
+
 import io.getquill.context.sql.ProductSpec
 import io.getquill._
 
 class ProductJdbcSpec extends ProductSpec with ZioSpec {
 
-  def prefix = Prefix("testH2DB")
   val context = testContext
   import testContext._
 

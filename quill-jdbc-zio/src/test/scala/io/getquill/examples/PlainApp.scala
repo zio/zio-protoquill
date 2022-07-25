@@ -2,8 +2,9 @@ package io.getquill.examples
 
 import io.getquill.{ Literal, PostgresZioJdbcContext }
 import io.getquill.context.ZioJdbc._
-import zio.Runtime
+import zio.{ Runtime, Unsafe }
 import io.getquill._
+import io.getquill.jdbczio.Quill
 
 object PlainApp {
 
@@ -12,7 +13,7 @@ object PlainApp {
 
   case class Person(name: String, age: Int)
 
-  val zioDS = DataSourceLayer.fromPrefix("testPostgresDB")
+  val zioDS = Quill.DataSource.fromPrefix("testPostgresDB")
 
   def main(args: Array[String]): Unit = {
     val people = quote {
@@ -20,10 +21,12 @@ object PlainApp {
     }
     val qzio =
       MyPostgresContext.run(people)
-        .tap(result => zio.Task(println(result.toString)))
+        .tap(result => zio.ZIO.attempt(println(result.toString)))
         .provideLayer(zioDS)
 
-    Runtime.default.unsafeRun(qzio)
+    Unsafe.unsafe {
+      Runtime.default.unsafe.run(qzio).getOrThrow()
+    }
     ()
   }
 }

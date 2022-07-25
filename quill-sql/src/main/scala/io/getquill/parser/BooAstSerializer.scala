@@ -71,6 +71,7 @@ object AstPicklers {
       .addConcreteType[ConcatMap]
       .addConcreteType[SortBy]
       .addConcreteType[GroupBy]
+      .addConcreteType[GroupByMap]
       .addConcreteType[Aggregation]
       .addConcreteType[Take]
       .addConcreteType[Drop]

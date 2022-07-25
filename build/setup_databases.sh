@@ -48,6 +48,13 @@ java -cp 'sqlline/sqlline.jar:sqlline/ojdbc.jar' 'sqlline.SqlLine' \
   -f "$ORACLE_SCRIPT" \
   --showWarnings=false
 
+echo "Extending Oracle Expirations"
+java -cp 'sqlline/sqlline.jar:sqlline/ojdbc.jar' 'sqlline.SqlLine' \
+  -u 'jdbc:oracle:thin:@localhost:11521:xe' \
+  -n quill_test -p 'QuillRocks!' \
+  -e "alter profile DEFAULT limit PASSWORD_REUSE_TIME unlimited; alter profile DEFAULT limit PASSWORD_LIFE_TIME  unlimited; alter profile DEFAULT limit PASSWORD_GRACE_TIME unlimited;" \
+  --showWarnings=false
+
 sleep 2;
 
 echo "Oracle Setup Complete"

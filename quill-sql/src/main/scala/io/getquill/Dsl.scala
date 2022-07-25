@@ -4,7 +4,6 @@ import io.getquill.ast.Ast
 import io.getquill.parser._
 import scala.quoted._
 import scala.annotation.StaticAnnotation
-import io.getquill.util.printer.AstPrinter
 import scala.deriving._
 import io.getquill.generic.GenericEncoder
 import io.getquill.parser.ParserFactory
@@ -44,6 +43,15 @@ extension (str: String) {
 
 inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
 inline def select[T]: Query[T] = ${ QueryMacro[T] }
+
+def max[A](a: A): A = NonQuotedException()
+def min[A](a: A): A = NonQuotedException()
+def count[A](a: A): A = NonQuotedException()
+def avg[A](a: A)(implicit n: Numeric[A]): BigDecimal = NonQuotedException()
+def sum[A](a: A)(implicit n: Numeric[A]): A = NonQuotedException()
+
+def avg[A](a: Option[A])(implicit n: Numeric[A]): Option[BigDecimal] = NonQuotedException()
+def sum[A](a: Option[A])(implicit n: Numeric[A]): Option[A] = NonQuotedException()
 
 extension [T](o: Option[T])
   def filterIfDefined(f: T => Boolean): Boolean = NonQuotedException()

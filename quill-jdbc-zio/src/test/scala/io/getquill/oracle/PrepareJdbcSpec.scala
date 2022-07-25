@@ -2,15 +2,17 @@ package io.getquill.oracle
 
 import java.sql.ResultSet
 import io.getquill.PrepareZioJdbcSpecBase
-import io.getquill.Prefix
+import io.getquill.context.qzio.ImplicitSyntax.Implicit
+import javax.sql.DataSource
+
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
-  def prefix = Prefix("testOracleDB")
-  val context: testContext.type = testContext
-  import testContext._
+  implicit val ds: Implicit[DataSource] = Implicit(pool)
+  val context: testContext.underlying.type = testContext.underlying
+  import testContext.underlying._
 
   before {
     testContext.run(query[Product].delete).runSyncUnsafe()
@@ -21,7 +23,7 @@ class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
   "single" in {
     val prepareInsert = prepare(query[Product].insertValue(lift(productEntries.head)))
     singleInsert(prepareInsert) mustEqual false
-    extractProducts(prepareQuery) === List(productEntries.head)
+    extractProducts(prepareQuery) must contain theSameElementsAs List(productEntries.head)
   }
 
   "batch" in {
@@ -30,6 +32,6 @@ class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
     )
 
     batchInsert(prepareBatchInsert).distinct mustEqual List(false)
-    extractProducts(prepareQuery) === withOrderedIds(productEntries)
+    extractProducts(prepareQuery) must contain theSameElementsAs withOrderedIds(productEntries)
   }
 }

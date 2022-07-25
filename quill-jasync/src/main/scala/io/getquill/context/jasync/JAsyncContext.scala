@@ -18,7 +18,7 @@ import scala.util.Try
 import io.getquill.context.ExecutionInfo
 import io.getquill.context.RunnerSummoningBehavior
 
-abstract class JAsyncContext[D <: SqlIdiom, N <: NamingStrategy, C <: ConcreteConnection](val idiom: D, val naming: N, pool: ConnectionPool[C])
+abstract class JAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: ConcreteConnection](val idiom: D, val naming: N, pool: ConnectionPool[C])
   extends JAsyncContextBase[D, N]
   with ContextVerbTranslate[D, N]
 {

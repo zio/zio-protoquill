@@ -27,7 +27,7 @@ import io.getquill.context.ProtoContextSecundus
 import scala.annotation.targetName
 
 /** Base trait from which vendor-specific variants are derived. */
-trait DoobieContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy]
+trait DoobieContextBase[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   extends JdbcContextTypes[Dialect, Naming]
     with ProtoContextSecundus[Dialect, Naming]
     with ContextVerbStream[Dialect, Naming] {

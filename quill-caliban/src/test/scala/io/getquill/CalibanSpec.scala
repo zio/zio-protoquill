@@ -6,12 +6,13 @@ import org.scalatest.matchers.must.Matchers
 import zio.{ZIO, Task}
 import caliban.GraphQL
 import io.getquill.context.ZioJdbc.DataSourceLayer
+import io.getquill.jdbczio.Quill
 import io.getquill.util.ContextLogger
 
 trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   object Ctx extends PostgresZioJdbcContext(Literal)
   import Ctx._
-  lazy val zioDS = DataSourceLayer.fromPrefix("testPostgresDB")
+  lazy val zioDS = Quill.DataSource.fromPrefix("testPostgresDB")
 
   private val logger = ContextLogger(this.getClass)
 
@@ -33,8 +34,11 @@ trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
 
   def api: GraphQL[Any]
 
-  extension [R, E, A](qzio: ZIO[Any, Throwable, A])
-    def unsafeRunSync(): A = zio.Runtime.default.unsafeRun(qzio)
+  extension [A](qzio: ZIO[Any, Throwable, A])
+    def unsafeRunSync(): A =
+      zio.Unsafe.unsafe {
+        zio.Runtime.default.unsafe.run(qzio).getOrThrow()
+      }
 
   def unsafeRunQuery(queryString: String) =
     val output =
