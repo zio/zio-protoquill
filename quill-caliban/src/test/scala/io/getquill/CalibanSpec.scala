@@ -19,7 +19,7 @@ trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   override def beforeAll() = {
     import FlatSchema._
     (for {
-        _ <- Ctx.run(infix"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
+        _ <- Ctx.run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
         _ <- Ctx.run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insertValue(row)))
         _ <- Ctx.run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insertValue(row)))
       } yield ()
@@ -28,7 +28,7 @@ trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
 
   // override def afterAll() = {
   //   import FlatSchema._
-  //   Ctx.run(infix"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]]).provideLayer(zioDS).unsafeRunSync()
+  //   Ctx.run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]]).provideLayer(zioDS).unsafeRunSync()
   // }
 
   def api: GraphQL[Any]

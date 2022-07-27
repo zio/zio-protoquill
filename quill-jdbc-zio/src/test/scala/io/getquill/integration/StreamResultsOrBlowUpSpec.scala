@@ -43,9 +43,9 @@ class StreamResultsOrBlowUpSpec extends ZioProxySpec {
   import ctx.{ run => runQuill, _ }
   val inserts = quote {
     (numRows: Long) =>
-      infix"""insert into person (name, age) select md5(random()::text), random()*10+1 from generate_series(1, ${numRows}) s(i)""".as[Insert[Int]]
+      sql"""insert into person (name, age) select md5(random()::text), random()*10+1 from generate_series(1, ${numRows}) s(i)""".as[Insert[Int]]
   }
-  val deletes = runQuill { infix"TRUNCATE TABLE Person".as[Delete[Person]] }
+  val deletes = runQuill { sql"TRUNCATE TABLE Person".as[Delete[Person]] }
 
   val numRows = 1000000L
 
@@ -70,6 +70,7 @@ class StreamResultsOrBlowUpSpec extends ZioProxySpec {
 
     result should be > numRows
     deletes.onDataSource.runSyncUnsafe()
+    println("hello")
   }
 
   // Note, to actually have no chunking, remove the 100 in stream(query[Person], 100) and run with a small memory size e.g. -Xmx50m

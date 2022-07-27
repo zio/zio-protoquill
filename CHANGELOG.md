@@ -135,7 +135,7 @@ This change lines up the zio-jdbc modules with the latest 3.10.0 line. Various f
 
 * Kryo-Serialize entire AST. Further improves performance.
 * Allow `x -> y` syntax for constructing tuples.
-* Allow `infix"..."` without `.as[...]` in some needed cases.
+* Allow `sql"..."` without `.as[...]` in some needed cases.
 
 # 3.7.1.Beta1.1
 

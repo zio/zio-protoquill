@@ -49,6 +49,18 @@ implicit class InfixInterpolator(val sc: StringContext) {
   def infix(args: Any*): InfixValue = NonQuotedException()
 }
 
+implicit class SqlInfixInterpolator(val sc: StringContext) {
+  // @compileTimeOnly(NonQuotedException.message)
+  def sql(args: Any*): InfixValue = NonQuotedException()
+}
+
+object compat {
+  implicit class QsqlInfixInterpolator(val sc: StringContext) {
+    // @compileTimeOnly(NonQuotedException.message)
+    def qsql(args: Any*): InfixValue = NonQuotedException()
+  }
+}
+
 case class InjectableEagerPlanter[T, PrepareRow, Session](inject: _ => T, encoder: GenericEncoder[T, PrepareRow, Session], uid: String) extends Planter[T, PrepareRow, Session] {
   // This is the equivalent of InjectableEagerPlanterExpr's 'inject' method only for dynamic batch queries
   // TODO Try changing to Any => T and see if exceptions happen anywhere

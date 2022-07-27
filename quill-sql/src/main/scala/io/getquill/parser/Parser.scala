@@ -689,6 +689,13 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
         case _                                                           => false
 
   private object InfixComponents:
+    object InterpolatorClause:
+      def unapply(expr: Expr[_]) =
+        expr match
+          case '{ InfixInterpolator($partsExpr).infix(${ Varargs(params) }: _*) } => Some((partsExpr, params))
+          case '{ SqlInfixInterpolator($partsExpr).sql(${ Varargs(params) }: _*) } => Some((partsExpr, params))
+          case '{ compat.QsqlInfixInterpolator($partsExpr).qsql(${ Varargs(params) }: _*) } => Some((partsExpr, params))
+
     def unapply(expr: Expr[_]): Option[(Seq[String], Seq[Expr[Any]])] =
       expr match
         // Discovered from cassandra context that nested infix clauses can have an odd form with the method infix$generic$i2 e.g:
@@ -696,21 +703,22 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
         // maybe need to add this to the general parser?
         case Unseal(TApply(InlineGenericIdent(), List(value))) =>
           unapply(value.asExpr)
-        case '{ InfixInterpolator($partsExpr).infix(${ Varargs(params) }: _*) } =>
+        case InterpolatorClause(partsExpr, params) =>
           val parts = StringContextExpr.unapply(partsExpr).getOrElse { failParse(partsExpr, "Cannot parse a valid StringContext") }
           Some((parts, params))
         case _ =>
           None
+  end InfixComponents
 
   private object PrepareDynamicInfix:
     def apply(parts: List[String], params: List[Expr[Any]])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History): Dynamic =
       // Basically the way it works is like this
       //
-      // infix"foo#${bar}baz" becomes:
+      // sql"foo#${bar}baz" becomes:
       //   InfixInterpolator(List("foo#", "baz"), List(bar:Expr)) should become:
       //   List( Part('{"foo" /*# is dropped*/ + String.valueOf($bar:Expr)}), Part('{"baz"}) )
       //
-      // infix"foo${bar}baz" becomes:
+      // sql"foo${bar}baz" becomes:
       //   InfixInterpolator(List("foo", "baz"), List(bar:Expr)) should become:
       //   List( Part('{"foo"}), Param(bar:Expr), Part('{"baz"})  )
       import InfixElement._
@@ -727,7 +735,7 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
               Part(Expr(part)) :: Param(params(index)) :: Nil
             }
           // We are on the last element (i.e. no more params after this)
-          // there cannot be a # here because it could not come before the dollar sign i.e. infix"#${param} #no more params here"
+          // there cannot be a # here because it could not come before the dollar sign i.e. sql"#${param} #no more params here"
           case (part, index) =>
             Part(Expr(part)) :: Nil
         }

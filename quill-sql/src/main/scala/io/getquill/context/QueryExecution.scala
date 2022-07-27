@@ -187,7 +187,7 @@ object QueryExecution:
           if (!(TypeRepr.of[T] =:= TypeRepr.of[Any]))
             applyActionReturning(quotedOp) // ReturningAction is also a subtype of Action so check it before Action
           else
-            // In certain situations (i.e. if a user does infix"stuff".as[Action[Stuff]] something will be directly specified
+            // In certain situations (i.e. if a user does sql"stuff".as[Action[Stuff]] something will be directly specified
             // as an Action[T] without there being a `& QAC[T, Nothing]` as part of the type. In that case, the `ModificationEntity`
             // will just be `Any`. We need to manually detect that case since it requires no return type)
             applyAction(quotedOp)
