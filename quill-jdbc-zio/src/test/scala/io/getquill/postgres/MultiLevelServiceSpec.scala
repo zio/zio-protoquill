@@ -21,7 +21,7 @@ class MultiLevelServiceSpec extends AnyFreeSpec with BeforeAndAfterAll with Matc
 
   override def beforeAll() = {
     super.beforeAll()
-    val testContext = new Quill.PostgresService(Literal, io.getquill.postgres.pool)
+    val testContext = new Quill.Postgres(Literal, io.getquill.postgres.pool)
     import testContext._
     Unsafe.unsafe {
       zio.Runtime.default.unsafe.run(
@@ -72,8 +72,8 @@ class MultiLevelServiceSpec extends AnyFreeSpec with BeforeAndAfterAll with Matc
   "All Composition variations must work" in {
 
     val dataSourceLive = ZLayer.succeed(io.getquill.postgres.pool)
-    val postgresServiceLive = ZLayer.fromFunction(Quill.PostgresService(Literal, _: DataSource))
-    val combinedLayer = dataSourceLive >>> postgresServiceLive >>> dataServiceLive >>> applicationLive
+    val postgresLive = ZLayer.fromFunction(Quill.Postgres(Literal, _: DataSource))
+    val combinedLayer = dataSourceLive >>> postgresLive >>> dataServiceLive >>> applicationLive
 
     val (a, b, c, d, e) =
       Unsafe.unsafe {
