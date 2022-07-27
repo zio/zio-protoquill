@@ -11,12 +11,12 @@ object SimpleBatchWithInfix extends Spec {
   given SplicingBehaviorHint with
     override type BehaviorType = SplicingBehavior.FailOnDynamic
 
-  "batch must work with simple infix" in {
+  "batch must work with simple sql" in {
     case class Person[T](name: String, age: Int)
     val names = List("Joe", "Jack")
     inline def q = quote {
       query[Person[String]].filter(p =>
-        liftQuery(names).contains(p.name) && infix"fun(${p.name})".pure.as[Boolean]
+        liftQuery(names).contains(p.name) && sql"fun(${p.name})".pure.as[Boolean]
       )
     }
     ctx.run(q).triple mustEqual (

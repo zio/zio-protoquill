@@ -21,10 +21,10 @@ class InfixTest extends Spec with Inside {
       case f: Function => f.body
       case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
 
-  "infix" - {
+  "sql" - {
     "with `as`" in {
       inline def q = quote {
-        infix"true".as[Boolean]
+        sql"true".as[Boolean]
       }
       val i = Infix(List("true"), Nil, false, false, Quat.BooleanValue)
       quote(unquote(q)).ast mustEqual i
@@ -32,7 +32,7 @@ class InfixTest extends Spec with Inside {
     }
     "with `as` and `generic`" in {
       inline def q = quote {
-        infix"true".generic.pure.as[Boolean]
+        sql"true".generic.pure.as[Boolean]
       }
       val i = Infix(List("true"), Nil, true, false, Quat.Generic)
       quote(unquote(q)).ast mustEqual i
@@ -40,7 +40,7 @@ class InfixTest extends Spec with Inside {
     }
     "with `as` and `transparent`" in {
       inline def q = quote {
-        infix"true".transparent.pure.as[Boolean]
+        sql"true".transparent.pure.as[Boolean]
       }
       val i = Infix(List("true"), Nil, true, true, Quat.Generic)
       quote(unquote(q)).ast mustEqual i
@@ -48,7 +48,7 @@ class InfixTest extends Spec with Inside {
     }
     "with no `as`" in {
       inline def q = quote {
-        infix"true"
+        sql"true"
       }
       val i = Infix(List("true"), Nil, false, false, Quat.Value)
       quote(unquote(q)).ast mustEqual i
@@ -56,7 +56,7 @@ class InfixTest extends Spec with Inside {
     "with params" in {
       inline def q = quote {
         (a: String, b: String) =>
-          infix"$a || $b".as[String]
+          sql"$a || $b".as[String]
       }
       val i = Infix(List("", " || ", ""), List(Ident("a"), Ident("b")), false, false, Quat.Value)
       quote(unquote(q)).ast.body mustEqual i
@@ -74,7 +74,7 @@ class InfixTest extends Spec with Inside {
         val b = "dyn"
         inline def q = quote {
           (a: String) =>
-            infix"$a || #$b".pure.as[String]
+            sql"$a || #$b".pure.as[String]
         }
         q must matchPattern {
           case Quoted(
@@ -87,7 +87,7 @@ class InfixTest extends Spec with Inside {
         val b = "dyn"
         val q = quote {
           (a: String) =>
-            infix"$a || #$b".as[String]
+            sql"$a || #$b".as[String]
         }
         q must matchPattern {
           case Quoted(
@@ -100,7 +100,7 @@ class InfixTest extends Spec with Inside {
         val a = "dyn"
         val q = quote {
           (b: String) =>
-            infix"#$a || $b".pure.as[String]
+            sql"#$a || $b".pure.as[String]
         }
         q must matchPattern {
           case Quoted(
@@ -113,7 +113,7 @@ class InfixTest extends Spec with Inside {
         val a = "dyn"
         val q = quote {
           (b: String) =>
-            infix"#$a || $b".as[String]
+            sql"#$a || $b".as[String]
         }
         q must matchPattern {
           case Quoted(
@@ -125,7 +125,7 @@ class InfixTest extends Spec with Inside {
       "only" in {
         val a = "dyn1"
         val q = quote {
-          infix"#$a".as[String]
+          sql"#$a".as[String]
         }
 
         q must matchPattern {
@@ -139,7 +139,7 @@ class InfixTest extends Spec with Inside {
         import testContext._
         val a = "dyn1"
         val q = quote {
-          infix"#$a || ${lift("foo")}".as[String]
+          sql"#$a || ${lift("foo")}".as[String]
         }
 
         q must matchPattern {
@@ -154,7 +154,7 @@ class InfixTest extends Spec with Inside {
         val a = "dyn1"
         val b = "dyn2"
         val q = quote {
-          infix"#$a#$b".pure.as[String]
+          sql"#$a#$b".pure.as[String]
         }
         q must matchPattern {
           case Quoted(
@@ -167,7 +167,7 @@ class InfixTest extends Spec with Inside {
         val a = "dyn1"
         val b = "dyn2"
         val q = quote {
-          infix"#$a#$b".as[String]
+          sql"#$a#$b".as[String]
         }
         q must matchPattern {
           case Quoted(
@@ -180,7 +180,7 @@ class InfixTest extends Spec with Inside {
         case class Value(a: String)
         val a = Value("dyn")
         val q = quote {
-          infix"#$a".as[String]
+          sql"#$a".as[String]
         }
         q must matchPattern {
           case Quoted(
@@ -197,14 +197,14 @@ class InfixTest extends Spec with Inside {
       case class Person(name: String, age: Int)
       "dynamic with property" in {
         val fun = "DYNAMIC_FUNC"
-        ctx.run(query[Person].map(p => infix"#$fun(${p.name})".as[String])).triple mustEqual
+        ctx.run(query[Person].map(p => sql"#$fun(${p.name})".as[String])).triple mustEqual
           ("SELECT DYNAMIC_FUNC(p.name) FROM Person p", List(), ExecutionType.Dynamic)
       }
 
       "dynamic with property and lift" in {
         val liftVar = "LIFT_VAR"
         val fun = "DYNAMIC_FUNC"
-        ctx.run(query[Person].map(p => infix"#$fun(${p.name}, ${lift(liftVar)})".as[String])).triple mustEqual
+        ctx.run(query[Person].map(p => sql"#$fun(${p.name}, ${lift(liftVar)})".as[String])).triple mustEqual
           ("SELECT DYNAMIC_FUNC(p.name, ?) FROM Person p", List("LIFT_VAR"), ExecutionType.Dynamic)
       }
     }
