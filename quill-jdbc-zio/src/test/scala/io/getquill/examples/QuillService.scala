@@ -8,7 +8,7 @@ import java.sql.SQLException
 object QuillService {
   case class Person(name: String, age: Int)
 
-  case class DataService(quill: Quill[PostgresDialect, Literal]) {
+  case class DataService(quill: Quill.Postgres[Literal]) {
     import quill._
     val people = quote { query[Person] }
     def peopleByName = quote { (name: String) => people.filter(p => p.name == name) }
@@ -29,6 +29,6 @@ object QuillService {
     val dataServiceLive = ZLayer.fromFunction(DataService.apply _)
     val applicationLive = ZLayer.fromFunction(ApplicationLive.apply _)
     val dataSourceLive = Quill.DataSource.fromPrefix("testPostgresDB")
-    val postgresServiceLive = Quill.PostgresService(Literal).live
+    val postgresLive = Quill.Postgres.fromNamingStrategy(Literal)
   }
 }

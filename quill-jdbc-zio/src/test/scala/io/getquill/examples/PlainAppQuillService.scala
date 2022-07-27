@@ -18,7 +18,7 @@ object PlainAppQuillService {
           _ <- printLine(joes)
           allPeople <- Application.getAllPeople()
           _ <- printLine(allPeople)
-        } yield ()).provide(applicationLive, dataServiceLive, dataSourceLive, postgresServiceLive)
+        } yield ()).provide(applicationLive, dataServiceLive, dataSourceLive, postgresLive)
       ).getOrThrow()
     }
     ()

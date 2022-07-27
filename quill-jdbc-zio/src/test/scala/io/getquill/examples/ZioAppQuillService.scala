@@ -16,5 +16,5 @@ object ZioAppQuillService extends ZIOAppDefault {
       allPeople <- Application.getAllPeople()
       _ <- printLine(allPeople)
     } yield ())
-    .provide(applicationLive, dataServiceLive, dataSourceLive, postgresServiceLive).exitCode
+    .provide(applicationLive, dataServiceLive, dataSourceLive, postgresLive).exitCode
 }
