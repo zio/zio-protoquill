@@ -1,19 +1,18 @@
-package io.getquill.context.cassandra
+package io.getquill
+
+import io.getquill.Udt
+import io.getquill.context.cassandra.UdtMetaDslMacro
 
 import scala.language.experimental.macros
-import io.getquill.Udt
 
-object UdtMetaDsl {
-
-  /**
-   * Creates udt meta to override udt name / keyspace and rename columns
-   *
-   * @param path - either `udt_name` or `keyspace.udt_name`
-   * @param columns - columns to rename
-   * @return udt meta
-   */
-  inline def udtMeta[T <: Udt](inline path: String, inline columns: (T => (Any, String))*): UdtMeta[T] = ${ UdtMetaDslMacro[T]('path, 'columns) }
-}
+/**
+ * Creates udt meta to override udt name / keyspace and rename columns
+ *
+ * @param path    - either `udt_name` or `keyspace.udt_name`
+ * @param columns - columns to rename
+ * @return udt meta
+ */
+inline def udtMeta[T <: Udt](inline path: String, inline columns: (T => (Any, String))*): UdtMeta[T] = ${UdtMetaDslMacro[T]('path, 'columns)}
 
 trait UdtMeta[T <: Udt] {
   def keyspace: Option[String]
@@ -22,9 +21,9 @@ trait UdtMeta[T <: Udt] {
 }
 
 object UdtMeta:
-  import scala.quoted._
+  import scala.quoted.*
   def build[T <: Udt: Type](using Quotes): Expr[UdtMeta[T]] =
-    import quotes.reflect._
+    import quotes.reflect.*
     if (TypeRepr.of[T] =:= TypeRepr.of[Udt])
       // TODO quill.trace.types 'summoning' level should enable this
       //println("Cannot derive schema for the base Udt (print the stack trace too)")
@@ -39,3 +38,4 @@ object UdtMeta:
           // TODO quill.trace.types 'summoning' level should enable this
           //println(s"Dsl not found. Making one with the type name: ${typeName}")
           UdtMetaDslMacro[T](Expr(typeName), Expr.ofList(Seq()))
+end UdtMeta

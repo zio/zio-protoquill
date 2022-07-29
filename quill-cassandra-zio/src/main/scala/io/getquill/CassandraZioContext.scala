@@ -70,6 +70,11 @@ class CassandraZioContext[+N <: NamingStrategy](val naming: N)
   override type ResultRow = Row
   override type Session = CassandraZioSession
 
+  // Don't need a Runner method because for the Zio Cassandra Context the
+  // ExecutionContext is provided by the ZIO runtime.
+  override type Runner = Unit
+  override protected def context: Runner = ()
+
   @targetName("runQueryDefault")
   inline def run[T](inline quoted: Quoted[Query[T]]): ZIO[CassandraZioSession, Throwable, List[T]] = InternalApi.runQueryDefault(quoted)
   @targetName("runQuery")
@@ -80,11 +85,6 @@ class CassandraZioContext[+N <: NamingStrategy](val naming: N)
   inline def run[E](inline quoted: Quoted[Action[E]]): ZIO[CassandraZioSession, Throwable, Unit] = InternalApi.runAction(quoted)
   @targetName("runBatchAction")
   inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[CassandraZioSession, Throwable, Unit] = InternalApi.runBatchAction(quoted)
-
-  // Don't need a Runner method because for the Zio Cassandra Context the
-  // ExecutionContext is provided by the ZIO runtime.
-  override type Runner = Unit
-  override protected def context: Runner = ()
 
   protected def page(rs: AsyncResultSet): CIO[Chunk[Row]] = ZIO.succeed {
     val builder = ChunkBuilder.make[Row](rs.remaining())

@@ -1,10 +1,17 @@
 package io.getquill.context.cassandra.zio
 
 import io.getquill.util.LoadConfig
-import io.getquill.{ CassandraContextConfig, CassandraZioSession, Spec }
-import zio.{ Runtime, Unsafe, ZEnvironment, ZIO }
-import zio.stream.{ ZSink, ZStream }
-import io.getquill._
+import io.getquill.{CassandraContextConfig, CassandraZioSession, Spec}
+import zio.{Runtime, Tag, Unsafe, ZEnvironment, ZIO, ZLayer}
+import zio.stream.{ZSink, ZStream}
+import io.getquill.*
+
+object ZioCassandraSpec {
+  def runLayerUnsafe[T: Tag](layer: ZLayer[Any, Throwable, T]): T =
+    zio.Unsafe.unsafe {
+      zio.Runtime.default.unsafe.run(zio.Scope.global.extend(layer.build)).getOrThrow()
+    }.get
+}
 
 trait ZioCassandraSpec extends Spec {
 
