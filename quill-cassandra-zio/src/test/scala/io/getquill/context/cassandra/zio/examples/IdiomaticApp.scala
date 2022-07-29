@@ -5,8 +5,8 @@ import io.getquill.cassandrazio.Quill
 import zio.Console.printLine
 import zio.{ZIO, ZIOAppDefault, ZLayer}
 
-object ExampleAppModule extends ZIOAppDefault {
-  import ExampleAppModuleData.*
+object IdiomaticApp extends ZIOAppDefault {
+  import IdiomaticAppData.*
 
   override def run = {
     (for {

@@ -6,9 +6,9 @@ import zio._
 import zio.Console.printLine
 import java.sql.SQLException
 
-object PlainAppQuillService {
-  import QuillService.Layers._
-  import QuillService.Application
+object IdiomaticAppPlain {
+  import IdiomaticAppData.Layers._
+  import IdiomaticAppData.Application
 
   def main(args: Array[String]): Unit = {
     Unsafe.unsafe {
