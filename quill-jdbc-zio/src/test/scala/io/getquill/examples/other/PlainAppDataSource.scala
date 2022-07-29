@@ -1,26 +1,24 @@
-package io.getquill.examples
+package io.getquill.examples.other
 
-import com.zaxxer.hikari.{ HikariConfig, HikariDataSource }
+import com.zaxxer.hikari.HikariDataSource
+import io.getquill.context.ZioJdbc._
 import io.getquill.util.LoadConfig
 import io.getquill.{ JdbcContextConfig, Literal, PostgresZioJdbcContext }
 import zio.Console.printLine
-import zio.{ Runtime, Unsafe, Task, ZLayer }
-import javax.sql.DataSource
+import zio.Runtime
 import io.getquill._
-import zio.ZIO
+import zio.Unsafe
 
-object PlainAppDataSource2 {
+object PlainAppDataSource {
 
   object MyPostgresContext extends PostgresZioJdbcContext(Literal)
   import MyPostgresContext._
 
   case class Person(name: String, age: Int)
 
-  def hikariConfig = new HikariConfig(JdbcContextConfig(LoadConfig("testPostgresDB")).configProperties)
-  def hikariDataSource = new HikariDataSource(hikariConfig)
+  def config = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
 
-  val zioDS: ZLayer[Any, Throwable, DataSource] =
-    ZLayer(ZIO.attempt(hikariDataSource))
+  val zioDS = DataSourceLayer.fromDataSource(new HikariDataSource(config))
 
   def main(args: Array[String]): Unit = {
     val people = quote {

@@ -1,9 +1,9 @@
-package io.getquill.context.cassandra.zio.examples
+package io.getquill.context.cassandra.zio.examples.other
 
-import io.getquill.{ CassandraZioContext, _ }
-import zio.{ZIO, ZIOAppDefault}
-import zio.Console.printLine
 import io.getquill.context.qzio.ImplicitSyntax._
+import io.getquill._
+import zio.Console.printLine
+import zio.{ZIO, ZIOAppDefault}
 
 object ExampleAppImplicitEnv extends ZIOAppDefault {
 
@@ -15,7 +15,7 @@ object ExampleAppImplicitEnv extends ZIOAppDefault {
     CassandraZioSession.fromPrefix("testStreamDB")
 
   case class MyQueryService(cs: CassandraZioSession) {
-    import Ctx._
+    import Ctx.*
     implicit val env: Implicit[CassandraZioSession] = Implicit(cs)
 
     def joes = Ctx.run { query[Person].filter(p => p.name == "Joe") }.implicitly

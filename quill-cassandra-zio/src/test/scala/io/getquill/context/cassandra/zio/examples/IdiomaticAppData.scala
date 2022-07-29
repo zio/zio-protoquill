@@ -5,7 +5,7 @@ import io.getquill.cassandrazio.Quill
 import zio.Console.printLine
 import zio.{ZIO, ZIOAppDefault, ZLayer}
 
-object ExampleAppModuleData {
+object IdiomaticAppData {
 
   case class Person(name: String, age: Int)
 
