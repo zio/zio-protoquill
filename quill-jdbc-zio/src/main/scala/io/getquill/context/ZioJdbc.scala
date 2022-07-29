@@ -2,14 +2,15 @@ package io.getquill.context
 
 import com.typesafe.config.Config
 import io.getquill.JdbcContextConfig
-import io.getquill.util.{ ContextLogger, LoadConfig }
-import zio.{ Task, ZEnvironment, ZIO, ZLayer }
+import io.getquill.jdbczio.Quill
+import io.getquill.util.{ContextLogger, LoadConfig}
+import zio.{Task, ZEnvironment, ZIO, ZLayer}
 import zio.stream.ZStream
-import io.getquill.util.{ ContextLogger, LoadConfig }
+import io.getquill.util.{ContextLogger, LoadConfig}
 import izumi.reflect.Tag
 
 import java.io.Closeable
-import java.sql.{ Connection, SQLException }
+import java.sql.{Connection, SQLException}
 import javax.sql.DataSource
 import zio.Scope
 
@@ -29,6 +30,7 @@ object ZioJdbc {
   }
 
   object DataSourceLayer {
+    @deprecated("Use Quill.Connection.acquireScoped instead", "3.3.0")
     val live: ZLayer[DataSource, SQLException, Connection] =
       ZLayer.scoped {
         for {
@@ -38,35 +40,44 @@ object ZioJdbc {
         } yield r
       }
 
+    @deprecated("Use ZLayer.succeed(dataSource:DataSource) instead", "3.3.0")
     def fromDataSource(ds: => DataSource): ZLayer[Any, Throwable, DataSource] =
       ZLayer.fromZIO(ZIO.attempt(ds))
 
+    @deprecated("Use Quill.DataSource.fromConfig instead", "3.3.0")
     def fromConfig(config: => Config): ZLayer[Any, Throwable, DataSource] =
       fromConfigClosable(config)
 
+    @deprecated("Use Quill.DataSource.fromPrefix instead", "3.3.0")
     def fromPrefix(prefix: String): ZLayer[Any, Throwable, DataSource] =
       fromPrefixClosable(prefix)
 
+    @deprecated("Use Quill.DataSource.fromJdbcConfig instead", "3.3.0")
     def fromJdbcConfig(jdbcContextConfig: => JdbcContextConfig): ZLayer[Any, Throwable, DataSource] =
       fromJdbcConfigClosable(jdbcContextConfig)
 
+    @deprecated("Use Quill.DataSource.fromConfigClosable instead", "3.3.0")
     def fromConfigClosable(config: => Config): ZLayer[Any, Throwable, DataSource with Closeable] =
       fromJdbcConfigClosable(JdbcContextConfig(config))
 
+    @deprecated("Use Quill.DataSource.fromPrefixClosable instead", "3.3.0")
     def fromPrefixClosable(prefix: String): ZLayer[Any, Throwable, DataSource with Closeable] =
       fromJdbcConfigClosable(JdbcContextConfig(LoadConfig(prefix)))
 
+    @deprecated("Use Quill.DataSource.fromJdbcConfigClosable instead", "3.3.0")
     def fromJdbcConfigClosable(jdbcContextConfig: => JdbcContextConfig): ZLayer[Any, Throwable, DataSource with Closeable] =
       ZLayer.scoped {
         for {
           conf <- ZIO.attempt(jdbcContextConfig)
-          ds   <- scopedBestEffort(ZIO.attempt(conf.dataSource))
+          ds <- scopedBestEffort(ZIO.attempt(conf.dataSource))
         } yield ds
       }
   }
 
   implicit class QuillZioDataSourceExt[T](qzio: ZIO[DataSource, Throwable, T]) {
+
     import io.getquill.context.qzio.ImplicitSyntax._
+
     def implicitDS(implicit implicitEnv: Implicit[DataSource]): ZIO[Any, SQLException, T] =
       (for {
         q <- qzio.provideEnvironment(ZEnvironment(implicitEnv.env))
@@ -74,7 +85,9 @@ object ZioJdbc {
   }
 
   implicit class QuillZioSomeDataSourceExt[T, R](qzio: ZIO[DataSource with R, Throwable, T])(implicit tag: Tag[R]) {
+
     import io.getquill.context.qzio.ImplicitSyntax._
+
     def implicitSomeDS(implicit implicitEnv: Implicit[DataSource]): ZIO[R, SQLException, T] =
       (for {
         r <- ZIO.environment[R]
@@ -90,13 +103,13 @@ object ZioJdbc {
 
     def onDataSource: ZIO[DataSource, SQLException, T] =
       (for {
-        q <- qzio.provideSomeLayer(DataSourceLayer.live)
+        q <- qzio.provideSomeLayer(Quill.Connection.acquireScoped)
       } yield q).refineToOrDie[SQLException]
 
     def implicitDS(implicit implicitEnv: Implicit[DataSource]): ZIO[Any, SQLException, T] =
       (for {
         q <- qzio
-          .provideSomeLayer(DataSourceLayer.live)
+          .provideSomeLayer(Quill.Connection.acquireScoped)
           .provideEnvironment(ZEnvironment(implicitEnv.env))
       } yield q).refineToOrDie[SQLException]
   }
@@ -116,7 +129,7 @@ object ZioJdbc {
         r <- ZIO.environment[R]
         q <- qzio
           .provideSomeLayer[Connection](ZLayer.succeedEnvironment(r))
-          .provideSomeLayer(DataSourceLayer.live)
+          .provideSomeLayer(Quill.Connection.acquireScoped)
       } yield q).refineToOrDie[SQLException]
   }
 

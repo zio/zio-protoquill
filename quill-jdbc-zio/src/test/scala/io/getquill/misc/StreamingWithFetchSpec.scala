@@ -1,12 +1,13 @@
-package io.getquill.postgres
+package io.getquill.misc
 
 import io.getquill.ZioSpec
 import io.getquill.context.ZioJdbc._
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 import zio.Unsafe
+import zio.ZEnvironment
 
-class StreamingWithFetchSpec extends ZioSpec with BeforeAndAfter {
+class StreamingWithFetchSpec extends ZioProxySpec with BeforeAndAfter {
 
   val context = testContext
   import testContext._
@@ -18,7 +19,7 @@ class StreamingWithFetchSpec extends ZioSpec with BeforeAndAfter {
 
   def result[T](qzio: QIO[T]): T =
     Unsafe.unsafe {
-      pool.env.unsafe.run(qzio).getOrThrow()
+      qzio.provideEnvironment(ZEnvironment(io.getquill.postgres.pool)).runSyncUnsafe()
     }
 
   before {

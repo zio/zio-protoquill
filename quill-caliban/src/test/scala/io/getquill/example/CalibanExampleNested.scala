@@ -5,7 +5,7 @@ import caliban.schema.Annotations.GQLDescription
 import caliban.{RootResolver, ZHttpAdapter}
 import zhttp.http._
 import zhttp.service.Server
-import zio.{ExitCode, ZEnv, ZIO}
+import zio.{ExitCode, ZIO}
 import io.getquill._
 import io.getquill.context.qzio.ImplicitSyntax._
 import io.getquill.context.ZioJdbc._
@@ -41,7 +41,7 @@ object DaoNested:
         .take(10)
     }
   inline def plan(inline columns: List[String], inline filters: Map[String, String]) =
-    quote { infix"EXPLAIN ${q(columns, filters)}".pure.as[Query[String]] }
+    quote { sql"EXPLAIN ${q(columns, filters)}".pure.as[Query[String]] }
 
   def personAddress(columns: List[String], filters: Map[String, String]) =
     println(s"Getting columns: $columns")
@@ -58,7 +58,7 @@ object DaoNested:
 
   def resetDatabase() =
     (for {
-      _ <- run(infix"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
+      _ <- run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
       _ <- run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insertValue(row)))
       _ <- run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insertValue(row)))
     } yield ()).implicitDS
@@ -97,7 +97,7 @@ object CalibanExampleNested extends zio.ZIOAppDefault:
     interpreter <- endpoints
     _ <- Server.start(
         port = 8088,
-        http = Http.route[Request] { case _ -> Root / "api" / "graphql" =>
+        http = Http.collectHttp[Request] { case _ -> !! / "api" / "graphql" =>
           ZHttpAdapter.makeHttpService(interpreter)
         }
       )

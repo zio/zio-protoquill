@@ -1,14 +1,13 @@
-package io.getquill.context.cassandra.zio.examples
+package io.getquill.context.cassandra.zio.examples.other
 
-import io.getquill.{ CassandraZioContext, _ }
-import zio.Runtime
+import io.getquill._
 import zio.Console.printLine
-import zio.Unsafe
+import zio.{Runtime, Unsafe}
 
 object PlainApp {
 
   object MyZioPostgresContext extends CassandraZioContext(Literal)
-  import MyZioPostgresContext._
+  import MyZioPostgresContext.*
 
   case class Person(name: String, age: Int)
 

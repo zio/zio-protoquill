@@ -7,10 +7,10 @@ import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
 import scala.annotation.targetName
 
-class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
+class MirrorContext[+Dialect <: Idiom, +Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
     extends MirrorContextBase[Dialect, Naming] with AstSplicing
 
-trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
+trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
     extends Context[Dialect, Naming]
     with ContextVerbPrepare[Dialect, Naming]
     with ContextVerbTranslate[Dialect, Naming]

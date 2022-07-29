@@ -14,7 +14,7 @@ import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.annotation.targetName
 
-class CassandraAsyncContext[N <: NamingStrategy](
+class CassandraAsyncContext[+N <: NamingStrategy](
   naming:                     N,
   session:                    CqlSession,
   preparedStatementCacheSize: Long

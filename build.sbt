@@ -49,9 +49,7 @@ lazy val sqlTestModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
 )
 
 lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-jdbc`, `quill-doobie`, `quill-zio`, `quill-jdbc-zio`
-  // Caliban does not have a ZIO RC5 library. Need to disable it until the ZIO2 release.
-  //, `quill-caliban`
+  `quill-jdbc`, `quill-doobie`, `quill-zio`, `quill-jdbc-zio`, `quill-caliban`
 )
 
 lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
@@ -140,9 +138,9 @@ lazy val `quill-sql` =
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.4.0",
         "com.lihaoyi" %% "pprint" % "0.6.6",
-        "io.getquill" %% "quill-engine" % "4.1.0",
+        "io.getquill" %% "quill-engine" % "4.1.1-SNAPSHOT",
         "dev.zio" %% "zio" % "2.0.0",
-        ("io.getquill" %% "quill-util" % "4.1.0")
+        ("io.getquill" %% "quill-util" % "4.1.1-SNAPSHOT")
           .excludeAll({
             if (isCommunityBuild)
               Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))
@@ -219,12 +217,12 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban" % "2.0.0-RC1",
-        "com.github.ghostdogpr" %% "caliban-zio-http"   % "2.0.0-RC1",
+        "com.github.ghostdogpr" %% "caliban" % "2.0.0",
+        "com.github.ghostdogpr" %% "caliban-zio-http"   % "2.0.0",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
-        "io.d11" %% "zhttp"      % "1.0.0.0-RC17" % Test,
+        "io.d11" %% "zhttp"      % "2.0.0-RC10" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
@@ -349,7 +347,7 @@ lazy val basicSettings = Seq(
   //   //Tests.Argument(TestFrameworks.ScalaTest, "-h", "testresults")
   // ),
   scalacOptions ++= Seq(
-    "-language:implicitConversions",
+    "-language:implicitConversions", "-explain"
   )
 )
 

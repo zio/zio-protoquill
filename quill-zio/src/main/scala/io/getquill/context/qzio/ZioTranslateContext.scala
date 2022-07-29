@@ -6,7 +6,7 @@ import io.getquill.idiom.Idiom
 import zio.ZIO
 import io.getquill.context.ContextTranslateMacro
 
-trait ZioTranslateContext[Dialect <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]
+trait ZioTranslateContext[+Dialect <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy]
   extends Context[Dialect, Naming]
   with ContextTranslateMacro[Dialect, Naming] {
 

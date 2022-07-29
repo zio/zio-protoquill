@@ -1,3 +1,7 @@
+# 4.1.0-V2
+
+- [Implementing dynamic splices via #${splice} like Scala2-Quill](https://github.com/zio/zio-protoquill/pull/153)
+
 # 4.1.0
 
 - [Integrating groupByMap from Scala2-Quill. Also EnableTrace/DisablePhase](https://github.com/zio/zio-protoquill/pull/151)
@@ -131,7 +135,7 @@ This change lines up the zio-jdbc modules with the latest 3.10.0 line. Various f
 
 * Kryo-Serialize entire AST. Further improves performance.
 * Allow `x -> y` syntax for constructing tuples.
-* Allow `infix"..."` without `.as[...]` in some needed cases.
+* Allow `sql"..."` without `.as[...]` in some needed cases.
 
 # 3.7.1.Beta1.1
 

@@ -7,6 +7,7 @@ import io.getquill.util.LoadConfig
 import io.getquill.context.ZioJdbc._
 import io.getquill.context.qzio.ImplicitSyntax.Implicit
 import zio.{ Runtime, Unsafe }
+import io.getquill.jdbczio.Quill
 
 import scala.util.Random
 import zio.ZLayer
@@ -14,7 +15,7 @@ import javax.sql.DataSource
 
 class ConnectionLeakTest extends ProductSpec with ZioSpec {
 
-  implicit val pool: Implicit[ZLayer[Any, Throwable, DataSource]] = Implicit(DataSourceLayer.fromPrefix("testPostgresLeakDB"))
+  implicit val pool: Implicit[ZLayer[Any, Throwable, DataSource]] = Implicit(Quill.DataSource.fromPrefix("testPostgresLeakDB"))
 
   // Only used for connection-amount checking
   val dataSource = JdbcContextConfig(LoadConfig("testPostgresLeakDB")).dataSource

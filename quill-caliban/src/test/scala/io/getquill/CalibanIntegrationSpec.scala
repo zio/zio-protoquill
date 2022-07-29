@@ -1,6 +1,5 @@
 package io.getquill
 
-import io.getquill.context.ZioJdbc.DataSourceLayer
 import zio.{ZIO, Task}
 import io.getquill.context.ZioJdbc._
 import caliban.execution.Field

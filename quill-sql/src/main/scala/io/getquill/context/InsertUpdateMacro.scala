@@ -30,6 +30,7 @@ import io.getquill.metaprog.SummonTranspileConfig
 import _root_.io.getquill.ActionReturning
 import io.getquill.parser.engine.History
 import io.getquill.norm.TranspileConfig
+import java.util.UUID
 
 /**
  * TODO Right now this is just insert but we can easily extend to update and delete
@@ -140,7 +141,6 @@ object InsertUpdateMacro {
           // there are query schemas involved i.e. the {querySchema[Person]} part is a QuotationLotExpr.Unquoted that has been spliced in
           // also if there is an implicit/given schemaMeta this case will be hit (because if there is a schemaMeta,
           // the query macro would have spliced it into the code already).
-          // TODO when using querySchema directly this doesn't work. Need to test that out and make it work
           case QuotationLotExpr.Unquoted(unquotation) =>
             unquotation match
               // The {querySchema[Person]} part is static (i.e. fully known at compile-time)
@@ -157,23 +157,43 @@ object InsertUpdateMacro {
               case _ =>
                 report.throwError(s"Quotation Lot of Insert/UpdateMeta must be either pluckable or uprootable from: '${unquotation}'")
 
-          // Case where it's not just an EntityQuery that is in the front of the update/insertValue e.g. query[Person].filter(...).update/insertValue
-          // (also note that if it's a filter with a pre-existing lift query[Person].filter(p => lift("Joe")).insertValue(...)
-          // this case will also happen and there can be one or more lifts i.e. lift("Joe") coming from the filter clause.
-          // that is why we need to extract the lifts)
-          // Note that there is no unquotation in this case so there should be no possibility of having runtimeUnquotes here
-          case '{ ($q: EntityQuery[t]) } =>
+          // Case where it's not just an EntityQuery that is in the front of the update/insertValue e.g. a filter
+          //   quote { query[Person].filter(...).update/insertValue(...) }
+          // Also possibly the dynamic case:
+          //   val v = quote { query[Person] }
+          //   quote { v.filter(...).update/insertValue(...) }
+          //
+          // Note that the `filter` clause can have one or more lifts e.g
+          //   quote { query[Person].filter(...lift(runtimeValue)...).update/insertValue(...) }
+          // so these lifts need to be extracted.
+          case scheme @ '{ ($q: EntityQuery[t]) } =>
             val ast = parser(q)
             val (rawLifts, runtimeLifts) = ExtractLifts(q)
             if (!runtimeLifts.isEmpty)
-              report.throwError(s"Runtime lifts encountered in a fully spliced entity passed to .insert/updateValue:\n${runtimeLifts.map(Format.Expr(_)).mkString(",\n")}.\nThis is Illegal")
-            EntitySummonState.Static(ast, rawLifts)
+              // In this particular case:
+              //   val v = quote { query[Person] }
+              //   quote { v.filter(u=>...).update/insertValue(...) }
+              // Our scala-tree will look like this:
+              //   (Unquote[EntityQuery[Person]](v, uid:111).unquote).filter(u => ...)
+              // So the AST is:
+              //   Filter(QuoteTag(uid:111), u, ...)
+              // So we need to synthesize a scala-tree that looks like this:
+              //   Quoted( Filter(QuoteTag(uid:111), u, ...), Nil, QuotationVase(uid:111, $v:query[Person]) )
+              // Note that the fact that $v is query[Person] is only known at runtime.
+              //
+              // In the case that there are lifts in the filter, it will look like this:
+              //   Query =>      |quote { v.filter(u=>...lift(...)...).update/insertValue(...) }
+              //                 |val v = quote { query[Person] }
+              //   Scala Tree => |(Unquote[EntityQuery[Person]](v, uid:111).unquote).filter(u => ...lifts(uid:222,...)...)
+              //   Quill Ast  => |Filter(QuoteTag(uid:111), u, ...ScalarTag(uid:222)...)
+              //   We Create  => |Quoted( Filter(QuoteTag(uid:111), u, ...ScalarTag(uid:222)...), EagerLift(uid:222,...), QuotationVase(uid:111, $v:query[Person]) )
+              val uid = UUID.randomUUID().toString()
+              EntitySummonState.Dynamic(uid, '{ Quoted(${ Lifter(ast) }, ${ Expr.ofList(rawLifts) }, ${ Expr.ofList(runtimeLifts) }) })
+            else
+              EntitySummonState.Static(ast, rawLifts)
 
           case _ =>
             report.throwError(s"Cannot process illegal insert meta: ${Format.Expr(schema)}")
-    // TODO Make an option to ignore dynamic entity schemas and return the plain entity?
-    // println("WARNING: Only inline schema-metas are supported for insertions so far. Falling back to a plain entity.")
-    // plainEntity
     end InserteeSchema
 
     enum MacroType:

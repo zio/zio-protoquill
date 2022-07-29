@@ -13,13 +13,13 @@ import scala.jdk.CollectionConverters._
 import scala.annotation.targetName
 import scala.concurrent.Future
 
-trait PostgresJAsyncContextBase[N <: NamingStrategy]
+trait PostgresJAsyncContextBase[+N <: NamingStrategy]
   extends JAsyncContextBase[PostgresDialect, N]
   with ArrayEncoders
   with ArrayDecoders
   with UUIDObjectEncoding
 
-class PostgresJAsyncContext[N <: NamingStrategy](naming: N, pool: ConnectionPool[PostgreSQLConnection])
+class PostgresJAsyncContext[+N <: NamingStrategy](naming: N, pool: ConnectionPool[PostgreSQLConnection])
   extends JAsyncContext[PostgresDialect, N, PostgreSQLConnection](PostgresDialect, naming, pool)
   with PostgresJAsyncContextBase[N] {
 

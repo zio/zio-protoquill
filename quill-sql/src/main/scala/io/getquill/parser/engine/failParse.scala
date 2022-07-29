@@ -3,7 +3,7 @@ package io.getquill.parser.engine
 import scala.quoted._
 import io.getquill.util.Format
 
-object ParserError:
+object failParse:
   enum ThrowInfo:
     case AstClass(astClass: Class[_])
     case Message(msg: String)
@@ -36,4 +36,4 @@ object ParserError:
       expr
     )
   end apply
-end ParserError
+end failParse

@@ -1,4 +1,4 @@
-package io.getquill.postgres
+package io.getquill.misc
 
 import io.getquill.PeopleZioSpec
 
@@ -9,7 +9,7 @@ import io.getquill._
 
 import javax.sql.DataSource
 
-class OnDataSourceSpec extends PeopleZioSpec {
+class OnDataSourceSpec extends PeopleZioProxySpec {
 
   val context = testContext
 
@@ -46,7 +46,7 @@ class OnDataSourceSpec extends PeopleZioSpec {
     "should work" in {
       // This is how you import the encoders/decoders of `underlying` context without importing things that will conflict
       // i.e. the quote and run methods
-      import testContext.underlying.{ run => _, prepare => _, _ }
+      import testContext.underlying.{ prepare => _, run => _, _ }
       val people =
         (for {
           out <- testContext.underlying.run(query[Person].filter(p => p.name == "Alex"))

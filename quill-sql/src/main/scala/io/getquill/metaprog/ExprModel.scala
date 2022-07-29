@@ -162,7 +162,7 @@ object PlanterExpr {
       }
   }
 
-  protected object `(Planter).unquote` {
+  object `(Planter).unquote` {
     def unapply(expr: Expr[Any])(using Quotes): Option[Expr[Planter[_, _, _]]] = expr match {
       case '{ ($planter: Planter[tt, pr, sess]).unquote } =>
         Some(planter /* .asInstanceOf[Expr[Planter[A, A]]] */ )
@@ -363,6 +363,19 @@ object QuotationLotExpr {
         case _ =>
           None
       }
+
+    object Pluckable {
+      def unapply(expr: Expr[Any])(using Quotes) = {
+        import quotes.reflect._
+        expr match {
+          case vase @ `(QuotationLot).unquote`(`QuotationLot.apply`(quotation, uid, rest)) =>
+            Some(uid, quotation, rest)
+
+          case _ =>
+            None
+        }
+      }
+    }
   }
 
   def apply(expr: Expr[Any])(using Quotes): QuotationLotExpr =

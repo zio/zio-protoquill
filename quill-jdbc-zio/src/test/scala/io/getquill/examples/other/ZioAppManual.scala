@@ -1,18 +1,19 @@
-package io.getquill.examples
+package io.getquill.examples.other
 
 import io.getquill._
-import io.getquill.context.ZioJdbc._
+import io.getquill.util.LoadConfig
+import zio.{ ZIOAppDefault, ZLayer }
 import zio.Console.printLine
-import zio.ZIOAppDefault
 
-object ZioApp extends ZIOAppDefault {
+import javax.sql.DataSource
+
+object ZioAppManual extends ZIOAppDefault {
 
   object MyPostgresContext extends PostgresZioJdbcContext(Literal)
   import MyPostgresContext._
 
   case class Person(name: String, age: Int)
-
-  val zioDS = DataSourceLayer.fromPrefix("testPostgresDB")
+  lazy val ds: DataSource = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
 
   override def run = {
     val people = quote {
@@ -20,7 +21,7 @@ object ZioApp extends ZIOAppDefault {
     }
     MyPostgresContext.run(people)
       .tap(result => printLine(result.toString))
-      .provide(zioDS)
+      .provide(ZLayer.succeed(ds))
       .exitCode
   }
 }

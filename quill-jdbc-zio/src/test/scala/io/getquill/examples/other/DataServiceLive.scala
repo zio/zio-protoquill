@@ -1,6 +1,7 @@
-package io.getquill.examples
+package io.getquill.examples.other
 
 import io.getquill._
+import io.getquill.jdbczio.Quill
 import io.getquill.context.ZioJdbc._
 import zio._
 import javax.sql.DataSource
@@ -14,7 +15,7 @@ import javax.sql.DataSource
  */
 object ZioAppExampleServices {
   object QuillContext extends PostgresZioJdbcContext(SnakeCase) {
-    val dataSourceLayer = DataSourceLayer.fromPrefix("testPostgresDB").orDie
+    val dataSourceLayer = Quill.DataSource.fromPrefix("testPostgresDB").orDie
   }
 
   final case class DataServiceLive(dataSource: DataSource) {
