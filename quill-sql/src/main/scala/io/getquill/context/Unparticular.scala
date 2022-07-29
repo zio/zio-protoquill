@@ -45,7 +45,7 @@ object Unparticular:
    * of the query that can be turned into what it actually will need to look like by the
    * Particularize(r)
    */
-  case class Query(basicQuery: String, realQuery: Statement)
+  case class  Query(basicQuery: String, realQuery: Statement)
   object Query:
     def fromStatement(stmt: Statement, liftingPlaceholder: Int => String) =
       val (basicQuery, lifts) = token2string(stmt, liftingPlaceholder)

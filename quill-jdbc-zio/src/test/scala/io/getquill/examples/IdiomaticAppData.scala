@@ -5,7 +5,7 @@ import io.getquill._
 import zio._
 import java.sql.SQLException
 
-object QuillService {
+object IdiomaticAppData {
   case class Person(name: String, age: Int)
 
   case class DataService(quill: Quill.Postgres[Literal]) {

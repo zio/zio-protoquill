@@ -1,4 +1,4 @@
-package io.getquill.examples
+package io.getquill.examples.other
 
 import io.getquill.{ Literal, PostgresZioJdbcContext }
 import io.getquill.context.ZioJdbc._

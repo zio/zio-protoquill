@@ -416,6 +416,12 @@ object BatchQueryExecution:
               )
             }
 
+
+            // def expandFlattenLiftQueryMembers(filteredPerRowLifts: List[PlanterExpr[?, ?, ?]], newIds: List[List[String]]) =
+            //   newIds.map { perRowIds =>
+            //     filteredPerRowLifts.asInstanceOf[List[InjectableEagerPlanterExpr[_, _, _]]].map(lift => lift)
+            //   }
+
           StaticTranslationMacro[D, N](expandedQuotation, ElaborationBehavior.Skip, topLevelQuat, comps.categorizedPlanters.map(_.planter)) match
             case Some(state @ StaticState(query, filteredPerRowLifts, _, _, secondaryLifts)) =>
               // create an extractor for returning actions

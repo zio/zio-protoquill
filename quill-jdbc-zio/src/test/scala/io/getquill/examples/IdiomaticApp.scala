@@ -5,9 +5,9 @@ import io.getquill.context.ZioJdbc._
 import zio._
 import zio.Console.printLine
 
-object ZioAppQuillService extends ZIOAppDefault {
-  import QuillService.Layers._
-  import QuillService.Application
+object IdiomaticApp extends ZIOAppDefault {
+  import IdiomaticAppData.Layers._
+  import IdiomaticAppData.Application
 
   override def run =
     (for {
