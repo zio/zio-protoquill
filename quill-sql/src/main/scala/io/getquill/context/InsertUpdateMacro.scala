@@ -381,7 +381,7 @@ object InsertUpdateMacro {
           case astIdent: AIdent => deduceAssignmentsFromIdent(astIdent)
 
       // Insertion could have lifts and quotes inside, need to extract those.
-      // E.g. it can be 'query[Person].insertValue(lift(Person("Joe",123)))'' which becomes Quoted(CaseClass(name -> lift(x), age -> lift(y), List(ScalarLift("Joe", x), ScalarLift(123, y)), Nil).
+      // E.g. it can be 'query[Person].insertValue(lift(Person("Joe",123)))'' which becomes Quoted(CaseClass(name -> lift(x), age -> lift(y), List(EagerLift("Joe", x), EagerLift(123, y)), Nil).
       // (In some cases, maybe even the runtimeQuotes position could contain things)
       // However, the insertee itself must always be available statically (i.e. it must be a Uprootable Quotation)
       val (lifts, pluckedUnquotes) = ExtractLifts(inserteeRaw)

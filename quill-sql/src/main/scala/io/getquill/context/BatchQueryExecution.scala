@@ -59,6 +59,7 @@ import io.getquill.metaprog.EagerPlanterExpr
 import io.getquill.metaprog.SummonTranspileConfig
 import io.getquill.norm.TranspileConfig
 import io.getquill.metaprog.TranspileConfigLiftable
+import io.getquill.idiom.Token
 
 private[getquill] enum BatchActionType:
   case Insert
@@ -470,7 +471,10 @@ object BatchQueryExecution:
               }
 
               val allPlanterExprs = (filteredPerRowLifts ++ secondaryLifts).map(_.plant)
-              val particularQuery = Particularize.Static(state.query, allPlanterExprs, '{ $batchContextOperation.idiom.liftingPlaceholder }, state.idiom.emptySetContainsToken)
+
+              val emptyContainsTokenExpr: Expr[Token => Token] = '{ $batchContextOperation.idiom.emptySetContainsToken(_) }
+              val liftingPlaceholderExpr: Expr[Int => String] = '{ $batchContextOperation.idiom.liftingPlaceholder }
+              val particularQuery = Particularize.Static[PrepareRow](state.query, allPlanterExprs, liftingPlaceholderExpr, emptyContainsTokenExpr)
 
               '{
                 $batchContextOperation.execute(ContextOperation.Argument($particularQuery, $prepares.toArray, $extractor, ExecutionInfo(ExecutionType.Static, ${ Lifter(state.ast) }, ${ Lifter.quat(topLevelQuat) }), None))
