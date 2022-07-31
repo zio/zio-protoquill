@@ -48,6 +48,7 @@ import io.getquill.ast.External
 import io.getquill.norm.TranspileConfig
 import io.getquill.metaprog.TranspileConfigLiftable
 import io.getquill.metaprog.SummonTranspileConfig
+import io.getquill.idiom.Token
 
 object ContextOperation:
   case class Argument[I, T, A <: QAC[I, _] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](
@@ -294,7 +295,9 @@ object QueryExecution:
       val prepare = '{ (row: PrepareRow, session: Session) => LiftsExtractor.apply[PrepareRow, Session](${ Expr.ofList(lifts) }, row, session) }
       val extractor = MakeExtractor[ResultRow, Session, T, RawT].static(state, converter, extract)
 
-      val particularQuery = Particularize.Static(state.query, lifts, '{ $contextOperation.idiom.liftingPlaceholder }, state.idiom.emptySetContainsToken)
+      val emptyContainsTokenExpr: Expr[Token => Token] = '{ $contextOperation.idiom.emptySetContainsToken(_) }
+      val liftingPlaceholderExpr: Expr[Int => String] = '{ $contextOperation.idiom.liftingPlaceholder }
+      val particularQuery = Particularize.Static(state.query, lifts, liftingPlaceholderExpr, emptyContainsTokenExpr)
       // Plug in the components and execute
       val astSplice =
         if (TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]) Lifter(state.ast)

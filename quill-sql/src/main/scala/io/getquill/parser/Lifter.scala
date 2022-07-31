@@ -45,6 +45,9 @@ trait LifterProxy {
   def ident(ast: AIdent): Quotes ?=> Expr[AIdent] = default.liftableIdent(ast)
   def quat(quat: Quat): Quotes ?=> Expr[Quat] = default.liftableQuat(quat)
   def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] = default.liftableReturnAction(returnAction)
+
+  def scalarTag(v: ScalarTag): Quotes ?=> Expr[ScalarTag] = default.liftableScalarTag(v)
+  def quotationTag(v: QuotationTag): Quotes ?=> Expr[QuotationTag] = default.liftableQuotationTag(v)
 }
 
 /**
@@ -325,13 +328,21 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case If(cond, thenStmt, elseStmt)                              => '{ If(${ cond.expr }, ${ thenStmt.expr }, ${ elseStmt.expr }) }
       case UnaryOperation(operator: UnaryOperator, a: Ast)           => '{ UnaryOperation(${ liftOperator(operator).asInstanceOf[Expr[UnaryOperator]] }, ${ a.expr }) }
       case BinaryOperation(a: Ast, operator: BinaryOperator, b: Ast) => '{ BinaryOperation(${ a.expr }, ${ liftOperator(operator).asInstanceOf[Expr[BinaryOperator]] }, ${ b.expr }) }
-      case ScalarTag(uid: String)                                    => '{ ScalarTag(${ uid.expr }) }
-      case QuotationTag(uid: String)                                 => '{ QuotationTag(${ uid.expr }) }
+      case v: ScalarTag                                              => liftableScalarTag(v)
+      case v: QuotationTag                                           => liftableQuotationTag(v)
       case Infix(parts, params, pure, transparent, quat)             => '{ Infix(${ parts.expr }, ${ params.expr }, ${ pure.expr }, ${ transparent.expr }, ${ quat.expr }) }
       case OnConflict.Excluded(a)                                    => '{ OnConflict.Excluded(${ a.expr }) }
       case OnConflict.Existing(a)                                    => '{ OnConflict.Existing(${ a.expr }) }
       case NullValue                                                 => '{ NullValue }
   }
+
+  given liftableScalarTag: NiceLiftable[ScalarTag] with
+    def lift =
+      case ScalarTag(uid: String) => '{ ScalarTag(${ uid.expr }) }
+
+  given liftableQuotationTag: NiceLiftable[QuotationTag] with
+    def lift =
+      case QuotationTag(uid: String) => '{ QuotationTag(${ uid.expr }) }
 
   given liftOperator: NiceLiftable[Operator] with {
     def lift =

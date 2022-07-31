@@ -18,7 +18,7 @@ trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   // FlatSchema and NestedSchema share the same DB data so only need to create it using one of them
   override def beforeAll() = {
     import FlatSchema._
-    (for {
+    (for { //
         _ <- Ctx.run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
         _ <- Ctx.run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insertValue(row)))
         _ <- Ctx.run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insertValue(row)))
