@@ -226,7 +226,7 @@ lazy val `quill-caliban` =
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql"          %  "postgresql"              % "42.2.18"             % Test,
+        "org.postgresql"          %  "postgresql"              % "42.2.26"             % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -314,7 +314,7 @@ lazy val jdbcTestingLibraries = Seq(
     "com.zaxxer"              %  "HikariCP"                % "3.4.5",
     "mysql"                   %  "mysql-connector-java"    % "8.0.22"             % Test,
     "com.h2database"          %  "h2"                      % "1.4.200"            % Test,
-    "org.postgresql"          %  "postgresql"              % "42.2.18"             % Test,
+    "org.postgresql"          %  "postgresql"              % "42.2.26"             % Test,
     "org.xerial"              %  "sqlite-jdbc"             % "3.32.3.2"             % Test,
     "com.microsoft.sqlserver" %  "mssql-jdbc"              % "7.1.1.jre8-preview" % Test,
     "com.oracle.ojdbc"        %  "ojdbc8"                  % "19.3.0.0"           % Test,
