@@ -115,7 +115,7 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
     inline def runQuery[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): Result[RunQueryResult[T]] = {
       val ca = make.op[Nothing, T, Result[RunQueryResult[T]]] { arg =>
         val simpleExt = arg.extractor.requireSimple()
-        self.executeQuery(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
+        self.executeQuery(arg.sql, arg.prepare, simpleExt.extract)(arg.executionInfo, _summonRunner())
       }
       QueryExecution.apply(ca)(quoted, None, wrap)
     }
@@ -123,14 +123,14 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
     inline def runQuerySingle[T](inline quoted: Quoted[T]): Result[RunQuerySingleResult[T]] = {
       val ca = make.op[Nothing, T, Result[RunQuerySingleResult[T]]] { arg =>
         val simpleExt = arg.extractor.requireSimple()
-        self.executeQuerySingle(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
+        self.executeQuerySingle(arg.sql, arg.prepare, simpleExt.extract)(arg.executionInfo, _summonRunner())
       }
       QueryExecution.apply(ca)(QuerySingleAsQuery(quoted), None)
     }
 
     inline def runAction[E](inline quoted: Quoted[Action[E]]): Result[RunActionResult] = {
       val ca = make.op[E, Any, Result[RunActionResult]] { arg =>
-        self.executeAction(arg.sql, arg.prepare.head)(arg.executionInfo, _summonRunner())
+        self.executeAction(arg.sql, arg.prepare)(arg.executionInfo, _summonRunner())
       }
       QueryExecution.apply(ca)(quoted, None)
     }
@@ -139,7 +139,7 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
       val ca = make.op[E, T, Result[RunActionReturningResult[T]]] { arg =>
         // Need an extractor with special information that helps with the SQL returning specifics
         val returningExt = arg.extractor.requireReturning()
-        self.executeActionReturning(arg.sql, arg.prepare.head, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
+        self.executeActionReturning(arg.sql, arg.prepare, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
       }
       QueryExecution.apply(ca)(quoted, None)
     }
@@ -148,28 +148,28 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
       val ca = make.op[E, T, Result[RunActionReturningResult[List[T]]]] { arg =>
         // Need an extractor with special information that helps with the SQL returning specifics
         val returningExt = arg.extractor.requireReturning()
-        self.executeActionReturningMany(arg.sql, arg.prepare.head, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
+        self.executeActionReturningMany(arg.sql, arg.prepare, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
       }
       QueryExecution.apply(ca)(quoted, None)
     }
 
-    inline def runBatchAction[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
+    inline def runBatchAction[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): Result[RunBatchActionResult] = {
       val ca = make.batch[I, Nothing, A, Result[RunBatchActionResult]] { arg =>
         // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-        val group = BatchGroup(arg.sql, arg.prepare.toList)
-        self.executeBatchAction(List(group))(arg.executionInfo, _summonRunner())
+        val groups = arg.groups.map((sql, prepare) => BatchGroup(sql, prepare))
+        self.executeBatchAction(groups.toList)(arg.executionInfo, _summonRunner())
       }
-      BatchQueryExecution.apply(ca)(quoted)
+      QueryExecutionBatch.apply(ca, rowsPerBatch)(quoted)
     }
 
-    inline def runBatchActionReturning[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionReturningResult[T]] = {
+    inline def runBatchActionReturning[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): Result[RunBatchActionReturningResult[T]] = {
       val ca = make.batch[I, T, A, Result[RunBatchActionReturningResult[T]]] { arg =>
         val returningExt = arg.extractor.requireReturning()
         // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-        val group = BatchGroupReturning(arg.sql, returningExt.returningBehavior, arg.prepare.toList)
-        self.executeBatchActionReturning[T](List(group), returningExt.extract)(arg.executionInfo, _summonRunner())
+        val groups = arg.groups.map((sql, prepare) => BatchGroupReturning(sql, returningExt.returningBehavior, prepare))
+        self.executeBatchActionReturning[T](groups.toList, returningExt.extract)(arg.executionInfo, _summonRunner())
       }
-      BatchQueryExecution.apply(ca)(quoted)
+      QueryExecutionBatch.apply(ca, rowsPerBatch)(quoted)
     }
   end InternalApi
 

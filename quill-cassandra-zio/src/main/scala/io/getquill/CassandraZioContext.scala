@@ -84,7 +84,7 @@ class CassandraZioContext[+N <: NamingStrategy](val naming: N)
   @targetName("runAction")
   inline def run[E](inline quoted: Quoted[Action[E]]): ZIO[CassandraZioSession, Throwable, Unit] = InternalApi.runAction(quoted)
   @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[CassandraZioSession, Throwable, Unit] = InternalApi.runBatchAction(quoted)
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[CassandraZioSession, Throwable, Unit] = InternalApi.runBatchAction(quoted, 1)
 
   protected def page(rs: AsyncResultSet): CIO[Chunk[Row]] = ZIO.succeed {
     val builder = ChunkBuilder.make[Row](rs.remaining())
