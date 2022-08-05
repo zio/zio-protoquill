@@ -80,13 +80,16 @@ services:
     command:
       - ./build/setup_local.sh
 
-  docker_ping:
-    build:
-      context: .
-      dockerfile: ./build/Dockerfile-ping
-    container_name: docker_ping
-    command: >
-      ping postgres
+  # If you need to double-check the postgres docker image has
+  # a set amount of network latency (that can be set by increase_postgres_latency.sh)
+  # then uncomment to start.
+  # docker_ping:
+  #   build:
+  #     context: .
+  #     dockerfile: ./build/Dockerfile-ping
+  #   container_name: docker_ping
+  #   command: >
+  #     ping postgres
 
   sbt:
     build:
