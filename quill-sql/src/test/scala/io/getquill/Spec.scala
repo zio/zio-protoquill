@@ -36,6 +36,22 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         m.info.executionType
       )
 
+  extension (m: MirrorContextBase[_, _]#BatchActionReturningMirror[_])
+    def tripleBatchMulti =
+      m.groups.map { (queryString, returnAction, prepares) =>
+        (
+          queryString,
+          prepares.map { prep =>
+            // being explicit here about the fact that this is done per prepare element i.e. all of them are supposed to be Row instances
+            prep match {
+              case r: io.getquill.context.mirror.Row =>
+                r.data.map(data => deIndexify(data._2))
+            }
+          },
+          m.info.executionType
+        )
+      }
+
   private def deIndexify(value: Any): Any =
     value match
       case Some((Row.TupleIndex(a) -> b)) => Some(deIndexify(b))
@@ -58,6 +74,22 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         },
         m.info.executionType
       )
+
+  extension (m: MirrorContextBase[_, _]#BatchActionMirror)
+    def tripleBatchMulti =
+      m.groups.map { (queryString, prepares) =>
+        (
+          queryString,
+          prepares.map { prep =>
+            // being explicit here about the fact that this is done per prepare element i.e. all of them are supposed to be Row instances
+            prep match {
+              case r: io.getquill.context.mirror.Row =>
+                r.data.map(data => deIndexify(data._2))
+            }
+          },
+          m.info.executionType
+        )
+      }
 
   extension (m: MirrorContextBase[_, _]#ActionMirror)
     def triple =

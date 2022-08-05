@@ -377,7 +377,7 @@ object InsertUpdateMacro {
           // we want to re-syntheize this as a lifted thing i.e. liftQuery(people).foreach(p => query[Person].insertValue(lift(p)))
           // and then reprocess the contents.
           // We don't want to do that here thought because we don't have the PrepareRow
-          // so we can't lift content here into planters. Instead this is done in the BatchQueryExecution pipeline
+          // so we can't lift content here into planters. Instead this is done in the QueryExecutionBatch pipeline
           case astIdent: AIdent => deduceAssignmentsFromIdent(astIdent)
 
       // Insertion could have lifts and quotes inside, need to extract those.

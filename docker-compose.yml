@@ -2,12 +2,16 @@ version: '2.2'
 
 services:
   postgres:
-    image: postgres:9.6
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile-postgres
     ports:
       - "15432:5432"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_HOST_AUTH_METHOD=trust
+    cap_add:
+    - NET_ADMIN
 
   mysql:
     image: mysql/mysql-server:8.0.23 # use this because it supports ARM64 architecture for M1 Mac
@@ -76,6 +80,13 @@ services:
     command:
       - ./build/setup_local.sh
 
+  docker_ping:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile-ping
+    container_name: docker_ping
+    command: >
+      ping postgres
 
   sbt:
     build:

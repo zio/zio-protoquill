@@ -78,7 +78,7 @@ trait JdbcContextVerbExecute[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] ex
       groups.flatMap {
         case BatchGroup(sql, prepare) =>
           val ps = conn.prepareStatement(sql)
-          logger.underlying.debug("Batch: {}", sql)
+          //logger.underlying.debug("Batch: {}", sql.take(200) + (if (sql.length > 200) "..." else ""))
           prepare.foreach { f =>
             val (params, _) = f(ps, conn)
             logger.logBatchItem(sql, params)

@@ -3,6 +3,7 @@ package io.getquill.metaprog
 import scala.quoted._
 import scala.quoted.Varargs
 import io.getquill.util.Format
+import io.getquill.util.Messages.TraceType
 
 class Is[T: Type]:
   def unapply(expr: Expr[Any])(using Quotes) =
@@ -556,10 +557,8 @@ object Extractors {
         any match
           //
           case i @ Inlined(_, pv, v) =>
-            // TODO File a bug for this? Try exprMap to fill in the variables
-            // println Format(Printer.TreeStructure.show(i.underlyingArgument))
-            report.warning(s"Ran into an inline on a clause: ${Format(Printer.TreeStructure.show(i.underlyingArgument))}. Proxy variables will be discarded: ${pv}")
-            // report.warning(s"Ran into an inline on a clause: ${Format.Term(i)}. Proxy variables will be discarded: ${pv}")
+            if (SummonTranspileConfig.summonTraceTypes(true).contains(TraceType.Meta))
+              report.warning(s"Ran into an inline on a clause: ${Format(Printer.TreeStructure.show(i.underlyingArgument))}. Proxy variables will be discarded: ${pv}")
             v.underlyingArgument
           case _ => any
   }

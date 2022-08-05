@@ -56,7 +56,7 @@ class CassandraAsyncContext[+N <: NamingStrategy](
   @targetName("runAction")
   inline def run[E](inline quoted: Quoted[Action[E]]): Future[Unit] = InternalApi.runAction(quoted)
   @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Future[Unit] = InternalApi.runBatchAction(quoted)
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Future[Unit] = InternalApi.runBatchAction(quoted, 1)
 
   // override def performIO[T](io: IO[T, _], transactional: Boolean = false)(implicit ec: ExecutionContext): Result[T] = {
   //   if (transactional) logger.underlying.warn("Cassandra doesn't support transactions, ignoring `io.transactional`")

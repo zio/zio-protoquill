@@ -21,7 +21,7 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   // Also note that the context needs to be typed. As an example of how to do that, we passed typing parameters
   // through the class. If the parameters are removed (i.e. used `val ctx: Context[_, _]`), the LoadModule will try to
   // load the base-object `Idiom` because that is the minimal thing that the Dialect parameter needs
-  // (and it seems LoadModule in BatchQueryExecution does not yet know what the values of the _, _ in Context[_, _]
+  // (and it seems LoadModule in QueryExecutionBatch does not yet know what the values of the _, _ in Context[_, _]
   // are supposed to be)
   val ctx: Context[D, N] //
   import ctx._
@@ -29,6 +29,9 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   case class Person(id: Int, name: String, age: Int)
   inline def insertPeople = quote((p: Person) => query[Person].insertValue(p))
   val insertPeopleDynamic = quote((p: Person) => query[Person].insertValue(p))
+
+  inline def updatePeopleById = quote((p: Person) => query[Person].filter(pt => pt.id == p.id).updateValue(p))
+  val updatePeopleByIdDynamic = quote((p: Person) => query[Person].filter(pt => pt.id == p.id).updateValue(p))
 }
 
 class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect, Literal] {
