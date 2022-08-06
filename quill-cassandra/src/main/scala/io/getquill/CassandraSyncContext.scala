@@ -39,7 +39,7 @@ class CassandraSyncContext[+N <: NamingStrategy](
   @targetName("runAction")
   inline def run[E](inline quoted: Quoted[Action[E]]): Unit = InternalApi.runAction(quoted)
   @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Unit = InternalApi.runBatchAction(quoted)
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Unit = InternalApi.runBatchAction(quoted, 1)
 
   override protected def context: Runner = ()
 

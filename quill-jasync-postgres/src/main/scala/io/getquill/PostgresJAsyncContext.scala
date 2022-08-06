@@ -40,9 +40,13 @@ class PostgresJAsyncContext[+N <: NamingStrategy](naming: N, pool: ConnectionPoo
   @targetName("runActionReturningMany")
   inline def run[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): Future[List[T]] = InternalApi.runActionReturningMany[E, T](quoted)
   @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Future[Seq[Long]] = InternalApi.runBatchAction(quoted)
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): Future[Seq[Long]] = InternalApi.runBatchAction(quoted, rowsPerBatch)
+  @targetName("runBatchActionDefault")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Future[Seq[Long]] = InternalApi.runBatchAction(quoted, 1)
   @targetName("runBatchActionReturning")
-  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): Future[Seq[T]] =  InternalApi.runBatchActionReturning(quoted)
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): Future[Seq[T]] = InternalApi.runBatchActionReturning(quoted, rowsPerBatch)
+  @targetName("runBatchActionReturningDefault")
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): Future[Seq[T]] = InternalApi.runBatchActionReturning(quoted, 1)
 
   override protected def extractActionResult[O](returningAction: ReturnAction, returningExtractor: Extractor[O])(result: DBQueryResult): List[O] =
     result.getRows.asScala.toList.map(row => returningExtractor(row, ()))
