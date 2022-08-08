@@ -220,7 +220,8 @@ object QueryExecutionBatchDynamic:
         idiom.emptySetContainsToken,
         batchingBehavior,
         extractionBehavior
-      )
+      )(transpileConfig.traceConfig)
+
     val spliceAst = false
     val executionAst = if (spliceAst) outputAst else io.getquill.ast.NullValue
     batchContextOperation.execute(ContextOperation.BatchArgument(batchGroups, extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst, topLevelQuat), None))

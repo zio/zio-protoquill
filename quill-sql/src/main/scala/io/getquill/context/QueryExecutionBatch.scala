@@ -357,6 +357,8 @@ object QueryExecutionBatch:
               val emptyContainsTokenExpr: Expr[Token => Token] = '{ $batchContextOperation.idiom.emptySetContainsToken(_) }
               val liftingPlaceholderExpr: Expr[Int => String] = '{ $batchContextOperation.idiom.liftingPlaceholder }
               val queryExpr = Particularize.UnparticularQueryLiftable(state.query)
+              val traceConfig = SummonTranspileConfig().traceConfig
+              val traceConfigExpr = TranspileConfigLiftable(traceConfig)
 
               import QueryExecutionBatchModel.{_, given}
               val extractionBehaviorExpr = Expr(extractionBehavior)
@@ -372,7 +374,7 @@ object QueryExecutionBatch:
                   $emptyContainsTokenExpr,
                   $batchingBehavior,
                   $extractionBehaviorExpr
-                )
+                )($traceConfigExpr)
               }
 
               '{

@@ -66,80 +66,11 @@ import scala.util.Left
 import com.typesafe.scalalogging.Logger
 import io.getquill.util.ContextLogger
 import io.getquill.context.Execution.ExtractBehavior
+import io.getquill.util.TraceConfig
 
 object QueryExecutionBatchIteration {
 
   private[getquill] val logger = ContextLogger(classOf[QueryExecutionBatchIteration.type])
-
-  def validateIdiomSupportsConcatenatedIteration(idiom: Idiom, extractBehavior: BatchExtractBehavior) =
-    extractBehavior match
-      case ExtractBehavior.Skip =>
-        validateIdiomSupportsConcatenatedIterationNormal(idiom)
-      case ExtractBehavior.ExtractWithReturnAction =>
-        validateIdiomSupportsConcatenatedIterationReturning(idiom)
-
-  def validateIdiomSupportsConcatenatedIterationNormal(idiom: Idiom) = {
-    import io.getquill.context.InsertValueMulti
-    val hasCapability =
-      if (idiom.isInstanceOf[IdiomInsertValueCapability])
-        idiom.asInstanceOf[IdiomInsertValueCapability].idiomInsertValuesCapability == InsertValueMulti
-      else
-        false
-
-    if (hasCapability)
-      Right(())
-    else
-      Left(
-        s"""|The dialect ${idiom.getClass.getName} does not support inserting multiple rows-per-batch (e.g. it cannot support multiple VALUES clauses).
-            |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server, Sqlite).
-            |Falling back to the regular single-row-per-batch insert behavior.
-            |""".stripMargin
-      )
-  }
-
-  def validateIdiomSupportsConcatenatedIterationReturning(idiom: Idiom) = {
-    import io.getquill.context.InsertValueMulti
-    val hasCapability =
-      if (idiom.isInstanceOf[IdiomInsertReturningValueCapability])
-        idiom.asInstanceOf[IdiomInsertReturningValueCapability].idiomInsertReturningValuesCapability == InsertReturningValueMulti
-      else
-        false
-
-    if (hasCapability)
-      Right(())
-    else
-      Left(
-        s"""|The dialect ${idiom.getClass.getName} does not support inserting multiple rows-per-batch (e.g. it cannot support multiple VALUES clauses)
-            |when batching with query-returns and/or generated-keys.
-            |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server).
-            |Falling back to the regular single-row-per-batch insert-returning behavior.
-            |""".stripMargin
-      )
-  }
-
-  def validateConcatenatedIterationPossible(query: Unparticular.Query, entitiesPerQuery: Int) = {
-    import io.getquill.idiom._
-    def valueClauseExistsIn(token: Token): Boolean =
-      token match
-        case _: ValuesClauseToken           => true
-        case _: StringToken                 => false
-        case _: ScalarTagToken              => false
-        case _: QuotationTagToken           => false
-        case _: ScalarLiftToken             => false
-        case Statement(tokens: List[Token]) => tokens.exists(valueClauseExistsIn(_) == true)
-        case SetContainsToken(a: Token, op: Token, b: Token) =>
-          valueClauseExistsIn(a) || valueClauseExistsIn(op) || valueClauseExistsIn(b)
-
-    if (valueClauseExistsIn(query.realQuery))
-      Right(())
-    else
-      Left(
-        s"""|Cannot insert multiple (i.e. ${entitiesPerQuery}) rows per-batch-query since the query ${query.basicQuery} has no VALUES clause.
-            |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server, Sqlite).
-            |Falling back to the regular single-row-per-batch insert behavior.
-            |""".stripMargin
-      )
-  }
 
   def apply[PrepareRow, Session](
       idiom: io.getquill.idiom.Idiom,
@@ -151,7 +82,7 @@ object QueryExecutionBatchIteration {
       emptyContainsToken: Token => Token,
       batchingBehavior: BatchingBehavior,
       extractBehavior: BatchExtractBehavior
-  ): List[(String, List[(PrepareRow, Session) => (List[Any], PrepareRow)])] =
+  )(traceConfig: TraceConfig): List[(String, List[(PrepareRow, Session) => (List[Any], PrepareRow)])] =
     new Executor(
       idiom,
       query,
@@ -161,10 +92,11 @@ object QueryExecutionBatchIteration {
       liftingPlaceholder,
       emptyContainsToken,
       batchingBehavior,
-      extractBehavior
+      extractBehavior,
+      traceConfig
     ).apply()
 
-  class Executor[PrepareRow, Session](
+  private[getquill] class Executor[PrepareRow, Session](
       idiom: io.getquill.idiom.Idiom,
       query: Unparticular.Query,
       perRowLifts: List[SingleEntityLifts],
@@ -173,7 +105,8 @@ object QueryExecutionBatchIteration {
       liftingPlaceholder: Int => String,
       emptyContainsToken: Token => Token,
       batchingBehavior: BatchingBehavior,
-      extractBehavior: BatchExtractBehavior
+      extractBehavior: BatchExtractBehavior,
+      traceConfig: TraceConfig
   ) {
     def apply(): List[(String, List[(PrepareRow, Session) => (List[Any], PrepareRow)])] =
       batchingBehavior match
@@ -224,7 +157,7 @@ object QueryExecutionBatchIteration {
       // if (entitiesCount <= batchSize)
       //   batch(single)(entitiesSize%batchSize)
       if (totalEntityCount <= numEntitiesPerQuery) {
-        val (singleGroupQuery, liftsOrderer) = Particularize.Dynamic(query, templateOfLifts, liftingPlaceholder, emptyContainsToken, /*valueClauseRepeats*/ totalEntityCount)
+        val (singleGroupQuery, liftsOrderer) = Particularize.Dynamic(query, templateOfLifts, liftingPlaceholder, emptyContainsToken, /*valueClauseRepeats*/ totalEntityCount)(traceConfig)
 
         // Since the entire query will fit into one bach, we don't need to subdivide the batches
         // just make prepares based on all of the lifts
@@ -243,9 +176,9 @@ object QueryExecutionBatchIteration {
       //   The 1st and 2nd that insert 1000 rows each, that's the queryForMostGroups
       //   The 3rd which only inserts 200 i.e. 2200 % batchSize
       else {
-        val (anteriorQuery, anteriorLiftsOrderer) = Particularize.Dynamic(query, templateOfLifts, liftingPlaceholder, emptyContainsToken, numEntitiesPerQuery)
+        val (anteriorQuery, anteriorLiftsOrderer) = Particularize.Dynamic(query, templateOfLifts, liftingPlaceholder, emptyContainsToken, numEntitiesPerQuery)(traceConfig)
         val lastQueryEntityCount = totalEntityCount % numEntitiesPerQuery
-        val (lastQuery, lastLiftsOrderer) = Particularize.Dynamic(query, templateOfLifts, liftingPlaceholder, emptyContainsToken, lastQueryEntityCount)
+        val (lastQuery, lastLiftsOrderer) = Particularize.Dynamic(query, templateOfLifts, liftingPlaceholder, emptyContainsToken, lastQueryEntityCount)(traceConfig)
         // println(s"Most Queries: ${numEntitiesPerQuery} Entities, Last Query: ${lastQueryEntityCount} Entities")
 
         // Say you have `liftQuery(A,B,C,D,E).foreach(...)` and numEntitiesPerQuery:=2 you need to do the following:
@@ -289,11 +222,81 @@ object QueryExecutionBatchIteration {
       }
     }
 
+    private def validateIdiomSupportsConcatenatedIteration(idiom: Idiom, extractBehavior: BatchExtractBehavior) =
+      extractBehavior match
+        case ExtractBehavior.Skip =>
+          validateIdiomSupportsConcatenatedIterationNormal(idiom)
+        case ExtractBehavior.ExtractWithReturnAction =>
+          validateIdiomSupportsConcatenatedIterationReturning(idiom)
+
+    private def validateIdiomSupportsConcatenatedIterationNormal(idiom: Idiom) = {
+      import io.getquill.context.InsertValueMulti
+      val hasCapability =
+        if (idiom.isInstanceOf[IdiomInsertValueCapability])
+          idiom.asInstanceOf[IdiomInsertValueCapability].idiomInsertValuesCapability == InsertValueMulti
+        else
+          false
+
+      if (hasCapability)
+        Right(())
+      else
+        Left(
+          s"""|The dialect ${idiom.getClass.getName} does not support inserting multiple rows-per-batch (e.g. it cannot support multiple VALUES clauses).
+            |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server, Sqlite).
+            |Falling back to the regular single-row-per-batch insert behavior.
+            |""".stripMargin
+        )
+    }
+
+    private def validateIdiomSupportsConcatenatedIterationReturning(idiom: Idiom) = {
+      import io.getquill.context.InsertValueMulti
+      val hasCapability =
+        if (idiom.isInstanceOf[IdiomInsertReturningValueCapability])
+          idiom.asInstanceOf[IdiomInsertReturningValueCapability].idiomInsertReturningValuesCapability == InsertReturningValueMulti
+        else
+          false
+
+      if (hasCapability)
+        Right(())
+      else
+        Left(
+          s"""|The dialect ${idiom.getClass.getName} does not support inserting multiple rows-per-batch (e.g. it cannot support multiple VALUES clauses)
+            |when batching with query-returns and/or generated-keys.
+            |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server).
+            |Falling back to the regular single-row-per-batch insert-returning behavior.
+            |""".stripMargin
+        )
+    }
+
+    private def validateConcatenatedIterationPossible(query: Unparticular.Query, entitiesPerQuery: Int) = {
+      import io.getquill.idiom._
+      def valueClauseExistsIn(token: Token): Boolean =
+        token match
+          case _: ValuesClauseToken           => true
+          case _: StringToken                 => false
+          case _: ScalarTagToken              => false
+          case _: QuotationTagToken           => false
+          case _: ScalarLiftToken             => false
+          case Statement(tokens: List[Token]) => tokens.exists(valueClauseExistsIn(_) == true)
+          case SetContainsToken(a: Token, op: Token, b: Token) =>
+            valueClauseExistsIn(a) || valueClauseExistsIn(op) || valueClauseExistsIn(b)
+
+      if (valueClauseExistsIn(query.realQuery))
+        Right(())
+      else
+        Left(
+          s"""|Cannot insert multiple (i.e. ${entitiesPerQuery}) rows per-batch-query since the query ${query.basicQuery} has no VALUES clause.
+            |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server, Sqlite).
+            |Falling back to the regular single-row-per-batch insert behavior.
+            |""".stripMargin
+        )
+    }
+
     def singleRowIteration(): List[(String, List[(PrepareRow, Session) => (List[Any], PrepareRow)])] = {
       val numEntitiesInAllQueries = 1
       // Since every batch consists of one row inserted, can use the original InjectableEagerPlanter here to Particularize (i.e. insert the right number of '?' into) the query
       val liftsInAllGroups = originalEntityLifts ++ otherLifts
-      val (allGroupsQuery, liftsOrderer) = Particularize.Dynamic(query, liftsInAllGroups, liftingPlaceholder, emptyContainsToken, numEntitiesInAllQueries)
+      val (allGroupsQuery, liftsOrderer) = Particularize.Dynamic(query, liftsInAllGroups, liftingPlaceholder, emptyContainsToken, numEntitiesInAllQueries)(traceConfig)
       val prepares =
         perRowLifts.map {
           liftsInThisGroup =>

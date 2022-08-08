@@ -182,6 +182,8 @@ object QueryExecution:
     import qctx.reflect.{Try => _, _}
     import Execution._
 
+    val transpileConfig = SummonTranspileConfig()
+
     def apply() =
       // Since QAC type doesn't have the needed info (i.e. it's parameters are existential) hence
       // it cannot be checked if they are nothing etc... so instead we need to check the type
@@ -305,7 +307,7 @@ object QueryExecution:
 
       val emptyContainsTokenExpr: Expr[Token => Token] = '{ $contextOperation.idiom.emptySetContainsToken(_) }
       val liftingPlaceholderExpr: Expr[Int => String] = '{ $contextOperation.idiom.liftingPlaceholder }
-      val particularQuery = Particularize.Static(state.query, lifts, liftingPlaceholderExpr, emptyContainsTokenExpr, '{ 1 })
+      val particularQuery = Particularize.Static(state.query, lifts, liftingPlaceholderExpr, emptyContainsTokenExpr, '{ 1 })(transpileConfig.traceConfig)
       // Plug in the components and execute
       val astSplice =
         if (TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]) Lifter(state.ast)
@@ -334,7 +336,6 @@ object QueryExecution:
 
       // TODO What about when an extractor is not neededX
       val spliceAsts = TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]
-      val transpileConfig = SummonTranspileConfig()
       // Note, we don't want to serialize the Quat here because it is directly spliced into the execution method call an only once.
       // / For the sake of viewing/debugging the quat macro code it is better not to serialize it here
       '{
@@ -639,7 +640,7 @@ object RunDynamicExecution:
     // Turn the Tokenized AST into an actual string and pull out the ScalarTags (i.e. the lifts)
     val (unparticularQuery, _) = Unparticular.Query.fromStatement(stmt, ctx.idiom.liftingPlaceholder)
     // TODO don't really need lift-sorting in PrepareDynamicExecution anymore? Could use liftsOrderer to do that
-    val (queryString, _) = Particularize.Dynamic(unparticularQuery, sortedLifts ++ sortedSecondaryLifts, ctx.idiom.liftingPlaceholder, ctx.idiom.emptySetContainsToken)
+    val (queryString, _) = Particularize.Dynamic(unparticularQuery, sortedLifts ++ sortedSecondaryLifts, ctx.idiom.liftingPlaceholder, ctx.idiom.emptySetContainsToken)(transpileConfig.traceConfig)
 
     // Use the sortedLifts to prepare the method that will prepare the SQL statement
     val prepare = (row: PrepareRow, session: Session) => LiftsExtractor.Dynamic[PrepareRow, Session](sortedLifts, row, session)
