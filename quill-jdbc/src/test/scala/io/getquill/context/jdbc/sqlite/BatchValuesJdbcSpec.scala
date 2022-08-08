@@ -10,7 +10,8 @@ class BatchValuesJdbcSpec extends BatchValuesSpec {
 
   override def beforeEach(): Unit = {
     testContext.run(query[Product].delete)
-    //testContext.run(sql"DELETE FROM quill_test.sqlite_sequence WHERE name='Product';".as[Delete[Product]])
+    //For the Ex 2 test to actually work, the ids of the inserted entities need to start
+    //testContext.run(sql"DELETE FROM sqlite_sequence WHERE name='Product';".as[Delete[Product]])
     super.beforeEach()
   }
 
@@ -21,6 +22,13 @@ class BatchValuesJdbcSpec extends BatchValuesSpec {
   }
 
   "Ex 2 - Batch Insert Returning" in {
+    import `Ex 2 - Batch Insert Returning`._
+    val ids = testContext.run(op, batchSize)
+    ids mustEqual productsOriginal.map(_.id)
+    testContext.run(get) mustEqual productsOriginal
+  }
+
+  "Ex 2.5 - Batch Insert Returning" in {
     import `Ex 2 - Batch Insert Returning`._
     val ids = testContext.run(op, batchSize)
     ids mustEqual productsOriginal.map(_.id)

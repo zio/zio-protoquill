@@ -14,7 +14,7 @@ import io.getquill.norm.DisablePhaseNone
 
 object SummonTranspileConfig:
   // TODO Move the actual macro that calls this to a test. The regular code should only use SummonTranspileConfig.apply inside of other macros
-  inline def mac: Unit = ${ macImpl }
+  inline def mac: TranspileConfig = ${ macImpl }
   def macImpl(using Quotes): Expr[TranspileConfig] =
     val config = apply()
     TranspileConfigLiftable(config)
@@ -75,8 +75,10 @@ object SummonTranspileConfig:
 end SummonTranspileConfig
 
 private[getquill] object TranspileConfigLiftable:
-  def apply(transpileConfig: TranspileConfig)(using Quotes) =
+  def apply(transpileConfig: TranspileConfig)(using Quotes): Expr[TranspileConfig] =
     liftableTranspileConfig(transpileConfig)
+  def apply(traceConfig: TraceConfig)(using Quotes): Expr[TraceConfig] =
+    liftableTraceConfig(traceConfig)
 
   extension [T](t: T)(using ToExpr[T], Quotes)
     def expr: Expr[T] = Expr(t)
@@ -111,6 +113,7 @@ private[getquill] object TranspileConfigLiftable:
       case TraceType.Elaboration            => '{ TraceType.Elaboration }
       case TraceType.SqlQueryConstruct      => '{ TraceType.SqlQueryConstruct }
       case TraceType.FlattenOptionOperation => '{ TraceType.FlattenOptionOperation }
+      case TraceType.Particularization      => '{ TraceType.Particularization }
 
   given liftableTraceConfig: BasicLiftable[TraceConfig] with
     def lift =
