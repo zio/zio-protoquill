@@ -1,3 +1,7 @@
+# 4.3.0
+
+- [Implementing multi-row insert for liftQuery(...).foreach](https://github.com/zio/zio-protoquill/pull/172)
+
 # 4.2.0
 
 - [Update zio-idiomatic context](https://github.com/zio/zio-protoquill/pull/164)
