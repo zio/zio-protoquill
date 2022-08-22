@@ -477,6 +477,7 @@ object Extractors {
     import quotes.reflect._
     tpe <:< TypeRepr.of[String] ||
     tpe <:< TypeRepr.of[Int] ||
+    tpe <:< TypeRepr.of[Short] ||
     tpe <:< TypeRepr.of[Long] ||
     tpe <:< TypeRepr.of[Float] ||
     tpe <:< TypeRepr.of[Double] ||
@@ -487,6 +488,7 @@ object Extractors {
     import quotes.reflect._
     tpe <:< TypeRepr.of[Int] ||
     tpe <:< TypeRepr.of[Long] ||
+    tpe <:< TypeRepr.of[Short] ||
     tpe <:< TypeRepr.of[Float] ||
     tpe <:< TypeRepr.of[Double] ||
     tpe <:< TypeRepr.of[scala.math.BigDecimal] ||
