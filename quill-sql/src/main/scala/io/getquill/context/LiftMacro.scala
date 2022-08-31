@@ -197,6 +197,7 @@ object LiftMacro {
     val valueEntityToString = '{ StringOrNull($valueEntity) }
     val encoder = summonEncoderOrFail[T, PrepareRow, Session](valueEntity)
     val stringEncoder = summonEncoderOrFail[String, PrepareRow, Session](valueEntityToString)
+    val nullEncoder = summonEncoderOrFail[Null, PrepareRow, Session](null)
     val expectedClassTag =
       Expr.summon[ClassTag[T]] match
         case Some(value) => value
@@ -204,7 +205,7 @@ object LiftMacro {
     '{
       EagerPlanter(
         $valueEntity,
-        GenericEncoderWithStringFallback($encoder, $stringEncoder, ${ Expr(logLine) })($expectedClassTag),
+        GenericEncoderWithStringFallback($encoder, $stringEncoder, $nullEncoder, ${ Expr(logLine) })($expectedClassTag),
         ${ Expr(uuid) }
       ).unquote
     }

@@ -336,9 +336,14 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case NullValue                                                 => '{ NullValue }
   }
 
+  given liftableScalarTagSource: NiceLiftable[External.Source] with
+    def lift =
+      case External.Source.Parser                 => '{ External.Source.Parser }
+      case External.Source.UnparsedProperty(name) => '{ External.Source.UnparsedProperty(${ Expr(name) }) }
+
   given liftableScalarTag: NiceLiftable[ScalarTag] with
     def lift =
-      case ScalarTag(uid: String) => '{ ScalarTag(${ uid.expr }) }
+      case ScalarTag(uid: String, source) => '{ ScalarTag(${ uid.expr }, ${ source.expr }) }
 
   given liftableQuotationTag: NiceLiftable[QuotationTag] with
     def lift =

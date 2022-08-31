@@ -442,7 +442,8 @@ object PrepareDynamicExecution:
       spliceBehavior: SpliceBehavior = SpliceBehavior.NeedsSplice,
       // For a batch query, these are the other lifts besides the primary liftQuery lifts.
       // This should be empty & ignored for all other query types.
-      additionalLifts: List[Planter[?, ?, ?]] = List()
+      additionalLifts: List[Planter[?, ?, ?]] = List(),
+      batchAlias: Option[String] = None
   ) =
     // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
     // which means that the compiler has not done the splicing for us. We need to do this ourselves.
@@ -464,7 +465,9 @@ object PrepareDynamicExecution:
     // println("=============== Dynamic Expanded Ast Is ===========\n" + io.getquill.util.Messages.qprint(splicedAst))
 
     // Tokenize the spliced AST
-    val (outputAst, stmt, _) = idiom.translate(splicedAst, topLevelQuat, ExecutionType.Dynamic, transpileConfig)(using naming)
+    val queryType = IdiomContext.QueryType.discoverFromAst(splicedAst, None)
+    val idiomContext = IdiomContext(transpileConfig, queryType)
+    val (outputAst, stmt, _) = idiom.translate(splicedAst, topLevelQuat, ExecutionType.Dynamic, idiomContext)(using naming)
     val naiveQury = Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
 
     val liftColumns =
@@ -477,7 +480,7 @@ object PrepareDynamicExecution:
         // return from the query. Others compute this information from the query data directly. This information is stored
         // in the dialect and therefore is computed here.
         case returningActionAst: ReturningAction =>
-          Some(io.getquill.norm.ExpandReturning.applyMap(returningActionAst)(liftColumns)(idiom, naming, transpileConfig))
+          Some(io.getquill.norm.ExpandReturning.applyMap(returningActionAst)(liftColumns)(idiom, naming, idiomContext))
         case _ =>
           None
 
@@ -492,8 +495,8 @@ object PrepareDynamicExecution:
     // Get the UIDs from the lifts, if they are something unexpected (e.g. Lift elements from Quill 2.x) throw an exception
     val liftTags =
       externals.map {
-        case tag @ ScalarTag(_) => tag
-        case other              => throw new IllegalArgumentException(s"Invalid Lift Tag: ${other}")
+        case tag @ ScalarTag(_, _) => tag
+        case other                 => throw new IllegalArgumentException(s"Invalid Lift Tag: ${other}")
       }
 
     // Match the ScalarTags we pulled out earlier (in ReifyStatement) with corresponding Planters because

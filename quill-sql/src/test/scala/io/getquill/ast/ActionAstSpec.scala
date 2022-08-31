@@ -43,7 +43,7 @@ class ActionAstSpec extends Spec with Inside {
               Update(
                 Ent("Person"),
                 List(
-                  Assignment(Id("x3"), Property(Id("x3"), "name"), ScalarTag(nameId1)),
+                  Assignment(Id("x3"), Property(Id("x3"), "name"), ScalarTag(nameId1, _)),
                   Assignment(Id("x4"), Property(Id("x4"), "age"), Constant(123, _))
                 )
               ),

@@ -59,6 +59,8 @@ import io.getquill.norm.TranspileConfig
 import io.getquill.metaprog.TranspileConfigLiftable
 import io.getquill.idiom.Token
 import scala.annotation.nowarn
+import io.getquill.ast.Ident
+import io.getquill.ast.External.Source
 
 private[getquill] enum BatchActionType:
   case Insert
@@ -102,7 +104,7 @@ object PrepareBatchComponents:
   import Execution._
   import QueryExecutionBatchModel._
 
-  def apply[I, PrepareRow](unliftedAst: Ast, foreachIdentAst: ast.Ast, extractionBehavior: BatchExtractBehavior): Either[String, (Ast, BatchActionType)] = {
+  def apply[I, PrepareRow](unliftedAst: Ast, foreachIdentAst: ast.Ast, extractionBehavior: BatchExtractBehavior): Either[String, (Ident, Ast, BatchActionType)] = {
     // putting this in a block since I don't want to externally import these packages
     import io.getquill.ast._
     val componentsOrError =
@@ -166,7 +168,7 @@ object PrepareBatchComponents:
       //   liftQuery(vips:List[Vip]).foreach(v => query[Person].filter(pf => pf.id == ScalarTag(A)).update(_.name -> ScalarTag(B) + ScalarTag(C)))
       val actionQueryAst = BetaReduction(actionQueryAstRaw, foreachIdent -> foreachIdentAst)
       // println(s"==== Reduced AST: ${io.getquill.util.Messages.qprint(actionQueryAst)}")
-      (actionQueryAst, bType)
+      (foreachIdent, actionQueryAst, bType)
     }
   }
 end PrepareBatchComponents
@@ -210,7 +212,6 @@ object QueryExecutionBatch:
 
     val topLevelQuat = QuatMaking.ofType[T]
 
-    // TODO Verify batching is >0
     lazy val batchingBehavior = '{
       // Do a widening to `Int` otherwise when 1 is passed into the rowsPerQuery argument
       // scala things that it's a constant value hence it raises as "Error Unreachable"
@@ -304,7 +305,7 @@ object QueryExecutionBatch:
               )
             }
 
-          StaticTranslationMacro[D, N](expandedQuotation, ElaborationBehavior.Skip, topLevelQuat, comps.categorizedPlanters.map(_.planter)) match
+          StaticTranslationMacro[D, N](expandedQuotation, ElaborationBehavior.Skip, topLevelQuat, comps.categorizedPlanters.map(_.planter), Some(comps.foreachIdent)) match
             case Some(state @ StaticState(query, filteredPerRowLiftsRaw, _, _, secondaryLifts)) =>
               // create an extractor for returning actions
               val filteredPerRowLifts = filteredPerRowLiftsRaw.asInstanceOf[List[InjectableEagerPlanterExpr[_, _, _]]]
@@ -435,7 +436,8 @@ object BatchStatic:
       batchActionType: BatchActionType,
       perRowLifts: Expr[List[InjectableEagerPlanter[?, PrepareRow, Session]]],
       categorizedPlanters: List[PlanterKind.Other],
-      primaryPlanter: PlanterKind.PrimaryEntitiesList | PlanterKind.PrimaryScalarList
+      primaryPlanter: PlanterKind.PrimaryEntitiesList | PlanterKind.PrimaryScalarList,
+      foreachIdent: Ident
   )
 
   sealed trait PlanterKind
@@ -471,8 +473,8 @@ object BatchStatic:
     primaryPlanter match
       // In the case of liftQuery(entities)
       case PlanterKind.PrimaryEntitiesList(planter) =>
-        val (actionQueryAst, batchActionType) = PrepareBatchComponents[I, PrepareRow](ast, planter.fieldClass, extractionBehavior).rightOrThrow()
-        (Lifter(actionQueryAst), batchActionType, planter.fieldGetters.asInstanceOf[Expr[List[InjectableEagerPlanter[?, PrepareRow, Session]]]])
+        val (foreachIdent, actionQueryAst, batchActionType) = PrepareBatchComponents[I, PrepareRow](ast, planter.fieldClass, extractionBehavior).rightOrThrow()
+        (foreachIdent, Lifter(actionQueryAst), batchActionType, planter.fieldGetters.asInstanceOf[Expr[List[InjectableEagerPlanter[?, PrepareRow, Session]]]])
       // In the case of liftQuery(scalars)
       // Note, we could have potential other liftQuery(scalars) later in the query for example:
       // liftQuery(List("Joe","Jack","Jill")).foreach(query[Person].filter(name => liftQuery(1,2,3 /*ids of Joe,Jack,Jill respectively*/).contains(p.id)).update(_.name -> name))
@@ -482,12 +484,12 @@ object BatchStatic:
           case '[tt] =>
             val uuid = java.util.UUID.randomUUID.toString
             val (foreachReplacementAst, perRowLift) =
-              (ScalarTag(uuid), '{ InjectableEagerPlanter((t: tt) => t, ${ planter.encoder.asInstanceOf[Expr[io.getquill.generic.GenericEncoder[tt, PrepareRow, Session]]] }, ${ Expr(uuid) }) })
+              (ScalarTag(uuid, Source.Parser), '{ InjectableEagerPlanter((t: tt) => t, ${ planter.encoder.asInstanceOf[Expr[io.getquill.generic.GenericEncoder[tt, PrepareRow, Session]]] }, ${ Expr(uuid) }) })
             // create the full batch-query Ast using the value of actual query of the batch statement i.e. I in:
             // liftQuery[...](...).foreach(p => query[I].insertValue(p))
-            val (actionQueryAst, batchActionType) = PrepareBatchComponents[I, PrepareRow](ast, foreachReplacementAst, extractionBehavior).rightOrThrow()
+            val (foreachIdent, actionQueryAst, batchActionType) = PrepareBatchComponents[I, PrepareRow](ast, foreachReplacementAst, extractionBehavior).rightOrThrow()
             // return the combined batch components
-            (Lifter(actionQueryAst), batchActionType, Expr.ofList(List(perRowLift)))
+            (foreachIdent, Lifter(actionQueryAst), batchActionType, Expr.ofList(List(perRowLift)))
 
   def apply[I: Type, PrepareRow: Type, Session: Type](ast: Ast, planters: List[PlanterExpr[?, ?, ?]], extractionBehavior: QueryExecutionBatchModel.BatchExtractBehavior)(using Quotes) =
     import quotes.reflect._
@@ -514,9 +516,9 @@ object BatchStatic:
     //   ast = lift(UUID1)  // I.e. ScalarTag(UUID1) since lift in the AST means a ScalarTag
     //   lifts = List(InjectableEagerLift(p, UUID1))
     // TODO check that there are no EagerEntitiesPlanterExpr other than in the primary planter
-    val (actionQueryAst, batchActionType, perRowLifts) = extractPrimaryComponents[I, PrepareRow, Session](primaryPlanter, ast, extractionBehavior)
+    val (foreachIdent, actionQueryAst, batchActionType, perRowLifts) = extractPrimaryComponents[I, PrepareRow, Session](primaryPlanter, ast, extractionBehavior)
 
-    Components[PrepareRow, Session](actionQueryAst, batchActionType, perRowLifts, categorizedPlanters, primaryPlanter)
+    Components[PrepareRow, Session](actionQueryAst, batchActionType, perRowLifts, categorizedPlanters, primaryPlanter, foreachIdent)
   end apply
 
   extension [T](element: Either[String, T])(using Quotes)

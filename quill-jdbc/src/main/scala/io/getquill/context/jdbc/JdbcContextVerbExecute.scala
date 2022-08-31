@@ -43,8 +43,17 @@ trait JdbcContextVerbExecute[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] ex
   // Not overridden in JdbcRunContext in Scala2-Quill because this method is not defined in the context
   override def executeQuery[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[List[T]] =
     withConnectionWrapped { conn =>
-      val (params, ps) = prepare(conn.prepareStatement(sql), conn)
+      val (params, ps) =
+        if (sql == "SELECT p.id, p.first, p.last, p.age, a.street FROM PersonT p LEFT JOIN AddressT a ON p.id = a.ownerId WHERE (p.id = ? OR ? IS NULL) AND (p.first = ? OR ? IS NULL) AND (p.last = ? OR ? IS NULL) AND (p.age = ? OR ? IS NULL) AND (a.street = ? OR ? IS NULL) LIMIT 10") {
+          //println("&&&&&&&&&&&&&&&&&&&&&&& HERE HERE")
+          prepare(conn.prepareStatement(sql), conn)
+        } else {
+          prepare(conn.prepareStatement(sql), conn)
+        }
+
       logger.logQuery(sql, params)
+      println("============= Query: " + sql)
+      println("============= PARAMS: " + pprint(params))
       val rs = ps.executeQuery()
       extractResult(rs, conn, extractor)
     }

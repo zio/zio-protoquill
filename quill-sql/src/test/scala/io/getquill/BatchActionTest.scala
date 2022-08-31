@@ -174,7 +174,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
 
     case class MyPerson(id: Int, name: String, birthYear: Int)
     "update via tuple" in {
-      val birthYearUpdates = List((3431, 1983), (2976, 1972), (1511, 1991))
+      val birthYearUpdates = List((3431, 1983), (2976, 1972), (1511, 1991)) //
       val a = ctx.run {
         liftQuery(birthYearUpdates).foreach {
           case (id, year) =>

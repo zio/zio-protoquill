@@ -32,6 +32,7 @@ import io.getquill.generic.ElaborationSide
 import io.getquill.parser.engine._
 import io.getquill.context.VerifyFreeVariables
 import io.getquill.norm.TranspileConfig
+import io.getquill.ast.External.Source
 
 trait ParserFactory:
   def assemble(using Quotes): ParserLibrary.ReadyParser
@@ -233,7 +234,7 @@ class QuotationParser(rootParse: Parser)(using Quotes, TranspileConfig) extends 
       }
 
     case PlanterExpr.UprootableUnquote(expr) =>
-      ScalarTag(expr.uid) // TODO Want special scalar tag for an encodeable scalar
+      ScalarTag(expr.uid, Source.Parser)
 
     // A inline quotation can be parsed if it is directly inline. If it is not inline, a error
     // must happen (specifically have a check for it or just fail to parse?)
@@ -414,7 +415,9 @@ class BatchActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
 
   def attempt = {
     case '{ type a <: Action[_] with QAC[_, _]; ($q: Query[t]).foreach[`a`, b](${ Lambda1(ident, tpe, body) })($unq) } =>
-      Foreach(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+      val id = cleanIdent(ident, tpe)
+      println(s"============== Parsed batch ident: ${id.name}")
+      Foreach(rootParse(q), id, rootParse(body))
   }
 
 }

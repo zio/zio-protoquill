@@ -12,6 +12,7 @@ trait GenericEncoder[T, PrepareRow, Session] extends ((Int, T, PrepareRow, Sessi
 case class GenericEncoderWithStringFallback[T, PrepareRow, Session](
     original: GenericEncoder[T, PrepareRow, Session],
     fallback: GenericEncoder[String, PrepareRow, Session],
+    fallbackNull: GenericEncoder[Null, PrepareRow, Session],
     badExpressionLog: String = ""
 )(classTagExpected: ClassTag[T]) extends GenericEncoder[Any, PrepareRow, Session] {
   def apply(i: Int, t: Any, row: PrepareRow, session: Session): PrepareRow =
@@ -27,8 +28,9 @@ case class GenericEncoderWithStringFallback[T, PrepareRow, Session](
       else if (t.isInstanceOf[Byte]) classTag[Byte]
       else ClassTag(t.getClass())
 
+    // if value is null use the string encoder because primitive encoders 'magically' flip `null` to 0 etc... in some cases
     if (t == null)
-      original(i, t.asInstanceOf[T], row, session)
+      fallbackNull(i, null, row, session)
     else if (classTagActual <:< classTagExpected)
       original(i, t.asInstanceOf[T], row, session)
     else
