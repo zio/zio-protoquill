@@ -288,7 +288,7 @@ object Unlifter {
       case Is[UnaryOperation]('{ UnaryOperation(${ operator }, ${ a }: Ast) })           => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
       case Is[BinaryOperation]('{ BinaryOperation(${ a }, ${ operator }, ${ b }: Ast) }) => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
       case Is[Property]('{ Property(${ ast }, ${ name }) })                              => Property(ast.unexpr, constString(name))
-      case Is[ScalarTag]('{ ScalarTag(${ uid }) })                                       => ScalarTag(constString(uid))
+      case Is[ScalarTag]('{ ScalarTag(${ uid }, ${ source }) })                          => ScalarTag(constString(uid), source.unexpr)
       case Is[QuotationTag]('{ QuotationTag($uid) })                                     => QuotationTag(constString(uid))
       case Is[Infix]('{ Infix($parts, $params, $pure, $transparent, $quat) })            => Infix(parts.unexpr, params.unexpr, pure.unexpr, transparent.unexpr, quat.unexpr)
       case Is[Tuple]('{ Tuple.apply($values) })                                          => Tuple(values.unexpr)
@@ -301,6 +301,11 @@ object Unlifter {
       case Is[OnConflict.Existing]('{ OnConflict.Existing($a) }) => OnConflict.Existing(a.unexpr)
       case '{ NullValue }                                        => NullValue
   }
+
+  given unliftScalarTagSource: NiceUnliftable[External.Source] with
+    def unlift =
+      case '{ External.Source.Parser }                            => External.Source.Parser
+      case '{ External.Source.UnparsedProperty(${ Expr(name) }) } => External.Source.UnparsedProperty(name)
 
   given unliftCaseClass: NiceUnliftable[CaseClass] with
     def unlift =
