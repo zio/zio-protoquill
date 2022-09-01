@@ -212,13 +212,13 @@ object Particularize:
     object Numbered:
       def unapply(liftSlot: LiftSlot) =
         liftSlot match
-          case LiftSlot(Rank.Numbered(num), ScalarTag(uid)) => Some((num, uid))
-          case _                                            => None
+          case LiftSlot(Rank.Numbered(num), ScalarTag(uid, _)) => Some((num, uid))
+          case _                                               => None
     object Plain:
       def unapply(liftSlot: LiftSlot) =
         liftSlot match
-          case LiftSlot(Rank.Universal, ScalarTag(uid)) => Some((uid))
-          case _                                        => None
+          case LiftSlot(Rank.Universal, ScalarTag(uid, _)) => Some((uid))
+          case _                                           => None
   }
 
   case class LiftsOrderer(slots: List[LiftSlot])(traceConfig: TraceConfig) {

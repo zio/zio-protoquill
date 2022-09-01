@@ -146,7 +146,7 @@ class InfixTest extends Spec with Inside {
           case Quoted(
             QuotationTag(idA),
             List(EagerPlanter("foo", _, idB)),
-            List(Vase(Infix(List("dyn1 || ", ""), List(ScalarTag(idB1)), false, false, QV), idA1))
+            List(Vase(Infix(List("dyn1 || ", ""), List(ScalarTag(idB1, _)), false, false, QV), idA1))
           ) if (idA == idA1 && idB == idB1) =>
         }
       }

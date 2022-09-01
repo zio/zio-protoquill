@@ -35,37 +35,37 @@ class PostgresDoobieContextSuite extends AnyFreeSpec with Matchers {
 
   case class Country(code: String, name: String, population: Int)
 
-  "executeQuery should correctly select a country" in {
-    inline def stmt = quote(query[Country].filter(_.code == "GBR"))
-    val actual = dc.run(stmt).transact(xa).unsafeRunSync()
-    val expected = List(Country("GBR", "United Kingdom", 59623400))
-    actual mustEqual expected
-  }
+  // "executeQuery should correctly select a country" in {
+  //   inline def stmt = quote(query[Country].filter(_.code == "GBR"))
+  //   val actual = dc.run(stmt).transact(xa).unsafeRunSync()
+  //   val expected = List(Country("GBR", "United Kingdom", 59623400))
+  //   actual mustEqual expected
+  // }
 
-  "executeQuerySingle should correctly select a constant" in {
-    inline def stmt = quote(42)
-    val actual = dc.run(stmt).transact(xa).unsafeRunSync()
-    val expected = 42
-    actual mustEqual expected
-  }
+  // "executeQuerySingle should correctly select a constant" in {
+  //   inline def stmt = quote(42)
+  //   val actual = dc.run(stmt).transact(xa).unsafeRunSync()
+  //   val expected = 42
+  //   actual mustEqual expected
+  // }
 
-  "streamQuery should correctly stream a bunch of countries" in {
-    inline def stmt = quote(query[Country])
-    val actual = dc.stream(stmt, 2).transact(xa).as(1).compile.foldMonoid.unsafeRunSync()
-    val expected = 4 // this many countries total
-    actual mustEqual expected
-  }
+  // "streamQuery should correctly stream a bunch of countries" in {
+  //   inline def stmt = quote(query[Country])
+  //   val actual = dc.stream(stmt, 2).transact(xa).as(1).compile.foldMonoid.unsafeRunSync()
+  //   val expected = 4 // this many countries total
+  //   actual mustEqual expected
+  // }
 
-  "executeAction should correctly update a bunch of countries" in {
-    inline def stmt = quote(query[Country].filter(_.name like "U%").update(_.name -> "foo"))
-    val actual = dc.run(stmt).transact(xa).unsafeRunSync()
-    val expected = 2L // this many countries start with 'U'
-    actual mustEqual expected
-  }
+  // "executeAction should correctly update a bunch of countries" in {
+  //   inline def stmt = quote(query[Country].filter(_.name like "U%").update(_.name -> "foo"))
+  //   val actual = dc.run(stmt).transact(xa).unsafeRunSync()
+  //   val expected = 2L // this many countries start with 'U'
+  //   actual mustEqual expected
+  // }
 
   "executeBatchAction should correctly do multiple updates" in {
     val list = List("U%", "I%")
-    inline def stmt = quote {
+    def stmt = quote {
       liftQuery(list).foreach { pat =>
         query[Country].filter(_.name like pat).update(_.name -> "foo")
       }
@@ -86,21 +86,21 @@ class PostgresDoobieContextSuite extends AnyFreeSpec with Matchers {
 
   case class QuillTest(id: Int, value: String)
 
-  "executeActionReturning should correctly retrieve a generated key" in {
-    inline def stmt = quote(query[QuillTest].insertValue(lift(QuillTest(0, "Joe"))).returningGenerated(_.id))
-    val actual = (create *> dc.run(stmt)).transact(xa).unsafeRunSync()
-    val expected = 1
-    actual mustEqual expected
-  }
+  // "executeActionReturning should correctly retrieve a generated key" in {
+  //   inline def stmt = quote(query[QuillTest].insertValue(lift(QuillTest(0, "Joe"))).returningGenerated(_.id))
+  //   val actual = (create *> dc.run(stmt)).transact(xa).unsafeRunSync()
+  //   val expected = 1
+  //   actual mustEqual expected
+  // }
 
-  "executeBatchActionReturning should correctly retrieve a list of generated keys" in {
-    val values = List(QuillTest(0, "Foo"), QuillTest(0, "Bar"), QuillTest(0, "Baz"))
-    inline def stmt = quote {
-      liftQuery(values).foreach(a => query[QuillTest].insertValue(a).returningGenerated(_.id))
-    }
-    val actual = (create *> dc.run(stmt)).transact(xa).unsafeRunSync()
-    val expected = List(1, 2, 3)
-    actual mustEqual expected
-  }
+  // "executeBatchActionReturning should correctly retrieve a list of generated keys" in {
+  //   val values = List(QuillTest(0, "Foo"), QuillTest(0, "Bar"), QuillTest(0, "Baz"))
+  //   inline def stmt = quote {
+  //     liftQuery(values).foreach(a => query[QuillTest].insertValue(a).returningGenerated(_.id))
+  //   }
+  //   val actual = (create *> dc.run(stmt)).transact(xa).unsafeRunSync()
+  //   val expected = List(1, 2, 3)
+  //   actual mustEqual expected
+  // }
 
 }

@@ -9,5 +9,4 @@ object StringUtil {
         (if (line.isEmpty) line else "  |" + line)
     }
   }
-
 }

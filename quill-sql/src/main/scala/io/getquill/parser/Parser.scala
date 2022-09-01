@@ -32,6 +32,7 @@ import io.getquill.generic.ElaborationSide
 import io.getquill.parser.engine._
 import io.getquill.context.VerifyFreeVariables
 import io.getquill.norm.TranspileConfig
+import io.getquill.ast.External.Source
 
 trait ParserFactory:
   def assemble(using Quotes): ParserLibrary.ReadyParser
@@ -233,7 +234,7 @@ class QuotationParser(rootParse: Parser)(using Quotes, TranspileConfig) extends 
       }
 
     case PlanterExpr.UprootableUnquote(expr) =>
-      ScalarTag(expr.uid) // TODO Want special scalar tag for an encodeable scalar
+      ScalarTag(expr.uid, Source.Parser)
 
     // A inline quotation can be parsed if it is directly inline. If it is not inline, a error
     // must happen (specifically have a check for it or just fail to parse?)
@@ -414,9 +415,9 @@ class BatchActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
 
   def attempt = {
     case '{ type a <: Action[_] with QAC[_, _]; ($q: Query[t]).foreach[`a`, b](${ Lambda1(ident, tpe, body) })($unq) } =>
-      Foreach(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+      val id = cleanIdent(ident, tpe)
+      Foreach(rootParse(q), id, rootParse(body))
   }
-
 }
 
 class IfElseParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) {
@@ -692,8 +693,8 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
     object InterpolatorClause:
       def unapply(expr: Expr[_]) =
         expr match
-          case '{ InfixInterpolator($partsExpr).infix(${ Varargs(params) }: _*) } => Some((partsExpr, params))
-          case '{ SqlInfixInterpolator($partsExpr).sql(${ Varargs(params) }: _*) } => Some((partsExpr, params))
+          case '{ InfixInterpolator($partsExpr).infix(${ Varargs(params) }: _*) }           => Some((partsExpr, params))
+          case '{ SqlInfixInterpolator($partsExpr).sql(${ Varargs(params) }: _*) }          => Some((partsExpr, params))
           case '{ compat.QsqlInfixInterpolator($partsExpr).qsql(${ Varargs(params) }: _*) } => Some((partsExpr, params))
 
     def unapply(expr: Expr[_]): Option[(Seq[String], Seq[Expr[Any]])] =
@@ -993,10 +994,7 @@ class ComplexValueParser(rootParse: Parser)(using Quotes, TranspileConfig)
       CaseClass(fields.zip(argsAst))
 
     case orig @ Unseal(i @ TIdent(x)) =>
-      val id = cleanIdent(i.symbol.name, InferQuat.ofType(i.tpe))
-      if (id.toString.contains("Ast"))
-        println(s"------------- Parsed: $id from ${Format.Expr(orig)}")
-      id
+      cleanIdent(i.symbol.name, InferQuat.ofType(i.tpe))
   }
 }
 

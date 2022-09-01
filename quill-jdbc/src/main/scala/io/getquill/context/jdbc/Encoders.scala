@@ -12,6 +12,7 @@ import io.getquill.MappedEncoding
 // in terms of GenericEncoder/GenericDecoder. Will need to add GenericEncoder to quill-core-portable
 // and redefine encoders in this way to get cross-portability
 import io.getquill.generic._
+import java.sql.PreparedStatement
 
 trait Encoders extends EncodingDsl {
   this: JdbcContextTypes[_, _] =>
@@ -37,7 +38,7 @@ trait Encoders extends EncodingDsl {
   override implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], e: Encoder[O]): Encoder[I] =
     JdbcEncoder(e.sqlType, mappedBaseEncoder(mapped, e.encoder))
 
-  private[this] val nullEncoder: Encoder[Int] = encoder(Types.INTEGER, _.setNull)
+  private[this] val integerBasedNullEncoder: Encoder[Int] = encoder(Types.INTEGER, _.setNull)
 
   implicit def optionEncoder[T](implicit d: Encoder[T]): Encoder[Option[T]] =
     JdbcEncoder(
@@ -45,11 +46,14 @@ trait Encoders extends EncodingDsl {
       (index, value, row, session) =>
         value match {
           case Some(v) => d.encoder(index, v, row, session)
-          case None    => nullEncoder.encoder(index, d.sqlType, row, session)
+          case None    => integerBasedNullEncoder.encoder(index, d.sqlType, row, session)
         }
     )
 
-  implicit val stringEncoder: Encoder[String] = encoder(Types.VARCHAR, _.setString)
+  implicit val stringEncoder: Encoder[String] =
+    encoder(Types.VARCHAR, (row: PreparedStatement) => (i: Index, t: String) =>  row.setString(i, t))
+  implicit val nullEncoder: Encoder[Null] =
+    encoder(Types.NULL, (row: PreparedStatement) => (i: Index, t: String) =>  row.setNull(i, Types.NULL))
   implicit val bigDecimalEncoder: Encoder[BigDecimal] =
     encoder(Types.NUMERIC, (index, value, row) => row.setBigDecimal(index, value.bigDecimal))
   implicit val byteEncoder: Encoder[Byte] = encoder(Types.TINYINT, _.setByte)

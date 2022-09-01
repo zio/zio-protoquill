@@ -34,10 +34,10 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   val updatePeopleByIdDynamic = quote((p: Person) => query[Person].filter(pt => pt.id == p.id).updateValue(p))
 }
 
-class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect, Literal] {
+class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialectWithReturnClause, Literal] {
   // Need to fully type this otherwise scala compiler thinks it's still just 'Context' from the super-class
   // and the extensions (m: MirrorContext[_, _]#BatchActionMirror) etc... classes in Spec don't match their types correctly
-  val ctx: MirrorContext[PostgresDialect, Literal] = new MirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
+  val ctx: MirrorContext[MirrorSqlDialectWithReturnClause, Literal] = new MirrorContext[MirrorSqlDialectWithReturnClause, Literal](MirrorSqlDialectWithReturnClause, Literal)
   import ctx._
 
   val people = List(Person(1, "Joe", 123), Person(2, "Jill", 456))
@@ -174,7 +174,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[PostgresDialect
 
     case class MyPerson(id: Int, name: String, birthYear: Int)
     "update via tuple" in {
-      val birthYearUpdates = List((3431, 1983), (2976, 1972), (1511, 1991))
+      val birthYearUpdates = List((3431, 1983), (2976, 1972), (1511, 1991)) // // /// // // //
       val a = ctx.run {
         liftQuery(birthYearUpdates).foreach {
           case (id, year) =>

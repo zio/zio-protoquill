@@ -456,6 +456,10 @@ object AstPicklers {
   // ==== Lift Picker ====
   // Only care about the protoquill types here for now which only really cares about
   // ScalarTag and QuotationTag
+  implicit val externalSourcePickler: CompositePickler[External.Source] =
+    compositePickler[External.Source]
+      .addConcreteType[External.Source.Parser.type]
+      .addConcreteType[External.Source.UnparsedProperty]
   implicit val externalPickler: CompositePickler[Tag] =
     compositePickler[Tag]
       .addConcreteType[ScalarTag]
