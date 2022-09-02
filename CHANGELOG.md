@@ -1,3 +1,7 @@
+# 4.4.0
+
+- [Integrating upstream changes for Update VALUES-clause optimization](https://github.com/zio/zio-protoquill/pull/182)
+
 # 4.3.0
 
 - [Implementing multi-row insert for liftQuery(...).foreach](https://github.com/zio/zio-protoquill/pull/172)
