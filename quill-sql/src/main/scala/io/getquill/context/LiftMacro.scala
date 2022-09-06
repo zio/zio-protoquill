@@ -195,16 +195,16 @@ object LiftMacro {
     val fieldName = Format.Expr(valueEntity)
     // The thing being encoded converted to a string, unless it is null then null is returned
     val valueEntityToString = '{ StringOrNull($valueEntity) }
-    val encoder = summonEncoderOrFail[T, PrepareRow, Session](valueEntity)
+    val nullableEncoder = summonEncoderOrFail[Option[T], PrepareRow, Session](valueEntity)
     val stringEncoder = summonEncoderOrFail[String, PrepareRow, Session](valueEntityToString)
     val expectedClassTag =
       Expr.summon[ClassTag[T]] match
         case Some(value) => value
         case None        => report.throwError(s"Cannot create a classTag for the type ${Format.TypeOf[T]} for the value ${fieldName}. Cannot create a string-fallback encoder.")
     '{
-      EagerPlanter(
+      EagerPlanter[Any, PrepareRow, Session](
         $valueEntity,
-        GenericEncoderWithStringFallback($encoder, $stringEncoder, ${ Expr(logLine) })($expectedClassTag),
+        GenericEncoderWithStringFallback($nullableEncoder, ${ Expr(logLine) })($expectedClassTag),
         ${ Expr(uuid) }
       ).unquote
     }

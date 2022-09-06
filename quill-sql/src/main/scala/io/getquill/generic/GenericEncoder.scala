@@ -9,9 +9,14 @@ trait GenericEncoder[T, PrepareRow, Session] extends ((Int, T, PrepareRow, Sessi
   def apply(i: Int, t: T, row: PrepareRow, session: Session): PrepareRow
 }
 
+object GenericEncoderWithStringFallback {
+  // TODO create possible converters based on class tags
+  // could even leverage implementations from FromString things but might not be worth it
+  // use the converters as a fallback strategy
+}
+
 case class GenericEncoderWithStringFallback[T, PrepareRow, Session](
-    original: GenericEncoder[T, PrepareRow, Session],
-    fallback: GenericEncoder[String, PrepareRow, Session],
+    nullableEncoder: GenericEncoder[Option[T], PrepareRow, Session],
     badExpressionLog: String = ""
 )(classTagExpected: ClassTag[T]) extends GenericEncoder[Any, PrepareRow, Session] {
   def apply(i: Int, t: Any, row: PrepareRow, session: Session): PrepareRow =
@@ -27,12 +32,11 @@ case class GenericEncoderWithStringFallback[T, PrepareRow, Session](
       else if (t.isInstanceOf[Byte]) classTag[Byte]
       else ClassTag(t.getClass())
 
-    if (t == null)
-      original(i, t.asInstanceOf[T], row, session)
-    else if (classTagActual <:< classTagExpected)
-      original(i, t.asInstanceOf[T], row, session)
+    if (t == null || classTagActual <:< classTagExpected)
+      println(s"=============== ENCODING ${classTagActual}: $t as: ${Option(t.asInstanceOf[T])}")
+      nullableEncoder(i, Option(t.asInstanceOf[T]), row, session)
     else
       // using pprint here because want quotes if it is a string value etc...
       println(s"[WARN] The field value: ${pprint(t).plainText} had the type `${classTagActual}` but was expecting the type `${classTagExpected}`.${badExpressionLog}")
-      fallback(i, StringOrNull(t), row, session)
+      nullableEncoder(i, Option(t.asInstanceOf[T]), row, session)
 }
