@@ -47,7 +47,6 @@ class MapFlicerMacro {
       case (terms, Branch) =>
         val boolTerms =
           terms.map { (fieldString, isOptional, getter, tpe) =>
-            val logLine = s" (For the map-lifted expression `${fieldString}`. Need to auto-cast to string before lifting which may introduce unexpected errors.)"
             val childTTerm = getter(core)
             val actualChildType =
               if (isOptional)
@@ -65,7 +64,7 @@ class MapFlicerMacro {
                 $eachField(
                   $field,
                   ${
-                    LiftMacro.valueOrString[T, PrepareRow, Session](mapSplice, logLine = logLine)
+                    LiftMacro.valueOrString[T, PrepareRow, Session](mapSplice)
                   }
                 )
               }

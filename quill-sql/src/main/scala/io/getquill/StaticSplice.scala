@@ -8,61 +8,81 @@ import scala.util.Try
 import scala.util.Failure
 import scala.util.Success
 import io.getquill.util.CommonExtensions.Either._
+import java.time.LocalDate
 
 /**
  * Trait that allows usage of 'static' block. Can declared one of these and use similar to encoders
  * but it needs to be compiled in a previous compilation unit and a global static.
  * TODO More explanation
  */
-trait StaticSplice[T]:
-  def apply(value: T): String
+trait ToString[T]:
+  def toString(value: T): String
+
+trait FromString[T]:
+  def fromString(value: String): T
+
+trait StringCodec[T] extends ToString[T] with FromString[T]
 
 import io.getquill.metaprog.Extractors._
 
-object StaticSplice:
-  def summon[T: Type](using Quotes): Either[String, StaticSplice[T]] =
-    import quotes.reflect.{Try => TTry, _}
-    for {
-      summonValue <- Expr.summon[StaticSplice[T]].toEitherOr(s"a StaticSplice[${Format.TypeOf[T]}] cannot be summoned")
-      // Summoning StaticSplice[T] will given (SpliceString: StaticSplice[String])
-      // (a.k.a. Typed(Ident(SpliceString), TypeTree(StaticSplice[String])) usually with an outer inline surrounding it all)
-      // so then we need to use Untype to just get SpliceString which is a module that we can load
-      staticSpliceType = Untype(summonValue.asTerm.underlyingArgument).tpe.widen
+object StringCodec:
+  object ToString:
+    def summon[T: Type](using Quotes): Either[String, ToString[T]] =
+      import quotes.reflect.{Try => TTry, _}
+      for {
+        summonValue <- Expr.summon[io.getquill.ToString[T]].toEitherOr(s"a ToString[${Format.TypeOf[T]}] cannot be summoned")
+        // Summoning ToString[T] will given (SpliceString: ToString[String])
+        // (a.k.a. Typed(Ident(SpliceString), TypeTree(ToString[String])) usually with an outer inline surrounding it all)
+        // so then we need to use Untype to just get SpliceString which is a module that we can load
+        staticSpliceType = Untype(summonValue.asTerm.underlyingArgument).tpe.widen
+        untypedModule <- Load.Module.fromTypeRepr(staticSpliceType).toEither.mapLeft(_.getMessage)
+        module <- Try(untypedModule.asInstanceOf[io.getquill.ToString[T]]).toEither.mapLeft(_.getMessage)
+      } yield (module)
+  object FromString:
+    def summonExpr[T: Type](using Quotes) =
+      Expr.summon[io.getquill.FromString[T]].toEitherOr(s"a FromString[${Format.TypeOf[T]}] cannot be summoned")
+end StringCodec
 
-      untypedModule <- Load.Module.fromTypeRepr(staticSpliceType).toEither.mapLeft(_.getMessage)
-      module <- Try(untypedModule.asInstanceOf[StaticSplice[T]]).toEither.mapLeft(_.getMessage)
-    } yield (module)
+// Special case for splicing a string directly i.e. need to add 'single-quotes'
+object SpliceString extends ToString[String]:
+  def toString(value: String) = s"'${value}'"
+inline given ToString[String] = SpliceString
 
-object SpliceString extends StaticSplice[String]:
-  def apply(value: String) = s"'${value}'"
-inline given StaticSplice[String] = SpliceString
+object SpliceInt extends StringCodec[Int]:
+  def toString(value: Int) = s"${value}"
+  def fromString(value: String) = value.toInt
+inline given StringCodec[Int] = SpliceInt
 
-object SpliceInt extends StaticSplice[Int]:
-  def apply(value: Int) = s"${value}"
-inline given StaticSplice[Int] = SpliceInt
+object SpliceShort extends StringCodec[Short]:
+  def toString(value: Short) = s"${value}"
+  def fromString(value: String) = value.toShort
+inline given StringCodec[Short] = SpliceShort
 
-object SpliceShort extends StaticSplice[Short]:
-  def apply(value: Short) = s"${value}"
-inline given StaticSplice[Short] = SpliceShort
+object SpliceLong extends StringCodec[Long]:
+  def toString(value: Long) = s"${value}"
+  def fromString(value: String) = value.toLong
+inline given ToString[Long] = SpliceLong
 
-object SpliceLong extends StaticSplice[Long]:
-  def apply(value: Long) = s"${value}"
-inline given StaticSplice[Long] = SpliceLong
+object SpliceFloat extends StringCodec[Float]:
+  def toString(value: Float) = s"${value}"
+  def fromString(value: String) = value.toFloat
+inline given StringCodec[Float] = SpliceFloat
 
-object SpliceFloat extends StaticSplice[Float]:
-  def apply(value: Float) = s"${value}"
-inline given StaticSplice[Float] = SpliceFloat
+object SpliceDouble extends StringCodec[Double]:
+  def toString(value: Double) = s"${value}"
+  def fromString(value: String) = value.toDouble
+inline given StringCodec[Double] = SpliceDouble
 
-object SpliceDouble extends StaticSplice[Double]:
-  def apply(value: Double) = s"${value}"
-inline given StaticSplice[Double] = SpliceDouble
+object SpliceDate extends StringCodec[java.sql.Date]:
+  private val dateFormat = DateTimeFormatter.ofPattern("yyyyMMdd")
+  def toString(value: java.sql.Date) = value.toLocalDate.format(dateFormat)
+  def fromString(value: String) =
+    val local = LocalDate.parse(value, dateFormat)
+    java.sql.Date.valueOf(local)
+inline given StringCodec[java.sql.Date] = SpliceDate
 
-object SpliceDate extends StaticSplice[java.sql.Date]:
-  def apply(value: java.sql.Date) =
-    value.toLocalDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-inline given StaticSplice[java.sql.Date] = SpliceDate
-
-object SpliceLocalDate extends StaticSplice[java.time.LocalDate]:
-  def apply(value: java.time.LocalDate) =
-    value.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-inline given StaticSplice[java.time.LocalDate] = SpliceLocalDate
+object SpliceLocalDate extends StringCodec[java.time.LocalDate]:
+  private val dateFormat = DateTimeFormatter.ofPattern("yyyyMMdd")
+  def toString(value: java.time.LocalDate) = value.format(dateFormat)
+  def fromString(value: String) = LocalDate.parse(value, dateFormat)
+inline given StringCodec[java.time.LocalDate] = SpliceLocalDate

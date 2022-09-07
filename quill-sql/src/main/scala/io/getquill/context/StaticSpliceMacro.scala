@@ -1,7 +1,7 @@
 package io.getquill.context
 
 import scala.quoted._
-import io.getquill.StaticSplice
+import io.getquill.ToString
 import io.getquill.util.Load
 import io.getquill.metaprog.Extractors
 import scala.util.Success
@@ -14,7 +14,7 @@ import io.getquill.Quoted
 import io.getquill.quat.QuatMaking
 import io.getquill.parser.Lifter
 import scala.util.Try
-import io.getquill.StaticSplice
+import io.getquill.StringCodec
 import io.getquill.util.CommonExtensions.Either._
 import io.getquill.util.CommonExtensions.Throwable._
 import io.getquill.util.CommonExtensions.For._
@@ -133,8 +133,8 @@ object StaticSpliceMacro {
     val spliceEither =
       for {
         castSplice <- Try(splicedValue.current.asInstanceOf[T]).toEither.mapLeft(e => errorMsg(e.getMessage))
-        splicer <- StaticSplice.summon[T].mapLeft(str => errorMsg(str))
-        splice <- Try(splicer(castSplice)).toEither.mapLeft(e => errorMsg(e.getMessage))
+        splicer <- StringCodec.ToString.summon[T].mapLeft(str => errorMsg(str))
+        splice <- Try(splicer.toString(castSplice)).toEither.mapLeft(e => errorMsg(e.getMessage))
       } yield splice
 
     val spliceStr =
