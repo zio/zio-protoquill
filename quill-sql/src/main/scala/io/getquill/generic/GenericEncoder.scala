@@ -43,6 +43,6 @@ case class GenericEncoderWithStringFallback[T, PrepareRow, Session](
           nullableEncoder(i, Option(t.asInstanceOf[T]).map(v => converter.fromString(v.toString)), row, session)
         case Left(_) =>
           throw new IllegalStateException(
-            s"[WARN] The field value: ${pprint(t).plainText} had the type `${classTagActual}` but was expecting the type `${classTagExpected}` and could not summon a from-string converter for the type given by: ${classTagExpected}"
+            s"The field value: ${pprint(t).plainText} had the type `${classTagActual}` but was expecting the type `${classTagExpected}` and could not summon a from-string converter for the type."
           )
 }
