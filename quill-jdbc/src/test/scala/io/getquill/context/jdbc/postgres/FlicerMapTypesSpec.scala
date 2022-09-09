@@ -47,7 +47,7 @@ class FlicerMapTypesSpec extends Spec with Inside {
   "Should do correct query from map with" - {
     "simple datatypes" in {
       ctx.run(query[Contact].filterByKeys(Map("firstName" -> "Joe", "addressFk" -> 1))) mustEqual
-        List(Contact("Joe","Bloggs",123,1,"1"), Contact("Joe","Noggs",123,1,"1")) //
+        List(Contact("Joe","Bloggs",123,1,"1"), Contact("Joe","Noggs",123,1,"1"))
     }
     "string datatypes" in {
       ctx.run(query[Contact].filterByKeys(Map("firstName" -> "Joe", "addressFk" -> "1"))) mustEqual
@@ -62,23 +62,26 @@ class FlicerMapTypesSpec extends Spec with Inside {
 
   }
 
-  // "Should fail when cannot convert type from string" - {
-  //   case class Info(value: String)
-  //   implicit val encodeStrWrap: MappedEncoding[Info, String] = MappedEncoding[Info, String](_.value)
-  //   implicit val decodeStrWrap: MappedEncoding[String, Info] = MappedEncoding[String, Info](Info.apply)
+  "Should fail when cannot convert type from string" - {
+    case class Info(value: String)
+    implicit val encodeStrWrap: MappedEncoding[Info, String] = MappedEncoding[Info, String](_.value)
+    implicit val decodeStrWrap: MappedEncoding[String, Info] = MappedEncoding[String, Info](Info.apply)
 
-  //   case class ContactComplex(firstName: String, lastName: String, age: Int, addressFk: Int, extraInfo: Info)
-  //   val converted = contacts.map(c => ContactComplex(c.firstName, c.lastName, c.age, c.addressFk, Info(c.extraInfo)))
+    case class ContactComplex(firstName: String, lastName: String, age: Int, addressFk: Int, extraInfo: Info)
+    val converted = contacts.map(c => ContactComplex(c.firstName, c.lastName, c.age, c.addressFk, Info(c.extraInfo)))
 
-  //   val map = Map[String, Any]("extraInfo" -> "1")
-  //   ctx.run(querySchema[ContactComplex]("Contact").filterByKeys(map)) mustEqual List()
-  // }
+    val map = Map[String, Any]("extraInfo" -> "1")
+    assertThrows[IllegalStateException] {
+      ctx.run(querySchema[ContactComplex]("Contact").filterByKeys(map))
+    }
+  }
 
-  // "Should succeed with AnyValue" - {
-  //   import FlicerMapTypesSpec.`Should succeed with AnyValue`._
-  //   val converted = contacts.map(c => ContactComplex(c.firstName, c.lastName, c.age, c.addressFk, Info(c.extraInfo)))
+  "Should succeed with AnyValue" in {
+    import FlicerMapTypesSpec.`Should succeed with AnyValue`._
+    val converted = contacts.map(c => ContactComplex(c.firstName, c.lastName, c.age, c.addressFk, Info(c.extraInfo)))
 
-  //   val map = Map[String, Any]("extraInfo" -> "1")
-  //   ctx.run(querySchema[ContactComplex]("Contact").filterByKeys(map)) mustEqual List()
-  // }
+    val map = Map[String, Any]("extraInfo" -> Info("1"))
+    ctx.run(querySchema[ContactComplex]("Contact").filterByKeys(map)) mustEqual
+      List(ContactComplex("Joe","Bloggs",123,1,Info("1")), ContactComplex("Joe","Noggs",123,1,Info("1")))
+  }
 }
