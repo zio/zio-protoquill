@@ -31,4 +31,5 @@ class BatchValuesJdbcSpec extends BatchValuesSpec {
     testContext.run(op, batchSize)
     testContext.run(get).toSet mustEqual result.toSet
   }
+  
 }

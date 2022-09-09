@@ -14,7 +14,9 @@ services:
     - NET_ADMIN
 
   mysql:
-    image: mysql/mysql-server:8.0.23 # use this because it supports ARM64 architecture for M1 Mac
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile-mysql
     command: --default-authentication-plugin=mysql_native_password
     ports:
       - "13306:3306"
@@ -22,6 +24,8 @@ services:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
       - MYSQL_ROOT_HOST=%
+    cap_add:
+    - NET_ADMIN
 
   cassandra:
     build:
@@ -47,12 +51,16 @@ services:
     init: true
 
   sqlserver:
-    image: mcr.microsoft.com/mssql/server
+    build:
+        context: .
+        dockerfile: ./build/Dockerfile-sqlserver
     ports:
       - "11433:1433"
     environment:
       - ACCEPT_EULA=Y
       - SA_PASSWORD=QuillRocks!
+    cap_add:
+    - NET_ADMIN
 
   oracle:
     image: quillbuilduser/oracle-18-xe-micro-sq
@@ -72,6 +80,7 @@ services:
       - postgres:postgres
       - mysql:mysql
       - cassandra:cassandra
+      - docker_ping:docker_ping
       #- orientdb:orientdb
       - sqlserver:sqlserver
       - oracle:oracle
@@ -83,13 +92,13 @@ services:
   # If you need to double-check the postgres docker image has
   # a set amount of network latency (that can be set by increase_postgres_latency.sh)
   # then uncomment to start.
-  # docker_ping:
-  #   build:
-  #     context: .
-  #     dockerfile: ./build/Dockerfile-ping
-  #   container_name: docker_ping
-  #   command: >
-  #     ping postgres
+  docker_ping:
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile-ping
+    container_name: docker_ping
+    command: >
+      ping sqlserver
 
   sbt:
     build:
@@ -103,6 +112,7 @@ services:
       - mysql:mysql
       #- cassandra:cassandra
       #- orientdb:orientdb
+      - docker_ping:docker_ping
       - sqlserver:sqlserver
       - oracle:oracle
     volumes:

@@ -487,7 +487,7 @@ class OptionParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Par
     case "contains" -@> '{ type t; ($o: Option[`t`]).contains($body: `t`) } =>
       OptionContains(rootParse(o), rootParse(body))
 
-    case '{ ($o: Option[t]).orNull($refl) } => // back here
+    case '{ ($o: Option[t]).orNull($refl) } =>
       OptionOrNull(rootParse(o))
 
     case '{ ($o: Option[t]).getOrNull } =>
@@ -696,6 +696,8 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
           case '{ InfixInterpolator($partsExpr).infix(${ Varargs(params) }: _*) }           => Some((partsExpr, params))
           case '{ SqlInfixInterpolator($partsExpr).sql(${ Varargs(params) }: _*) }          => Some((partsExpr, params))
           case '{ compat.QsqlInfixInterpolator($partsExpr).qsql(${ Varargs(params) }: _*) } => Some((partsExpr, params))
+          case _ =>
+            failParse(expr, "Invalid Infix Clause")
 
     def unapply(expr: Expr[_]): Option[(Seq[String], Seq[Expr[Any]])] =
       expr match
@@ -830,7 +832,7 @@ class ExtrasParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends
       equalityWithInnerTypechecksAnsi(a, b)(NotEqual)
 }
 
-class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with ComparisonTechniques {
+class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with ComparisonTechniques with QuatMaking {
   import quotes.reflect._
   import io.getquill.ast.Infix
   // Note that if we import Dsl._ here then the "like" construct
@@ -847,6 +849,9 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
           None
       }
   }
+
+  private def isValue(tpe: TypeRepr) =
+    isNumeric(tpe) || existsEncoderFor(tpe)
 
   def attempt = {
     case '{ ($str: String).like($other) } =>
@@ -876,16 +881,16 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
     // toString is automatically converted into the Apply form i.e. foo.toString automatically becomes foo.toString()
     // so we need to parse it as an Apply. The others don't take arg parens so they are not in apply-form.
 
-    case Unseal(Apply(Select(num, "toString"), List())) if isNumeric(num.tpe) =>
-      val inner = rootParse(num.asExpr)
+    case Unseal(Apply(Select(encodeable, "toString"), List())) if isValue(encodeable.tpe) =>
+      val inner = rootParse(encodeable.asExpr)
       Infix(List("cast(", " as VARCHAR)"), List(inner), false, false, inner.quat)
-    case Unseal(Select(num, "toInt")) if isPrimitive(num.tpe)    => rootParse(num.asExpr)
-    case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe)   => rootParse(num.asExpr)
-    case Unseal(Select(num, "toFloat")) if isPrimitive(num.tpe)  => rootParse(num.asExpr)
-    case Unseal(Select(num, "toDouble")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
-    case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe)   => rootParse(num.asExpr)
-    case Unseal(Select(num, "toByte")) if isPrimitive(num.tpe)   => rootParse(num.asExpr)
-    case Unseal(Select(num, "toChar")) if isPrimitive(num.tpe)   => rootParse(num.asExpr)
+    case Unseal(Select(num, "toInt")) if isValue(num.tpe)    => rootParse(num.asExpr)
+    case Unseal(Select(num, "toLong")) if isValue(num.tpe)   => rootParse(num.asExpr)
+    case Unseal(Select(num, "toShort")) if isValue(num.tpe)  => rootParse(num.asExpr)
+    case Unseal(Select(num, "toFloat")) if isValue(num.tpe)  => rootParse(num.asExpr)
+    case Unseal(Select(num, "toDouble")) if isValue(num.tpe) => rootParse(num.asExpr)
+    case Unseal(Select(num, "toByte")) if isValue(num.tpe)   => rootParse(num.asExpr)
+    case Unseal(Select(num, "toChar")) if isValue(num.tpe)   => rootParse(num.asExpr)
 
     // TODO not sure how I want to do this on an SQL level. Maybe implement using SQL function containers since
     // they should be more dialect-portable then just infix
@@ -902,12 +907,6 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
     case '{ ($str: String).toInt }                  => UnaryOperation(StringOperator.toInt, rootParse(str))
     case '{ ($left: String).startsWith($right) }    => BinaryOperation(rootParse(left), StringOperator.startsWith, rootParse(right))
     case '{ ($left: String).split($right: String) } => BinaryOperation(rootParse(left), StringOperator.split, rootParse(right))
-
-    /*
-    //SET Operations
-    case '{ ($set:String).contains() } =>
-      Conso le.printl("Wow you actually did it!")
-     */
 
     // 1 + 1
     // Apply(Select(Lit(1), +), Lit(1))
