@@ -54,10 +54,10 @@ class FlicerMapTypesSpec extends Spec with Inside {
         List(Contact("Joe","Bloggs",123,1,"1"), Contact("Joe","Noggs",123,1,"1"))
     }
     "date datatypes" in {
-      ctx.run(query[DateEncodingTestEntity].filterByKeys(Map("v1" -> makeEntity(1).v1, "v2" -> makeEntity(1).v2))) mustEqual List()
+      ctx.run(query[DateEncodingTestEntity].filterByKeys(Map("v1" -> makeEntity(1).v1, "v2" -> makeEntity(1).v2))) mustEqual List(makeEntity(1))
     }
     "date-string datatypes" in {
-      ctx.run(query[DateEncodingTestEntity].filterByKeys(Map("v1" -> makeEntity(1).v1.toString, "v2" -> makeEntity(1).v2.toString))) mustEqual List()
+      ctx.run(query[DateEncodingTestEntity].filterByKeys(Map("v1" -> makeEntity(1).v1.toString, "v2" -> makeEntity(1).v2.toString))) mustEqual List(makeEntity(1))
     }
 
   }

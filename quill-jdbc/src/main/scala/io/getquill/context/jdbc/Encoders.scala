@@ -46,7 +46,7 @@ trait Encoders extends EncodingDsl {
       (index, value, row, session) =>
         value match {
           case Some(v) => d.encoder(index, v, row, session)
-          case None    => integerBasedNullEncoder.encoder(index, d.sqlType, row, session)
+          case None    => encoder(d.sqlType, (i, v, r) => r.setNull(index, d.sqlType))(index, 0, row, session)
         }
     )
 

@@ -48,9 +48,7 @@ object StringCodec:
       } yield (module)
   object FromString:
     def summonExpr[T: Type](using Quotes) =
-      val output = Expr.summon[io.getquill.FromString[T]].toEitherOr(s"a FromString[${Format.TypeOf[T]}] cannot be summoned")
-      println(s"============== SUMMON RESULT ${Format.TypeOf[T]}: ${output}")
-      output
+      Expr.summon[io.getquill.FromString[T]].toEitherOr(s"a FromString[${Format.TypeOf[T]}] cannot be summoned")
 end StringCodec
 
 // Special case for splicing a string directly i.e. need to add 'single-quotes'
