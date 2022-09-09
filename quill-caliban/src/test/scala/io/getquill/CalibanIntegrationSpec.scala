@@ -16,12 +16,6 @@ class CalibanIntegrationSpec extends CalibanSpec {
     import FlatSchema._
     object Dao:
       def personAddress(columns: List[String], filters: Map[String, String]): ZIO[Any, Throwable, List[PersonAddress]] =
-        io.getquill.util.debug.PrintMac {
-          query[PersonT].leftJoin(query[AddressT]).on((p, a) => p.id == a.ownerId)
-            .map((p, a) => PersonAddress(p.id, p.first, p.last, p.age, a.map(_.street)))
-            .filterByKeys(filters)
-        }
-
         Ctx.run {
           query[PersonT].leftJoin(query[AddressT]).on((p, a) => p.id == a.ownerId)
             .map((p, a) => PersonAddress(p.id, p.first, p.last, p.age, a.map(_.street)))
@@ -42,7 +36,6 @@ class CalibanIntegrationSpec extends CalibanSpec {
         Queries(
           personAddressFlat =>
             (productArgs =>
-              println(s"============ Using Filters: ${pprint.apply(productArgs.keyValues)}")
               Flat.Dao.personAddress(quillColumns(personAddressFlat), productArgs.keyValues)
             )
         )
@@ -85,6 +78,6 @@ class CalibanIntegrationSpec extends CalibanSpec {
           }
         }"""
       unsafeRunQuery(query) mustEqual """{"personAddressFlat":[{"id":1,"last":"A","street":"123 St"}]}"""
-    } //
+    }
   }
 }
