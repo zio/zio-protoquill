@@ -1,3 +1,8 @@
+# 4.4.1
+
+- [Fixing Caliban Datatype conversion issues](https://github.com/zio/zio-protoquill/pull/188)
+- [Incorporate Quill 4.4.1 change from upstream](https://github.com/zio/zio-protoquill/pull/189)
+
 # 4.4.0
 
 - [Integrating upstream changes for Update VALUES-clause optimization](https://github.com/zio/zio-protoquill/pull/182)
