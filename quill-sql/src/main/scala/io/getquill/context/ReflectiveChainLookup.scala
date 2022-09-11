@@ -1,7 +1,7 @@
 package io.getquill.context
 
 import scala.quoted._
-import io.getquill.StaticSplice
+import io.getquill.ToString
 import io.getquill.util.Load
 import io.getquill.metaprog.Extractors
 import scala.util.Success

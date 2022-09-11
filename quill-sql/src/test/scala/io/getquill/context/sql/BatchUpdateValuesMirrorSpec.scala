@@ -39,6 +39,64 @@ class BatchUpdateValuesMirrorSpec extends BatchUpdateValuesSpec {
     )
   }
 
+  // Need to make sure that values inside ps._ parts part are not changed by the naming convention
+  // otherwise they wont correspond to their definition in the `AS ps(...)` part.
+  "Ex 1 - Simple Contact (with Snake Case)" in {
+    val context = new SqlMirrorContext(PostgresDialect, SnakeCase)
+    import context._
+
+    import `Ex 1 - Simple Contact`._
+    context.run(update, 2).tripleBatchMulti mustEqual List(
+      (
+        "UPDATE contact AS p SET first_name = ps.firstName1, last_name = ps.lastName, age = ps.age FROM (VALUES (?, ?, ?, ?), (?, ?, ?, ?)) AS ps(firstName, firstName1, lastName, age) WHERE p.first_name = ps.firstName",
+        List(
+          List("Joe", "Joe", "BloggsU", 22, "Jan", "Jan", "RoggsU", 33),
+          List("James", "James", "JonesU", 44, "Dale", "Dale", "DomesU", 55)
+        ),
+        Static
+      ),
+      (
+        "UPDATE contact AS p SET first_name = ps.firstName1, last_name = ps.lastName, age = ps.age FROM (VALUES (?, ?, ?, ?)) AS ps(firstName, firstName1, lastName, age) WHERE p.first_name = ps.firstName",
+        List(
+          List("Caboose", "Caboose", "CastleU", 66)
+        ),
+        Static
+      )
+    )
+  }
+
+  "Ex 1 - Simple Contact (with Snake Case and renames)" in {
+    val context = new SqlMirrorContext(PostgresDialect, SnakeCase)
+    import context._
+
+    import `Ex 1 - Simple Contact`._
+    inline def contacts = quote {
+      querySchema[Contact]("tblContact", _.firstName -> "colFirstName")
+    }
+    inline def update = quote {
+      liftQuery(updateData: List[Contact]).foreach(ps =>
+        contacts.filter(p => p.firstName == ps.firstName).updateValue(ps)
+      )
+    }
+    context.run(update, 2).tripleBatchMulti mustEqual List(
+      (
+        "UPDATE tblContact AS p SET colFirstName = ps.firstName1, last_name = ps.lastName, age = ps.age FROM (VALUES (?, ?, ?, ?), (?, ?, ?, ?)) AS ps(firstName, firstName1, lastName, age) WHERE p.colFirstName = ps.firstName",
+        List(
+          List("Joe", "Joe", "BloggsU", 22, "Jan", "Jan", "RoggsU", 33),
+          List("James", "James", "JonesU", 44, "Dale", "Dale", "DomesU", 55)
+        ),
+        Static
+      ),
+      (
+        "UPDATE tblContact AS p SET colFirstName = ps.firstName1, last_name = ps.lastName, age = ps.age FROM (VALUES (?, ?, ?, ?)) AS ps(firstName, firstName1, lastName, age) WHERE p.colFirstName = ps.firstName",
+        List(
+          List("Caboose", "Caboose", "CastleU", 66)
+        ),
+        Static
+      )
+    )
+  }
+
   "Ex 1.1 - Simple Contact With Lift" in {
     import `Ex 1.1 - Simple Contact With Lift`._
     context.run(update, 2).tripleBatchMulti mustEqual List(

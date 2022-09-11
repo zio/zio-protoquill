@@ -135,6 +135,8 @@ CREATE TABLE Contact(
     extraInfo VARCHAR(255)
 );
 
+--CREATE INDEX firstAndLast  ON Contact (firstname, lastname);
+
 CREATE TABLE Address(
     id int,
     street VARCHAR(255),
