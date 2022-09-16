@@ -11,6 +11,8 @@ import scala.reflect.classTag
 import java.nio.ByteBuffer
 import java.util.Base64
 import scala.collection.mutable.LinkedHashMap
+import boopickle.DecoderSpeed
+import boopickle.EncoderSpeed
 
 object AstPicklers {
   import QuatPicklers._
@@ -494,6 +496,9 @@ object BooSerializer:
   import AstPicklers._
   import io.getquill.ast.{Ast => QAst}
   import io.getquill.quat.{Quat => QQuat}
+
+  implicit def pickleState: PickleState = new PickleState(new EncoderSpeed, false, false)
+  implicit val unpickleState: ByteBuffer => UnpickleState = (b: ByteBuffer) => new UnpickleState(new DecoderSpeed(b), false, false)
 
   object Ast:
     def serialize(ast: QAst): String =
