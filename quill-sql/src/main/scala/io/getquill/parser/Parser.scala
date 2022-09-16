@@ -853,9 +853,32 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
   private def isValue(tpe: TypeRepr) =
     isNumeric(tpe) || existsEncoderFor(tpe)
 
+  object operator {
+    def unapply(name: String) =
+      name match {
+        case ">"  => Some(NumericOperator.`>`)
+        case ">=" => Some(NumericOperator.`>=`)
+        case "<"  => Some(NumericOperator.`<`)
+        case "<=" => Some(NumericOperator.`<=`)
+        case _    => None
+      }
+  }
+
   def attempt = {
     case '{ ($str: String).like($other) } =>
       Infix(List("", " like ", ""), List(rootParse(str), rootParse(other)), true, false, Quat.Value)
+
+    case NamedOp1('{ ($leftRaw: Ordered[t]) }, operator(op), right) =>
+      // If this is an operator tacked-on via an implicit class (e.g. the pattern used in DateOps) it is
+      // legimiate, pull out the actual implicit class argument. This is a valid case of ProtoQuill use of implicit classes.
+      // (unlike extension methods)
+      val left =
+        leftRaw match
+          case ImplicitClassExtensionPattern(_, left) => left.asExpr
+          case other                                  => other
+
+      // Whatever the case, parse the expressions that came out
+      BinaryOperation(rootParse(left), op, rootParse(right))
 
     case expr @ NamedOp1(left, "==", right) =>
       equalityWithInnerTypechecksIdiomatic(left.asTerm, right.asTerm)(Equal)

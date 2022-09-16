@@ -25,6 +25,7 @@ import io.getquill.context.LiftMacro
 import io.getquill._
 import io.getquill.context.StaticSpliceMacro
 import scala.language.implicitConversions
+import io.getquill.dsl.DateOps
 
 implicit val defaultParser: ParserLibrary = ParserLibrary
 
@@ -56,7 +57,7 @@ def sum[A](a: Option[A])(implicit n: Numeric[A]): Option[A] = NonQuotedException
 extension [T](o: Option[T])
   def filterIfDefined(f: T => Boolean): Boolean = NonQuotedException()
 
-object extras:
+object extras extends DateOps:
   extension [T](a: T)
     def getOrNull: T =
       throw new IllegalArgumentException(
