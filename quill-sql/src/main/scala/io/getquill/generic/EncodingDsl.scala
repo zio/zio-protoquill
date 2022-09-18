@@ -101,4 +101,5 @@ trait EncodingDsl extends LowPriorityImplicits { self => // extends LowPriorityI
   implicit def intEncoder: Encoder[Int]
   implicit def longEncoder: Encoder[Long]
   implicit def doubleEncoder: Encoder[Double]
+  // implicit def nullEncoder: Encoder[Null]
 }

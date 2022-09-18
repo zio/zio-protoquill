@@ -11,7 +11,7 @@ object NonAnsiMirrorSqlDialect extends NonAnsiMirrorSqlDialect {
   override def prepareForProbing(string: String) = string
 }
 
-class NonAnsiTestContextTemplate[Naming <: NamingStrategy](naming: Naming)
+class NonAnsiTestContextTemplate[+Naming <: NamingStrategy](naming: Naming)
   extends SqlMirrorContext(NonAnsiMirrorSqlDialect, naming)
   with TestEntities
   with TestEncoders

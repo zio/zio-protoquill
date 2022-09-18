@@ -45,7 +45,7 @@ import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 import scala.annotation.tailrec
 
-trait ContextVerbTranslate[Dialect <: Idiom, Naming <: NamingStrategy]
+trait ContextVerbTranslate[+Dialect <: Idiom, +Naming <: NamingStrategy]
     extends ContextTranslateMacro[Dialect, Naming]:
   self: Context[Dialect, Naming] =>
   override type TranslateResult[T] = T
@@ -53,7 +53,7 @@ trait ContextVerbTranslate[Dialect <: Idiom, Naming <: NamingStrategy]
   override def push[A, B](result: A)(f: A => B): B = f(result)
   override def seq[A](list: List[A]): List[A] = list
 
-trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
+trait ContextTranslateMacro[+Dialect <: Idiom, +Naming <: NamingStrategy]
     extends ContextTranslateProto[Dialect, Naming]:
   self: Context[Dialect, Naming] =>
 
@@ -84,7 +84,7 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
   inline def translate[T](inline quoted: Quoted[Query[T]], inline prettyPrint: Boolean): TranslateResult[String] = {
     val ca = make.op[Nothing, T, TranslateResult[String]] { arg =>
       val simpleExt = arg.extractor.requireSimple()
-      self.translateQueryEndpoint(arg.sql, arg.prepare.head, simpleExt.extract, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
+      self.translateQueryEndpoint(arg.sql, arg.prepare, simpleExt.extract, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
     QueryExecution.apply(ca)(quoted, None)
   }
@@ -95,7 +95,7 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
   inline def translate[T](inline quoted: Quoted[T], inline prettyPrint: Boolean): TranslateResult[String] = {
     val ca = make.op[Nothing, T, TranslateResult[String]] { arg =>
       val simpleExt = arg.extractor.requireSimple()
-      self.translateQueryEndpoint(arg.sql, arg.prepare.head, simpleExt.extract, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
+      self.translateQueryEndpoint(arg.sql, arg.prepare, simpleExt.extract, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
     QueryExecution.apply(ca)(QuerySingleAsQuery(quoted), None)
   }
@@ -105,7 +105,7 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
   @targetName("translateAction")
   inline def translate[E](inline quoted: Quoted[Action[E]], inline prettyPrint: Boolean): TranslateResult[String] = {
     val ca = make.op[E, Any, TranslateResult[String]] { arg =>
-      self.translateQueryEndpoint(arg.sql, arg.prepare.head, prettyPrint = prettyPrint)(arg.executionInfo, _summonTranslateRunner())
+      self.translateQueryEndpoint(arg.sql, arg.prepare, prettyPrint = prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
     QueryExecution.apply(ca)(quoted, None)
   }
@@ -116,7 +116,7 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
   inline def translate[E, T](inline quoted: Quoted[ActionReturning[E, T]], inline prettyPrint: Boolean): TranslateResult[String] = {
     val ca = make.op[E, T, TranslateResult[String]] { arg =>
       val returningExt = arg.extractor.requireReturning()
-      self.translateQueryEndpoint(arg.sql, arg.prepare.head, returningExt.extract, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
+      self.translateQueryEndpoint(arg.sql, arg.prepare, returningExt.extract, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
     QueryExecution.apply(ca)(quoted, None)
   }
@@ -127,10 +127,10 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
   inline def translate[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]], inline prettyPrint: Boolean): TranslateResult[List[String]] = {
     val ca = make.batch[I, Nothing, A, TranslateResult[List[String]]] { arg =>
       // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-      val group = BatchGroup(arg.sql, arg.prepare.toList)
-      self.translateBatchQueryEndpoint(List(group), prettyPrint)(arg.executionInfo, _summonTranslateRunner())
+      val groups = arg.groups.map((sql, prepare) => BatchGroup(sql, prepare))
+      self.translateBatchQueryEndpoint(groups.toList, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
-    BatchQueryExecution.apply(ca)(quoted)
+    QueryExecutionBatch.apply(ca, 1)(quoted)
   }
 
   @targetName("translateBatchActionReturning")
@@ -140,14 +140,14 @@ trait ContextTranslateMacro[Dialect <: Idiom, Naming <: NamingStrategy]
     val ca = make.batch[I, T, A, TranslateResult[List[String]]] { arg =>
       val returningExt = arg.extractor.requireReturning()
       // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-      val group = BatchGroupReturning(arg.sql, returningExt.returningBehavior, arg.prepare.toList)
-      self.translateBatchQueryReturningEndpoint(List(group), prettyPrint)(arg.executionInfo, _summonTranslateRunner())
+      val groups = arg.groups.map((sql, prepare) => BatchGroupReturning(sql, returningExt.returningBehavior, prepare))
+      self.translateBatchQueryReturningEndpoint(groups.toList, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
-    BatchQueryExecution.apply(ca)(quoted)
+    QueryExecutionBatch.apply(ca, 1)(quoted)
   }
 end ContextTranslateMacro
 
-trait ContextTranslateProto[Dialect <: Idiom, Naming <: NamingStrategy]:
+trait ContextTranslateProto[+Dialect <: Idiom, +Naming <: NamingStrategy]:
   self: Context[Dialect, Naming] =>
 
   type TranslateResult[T]

@@ -19,7 +19,7 @@ object MiniExample_LiftByKeys {
   def regularMapProc() = {
     inline def q = quote {
       query[Person].filter(p =>
-        MapFlicer[Person, PrepareRow, Session](p, values, null, (a, b) => (a == b) || (b == (null) ) )
+        MapFlicer[Person, PrepareRow, Session](p, values)
       )
     }
     val r = run(q)
@@ -51,8 +51,8 @@ object MiniExample_LiftByKeys {
    ============= The following expasion happens ===========
    SELECT p.firstName, p.lastName, p.age FROM Person p
    WHERE
-     ( p.firstName = [ values.getOrElse("firstName",null) ] OR [ values.getOrElse("firstName",null) ] == null ) AND
-     ( p.lastName = [ values.getOrElse("lastName",null) ] OR [ values.getOrElse("lastName",null) ] == null ) AND
+     ( p.firstName = [ values.getOrElse("firstName",null) ] OR [ values.getOrElse("firstName",null) == null ] ) AND
+     ( p.lastName = [ values.getOrElse("lastName",null) ] OR [ values.getOrElse("lastName",null) == null ] ) AND
      ( p.age = [ values.getOrElse("age",null) ] OR [ values.getOrElse("age",null) == null ] ) AND true
   */
 

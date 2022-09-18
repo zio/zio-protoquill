@@ -218,6 +218,9 @@ class QuerySpec extends Spec {
           } yield (p, a))
             .distinctOn(e => e._1.name).sortBy(e => e._1.name)(Ord.asc)
         }
+        // TODO Back here
+
+        println(testContext.run(q).string(true))
 
         testContext.run(q).string mustEqual
           "SELECT DISTINCT ON (a._1name) a._1id AS id, a._1name AS name, a._1age AS age, a._2fk AS fk, a._2street AS street FROM (SELECT p.id AS _1id, p.name AS _1name, p.age AS _1age, a.fk AS _2fk, a.street AS _2street FROM Person p INNER JOIN Address a ON a.fk = p.id) AS a ORDER BY a._1name ASC"

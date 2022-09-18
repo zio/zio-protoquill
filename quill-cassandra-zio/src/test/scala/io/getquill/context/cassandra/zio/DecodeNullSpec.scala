@@ -20,7 +20,7 @@ class DecodeNullSpec extends ZioCassandraSpec {
 
       result(ret.foldCause(
         cause => {
-          cause.died must equal(true)
+          cause.isDie must equal(true)
           cause.dieOption match {
             case Some(e: Exception) =>
               e.isInstanceOf[IllegalStateException] must equal(true)

@@ -6,7 +6,7 @@ import io.getquill.norm.EqualityBehavior
 import io.getquill.norm.EqualityBehavior.NonAnsiEquality
 import io.getquill._
 
-class TestContextTemplate[Dialect <: SqlIdiom, Naming <: NamingStrategy](dialect: Dialect, naming: Naming)
+class TestContextTemplate[+Dialect <: SqlIdiom, +Naming <: NamingStrategy](dialect: Dialect, naming: Naming)
     extends SqlMirrorContext(dialect, naming)
     with TestEntities
     with TestEncoders

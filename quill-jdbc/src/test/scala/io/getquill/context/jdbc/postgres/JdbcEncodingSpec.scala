@@ -4,10 +4,11 @@ import java.time.LocalDateTime
 
 import io.getquill.context.sql.EncodingSpec
 import io.getquill._
+import java.time.ZoneId
 
 class JdbcEncodingSpec extends EncodingSpec {
 
-  val context = testContext
+  val context: testContext.type = testContext
   import testContext._
 
   "encodes and decodes types" in {
@@ -54,5 +55,14 @@ class JdbcEncodingSpec extends EncodingSpec {
     }
     res._1 must contain theSameElementsAs List(EncodingTestEntity(Some(now)))
     res._2 must contain theSameElementsAs List(EncodingTestEntity(None))
+  }
+
+  "Encode/Decode Other Time Types" in {
+    context.run(query[TimeEntity].delete)
+    val zid = ZoneId.systemDefault()
+    val timeEntity = TimeEntity.make(zid)
+    context.run(query[TimeEntity].insertValue(lift(timeEntity)))
+    val actual = context.run(query[TimeEntity]).head
+    timeEntity mustEqual actual
   }
 }

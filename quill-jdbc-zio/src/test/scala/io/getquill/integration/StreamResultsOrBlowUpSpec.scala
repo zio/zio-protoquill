@@ -3,8 +3,10 @@ package io.getquill.integration
 import java.sql.{ Connection, ResultSet }
 import org.scalatest.matchers.should.Matchers._
 import io.getquill._
-import io.getquill.Prefix
+
 import io.getquill.context.ZioJdbc._
+import io.getquill.context.qzio.ImplicitSyntax.Implicit
+import javax.sql.DataSource
 
 /**
  * This is a long-running test that will cause a OutOfMemory exception if
@@ -16,9 +18,8 @@ import io.getquill.context.ZioJdbc._
  *
  * As a default, this test will run as part of the suite without blowing up.
  */
-class StreamResultsOrBlowUpSpec extends ZioSpec {
-
-  override def prefix = Prefix("testPostgresDB")
+class StreamResultsOrBlowUpSpec extends ZioProxySpec {
+  implicit val pool: Implicit[DataSource] = Implicit(io.getquill.postgres.pool)
 
   case class Person(name: String, age: Int)
 
@@ -42,9 +43,9 @@ class StreamResultsOrBlowUpSpec extends ZioSpec {
   import ctx.{ run => runQuill, _ }
   val inserts = quote {
     (numRows: Long) =>
-      infix"""insert into person (name, age) select md5(random()::text), random()*10+1 from generate_series(1, ${numRows}) s(i)""".as[Insert[Int]]
+      sql"""insert into person (name, age) select md5(random()::text), random()*10+1 from generate_series(1, ${numRows}) s(i)""".as[Insert[Int]]
   }
-  val deletes = runQuill { infix"TRUNCATE TABLE Person".as[Delete[Person]] }
+  val deletes = runQuill { sql"TRUNCATE TABLE Person".as[Delete[Person]] }
 
   val numRows = 1000000L
 
@@ -56,7 +57,7 @@ class StreamResultsOrBlowUpSpec extends ZioSpec {
     // not sure why but foreachL causes a OutOfMemory exception anyhow, and firstL causes a ResultSet Closed exception
     val result = stream(query[Person], 100)
       .zipWithIndex
-      .fold(0L)({
+      .runFold(0L)({
         case (totalYears, (person, index)) => {
           // Need to print something out as we stream or github actions will think the build is stalled and kill it with the following message:
           // "No output has been received in the last 10m0s..."
@@ -69,6 +70,7 @@ class StreamResultsOrBlowUpSpec extends ZioSpec {
 
     result should be > numRows
     deletes.onDataSource.runSyncUnsafe()
+    println("hello")
   }
 
   // Note, to actually have no chunking, remove the 100 in stream(query[Person], 100) and run with a small memory size e.g. -Xmx50m
@@ -80,7 +82,7 @@ class StreamResultsOrBlowUpSpec extends ZioSpec {
     // not sure why but foreachL causes a OutOfMemory exception anyhow, and firstL causes a ResultSet Closed exception
     val result = stream(query[Person], 100)
       .zipWithIndex
-      .fold(0L)({
+      .runFold(0L)({
         case (totalYears, (person, index)) => {
           // Need to print something out as we stream or github actions will think the build is stalled and kill it with the following message:
           // "No output has been received in the last 10m0s..."

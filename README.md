@@ -427,7 +427,7 @@ import io.getquill._
 
 object MyBusinessLogic:
   extension (inline i: Int)
-    inline def **(exponent: Int) = quote { infix"power($i, $exponent)" }
+    inline def **(exponent: Int) = quote { sql"power($i, $exponent)" }
 
 def main(args: Array[String]) =
   import MyBusinessLogic._

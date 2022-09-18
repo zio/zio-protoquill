@@ -35,6 +35,8 @@ import io.getquill.util.Messages.TraceType
 import io.getquill.util.ProtoMessages
 import io.getquill.context.StaticTranslationMacro
 import io.getquill.quat.Quat
+import io.getquill.metaprog.SummonTranspileConfig
+import io.getquill.IdiomContext
 
 object StaticTranslationMacro:
   import io.getquill.parser._
@@ -48,17 +50,29 @@ object StaticTranslationMacro:
   import io.getquill.NamingStrategy
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst(astExpr: Expr[Ast], topLevelQuat: Quat, wrap: ElaborationBehavior, idiom: Idiom, naming: NamingStrategy)(using Quotes): Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
+  private[getquill] def processAst(
+      astExpr: Expr[Ast],
+      topLevelQuat: Quat,
+      wrap: ElaborationBehavior,
+      idiom: Idiom,
+      naming: NamingStrategy,
+      foreachIdent: Option[Ident] // identifier of a batch query, if this is a batch query
+  )(using Quotes): Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
       CollectAst.byType[QuotationTag](ast).isEmpty
 
     val unliftedAst = VerifyFreeVariables(Unlifter(astExpr))
+    val idiomContext = {
+      val transpileConfig = SummonTranspileConfig()
+      val queryType = IdiomContext.QueryType.discoverFromAst(unliftedAst, foreachIdent.map(_.name))
+      IdiomContext(transpileConfig, queryType)
+    }
 
     if (noRuntimeQuotations(unliftedAst)) {
       val expandedAst = ElaborateTrivial(wrap)(unliftedAst)
-      val (ast, stmt, _) = idiom.translate(expandedAst, topLevelQuat, ExecutionType.Static)(using naming)
+      val (ast, stmt, _) = idiom.translate(expandedAst, topLevelQuat, ExecutionType.Static, idiomContext)(using naming)
 
       val liftColumns =
         (ast: Ast, stmt: Statement) => Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
@@ -70,7 +84,7 @@ object StaticTranslationMacro:
           // return from the query. Others compute this information from the query data directly. This information is stored
           // in the dialect and therefore is computed here.
           case r: ReturningAction =>
-            Some(io.getquill.norm.ExpandReturning.applyMap(r)(liftColumns)(idiom, naming))
+            Some(io.getquill.norm.ExpandReturning.applyMap(r)(liftColumns)(idiom, naming, idiomContext))
           case _ =>
             None
 
@@ -194,7 +208,9 @@ object StaticTranslationMacro:
       topLevelQuat: Quat,
       // Optional lifts that need to be passed in if they exist e.g. in the liftQuery(...).foreach(p => query[P].filter(pq => pq.id == lift(foo)).updateValue(p))
       // the `lift(foo)` needs to be additionally passed in because it is not part of the original lifts
-      additionalLifts: List[PlanterExpr[?, ?, ?]] = List()
+      additionalLifts: List[PlanterExpr[?, ?, ?]] = List(),
+      // Identifier of the batch query, if this is a batch query
+      foreachIdent: Option[Ident] = None
   )(using qctx: Quotes, dialectTpe: Type[D], namingType: Type[N]): Option[StaticState] =
     import quotes.reflect.{Try => TTry, _}
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
@@ -241,7 +257,7 @@ object StaticTranslationMacro:
           )
 
         (query, externals, returnAction, ast) <-
-          processAst(quotedExpr.ast, topLevelQuat, wrap, idiom, naming).errPrint(s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}")
+          processAst(quotedExpr.ast, topLevelQuat, wrap, idiom, naming, foreachIdent).errPrint(s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}")
 
         (primaryLifts, secondaryLifts) <-
           processLifts(lifts, externals, additionalLifts).errPrintEither(

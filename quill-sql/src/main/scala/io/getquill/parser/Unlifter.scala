@@ -240,11 +240,14 @@ object Unlifter {
 
   given unliftQuery: NiceUnliftable[AQuery] with
     def unlift =
-      case Is[Entity](ent)                                                                => unliftEntity(ent)
-      case Is[Map]('{ Map(${ query }, ${ alias }, ${ body }: Ast) })                      => Map(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[FlatMap]('{ FlatMap(${ query }, ${ alias }, ${ body }: Ast) })              => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[Filter]('{ Filter(${ query }, ${ alias }, ${ body }: Ast) })                => Filter(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[GroupBy]('{ GroupBy(${ query }, ${ alias }, ${ body }: Ast) })              => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Entity](ent)                                                   => unliftEntity(ent)
+      case Is[Map]('{ Map(${ query }, ${ alias }, ${ body }: Ast) })         => Map(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[FlatMap]('{ FlatMap(${ query }, ${ alias }, ${ body }: Ast) }) => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Filter]('{ Filter(${ query }, ${ alias }, ${ body }: Ast) })   => Filter(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[GroupBy]('{ GroupBy(${ query }, ${ alias }, ${ body }: Ast) }) => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[GroupByMap]('{ GroupByMap(${ query }, ${ byAlias }, ${ byBody }, ${ mapAlias }, ${ mapBody }) }) =>
+        GroupByMap(query.unexpr, byAlias.unexpr, byBody.unexpr, mapAlias.unexpr, mapBody.unexpr)
+
       case Is[SortBy]('{ SortBy(${ query }, ${ alias }, ${ criterias }, ${ ordering }) }) => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
       case Is[Distinct]('{ Distinct(${ a }) })                                            => Distinct(a.unexpr)
       case Is[DistinctOn]('{ DistinctOn(${ query }, ${ alias }, $body) })                 => DistinctOn(query.unexpr, alias.unexpr, body.unexpr)
@@ -285,7 +288,7 @@ object Unlifter {
       case Is[UnaryOperation]('{ UnaryOperation(${ operator }, ${ a }: Ast) })           => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
       case Is[BinaryOperation]('{ BinaryOperation(${ a }, ${ operator }, ${ b }: Ast) }) => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
       case Is[Property]('{ Property(${ ast }, ${ name }) })                              => Property(ast.unexpr, constString(name))
-      case Is[ScalarTag]('{ ScalarTag(${ uid }) })                                       => ScalarTag(constString(uid))
+      case Is[ScalarTag]('{ ScalarTag(${ uid }, ${ source }) })                          => ScalarTag(constString(uid), source.unexpr)
       case Is[QuotationTag]('{ QuotationTag($uid) })                                     => QuotationTag(constString(uid))
       case Is[Infix]('{ Infix($parts, $params, $pure, $transparent, $quat) })            => Infix(parts.unexpr, params.unexpr, pure.unexpr, transparent.unexpr, quat.unexpr)
       case Is[Tuple]('{ Tuple.apply($values) })                                          => Tuple(values.unexpr)
@@ -298,6 +301,11 @@ object Unlifter {
       case Is[OnConflict.Existing]('{ OnConflict.Existing($a) }) => OnConflict.Existing(a.unexpr)
       case '{ NullValue }                                        => NullValue
   }
+
+  given unliftScalarTagSource: NiceUnliftable[External.Source] with
+    def unlift =
+      case '{ External.Source.Parser }                            => External.Source.Parser
+      case '{ External.Source.UnparsedProperty(${ Expr(name) }) } => External.Source.UnparsedProperty(name)
 
   given unliftCaseClass: NiceUnliftable[CaseClass] with
     def unlift =

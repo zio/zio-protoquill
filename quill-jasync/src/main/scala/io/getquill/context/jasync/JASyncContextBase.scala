@@ -8,8 +8,9 @@ import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.context.RunnerSummoningBehavior
 import scala.concurrent.ExecutionContext
 import io.getquill.context.ContextVerbTranslate
+import java.time.ZoneId
 
-trait JAsyncContextBase[D <: SqlIdiom, N <: NamingStrategy]
+trait JAsyncContextBase[D <: SqlIdiom, +N <: NamingStrategy]
   extends Context[D, N]
   with ContextVerbTranslate[D, N]
   with SqlContext[D, N]
@@ -23,4 +24,6 @@ trait JAsyncContextBase[D <: SqlIdiom, N <: NamingStrategy]
   override type RunnerBehavior = RunnerSummoningBehavior.Implicit
   override type Runner = ExecutionContext
   override type Session = Unit
+
+  val dateTimeZone = ZoneId.systemDefault()
 }

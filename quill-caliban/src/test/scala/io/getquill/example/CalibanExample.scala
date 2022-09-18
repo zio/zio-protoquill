@@ -5,13 +5,13 @@ import caliban.schema.Annotations.GQLDescription
 import caliban.{RootResolver, ZHttpAdapter}
 import zhttp.http._
 import zhttp.service.Server
-import zio.{ExitCode, ZEnv, ZIO}
+import zio.{ExitCode, ZIO}
 import io.getquill._
 import io.getquill.context.qzio.ImplicitSyntax._
 import io.getquill.context.ZioJdbc._
 import io.getquill.util.LoadConfig
-import zio.console.putStrLn
-import zio.{ App, ExitCode, Has, URIO, Task }
+import zio.Console.printLine
+import zio.{ ZIOApp, ExitCode, URIO, Task }
 import java.io.Closeable
 import javax.sql.DataSource
 
@@ -31,7 +31,7 @@ object Dao:
   object Ctx extends PostgresZioJdbcContext(Literal)
   import Ctx._
   lazy val ds = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
-  given Implicit[Has[DataSource]] = Implicit(Has(ds))
+  given Implicit[DataSource] = Implicit(ds)
 
   inline def q(inline columns: List[String], inline filters: Map[String, String]) =
     quote {
@@ -42,7 +42,7 @@ object Dao:
         .take(10)
     }
   inline def plan(inline columns: List[String], inline filters: Map[String, String]) =
-    quote { infix"EXPLAIN ${q(columns, filters)}".pure.as[Query[String]] }
+    quote { sql"EXPLAIN ${q(columns, filters)}".pure.as[Query[String]] }
 
   def personAddress(columns: List[String], filters: Map[String, String]) =
     println(s"Getting columns: $columns")
@@ -59,13 +59,13 @@ object Dao:
 
   def resetDatabase() =
     (for {
-      _ <- run(infix"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
+      _ <- run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
       _ <- run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insertValue(row)))
       _ <- run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insertValue(row)))
     } yield ()).implicitDS
 end Dao
 
-object CalibanExample extends zio.App:
+object CalibanExample extends zio.ZIOAppDefault:
 
   case class Queries(
       personAddress: Field => (ProductArgs[PersonAddress] => Task[List[PersonAddress]]),
@@ -96,14 +96,14 @@ object CalibanExample extends zio.App:
     interpreter <- endpoints
     _ <- Server.start(
         port = 8088,
-        http = Http.route { case _ -> Root / "api" / "graphql" =>
+        http = Http.collectHttp[Request] { case _ -> !! / "api" / "graphql" =>
           ZHttpAdapter.makeHttpService(interpreter)
         }
       )
       .forever
   } yield ()
 
-  override def run(args: List[String]): ZIO[ZEnv, Nothing, ExitCode] =
+  override def run =
     myApp.exitCode
 
 end CalibanExample

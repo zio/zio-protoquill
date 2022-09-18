@@ -20,16 +20,21 @@ import io.getquill.metaprog.Extractors._
 import io.getquill.ast
 import io.getquill.parser.engine._
 import io.getquill.quat.QuatMakingBase
+import io.getquill.norm.TranspileConfig
 
 object ParserHelpers:
 
   trait Helpers(using Quotes) extends Idents with QuatMaking with QuatMakingBase
 
   trait Idents extends QuatMaking:
+    def parseName(rawName: String) =
+      // val name = rawName.replace("_$", "x").replace("$", "")
+      // if (name.trim == "") "x" else name.trim
+      rawName.replace("_$", "x")
     def cleanIdent(name: String, quat: Quat): AIdent =
-      AIdent(name.replace("_$", "x"), quat)
+      AIdent(parseName(name), quat)
     def cleanIdent(using Quotes)(name: String, tpe: quotes.reflect.TypeRepr): AIdent =
-      AIdent(name.replace("_$", "x"), InferQuat.ofType(tpe))
+      AIdent(parseName(name), InferQuat.ofType(tpe))
 
   trait Assignments extends Idents:
 
@@ -85,7 +90,7 @@ object ParserHelpers:
       end CheckTypes
 
       def OrFail(expr: Expr[_])(using Quotes, History) =
-        unapply(expr).getOrElse { ParserError(expr, classOf[Assignment]) }
+        unapply(expr).getOrElse { failParse(expr, classOf[Assignment]) }
 
       def unapply(expr: Expr[_])(using Quotes, History): Option[Assignment] =
         UntypeExpr(expr) match
@@ -95,7 +100,7 @@ object ParserHelpers:
 
       object Double:
         def OrFail(expr: Expr[_])(using Quotes, History) =
-          unapply(expr).getOrElse { ParserError(expr, classOf[AssignmentDual]) }
+          unapply(expr).getOrElse { failParse(expr, classOf[AssignmentDual]) }
         def unapply(expr: Expr[_])(using Quotes, History): Option[AssignmentDual] =
           UntypeExpr(expr) match
             case TwoComponents(ident1, identTpe1, ident2, identTpe2, prop, value) =>
@@ -146,12 +151,26 @@ object ParserHelpers:
       def unapply(expr: Expr[_])(using History): Option[Property] =
         expr match
           case Unseal(value @ Select(Seal(prefix), member)) =>
-            if (value.tpe <:< TypeRepr.of[Embedded]) {
-              Some(Property.Opinionated(rootParse(prefix), member, Renameable.ByStrategy, Visibility.Hidden))
-            } else {
-              // println(s"========= Parsing Property ${prefix.show}.${member} =========")
-              Some(Property(rootParse(prefix), member))
-            }
+            val propertyAst = Property(rootParse(prefix), member)
+            // Generally when you have nested select properties (e.g. query[Person].map(p => p.name.first)) then you want to
+            // select only the last thing i.e. `first`. Note that these kinds of nested selects can be in any clause of the query
+            // including DistinctOn, OrderBy etc...
+            // There are two cases when this happens
+            // 1) When embedded case classes are used e.g. case class Person(name: Name), case class Name(first:String).
+            //    In Scala2-Quill it was required that `Name` has an `extends Embedded` by in ProtoQuill this is not required.
+            //    In this case in the SQL we just want to take the last property in the chain `p.name.first` i.e. `first`.
+            // 2) When ad-hoc case classes are used in such as way as to form nested queries the names of the nested items
+            //    are concatonated so that sub-select variables are unique.
+            //    For example:
+            //      (assuming: cc Contact(firstName:String), cc Person(name:Name, firstName:String), cc Name(firstName:String), note that firstName field is intentually redundant)
+            //      query[Contact].nested.map(c => Person(Name(c.firstName), c.firstName)).nested needs to become:
+            //      SELECT x.namefirstName AS firstName, x.firstName FROM (
+            //        SELECT c.firstName AS namefirstName, c.firstName FROM ( -- Notice how Name becomes expanded to `namefirstName`, if Name has other properties e.g. Name.foo they become `namefoo`
+            //          SELECT x.firstName FROM Contact x) c) x
+            if (value.tpe <:< TypeRepr.of[Embedded] || propertyAst.quat.isProduct)
+              Some(propertyAst.copyAll(visibility = Visibility.Hidden))
+            else
+              Some(propertyAst)
           case _ => None
     end AnyProperty
   }
@@ -168,7 +187,7 @@ object ParserHelpers:
     object PropertyAliasExpr {
       def OrFail[T: Type](expr: Expr[Any]) = expr match
         case PropertyAliasExpr(propAlias) => propAlias
-        case _                            => ParserError(expr, classOf[PropertyAlias])
+        case _                            => failParse(expr, classOf[PropertyAlias])
 
       def unapply[T: Type](expr: Expr[Any]): Option[PropertyAlias] =
         expr match
@@ -324,11 +343,10 @@ object ParserHelpers:
 
     // don't change to ValDef or might override the real valdef in qctx.reflect
     object ValDefTerm {
-      def unapply(using Quotes, History)(tree: quotes.reflect.Tree): Option[Ast] =
+      def unapply(using Quotes, History, TranspileConfig)(tree: quotes.reflect.Tree): Option[Ast] =
         import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
         tree match {
           case TValDef(name, tpe, Some(t @ PatMatchTerm.SimpleClause(ast))) =>
-            println(s"====== Parsing Val Def ${name} = ${t.show}")
             Some(Val(AIdent(name, InferQuat.ofType(tpe.tpe)), ast))
 
           // In case a user does a 'def' instead of a 'val' with no paras and no types then treat it as a val def
@@ -376,12 +394,12 @@ object ParserHelpers:
 
     object PatMatchTerm:
       object SimpleClause:
-        def unapply(using Quotes, History)(term: quotes.reflect.Term): Option[Ast] =
+        def unapply(using Quotes, History, TranspileConfig)(term: quotes.reflect.Term): Option[Ast] =
           PatMatchTerm.unapply(term) match
             case Some(PatMatch.SimpleClause(ast)) => Some(ast)
             case _                                => None
 
-      def unapply(using Quotes, History)(root: quotes.reflect.Term): Option[PatMatch] =
+      def unapply(using Quotes, History, TranspileConfig)(root: quotes.reflect.Term): Option[PatMatch] =
         import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
         root match
           case Match(expr, List(CaseDef(fields, None, body))) =>
@@ -418,7 +436,7 @@ object ParserHelpers:
      * becomes reduced to:
      * ptups.map { x => fun(x.name, x.age) }
      */
-    protected def betaReduceTupleFields(using Quotes, History)(tupleTree: quotes.reflect.Term, fieldsTree: quotes.reflect.Tree, messageExpr: Option[quotes.reflect.Term] = None)(bodyTree: quotes.reflect.Term): Ast = {
+    protected def betaReduceTupleFields(using Quotes, History, TranspileConfig)(tupleTree: quotes.reflect.Term, fieldsTree: quotes.reflect.Tree, messageExpr: Option[quotes.reflect.Term] = None)(bodyTree: quotes.reflect.Term): Ast = {
       import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
       // TODO Need to verify that this is actually a tuple?
       val tuple = rootParse(tupleTree.asExpr)
@@ -468,7 +486,7 @@ object ParserHelpers:
       val fieldPaths = tupleBindsPath(fieldsTree)
       val reductionTuples = fieldPaths.map((id, path) => (id, propertyAt(path)))
 
-      val interp = new Interpolator(TraceType.Standard, 1)
+      val interp = new Interpolator(TraceType.Standard, summon[TranspileConfig].traceConfig, 1)
       import interp._
 
       trace"Pat Match Parsing: ${body}".andLog()
