@@ -13,7 +13,7 @@ import io.getquill.util.Format
 private[getquill] object ReflectivePathChainLookup:
   sealed trait LookupElement { def cls: Class[_]; def current: Object }
   object LookupElement:
-    // For a module class the lookup-object is actualy a class. For example
+    // For a module class the lookup-object is actually a class. For example
     // for: object Foo { object Bar { ... } } you would do:
     //   val submod: Class[Bar] = Class[Foo].getDeclaredClasses.find(_.name endsWith "Bar$")
     //   submod.getField("MODULE$").get(submod /*Object is passed into here*/)

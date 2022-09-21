@@ -145,7 +145,7 @@ object QueryExecutionBatchIteration {
     //   Query1: sing:[ SingleEntityLifts([l:'Joe', l:22]), SingleEntityLifts([l:'Jack', l:33]), SingleEntityLifts([l:'Jill', l:44]) ], otherLifts:[liftedValue]
     //   Query2: sing:[ SingleEntityLifts([l:'LastGuy', l:55]) ],                                                                       otherLifts:[liftedValue]
     //
-    // Another possibility (This is actualy the 1st clause in the code arrangement below) is that there are only 3 rows in total,
+    // Another possibility (This is actually the 1st clause in the code arrangement below) is that there are only 3 rows in total,
     // in that case there will only be one query:
     //   Query1: INSERT INTO Person (name, age) VALUES ('Joe', 22), ('Jack', 33), ('Jill', 44) WHERE something=liftedValue
     // We will have just one group:

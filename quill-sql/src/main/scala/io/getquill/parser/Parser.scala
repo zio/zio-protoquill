@@ -445,7 +445,7 @@ class OptionParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Par
 
   /**
    * Note: The -->, -@> etc.. clauses are just to optimize the match by doing an early-exit if possible.
-   * they don't actaully do any application-relevant logic
+   * they don't actually do any application-relevant logic
    */
   def attempt = {
     case "isEmpty" --> '{ ($o: Option[t]).isEmpty } =>

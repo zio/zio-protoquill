@@ -40,7 +40,7 @@ object Unparticular:
    * that look like this: `query[Person].filter(p => liftQuery(scalars).contains(p.name))`
    * will look like this "WHERE p.name in (?)" (this is the basicQuery).
    * This last "?" actually needs to be expanded
-   * into a comma separated list coming from the lifted list which is actualy Expr[List[T]]
+   * into a comma separated list coming from the lifted list which is actually Expr[List[T]]
    * but that will be done in the Particularizee(r). The `realQuery` is a tokenized representation
    * of the query that can be turned into what it actually will need to look like by the
    * Particularize(r)
