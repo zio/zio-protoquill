@@ -10,7 +10,7 @@ package io.getquill
  * def peopleByName = quote {
  *  (name: String) => people.filter(p => p.name == name).allowFiltering
  * }
- * since the type Quoted[Q] for allowFiltering is not auto-unquoted, error will happnen.
+ * since the type Quoted[Q] for allowFiltering is not auto-unquoted, error will happen.
  * This is why these are left as unquoted inline def.
  */
 extension [Q <: Query[_]](inline q: Q) {
