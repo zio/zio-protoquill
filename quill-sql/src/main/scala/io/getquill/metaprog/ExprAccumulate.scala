@@ -117,7 +117,7 @@ object ExprAccumulate {
         val continue = !found || recurseWhenMatched
 
         expr.asTerm match
-          // Not including this causes execption "scala.tasty.reflect.ExprCastError: Expr: [ : Nothing]" in certain situations
+          // Not including this causes exception "scala.tasty.reflect.ExprCastError: Expr: [ : Nothing]" in certain situations
           case Repeated(Nil, Inferred()) => expr
           case _ if (isQuat(expr))       => expr
           case _ if continue             => transformChildren[TF](expr)
