@@ -104,10 +104,10 @@ trait BasicTimeEncoders extends Encoders {
     encoder(Types.TIMESTAMP_WITH_TIMEZONE, (index, value, row) =>
       row.setTimestamp(index, Timestamp.from(value)))
 
-  implicit val offseTimeEncoder: Encoder[OffsetTime] =
+  implicit val offsetTimeEncoder: Encoder[OffsetTime] =
     encoder(Types.TIME, (index, value, row) =>
       row.setTime(index, java.sql.Time.valueOf(value.withOffsetSameInstant(ZoneOffset.UTC).toLocalTime)))
-  implicit val offseDateTimeEncoder: Encoder[OffsetDateTime] =
+  implicit val offsetDateTimeEncoder: Encoder[OffsetDateTime] =
     encoder(Types.TIMESTAMP_WITH_TIMEZONE, (index, value, row) =>
       row.setTimestamp(index, java.sql.Timestamp.from(value.toInstant)))
 }
@@ -143,10 +143,10 @@ trait ObjectGenericTimeEncoders extends Encoders {
     encoder(jdbcTypeOfInstant, (index, value, row) =>
       row.setObject(index, jdbcEncodeInstant(value), jdbcTypeOfInstant))
 
-  implicit val offseTimeEncoder: Encoder[OffsetTime] =
+  implicit val offsetTimeEncoder: Encoder[OffsetTime] =
     encoder(jdbcTypeOfOffsetTime, (index, value, row) =>
       row.setObject(index, value, jdbcTypeOfOffsetTime))
-  implicit val offseDateTimeEncoder: Encoder[OffsetDateTime] =
+  implicit val offsetDateTimeEncoder: Encoder[OffsetDateTime] =
     encoder(jdbcTypeOfOffsetDateTime, (index, value, row) =>
       row.setObject(index, value, jdbcTypeOfOffsetDateTime))
 }
