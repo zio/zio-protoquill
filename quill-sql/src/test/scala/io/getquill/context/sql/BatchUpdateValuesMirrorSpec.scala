@@ -10,7 +10,7 @@ import io.getquill.context.ExecutionType.Static
 
 /**
  * Note that queries are a little different from Scala2-Quill BatchUpdateValuesMirrorSpec because
- * ProtoQuill is a bit smarter in recornizing which ScalarLift tags are the the same so it doesn't
+ * ProtoQuill is a bit smarter in recornizing which ScalarLift tags are the same so it doesn't
  * need to copy as many `?` placeholders.
  */
 class BatchUpdateValuesMirrorSpec extends BatchUpdateValuesSpec {

@@ -130,7 +130,7 @@ run(joes)
 // TODO Get SQL
 ```
 
-However, if parts of the the query are dynamic (i.e. not `inline def`) it is needed:
+However, if parts of the query are dynamic (i.e. not `inline def`) it is needed:
 ```scala
 inline def people = quote {
   query[Person]
