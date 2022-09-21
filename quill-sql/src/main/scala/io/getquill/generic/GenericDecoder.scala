@@ -120,7 +120,7 @@ object GenericDecoder {
   def decodeOptional[T: Type, ResultRow: Type, Session: Type](index: Int, baseIndex: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): FlattenData =
     import quotes.reflect._
     // Try to summon a specific optional from the context, this may not exist since
-    // some optionDecoder implementations themselves rely on the context-speicific Decoder[T] which is actually
+    // some optionDecoder implementations themselves rely on the context-specific Decoder[T] which is actually
     // GenericDecoder[ResultRow, T, Session, DecodingType.Specific] since they are Specific, they cannot surround Product types.
     Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Specific]] match
 
