@@ -468,7 +468,7 @@ object ElaborateStructure {
    *
    * Legend: x:a->b := Assignment(Ident("x"), a, b)
    */
-  // TODO Should have specific tests for this function indepdendently
+  // TODO Should have specific tests for this function independently
   // keep namefirst, namelast etc.... so that testability is easier due to determinism
   // re-key by the UIDs later
   def ofProductValue[T: Type](productValue: Expr[T], side: ElaborationSide)(using Quotes): TaggedLiftedCaseClass[Ast] = {
