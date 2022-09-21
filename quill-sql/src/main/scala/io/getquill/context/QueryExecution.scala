@@ -111,7 +111,7 @@ object Execution:
       case None =>
         GenericDecoder.summon[DecoderT, ResultRow, Session]
 
-  /** See if there there is a QueryMeta mapping T to some other type RawT */
+  /** See if there is a QueryMeta mapping T to some other type RawT */
   def summonQueryMetaTypeIfExists[T: Type](using Quotes) =
     import quotes.reflect._
     Expr.summon[QueryMeta[T, _]] match
