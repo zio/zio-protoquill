@@ -34,7 +34,7 @@ object Summon:
     Expr.summon[GenericNullChecker[ResultRow, Session]] match
       case Some(nullChecker) => '{ $nullChecker($index, $resultRow) }
       case None              =>
-        // TODO Maybe check the session type and based on what it is, say "Cannot summon a JDBC null-chercker..."
+        // TODO Maybe check the session type and based on what it is, say "Cannot summon a JDBC null-checker..."
         report.throwError(s"Cannot find a null-checker for the session type ${Format.TypeOf[Session]} (whose result-row type is: ${Format.TypeOf[ResultRow]})")
 
   def decoder[ResultRow: Type, Session: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): Option[Expr[T]] =
