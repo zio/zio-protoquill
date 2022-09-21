@@ -100,7 +100,7 @@ object GenericDecoder {
         //   case class Square(length: Int, width: Int) extends Shape
         //   case class Circle(radius: Int) extends Shape
         //   In that case `tpe` here will be Square/Circle
-        // In this case we need to decode ResultRow(shapeType, raidus, length, width) but
+        // In this case we need to decode ResultRow(shapeType, radius, length, width) but
         // However, the Square shape will only know about columns List(length, width)
         // the Circle shape will only know about columns: List(radius)
         // The column resolver looks at the expected columns and figures out what the real index is supposed to be.
