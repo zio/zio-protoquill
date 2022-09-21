@@ -45,7 +45,7 @@ object Extractors {
         term match
           // case Apply(Select(body, method), args) => Some((body, method, args))
           // case Apply(TypeApply(Select(body, method), _), args) => Some((body, method, args))
-          case Applys(Select(body, method), args) => Some((body, method, args))
+          case Applies(Select(body, method), args) => Some((body, method, args))
           case _                                  => None
   }
 
@@ -54,7 +54,7 @@ object Extractors {
    * where predicate can be a simple method or something selected from something else e.g:
    * foo.method(bar) or foo.method[T](bar)
    */
-  object Applys:
+  object Applies:
     def unapply(using Quotes)(term: quotes.reflect.Term) =
       import quotes.reflect._
       term match
@@ -67,7 +67,7 @@ object Extractors {
     def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String, Expr[_])] =
       import quotes.reflect._
       term match {
-        case Unseal(Applys(Select(body, method), List(arg))) => Some((body.asExpr, method, arg.asExpr))
+        case Unseal(Applies(Select(body, method), List(arg))) => Some((body.asExpr, method, arg.asExpr))
         case _                                               => None
       }
   }
@@ -644,7 +644,7 @@ object Extractors {
       def unapply(using Quotes)(expr: Expr[_]) =
         import quotes.reflect._
         expr.asTerm match
-          case Applys(SelectApplyN.Term(_, methodName, _), _) =>
+          case Applies(SelectApplyN.Term(_, methodName, _), _) =>
             Some((methodName, expr))
           case _ => None
   end MatchingOptimizers
