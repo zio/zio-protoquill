@@ -142,7 +142,7 @@ object ElaborateStructure {
       // Need to merge these terms
       val orderedGroupBy = (this.children ++ other.children).groupByOrdered(_.name)
       // Validate the keys to make sure that they are all the same kind of thing. E.g. if you have a Shape coproduct
-      // with a Square.height and a Rectagnle.height, both 'height' fields but be a Leaf (and also in the future will need to have the same data type)
+      // with a Square.height and a Rectangle.height, both 'height' fields but be a Leaf (and also in the future will need to have the same data type)
       // TODO Need to add datatype to Term so we can also verify types are the same for the coproducts
       val newChildren =
         orderedGroupBy.map((term, values) => {
