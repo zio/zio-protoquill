@@ -28,7 +28,7 @@ object ExtractLifts {
   // appearing in the AST in multiple places.
   def extractLifts(body: Expr[Any])(using Quotes) = {
     // TODO If we want to support functionality to resolve all LazyPlanters into
-    // eager Planters before the 'run' function, need to look thorugh eager/lazy
+    // eager Planters before the 'run' function, need to look through eager/lazy
     // (planters) with the same UID and choose the ones that are eager for the same UID
     // i.e. since they would be the resolved ones
     // val m =
