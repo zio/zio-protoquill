@@ -16,9 +16,9 @@ object EntityQuery {
 
 def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[T] = NonQuotedException()
 
-sealed trait Unquoteable
+sealed trait Unquotable
 
-trait EntityQuery[T] extends EntityQueryModel[T] with Unquoteable:
+trait EntityQuery[T] extends EntityQueryModel[T] with Unquotable:
   override def withFilter(f: T => Boolean): EntityQuery[T] = NonQuotedException()
   override def filter(f: T => Boolean): EntityQuery[T] = NonQuotedException()
   override def map[R](f: T => R): EntityQuery[R] = NonQuotedException()
@@ -31,7 +31,7 @@ case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _, _]
 // For example, a ScalarPlanter is re-inserted into the PrepareRow sequence
 // Note that we cannot assume the unquote is just T since unquoted values can be
 // different e.g. in EagerEntityListPlaner
-sealed trait Planter[T, PrepareRow, Session] extends Unquoteable {
+sealed trait Planter[T, PrepareRow, Session] extends Unquotable {
   def unquote: T
   def uid: String
 }
@@ -93,13 +93,13 @@ case class EagerEntitiesPlanter[T, PrepareRow, Session](value: Iterable[T], uid:
 // Stores runtime quotation tree. This is holder for quotations that are not inline thus can never be re-inserted into
 // the ast (i.e. the ground... metaphorically speaking), therefore this holder is called Vase. The contents of the
 // QuotationVase are only inserted back in during runtime.
-case class QuotationVase(quoted: Quoted[Any], uid: String) extends Unquoteable
+case class QuotationVase(quoted: Quoted[Any], uid: String) extends Unquotable
 
 // Quotations go from a QuotationLot directly inline into the tree or put into a QuotationVase
 // to be added into the runtime inlining later
 // NOTE: Don't want to include quoted: Quoted[T] since the inner stored type might be different that the thing returned.
 //       currently there's no use-case for that but perhaps in future.
-sealed trait QuotationLot[+T](uid: String) extends Unquoteable {
+sealed trait QuotationLot[+T](uid: String) extends Unquotable {
   // TODO I think we should get rid of this operator. Unquote should be put on this via an implicit class which causes
   // invocation of the unquote macro?
   def unquote: T =
