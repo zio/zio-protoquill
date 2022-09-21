@@ -24,7 +24,7 @@ object QueryMacro:
           case QuotationLotExpr(Uprootable(_, _, _)) =>
             '{ $meta.unquote }
 
-          // If it's pluckabke can also return that because the parser/Expr accumulate in Context will find it.
+          // If it's pluckable can also return that because the parser/Expr accumulate in Context will find it.
           // I am not sure this has use cases.
           case QuotationLotExpr(Pluckable(_, _, _)) =>
             '{ $meta.unquote }
