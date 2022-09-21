@@ -10,7 +10,7 @@ import io.getquill.metaprog.SummonTranspileConfig
 
 // TODO Note that this does not seem to work when .type is used directly.
 // For example, in Dsl.scala, I tried using BaseParserFactory.type
-// but then created a delegate trait BaseParsreFactory for the object BaseParseFactory
+// but then created a delegate trait BaseParseFactory for the object BaseParseFactory
 // which I then used directly. This worked while BaseParseFactory.type did not.
 object Load:
 
