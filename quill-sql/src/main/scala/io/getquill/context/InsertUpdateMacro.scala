@@ -294,7 +294,7 @@ object InsertUpdateMacro {
      * E.g. if we have something like this: `val ip = quote { (p: Person) => query[Person].insertValue(p) }`
      * and then later: `run(ip(lift(Person("Joe",123))))` then the assignments list is just based
      * on the `p` identifier of the `ip` quoted function i.e:
-     * `(v:Person) => v.firstName -> p.firstName` this is achived by doing
+     * `(v:Person) => v.firstName -> p.firstName` this is achieved by doing
      * BetaReduce(v.firstName, v -> p). Later on when `ip(lift(Person("Joe",123)))`
      * happens the `CaseClass(firstName -> lift(...), age -> lift(...))` comes in and
      * all the right values are plugged in correctly.
