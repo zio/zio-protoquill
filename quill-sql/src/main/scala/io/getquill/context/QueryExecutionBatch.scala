@@ -339,7 +339,7 @@ object QueryExecutionBatch:
                     val exp = expandLiftQueryMembers(filteredPerRowLifts, scalarsPlanter.expr)
                     '{ $exp.map(SingleEntityLifts(_)).toList }
 
-              // At this point here is waht the lifts look like:
+              // At this point here is what the lifts look like:
               //   List(
               //     List(lift(Joe.name), lift(Joe.age))
               //     List(lift(Jim.name), lift(Jim.age))
