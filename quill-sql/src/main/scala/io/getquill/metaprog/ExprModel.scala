@@ -26,7 +26,7 @@ has to be "plucked" and inserted into a vase. The are still some conditions that
 of tree has to match so we call it "pluckable." Until we ascertain whether to re-insert
 or pluck, the Tree is held (temporarily) inside of a Bin.
 
-Different construcuts follow these rules in different ways. Scalar values for instances
+Different constructs follow these rules in different ways. Scalar values for instances
 cannot contain contents making them non-re-insertable and therefore are always
 held inside of planters (i.e. the Planter) and replanted back into the part
 of the tree constructing the PrepareRow in the 'run' method.
