@@ -48,7 +48,7 @@ object MiniExample_LiftByKeys {
   }
 
   /*
-   ============= The following expasion happens ===========
+   ============= The following expansion happens ===========
    SELECT p.firstName, p.lastName, p.age FROM Person p
    WHERE
      ( p.firstName = [ values.getOrElse("firstName",null) ] OR [ values.getOrElse("firstName",null) == null ] ) AND
