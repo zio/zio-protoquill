@@ -205,7 +205,7 @@ class OrderingParser(val rootParse: Parser)(using Quotes, TranspileConfig) exten
   def attempt: History ?=> PartialFunction[Expr[_], Ordering] = {
     case '{ implicitOrd } => AscNullsFirst
 
-    // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
+    // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguments
     case Unseal(Apply(TypeApply(Select(Ident("Ord"), "apply"), _), args)) =>
       // parse all sub-orderings if this is a composite
       val subOrderings = args.map(_.asExpr).map(ordExpression => attempt.lift(ordExpression).getOrElse(failParse(ordExpression, classOf[Ordering])))
