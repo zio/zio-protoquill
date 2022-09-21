@@ -36,7 +36,7 @@ object GroupByOps {
         builder += i
       }
       // Don't need to keep the original map, just map the values in place
-      map.mapValues(_.result).toMap // TODO Need to convert this to LinkedHashMap for ordering guarentees?
+      map.mapValues(_.result).toMap // TODO Need to convert this to LinkedHashMap for ordering guarantees?
     }
   }
 }
