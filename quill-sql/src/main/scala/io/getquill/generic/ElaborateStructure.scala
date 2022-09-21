@@ -429,7 +429,7 @@ object ElaborateStructure {
     expanded.toAst.map(_._1)
   }
 
-  def ofAribtraryType[T: Type](baseName: String, side: ElaborationSide)(using Quotes): Ast =
+  def ofArbitraryType[T: Type](baseName: String, side: ElaborationSide)(using Quotes): Ast =
     productized(side, baseName)
 
   /**

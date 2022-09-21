@@ -392,7 +392,7 @@ class ActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
       case (true, IsActionType()) =>
         val newBody =
           actionType match
-            case '[at] => ElaborateStructure.ofAribtraryType[at](ident.name, ElaborationSide.Decoding) // elaboration side is Decoding since this is for entity being returned from the Quill query
+            case '[at] => ElaborateStructure.ofArbitraryType[at](ident.name, ElaborationSide.Decoding) // elaboration side is Decoding since this is for entity being returned from the Quill query
         newBody
       case (true, _) =>
         report.throwError("Could not process whole-record 'returning' clause. Consider trying to return individual columns.")
