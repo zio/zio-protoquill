@@ -61,7 +61,7 @@ trait ContextTranslateMacro[+Dialect <: Idiom, +Naming <: NamingStrategy]
   /*
   Need to have a specialized runner for this context otherwise conflicts happen with strange errors happen
   because the result of DatasourceContextInjectionMacro is unaware that the Runner type is unified upstream
-  (i.e. in MirrorContext). This might be a Dotty but, not sure. The folloiwng error would occur (error description below is simplified):
+  (i.e. in MirrorContext). This might be a Dotty but, not sure. The following error would occur (error description below is simplified):
   Name clash between inherited members:
   def inline$context$i1(x$0: Context[Dialect, Naming] & ContextVerbPrepare[Dialect, Naming]): ContextVerbPrepare.this.Runner in trait ContextVerbPrepare and
   def inline$context$i1(x$0: Context[Dialect, Naming] & ContextTranslateMacro[Dialect, Naming]): ContextTranslateMacro.this.Runner in trait ContextTranslateMacro
