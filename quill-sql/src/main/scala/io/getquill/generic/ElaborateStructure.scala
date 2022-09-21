@@ -407,7 +407,7 @@ object ElaborateStructure {
               alternatives.reduce((termA, termB) => termA.merge[T](termB))
             case _ =>
               report.throwError(
-                s"Althought a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator. It's mirror is ${Format.Expr(ev)}"
+                s"Although a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator. It's mirror is ${Format.Expr(ev)}"
               )
         case None =>
           report.throwError(s"A mirror of the type ${Format.TypeOf[T]} cannot be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator.")
