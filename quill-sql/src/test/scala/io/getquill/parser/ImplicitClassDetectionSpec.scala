@@ -10,7 +10,7 @@ class ImplicitClassDetectionSpec extends Spec {
   }
 
   "should detect implicit class Cls[T].prop" in {
-    // Can check that this doesn't compile but cann't actually check the message correctness
+    // Can check that this doesn't compile but can't actually check the message correctness
     // uncomment to see. It should return a detailed warning about why the above construct is invalid
     // like the following:
     //   Error in the expression:
