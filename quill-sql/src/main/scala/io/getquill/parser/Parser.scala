@@ -7,7 +7,7 @@ import io.getquill.metaprog.QuotedExpr
 import scala.quoted._
 import scala.annotation.StaticAnnotation
 import scala.deriving._
-import io.getquill.Embedable
+import io.getquill.Embeddable
 
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
