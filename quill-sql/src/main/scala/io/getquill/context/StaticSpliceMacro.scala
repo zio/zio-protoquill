@@ -90,7 +90,7 @@ object StaticSpliceMacro {
     val value = valueRaw.asTerm.underlyingArgument
 
     // TODO summon a Expr[StaticSplicer] using the T type passed originally.
-    // Then use use LoadModule to get the value of that thing during runtime so we can use it
+    // Then use LoadModule to get the value of that thing during runtime so we can use it
     // (i.e. see io.getquill.metaprog.SummonParser on how to do that)
     // for primitive types e.g. String, Int, Float etc... rather then making summonable splicers
     // it is easier to just splice them directly, since otherwise those StaticSplicer modules themselves
