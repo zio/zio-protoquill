@@ -385,7 +385,7 @@ The way that this works is that in each `?` slot, the corresponding column is lo
 
 ## Co-Product Rows
 
-Co-Product are supported using Enums and sealed traits. Keep in mind that for now, only static-global enums are supported and any sealed traits that are used must be sealed in a *separate object* in order to work. Otherwise a sum-type mirror of them will not be found. In ORM-terms, Quill uses a "Table Per Class-Hierarchy" model of co-product polymorhism in which data for all co-products must be encodable within a simple row.
+Co-Product are supported using Enums and sealed traits. Keep in mind that for now, only static-global enums are supported and any sealed traits that are used must be sealed in a *separate object* in order to work. Otherwise a sum-type mirror of them will not be found. In ORM-terms, Quill uses a "Table Per Class-Hierarchy" model of co-product polymorphism in which data for all co-products must be encodable within a simple row.
 > Note: As a possible avenue of exploration, this approach can be combined with QueryMeta to relax the requirement of having a single table for all coproducts since QueryMeta can be used to produce a set of joins under the facade of being a single table.
 
 
