@@ -401,7 +401,7 @@ object InsertUpdateMacro {
      * This is used for the createFromPremade if we need to wrap it into insertReturning which is used for batch-returning query execution.
      */
     def createQuotation(summonState: EntitySummonState[Ast], assignmentOfEntity: List[Assignment], lifts: List[Expr[Planter[?, ?, ?]]], pluckedUnquotes: List[Expr[QuotationVase]]) = {
-      // Processed Assignments AST plus any lifts that may have come from the assignments AST themsevles.
+      // Processed Assignments AST plus any lifts that may have come from the assignments AST themselves.
       // That is usually the case when
       val assignmentList = processAssignmentsAndExclusions(assignmentOfEntity)
 
