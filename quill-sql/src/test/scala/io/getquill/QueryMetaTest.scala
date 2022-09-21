@@ -76,7 +76,7 @@ class QueryMetaTest extends Spec with Inside {
         result.info.executionType mustEqual ExecutionType.Static
       }
 
-      "dynamic query shuold yield dynamic requst" in {
+      "dynamic query shuold yield dynamic request" in {
         val people = quote { query[PersonName] }
         val result = ctx.run(people)
         // println("Result: " + result.string)
