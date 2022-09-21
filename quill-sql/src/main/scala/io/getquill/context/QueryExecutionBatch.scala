@@ -235,7 +235,7 @@ object QueryExecutionBatch:
           else
             ExtractBehavior.Skip
         case _ =>
-          report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.TypeOf[A]}")
+          report.throwError(s"Could not match type of the quoted operation: ${io.getquill.util.Format.TypeOf[A]}")
 
     /**
      * (TODO need to fix querySchema with batch usage i.e. liftQuery(people).insert(p => querySchema[Person](...).insertValue(p))

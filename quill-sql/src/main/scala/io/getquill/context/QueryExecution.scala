@@ -207,7 +207,7 @@ object QueryExecution:
             // will just be `Any`. We need to manually detect that case since it requires no return type)
             applyAction(quotedOp)
         case _ =>
-          report.throwError(s"Could not match type type of the quoted operation: ${io.getquill.util.Format.Type(QAC)}")
+          report.throwError(s"Could not match type of the quoted operation: ${io.getquill.util.Format.Type(QAC)}")
 
     lazy val wrapValue = OuterSelectWrap.unlift(wrap)
     lazy val queryElaborationBehavior =
