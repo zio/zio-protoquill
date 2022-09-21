@@ -42,7 +42,7 @@ class FlicerVariableColumnsSpec extends Spec with Inside {
     }
 
     // I.e. if no columns from the joined table are selected and the joined table has a unique constraint on the joined
-    // key, if no columnms are selected from it, that table doesn't need to be scanned at all (this would not be the case
+    // key, if no columns are selected from it, that table doesn't need to be scanned at all (this would not be the case
     // unless the columns are unique and it is an outer join. If it were an inner join we would need to scan the second
     // table to know what columns to filter out. Even if it were an outer join and the keys would not be unique, we
     // would still need to select it because it could have duplicate entries (in the 2nd table) as result of the join.

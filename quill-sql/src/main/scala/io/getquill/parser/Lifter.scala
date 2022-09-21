@@ -118,9 +118,9 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
   // Technically not part of the AST this needs to be lifted in the QueryExecution and returned to the executeActionReturning context clause
   given liftableReturnAction: NiceLiftable[ReturnAction] with
     def lift =
-      case ReturnAction.ReturnNothing         => '{ ReturnAction.ReturnNothing }
-      case ReturnAction.ReturnColumns(colums) => '{ ReturnAction.ReturnColumns(${ colums.expr }) }
-      case ReturnAction.ReturnRecord          => '{ ReturnAction.ReturnRecord }
+      case ReturnAction.ReturnNothing          => '{ ReturnAction.ReturnNothing }
+      case ReturnAction.ReturnColumns(columns) => '{ ReturnAction.ReturnColumns(${ columns.expr }) }
+      case ReturnAction.ReturnRecord           => '{ ReturnAction.ReturnRecord }
 
   given liftRenameable: NiceLiftable[Renameable] with
     def lift =
