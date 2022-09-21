@@ -277,7 +277,7 @@ class ActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     // (for dialect-specific behavior, try to summon a dialect implicitly, it may not exist since a dialect may
     // not be supported. If one exists then check the type of returning thing. If not then dont.
     // Later: Introduce a module that verifies the AST later before compilation and emits a warning if the returning type is incorrect
-    //        do the same thing for dynamic contexts witha log message
+    //        do the same thing for dynamic contexts with a log message
 
     // Form:    ( (Query[Person]).[action](....) ).returning[T]
     // Example: ( query[Person].insertValue(lift(joe))).returning[Something]
