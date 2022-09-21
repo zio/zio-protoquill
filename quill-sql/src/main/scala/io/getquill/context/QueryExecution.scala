@@ -303,7 +303,7 @@ object QueryExecution:
      */
     def executeStatic[RawT: Type](state: StaticState, converter: Expr[RawT => T], extract: ExtractBehavior, topLevelQuat: Quat): Expr[Res] =
       val lifts = resolveLazyLiftsStatic(state.lifts)
-      trace"Original Lifts (including lazy): ${state.lifts.map(_.show)} resoved to: ${lifts.map(_.show)}".andLog()
+      trace"Original Lifts (including lazy): ${state.lifts.map(_.show)} resolved to: ${lifts.map(_.show)}".andLog()
 
       // Create the row-preparer to prepare the SQL Query object (e.g. PreparedStatement)
       // and the extractor to read out the results (e.g. ResultSet)

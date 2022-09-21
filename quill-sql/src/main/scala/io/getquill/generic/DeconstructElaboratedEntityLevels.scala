@@ -108,7 +108,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
 
                     val pathToField =
                       childType match
-                        case '[ct] => resovePathToField[Cls, ct, ft](fieldGetter, childField)
+                        case '[ct] => resolvePathToField[Cls, ct, ft](fieldGetter, childField)
 
                     // if you have Person(name: Option[Name]), Name(first: String, last: String) then the fieldTypeRepr is going to be Option[Name]
                     // that means that the child type (which is going to be person.name.map(_.first)) needs to be Option[String] instead of [String]
@@ -130,7 +130,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
     }
   end recurseNest
 
-  def resovePathToField[Cls: Type, ChildType: Type, FieldType: Type](
+  def resolvePathToField[Cls: Type, ChildType: Type, FieldType: Type](
       fieldGetter: Expr[Cls] => Expr[?],
       childField: Expr[?] => Expr[?]
   ): Expr[Cls] => Expr[?] =
@@ -180,7 +180,7 @@ private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes
     lazy val debugInput = '{ (outerClass: Cls) => ${ pathToField('outerClass) } }
     trace"Path to field '${childField}' is: ${Format.Expr(debugInput)}".andLog()
     pathToField
-  end resovePathToField
+  end resolvePathToField
 
   private[getquill] def optionalize(tpe: Type[_]) =
     tpe match
