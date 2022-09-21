@@ -358,7 +358,7 @@ object QuotationLotExpr {
        * Otherwise, we may run into unbound-variable issues when the lifts inside the Quoted.apply are extracted.
        */
       UntypeExpr(Uninline(expr)) match {
-        // Extract the entity, the uid and any other expressions the qutation bin may have
+        // Extract the entity, the uid and any other expressions the quotation bin may have
         // (e.g. the extractor if the QuotationLot is a QueryMeta). That `Uninline`
         // is needed because in some cases, the `underlyingArgument` call (that gets called somewhere before here)
         // will not be able to remove all inlines which will produce a tree that cannot be matched.

@@ -133,7 +133,7 @@ object QueryMetaExtractor {
 
         Some(StaticRequip(reappliedQuery, extractorFunc))
 
-      // In these two cases, the quoation applies during runtime at which point the quotation of the quip
+      // In these two cases, the quotation applies during runtime at which point the quotation of the quip
       // and query quotes and lifts will all be done during runtime.
       case _: Pluckable | _: Pointable =>
         None

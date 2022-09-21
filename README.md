@@ -112,7 +112,7 @@ inline def joes = quote {
   people.filter(p => p.name == "Joe")
 }
 
-> You *do not* need to import a context in ProtoQuill to make a quoation, just `io.getquill._`. Contexts are only needed for lifting. See the `Lifting and Lazy Lifting` section for more detail.
+> You *do not* need to import a context in ProtoQuill to make a quotation, just `io.getquill._`. Contexts are only needed for lifting. See the `Lifting and Lazy Lifting` section for more detail.
 
 run(joes)
 // TODO Get SQL
