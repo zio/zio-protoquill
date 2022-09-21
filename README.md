@@ -476,7 +476,7 @@ For this reason, ProtoQuill supports an easy extension syntax for custom parsing
    ```
    Note that these to steps need to be done in a *separate compilation unit*. That typically means that you
    need to make a separate SBT project with this logic that is compiled before the rest of your application code.
-3. Now in your application code, you can use the custom parser after defing it as a given (or implicit)
+3. Now in your application code, you can use the custom parser after defining it as a given (or implicit)
    ```scala
    given myParser: CustomParser.type = CustomParser
    import MyBusinessLogic._
