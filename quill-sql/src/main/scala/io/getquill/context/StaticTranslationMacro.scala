@@ -109,7 +109,7 @@ object StaticTranslationMacro:
    * 're-planted' back into the PreparedStatement vars here.
    * matchingExternals = the matching placeholders (i.e 'lift tags') in the AST
    * that contains the UUIDs of lifted elements. We check against list to make
-   * sure that that only needed lifts are used and in the right order.
+   * sure that only needed lifts are used and in the right order.
    */
   private[getquill] def processLifts(
       lifts: List[PlanterExpr[_, _, _]],

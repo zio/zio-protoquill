@@ -299,7 +299,7 @@ object QueryExecutionBatch:
                   //   actually we only want only the ScalarTag(B) so we need to get the list of lift tags (in tokens) once the Dialect has serialized the query
                   //   which correctly order the list of lifts. A similar issue happens with insertMeta and updateMeta.
                   // we need a pre-filtered, and ordered list of lifts. The StaticTranslationMacro internally has done that so we can take the lifts from there although they need to be casted.
-                  // This is safe because they are just the lifts taht we have already had from the `injectableLifts` list
+                  // This is safe because they are just the lifts that we have already had from the `injectableLifts` list
                   // TODO If all the lists are not InjectableEagerPlanterExpr, then we need to find out which ones are not and not inject them
                   val injectedLifts = filteredPerRowLifts.map(lift => lift.inject('entity))
                   val injectedLiftsExpr = Expr.ofList(injectedLifts)
