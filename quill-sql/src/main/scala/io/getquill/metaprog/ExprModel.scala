@@ -400,7 +400,7 @@ object QuotationLotExpr {
     def apply(expr: Expr[Any])(using Quotes): QuotationLotExpr =
       import quotes.reflect._
       unapply(expr).getOrElse {
-        quotes.reflect.report.throwError(s"The expression: ${Format(Printer.TreeShortCode.show(expr.asTerm))} is not a valid unquotation of a Quoted Expression (i.e. a [quoted-expression].unqoute) and cannot be unquoted.")
+        quotes.reflect.report.throwError(s"The expression: ${Format(Printer.TreeShortCode.show(expr.asTerm))} is not a valid unquotation of a Quoted Expression (i.e. a [quoted-expression].unquote) and cannot be unquoted.")
       }
 
     def unapply(expr: Expr[Any])(using Quotes): Option[QuotationLotExpr] =
