@@ -144,7 +144,7 @@ object InsertUpdateMacro {
           case QuotationLotExpr.Unquoted(unquotation) =>
             unquotation match
               // The {querySchema[Person]} part is static (i.e. fully known at compile-time)
-              // (also note that if it's a filter with a pre-existing lift unlift(query[Person]).filter(p => lift("Joe")).insertValue(...)
+              // (also note that if it's a filter with a preexisting lift unlift(query[Person]).filter(p => lift("Joe")).insertValue(...)
               // this case will also happen and there can be one or more lifts i.e. lift("Joe") coming from the filter clause)
               case Uprootable(_, ast, lifts) =>
                 val unliftedAst = Unlifter(ast)
