@@ -57,7 +57,7 @@ enum ElaborationSide:
  * {{{
  * SELECT p.name, p.age FROM (SELECT p.* from Person p) AS p
  * }}}
- * (Note that redudant map would typically be flattened out since it is extraneous and the inner
+ * (Note that redundant map would typically be flattened out since it is extraneous and the inner
  * SELECT would no longer be present)
  *
  * Some special provisions were made for fields inside optional objects:
