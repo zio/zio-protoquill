@@ -49,7 +49,7 @@ import java.util.UUID
  * Each function of field-insertion API basically takes the form
  * {code} (v) => vAssignmentProperty -> assignmentValue (on the AST) {code}
  *
- * Let's take a look at a slighly more complex example
+ * Let's take a look at a slightly more complex example
  * Given:
  * {code}
  *  case class Person(name: String, age: Option[Age]); Age(value: Int)

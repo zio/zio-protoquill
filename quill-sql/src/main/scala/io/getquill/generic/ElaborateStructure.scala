@@ -217,7 +217,7 @@ object ElaborateStructure {
       }
 
     /**
-     * Top-Level expansion of a Term is slighly different the later levels. A the top it's always ident.map(id => ...)
+     * Top-Level expansion of a Term is slightly different the later levels. A the top it's always ident.map(id => ...)
      * if Ident is an option as opposed to OptionMap which it would be, in lower layers.
      *
      * Legend:
