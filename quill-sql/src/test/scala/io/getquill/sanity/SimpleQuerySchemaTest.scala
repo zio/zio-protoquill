@@ -14,7 +14,7 @@ class SimpleQuerySchemaTest extends Spec {
   import ctx._
   case class Person(name: String, age: Int)
 
-  "query schema shuold" - {
+  "query schema should" - {
     "produce an sql query with a renamed table" in {
       inline def q = quote {
         querySchema[Person]("tblPerson")
@@ -34,7 +34,7 @@ class SimpleQuerySchemaTest extends Spec {
       ctx.run(q).string mustEqual "SELECT p.colName, p.age FROM tblPerson p WHERE p.colName = 'Joe'"
     }
   }
-  "schemaMeta shuold" - {
+  "schemaMeta should" - {
     "produce an sql query with a filter and a renamed table and renamed columns" in {
       inline given SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
       inline def q = quote {

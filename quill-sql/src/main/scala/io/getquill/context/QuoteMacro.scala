@@ -33,7 +33,7 @@ object ExtractLifts {
     // i.e. since they would be the resolved ones
     // val m =
 
-    // order of the lifts shuold not matter
+    // order of the lifts should not matter
     // PlanterExpr.findUnquotes(body).zipWithIndex           // preserve the original order
     //   .groupBy((r, idx) => r.uid)                         // group by uids
     //   .map((uid, planters) => planters.sortBy(_._2).head) // for each uid, pick first index

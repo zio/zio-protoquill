@@ -361,7 +361,7 @@ object ElaborateStructure {
 
     val isAutomaticLeaf =
       side match
-        // Not sure why the UDT part is needed since it shuold always have a GenericEncoder/Decoder anyway
+        // Not sure why the UDT part is needed since it should always have a GenericEncoder/Decoder anyway
         case _ if (TypeRepr.of[T] <:< TypeRepr.of[io.getquill.Udt]) =>
           // println(s"------- TREATING UDT as Leaf ${Format.TypeOf[T]}")
           // If we are elaborating a UDT and are told to wrap normally, make sure that this is done

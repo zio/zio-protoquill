@@ -277,7 +277,7 @@ class QuotationTest extends Spec with Inside {
   }
 
   "mixed compile-time and runtime queries" - {
-    // TODO Make a test of this case but with an eager lazy lift that shuold fail?
+    // TODO Make a test of this case but with an eager lazy lift that should fail?
     "runtime -> compile-time" in {
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
       import ctx._
@@ -385,7 +385,7 @@ class QuotationTest extends Spec with Inside {
   }
 
   "special cases" - {
-    "lazy lift shuold crash dynamic query" in {
+    "lazy lift should crash dynamic query" in {
       case class Person(name: String, age: Int)
       val q = quote { query[Person].map(p => p.name + lazyLift("hello")) }
 

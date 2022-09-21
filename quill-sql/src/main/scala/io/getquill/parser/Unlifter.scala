@@ -15,7 +15,7 @@ object UnlifterType {
   type Unlift[T] = PartialFunction[Expr[T], T]
 }
 
-// TODO Change to same way of doing things as Lifter, then shuold be able to get rid of lift and tuple2 unlifter
+// TODO Change to same way of doing things as Lifter, then should be able to get rid of lift and tuple2 unlifter
 object Unlifter {
   import UnlifterType._
 
