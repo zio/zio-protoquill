@@ -534,7 +534,7 @@ class QueryParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     case "withFilter" -@> '{ ($q: Query[qt]).withFilter(${ Lambda1(ident, tpe, body) }) } =>
       Filter(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
 
-    case "concatMap" -@@> '{ type t1; type t2; ($q: Query[qt]).concatMap[`t1`, `t2`](${ Lambda1(ident, tpe, body) })($unknown_stuff) } => // ask Alex why is concatMap like this? what's unkonwn_stuff?
+    case "concatMap" -@@> '{ type t1; type t2; ($q: Query[qt]).concatMap[`t1`, `t2`](${ Lambda1(ident, tpe, body) })($unknown_stuff) } => // ask Alex why is concatMap like this? what's unknown_stuff?
       ConcatMap(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
 
     case "union" -@> '{ ($a: Query[t]).union($b) }       => Union(rootParse(a), rootParse(b))
