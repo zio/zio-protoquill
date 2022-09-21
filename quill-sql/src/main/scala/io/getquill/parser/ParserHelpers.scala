@@ -317,7 +317,7 @@ object ParserHelpers:
      * Match types in the most wide way possible. This function is not for generalized type equality since quill does not directly
      * compare anything, rather it just translates things into SQL expressions. This kind of check is used in a general sense when things
      * that it doesn't even make sense to compare are compared e.g. an Person and a String. In this case, we want to provide some kind
-     * of compile-time warning that the comparision the user is attempting to do in SQL is non sensical in the first place. Therefore when
+     * of compile-time warning that the comparison the user is attempting to do in SQL is non sensical in the first place. Therefore when
      * there is any kind of possibility that the expression makes sense (e.g. by comparing a Dog to a Animal (i.e. class to subclass), by comparing
      * two numeric types of any kind etc... we allow the comparison to happen).
      * For int/long/float/double comparisons don't crash on compile-time typing can re-evaluate this upon user feedback
