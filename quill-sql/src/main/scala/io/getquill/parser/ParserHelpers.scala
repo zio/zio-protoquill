@@ -162,7 +162,7 @@ object ParserHelpers:
             // 2) When ad-hoc case classes are used in such as way as to form nested queries the names of the nested items
             //    are concatenated so that sub-select variables are unique.
             //    For example:
-            //      (assuming: cc Contact(firstName:String), cc Person(name:Name, firstName:String), cc Name(firstName:String), note that firstName field is intentually redundant)
+            //      (assuming: cc Contact(firstName:String), cc Person(name:Name, firstName:String), cc Name(firstName:String), note that firstName field is intentionally redundant)
             //      query[Contact].nested.map(c => Person(Name(c.firstName), c.firstName)).nested needs to become:
             //      SELECT x.namefirstName AS firstName, x.firstName FROM (
             //        SELECT c.firstName AS namefirstName, c.firstName FROM ( -- Notice how Name becomes expanded to `namefirstName`, if Name has other properties e.g. Name.foo they become `namefoo`
