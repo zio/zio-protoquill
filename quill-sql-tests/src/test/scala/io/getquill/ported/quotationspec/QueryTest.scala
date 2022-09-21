@@ -136,7 +136,7 @@ class QueryTest extends Spec with TestEntities {
       //   q.ast mustEqual Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, Quat.Generic)
       //   quote(unquote(q)).ast mustEqual Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, Quat.LeafProduct("id"))
       // }
-      // Unfortunatly the dynamic case of this is also a bug
+      // Unfortunately the dynamic case of this is also a bug
       // "with implicit property and generic - old style - dynamic" in {
       //   implicit class LimitQuery[T](q: Query[T]) {
       //     def limitQuery = quote(sql"$q LIMIT 1".as[Query[T]])
