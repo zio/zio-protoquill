@@ -154,9 +154,9 @@ object GenericDecoder {
     // List((new Name(Decoder("Joe") || Decoder("Bloggs")), Decoder(123))
     // This is what needs to be fed into the constructor of the outer-entity i.e.
     // new Person((new Name(Decoder("Joe") || Decoder("Bloggs")), Decoder(123))
-    val productElments = flattenData.map(_.decodedExpr)
+    val productElements = flattenData.map(_.decodedExpr)
     // actually doing the construction i.e. `new Person(...)`
-    val constructed = ConstructDecoded[T](types, productElments, m)
+    val constructed = ConstructDecoded[T](types, productElements, m)
 
     // E.g. for Person("Joe", 123) the List(q"!nullChecker(0,row)", q"!nullChecker(1,row)") columns
     // that eventually turn into List(!NullChecker("Joe"), !NullChecker(123)) columns.
