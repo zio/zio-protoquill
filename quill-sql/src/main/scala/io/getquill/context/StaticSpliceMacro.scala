@@ -38,7 +38,7 @@ object StaticSpliceMacro {
       term match
         // recurse on Module.Something
         case select: Select => recurseInto(select)
-        // recurse on Module.SomethingAply() from which the empty-args apply i.e. `()` needs to be ignored
+        // recurse on Module.SomethingApply() from which the empty-args apply i.e. `()` needs to be ignored
         case select @ IgnoreApplyNoargs(_: Select) => recurseInto(select)
         case id: Ident                             => Some((id, List()))
         case _                                     => None
