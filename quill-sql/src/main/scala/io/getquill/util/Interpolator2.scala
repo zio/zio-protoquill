@@ -43,7 +43,7 @@ class Interpolator2(
     implicit class StrOps(str: String) {
       def reallyFitsOnOneLine: Boolean = {
         val output = !str.contains("\n") && !str.contains("\r")
-        // println(s"*********************** STRING FITS ONE ONE LINE = ${output} - ${str}")
+        // println(s"*********************** STRING FITS ON ONE LINE = ${output} - ${str}")
         output
       }
       def reallyMultiline(indent: Int, prefix: String, prependNewline: Boolean = false): String = {
