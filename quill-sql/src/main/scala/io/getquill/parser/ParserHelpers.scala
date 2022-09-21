@@ -357,7 +357,7 @@ object ParserHelpers:
           // Then in the AST it will look something like:
           // query[Person].map(p => (p.name, p.age)).filter(x$1 => { val name=x$1._1; val age=x$1._2; name == "Joe" })
           // and you need to resolve the val defs thare are created automatically
-          case DefDef(name, paramss, tpe, rhsOpt) if (paramss.length == 0) =>
+          case DefDef(name, params, tpe, rhsOpt) if (params.length == 0) =>
             // println(s"====== Parsing Def Def ${name} = ${rhsOpt.map(_.show)}")
             val body =
               rhsOpt match {
