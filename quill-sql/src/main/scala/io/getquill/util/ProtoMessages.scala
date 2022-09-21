@@ -4,7 +4,7 @@ import io.getquill.AstPrinter
 import scala.collection.mutable.{Map => MutableMap}
 
 /**
- * Should eventualy unify this with io.getquill.util.Messages in Scala2-Quill
+ * Should eventually unify this with io.getquill.util.Messages in Scala2-Quill
  */
 object ProtoMessages:
   private def variable(propName: String, envName: String, default: String) =
