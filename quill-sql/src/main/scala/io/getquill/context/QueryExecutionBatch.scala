@@ -327,7 +327,7 @@ object QueryExecutionBatch:
               //   lift(Joe.name), lift(Joe.age), lift(somethingElse)
               //   lift(Jim.name), lift(Jim.age), lift(somethingElse)
               //
-              // So first we expland the primary planter list into a list-of lists. The add all additional lifts
+              // So first we expand the primary planter list into a list-of lists. The add all additional lifts
               // into each list. We are assuming that the primary planter (i.e. the liftQuery thing) is the 1st in the in the batch query
               val primaryPlanterLifts =
                 comps.primaryPlanter match
