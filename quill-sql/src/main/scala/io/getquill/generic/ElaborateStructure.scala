@@ -554,7 +554,7 @@ object ElaborateStructure {
 
   /**
    * Flatten the elaboration from 'node' into a completely flat product type
-   * Technicallly don't need Type T but it's very useful to know for errors and it's an internal API so I'll keep it for now
+   * Technically don't need Type T but it's very useful to know for errors and it's an internal API so I'll keep it for now
    */
   private[getquill] def productValueToAst[T: Type](node: Term /* i.e. the elaboration */ )(using Quotes): (String, Ast) =
     def toAstRec(node: Term, parentTerms: Chunk[String], topLevel: Boolean = false): (String, Ast) =
