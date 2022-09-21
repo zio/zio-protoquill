@@ -22,7 +22,7 @@ class CassandraAsyncContext[+N <: NamingStrategy](
   extends CassandraCqlSessionContext[N](naming, session, preparedStatementCacheSize)
   /*with ScalaFutureIOMonad*/ {
 
-  // The ProtoQuill way of doing `implicit ec: ExceutionContext`.
+  // The ProtoQuill way of doing `implicit ec: ExecutionContext`.
   // This will cause the Context.scala `run` functions etc... summon an implicit
   // Runner from the context which we set to ExecutionContext here.
   // That is because Dotty macros cannot do arbitrary things like adding implicit
