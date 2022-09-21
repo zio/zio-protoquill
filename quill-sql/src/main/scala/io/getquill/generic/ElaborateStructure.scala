@@ -371,10 +371,10 @@ object ElaborateStructure {
             case UdtBehavior.Leaf   => true
             case UdtBehavior.Derive => false
         case ElaborationSide.Encoding =>
-          // println(s"------- ALREDY EXISTS Encoder for ${Format.TypeOf[T]}")
+          // println(s"------- ALREADY EXISTS Encoder for ${Format.TypeOf[T]}")
           Expr.summon[GenericEncoder[T, _, _]].isDefined
         case ElaborationSide.Decoding =>
-          // println(s"------- ALREDY EXISTS Decoder for ${Format.TypeOf[T]}")
+          // println(s"------- ALREADY EXISTS Decoder for ${Format.TypeOf[T]}")
           Expr.summon[GenericDecoder[_, _, T, DecodingType.Specific]].isDefined
 
     // TODO Back here. Should have a input arg that asks whether elaboration is
