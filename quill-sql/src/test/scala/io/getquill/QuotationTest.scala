@@ -74,7 +74,7 @@ class QuotationTest extends Spec with Inside {
       qq.ast mustEqual Map(Entity("Person", List(), quatOf[Person].probit), IdentP, Property(IdentP, "name"))
       qqq.ast mustEqual Map(Map(Entity("Person", List(), quatOf[Person].probit), IdentP, Property(IdentP, "name")), Ident("s", quatOf[Person]), Ident("s", quatOf[Person]))
     }
-    "double unquoted splict with a lift" in {
+    "double unquoted splice with a lift" in {
       inline def q = quote { query[Person] }
       inline def qq = quote { q.map(p => p.name) }
       qq.ast mustEqual Map(Entity("Person", List(), quatOf[Person].probit), IdentP, Property(IdentP, "name"))
