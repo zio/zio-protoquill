@@ -24,7 +24,7 @@ object MirrorFields:
           case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
             (m, recurseCollect[elementLabels, elementTypes](Type.of[elementLabels], Type.of[elementTypes]))
           case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes }} =>
-            report.throwError(s"The detected type of ${Format.TypeOf[T]} is a Sum (i.e. Enum or Sealed trait hiearchy. Only Product-type (i.e. Case-Class) UDTs are supported.")
+            report.throwError(s"The detected type of ${Format.TypeOf[T]} is a Sum (i.e. Enum or Sealed trait hierarchy. Only Product-type (i.e. Case-Class) UDTs are supported.")
       case None =>
         val traces = Thread.currentThread.getStackTrace.take(50).map("  " + _.toString).mkString("\n")
         report.throwError(s"Could not detect mirror for: ${Format.TypeOf[T]}")
