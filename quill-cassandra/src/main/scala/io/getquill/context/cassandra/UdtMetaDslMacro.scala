@@ -12,7 +12,7 @@ object UdtMetaDslMacro {
    * TODO Eventually we might want to use a Naming schema `default` method to look up UDT object names.
    * Maybe should have summonable implicit Naming instance here? (probably would only need the Expr[Naming]
    * since we don't need to directly call it on columns hence wouldn't need to deal with compile-time/runtime
-   * dicotomies)
+   * dichotomies)
    */
   def apply[T <: Udt: Type](path: Expr[String], columns: Expr[Seq[T => (Any, String)]])(using Quotes): Expr[UdtMeta[T]] = {
     import quotes.reflect._
