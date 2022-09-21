@@ -160,7 +160,7 @@ object ParserHelpers:
             //    In Scala2-Quill it was required that `Name` has an `extends Embedded` by in ProtoQuill this is not required.
             //    In this case in the SQL we just want to take the last property in the chain `p.name.first` i.e. `first`.
             // 2) When ad-hoc case classes are used in such as way as to form nested queries the names of the nested items
-            //    are concatonated so that sub-select variables are unique.
+            //    are concatenated so that sub-select variables are unique.
             //    For example:
             //      (assuming: cc Contact(firstName:String), cc Person(name:Name, firstName:String), cc Name(firstName:String), note that firstName field is intentually redundant)
             //      query[Contact].nested.map(c => Person(Name(c.firstName), c.firstName)).nested needs to become:
