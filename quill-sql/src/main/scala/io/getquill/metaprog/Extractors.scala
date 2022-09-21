@@ -610,7 +610,7 @@ object Extractors {
    * a simple performance optimization is to check if there's a single-method being matched and if so, what is it's name.
    * Since Scala matches unapply causes left-to-right (nested and recursively),  we can add a unapply clause
    * that will grab the name of the method (if it is a single one being matched which in most cases of the
-   * QueryParser is exaclty what we're looking for) and then match it to a name that we expect it to have.
+   * QueryParser is exactly what we're looking for) and then match it to a name that we expect it to have.
    * For example, if we're trying to match this:
    * {{
    *   case '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } =>
