@@ -125,7 +125,7 @@ object Particularize:
         ): (String, LiftsOrderer) = {
           // Completed all work
           if (workList.isEmpty) {
-            val query = sqlResult.foldLeft("")((concatonation, nextExpr) => concatonation + nextExpr)
+            val query = sqlResult.foldLeft("")((concatenation, nextExpr) => concatenation + nextExpr)
             (query, LiftsOrderer(lifts.toList)(traceConfig))
           } else {
             val head = workList.head
