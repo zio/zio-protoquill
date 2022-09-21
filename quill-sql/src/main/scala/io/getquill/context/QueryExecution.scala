@@ -446,7 +446,7 @@ object PrepareDynamicExecution:
     val queryType = IdiomContext.QueryType.discoverFromAst(splicedAst, batchAlias)
     val idiomContext = IdiomContext(transpileConfig, queryType)
     val (outputAst, stmt, _) = idiom.translate(splicedAst, topLevelQuat, ExecutionType.Dynamic, idiomContext)(using naming)
-    val naiveQury = Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
+    val naiveQuery = Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
 
     val liftColumns =
       (ast: Ast, stmt: Statement) => Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
