@@ -620,7 +620,7 @@ object Extractors {
    *   case "map" -@> '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } =>
    * }}
    * This will check that there's a `Apply(TypeApply(Select(_, "map"), _), _)` being called
-   * and then only proceecd into the quoted-matcher if that is the case.
+   * and then only proceed into the quoted-matcher if that is the case.
    */
   object MatchingOptimizers:
     object --> :
