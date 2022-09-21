@@ -191,7 +191,7 @@ object PlanterExpr {
 
   def findUnquotes(expr: Expr[Any])(using Quotes): List[PlanterExpr[_, _, _]] =
     ExprAccumulate(expr, recurseWhenMatched = false) {
-      // Since we are also searching expressions inside spliced quotatations (in the Lifts slot) those things are not unquoted
+      // Since we are also searching expressions inside spliced quotations (in the Lifts slot) those things are not unquoted
       // so we to search all planter expressions, not just the unquotes.
       // Note however that once we have found a lift we do not need to recurse searching lifts inside of it. There is
       // one case in EagerEntitiesPlanterExpr where InjectableEagerLift is inside it but we do not care about
