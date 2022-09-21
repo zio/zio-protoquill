@@ -72,7 +72,7 @@ import java.util.UUID
  *
  * The end result of this synthesis is a series of assignments for an insert for the given entity.
  *
- * Another possiblity is that the entity is lifted:
+ * Another possibility is that the entity is lifted:
  * {code}
  *  case class Person(name: String, age: Option[Age]); Age(value: Int)
  *  quote { query[Person].insertValue(lift(Person("Joe", Age(345)))) }
