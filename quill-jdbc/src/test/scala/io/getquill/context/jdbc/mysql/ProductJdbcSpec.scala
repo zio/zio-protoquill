@@ -30,7 +30,7 @@ class ProductJdbcSpec extends ProductSpec {
       val prd = Product(0L, "test1", 1L)
       // NOTE: if you make this an inline def the 2nd call and 1st call will run simultaneously
       // since the value will be inlined into the mustBe ___ call. That means both calls will
-      // be run simultaneosly. This will cause mysql to block.
+      // be run simultaneously. This will cause mysql to block.
       val inserted = testContext.run {
         product.insert(_.sku -> lift(prd.sku), _.description -> lift(prd.description)).returningGenerated(_.id)
       }

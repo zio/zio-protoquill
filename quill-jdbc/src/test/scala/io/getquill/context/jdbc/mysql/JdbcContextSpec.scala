@@ -58,7 +58,7 @@ class JdbcContextSpec extends Spec {
   "Insert with returning with single column table" in {
     // NOTE: if you make this an inline def the 2nd call and 1st call will run simultaneously
     // since the value will be inlined into the mustBe ___ call. That means both calls will
-    // be run simultaneosly. This will cause mysql to block.
+    // be run simultaneously. This will cause mysql to block.
     val inserted = testContext.run {
       qr4.insertValue(lift(TestEntity4(0))).returningGenerated(_.i)
     }
