@@ -31,7 +31,7 @@ object MappedDecoderMaker:
     // get the type from the primary constructor and try to summon an encoder for that
     val tpe = TypeRepr.of[Mapped]
     val constructor = tpe.typeSymbol.primaryConstructor
-    // TODO Better error describing why the encoder could not be syntheisized if the constructor doesn't exist or has wrong form (i.e. != 1 arg)
+    // TODO Better error describing why the encoder could not be synthesized if the constructor doesn't exist or has wrong form (i.e. != 1 arg)
     val firstParam = tpe.typeSymbol.primaryConstructor.paramSymss(0)(0)
     val firstParamField = tpe.typeSymbol.memberField(firstParam.name)
     val firstParamType = tpe.memberType(firstParamField)
@@ -80,7 +80,7 @@ object MappedEncoderMaker:
     // case _ =>
     // get the type from the primary constructor and try to summon an encoder for that
     val tpe = TypeRepr.of[Mapped]
-    // TODO Better error describing why the encoder could not be syntheisized if the constructor doesn't exist or has wrong form (i.e. != 1 arg)
+    // TODO Better error describing why the encoder could not be synthesized if the constructor doesn't exist or has wrong form (i.e. != 1 arg)
 
     val firstParam =
       tpe.typeSymbol.primaryConstructor.paramSymss match
