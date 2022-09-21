@@ -54,7 +54,7 @@ class CalibanIntegrationSpec extends CalibanSpec {
       unsafeRunQuery(query) mustEqual """{"personAddressFlat":[{"id":1},{"id":2},{"id":3}]}"""
     }
 
-    "with filteration column included" in {
+    "with filtration column included" in {
       val query =
         """
         {
@@ -67,7 +67,7 @@ class CalibanIntegrationSpec extends CalibanSpec {
         }"""
       unsafeRunQuery(query) mustEqual """{"personAddressFlat":[{"id":1,"first":"One","last":"A","street":"123 St"}]}"""
     }
-    "with no filteration column excluded" in {
+    "with no filtration column excluded" in {
       val query =
         """
         {
