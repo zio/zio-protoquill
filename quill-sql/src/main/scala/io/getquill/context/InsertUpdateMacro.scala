@@ -374,7 +374,7 @@ object InsertUpdateMacro {
           // so we just process it based on what kind of pattern we encounter
           case astCaseClass: CaseClass => deduceAssignmentsFromCaseClass(astCaseClass)
           // if it is a Ident, then we know we have a batch query i.e. liftQuery(people).foreach(p => query[Person].insertValue(p))
-          // we want to re-syntheize this as a lifted thing i.e. liftQuery(people).foreach(p => query[Person].insertValue(lift(p)))
+          // we want to re-synthesize this as a lifted thing i.e. liftQuery(people).foreach(p => query[Person].insertValue(lift(p)))
           // and then reprocess the contents.
           // We don't want to do that here thought because we don't have the PrepareRow
           // so we can't lift content here into planters. Instead this is done in the QueryExecutionBatch pipeline

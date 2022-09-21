@@ -254,7 +254,7 @@ object QuotedExpr {
     def unapply(expr: Expr[Any])(using Quotes): Option[(QuotedExpr, List[PlanterExpr[_, _, _]])] =
       expr match {
         /*
-        It is possible that there are inlines, if so they cannot be in the AST since that is re-syntheized on every quote call so any references they
+        It is possible that there are inlines, if so they cannot be in the AST since that is re-synthesized on every quote call so any references they
         use have to be in the lifts/runtimeQuotes. If it is Uprootable there are no runtimeQuotes so we just have to do the nesting in the
          */
         case SealedInline(parent, defs, `Quoted.apply`(quotedExpr @ QuotedExpr(ast, PlanterExpr.UprootableList(lifts), _))) =>
