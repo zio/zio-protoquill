@@ -479,7 +479,7 @@ object PrepareDynamicExecution:
 
     // Match the ScalarTags we pulled out earlier (in ReifyStatement) with corresponding Planters because
     // the Planters can be out of order (I.e. in a different order then the ?s in the SQL query that they need to be spliced into).
-    // The ScalarTags are comming directly from the tokenized AST however and their order should be correct.
+    // The ScalarTags are coming directly from the tokenized AST however and their order should be correct.
     // also, some of they may be filtered out
     val (sortedLifts, sortedSecondaryLifts) =
       processLifts(gatheredLifts, liftTags, additionalLifts) match
