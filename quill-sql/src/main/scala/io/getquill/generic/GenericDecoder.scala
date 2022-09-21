@@ -209,7 +209,7 @@ object GenericDecoder {
               // Otherwise, recursively summon fields
               ev match
                 case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } if (!isBuiltInType[T]) =>
-                  // do not treat optional objects as coproduts, a Specific (i.e. EncodingType.Specific) Option-decoder
+                  // do not treat optional objects as coproducts, a Specific (i.e. EncodingType.Specific) Option-decoder
                   // is defined in the EncodingDsl
                   DecodeSum[T, ResultRow, Session, elementTypes](index, baseIndex, resultRow, session)
 
