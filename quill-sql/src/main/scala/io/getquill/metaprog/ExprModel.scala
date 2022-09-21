@@ -341,7 +341,7 @@ object QuotationLotExpr {
       /*
        * Specifically the inner `Uninline` part allows using metas e.g. InsertMeta that
        * are defined in parent contexts e.g.
-       * class Stuff { object InnertStuff { inline given InsertMeta[Product] = insertMeta(_.id) } }
+       * class Stuff { object InsertStuff { inline given InsertMeta[Product] = insertMeta(_.id) } }
        * and then imported into other places e.g.
        * class OtherStuff extends Stuff { import InnerStuff.{given, _} } because multiple `Inline` blocks
        * will be nested around the InsertMeta.apply part.
