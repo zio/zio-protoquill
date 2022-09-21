@@ -870,7 +870,7 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
 
     case NamedOp1('{ ($leftRaw: Ordered[t]) }, operator(op), right) =>
       // If this is an operator tacked-on via an implicit class (e.g. the pattern used in DateOps) it is
-      // legimiate, pull out the actual implicit class argument. This is a valid case of ProtoQuill use of implicit classes.
+      // legitimate, pull out the actual implicit class argument. This is a valid case of ProtoQuill use of implicit classes.
       // (unlike extension methods)
       val left =
         leftRaw match
