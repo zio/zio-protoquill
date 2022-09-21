@@ -73,7 +73,7 @@ object Extractors {
   }
 
   // Designed to be a more generic version the Varargs which does not handle all cases.
-  // Particularily when a varargs parameter is passed from one inline function into another.
+  // Particularly when a varargs parameter is passed from one inline function into another.
   object GenericSeq {
     def unapply(using Quotes)(term: Expr[_]): Option[List[Expr[_]]] = {
       import quotes.reflect._
