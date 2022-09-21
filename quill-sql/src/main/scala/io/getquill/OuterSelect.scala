@@ -3,7 +3,7 @@ package io.getquill
 import io.getquill.util.Format
 
 /**
- * TODO Not needed now since elabration does not do OntoAst?
+ * TODO Not needed now since elaboration does not do OntoAst?
  */
 enum OuterSelectWrap:
   case Always

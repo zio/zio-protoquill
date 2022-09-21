@@ -334,7 +334,7 @@ object UdtEncodingMacro:
     elaborationType match
       case Leaf =>
         Expr.summon[Encoder[T]] match
-          // If encoder has already been synthesized by a different macro invocation, elabration
+          // If encoder has already been synthesized by a different macro invocation, elaboration
           // of the encoder will be a Leaf since an encoder exists for it. In that case we just summon the encoder
           case Some(value) =>
             '{ (cem: CassandraEncoderMaker[Encoder, T]) => $value }

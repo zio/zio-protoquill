@@ -161,7 +161,7 @@ object LiftMacro {
 
   private[getquill] def liftProduct[T, PrepareRow, Session](productEntity: Expr[T])(using qctx: Quotes, tpe: Type[T], prepareRowTpe: Type[PrepareRow], sessionTpe: Type[Session]): Expr[CaseClassLift[T]] = {
     import qctx.reflect._
-    // Elaborate the entity and get it's lift. Since we are in the lifter, the elabration side is the encoding side (i.e. since lifts are doing Encoding).
+    // Elaborate the entity and get it's lift. Since we are in the lifter, the elaboration side is the encoding side (i.e. since lifts are doing Encoding).
     val TaggedLiftedCaseClass(caseClassAst, lifts) = ElaborateStructure.ofProductValue[T](productEntity, ElaborationSide.Encoding).reKeyWithUids()
     val liftPlanters =
       lifts.map((liftKey, lift) =>
