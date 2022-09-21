@@ -169,12 +169,12 @@ object Particularize:
                 apply(tail, sqlResult, lifts, liftsCount, num)
               case DoneValueClauseNum(num, isLast) =>
                 trace"Finished value clause: ${num}".andLog()
-                val reaminingWork =
+                val remainingWork =
                   if (!isLast)
                     Item(stmt", ") +: tail
                   else
                     tail
-                apply(reaminingWork, sqlResult, lifts, liftsCount, num)
+                apply(remainingWork, sqlResult, lifts, liftsCount, num)
             }
           }
         }
