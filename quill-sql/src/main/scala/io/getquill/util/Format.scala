@@ -100,7 +100,7 @@ object Format {
             |  ${code}
             |}""".stripMargin
 
-    // NOTE: Very ineffifient way to get rid of DummyEnclosure on large blocks of code
+    // NOTE: Very inefficient way to get rid of DummyEnclosure on large blocks of code
     //       use only for debugging purposes!
     def unEnclose(enclosedCode: String) =
       val lines =
