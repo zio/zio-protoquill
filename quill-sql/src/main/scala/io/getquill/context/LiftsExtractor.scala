@@ -31,7 +31,7 @@ object LiftsExtractor:
 
     // Since we have already expanded list-lifts into separate question marks in the Particularizer, now we
     // just need to individually encode the elements and set them on the PrepareRow
-    // I.e. since the Pluraizer changes filter(p => liftQuery(List("Joe", "Jack").contains(p.name)))
+    // I.e. since the Pluralizer changes filter(p => liftQuery(List("Joe", "Jack").contains(p.name)))
     // to WHERE p.name IN (?, ?) we just need to write the content of the (?, ?) into the ResultRow
     // since the number of Question marks is already expanded (i.e. from the Unparticular.Query where it's just
     // one for the IN clause "WHERE p.name IN (?)" to the particular query where it's the number of elements
