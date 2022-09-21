@@ -356,7 +356,7 @@ object ElaborateStructure {
     // for errors/warnings
     def encDecText =
       side match
-        case ElaborationSide.Encoding => "encodeable"
+        case ElaborationSide.Encoding => "encodable"
         case ElaborationSide.Decoding => "decodable"
 
     val isAutomaticLeaf =

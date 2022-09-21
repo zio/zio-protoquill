@@ -46,16 +46,16 @@ object QuatMaking:
 
   type QuotesTypeRepr = Quotes#reflectModule#TypeRepr
 
-  private val encodeableCache: mutable.Map[QuotesTypeRepr, Boolean] = mutable.Map()
-  def lookupIsEncodeable(tpe: QuotesTypeRepr)(computeEncodeable: () => Boolean) =
-    val lookup = encodeableCache.get(tpe)
+  private val encodableCache: mutable.Map[QuotesTypeRepr, Boolean] = mutable.Map()
+  def lookupIsEncodable(tpe: QuotesTypeRepr)(computeEncodable: () => Boolean) =
+    val lookup = encodableCache.get(tpe)
     lookup match
       case Some(value) =>
         value
       case None =>
-        val encodeable = computeEncodeable()
-        encodeableCache.put(tpe, encodeable)
-        encodeable
+        val encodable = computeEncodable()
+        encodableCache.put(tpe, encodable)
+        encodable
 
   private val quatCache: mutable.Map[QuotesTypeRepr, Quat] = mutable.Map()
   def lookupCache(tpe: QuotesTypeRepr)(computeQuat: () => Quat) =
@@ -117,7 +117,7 @@ trait QuatMaking extends QuatMakingBase:
           false
     }
 
-    val output = QuatMaking.lookupIsEncodeable(tpe.widen)(encoderComputation)
+    val output = QuatMaking.lookupIsEncodable(tpe.widen)(encoderComputation)
     output
 //quotes.reflect.report.throwError(s"No type for: ${tpe}")
 end QuatMaking
@@ -351,7 +351,7 @@ trait QuatMakingBase:
           case _ if (isNone(tpe))     => Quat.Null
 
           // For other types of case classes (and if there does not exist an encoder for it)
-          // the exception to that is a cassandra UDT that we treat like an encodeable entity even if it has a parsed type
+          // the exception to that is a cassandra UDT that we treat like an encodable entity even if it has a parsed type
           case CaseClassBaseType(name, fields) if !existsEncoderFor(tpe) || tpe <:< TypeRepr.of[Udt] =>
             Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
 

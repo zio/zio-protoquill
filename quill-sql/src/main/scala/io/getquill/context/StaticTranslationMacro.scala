@@ -118,10 +118,10 @@ object StaticTranslationMacro:
   )(using Quotes): Either[String, (List[PlanterExpr[_, _, _]], List[PlanterExpr[_, _, _]])] =
     import quotes.reflect.report
 
-    val encodeablesMap =
+    val encodablesMap =
       lifts.map(e => (e.uid, e)).toMap
 
-    val secondaryEncodeablesMap =
+    val secondaryEncodablesMap =
       secondaryLifts.map(e => (e.uid, e)).toMap
 
     val uidsOfScalarTags =
@@ -141,13 +141,13 @@ object StaticTranslationMacro:
         case Secondary(uid, planter) => s"SecondaryPlanter($uid, ${Format.Expr(planter.plant)})"
         case NotFound(uid)           => s"NotFoundPlanter($uid)"
 
-    val sortedEncodeables =
+    val sortedEncodables =
       uidsOfScalarTags
         .map { uid =>
-          encodeablesMap.get(uid) match
+          encodablesMap.get(uid) match
             case Some(element) => UidStatus.Primary(uid, element)
             case None =>
-              secondaryEncodeablesMap.get(uid) match
+              secondaryEncodablesMap.get(uid) match
                 case Some(element) => UidStatus.Secondary(uid, element)
                 case None          => UidStatus.NotFound(uid)
         }
@@ -176,8 +176,8 @@ object StaticTranslationMacro:
         else
           None
 
-    val outputEncodeables =
-      sortedEncodeables match
+    val outputEncodables =
+      sortedEncodables match
         case HasNotFoundUids(uids) =>
           Left(s"Invalid Transformations Encountered. Cannot find lift with IDs: ${uids}.")
         case PrimaryThenSecondary(primaryPlanters, secondaryPlanters /*or List() if none*/ ) =>
@@ -190,10 +190,10 @@ object StaticTranslationMacro:
           )
 
     // TODO This should be logged if some fine-grained debug logging is enabled. Maybe as part of some phase that can be enabled via -Dquill.trace.types config
-    // val remaining = encodeables.removedAll(uidsOfScalarTags)
+    // val remaining = encodables.removedAll(uidsOfScalarTags)
     // if (!remaining.isEmpty)
     //   println(s"Ignoring the following lifts: [${remaining.map((_, v) => Format.Expr(v.plant)).mkString(", ")}]")
-    outputEncodeables
+    outputEncodables
   end processLifts
 
   def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using Quotes, Type[D], Type[N]): Try[(Idiom, NamingStrategy)] =

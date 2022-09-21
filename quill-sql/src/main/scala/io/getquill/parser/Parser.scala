@@ -904,8 +904,8 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
     // toString is automatically converted into the Apply form i.e. foo.toString automatically becomes foo.toString()
     // so we need to parse it as an Apply. The others don't take arg parens so they are not in apply-form.
 
-    case Unseal(Apply(Select(encodeable, "toString"), List())) if isValue(encodeable.tpe) =>
-      val inner = rootParse(encodeable.asExpr)
+    case Unseal(Apply(Select(encodable, "toString"), List())) if isValue(encodable.tpe) =>
+      val inner = rootParse(encodable.asExpr)
       Infix(List("cast(", " as VARCHAR)"), List(inner), false, false, inner.quat)
     case Unseal(Select(num, "toInt")) if isValue(num.tpe)    => rootParse(num.asExpr)
     case Unseal(Select(num, "toLong")) if isValue(num.tpe)   => rootParse(num.asExpr)

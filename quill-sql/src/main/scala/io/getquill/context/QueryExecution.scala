@@ -528,10 +528,10 @@ object PrepareDynamicExecution:
       matchingExternals: List[External],
       secondaryLifts: List[Planter[_, _, _]] = List()
   ): Either[String, (List[Planter[_, _, _]], List[Planter[_, _, _]])] =
-    val encodeablesMap =
+    val encodablesMap =
       lifts.map(e => (e.uid, e)).toMap
 
-    val secondaryEncodeablesMap =
+    val secondaryEncodablesMap =
       secondaryLifts.map(e => (e.uid, e)).toMap
 
     val uidsOfScalarTags =
@@ -551,13 +551,13 @@ object PrepareDynamicExecution:
         case Secondary(uid, planter) => s"SecondaryPlanter($uid, ${planter})"
         case NotFound(uid)           => s"NotFoundPlanter($uid)"
 
-    val sortedEncodeables =
+    val sortedEncodables =
       uidsOfScalarTags
         .map { uid =>
-          encodeablesMap.get(uid) match
+          encodablesMap.get(uid) match
             case Some(element) => UidStatus.Primary(uid, element)
             case None =>
-              secondaryEncodeablesMap.get(uid) match
+              secondaryEncodablesMap.get(uid) match
                 case Some(element) => UidStatus.Secondary(uid, element)
                 case None          => UidStatus.NotFound(uid)
         }
@@ -586,8 +586,8 @@ object PrepareDynamicExecution:
         else
           None
 
-    val outputEncodeables =
-      sortedEncodeables match
+    val outputEncodables =
+      sortedEncodables match
         case HasNotFoundUids(uids) =>
           Left(s"Invalid Transformations Encountered. Cannot find lift with IDs: ${uids}.")
         case PrimaryThenSecondary(primaryPlanters, secondaryPlanters /*or List() if none*/ ) =>
@@ -600,10 +600,10 @@ object PrepareDynamicExecution:
           )
 
     // TODO This should be logged if some fine-grained debug logging is enabled. Maybe as part of some phase that can be enabled via -Dquill.trace.types config
-    // val remaining = encodeables.removedAll(uidsOfScalarTags)
+    // val remaining = encodables.removedAll(uidsOfScalarTags)
     // if (!remaining.isEmpty)
     //   println(s"Ignoring the following lifts: [${remaining.map((_, v) => Format.Expr(v.plant)).mkString(", ")}]")
-    outputEncodeables
+    outputEncodables
   end processLifts
 
 end PrepareDynamicExecution
