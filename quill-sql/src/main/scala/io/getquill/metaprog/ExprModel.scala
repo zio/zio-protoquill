@@ -436,7 +436,7 @@ object QuotationLotExpr {
 
   /**
    * QuotationLots that have runtime values hance cannot be re-planted into the scala AST and
-   * they need to be put into QuotationVasees.
+   * they need to be put into QuotationVases.
    * The 'other' argument is meant to be used in various unique circumstances. Right now it
    * is just used by a QueryMeta to carry an extractor function that contra-maps back to the T type
    */
