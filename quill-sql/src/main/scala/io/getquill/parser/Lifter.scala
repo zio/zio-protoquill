@@ -127,7 +127,7 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case Renameable.ByStrategy => '{ Renameable.ByStrategy }
       case Renameable.Fixed      => '{ Renameable.Fixed }
 
-  given liftVisbility: NiceLiftable[Visibility] with {
+  given liftVisibility: NiceLiftable[Visibility] with {
     def lift =
       case Visibility.Visible => '{ Visibility.Visible }
       case Visibility.Hidden  => '{ Visibility.Hidden }
