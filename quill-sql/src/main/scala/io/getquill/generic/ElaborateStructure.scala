@@ -72,7 +72,7 @@ enum ElaborationSide:
  *
  * Now, since Quats were introduced into Quill since 3.6.0 (technically since 3.5.3), this step is not necessarily needed
  * for query expansion since `Ident("p")` is now understood to expand into it's corresponding SelectValue fields so for queries,
- * this stage could technically be elimiated. However, this logic is also useful for ActionMeta where we have
+ * this stage could technically be eliminated. However, this logic is also useful for ActionMeta where we have
  * something like this:
  * {{{
  * case class Person(name: String, age: Int)
