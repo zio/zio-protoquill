@@ -95,7 +95,7 @@ object Format {
   }
 
   def apply(code: String, showErrorTrace: Boolean = false) = {
-    val encosedCode =
+    val enclosedCode =
       s"""|object DummyEnclosure {
             |  ${code}
             |}""".stripMargin
@@ -122,13 +122,13 @@ object Format {
     val formatted =
       Try {
         // val formatCls = classOf[ScalafmtFormat.type]
-        // val result = formatCls.getMethod("apply").invoke(null, encosedCode)
+        // val result = formatCls.getMethod("apply").invoke(null, enclosedCode)
         // println("============ GOT HERE ===========")
         // val resultStr = s"${result}"
         // resultStr
         ScalafmtFormat(
           // Various other cleanup needed to make the formatter happy
-          encosedCode
+          enclosedCode
             .replace("_*", "_")
             .replace("_==", "==")
             .replace("_!=", "!="),
@@ -136,7 +136,7 @@ object Format {
         )
       }.getOrElse {
         println("====== WARNING: Scalafmt Not Detected ====")
-        encosedCode
+        enclosedCode
       }
 
     unEnclose(formatted)
