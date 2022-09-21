@@ -199,7 +199,7 @@ object PlanterExpr {
       case expr @ PlanterExpr.Uprootable(planter) => planter
     }
 
-  // TODO Find a way to propogate PrepareRow into here
+  // TODO Find a way to propagate PrepareRow into here
   // pull vases out of Quotation.lifts
   object UprootableList {
     def unapply(expr: Expr[List[Any]])(using Quotes): Option[List[PlanterExpr[_, _, _]]] = {
