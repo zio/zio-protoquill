@@ -156,7 +156,7 @@ object Particularize:
                     .mapWithHasNext((i, hasNext) => List(SetValueClauseNum(i), Item(stmt), DoneValueClauseNum(i, !hasNext)))
                     .flatten
 
-                trace"Instructions for releated clauses: ${repeatedClauses}".andLog()
+                trace"Instructions for related clauses: ${repeatedClauses}".andLog()
                 apply(repeatedClauses ++ tail, sqlResult, lifts, liftsCount, valueClausesIndex)
               case Item(Statement(tokens)) =>
                 apply(tokens.toChunk.map(Item(_)) ++ tail, sqlResult, lifts, liftsCount, valueClausesIndex)
