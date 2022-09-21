@@ -570,7 +570,7 @@ object Extractors {
     /**
      * Matches expressions containing literal constant values and extracts the value.
      *
-     *  - Converts expression containg literal values to their values:
+     *  - Converts expression containing literal values to their values:
      *    - `'{1}` -> `1`, `'{2}` -> `2`, ...
      *    - For all primitive types and `String`
      *
