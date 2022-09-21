@@ -43,7 +43,7 @@ class MirrorEncodingSpec extends Spec {
 
   // This should technically work but does not compile because in the ExpandNestedQueries.scala phase it causes a:
   // io.getquill.quotation.QuatException: The post-rename field 'value' does not exist in an SQL-level type V
-  // Should look into that transformation phase and see if it can be changed to be tolerant of non existing fields in quats
+  // Should look into that transformation phase and see if it can be changed to be tolerant of nonexistent fields in quats
   // "simple encoder/decoder - case clas - do not need decoder" in {
   //   case class Name(value: String)
   //   case class Person(name: Name, age:Int)

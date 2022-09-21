@@ -37,7 +37,7 @@ trait JdbcContextTypes[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends 
   /**
    * Parses instances of java.sql.Types to string form so it can be used in creation of sql arrays.
    * Some databases does not support each of generic types, hence it's welcome to override this method
-   * and provide alternatives to non-existent types.
+   * and provide alternatives to nonexistent types.
    *
    * @param intType one of java.sql.Types
    * @return JDBC type in string form
