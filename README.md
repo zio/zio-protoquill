@@ -532,7 +532,7 @@ for backwards-compatibility reasons. The Queries in which it is used will inhere
 
 # Rationale for Inline
 
-For a basic reasoning of why Inline was chosen (instead of Refined-Types on `val` expressions) have a look at the video: [Quill, Dotty, And The Awesome Power of 'Inline'](https://www.youtube.com/watch?v=SmBpGkIsJIU). A more thorough explination is TBD.
+For a basic reasoning of why Inline was chosen (instead of Refined-Types on `val` expressions) have a look at the video: [Quill, Dotty, And The Awesome Power of 'Inline'](https://www.youtube.com/watch?v=SmBpGkIsJIU). A more thorough explanation is TBD.
 
 # Caliban Integration
 
