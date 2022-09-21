@@ -167,7 +167,7 @@ abstract class ZioJdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] e
    *   transaction(a *> b): ZIO[Has[DataSource], SQLException, Person]
    * }}}
    *
-   * The order of operations run in the case that a new connection needs to be aquired are as follows:
+   * The order of operations run in the case that a new connection needs to be acquired are as follows:
    * <pre>
    *   getDS from env,
    *   acquire-connection,
