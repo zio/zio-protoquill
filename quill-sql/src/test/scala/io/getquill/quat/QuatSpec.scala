@@ -317,7 +317,7 @@ class QuatSpec extends AnyFreeSpec {
     }
     "interface with boundary boolean indirect" in {
       type Bool = Boolean
-      // <LOOK INTO> This is a geneic in the new one
+      // <LOOK INTO> This is a generic in the new one
       // trait LikePerson { def name: String; def isRussian: Bool }
       // def func[T <: LikePerson] = quote {
       //   (q: T) => q
