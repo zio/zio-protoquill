@@ -36,7 +36,7 @@ object MetaMacro:
     val excludeAstMethods =
       excludes.map(exclude => parser(exclude))
 
-    // Excract the 'Property' elements from there
+    // Extract the 'Property' elements from there
     val excludeAstProps =
       excludeAstMethods.map {
         case Function(List(param), prop @ Property(_, _)) =>
