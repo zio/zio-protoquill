@@ -8,7 +8,7 @@ class InsertLiftedSpec extends Spec {
   import ctx._
 
   "Lifted Insert should work for" - {
-    "Persion/Name/First/value:String`" in {
+    "Person/Name/First/value:String`" in {
       case class First(value: String)
       case class Name(first: First, last: String)
       case class Person(name: Name, age: Int)
@@ -21,7 +21,7 @@ class InsertLiftedSpec extends Spec {
       )
     }
 
-    "Persion/Option[Name]/First/value:Option[String]`" in {
+    "Person/Option[Name]/First/value:Option[String]`" in {
       case class First(value: Option[String])
       case class Name(first: First, last: String)
       case class Person(name: Option[Name], age: Int)
@@ -34,7 +34,7 @@ class InsertLiftedSpec extends Spec {
       )
     }
 
-    "Persion/Option[Name]/First/value:String`" in {
+    "Person/Option[Name]/First/value:String`" in {
       case class First(value: String)
       case class Name(first: First, last: String)
       case class Person(name: Option[Name], age: Int)
@@ -47,7 +47,7 @@ class InsertLiftedSpec extends Spec {
       )
     }
 
-    "Persion/Option[Name]/First/Value/value:Option[String]`" in {
+    "Person/Option[Name]/First/Value/value:Option[String]`" in {
       case class Value(value: Option[String])
       case class First(value: Value)
       case class Name(first: First, last: String)

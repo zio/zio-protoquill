@@ -279,7 +279,7 @@ class ActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     // Later: Introduce a module that verifies the AST later before compilation and emits a warning if the returning type is incorrect
     //        do the same thing for dynamic contexts witha log message
 
-    // Form:    ( (Query[Perosn]).[action](....) ).returning[T]
+    // Form:    ( (Query[Person]).[action](....) ).returning[T]
     // Example: ( query[Person].insertValue(lift(joe))).returning[Something]
     case '{ ($action: Insert[t]).returning[r] } =>
       report.throwError(s"A 'returning' clause must have arguments.")
