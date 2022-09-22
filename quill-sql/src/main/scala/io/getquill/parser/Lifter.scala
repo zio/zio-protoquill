@@ -286,13 +286,13 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
   given liftableQuery: NiceLiftable[AQuery] with
     def lift =
-      case e: Entity                                                        => liftableEntity(e)
-      case Filter(query: Ast, alias: AIdent, body: Ast)                     => '{ Filter(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
-      case Map(query: Ast, alias: AIdent, body: Ast)                        => '{ Map(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
-      case FlatMap(query: Ast, alias: AIdent, body: Ast)                    => '{ FlatMap(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
-      case ConcatMap(query: Ast, alias: AIdent, body: Ast)                  => '{ ConcatMap(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
-      case SortBy(query: Ast, alias: AIdent, criterias: Ast, ordering: Ast) => '{ SortBy(${ query.expr }, ${ alias.expr }, ${ criterias.expr }, ${ ordering.expr }) }
-      case GroupBy(query: Ast, alias: AIdent, body: Ast)                    => '{ GroupBy(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
+      case e: Entity                                                       => liftableEntity(e)
+      case Filter(query: Ast, alias: AIdent, body: Ast)                    => '{ Filter(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
+      case Map(query: Ast, alias: AIdent, body: Ast)                       => '{ Map(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
+      case FlatMap(query: Ast, alias: AIdent, body: Ast)                   => '{ FlatMap(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
+      case ConcatMap(query: Ast, alias: AIdent, body: Ast)                 => '{ ConcatMap(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
+      case SortBy(query: Ast, alias: AIdent, criteria: Ast, ordering: Ast) => '{ SortBy(${ query.expr }, ${ alias.expr }, ${ criteria.expr }, ${ ordering.expr }) }
+      case GroupBy(query: Ast, alias: AIdent, body: Ast)                   => '{ GroupBy(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
       case GroupByMap(query: Ast, byAlias: AIdent, byBody: Ast, mapAlias: AIdent, mapBody: Ast) =>
         '{ GroupByMap(${ query.expr }, ${ byAlias.expr }, ${ byBody.expr }, ${ mapAlias.expr }, ${ mapBody.expr }) }
 

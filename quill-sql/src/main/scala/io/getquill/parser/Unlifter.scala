@@ -248,17 +248,17 @@ object Unlifter {
       case Is[GroupByMap]('{ GroupByMap(${ query }, ${ byAlias }, ${ byBody }, ${ mapAlias }, ${ mapBody }) }) =>
         GroupByMap(query.unexpr, byAlias.unexpr, byBody.unexpr, mapAlias.unexpr, mapBody.unexpr)
 
-      case Is[SortBy]('{ SortBy(${ query }, ${ alias }, ${ criterias }, ${ ordering }) }) => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
-      case Is[Distinct]('{ Distinct(${ a }) })                                            => Distinct(a.unexpr)
-      case Is[DistinctOn]('{ DistinctOn(${ query }, ${ alias }, $body) })                 => DistinctOn(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[Nested]('{ Nested(${ a }) })                                                => Nested(a.unexpr)
-      case Is[Union]('{ Union($a, $b) })                                                  => Union(a.unexpr, b.unexpr)
-      case Is[UnionAll]('{ UnionAll($a, $b) })                                            => UnionAll(a.unexpr, b.unexpr)
-      case Is[Join]('{ Join($typ, $a, $b, $aliasA, $aliasB, $on) })                       => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
-      case Is[FlatJoin]('{ FlatJoin($typ, $a, $aliasA, $on) })                            => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
-      case Is[Take]('{ Take($query, $num) })                                              => Take(query.unexpr, num.unexpr)
-      case Is[Drop]('{ Drop($query, $num) })                                              => Drop(query.unexpr, num.unexpr)
-      case Is[ConcatMap]('{ ConcatMap(${ query }, ${ alias }, ${ body }: Ast) })          => ConcatMap(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[SortBy]('{ SortBy(${ query }, ${ alias }, ${ criteria }, ${ ordering }) }) => SortBy(query.unexpr, alias.unexpr, criteria.unexpr, ordering.unexpr)
+      case Is[Distinct]('{ Distinct(${ a }) })                                           => Distinct(a.unexpr)
+      case Is[DistinctOn]('{ DistinctOn(${ query }, ${ alias }, $body) })                => DistinctOn(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Nested]('{ Nested(${ a }) })                                               => Nested(a.unexpr)
+      case Is[Union]('{ Union($a, $b) })                                                 => Union(a.unexpr, b.unexpr)
+      case Is[UnionAll]('{ UnionAll($a, $b) })                                           => UnionAll(a.unexpr, b.unexpr)
+      case Is[Join]('{ Join($typ, $a, $b, $aliasA, $aliasB, $on) })                      => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
+      case Is[FlatJoin]('{ FlatJoin($typ, $a, $aliasA, $on) })                           => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
+      case Is[Take]('{ Take($query, $num) })                                             => Take(query.unexpr, num.unexpr)
+      case Is[Drop]('{ Drop($query, $num) })                                             => Drop(query.unexpr, num.unexpr)
+      case Is[ConcatMap]('{ ConcatMap(${ query }, ${ alias }, ${ body }: Ast) })         => ConcatMap(query.unexpr, alias.unexpr, body.unexpr)
       // Note: Aggregation is actually a Query-Type. Not sure why in Scala2-Quill it's not in the query-unlifter
       case Is[Aggregation]('{ Aggregation(${ operator }, ${ query }) }) => Aggregation(operator.unexpr, query.unexpr)
 
