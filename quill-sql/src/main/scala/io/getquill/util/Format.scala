@@ -19,7 +19,7 @@ object Format {
     // since we need a qctx to be able to actually pass in a TypeRepr element, it's not possible
     // (unless lampepfl/dotty#10689 is resolved) to create a global module that does TypeRepr formatting. This is a bit
     // of a hacky way around that that just requires the element to be an inner class of a Quotes instance
-    // and the casts it to the specific Quotes insance. Should reconsider this when lampepfl/dotty#10689 is fixed.
+    // and the casts it to the specific Quotes instance. Should reconsider this when lampepfl/dotty#10689 is fixed.
     def apply(typeRepr: Quotes#reflectModule#TypeRepr)(using qctx: Quotes) =
       import qctx.reflect._
       Printer.TypeReprShortCode.show(typeRepr.asInstanceOf[qctx.reflect.TypeRepr])
