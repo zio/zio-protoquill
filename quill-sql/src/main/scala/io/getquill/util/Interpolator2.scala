@@ -48,7 +48,7 @@ class Interpolator2(
       }
       def reallyMultiline(indent: Int, prefix: String, prependNewline: Boolean = false): String = {
         // Split a string and indent.... if it is actually multi-line. Since this typically is used
-        // on parts of strings of a parent-string which may be multline, but the individual elements
+        // on parts of strings of a parent-string which may be multiline, but the individual elements
         // might not be which results in strange things like:
         //    (Node Option) ['mt] Mapping: asExprOf:       |lastName      | into       |String      | in       |(
         //    |    (optField: Option[LastNameAge]) =>
