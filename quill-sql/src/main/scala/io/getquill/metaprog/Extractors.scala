@@ -540,7 +540,7 @@ object Extractors {
         case _                        => None
 
   /**
-   * Uninline the term no matter what (TODO should reove the unapply case) that pattern always matches
+   * Uninline the term no matter what (TODO should remove the unapply case) that pattern always matches
    * and is too confusing
    */
   object Uninline {
