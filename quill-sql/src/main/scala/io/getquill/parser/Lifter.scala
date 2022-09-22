@@ -53,7 +53,7 @@ trait LifterProxy {
 /**
  * Convert constructs of Quill Ast into Expr[Ast]. This allows them to be passed
  * back an fourth between inline Quotation blocks during compile-time which should eventually
- * be bassed into a run-call-site where they will be evaluated into SQL.
+ * be passed into a run-call-site where they will be evaluated into SQL.
  *
  * Note that liftable List is already taken care of by the Dotty implicits
  */
