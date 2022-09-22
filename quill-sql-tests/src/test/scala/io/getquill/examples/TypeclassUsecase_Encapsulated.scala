@@ -17,7 +17,7 @@ object TypeclassUsecase_Encapsulated {
   def main(args: Array[String]): Unit = {
     
     // Should add this to tests since it tested ident parser .name property
-    // (i.e. since we passed 'n' to it and Ident(value) => value returned 'n' nead of b)
+    // (i.e. since we passed 'n' to it and Ident(value) => value returned 'n' instead of b)
     // which we had to get by doing id @ Ident and then id.symbol.name
     inline def latestStatus[T, G](
       inline q: Query[T])( 

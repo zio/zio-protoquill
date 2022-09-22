@@ -515,7 +515,7 @@ object ElaborateStructure {
         // in reality the type might be optional on the parent level as well.
         // For example: case class Person(name: Option[Name], age: Int), case class Name(first: Option[String], last: String)
         // the `last` field in Name has to be treated as an optional (i.e. after DeconstructElaboratedEntityLevels elements Expr(p => p.name.first), Expr(p => p.name.last), etc... have been found)
-        // so we have to treat p.name.last as an Option insead of a plain field.
+        // so we have to treat p.name.last as an Option instead of a plain field.
         // For example if we want to convert fields of `p:Person` to a string we need to do p.name.last.map(v => v.toString) instead of
         // just tacking on .toString after the p.name.last expression since that would be p.name.last:Option[String].toString which
         // makes an invalid query. See the MapFlicer for an example of this.
