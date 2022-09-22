@@ -22,7 +22,7 @@ class FlicerMapTypesSpec extends Spec with Inside {
   val contacts = List(
     Contact("Joe", "Bloggs", 123, 1, "1"),
     Contact("Joe", "Noggs", 123, 1, "1"),
-    Contact("Jim", "Roogs", 111, 2, "2")
+    Contact("Jim", "Roggs", 111, 2, "2")
   )
   case class DateEncodingTestEntity(v1: LocalDate, v2: LocalDateTime)
   def makeEntity(i: Int) = {
