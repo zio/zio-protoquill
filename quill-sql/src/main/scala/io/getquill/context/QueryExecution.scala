@@ -653,7 +653,7 @@ object RunDynamicExecution:
     // Use the sortedLifts to prepare the method that will prepare the SQL statement
     val prepare = (row: PrepareRow, session: Session) => LiftsExtractor.Dynamic[PrepareRow, Session](sortedLifts, row, session)
 
-    // Exclute the SQL Statement
+    // Execute the SQL Statement
     val executionAst = if (spliceAst) outputAst else io.getquill.ast.NullValue
     ctx.execute(ContextOperation.SingleArgument(queryString, prepare, extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst, topLevelQuat), fetchSize))
   }
