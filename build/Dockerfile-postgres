@@ -1,4 +1,4 @@
-# Builds a ubuntu-based postgres image whose latency can be modified to be highe
+# Builds a ubuntu-based postgres image whose latency can be modified to be higher
 # for performance experimentation.
 FROM ubuntu/postgres:12-20.04_edge
 RUN apt-get update && \
