@@ -242,7 +242,7 @@ object QuotedExpr {
         /* No runtime lifts allowed for inline quotes so quotationPouches.length must be 0 */
         case exprr @ '{ Quoted.apply[qt]($ast, $lifts, Nil) } =>
           Some(QuotedExpr(ast, lifts, '{ Nil }))
-        case TypedMatroshka(tree) =>
+        case TypedMatryoshka(tree) =>
           `Quoted.apply`.unapply(tree)
         case _ =>
           None

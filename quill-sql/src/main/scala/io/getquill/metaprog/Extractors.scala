@@ -108,7 +108,7 @@ object Extractors {
   // Always match (whether ast starts with Typed or not). If it does, strip the Typed node.
   object Untype {
     def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] = term match {
-      case TypedMatroshkaTerm(t) => Some(t)
+      case TypedMatryoshkaTerm(t) => Some(t)
       case other                 => Some(other)
     }
 
@@ -133,7 +133,7 @@ object Extractors {
       }
   }
 
-  object TypedMatroshkaTerm {
+  object TypedMatryoshkaTerm {
     def recurse(using Quotes)(innerTerm: quotes.reflect.Term): quotes.reflect.Term =
       import quotes.reflect._
       innerTerm match
@@ -147,10 +147,10 @@ object Extractors {
         case other          => None
   }
 
-  object TypedMatroshka {
+  object TypedMatryoshka {
     def unapply(using Quotes)(term: Expr[Any]): Option[Expr[Any]] =
       import quotes.reflect._
-      TypedMatroshkaTerm.unapply(term.asTerm).map(_.asExpr)
+      TypedMatryoshkaTerm.unapply(term.asTerm).map(_.asExpr)
   }
 
   object SelectExpr {
