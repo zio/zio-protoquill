@@ -720,7 +720,7 @@ As the writer of Caliban puts it... "From the front-end down to the DB, you only
  - Write a `query.filter(p => p.firstName.inSet("foo", lift(bar), "baz"))` using the `ListFlicer`.
    this could either translate into `WHERE firstName == 'foo' OR firstName == ? OR firstName == 'baz'` or
    `WHERE firstName in ('foo', ?, 'baz')`.
- - Combine MapFlicer and ListFilcer to allow up to N maps to filter each field up to N times
+ - Combine MapFlicer and ListFlicer to allow up to N maps to filter each field up to N times
    this would be very useful with `like` in order to check that a field matches multiple patterns
    e.g. `... FROM Person p WHERE p.firstName like 'j%' AND p.firstName like '%e' i.e. find
    all people whose name starts with 'j' and ends with 'e'.
