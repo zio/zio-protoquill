@@ -31,6 +31,7 @@ import _root_.io.getquill.ActionReturning
 import io.getquill.parser.engine.History
 import io.getquill.norm.TranspileConfig
 import java.util.UUID
+import io.getquill.metaprog.Extractors
 
 /**
  * TODO Right now this is just insert but we can easily extend to update and delete
@@ -153,7 +154,14 @@ object InsertUpdateMacro {
                 // (note that we want to replant the lifts because they do not need to be extracted here, just put back into the resulting quotation of the insert/updateValue method below)
                 EntitySummonState.Static(unliftedAst, lifts.map(_.plant))
               // The {querySchema[Person]} is dynamic (i.e. not fully known at compile-time)
-              case Pluckable(uid, quotation, _) =>
+              case pl @ Pluckable(uid, quotation, _) =>
+                val variableGuess =
+                  pl.expr match
+                    case a `.` b => s"(Perhaps it is `${Format.Expr(a)}`?)"
+                    case _       => ""
+                report.warning(
+                  s"The non-inlined SchemaMeta for `${Format.Expr(pl.expr)}:${Format.TypeRepr(pl.expr.asTerm.tpe.widen)}` is forcing the query to become dynamic. Try to change its variable $variableGuess to inline."
+                )
                 EntitySummonState.Dynamic(uid, quotation)
               case _ =>
                 report.throwError(s"Quotation Lot of Insert/UpdateMeta must be either pluckable or uprootable from: '${unquotation}'")
@@ -189,6 +197,7 @@ object InsertUpdateMacro {
               //   Quill Ast  => |Filter(QuoteTag(uid:111), u, ...ScalarTag(uid:222)...)
               //   We Create  => |Quoted( Filter(QuoteTag(uid:111), u, ...ScalarTag(uid:222)...), EagerLift(uid:222,...), QuotationVase(uid:111, $v:query[Person]) )
               val uid = UUID.randomUUID().toString()
+              report.warning(s"A non-inlined SchemaMeta for ${Format.TypeRepr(schemaRaw.asTerm.tpe.widen)} is forcing the query to become dynamic. Try to change its variable to inline in order to fix the issue.")
               EntitySummonState.Dynamic(uid, '{ Quoted(${ Lifter(ast) }, ${ Expr.ofList(rawLifts) }, ${ Expr.ofList(runtimeLifts) }) })
             else
               EntitySummonState.Static(ast, rawLifts)
@@ -235,6 +244,7 @@ object InsertUpdateMacro {
                     report.throwError(s"Invalid values in ${Format.TypeRepr(actionMeta.asTerm.tpe)}: ${other}. An ${Format.TypeRepr(actionMeta.asTerm.tpe)} AST must be a tuple of Property elements.")
               // if the meta is not inline
               case meta: Expr[InsertMeta[T] | UpdateMeta[T]] =>
+                report.warning(s"The non-inlined variable `${Format.Expr(actionMeta)}:${Format.TypeRepr(actionMeta.asTerm.tpe.widen)}` will force the query to be dynamic. Try to change it to inline in order to fix the issue.")
                 IgnoresSummonState.Dynamic('{ InsertUpdateMacro.getQuotation($meta) })
               case null =>
                 report.throwError(

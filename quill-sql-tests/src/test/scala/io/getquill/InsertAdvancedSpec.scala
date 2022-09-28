@@ -60,8 +60,8 @@ class InsertAdvancedSpec extends Spec with Inside {
         ctx.run(q).triple mustEqual ("INSERT INTO Person (name) VALUES ('Joe')", List(), Static)
         ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
       }
-      "simple with insert meta - compact - dynamic" in {
-        given InsertMeta[Person] = insertMeta(_.age)
+      "simple with insert meta - compact - dynamic" in { // //
+        given im: InsertMeta[Person] = insertMeta(_.age)
         ctx.run(q).triple mustEqual ("INSERT INTO Person (name) VALUES ('Joe')", List(), Dynamic)
         ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
       }
@@ -221,7 +221,7 @@ class InsertAdvancedSpec extends Spec with Inside {
   }
 
   // Variation of this with only InsertMeta, and well as both InsertMeta and SchemaMeta (inline and dynamic)
-  "entity insert with dynamic components should work for" - {
+  "entity insert with dynamic components should work for" - { //
     "given queries in an outer scope" - {
       inline def a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
       inline def q = quote { query[Person].insertValue(Person("Joe", 123)) }            // Insert entity form
