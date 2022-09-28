@@ -60,6 +60,11 @@ class InsertAdvancedSpec extends Spec with Inside {
         ctx.run(q).triple mustEqual ("INSERT INTO Person (name) VALUES ('Joe')", List(), Static)
         ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
       }
+      "simple with insert meta - compact - dynamic" in {
+        given InsertMeta[Person] = insertMeta(_.age)
+        ctx.run(q).triple mustEqual ("INSERT INTO Person (name) VALUES ('Joe')", List(), Dynamic)
+        ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
+      }
       // TODO Doing this with a runtime query should throw an exception (for now)
       "simple with schemaMeta and insert meta" in {
         inline given personMeta: InsertMeta[Person] = insertMeta[Person](_.age)
