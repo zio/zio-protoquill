@@ -40,6 +40,8 @@ class ActionTest extends Spec with TestEntities with Inside {
         repickle(u) mustEqual u
       }
       "case class" in {
+        val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+        import ctx._
         inline def q = quote {
           (t: TestEntity) => qr1.updateValue(t)
         }
@@ -84,6 +86,8 @@ class ActionTest extends Spec with TestEntities with Inside {
         repickle(i) mustEqual i
       }
       "case class" in {
+        val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+        import ctx._
         inline def q = quote {
           (t: TestEntity) => qr1.insertValue(t)
         }

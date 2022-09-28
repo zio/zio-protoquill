@@ -262,9 +262,10 @@ object StaticTranslationMacro:
         (primaryLifts, secondaryLifts) <-
           processLifts(lifts, externals, additionalLifts).errPrintEither(
             s"Could not process the lifts:\n" +
+              s"In the quotation:\n${Format.Expr(quoted)}\n" +
               s"${lifts.map(_.toString).mkString("====\n")}" +
               (if (additionalLifts.nonEmpty) s"${additionalLifts.map(_.toString).mkString("====\n")}" else "") +
-              s"Due to an error: "
+              s"\nDue to an error: "
           )
 
       } yield {

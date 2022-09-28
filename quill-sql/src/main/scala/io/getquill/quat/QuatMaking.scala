@@ -27,6 +27,12 @@ object QuatMaking:
       override def anyValBehavior = behavior
     }
 
+  inline def inferQuatType[T]: Quat = ${ inferQuatTypeImpl[T] }
+  def inferQuatTypeImpl[T: TType](using quotes: Quotes): Expr[Quat] = {
+    val quat = quatMaker().InferQuat.of[T]
+    Lifter.quat(quat)
+  }
+
   inline def inferQuat[T](value: T): Quat = ${ inferQuatImpl('value) }
   def inferQuatImpl[T: TType](value: Expr[T])(using quotes: Quotes): Expr[Quat] = {
     val quat = quatMaker().InferQuat.of[T]

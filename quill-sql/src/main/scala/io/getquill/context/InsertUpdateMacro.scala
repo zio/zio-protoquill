@@ -121,7 +121,7 @@ object InsertUpdateMacro {
    * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
    * statement is based. The schema is based on the EntityQuery which could potentially be an unquoted QuerySchema.
    */
-  class Pipeline[T: Type, A[T] <: Insert[T] | Update[T]: Type](using Quotes) extends QuatMaking with QuatMakingBase:
+  class Pipeline[T: Type, A[T] <: Insert[T] | Update[T]: Type](isStatic: Boolean)(using Quotes) extends QuatMaking with QuatMakingBase:
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
     given TranspileConfig = SummonTranspileConfig()
@@ -157,11 +157,12 @@ object InsertUpdateMacro {
               case pl @ Pluckable(uid, quotation, _) =>
                 val variableGuess =
                   pl.expr match
-                    case a `.` b => s"(Perhaps it is `${Format.Expr(a)}`?)"
+                    case a `.` b => s"(Perhaps it is `${Format.Expr(a)}`?) "
                     case _       => ""
-                report.warning(
-                  s"The non-inlined SchemaMeta for `${Format.Expr(pl.expr)}:${Format.TypeRepr(pl.expr.asTerm.tpe.widen)}` is forcing the query to become dynamic. Try to change its variable $variableGuess to inline."
-                )
+                if (isStatic)
+                  report.warning(
+                    s"The non-inlined expression `${Format.Expr(pl.expr)}:${Format.TypeRepr(pl.expr.asTerm.tpe.widen)}` (on which the query depends) is forcing the query to become dynamic. Try to change its variable ${variableGuess}to inline."
+                  )
                 EntitySummonState.Dynamic(uid, quotation)
               case _ =>
                 report.throwError(s"Quotation Lot of Insert/UpdateMeta must be either pluckable or uprootable from: '${unquotation}'")
@@ -197,7 +198,8 @@ object InsertUpdateMacro {
               //   Quill Ast  => |Filter(QuoteTag(uid:111), u, ...ScalarTag(uid:222)...)
               //   We Create  => |Quoted( Filter(QuoteTag(uid:111), u, ...ScalarTag(uid:222)...), EagerLift(uid:222,...), QuotationVase(uid:111, $v:query[Person]) )
               val uid = UUID.randomUUID().toString()
-              report.warning(s"A non-inlined SchemaMeta for ${Format.TypeRepr(schemaRaw.asTerm.tpe.widen)} is forcing the query to become dynamic. Try to change its variable to inline in order to fix the issue.")
+              if (isStatic)
+                report.warning(s"A non-inlined expression (that defines a query for ${Format.TypeRepr(schemaRaw.asTerm.tpe.widen)}) is forcing the query to become dynamic. Try to change its variable to inline in order to fix the issue.")
               EntitySummonState.Dynamic(uid, '{ Quoted(${ Lifter(ast) }, ${ Expr.ofList(rawLifts) }, ${ Expr.ofList(runtimeLifts) }) })
             else
               EntitySummonState.Static(ast, rawLifts)
@@ -244,7 +246,7 @@ object InsertUpdateMacro {
                     report.throwError(s"Invalid values in ${Format.TypeRepr(actionMeta.asTerm.tpe)}: ${other}. An ${Format.TypeRepr(actionMeta.asTerm.tpe)} AST must be a tuple of Property elements.")
               // if the meta is not inline
               case meta: Expr[InsertMeta[T] | UpdateMeta[T]] =>
-                report.warning(s"The non-inlined variable `${Format.Expr(actionMeta)}:${Format.TypeRepr(actionMeta.asTerm.tpe.widen)}` will force the query to be dynamic. Try to change it to inline in order to fix the issue.")
+                if (isStatic) report.warning(s"The non-inlined variable `${Format.Expr(actionMeta)}:${Format.TypeRepr(actionMeta.asTerm.tpe.widen)}` will force the query to be dynamic. Try to change it to inline in order to fix the issue.")
                 IgnoresSummonState.Dynamic('{ InsertUpdateMacro.getQuotation($meta) })
               case null =>
                 report.throwError(
@@ -476,6 +478,8 @@ object InsertUpdateMacro {
 
   end Pipeline
 
-  def apply[T: Type, A[T] <: Insert[T] | Update[T]: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[A[T]] =
-    new Pipeline[T, A]().apply(entityRaw, bodyRaw)
+  def static[T: Type, A[T] <: Insert[T] | Update[T]: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[A[T]] =
+    new Pipeline[T, A](true).apply(entityRaw, bodyRaw)
+  def dynamic[T: Type, A[T] <: Insert[T] | Update[T]: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[A[T]] =
+    new Pipeline[T, A](false).apply(entityRaw, bodyRaw)
 }
