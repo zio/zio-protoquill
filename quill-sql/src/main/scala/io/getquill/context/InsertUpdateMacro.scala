@@ -31,6 +31,7 @@ import _root_.io.getquill.ActionReturning
 import io.getquill.parser.engine.History
 import io.getquill.norm.TranspileConfig
 import java.util.UUID
+import io.getquill.metaprog.Extractors
 
 /**
  * TODO Right now this is just insert but we can easily extend to update and delete
@@ -88,9 +89,10 @@ object InsertUpdateMacro {
   // Using this ident since it is replaced in cleanIdent so user will not create something conflicting with it
   private[getquill] val VIdent = AIdent("_$V", Quat.Generic)
 
-  def foo = {
-    Tuple2
-  }
+  private[getquill] def getQuotation[T](meta: InsertMeta[T] | UpdateMeta[T]) =
+    meta match
+      case v: InsertMeta[T] => v.entity
+      case v: UpdateMeta[T] => v.entity
 
   object DynamicUtil {
     def retrieveAssignmentTuple(quoted: Quoted[_]): Set[Ast] =
@@ -113,7 +115,7 @@ object InsertUpdateMacro {
   // Summon state of a updateMeta/insertMeta that indicates which columns to ignore (i.e. whether an implicit one could be summoned and whether it is static (i.e. can produce a compile-time query or dynamic))
   enum IgnoresSummonState[+T]:
     case Static(value: T) extends IgnoresSummonState[T]
-    case Dynamic(uid: String, quotation: Expr[Quoted[Any]]) extends IgnoresSummonState[Nothing]
+    case Dynamic(quotation: Expr[Quoted[Any]]) extends IgnoresSummonState[Nothing]
 
   /**
    * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
@@ -152,7 +154,14 @@ object InsertUpdateMacro {
                 // (note that we want to replant the lifts because they do not need to be extracted here, just put back into the resulting quotation of the insert/updateValue method below)
                 EntitySummonState.Static(unliftedAst, lifts.map(_.plant))
               // The {querySchema[Person]} is dynamic (i.e. not fully known at compile-time)
-              case Pluckable(uid, quotation, _) =>
+              case pl @ Pluckable(uid, quotation, _) =>
+                val variableGuess =
+                  pl.expr match
+                    case a `.` b => s"(Perhaps it is `${Format.Expr(a)}`?)"
+                    case _       => ""
+                report.warning(
+                  s"The non-inlined SchemaMeta for `${Format.Expr(pl.expr)}:${Format.TypeRepr(pl.expr.asTerm.tpe.widen)}` is forcing the query to become dynamic. Try to change its variable $variableGuess to inline."
+                )
                 EntitySummonState.Dynamic(uid, quotation)
               case _ =>
                 report.throwError(s"Quotation Lot of Insert/UpdateMeta must be either pluckable or uprootable from: '${unquotation}'")
@@ -188,6 +197,7 @@ object InsertUpdateMacro {
               //   Quill Ast  => |Filter(QuoteTag(uid:111), u, ...ScalarTag(uid:222)...)
               //   We Create  => |Quoted( Filter(QuoteTag(uid:111), u, ...ScalarTag(uid:222)...), EagerLift(uid:222,...), QuotationVase(uid:111, $v:query[Person]) )
               val uid = UUID.randomUUID().toString()
+              report.warning(s"A non-inlined SchemaMeta for ${Format.TypeRepr(schemaRaw.asTerm.tpe.widen)} is forcing the query to become dynamic. Try to change its variable to inline in order to fix the issue.")
               EntitySummonState.Dynamic(uid, '{ Quoted(${ Lifter(ast) }, ${ Expr.ofList(rawLifts) }, ${ Expr.ofList(runtimeLifts) }) })
             else
               EntitySummonState.Static(ast, rawLifts)
@@ -213,24 +223,33 @@ object InsertUpdateMacro {
           case MacroType.Insert => Expr.summon[InsertMeta[T]]
           case MacroType.Update => Expr.summon[UpdateMeta[T]]
 
+    private object UprootableActionMeta:
+      def unapply(actionMeta: Expr[InsertMeta[T]] | Expr[UpdateMeta[T]]) =
+        QuotationLotExpr(actionMeta.asTerm.underlyingArgument.asExpr) match
+          case Uprootable.Ast(ast) => Some(ast)
+          case _                   => None
+
     object IgnoredColumns:
       def summon: IgnoresSummonState[Set[Ast]] =
         // If someone has defined a: given meta: InsertMeta[Person] = insertMeta[Person](_.id) or UpdateMeta[Person] = updateMeta[Person](_.id)
         MacroType.summonMetaOfThis() match
           case Some(actionMeta) =>
-            QuotationLotExpr(actionMeta.asTerm.underlyingArgument.asExpr) match
-              // if the meta is inline i.e. 'inline given meta: InsertMeta[Person] = ...' (or UpdateMeta[Person])
-              case Uprootable.Ast(ast) =>
+            actionMeta match
+              case UprootableActionMeta(ast) =>
+                // if the meta is inline i.e. 'inline given meta: InsertMeta[Person] = ...' (or UpdateMeta[Person])
                 Unlifter(ast) match
                   case Tuple(values) if (values.forall(_.isInstanceOf[Property])) =>
                     IgnoresSummonState.Static(values.toSet)
                   case other =>
                     report.throwError(s"Invalid values in ${Format.TypeRepr(actionMeta.asTerm.tpe)}: ${other}. An ${Format.TypeRepr(actionMeta.asTerm.tpe)} AST must be a tuple of Property elements.")
               // if the meta is not inline
-              case Pluckable(uid, quotation, _) =>
-                IgnoresSummonState.Dynamic(uid, quotation)
-              case _ =>
-                report.throwError(s"The ${MacroType.asString}Meta form is invalid. It is Pointable: ${io.getquill.util.Format.Expr(actionMeta)}. It must be either Uprootable or Pluckable i.e. it has at least a UID that can be identified.")
+              case meta: Expr[InsertMeta[T] | UpdateMeta[T]] =>
+                report.warning(s"The non-inlined variable `${Format.Expr(actionMeta)}:${Format.TypeRepr(actionMeta.asTerm.tpe.widen)}` will force the query to be dynamic. Try to change it to inline in order to fix the issue.")
+                IgnoresSummonState.Dynamic('{ InsertUpdateMacro.getQuotation($meta) })
+              case null =>
+                report.throwError(
+                  s"The ${MacroType.asString}Meta ${io.getquill.util.Format.Expr(actionMeta)} is null. This is invalid."
+                )
           // TODO Configuration to ignore dynamic insert metas?
           // println("WARNING: Only inline insert-metas are supported for insertions so far. Falling back to a insertion of all fields.")
           case None =>
@@ -351,7 +370,7 @@ object InsertUpdateMacro {
           // Then just return the remaining assignments
           AssignmentList.Static(remainingAssignments)
         // If we have assignment-exclusions that can only be accessed during runtime
-        case IgnoresSummonState.Dynamic(uid, quotation) =>
+        case IgnoresSummonState.Dynamic(quotation) =>
           // Pull out the exclusions from the quotation
           val exclusions = '{ DynamicUtil.retrieveAssignmentTuple($quotation) }
           // Lift ALL the assignments of the entity
@@ -421,6 +440,21 @@ object InsertUpdateMacro {
           // Unquote the quotation and return
           quotation
 
+        case (EntitySummonState.Static(entity, previousLifts), assignmentsList) =>
+          // Need to create a ScalarTag representing a splicing of the entity (then going to add the actual thing into a QuotationVase and add to the pluckedUnquotes)
+          val actionQuote = MacroType.ofThis() match
+            case MacroType.Insert =>
+              // If the assignments list is dynamic, its 'assignmentsList.splice' just puts in the Expr. If it is static, it will call the lifter so splice it.
+              '{ Quoted[A[T]](AInsert(${ Lifter(entity) }, ${ assignmentsList.splice }), Nil, Nil) }
+            case MacroType.Update =>
+              '{ Quoted[A[T]](AUpdate(${ Lifter(entity) }, ${ assignmentsList.splice }), Nil, Nil) }
+
+          // create and lift the action
+          val uid = UUID.randomUUID().toString()
+          val runtimeQuote = '{ QuotationVase($actionQuote, ${ Expr(uid) }) }
+          val quotation = '{ Quoted[A[T]](QuotationTag(${ Expr(uid) }), ${ Expr.ofList(previousLifts ++ lifts) }, $runtimeQuote +: ${ Expr.ofList(pluckedUnquotes) }) }
+          quotation
+
         // If we get a dynamic entity back we need to splice things as an Expr even if the assignmentsList is know at compile time
         // e.g. entityQuotation is 'querySchema[Person](...)' which is not inline
         case (EntitySummonState.Dynamic(uid, entityQuotation), assignmentsList) =>
@@ -438,15 +472,6 @@ object InsertUpdateMacro {
           val quotation = '{ Quoted[A[T]](${ action }, ${ Expr.ofList(lifts) }, $runtimeQuote +: ${ Expr.ofList(pluckedUnquotes) }) }
           // Unquote the quotation and return
           quotation
-
-        case (entitySummon, assignmentsSummon) =>
-          report.throwError(
-            s"""Invalid entity-summon/assignments-summon state:
-               |${entitySummon.print}
-               |----------------
-               |${assignmentsSummon}
-               |""".stripMargin
-          )
     }
 
   end Pipeline
