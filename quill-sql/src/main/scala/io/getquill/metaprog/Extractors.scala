@@ -413,6 +413,52 @@ object Extractors {
       import quotes.reflect._
       expr.asTerm.tpe.classSymbol.map(sym => (sym, expr.asTerm))
 
+  object UncastSelectable:
+    def unapply(expr: Expr[_])(using Quotes): Option[Expr[_]] =
+      import quotes.reflect._
+      UncastSelectable.Term.unapply(expr.asTerm).map(_.asExpr)
+    object Term:
+      def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+        import quotes.reflect._
+        term match
+          case AsInstanceOf(inner) => Some(recurse(inner))
+          case other               => Some(other)
+      def recurse(using Quotes)(term: quotes.reflect.Term): quotes.reflect.Term =
+        import quotes.reflect._
+        term match
+          case AsInstanceOf(inner) => recurse(inner)
+          case other               => other
+      private object AsInstanceOf:
+        def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+          import quotes.reflect._
+          term match
+            case TypeApply(Select(inner, "$asInstanceOf$"), _) => Some(inner)
+            case _                                             => None
+  end UncastSelectable
+
+  object Uncast:
+    def unapply(expr: Expr[_])(using Quotes): Option[Expr[_]] =
+      import quotes.reflect._
+      Uncast.Term.unapply(expr.asTerm).map(_.asExpr)
+    object Term:
+      def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+        import quotes.reflect._
+        term match
+          case AsInstanceOf(inner) => Some(recurse(inner))
+          case other               => Some(other)
+      def recurse(using Quotes)(term: quotes.reflect.Term): quotes.reflect.Term =
+        import quotes.reflect._
+        term match
+          case AsInstanceOf(inner) => recurse(inner)
+          case other               => other
+      private object AsInstanceOf:
+        def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+          import quotes.reflect._
+          term match
+            case TypeApply(Select(inner, "asInstanceOf"), _) => Some(inner)
+            case _                                           => None
+  end Uncast
+
   /**
    * Matches `case class Person(first: String, last: String)` creation of the forms:
    *   Person("Joe","Bloggs")
