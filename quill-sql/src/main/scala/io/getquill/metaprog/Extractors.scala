@@ -14,6 +14,13 @@ class Is[T: Type]:
       None
 
 object Extractors {
+  inline def typeName[T]: String = ${ typeNameImpl[T] }
+  def typeNameImpl[T: Type](using Quotes): Expr[String] =
+    import quotes.reflect._
+    val tpe = TypeRepr.of[T]
+    val name: String = tpe.classSymbol.get.name
+    Expr(name)
+
   def printExpr(using Quotes)(expr: Expr[_], label: String = "") = {
     import quotes.reflect._
     if (label != "")

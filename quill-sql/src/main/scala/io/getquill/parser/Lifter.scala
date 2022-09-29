@@ -179,9 +179,11 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
   given liftableQuatProduct: NiceLiftable[Quat.Product] with {
     def lift =
-      case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) =>
+      case Quat.Product.WithRenamesCompact(name, tpe, fields, values, renamesFrom, renamesTo) =>
         '{
-          io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${ tpe.expr })(${ fields.toList.spliceVarargs }: _*)(${ values.toList.spliceVarargs }: _*)(${ renamesFrom.toList.spliceVarargs }: _*)(${ renamesTo.toList.spliceVarargs }: _*)
+          io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${ name.expr }, ${ tpe.expr })(${ fields.toList.spliceVarargs }: _*)(${ values.toList.spliceVarargs }: _*)(${ renamesFrom.toList.spliceVarargs }: _*)(${
+            renamesTo.toList.spliceVarargs
+          }: _*)
         }
   }
 
@@ -190,8 +192,10 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
   given liftableQuat: NiceLiftable[Quat] with {
     def lift =
-      case Quat.Product.WithRenamesCompact(tpe, fields, values, renamesFrom, renamesTo) => '{
-          io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${ tpe.expr })(${ fields.toList.spliceVarargs }: _*)(${ values.toList.spliceVarargs }: _*)(${ renamesFrom.toList.spliceVarargs }: _*)(${ renamesTo.toList.spliceVarargs }: _*)
+      case Quat.Product.WithRenamesCompact(name, tpe, fields, values, renamesFrom, renamesTo) => '{
+          io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${ name.expr }, ${ tpe.expr })(${ fields.toList.spliceVarargs }: _*)(${ values.toList.spliceVarargs }: _*)(${ renamesFrom.toList.spliceVarargs }: _*)(${
+            renamesTo.toList.spliceVarargs
+          }: _*)
         }
       case Quat.Value             => '{ io.getquill.quat.Quat.Value }
       case Quat.Null              => '{ io.getquill.quat.Quat.Null }
@@ -246,8 +250,8 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
   given liftableCaseClass: NiceLiftable[CaseClass] with
     def lift =
       case ast if (serializeAst == SerializeAst.All) => tryToSerialize[CaseClass](ast)
-      case cc @ CaseClass(lifts) =>
-        '{ CaseClass(${ lifts.expr }) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
+      case cc @ CaseClass(name, lifts) =>
+        '{ CaseClass(${ name.expr }, ${ lifts.expr }) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
 
   given liftableTuple: NiceLiftable[Tuple] with
     def lift =

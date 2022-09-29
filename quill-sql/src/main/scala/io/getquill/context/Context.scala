@@ -45,6 +45,12 @@ import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 import io.getquill.generic.DecodeAlternate
 import com.typesafe.scalalogging.Logger
+import io.getquill.DynamicInsert
+import io.getquill.DynamicEntityQuery
+import io.getquill.DynamicUpdate
+import io.getquill.Insert
+import io.getquill.Update
+import io.getquill.EntityQuery
 
 trait ContextStandard[+Idiom <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy]
     extends Context[Idiom, Naming]
@@ -72,6 +78,29 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
 
   inline def liftQuery[U[_] <: Iterable[_], T](inline runtimeValue: U[T]): Query[T] =
     ${ LiftQueryMacro[T, U, PrepareRow, Session]('runtimeValue) }
+
+  // Originally insertValue/updateValue for EntityQuery[Query[T]]/Quoted[EntityQuery[Query[T]]] lived in
+  // Dsl.scala and did not require a context but when insertValue/updateValue for DynamicEntityQuery was introduced
+  // it caused oddities with how Scala 3 resolves/overrides extension methods. This required
+  // all of them to be moved to Context.scala or else compilation would fail because certain
+  // insertValue/updateValue methods were not found.
+  extension [T](inline dynamicQuery: DynamicEntityQuery[T])
+    inline def insertValue(value: T): DynamicInsert[T] =
+      DynamicInsert(io.getquill.quote(insertValueDynamic(dynamicQuery.q)(lift(value))))
+    inline def updateValue(value: T): DynamicUpdate[T] =
+      DynamicUpdate(io.getquill.quote(updateValueDynamic(dynamicQuery.q)(lift(value))))
+
+  extension [T](inline entity: EntityQuery[T])
+    inline def insertValue(inline value: T): Insert[T] = ${ InsertUpdateMacro.static[T, Insert]('entity, 'value) }
+    inline def updateValue(inline value: T): Update[T] = ${ InsertUpdateMacro.static[T, Update]('entity, 'value) }
+    private[getquill] inline def insertValueDynamic(inline value: T): Insert[T] = ${ InsertUpdateMacro.dynamic[T, Insert]('entity, 'value) }
+    private[getquill] inline def updateValueDynamic(inline value: T): Update[T] = ${ InsertUpdateMacro.dynamic[T, Update]('entity, 'value) }
+
+  extension [T](inline quotedEntity: Quoted[EntityQuery[T]])
+    inline def insertValue(inline value: T): Insert[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).insertValue(value)
+    inline def updateValue(inline value: T): Update[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).updateValue(value)
+    private[getquill] inline def insertValueDynamic(inline value: T): Insert[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).insertValueDynamic(value)
+    private[getquill] inline def updateValueDynamic(inline value: T): Update[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).updateValueDynamic(value)
 
   extension [T](inline q: Query[T]) {
 

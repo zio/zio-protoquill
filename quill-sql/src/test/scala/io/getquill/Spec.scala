@@ -17,8 +17,8 @@ import io.getquill.context.mirror.Row
 
 abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   val QV = Quat.Value
-  val QEP = Quat.Product.empty
-  def QP(fields: String*) = Quat.LeafProduct(fields: _*)
+  def QEP(name: String) = Quat.Product.empty(name)
+  def QP(name: String, fields: String*) = Quat.LeafProduct(name, fields: _*)
 
   extension (m: MirrorContextBase[_, _]#BatchActionReturningMirror[_])
     def triple =

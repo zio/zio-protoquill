@@ -1013,7 +1013,7 @@ class ComplexValueParser(rootParse: Parser)(using Quotes, TranspileConfig)
       if (fields.length != args.length)
         throw new IllegalArgumentException(s"In Case Class ${ccName}, does not have the same number of fields (${fields.length}) as it does arguments ${args.length} (fields: ${fields}, args: ${args.map(_.show)})")
       val argsAst = args.map(rootParse(_))
-      CaseClass(fields.zip(argsAst))
+      CaseClass(ccName, fields.zip(argsAst))
 
     case orig @ Unseal(i @ TIdent(x)) =>
       cleanIdent(i.symbol.name, InferQuat.ofType(i.tpe))
