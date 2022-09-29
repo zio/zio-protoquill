@@ -17,6 +17,7 @@ import io.getquill.util.Format
 import scala.annotation.tailrec
 import io.getquill.ast.External.Source
 import zio.Chunk
+import io.getquill.metaprog.Extractors
 
 /**
  * Elaboration can be different whether we are encoding or decoding because we could have
@@ -419,7 +420,7 @@ object ElaborateStructure {
       if (lifted.length == 1)
         lifted.head._1
       else {
-        CaseClass(lifted.map((ast, name) => (name, ast)))
+        CaseClass(Extractors.typeName[T], lifted.map((ast, name) => (name, ast)))
       }
     insert
   }
@@ -573,11 +574,11 @@ object ElaborateStructure {
         // On the top level, parent is "", and 1st parent in recursion is also ""
         case Term(name, Branch, list, false) =>
           val children = list.map(child => toAstRec(child, notTopLevel(parentTerms :+ name)))
-          (name, CaseClass(children))
+          (name, CaseClass(Extractors.typeName[T], children))
         // same logic for optionals
         case Term(name, Branch, list, true) =>
           val children = list.map(child => toAstRec(child, notTopLevel(parentTerms :+ name)))
-          (name, OptionSome(CaseClass(children)))
+          (name, OptionSome(CaseClass(Extractors.typeName[T], children)))
         case _ =>
           quotes.reflect.report.throwError(s"Illegal generic schema: $node from type ${Type.of[T]}")
     toAstRec(node, Chunk.empty, true)

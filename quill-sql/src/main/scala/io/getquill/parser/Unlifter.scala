@@ -309,7 +309,7 @@ object Unlifter {
 
   given unliftCaseClass: NiceUnliftable[CaseClass] with
     def unlift =
-      case '{ CaseClass(${ values }: List[(String, Ast)]) } => CaseClass(values.unexpr)
+      case '{ CaseClass(${ name }, ${ values }: List[(String, Ast)]) } => CaseClass(name.unexpr, values.unexpr)
 
   given unliftOperator: NiceUnliftable[Operator] with {
     def unlift =
@@ -350,9 +350,8 @@ object Unlifter {
 
   given quatProductUnliftable: NiceUnliftable[Quat.Product] with {
     def unlift =
-      case '{ Quat.Product.WithRenamesCompact.apply($tpe)(${ Varargs(fields) }: _*)(${ Varargs(values) }: _*)(${ Varargs(renamesFrom) }: _*)(${ Varargs(renamesTo) }: _*) } =>
-        Quat.Product.WithRenamesCompact(tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
-    // case '{ Quat.Product.apply(${Varargs(fields)}: _*) } => Quat.Product(fields.unexprSeq: _*)
+      case '{ Quat.Product.WithRenamesCompact.apply($name, $tpe)(${ Varargs(fields) }: _*)(${ Varargs(values) }: _*)(${ Varargs(renamesFrom) }: _*)(${ Varargs(renamesTo) }: _*) } =>
+        Quat.Product.WithRenamesCompact(name.unexpr, tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
   }
 
   given quatUnliftable: NiceUnliftable[Quat] with {
