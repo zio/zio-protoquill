@@ -1,3 +1,10 @@
+# 4.5.0
+
+- [Implement Dynamic Query DSL for ProtoQuill](https://github.com/zio/zio-protoquill/pull/198)
+- [Fix dynamic Insert/UpdateMeta and better warning message](https://github.com/zio/zio-protoquill/pull/197)
+- [Support for structural types in Quoted functions](https://github.com/zio/zio-protoquill/pull/199)
+- [Upstream changes. Add JDBC encoders for java.time dates](https://github.com/zio/zio-protoquill/pull/191)
+
 # 4.4.1
 
 - [Fixing Caliban Datatype conversion issues](https://github.com/zio/zio-protoquill/pull/188)
