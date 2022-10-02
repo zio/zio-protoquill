@@ -76,9 +76,9 @@ end SummonTranspileConfig
 
 private[getquill] object TranspileConfigLiftable:
   def apply(transpileConfig: TranspileConfig)(using Quotes): Expr[TranspileConfig] =
-    liftableTranspileConfig(transpileConfig)
+    liftTranspileConfig(transpileConfig)
   def apply(traceConfig: TraceConfig)(using Quotes): Expr[TraceConfig] =
-    liftableTraceConfig(traceConfig)
+    liftTraceConfig(traceConfig)
 
   extension [T](t: T)(using ToExpr[T], Quotes)
     def expr: Expr[T] = Expr(t)
@@ -86,11 +86,11 @@ private[getquill] object TranspileConfigLiftable:
   import io.getquill.parser.BasicLiftable
   import io.getquill.util.Messages.TraceType
 
-  given liftableOptionalPhase: BasicLiftable[OptionalPhase] with
+  given liftOptionalPhase: BasicLiftable[OptionalPhase] with
     def lift =
       case OptionalPhase.ApplyMap => '{ OptionalPhase.ApplyMap }
 
-  given liftableTraceType: BasicLiftable[TraceType] with
+  given liftTraceType: BasicLiftable[TraceType] with
     def lift =
       case TraceType.SqlNormalizations      => '{ TraceType.SqlNormalizations }
       case TraceType.ExpandDistinct         => '{ TraceType.ExpandDistinct }
@@ -115,11 +115,11 @@ private[getquill] object TranspileConfigLiftable:
       case TraceType.FlattenOptionOperation => '{ TraceType.FlattenOptionOperation }
       case TraceType.Particularization      => '{ TraceType.Particularization }
 
-  given liftableTraceConfig: BasicLiftable[TraceConfig] with
+  given liftTraceConfig: BasicLiftable[TraceConfig] with
     def lift =
       case TraceConfig(enabledTraces) => '{ io.getquill.util.TraceConfig(${ enabledTraces.expr }) }
 
-  given liftableTranspileConfig: BasicLiftable[TranspileConfig] with
+  given liftTranspileConfig: BasicLiftable[TranspileConfig] with
     def lift =
       case TranspileConfig(disablePhases, traceConfig) => '{ io.getquill.norm.TranspileConfig(${ disablePhases.expr }, ${ traceConfig.expr }) }
 

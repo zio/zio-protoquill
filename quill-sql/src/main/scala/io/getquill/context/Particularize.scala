@@ -258,22 +258,22 @@ object Particularize:
   }
 
   private[getquill] object UnparticularQueryLiftable:
-    def apply(token: Unparticular.Query)(using Quotes) = liftableUnparticularQuery(token)
+    def apply(token: Unparticular.Query)(using Quotes) = liftUnparticularQuery(token)
     extension [T](t: T)(using ToExpr[T], Quotes) def expr: Expr[T] = Expr(t)
     import io.getquill.parser.BasicLiftable
 
-    given liftableUnparticularQuery: BasicLiftable[Unparticular.Query] with
+    given liftUnparticularQuery: BasicLiftable[Unparticular.Query] with
       def lift =
         case Unparticular.Query(basicQuery: String, realQuery: Statement) =>
           '{ Unparticular.Query(${ basicQuery.expr }, ${ StatementLiftable(realQuery) }) }
   end UnparticularQueryLiftable
 
   private[getquill] object StatementLiftable:
-    def apply(token: Statement)(using Quotes) = liftableStatement(token)
+    def apply(token: Statement)(using Quotes) = liftStatement(token)
     extension [T](t: T)(using ToExpr[T], Quotes) def expr: Expr[T] = Expr(t)
     import io.getquill.parser.BasicLiftable
 
-    given liftableToken: BasicLiftable[Token] with
+    given liftToken: BasicLiftable[Token] with
       def lift =
         // Note strange errors about SerializeHelper.fromSerialized types can happen here if NotSerializing is not true.
         // Anyway we do not want tag-serialization here for the sake of simplicity for the tokenization which happens at runtime.
@@ -281,12 +281,12 @@ object Particularize:
         case ScalarTagToken(lift: ScalarTag)       => '{ io.getquill.idiom.ScalarTagToken(${ Lifter.NotSerializing.scalarTag(lift) }) }
         case QuotationTagToken(lift: QuotationTag) => '{ io.getquill.idiom.QuotationTagToken(${ Lifter.NotSerializing.quotationTag(lift) }) }
         case StringToken(string)                   => '{ io.getquill.idiom.StringToken(${ string.expr }) }
-        case s: Statement                          => liftableStatement(s)
+        case s: Statement                          => liftStatement(s)
         case SetContainsToken(a, op, b)            => '{ io.getquill.idiom.SetContainsToken(${ a.expr }, ${ op.expr }, ${ b.expr }) }
         case ScalarLiftToken(lift)                 => quotes.reflect.report.throwError("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
         case ValuesClauseToken(stmt)               => '{ io.getquill.idiom.ValuesClauseToken(${ stmt.expr }) }
 
-    given liftableStatement: BasicLiftable[Statement] with
+    given liftStatement: BasicLiftable[Statement] with
       def lift =
         case Statement(tokens) => '{ io.getquill.idiom.Statement(${ tokens.expr }) }
   end StatementLiftable
