@@ -111,8 +111,6 @@ object Lifters:
     def apply(element: T)(using Quotes): Expr[T] = orFail(element)
   end Plain
 
-  var numCalls = 100
-
   object Plain:
     trait Ast[T: ClassTag] extends Plain[T]:
       override protected def failMsg(element: T) =

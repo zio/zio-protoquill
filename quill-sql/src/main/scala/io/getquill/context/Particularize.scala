@@ -26,6 +26,7 @@ import io.getquill.util.Interpolator2
 import io.getquill.util.Messages.TraceType
 import io.getquill.util.TraceConfig
 import io.getquill.util.Interpolator
+import io.getquill.parser.Lifters
 
 /**
  * For a query that has a filter(p => liftQuery(List("Joe","Jack")).contains(p.name)) we need to turn
@@ -260,9 +261,9 @@ object Particularize:
   private[getquill] object UnparticularQueryLiftable:
     def apply(token: Unparticular.Query)(using Quotes) = liftUnparticularQuery(token)
     extension [T](t: T)(using ToExpr[T], Quotes) def expr: Expr[T] = Expr(t)
-    import io.getquill.parser.BasicLiftable
+    import io.getquill.parser.Lifters.Plain
 
-    given liftUnparticularQuery: BasicLiftable[Unparticular.Query] with
+    given liftUnparticularQuery: Lifters.Plain[Unparticular.Query] with
       def lift =
         case Unparticular.Query(basicQuery: String, realQuery: Statement) =>
           '{ Unparticular.Query(${ basicQuery.expr }, ${ StatementLiftable(realQuery) }) }
@@ -271,9 +272,9 @@ object Particularize:
   private[getquill] object StatementLiftable:
     def apply(token: Statement)(using Quotes) = liftStatement(token)
     extension [T](t: T)(using ToExpr[T], Quotes) def expr: Expr[T] = Expr(t)
-    import io.getquill.parser.BasicLiftable
+    import io.getquill.parser.Lifters.Plain
 
-    given liftToken: BasicLiftable[Token] with
+    given liftToken: Lifters.Plain[Token] with
       def lift =
         // Note strange errors about SerializeHelper.fromSerialized types can happen here if NotSerializing is not true.
         // Anyway we do not want tag-serialization here for the sake of simplicity for the tokenization which happens at runtime.
@@ -286,7 +287,7 @@ object Particularize:
         case ScalarLiftToken(lift)                 => quotes.reflect.report.throwError("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
         case ValuesClauseToken(stmt)               => '{ io.getquill.idiom.ValuesClauseToken(${ stmt.expr }) }
 
-    given liftStatement: BasicLiftable[Statement] with
+    given liftStatement: Lifters.Plain[Statement] with
       def lift =
         case Statement(tokens) => '{ io.getquill.idiom.Statement(${ tokens.expr }) }
   end StatementLiftable
