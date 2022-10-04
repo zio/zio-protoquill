@@ -45,12 +45,12 @@ object Unlifter {
     def attempt(expr: Expr[T])(using Quotes): Option[T] =
       import quotes.reflect._
       expr match
-        case '{ SerialHelper.fromSerialized[tt](${ Expr(serial: String) }) } if (TypeRepr.of[tt] <:< TypeRepr.of[Ast]) =>
-          Some(SerialHelper.fromSerialized[Ast](serial).asInstanceOf[T])
+        case '{ SerialHelper.Ast.fromSerialized(${ Expr(serial: String) }).asInstanceOf[t] } =>
+          Some(SerialHelper.Ast.fromSerialized(serial).asInstanceOf[T])
         // On JVM, a Quat must be serialized and then lifted from the serialized state i.e. as a FromSerialized using JVM (due to 64KB method limit)
-        case '{ SerialHelper.QuatProduct.fromSerialized(${ Expr(str: String) }) } =>
+        case '{ SerialHelper.QuatProduct.fromSerialized(${ Expr(str: String) }).asInstanceOf[t] } =>
           Some(SerialHelper.QuatProduct.fromSerialized(str).asInstanceOf[T])
-        case '{ SerialHelper.Quat.fromSerialized(${ Expr(str: String) }) } =>
+        case '{ SerialHelper.Quat.fromSerialized(${ Expr(str: String) }).asInstanceOf[t] } =>
           Some(SerialHelper.Quat.fromSerialized(str).asInstanceOf[T])
         case _ =>
           unlift.lift(expr)
