@@ -18,7 +18,7 @@ class StreamingWithFetchSpec extends ZioProxySpec with BeforeAndAfter {
   inline def insert = quote { (p: Person) => query[Person].insertValue(p) }
 
   def result[T](qzio: QIO[T]): T =
-    Unsafe.unsafe {
+    Unsafe.unsafe { implicit unsafe =>
       qzio.provideEnvironment(ZEnvironment(io.getquill.postgres.pool)).runSyncUnsafe()
     }
 

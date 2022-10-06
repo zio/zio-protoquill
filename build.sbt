@@ -140,7 +140,7 @@ lazy val `quill-sql` =
         "com.lihaoyi" %% "pprint" % "0.6.6",
         "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
         "io.getquill" %% "quill-engine" % "4.5.0",
-        "dev.zio" %% "zio" % "2.0.0",
+        "dev.zio" %% "zio" % "2.0.2",
         ("io.getquill" %% "quill-util" % "4.5.0")
           .excludeAll({
             if (isCommunityBuild)
@@ -239,8 +239,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "2.0.0",
-        "dev.zio" %% "zio-streams" % "2.0.0"
+        "dev.zio" %% "zio" % "2.0.2",
+        "dev.zio" %% "zio-streams" % "2.0.2"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -251,6 +251,11 @@ lazy val `quill-jdbc-zio` =
     .settings(releaseSettings: _*)
     .settings(jdbcTestingLibraries: _*)
     .settings(
+      libraryDependencies ++= Seq(
+        // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
+        "org.postgresql" % "postgresql" % "42.3.6" %  "provided",
+        "dev.zio" %% "zio-json" % "0.3.0"
+      ),
        Test / runMain / fork := true,
        Test / fork := true,
        Test / testGrouping := {
@@ -288,8 +293,8 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.13.0",
-        "dev.zio" %% "zio" % "2.0.0",
-        "dev.zio" %% "zio-streams" % "2.0.0"
+        "dev.zio" %% "zio" % "2.0.2",
+        "dev.zio" %% "zio-streams" % "2.0.2"
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")

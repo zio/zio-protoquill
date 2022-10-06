@@ -104,7 +104,7 @@ abstract class ZioJdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] e
    * However if it were used for something else it would be scoped to the fiber-ref of the zio-jdbc context's creator i.e. the global scope.
    */
   val currentConnection: FiberRef[Option[Connection]] =
-    Unsafe.unsafe {
+    Unsafe.unsafe { implicit unsafe =>
       Runtime.default.unsafe.run(zio.Scope.global.extend(FiberRef.make(Option.empty[java.sql.Connection]))).getOrThrow()
     }
 
