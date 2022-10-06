@@ -31,7 +31,7 @@ class ConnectionLeakTest extends ProductSpec with ZioSpec {
 
   "insert and select without leaking" in {
     val result =
-      Unsafe.unsafe {
+      Unsafe.unsafe { implicit unsafe =>
         Runtime.default.unsafe.run(context.underlying.transaction {
           import context.underlying._
           for {

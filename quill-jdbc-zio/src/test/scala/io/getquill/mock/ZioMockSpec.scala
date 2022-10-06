@@ -63,7 +63,7 @@
 //     import ctx._
 
 //     val results =
-//       Unsafe.unsafe { implicit u =>
+//       Unsafe.unsafe { implicit unsafe => implicit u =>
 //         zio.Runtime.default.unsafe.run {
 //           stream(query[Person])
 //             .runFold(Seq[Person]())({ case (l, p) => p +: l })
@@ -107,7 +107,7 @@
 //     import ctx._
 
 //     val results =
-//       Unsafe.unsafe { implicit u =>
+//       Unsafe.unsafe { implicit unsafe => implicit u =>
 //         zio.Runtime.default.unsafe.run {
 //           ctx.run(query[Person])
 //             .provideEnvironment(ZEnvironment(ds))
@@ -137,7 +137,7 @@
 //     import ctx._
 
 //     val resultMsg =
-//       Unsafe.unsafe { implicit u =>
+//       Unsafe.unsafe { implicit unsafe => implicit u =>
 //         zio.Runtime.default.unsafe.run {
 //           stream(query[Person])
 //             .runFold(Seq[Person]())({ case (l, p) => p +: l })
@@ -175,7 +175,7 @@
 
 //     // In this case, instead of catching the error inside the observable, let it propogate to the top
 //     // and make sure that the connection is closed anyhow
-//     val resultMsg = Unsafe.unsafe { implicit u =>
+//     val resultMsg = Unsafe.unsafe { implicit unsafe => implicit u =>
 //       zio.Runtime.default.unsafe.run {
 //         stream(query[Person])
 //           .runFold(Seq[Person]())({ case (l, p) => p +: l })

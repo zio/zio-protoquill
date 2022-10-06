@@ -35,7 +35,7 @@ trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
 
   extension [A](qzio: ZIO[Any, Throwable, A])
     def unsafeRunSync(): A =
-      zio.Unsafe.unsafe {
+      zio.Unsafe.unsafe { implicit unsafe =>
         zio.Runtime.default.unsafe.run(qzio).getOrThrow()
       }
 

@@ -54,25 +54,11 @@ object QuatMaking:
 
   private val encodeableCache: mutable.Map[QuotesTypeRepr, Boolean] = mutable.Map()
   def lookupIsEncodeable(tpe: QuotesTypeRepr)(computeEncodeable: () => Boolean) =
-    val lookup = encodeableCache.get(tpe)
-    lookup match
-      case Some(value) =>
-        value
-      case None =>
-        val encodeable = computeEncodeable()
-        encodeableCache.put(tpe, encodeable)
-        encodeable
+    computeEncodeable()
 
   private val quatCache: mutable.Map[QuotesTypeRepr, Quat] = mutable.Map()
   def lookupCache(tpe: QuotesTypeRepr)(computeQuat: () => Quat) =
-    val lookup = quatCache.get(tpe)
-    lookup match
-      case Some(value) =>
-        value
-      case None =>
-        val quat = computeQuat()
-        quatCache.put(tpe, quat)
-        quat
+    computeQuat()
 
   enum AnyValBehavior:
     case TreatAsValue
