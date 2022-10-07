@@ -5,8 +5,9 @@ import scala.reflect.ClassTag
 import io.getquill.ast.Ast
 import io.getquill.util.Format
 import io.getquill.norm.TranspileConfig
+import io.getquill.quat.QuatMaker
 
-sealed trait ParserChain(using Quotes, TranspileConfig):
+sealed trait ParserChain(using Quotes, TranspileConfig, QuatMaker):
   self =>
   def name: String
   protected def build(rootParse: Parser): Parser
@@ -18,14 +19,14 @@ sealed trait ParserChain(using Quotes, TranspileConfig):
 
 object ParserChain:
   import scala.quoted._
-  def attempt[P <: Parser: ClassTag](rootInjector: Parser => P)(using Quotes, TranspileConfig): ParserChain =
+  def attempt[P <: Parser: ClassTag](rootInjector: Parser => P)(using Quotes, TranspileConfig, QuatMaker): ParserChain =
     Attempt[P](rootInjector)
 
-  private final case class Attempt[P <: Parser: ClassTag](rootInjector: Parser => P)(using Quotes, TranspileConfig) extends ParserChain:
+  private final case class Attempt[P <: Parser: ClassTag](rootInjector: Parser => P)(using Quotes, TranspileConfig, QuatMaker) extends ParserChain:
     lazy val name = summon[ClassTag[P]].runtimeClass.getSimpleName
     protected def build(rootParse: Parser) = rootInjector(rootParse)
 
-  private final case class OrElse(left: ParserChain, right: ParserChain)(using Quotes, TranspileConfig) extends ParserChain:
+  private final case class OrElse(left: ParserChain, right: ParserChain)(using Quotes, TranspileConfig, QuatMaker) extends ParserChain:
     def name = s"${left.name}_or_${right.name}"
     protected def build(rootParse: Parser): Parser =
       new Parser(rootParse):

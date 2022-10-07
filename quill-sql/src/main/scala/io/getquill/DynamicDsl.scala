@@ -9,7 +9,7 @@ import io.getquill.generic.GenericEncoder
 import io.getquill.ast.Ident
 import io.getquill.quat.Quat
 import scala.util.DynamicVariable
-import io.getquill.quat.QuatMaking
+import io.getquill.quat.QuatMaker
 import io.getquill.ast.Entity
 import io.getquill.ast.Property
 import scala.annotation.tailrec
@@ -106,7 +106,7 @@ implicit inline def toQuoted[T <: DslAction[_]](inline q: DynamicAction[T]): Quo
 inline def dynamicQuery[T]: DynamicEntityQuery[T] = {
   DynamicEntityQuery(
     Quoted[EntityQuery[T]](
-      Entity(Extractors.typeName[T], Nil, QuatMaking.inferQuatType[T].probit),
+      Entity(Extractors.typeName[T], Nil, QuatMaker.Spot.InferQuat.of[T].probit),
       Nil,
       Nil
     )
@@ -127,7 +127,7 @@ inline def dynamicQuerySchema[T](
             acc
         }
 
-      val v = alias.property(Quoted[T](Ident("v", QuatMaking.inferQuatType[T].probit), Nil, Nil))
+      val v = alias.property(Quoted[T](Ident("v", QuatMaker.Spot.InferQuat.of[T].probit), Nil, Nil))
       (v, PropertyAlias(path(v.ast), alias.name))
     }
   val aliases = aliasesAndProperties.map(_._2)
@@ -135,7 +135,7 @@ inline def dynamicQuerySchema[T](
   val runtimeQuotes = aliasesAndProperties.map(_._1.runtimeQuotes).flatten.toList
   DynamicEntityQuery(
     Quoted[EntityQuery[T]](
-      Entity.Opinionated(entity, aliases.toList, QuatMaking.inferQuatType[T].probit, Fixed),
+      Entity.Opinionated(entity, aliases.toList, QuatMaker.Spot.InferQuat.of[T].probit, Fixed),
       lifts,
       runtimeQuotes
     )

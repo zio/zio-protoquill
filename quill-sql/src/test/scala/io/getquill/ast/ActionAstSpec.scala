@@ -8,7 +8,7 @@ import io.getquill.QuotationLot
 import io.getquill.QuotationVase
 import io.getquill.context.ExecutionType
 import org.scalatest._
-import io.getquill.quat.quatOf
+
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
 import io.getquill.Spec

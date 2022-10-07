@@ -16,8 +16,7 @@ import io.getquill.EntityQuery
 import io.getquill.QuotationVase
 import io.getquill.InsertMeta
 import io.getquill.UpdateMeta
-import io.getquill.quat.QuatMaking
-import io.getquill.quat.QuatMakingBase
+import io.getquill.quat.{QuatMaker, QuatCache}
 import io.getquill.quat.Quat
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.Planter
@@ -121,11 +120,13 @@ object InsertUpdateMacro {
    * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
    * statement is based. The schema is based on the EntityQuery which could potentially be an unquoted QuerySchema.
    */
-  class Pipeline[T: Type, A[T] <: Insert[T] | Update[T]: Type](isStatic: Boolean)(using Quotes) extends QuatMaking with QuatMakingBase:
+  class Pipeline[T: Type, A[T] <: Insert[T] | Update[T]: Type](isStatic: Boolean)(using Quotes):
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
     given TranspileConfig = SummonTranspileConfig()
     val parser = SummonParser().assemble
+    val quatMaker = QuatMaker(QuatCache())
+    import quatMaker.InferQuat
 
     case class InserteeSchema(schemaRaw: Expr[EntityQuery[T]]):
       private def plainEntity: Entity =

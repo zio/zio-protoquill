@@ -3,8 +3,14 @@ package io.getquill.parser.engine
 import scala.quoted._
 import io.getquill.ast.Ast
 import io.getquill.parser.ParserHelpers
+import io.getquill.quat.QuatMaker
 
-trait Parser(rootParse: Parser | Parser.Nil)(using Quotes):
+// Allows the use of `inferQuat` verb in the parser where the parsers each have a QuatMaker given.
+// This is based on how `quotes` is implemented in Quotes.scala
+// (https://github.com/lampepfl/dotty/blob/main/library/src/scala/quoted/Quotes.scala)
+transparent inline def inferQuat(using inline qm: QuatMaker): qm.InferQuat.type = qm.InferQuat
+
+trait Parser(rootParse: Parser | Parser.Nil)(using Quotes, QuatMaker):
   import quotes.reflect._
   def apply(input: Expr[_])(using History): Ast = attempt.lift(input).getOrElse(error(input))
   protected def error(input: Expr[_]): Nothing = failParse(input, classOf[Ast])
@@ -17,7 +23,7 @@ object Parser:
   sealed trait Nil
   object Nil extends Nil
 
-  def empty(rootParse: Parser | Parser.Nil)(using Quotes) =
+  def empty(rootParse: Parser | Parser.Nil)(using Quotes, QuatMaker) =
     new Parser(rootParse):
       protected def attempt: History ?=> PartialFunction[Expr[_], Ast] = PartialFunction.empty
 

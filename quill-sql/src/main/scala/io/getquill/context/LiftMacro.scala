@@ -29,7 +29,7 @@ import io.getquill.generic.ElaborateStructure
 import io.getquill.quat.Quat
 import scala.quoted._
 import io.getquill._
-import io.getquill.quat.QuatMaking
+import io.getquill.quat.{QuatMaker, QuatCache}
 import io.getquill.generic.ElaborateStructure.TaggedLiftedCaseClass
 import io.getquill.parser.Lifter
 import io.getquill.CaseClassLift
@@ -45,7 +45,8 @@ object LiftQueryMacro {
   def apply[T: Type, U[_] <: Iterable[_]: Type, PrepareRow: Type, Session: Type](entity: Expr[U[T]])(using Quotes): Expr[Query[T]] = {
     import quotes.reflect._
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
-    val quat = QuatMaking.ofType[T]
+    val quatMaker = QuatMaker(QuatCache())
+    val quat = quatMaker.InferQuat.of[T]
     quat match
       case _: Quat.Product =>
         // Not sure why cast back to iterable is needed here but U param is not needed once it is inside of the planter
@@ -71,7 +72,8 @@ object LiftMacro {
     import quotes.reflect._
 
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
-    val quat = QuatMaking.ofType[T]
+    val quatMaker = QuatMaker(QuatCache())
+    val quat = quatMaker.InferQuat.of[T]
     quat match
       case _: Quat.Product =>
         '{ ${ liftProduct[T, PrepareRow, Session](entity) }.unquote }

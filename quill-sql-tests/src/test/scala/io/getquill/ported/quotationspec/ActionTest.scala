@@ -5,7 +5,7 @@ import io.getquill.QuotationLot
 import io.getquill.Spec
 import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.quat.Quat
-import io.getquill.quat.quatOf
+
 import io.getquill._
 import org.scalatest.Inside
 import io.getquill.PicklingHelper._

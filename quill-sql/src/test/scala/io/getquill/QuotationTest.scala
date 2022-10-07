@@ -14,7 +14,7 @@ import io.getquill.QuotationLot
 import io.getquill.generic.GenericEncoder
 import io.getquill.context.mirror.Row
 import io.getquill.context.ExecutionType
-import io.getquill.quat.quatOf
+
 import io.getquill.quat.Quat
 import io.getquill.quote
 import io.getquill.query

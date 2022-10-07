@@ -18,7 +18,7 @@ object TestEnum:
     case Bar(stuff: String, otherStuff: String)
 
 class QuatSpec extends AnyFreeSpec {
-
+  inline def quatOf[T] = QuatMaker.Spot.InferQuat.of[T]
   val ctx = new SqlMirrorContext(PostgresDialect, Literal)
   import ctx._
 

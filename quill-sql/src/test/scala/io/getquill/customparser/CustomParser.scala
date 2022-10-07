@@ -6,6 +6,7 @@ import io.getquill.parser.OperationsParser
 import io.getquill.ast.Ast
 import io.getquill.ast.Infix
 import io.getquill.quat.Quat
+import io.getquill.quat.QuatMaker
 import io.getquill.parser.engine.ParserChain
 import io.getquill.parser.engine.Parser
 import io.getquill.norm.TranspileConfig
@@ -20,7 +21,7 @@ object CustomParser extends ParserLibrary:
     ParserChain.attempt(OperationsParser(_)) orElse
       ParserChain.attempt(CustomOperationsParser(_))
 
-class CustomOperationsParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
+class CustomOperationsParser(rootParse: Parser)(using Quotes, QuatMaker) extends Parser(rootParse) {
   import quotes.reflect._
   import CustomOps._
   def attempt =

@@ -51,7 +51,7 @@ import io.getquill.metaprog.InjectableEagerPlanterExpr
 import _root_.io.getquill.norm.BetaReduction
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.quat.Quat
-import io.getquill.quat.QuatMaking
+import io.getquill.quat.{QuatMaker, QuatCache}
 import io.getquill.metaprog.EagerListPlanterExpr
 import io.getquill.metaprog.EagerPlanterExpr
 import io.getquill.metaprog.SummonTranspileConfig
@@ -215,7 +215,8 @@ object QueryExecutionBatch:
   ](quotedRaw: Expr[Quoted[BatchAction[A]]], batchContextOperation: Expr[ContextOperation.Batch[I, T, A, D, N, PrepareRow, ResultRow, Session, Ctx, Res]], rowsPerQuery: Expr[Int])(using Quotes, Type[Ctx]):
     import quotes.reflect._
 
-    val topLevelQuat = QuatMaking.ofType[T]
+    val quatMaker = QuatMaker(QuatCache())
+    val topLevelQuat = quatMaker.InferQuat.of[T]
 
     lazy val batchingBehavior = '{
       // Do a widening to `Int` otherwise when 1 is passed into the rowsPerQuery argument

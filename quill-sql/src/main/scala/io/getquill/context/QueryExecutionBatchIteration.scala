@@ -51,7 +51,7 @@ import io.getquill.metaprog.InjectableEagerPlanterExpr
 import _root_.io.getquill.norm.BetaReduction
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.quat.Quat
-import io.getquill.quat.QuatMaking
+import io.getquill.quat.QuatMaker
 import io.getquill.metaprog.EagerListPlanterExpr
 import io.getquill.metaprog.EagerPlanterExpr
 import io.getquill.metaprog.SummonTranspileConfig

@@ -42,7 +42,7 @@ import io.getquill.parser.Lifter
 import io.getquill.OuterSelectWrap
 import io.getquill.util.CommonExtensions
 import io.getquill.generic.ElaborateTrivial
-import io.getquill.quat.QuatMaking
+import io.getquill.quat.{QuatMaker, QuatCache}
 import io.getquill.quat.Quat
 import io.getquill.ast.External
 import io.getquill.norm.TranspileConfig
@@ -185,6 +185,7 @@ object QueryExecution:
     import qctx.reflect.{Try => _, _}
     import Execution._
 
+    val quatMaker = QuatMaker(QuatCache())
     val transpileConfig = SummonTranspileConfig()
     val interp = new Interpolator(TraceType.Execution, transpileConfig.traceConfig, 1)
     import interp._
@@ -226,7 +227,7 @@ object QueryExecution:
      * )
      */
     def applyQuery(quoted: Expr[Quoted[QAC[_, _]]]): Expr[Res] =
-      val topLevelQuat = QuatMaking.ofType[T]
+      val topLevelQuat = quatMaker.InferQuat.of[T]
       summonQueryMetaTypeIfExists[T] match
         // Can we get a QueryMeta? Run that pipeline if we can
         case Some(queryMeta) =>
@@ -255,7 +256,7 @@ object QueryExecution:
           executeDynamic(quoted, identityConverter, ExtractBehavior.Skip, ElaborationBehavior.Skip, Quat.Value)
 
     def applyActionReturning(quoted: Expr[Quoted[QAC[_, _]]]): Expr[Res] =
-      val topLevelQuat = QuatMaking.ofType[T]
+      val topLevelQuat = quatMaker.InferQuat.of[T]
       StaticTranslationMacro[D, N](quoted, ElaborationBehavior.Skip, topLevelQuat) match
         case Some(staticState) =>
           executeStatic[T](staticState, identityConverter, ExtractBehavior.ExtractWithReturnAction, topLevelQuat)
@@ -264,7 +265,7 @@ object QueryExecution:
 
     /** Run a query with a given QueryMeta given by the output type RawT and the conversion RawT back to OutputT */
     def runWithQueryMeta[RawT: Type](quoted: Expr[Quoted[QAC[_, _]]]): Expr[Res] =
-      val topLevelQuat = QuatMaking.ofType[RawT]
+      val topLevelQuat = quatMaker.InferQuat.of[RawT]
       val (queryRawT, converter, staticStateOpt) = QueryMetaExtractor.applyImpl[T, RawT, D, N](quoted.asExprOf[Quoted[Query[T]]], topLevelQuat)
       staticStateOpt match {
         case Some(staticState) =>

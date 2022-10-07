@@ -10,6 +10,7 @@ import io.getquill.Quoted
 import io.getquill.EagerPlanter
 import io.getquill.ast._
 import io.getquill.quat.Quat
+import io.getquill.quat.QuatMaker
 import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
 import io.getquill.Query
@@ -19,6 +20,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   val QV = Quat.Value
   def QEP(name: String) = Quat.Product.empty(name)
   def QP(name: String, fields: String*) = Quat.LeafProduct(name, fields: _*)
+  inline def quatOf[T] = QuatMaker.Spot.InferQuat.of[T]
 
   extension (m: MirrorContextBase[_, _]#BatchActionReturningMirror[_])
     def triple =

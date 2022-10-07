@@ -11,7 +11,7 @@ import scala.util.Right
 import scala.util.Left
 import io.getquill.util.Format
 import io.getquill.Quoted
-import io.getquill.quat.QuatMaking
+import io.getquill.quat.{QuatMaker, QuatCache}
 import io.getquill.parser.Lifter
 import scala.util.Try
 import io.getquill.StringCodec
@@ -88,6 +88,7 @@ object StaticSpliceMacro {
     import io.getquill.ast._
 
     val value = valueRaw.asTerm.underlyingArgument
+    val quatMaker = QuatMaker(QuatCache())
 
     // TODO summon a Expr[StaticSplicer] using the T type passed originally.
     // Then use use LoadModule to get the value of that thing during runtime so we can use it
@@ -125,7 +126,7 @@ object StaticSpliceMacro {
         report.throwError(s"Could not look up {${(ownerTpe)}}.${path.mkString(".")}. Failed because:\n${msg}")
       )
 
-    val quat = Lifter.quat(QuatMaking.ofType[T])
+    val quat = Lifter.quat(quatMaker.InferQuat.of[T])
 
     def errorMsg(error: String) =
       s"Could not statically splice ${Format.Term(value)} because ${error}"

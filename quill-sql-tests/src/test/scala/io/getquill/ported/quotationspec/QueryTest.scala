@@ -7,7 +7,7 @@ import io.getquill.ast.{Query => AQuery, _}
 import io.getquill.quat.Quat
 import io.getquill._
 import io.getquill.ast.Renameable.Fixed
-import io.getquill.quat.quatOf
+
 import io.getquill.ast.Implicits._
 import io.getquill.PicklingHelper._
 

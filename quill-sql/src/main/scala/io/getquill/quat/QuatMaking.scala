@@ -17,55 +17,60 @@ import io.getquill.util.Format
 import io.getquill.generic.DecodingType
 import io.getquill.Quoted
 
-inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
+//inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
 
-object QuatMaking:
-  private class SimpleQuatMaker(using Quotes) extends QuatMakingBase with QuatMaking
-  // TODO I don't think anyValBehavior is used anymore, try to remove it
-  private def quatMaker(behavior: AnyValBehavior = AnyValBehavior.TreatAsValue)(using qctx: Quotes) =
-    new SimpleQuatMaker {
-      override def anyValBehavior = behavior
-    }
-
-  inline def inferQuatType[T]: Quat = ${ inferQuatTypeImpl[T] }
-  def inferQuatTypeImpl[T: TType](using quotes: Quotes): Expr[Quat] = {
-    val quat = quatMaker().InferQuat.of[T]
-    Lifter.quat(quat)
-  }
-
-  inline def inferQuat[T](value: T): Quat = ${ inferQuatImpl('value) }
-  def inferQuatImpl[T: TType](value: Expr[T])(using quotes: Quotes): Expr[Quat] = {
-    val quat = quatMaker().InferQuat.of[T]
-    Lifter.quat(quat)
-  }
-
-  def ofType[T: TType](using quotes: Quotes): Quat =
-    quatMaker().InferQuat.of[T]
-
-  def ofType[T: TType](anyValBehavior: AnyValBehavior)(using quotes: Quotes): Quat =
-    quatMaker(anyValBehavior).InferQuat.of[T]
-
-  def quatOfImpl[T: TType](using quotes: Quotes): Expr[Quat] = {
-    val quat = quatMaker().InferQuat.of[T]
-    Lifter.quat(quat)
-  }
-
+object QuatMakingTypes:
   type QuotesTypeRepr = Quotes#reflectModule#TypeRepr
 
-  private val encodeableCache: mutable.Map[QuotesTypeRepr, Boolean] = mutable.Map()
+case class QuatCache(
+    encodeableCache: mutable.Map[QuatMakingTypes.QuotesTypeRepr, Boolean] = mutable.Map(),
+    quatCache: mutable.Map[QuatMakingTypes.QuotesTypeRepr, Quat] = mutable.Map()
+)
+
+object QuatMaker:
+  /** "Spot-Instance" of a quat maker used once that has no cache. Need to use sparingly due to performance issues. */
+  object Spot:
+    object InferQuat:
+      inline def of[T]: Quat = ${ ofImpl[T] }
+      def ofImpl[T: TType](using Quotes): Expr[Quat] =
+        val maker = QuatMaker(QuatCache())
+        val quat = maker.InferQuat.of[T]
+        Lifter.quat(quat)
+
+class QuatMaker(quatCache: QuatCache) extends QuatEngine:
+  import QuatMakingTypes._
+
+  object InferQuat:
+    def of[T](using TType[T], Quotes) =
+      ofType(quotes.reflect.TypeRepr.of[T])
+
+    def ofExpr(expr: Expr[Any])(using Quotes) =
+      import quotes.reflect._
+      ofType(expr.asTerm.tpe)
+
+    def ofType(using Quotes)(tpe: quotes.reflect.TypeRepr): Quat =
+      lookupCache(tpe.widen)(() => Engine.ParseType.parseTopLevelType(tpe))
+  end InferQuat
+
   def lookupIsEncodeable(tpe: QuotesTypeRepr)(computeEncodeable: () => Boolean) =
-    computeEncodeable()
+    val lookup = quatCache.encodeableCache.get(tpe)
+    lookup match
+      case Some(value) =>
+        value
+      case None =>
+        val encodeable = computeEncodeable()
+        quatCache.encodeableCache.put(tpe, encodeable)
+        encodeable
 
-  private val quatCache: mutable.Map[QuotesTypeRepr, Quat] = mutable.Map()
   def lookupCache(tpe: QuotesTypeRepr)(computeQuat: () => Quat) =
-    computeQuat()
-
-  enum AnyValBehavior:
-    case TreatAsValue
-    case TreatAsClass
-end QuatMaking
-
-trait QuatMaking extends QuatMakingBase:
+    val lookup = quatCache.quatCache.get(tpe)
+    lookup match
+      case Some(value) =>
+        value
+      case None =>
+        val quat = computeQuat()
+        quatCache.quatCache.put(tpe, quat)
+        quat
 
   override def existsEncoderFor(using Quotes)(tpe: quotes.reflect.TypeRepr): Boolean =
     import quotes.reflect._
@@ -108,30 +113,16 @@ trait QuatMaking extends QuatMakingBase:
         case _ =>
           false
     }
-
-    val output = QuatMaking.lookupIsEncodeable(tpe.widen)(encoderComputation)
+    val output = lookupIsEncodeable(tpe.widen)(encoderComputation)
     output
-//quotes.reflect.report.throwError(s"No type for: ${tpe}")
-end QuatMaking
+  end existsEncoderFor
+end QuatMaker
 
-trait QuatMakingBase:
-  import QuatMaking.AnyValBehavior
-  def anyValBehavior: AnyValBehavior = AnyValBehavior.TreatAsValue
-
+trait QuatEngine:
   // TODO Either can summon an Encoder[T] or quill 'Value[T]' so that we know it's a quat value and not a case class
   def existsEncoderFor(using Quotes)(tpe: quotes.reflect.TypeRepr): Boolean
 
-  object InferQuat:
-    def of[T](using TType[T], Quotes) =
-      ofType(quotes.reflect.TypeRepr.of[T])
-
-    def ofExpr(expr: Expr[Any])(using Quotes) =
-      import quotes.reflect._
-      ofType(expr.asTerm.tpe)
-
-    def ofType(using Quotes)(tpe: quotes.reflect.TypeRepr): Quat =
-      QuatMaking.lookupCache(tpe.widen)(() => ParseType.parseTopLevelType(tpe))
-
+  object Engine:
     def nonGenericMethods(using Quotes)(tpe: quotes.reflect.TypeRepr) =
       tpe.classSymbol.get.memberFields
         .filter(m => m.owner.name.toString != "Any" && m.owner.name.toString != "Object").map { param =>
@@ -284,8 +275,6 @@ trait QuatMakingBase:
           Some(tpe)
         else if (tpe <:< TypeRepr.of[Udt])
           None
-        else if (isType[AnyVal](tpe) && tpe.widen.typeSymbol.isCaseClass && anyValBehavior == AnyValBehavior.TreatAsValue)
-          Some(tpe)
         else if (existsEncoderFor(tpe))
           Some(tpe)
         else
@@ -475,5 +464,5 @@ trait QuatMakingBase:
       import quotes.reflect._
       tpe <:< TypeRepr.of[T] && !(tpe =:= TypeRepr.of[Nothing])
 
-  end InferQuat
-end QuatMakingBase
+  end Engine
+end QuatEngine

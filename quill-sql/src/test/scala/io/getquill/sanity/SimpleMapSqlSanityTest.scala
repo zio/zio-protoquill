@@ -6,7 +6,7 @@ import io.getquill._
 import io.getquill.ast._
 import io.getquill.Quoted
 
-import io.getquill.quat.quatOf
+
 import io.getquill.context.SplicingBehaviorHint
 import io.getquill.context.SplicingBehavior
 

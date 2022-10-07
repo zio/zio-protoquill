@@ -14,27 +14,27 @@ import io.getquill.EntityQuery
 import io.getquill.Query
 import io.getquill.util.Format
 import io.getquill.parser.ParserHelpers._
-import io.getquill.quat.QuatMaking
+import io.getquill.quat.QuatMaker
 import io.getquill.quat.Quat
 import io.getquill.metaprog.Extractors._
 import io.getquill.ast
 import io.getquill.parser.engine._
-import io.getquill.quat.QuatMakingBase
 import io.getquill.norm.TranspileConfig
 
 object ParserHelpers:
 
-  trait Helpers(using Quotes) extends Idents with QuatMaking with QuatMakingBase
+  trait Helpers(using Quotes) extends Idents
 
-  trait Idents extends QuatMaking:
+  trait Idents:
     def parseName(rawName: String) =
       // val name = rawName.replace("_$", "x").replace("$", "")
       // if (name.trim == "") "x" else name.trim
       rawName.replace("_$", "x")
     def cleanIdent(name: String, quat: Quat): AIdent =
       AIdent(parseName(name), quat)
-    def cleanIdent(using Quotes)(name: String, tpe: quotes.reflect.TypeRepr): AIdent =
-      AIdent(parseName(name), InferQuat.ofType(tpe))
+    def cleanIdent(using Quotes, QuatMaker)(name: String, tpe: quotes.reflect.TypeRepr): AIdent =
+      val quatMaker = summon[QuatMaker]
+      AIdent(parseName(name), quatMaker.InferQuat.ofType(tpe))
 
   trait Assignments extends Idents:
 
@@ -89,19 +89,19 @@ object ParserHelpers:
               report.throwError(s"The assignment statement ${Format.Expr(expr)} is invalid.")
       end CheckTypes
 
-      def OrFail(expr: Expr[_])(using Quotes, History) =
+      def OrFail(expr: Expr[_])(using Quotes, History, QuatMaker) =
         unapply(expr).getOrElse { failParse(expr, classOf[Assignment]) }
 
-      def unapply(expr: Expr[_])(using Quotes, History): Option[Assignment] =
+      def unapply(expr: Expr[_])(using Quotes, History, QuatMaker): Option[Assignment] =
         UntypeExpr(expr) match
           case Components(ident, identTpe, prop, value) =>
             Some(Assignment(cleanIdent(ident, identTpe), rootParse(prop), rootParse(value)))
           case _ => None
 
       object Double:
-        def OrFail(expr: Expr[_])(using Quotes, History) =
+        def OrFail(expr: Expr[_])(using Quotes, History, QuatMaker) =
           unapply(expr).getOrElse { failParse(expr, classOf[AssignmentDual]) }
-        def unapply(expr: Expr[_])(using Quotes, History): Option[AssignmentDual] =
+        def unapply(expr: Expr[_])(using Quotes, History, QuatMaker): Option[AssignmentDual] =
           UntypeExpr(expr) match
             case TwoComponents(ident1, identTpe1, ident2, identTpe2, prop, value) =>
               val i1 = cleanIdent(ident1, identTpe1)
@@ -334,7 +334,7 @@ object ParserHelpers:
         tpe
   end ComparisonTechniques
 
-  trait PatternMatchingValues extends Parser with QuatMaking:
+  trait PatternMatchingValues extends Parser:
     import io.getquill.util.Interpolator
     import io.getquill.util.Messages.TraceType
     import io.getquill.norm.BetaReduction
@@ -343,11 +343,11 @@ object ParserHelpers:
 
     // don't change to ValDef or might override the real valdef in qctx.reflect
     object ValDefTerm {
-      def unapply(using Quotes, History, TranspileConfig)(tree: quotes.reflect.Tree): Option[Ast] =
+      def unapply(using Quotes, History, TranspileConfig, QuatMaker)(tree: quotes.reflect.Tree): Option[Ast] =
         import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
         tree match {
           case TValDef(name, tpe, Some(t @ PatMatchTerm.SimpleClause(ast))) =>
-            Some(Val(AIdent(name, InferQuat.ofType(tpe.tpe)), ast))
+            Some(Val(AIdent(name, inferQuat.ofType(tpe.tpe)), ast))
 
           // In case a user does a 'def' instead of a 'val' with no paras and no types then treat it as a val def
           // this is useful for things like (TODO Get name) where you'll have something like:
@@ -366,7 +366,7 @@ object ParserHelpers:
                 case Some(rhs) => rhs
               }
             val bodyAst = rootParse(body.asExpr)
-            Some(Val(AIdent(name, InferQuat.ofType(tpe.tpe)), bodyAst))
+            Some(Val(AIdent(name, inferQuat.ofType(tpe.tpe)), bodyAst))
 
           case TValDef(name, tpe, rhsOpt) =>
             val body =
@@ -376,7 +376,7 @@ object ParserHelpers:
                 case Some(rhs) => rhs
               }
             val bodyAst = rootParse(body.asExpr)
-            Some(Val(AIdent(name, InferQuat.ofType(tpe.tpe)), bodyAst))
+            Some(Val(AIdent(name, inferQuat.ofType(tpe.tpe)), bodyAst))
 
           case _ => None
         }

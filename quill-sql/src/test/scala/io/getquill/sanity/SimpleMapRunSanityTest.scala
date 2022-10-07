@@ -8,7 +8,7 @@ import io.getquill.Quoted
 
 import org.scalatest._
 import io.getquill.quat.Quat
-import io.getquill.quat.quatOf
+
 import io.getquill.quote
 import io.getquill.query
 import io.getquill.context.SplicingBehaviorHint
