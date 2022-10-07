@@ -1,3 +1,7 @@
+# 4.6.0
+
+- [Json/Jsonb Encoding for Postgres. Bump ZIO](https://github.com/zio/zio-protoquill/pull/202)
+
 # 4.5.0
 
 - [Implement Dynamic Query DSL for ProtoQuill](https://github.com/zio/zio-protoquill/pull/198)
