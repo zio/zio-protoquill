@@ -2,8 +2,8 @@ package io.getquill.metaprog
 
 import scala.quoted._
 import scala.quoted.Varargs
-import io.getquill.util.printer
 import io.getquill.util.Format
+import io.getquill.util.Messages.TraceType
 
 class Is[T: Type]:
   def unapply(expr: Expr[Any])(using Quotes) =
@@ -14,6 +14,13 @@ class Is[T: Type]:
       None
 
 object Extractors {
+  inline def typeName[T]: String = ${ typeNameImpl[T] }
+  def typeNameImpl[T: Type](using Quotes): Expr[String] =
+    import quotes.reflect._
+    val tpe = TypeRepr.of[T]
+    val name: String = tpe.classSymbol.get.name
+    Expr(name)
+
   def printExpr(using Quotes)(expr: Expr[_], label: String = "") = {
     import quotes.reflect._
     if (label != "")
@@ -406,6 +413,52 @@ object Extractors {
       import quotes.reflect._
       expr.asTerm.tpe.classSymbol.map(sym => (sym, expr.asTerm))
 
+  object UncastSelectable:
+    def unapply(expr: Expr[_])(using Quotes): Option[Expr[_]] =
+      import quotes.reflect._
+      UncastSelectable.Term.unapply(expr.asTerm).map(_.asExpr)
+    object Term:
+      def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+        import quotes.reflect._
+        term match
+          case AsInstanceOf(inner) => Some(recurse(inner))
+          case other               => Some(other)
+      def recurse(using Quotes)(term: quotes.reflect.Term): quotes.reflect.Term =
+        import quotes.reflect._
+        term match
+          case AsInstanceOf(inner) => recurse(inner)
+          case other               => other
+      private object AsInstanceOf:
+        def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+          import quotes.reflect._
+          term match
+            case TypeApply(Select(inner, "$asInstanceOf$"), _) => Some(inner)
+            case _                                             => None
+  end UncastSelectable
+
+  object Uncast:
+    def unapply(expr: Expr[_])(using Quotes): Option[Expr[_]] =
+      import quotes.reflect._
+      Uncast.Term.unapply(expr.asTerm).map(_.asExpr)
+    object Term:
+      def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+        import quotes.reflect._
+        term match
+          case AsInstanceOf(inner) => Some(recurse(inner))
+          case other               => Some(other)
+      def recurse(using Quotes)(term: quotes.reflect.Term): quotes.reflect.Term =
+        import quotes.reflect._
+        term match
+          case AsInstanceOf(inner) => recurse(inner)
+          case other               => other
+      private object AsInstanceOf:
+        def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+          import quotes.reflect._
+          term match
+            case TypeApply(Select(inner, "asInstanceOf"), _) => Some(inner)
+            case _                                           => None
+  end Uncast
+
   /**
    * Matches `case class Person(first: String, last: String)` creation of the forms:
    *   Person("Joe","Bloggs")
@@ -477,6 +530,7 @@ object Extractors {
     import quotes.reflect._
     tpe <:< TypeRepr.of[String] ||
     tpe <:< TypeRepr.of[Int] ||
+    tpe <:< TypeRepr.of[Short] ||
     tpe <:< TypeRepr.of[Long] ||
     tpe <:< TypeRepr.of[Float] ||
     tpe <:< TypeRepr.of[Double] ||
@@ -487,6 +541,7 @@ object Extractors {
     import quotes.reflect._
     tpe <:< TypeRepr.of[Int] ||
     tpe <:< TypeRepr.of[Long] ||
+    tpe <:< TypeRepr.of[Short] ||
     tpe <:< TypeRepr.of[Float] ||
     tpe <:< TypeRepr.of[Double] ||
     tpe <:< TypeRepr.of[scala.math.BigDecimal] ||
@@ -557,10 +612,8 @@ object Extractors {
         any match
           //
           case i @ Inlined(_, pv, v) =>
-            // TODO File a bug for this? Try exprMap to fill in the variables
-            // println Format(Printer.TreeStructure.show(i.underlyingArgument))
-            report.warning(s"Ran into an inline on a clause: ${Format(Printer.TreeStructure.show(i.underlyingArgument))}. Proxy variables will be discarded: ${pv}")
-            // report.warning(s"Ran into an inline on a clause: ${Format.Term(i)}. Proxy variables will be discarded: ${pv}")
+            if (SummonTranspileConfig.summonTraceTypes(true).contains(TraceType.Meta))
+              report.warning(s"Ran into an inline on a clause: ${Format(Printer.TreeStructure.show(i.underlyingArgument))}. Proxy variables will be discarded: ${pv}")
             v.underlyingArgument
           case _ => any
   }

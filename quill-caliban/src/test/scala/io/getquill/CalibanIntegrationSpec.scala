@@ -1,6 +1,5 @@
 package io.getquill
 
-import io.getquill.context.ZioJdbc.DataSourceLayer
 import zio.{ZIO, Task}
 import io.getquill.context.ZioJdbc._
 import caliban.execution.Field
@@ -17,14 +16,11 @@ class CalibanIntegrationSpec extends CalibanSpec {
     import FlatSchema._
     object Dao:
       def personAddress(columns: List[String], filters: Map[String, String]): ZIO[Any, Throwable, List[PersonAddress]] =
-        ZIO.effect {
-          println(s"======= Beginning Results for columns: $columns")
-        } >>>
         Ctx.run {
           query[PersonT].leftJoin(query[AddressT]).on((p, a) => p.id == a.ownerId)
             .map((p, a) => PersonAddress(p.id, p.first, p.last, p.age, a.map(_.street)))
-            .filterByKeys(filters)
-            .filterColumns(columns)
+          .filterByKeys(filters)
+            //.filterColumns(columns) // //
             .take(10)
         }.provideLayer(zioDS).tap(list => {
           println(s"Results: $list for columns: $columns")

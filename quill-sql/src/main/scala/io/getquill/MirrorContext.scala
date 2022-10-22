@@ -7,10 +7,10 @@ import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
 import scala.annotation.targetName
 
-class MirrorContext[Dialect <: Idiom, Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
+class MirrorContext[+Dialect <: Idiom, +Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
     extends MirrorContextBase[Dialect, Naming] with AstSplicing
 
-trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
+trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
     extends Context[Dialect, Naming]
     with ContextVerbPrepare[Dialect, Naming]
     with ContextVerbTranslate[Dialect, Naming]
@@ -66,9 +66,13 @@ trait MirrorContextBase[Dialect <: Idiom, Naming <: NamingStrategy]
   @targetName("runActionReturningMany")
   inline def run[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): ActionReturningMirror[T, List[T]] = InternalApi.runActionReturningMany(quoted).asInstanceOf[ActionReturningMirror[T, List[T]]]
   @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): BatchActionMirror = InternalApi.runBatchAction(quoted)
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): BatchActionMirror = InternalApi.runBatchAction(quoted, rowsPerBatch)
+  @targetName("runBatchActionDefault")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): BatchActionMirror = InternalApi.runBatchAction(quoted, 1)
   @targetName("runBatchActionReturning")
-  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): BatchActionReturningMirror[T] = InternalApi.runBatchActionReturning(quoted)
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): BatchActionReturningMirror[T] = InternalApi.runBatchActionReturning(quoted, rowsPerBatch)
+  @targetName("runBatchActionReturningDefault")
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): BatchActionReturningMirror[T] = InternalApi.runBatchActionReturning(quoted, 1)
 
   override def executeQuery[T](string: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner) =
     QueryMirror(string, prepare(Row(), session)._2, extractor, info)

@@ -18,6 +18,24 @@ class InsertAdvancedSpec extends Spec with Inside {
 
   case class Person(name: String, age: Int)
 
+  "updateValue with various dynamic structures" - {
+    val joe = Person("Joe", 123)
+    val v = quote { query[Person] }
+    "dynamic EntityQuery" in {
+      ctx.run(v.filter(u => u.age == 55).updateValue(lift(joe))).triple mustEqual
+        ("UPDATE Person AS u SET name = ?, age = ? WHERE u.age = 55",List("Joe", 123),Dynamic)
+    }
+    "dynamic EntityQuery with lift" in {
+      ctx.run(v.filter(u => u.age == lift(55)).updateValue(lift(joe))).triple mustEqual
+        ("UPDATE Person AS u SET name = ?, age = ? WHERE u.age = ?",List("Joe", 123, 55),Dynamic)
+    }
+    "dynamic EntityQuery multiple indirection" in {
+      val v1 = quote { v.filter(u => u.age == 55) }
+      ctx.run(v1.updateValue(lift(joe))).triple mustEqual
+        ("UPDATE Person AS u SET name = ?, age = ? WHERE u.age = 55",List("Joe", 123),Dynamic)
+    }
+  }
+
   "insert for simple entity should work for" - {
     // Insert(Entity("Person", List()), List(Assignment(Id("x1"), Property(Id("x1"), "name"), "Joe"), Assignment(Id("x2"), Property(Id("x2"), "age"), 123)))
     "simple, inline query" - {
@@ -40,6 +58,11 @@ class InsertAdvancedSpec extends Spec with Inside {
       "simple with insert meta - compact" in {
         inline given InsertMeta[Person] = insertMeta(_.age)
         ctx.run(q).triple mustEqual ("INSERT INTO Person (name) VALUES ('Joe')", List(), Static)
+        ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
+      }
+      "simple with insert meta - compact - dynamic" in { // //
+        given im: InsertMeta[Person] = insertMeta(_.age)
+        ctx.run(q).triple mustEqual ("INSERT INTO Person (name) VALUES ('Joe')", List(), Dynamic)
         ctx.run(a).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Static)
       }
       // TODO Doing this with a runtime query should throw an exception (for now)
@@ -198,7 +221,7 @@ class InsertAdvancedSpec extends Spec with Inside {
   }
 
   // Variation of this with only InsertMeta, and well as both InsertMeta and SchemaMeta (inline and dynamic)
-  "entity insert with dynamic components should work for" - {
+  "entity insert with dynamic components should work for" - { //
     "given queries in an outer scope" - {
       inline def a = quote { query[Person].insert(_.name -> "Joe", _.age -> 123) } // Insert "assignment form"
       inline def q = quote { query[Person].insertValue(Person("Joe", 123)) }            // Insert entity form
@@ -273,33 +296,4 @@ class InsertAdvancedSpec extends Spec with Inside {
       ctx.run(adyn).triple mustEqual ("UPDATE tblPerson SET colName = 'Joe', age = 123", List(), Dynamic)
     }
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // "regular dynamic query shuold work" in {
-    //   ctx.run(qdyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
-    //   ctx.run(adyn).triple mustEqual ("INSERT INTO Person (name,age) VALUES ('Joe', 123)", List(), Dynamic)
-    // }
-
-    // TODO add dynamic schema ignore possiblity
-
-
-  // TODO Need more testing of this for multiple use-cases
-//   "Entity with embedding" - {
-//     case class Address(street:String, zip:Int) extends Embedded
-//     case class Person(name: String, age: Int, address: Address)
-//     inline def people = quote { query[Person] }
-//     def peopleRuntime = quote { query[Person] }
-//   }
 }

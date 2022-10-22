@@ -15,7 +15,7 @@ import scala.util.Try
 import io.getquill.context.ProtoContextSecundus
 import io.getquill.generic.GenericNullChecker
 
-abstract class CassandraSessionContext[N <: NamingStrategy]
+abstract class CassandraSessionContext[+N <: NamingStrategy]
   extends CassandraPrepareContext[N]
   with CassandraBaseContext[N]
 
@@ -23,11 +23,11 @@ abstract class CassandraSessionContext[N <: NamingStrategy]
  * When using this context, we cannot encode UDTs since does not have a proper CassandraSession trait mixed in with udtValueOf.
  * Certain contexts e.g. the CassandraLagomContext does not currently have this ability.
  */
-abstract class CassandraSessionlessContext[N <: NamingStrategy]
+abstract class CassandraSessionlessContext[+N <: NamingStrategy]
   extends CassandraPrepareContext[N]
 
 
-trait CassandraPrepareContext[N <: NamingStrategy]
+trait CassandraPrepareContext[+N <: NamingStrategy]
 extends CassandraStandardContext[N]
 with CassandraContext[N] {
   protected def prepareAsync(cql: String)(implicit executionContext: ExecutionContext): Future[BoundStatement]
@@ -50,11 +50,11 @@ with CassandraContext[N] {
   }
 }
 
-trait CassandraBaseContext[N <: NamingStrategy] extends CassandraStandardContext[N] {
+trait CassandraBaseContext[+N <: NamingStrategy] extends CassandraStandardContext[N] {
   override type Session = CassandraSession
 }
 
-trait CassandraStandardContext[N <: NamingStrategy]
+trait CassandraStandardContext[+N <: NamingStrategy]
   extends CassandraRowContext
   with CassandraContext[N]
   with Context[CqlIdiom, N]

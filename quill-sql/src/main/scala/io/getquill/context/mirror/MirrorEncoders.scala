@@ -44,4 +44,5 @@ trait MirrorEncoders extends EncodingDsl {
   implicit val dateEncoder: Encoder[Date] = encoder[Date]
   implicit val localDateEncoder: Encoder[LocalDate] = encoder[LocalDate]
   implicit val uuidEncoder: Encoder[UUID] = encoder[UUID]
+  implicit def nullEncoder: Encoder[Null] = encoder[Null]
 }

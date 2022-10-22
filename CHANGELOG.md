@@ -1,3 +1,59 @@
+# 4.6.0
+
+- [Json/Jsonb Encoding for Postgres. Bump ZIO](https://github.com/zio/zio-protoquill/pull/202)
+
+# 4.5.0
+
+- [Implement Dynamic Query DSL for ProtoQuill](https://github.com/zio/zio-protoquill/pull/198)
+- [Fix dynamic Insert/UpdateMeta and better warning message](https://github.com/zio/zio-protoquill/pull/197)
+- [Support for structural types in Quoted functions](https://github.com/zio/zio-protoquill/pull/199)
+- [Upstream changes. Add JDBC encoders for java.time dates](https://github.com/zio/zio-protoquill/pull/191)
+
+# 4.4.1
+
+- [Fixing Caliban Datatype conversion issues](https://github.com/zio/zio-protoquill/pull/188)
+- [Incorporate Quill 4.4.1 change from upstream](https://github.com/zio/zio-protoquill/pull/189)
+
+# 4.4.0
+
+- [Integrating upstream changes for Update VALUES-clause optimization](https://github.com/zio/zio-protoquill/pull/182)
+
+# 4.3.0
+
+- [Implementing multi-row insert for liftQuery(...).foreach](https://github.com/zio/zio-protoquill/pull/172)
+
+# 4.2.0
+
+- [Update zio-idiomatic context](https://github.com/zio/zio-protoquill/pull/164)
+- [Implement ZIO-Idiomatic JDBC Context](https://github.com/zio/zio-protoquill/pull/160)
+- [Adding idiomatic-zio cassandra context](https://github.com/zio/zio-protoquill/pull/166)
+- [Change infix"$content" to sql"$content"](https://github.com/zio/zio-protoquill/pull/165)
+- [Upgrade caliban and re-enable quill-caliban](https://github.com/zio/zio-protoquill/pull/161)
+- [Remove matrowl and do token splicing at runtime](https://github.com/zio/zio-protoquill/pull/168)
+- [Fix for indirect-dynamic](https://github.com/zio/zio-protoquill/pull/157)
+
+#### Migration Notes:
+- The `infix` interpolator is now deprecated because in Scala 2, infix is a keyword. Instead of
+  `infix"MyUdf(${person.name})"` use `sql"MyUdf(${person.name})"`. For contexts such as Doobie that already
+  have an `sql` interpolator. Import `context.compat._` and use the `qsql` interpolator instead.
+
+# 4.1.0-V2
+
+- [Implementing dynamic splices via #${splice} like Scala2-Quill](https://github.com/zio/zio-protoquill/pull/153)
+
+# 4.1.0
+
+- [Integrating groupByMap from Scala2-Quill. Also EnableTrace/DisablePhase](https://github.com/zio/zio-protoquill/pull/151)
+
+# 4.0.0
+
+- [Bump to ZIO 2.0.0 Release Version](https://github.com/zio/zio-protoquill/pull/146)
+
+# 3.19.0
+
+- [Update to Jasync 2. Additional Jasync SSL Configs](https://github.com/zio/zio-protoquill/pull/142)
+- [Implement insert/update/delete.returningMany](https://github.com/zio/zio-protoquill/pull/117)
+
 # 3.18.0
 
 - [Correct decoding Option[Product] and fix complex insertValue encoders](https://github.com/zio/zio-protoquill/pull/109)
@@ -118,7 +174,7 @@ This change lines up the zio-jdbc modules with the latest 3.10.0 line. Various f
 
 * Kryo-Serialize entire AST. Further improves performance.
 * Allow `x -> y` syntax for constructing tuples.
-* Allow `infix"..."` without `.as[...]` in some needed cases.
+* Allow `sql"..."` without `.as[...]` in some needed cases.
 
 # 3.7.1.Beta1.1
 

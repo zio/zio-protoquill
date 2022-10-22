@@ -5,9 +5,8 @@ import com.datastax.oss.driver.api.core.data.UdtValue
 import scala.collection.mutable.ListBuffer
 import io.getquill.generic.ElaborateStructure
 import io.getquill.generic.DeconstructElaboratedEntityLevels
-import io.getquill.Udt
+import io.getquill.{Udt, UdtMeta}
 import io.getquill.generic.ElaborationSide
-import io.getquill.context.cassandra.UdtMeta
 import io.getquill.context.cassandra.UdtMetaDslMacro
 import io.getquill.context.CassandraSession
 import com.datastax.oss.driver.api.core.cql.BoundStatement

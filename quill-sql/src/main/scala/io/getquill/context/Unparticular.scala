@@ -69,6 +69,7 @@ object Unparticular:
           case SetContainsToken(a, op, b) => apply(stmt"$a $op ($b)" +: tail, sqlResult, liftingResult, liftingSize)
           case ScalarTagToken(tag)        => apply(tail, liftingPlaceholder(liftingSize) +: sqlResult, tag +: liftingResult, liftingSize + 1)
           case Statement(tokens)          => apply(tokens.foldRight(tail)(_ +: _), sqlResult, liftingResult, liftingSize)
+          case ValuesClauseToken(stmt)    => apply(stmt +: tail, sqlResult, liftingResult, liftingSize)
           case _: ScalarLiftToken =>
             throw new UnsupportedOperationException("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
           case _: QuotationTagToken =>

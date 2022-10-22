@@ -10,7 +10,7 @@ import io.getquill.util.ContextLogger
 import java.sql.{ Connection, JDBCType, PreparedStatement, ResultSet, Statement }
 import java.util.TimeZone
 
-trait JdbcContextVerbExecute[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends JdbcContextTypes[Dialect, Naming] {
+trait JdbcContextVerbExecute[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends JdbcContextTypes[Dialect, Naming] {
 
   // These type overrides are not required for JdbcRunContext in Scala2-Quill but it's a typing error. It only works
   // because executeQuery is not actually defined in Context.scala therefore typing doesn't have
@@ -78,7 +78,7 @@ trait JdbcContextVerbExecute[Dialect <: SqlIdiom, Naming <: NamingStrategy] exte
       groups.flatMap {
         case BatchGroup(sql, prepare) =>
           val ps = conn.prepareStatement(sql)
-          logger.underlying.debug("Batch: {}", sql)
+          //logger.underlying.debug("Batch: {}", sql.take(200) + (if (sql.length > 200) "..." else ""))
           prepare.foreach { f =>
             val (params, _) = f(ps, conn)
             logger.logBatchItem(sql, params)

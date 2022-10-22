@@ -44,7 +44,7 @@ import io.getquill.metaprog.etc.ColumnsFlicer
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 
-trait ContextVerbPrepareLambda[Dialect <: Idiom, Naming <: NamingStrategy] extends ContextVerbPrepare[Dialect, Naming]:
+trait ContextVerbPrepareLambda[+Dialect <: Idiom, +Naming <: NamingStrategy] extends ContextVerbPrepare[Dialect, Naming]:
   self: Context[Dialect, Naming] =>
 
   type PrepareQueryResult = Session => Result[PrepareRow]

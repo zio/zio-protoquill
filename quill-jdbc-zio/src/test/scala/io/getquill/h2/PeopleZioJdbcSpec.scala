@@ -1,14 +1,13 @@
 package io.getquill.h2
 
 import io.getquill.PeopleZioSpec
-import io.getquill.Prefix
+
 import org.scalatest.matchers.should.Matchers._
 import io.getquill._
 
 class PeopleZioJdbcSpec extends PeopleZioSpec {
 
-  def prefix = Prefix("testH2DB")
-  val context = testContext
+  val context: testContext.type = testContext
   import testContext._
 
   override def beforeAll() = {

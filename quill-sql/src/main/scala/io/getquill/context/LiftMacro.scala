@@ -36,6 +36,8 @@ import io.getquill.CaseClassLift
 import io.getquill.ast.CaseClass
 import io.getquill.InjectableEagerPlanter
 import io.getquill.util.Format
+import io.getquill.metaprog.etc.StringOrNull
+import scala.reflect.ClassTag
 
 object LiftQueryMacro {
   private[getquill] def newUuid = java.util.UUID.randomUUID().toString
@@ -186,6 +188,29 @@ object LiftMacro {
     val encoder = summonEncoderOrFail[T, PrepareRow, Session](valueEntity)
     '{ EagerPlanter($valueEntity, $encoder, ${ Expr(uuid) }) } // [T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
+
+  def valueOrString[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[Any], uuid: String = newUuid)(using Quotes) =
+    import quotes.reflect._
+    // i.e. the actual thing being passed to the encoder e.g. for lift(foo.bar) this will be "foo.bar"
+    val fieldName = Format.Expr(valueEntity)
+    // The thing being encoded converted to a string, unless it is null then null is returned
+    val valueEntityToString = '{ StringOrNull($valueEntity) }
+    val nullableEncoder = summonEncoderOrFail[Option[T], PrepareRow, Session](valueEntity)
+    val expectedClassTag =
+      Expr.summon[ClassTag[T]] match
+        case Some(value) => value
+        case None        => report.throwError(s"Cannot create a classTag for the type ${Format.TypeOf[T]} for the value ${fieldName}. Cannot create a string-fallback encoder.")
+    val converterExpr: Expr[Either[String, FromString[T]]] =
+      StringCodec.FromString.summonExpr[T] match
+        case Right(value) => '{ Right($value) }
+        case Left(msg)    => '{ Left(${ Expr(msg) }) }
+    '{
+      EagerPlanter[Any, PrepareRow, Session](
+        $valueEntity,
+        GenericEncoderWithStringFallback($nullableEncoder, $converterExpr)($expectedClassTag),
+        ${ Expr(uuid) }
+      ).unquote
+    }
 
   private[getquill] def injectableLiftValue[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[_ => T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
     import quotes.reflect._

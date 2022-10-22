@@ -11,7 +11,7 @@ class DecodeNullSpec extends Spec {
       inline def writeEntities = quote(querySchema[DecodeNullTestWriteEntity]("DecodeNullTestEntity"))
 
       testSyncDB.run(writeEntities.delete)
-      testSyncDB.run(writeEntities.insertValue(lift(insertValue)))
+      testSyncDB.run(writeEntities.insertValue(lift(insertee)))
       intercept[IllegalStateException] {
         testSyncDB.run(query[DecodeNullTestEntity])
       }
@@ -25,7 +25,7 @@ class DecodeNullSpec extends Spec {
       val result =
         for {
           _ <- testAsyncDB.run(writeEntities.delete)
-          _ <- testAsyncDB.run(writeEntities.insertValue(lift(insertValue)))
+          _ <- testAsyncDB.run(writeEntities.insertValue(lift(insertee)))
           result <- testAsyncDB.run(query[DecodeNullTestEntity])
         } yield {
           result
@@ -42,6 +42,6 @@ class DecodeNullSpec extends Spec {
 
   case class DecodeNullTestWriteEntity(id: Int, value: Option[Int])
 
-  val insertValue = DecodeNullTestWriteEntity(0, None)
+  val insertee = DecodeNullTestWriteEntity(0, None)
 
 }
