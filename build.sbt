@@ -320,7 +320,7 @@ lazy val jdbcTestingLibraries = Seq(
   libraryDependencies ++= Seq(
     "com.zaxxer"              %  "HikariCP"                % "3.4.5",
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
-    "mysql"                   %  "mysql-connector-java"    % "8.0.29"             % Test,
+    "mysql"                   %  "mysql-connector-java"    % "8.0.31"             % Test,
     "com.h2database"          %  "h2"                      % "1.4.200"            % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
     "org.postgresql"          %  "postgresql"              % "42.3.6"             % Test,
