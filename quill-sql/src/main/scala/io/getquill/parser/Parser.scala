@@ -22,7 +22,7 @@ import io.getquill.metaprog.Uprootable
 import io.getquill.metaprog.Pluckable
 import io.getquill.metaprog.Pointable
 import io.getquill.metaprog.Extractors._
-import io.getquill.util.printer
+import io.getquill.metaprog.SummonTranspileConfig
 import io.getquill._
 
 import io.getquill.Ord
@@ -31,6 +31,9 @@ import io.getquill.metaprog.Is
 import io.getquill.generic.ElaborationSide
 import io.getquill.parser.engine._
 import io.getquill.context.VerifyFreeVariables
+import io.getquill.norm.TranspileConfig
+import io.getquill.ast.External.Source
+import io.getquill.quat.VerifyNoBranches
 
 trait ParserFactory:
   def assemble(using Quotes): ParserLibrary.ReadyParser
@@ -39,27 +42,27 @@ trait ParserLibrary extends ParserFactory:
 
   // TODO add a before everything identity parser,
   // a after everything except Inline recurse parser
-  protected def quotationParser(using Quotes) = ParserChain.attempt(QuotationParser(_))
-  protected def queryParser(using Quotes) = ParserChain.attempt(QueryParser(_))
-  protected def infixParser(using Quotes) = ParserChain.attempt(InfixParser(_))
-  protected def setOperationsParser(using Quotes) = ParserChain.attempt(SetOperationsParser(_))
-  protected def queryScalarsParser(using Quotes) = ParserChain.attempt(QueryScalarsParser(_))
-  protected def traversableOperationParser(using Quotes) = ParserChain.attempt(TraversableOperationParser(_))
-  protected def patMatchParser(using Quotes) = ParserChain.attempt(CasePatMatchParser(_))
-  protected def functionParser(using Quotes) = ParserChain.attempt(FunctionParser(_))
-  protected def functionApplyParser(using Quotes) = ParserChain.attempt(FunctionApplyParser(_))
-  protected def valParser(using Quotes) = ParserChain.attempt(ValParser(_))
-  protected def blockParser(using Quotes) = ParserChain.attempt(BlockParser(_))
-  protected def extrasParser(using Quotes) = ParserChain.attempt(ExtrasParser(_))
-  protected def operationsParser(using Quotes) = ParserChain.attempt(OperationsParser(_))
-  protected def orderingParser(using Quotes) = ParserChain.attempt(OrderingParser(_))
-  protected def genericExpressionsParser(using Quotes) = ParserChain.attempt(GenericExpressionsParser(_))
-  protected def actionParser(using Quotes) = ParserChain.attempt(ActionParser(_))
-  protected def batchActionParser(using Quotes) = ParserChain.attempt(BatchActionParser(_))
-  protected def optionParser(using Quotes) = ParserChain.attempt(OptionParser(_))
-  protected def ifElseParser(using Quotes) = ParserChain.attempt(IfElseParser(_))
-  protected def complexValueParser(using Quotes) = ParserChain.attempt(ComplexValueParser(_))
-  protected def valueParser(using Quotes) = ParserChain.attempt(ValueParser(_))
+  protected def quotationParser(using Quotes, TranspileConfig) = ParserChain.attempt(QuotationParser(_))
+  protected def queryParser(using Quotes, TranspileConfig) = ParserChain.attempt(QueryParser(_))
+  protected def infixParser(using Quotes, TranspileConfig) = ParserChain.attempt(InfixParser(_))
+  protected def setOperationsParser(using Quotes, TranspileConfig) = ParserChain.attempt(SetOperationsParser(_))
+  protected def queryScalarsParser(using Quotes, TranspileConfig) = ParserChain.attempt(QueryScalarsParser(_))
+  protected def traversableOperationParser(using Quotes, TranspileConfig) = ParserChain.attempt(TraversableOperationParser(_))
+  protected def patMatchParser(using Quotes, TranspileConfig) = ParserChain.attempt(CasePatMatchParser(_))
+  protected def functionParser(using Quotes, TranspileConfig) = ParserChain.attempt(FunctionParser(_))
+  protected def functionApplyParser(using Quotes, TranspileConfig) = ParserChain.attempt(FunctionApplyParser(_))
+  protected def valParser(using Quotes, TranspileConfig) = ParserChain.attempt(ValParser(_))
+  protected def blockParser(using Quotes, TranspileConfig) = ParserChain.attempt(BlockParser(_))
+  protected def extrasParser(using Quotes, TranspileConfig) = ParserChain.attempt(ExtrasParser(_))
+  protected def operationsParser(using Quotes, TranspileConfig) = ParserChain.attempt(OperationsParser(_))
+  protected def orderingParser(using Quotes, TranspileConfig) = ParserChain.attempt(OrderingParser(_))
+  protected def genericExpressionsParser(using Quotes, TranspileConfig) = ParserChain.attempt(GenericExpressionsParser(_))
+  protected def actionParser(using Quotes, TranspileConfig) = ParserChain.attempt(ActionParser(_))
+  protected def batchActionParser(using Quotes, TranspileConfig) = ParserChain.attempt(BatchActionParser(_))
+  protected def optionParser(using Quotes, TranspileConfig) = ParserChain.attempt(OptionParser(_))
+  protected def ifElseParser(using Quotes, TranspileConfig) = ParserChain.attempt(IfElseParser(_))
+  protected def complexValueParser(using Quotes, TranspileConfig) = ParserChain.attempt(ComplexValueParser(_))
+  protected def valueParser(using Quotes, TranspileConfig) = ParserChain.attempt(ValueParser(_))
 
   // def userDefined(using quotesInput: Quotes) = Series(new Glosser[Ast] {
   //   val quotes = quotesInput
@@ -68,6 +71,7 @@ trait ParserLibrary extends ParserFactory:
 
   // Everything needs to be parsed from a quoted state, and sent to the subsequent parser
   def assemble(using Quotes): ParserLibrary.ReadyParser =
+    given TranspileConfig = SummonTranspileConfig()
     val assembly =
       quotationParser
         .orElse(valueParser)
@@ -97,10 +101,10 @@ end ParserLibrary
 
 object ParserLibrary extends ParserLibrary:
   class ReadyParser private[parser] (parser: Parser):
-    def apply(expr: Expr[_])(using Quotes) =
+    def apply(expr: Expr[_])(using Quotes, TranspileConfig) =
       parser(expr)(using History.Root)
 
-class FunctionApplyParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
+class FunctionApplyParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) {
   import quotes.reflect._
   import io.getquill.norm.capture.AvoidAliasConflict
 
@@ -114,7 +118,7 @@ class FunctionApplyParser(rootParse: Parser)(using Quotes) extends Parser(rootPa
   }
 }
 
-class FunctionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) with Helpers {
+class FunctionParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with Helpers {
   import quotes.reflect._
 
   import io.getquill.norm.capture.AvoidAliasConflict
@@ -137,14 +141,14 @@ class FunctionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) 
   }
 }
 
-class ValParser(val rootParse: Parser)(using Quotes)
+class ValParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with PatternMatchingValues:
   import quotes.reflect._
   def attempt =
     case Unseal(ValDefTerm(ast)) => ast
 
-class BlockParser(val rootParse: Parser)(using Quotes)
+class BlockParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with PatternMatchingValues {
   import quotes.reflect.{Block => TBlock, _}
@@ -164,7 +168,7 @@ class BlockParser(val rootParse: Parser)(using Quotes)
   }
 }
 
-class CasePatMatchParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PatternMatchingValues {
+class CasePatMatchParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with PatternMatchingValues {
   import quotes.reflect.{Constant => TConstant, _}
 
   def attempt = {
@@ -183,7 +187,7 @@ class CasePatMatchParser(val rootParse: Parser)(using Quotes) extends Parser(roo
 }
 
 /** Same as traversableOperationParser, pre-filters that the result-type is a boolean */
-class TraversableOperationParser(val rootParse: Parser)(using Quotes)
+class TraversableOperationParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with Parser.PrefilterType[Boolean]
     with PatternMatchingValues:
@@ -196,7 +200,7 @@ class TraversableOperationParser(val rootParse: Parser)(using Quotes)
     case '{ ($col: collection.Seq[v]).contains($body) } =>
       ListContains(rootParse(col), rootParse(body))
 
-class OrderingParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PatternMatchingValues {
+class OrderingParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with PatternMatchingValues {
   import quotes.reflect._
 
   def attempt: History ?=> PartialFunction[Expr[_], Ordering] = {
@@ -205,7 +209,7 @@ class OrderingParser(val rootParse: Parser)(using Quotes) extends Parser(rootPar
     // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
     case Unseal(Apply(TypeApply(Select(Ident("Ord"), "apply"), _), args)) =>
       // parse all sub-orderings if this is a composite
-      val subOrderings = args.map(_.asExpr).map(ordExpression => attempt.lift(ordExpression).getOrElse(ParserError(ordExpression, classOf[Ordering])))
+      val subOrderings = args.map(_.asExpr).map(ordExpression => attempt.lift(ordExpression).getOrElse(failParse(ordExpression, classOf[Ordering])))
       TupleOrdering(subOrderings)
 
     case '{ Ord.asc[t] }            => Asc
@@ -218,7 +222,7 @@ class OrderingParser(val rootParse: Parser)(using Quotes) extends Parser(rootPar
 }
 
 // TODO Pluggable-in unlifter via implicit? Quotation generic should have it in the root?
-class QuotationParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
+class QuotationParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) {
   import quotes.reflect.{Ident => TIdent, Apply => TApply, _}
 
   def attempt = {
@@ -231,7 +235,7 @@ class QuotationParser(rootParse: Parser)(using Quotes) extends Parser(rootParse)
       }
 
     case PlanterExpr.UprootableUnquote(expr) =>
-      ScalarTag(expr.uid) // TODO Want special scalar tag for an encodeable scalar
+      ScalarTag(expr.uid, Source.Parser)
 
     // A inline quotation can be parsed if it is directly inline. If it is not inline, a error
     // must happen (specifically have a check for it or just fail to parse?)
@@ -247,7 +251,7 @@ class QuotationParser(rootParse: Parser)(using Quotes) extends Parser(rootParse)
 
 // As a performance optimization, ONLY Matches things returning Action[_] UP FRONT.
 // All other kinds of things rejected
-class ActionParser(val rootParse: Parser)(using Quotes)
+class ActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with Parser.PrefilterType[Action[_]]
     with Assignments
@@ -404,7 +408,7 @@ end ActionParser
 
 // As a performance optimization, ONLY Matches things returning BatchAction[_] UP FRONT.
 // All other kinds of things rejected
-class BatchActionParser(val rootParse: Parser)(using Quotes)
+class BatchActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with Parser.PrefilterType[BatchAction[_]]
     with Assignments {
@@ -412,12 +416,12 @@ class BatchActionParser(val rootParse: Parser)(using Quotes)
 
   def attempt = {
     case '{ type a <: Action[_] with QAC[_, _]; ($q: Query[t]).foreach[`a`, b](${ Lambda1(ident, tpe, body) })($unq) } =>
-      Foreach(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
+      val id = cleanIdent(ident, tpe)
+      Foreach(rootParse(q), id, rootParse(body))
   }
-
 }
 
-class IfElseParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
+class IfElseParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) {
   import quotes.reflect.{Constant => TConstant, _}
 
   def attempt =
@@ -431,7 +435,7 @@ class IfElseParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
 // We can't use PrefilterType[Option[_]] here since the types of quotations that need to match
 // are not necessarily an Option[_] e.g. Option[t].isEmpty needs to match on a clause whose type is Boolean
 // That's why we need to use the 'Is' object and optimize it that way here
-class OptionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) with Helpers {
+class OptionParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with Helpers {
   import quotes.reflect.{Constant => TConstant, _}
 
   import MatchingOptimizers._
@@ -484,7 +488,7 @@ class OptionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) wi
     case "contains" -@> '{ type t; ($o: Option[`t`]).contains($body: `t`) } =>
       OptionContains(rootParse(o), rootParse(body))
 
-    case '{ ($o: Option[t]).orNull($refl) } => // back here
+    case '{ ($o: Option[t]).orNull($refl) } =>
       OptionOrNull(rootParse(o))
 
     case '{ ($o: Option[t]).getOrNull } =>
@@ -501,7 +505,7 @@ class OptionParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) wi
 
 // As a performance optimization, ONLY Matches things returning Query[_] UP FRONT.
 // All other kinds of things rejected
-class QueryParser(val rootParse: Parser)(using Quotes)
+class QueryParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with Parser.PrefilterType[Query[_]]
     with PropertyAliases
@@ -509,15 +513,22 @@ class QueryParser(val rootParse: Parser)(using Quotes)
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
   import MatchingOptimizers._
 
+  private def warnVerifyNoBranches(v: VerifyNoBranches.Output, expr: Expr[_]): Unit =
+    if (v.messages.nonEmpty)
+      report.warning("Questionable row-class found.\n" + v.messages.map(_.msg).mkString("\n"), expr)
+
   def attempt = {
-    case '{ type t; EntityQuery.apply[`t`] } =>
+    case expr @ '{ type t; EntityQuery.apply[`t`] } =>
       val tpe = TypeRepr.of[t]
       val name: String = tpe.classSymbol.get.name
-      Entity(name, List(), InferQuat.ofType(tpe).probit)
+      val quat = InferQuat.ofType(tpe).probit
+      warnVerifyNoBranches(VerifyNoBranches.in(quat), expr)
+      Entity(name, List(), quat)
 
-    case '{ querySchema[t](${ ConstExpr(name: String) }, ${ GenericSeq(properties) }: _*) } =>
-      val e: Entity = Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), InferQuat.of[t].probit, Renameable.Fixed)
-      e
+    case expr @ '{ querySchema[t](${ ConstExpr(name: String) }, ${ GenericSeq(properties) }: _*) } =>
+      val quat = InferQuat.of[t].probit
+      warnVerifyNoBranches(VerifyNoBranches.in(quat), expr)
+      Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), quat, Renameable.Fixed)
 
     case "map" -@> '{ ($q: Query[qt]).map[mt](${ Lambda1(ident, tpe, body) }) } =>
       Map(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
@@ -562,6 +573,9 @@ class QueryParser(val rootParse: Parser)(using Quotes)
     case "groupBy" -@> '{ type r; ($q: Query[t]).groupBy[`r`](${ Lambda1(ident1, tpe, body) }) } =>
       GroupBy(rootParse(q), cleanIdent(ident1, tpe), rootParse(body))
 
+    case "groupByMap" -@@> '{ ($q: Query[t]).groupByMap[g, r](${ Lambda1(byIdent, byTpe, byBody) })(${ Lambda1(mapIdent, mapTpe, mapBody) }) } =>
+      GroupByMap(rootParse(q), cleanIdent(byIdent, byTpe), rootParse(byBody), cleanIdent(mapIdent, mapTpe), rootParse(mapBody))
+
     case "distinctOn" -@> '{ ($q: Query[t]).distinctOn[r](${ Lambda1(ident, tpe, body) }) } =>
       rootParse(q) match
         case fj: FlatJoin => failFlatJoin("distinctOn")
@@ -602,7 +616,7 @@ class QueryParser(val rootParse: Parser)(using Quotes)
 end QueryParser
 
 /** Query contains, nonEmpty, etc... Pre-filters for a boolean output type */
-class SetOperationsParser(val rootParse: Parser)(using Quotes)
+class SetOperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with Parser.PrefilterType[Boolean]
     with PropertyAliases:
@@ -633,27 +647,19 @@ class QueryScalarsParser(val rootParse: Parser)(using Quotes) extends Parser(roo
     case '{ type t; type u >: `t`; ($q: Query[`t`]).avg[`u`]($n) } => Aggregation(AggregationOperator.`avg`, rootParse(q))
     case '{ type t; type u >: `t`; ($q: Query[`t`]).sum[`u`]($n) } => Aggregation(AggregationOperator.`sum`, rootParse(q))
     case '{ type t; ($q: Query[`t`]).size }                        => Aggregation(AggregationOperator.`size`, rootParse(q))
+
+    case '{ type t; type u >: `t`; min[`u`]($q) }                  => Aggregation(AggregationOperator.`min`, rootParse(q))
+    case '{ type t; type u >: `t`; max[`u`]($q) }                  => Aggregation(AggregationOperator.`max`, rootParse(q))
+    case '{ type t; type u >: `t`; count[`u`]($q) }                => Aggregation(AggregationOperator.`size`, rootParse(q))
+    case '{ type t; type u >: `t`; avg[`u`]($q: Option[`u`])($n) } => Aggregation(AggregationOperator.`avg`, rootParse(q))
+    case '{ type t; type u >: `t`; sum[`u`]($q: Option[`u`])($n) } => Aggregation(AggregationOperator.`sum`, rootParse(q))
+    case '{ type t; type u >: `t`; avg[`u`]($q: `u`)($n) }         => Aggregation(AggregationOperator.`avg`, rootParse(q))
+    case '{ type t; type u >: `t`; sum[`u`]($q: `u`)($n) }         => Aggregation(AggregationOperator.`sum`, rootParse(q))
   }
 
 }
 
-// case class ConflictParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
-//   import quotes.reflect.{Constant => TConstant, using,  _}
-//
-//
-
-//   //  case q"$query.map[mt]((x) => y) }"
-//   //case '{ ($q:Query[qt]).map[mt](${Lambda1(ident, body)}) } =>
-
-//   def attempt = {
-//     // case q"$query.onConflictIgnore" =>
-//     //  OnConflict(rootParser(query), OnConflict.NoTarget, OnConflict.Ignore)
-//     case '{ ($query:Insert[qt]).onConflictIgnore } =>
-//       OnConflict(rootParse(query), OnConflict.NoTarget, OnConflict.Ignore)
-//   }
-// }
-
-class InfixParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with Assignments:
+class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with Assignments:
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
 
   def attempt =
@@ -666,15 +672,19 @@ class InfixParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse)
     case '{ ($i: InfixValue) }                        => genericInfix(i)(false, false, Quat.Value)
 
   def genericInfix(i: Expr[_])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History) =
-    val (parts, paramsExprs) = InfixComponents.unapply(i).getOrElse { ParserError(i, classOf[Infix]) }
-    val infixAst = Infix(parts.toList, paramsExprs.map(rootParse(_)).toList, isPure, isTransparent, quat)
-    Quat.improveInfixQuat(infixAst)
+    val (parts, paramsExprs) = InfixComponents.unapply(i).getOrElse { failParse(i, classOf[Infix]) }
+    if (parts.exists(_.endsWith("#"))) {
+      PrepareDynamicInfix(parts.toList, paramsExprs.toList)(isPure, isTransparent, quat)
+    } else {
+      val infixAst = Infix(parts.toList, paramsExprs.map(rootParse(_)).toList, isPure, isTransparent, quat)
+      Quat.improveInfixQuat(infixAst)
+    }
 
   object StringContextExpr:
     def staticOrFail(expr: Expr[String]) =
       expr match
         case Expr(str: String) => str
-        case _                 => ParserError(expr, "All String-parts of a 'infix' statement must be static strings")
+        case _                 => failParse(expr, "All String-parts of a 'infix' statement must be static strings")
     def unapply(expr: Expr[_]) =
       expr match
         case '{ StringContext.apply(${ Varargs(parts) }: _*) } =>
@@ -688,6 +698,15 @@ class InfixParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse)
         case _                                                           => false
 
   private object InfixComponents:
+    object InterpolatorClause:
+      def unapply(expr: Expr[_]) =
+        expr match
+          case '{ InfixInterpolator($partsExpr).infix(${ Varargs(params) }: _*) }           => Some((partsExpr, params))
+          case '{ SqlInfixInterpolator($partsExpr).sql(${ Varargs(params) }: _*) }          => Some((partsExpr, params))
+          case '{ compat.QsqlInfixInterpolator($partsExpr).qsql(${ Varargs(params) }: _*) } => Some((partsExpr, params))
+          case _ =>
+            failParse(expr, "Invalid Infix Clause")
+
     def unapply(expr: Expr[_]): Option[(Seq[String], Seq[Expr[Any]])] =
       expr match
         // Discovered from cassandra context that nested infix clauses can have an odd form with the method infix$generic$i2 e.g:
@@ -695,15 +714,105 @@ class InfixParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse)
         // maybe need to add this to the general parser?
         case Unseal(TApply(InlineGenericIdent(), List(value))) =>
           unapply(value.asExpr)
-        case '{ InfixInterpolator($partsExpr).infix(${ Varargs(params) }: _*) } =>
-          val parts = StringContextExpr.unapply(partsExpr).getOrElse { ParserError(partsExpr, "Cannot parse a valid StringContext") }
+        case InterpolatorClause(partsExpr, params) =>
+          val parts = StringContextExpr.unapply(partsExpr).getOrElse { failParse(partsExpr, "Cannot parse a valid StringContext") }
           Some((parts, params))
         case _ =>
           None
+  end InfixComponents
+
+  private object PrepareDynamicInfix:
+    def apply(parts: List[String], params: List[Expr[Any]])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History): Dynamic =
+      // Basically the way it works is like this
+      //
+      // sql"foo#${bar}baz" becomes:
+      //   InfixInterpolator(List("foo#", "baz"), List(bar:Expr)) should become:
+      //   List( Part('{"foo" /*# is dropped*/ + String.valueOf($bar:Expr)}), Part('{"baz"}) )
+      //
+      // sql"foo${bar}baz" becomes:
+      //   InfixInterpolator(List("foo", "baz"), List(bar:Expr)) should become:
+      //   List( Part('{"foo"}), Param(bar:Expr), Part('{"baz"})  )
+      import InfixElement._
+      val elements =
+        parts.zipWithIndex.flatMap {
+          case (part, index) if (index < params.length) =>
+            if (part.endsWith("#")) {
+              // InfixInterpolator(List("foo#", ...), List(bar:Expr)) should become:
+              //   Part('{"foo" + String.valueOf($bar:Expr)}') :: Nil
+              Part('{ ${ Expr(part.dropRight(1)) } + String.valueOf(${ params(index) }) }) :: Nil
+            } else {
+              // InfixInterpolator(List("foo", ...), List(bar:Expr)) should become:
+              //   Part('{"foo"}) :: Param(bar:Expr) :: Nil
+              Part(Expr(part)) :: Param(params(index)) :: Nil
+            }
+          // We are on the last element (i.e. no more params after this)
+          // there cannot be a # here because it could not come before the dollar sign i.e. sql"#${param} #no more params here"
+          case (part, index) =>
+            Part(Expr(part)) :: Nil
+        }
+
+      val fused =
+        (elements.foldLeft(List.empty[InfixElement]) {
+          // Shorthand:
+          // fus: fusion, add: addition
+          // acc: accum, ele: element
+          // LE: List.empty (a.k.a Nil)
+          // Part("foo") is really Part('{"foo"}) or Part(Expr("foo"))
+          // (m1) is the 1st match clause below, (m2) is the 2nd one
+
+          // Here are two examples of thos this works
+          //
+          // List( Part('{"foo"}), Part('{"bar"}), Part('{"baz"}) ) =>
+          //   (0 ) LE                                                - remaining:List( Part('{"bar"}), Part('{"baz"}) ) =>
+          //   (m2) elm:Part("foo") :: acc:LE                         - remaining:List( Part('{"bar"}), Part('{"baz"}) ) =>
+          //   (m1) fus:Part(fusion:"foo" + add:"bar") :: LE          - remaining:List( Part('{"baz"}) ) =>
+          //   (m1) fus:Part(fusion:"foo" + "bar" + add:"baz")) :: LE - remaining:List() =>
+          //
+          // List( Part("foo"), Param(bar), Part("baz") ) =>
+          //   (0 ) LE                                                                         - remaining:List( Part('{"foo"}), Part('{"bar"}), Part('{"baz"}), Part('{"blin"}) ) =>
+          //   (m2) elm:Part("foo") :: acc:LE                                                  - remaining:List( Param(bar), Part('{"baz"}), Part('{"blin"}) ) =>
+          //   (m2) elm:Param(bar)  :: acc:(Part('{"foo"})) :: LE)                             - remaining:List( Part('{"baz"}), Part('{"blin"}) ) =>
+          //   (m2) elm:Part("baz") :: acc:(Param(bar) :: Part("foo")) :: LE)                  - remaining:List( Part('{"blin"}) ) =>
+          //   (m1) fus:Part("baz") :: acc:(Part("blin") }) :: Param(bar) :: Part("foo") :: LE - remaining: List()
+          //
+          // Note that once the process is done the elements are reversed
+
+          // (m1)
+          case (Part(fusion) :: tail, Part(addition)) =>
+            Part('{ $fusion + $addition }) :: tail
+          // (m2)
+          case (accum, element) =>
+            element :: accum
+        }).reverse
+
+      val newParts =
+        fused.collect {
+          case Part(v) => v
+        }
+
+      val newParams =
+        fused.collect {
+          case Param(v) => Lifter(rootParse(v))
+        }
+
+      // If there is a lift that one of the static parts has, the lift should be extracted anyway
+      // from the outer quote. Have a look at the "with lift" test in InfixText.scala for more detail
+      Dynamic(
+        '{
+          Quoted(Infix(${ Expr.ofList(newParts) }, ${ Expr.ofList(newParams) }, ${ Expr(isPure) }, ${ Expr(isTransparent) }, ${ Lifter.quat(quat) }), Nil, Nil)
+        },
+        quat
+      )
+    end apply
+
+    enum InfixElement:
+      case Part(value: Expr[String])
+      case Param(value: Expr[Any])
+  end PrepareDynamicInfix
 
 end InfixParser
 
-class ExtrasParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with ComparisonTechniques {
+class ExtrasParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with ComparisonTechniques {
   import quotes.reflect._
 
   private object ExtrasModule:
@@ -731,7 +840,7 @@ class ExtrasParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse
       equalityWithInnerTypechecksAnsi(a, b)(NotEqual)
 }
 
-class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with ComparisonTechniques {
+class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with ComparisonTechniques with QuatMaking {
   import quotes.reflect._
   import io.getquill.ast.Infix
   // Note that if we import Dsl._ here then the "like" construct
@@ -749,9 +858,35 @@ class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootP
       }
   }
 
+  private def isValue(tpe: TypeRepr) =
+    isNumeric(tpe) || existsEncoderFor(tpe)
+
+  object operator {
+    def unapply(name: String) =
+      name match {
+        case ">"  => Some(NumericOperator.`>`)
+        case ">=" => Some(NumericOperator.`>=`)
+        case "<"  => Some(NumericOperator.`<`)
+        case "<=" => Some(NumericOperator.`<=`)
+        case _    => None
+      }
+  }
+
   def attempt = {
     case '{ ($str: String).like($other) } =>
       Infix(List("", " like ", ""), List(rootParse(str), rootParse(other)), true, false, Quat.Value)
+
+    case NamedOp1('{ ($leftRaw: Ordered[t]) }, operator(op), right) =>
+      // If this is an operator tacked-on via an implicit class (e.g. the pattern used in DateOps) it is
+      // legimiate, pull out the actual implicit class argument. This is a valid case of ProtoQuill use of implicit classes.
+      // (unlike extension methods)
+      val left =
+        leftRaw match
+          case ImplicitClassExtensionPattern(_, left) => left.asExpr
+          case other                                  => other
+
+      // Whatever the case, parse the expressions that came out
+      BinaryOperation(rootParse(left), op, rootParse(right))
 
     case expr @ NamedOp1(left, "==", right) =>
       equalityWithInnerTypechecksIdiomatic(left.asTerm, right.asTerm)(Equal)
@@ -777,16 +912,16 @@ class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootP
     // toString is automatically converted into the Apply form i.e. foo.toString automatically becomes foo.toString()
     // so we need to parse it as an Apply. The others don't take arg parens so they are not in apply-form.
 
-    case Unseal(Apply(Select(num, "toString"), List())) if isNumeric(num.tpe) =>
-      val inner = rootParse(num.asExpr)
+    case Unseal(Apply(Select(encodeable, "toString"), List())) if isValue(encodeable.tpe) =>
+      val inner = rootParse(encodeable.asExpr)
       Infix(List("cast(", " as VARCHAR)"), List(inner), false, false, inner.quat)
-    case Unseal(Select(num, "toInt")) if isPrimitive(num.tpe)    => rootParse(num.asExpr)
-    case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe)   => rootParse(num.asExpr)
-    case Unseal(Select(num, "toFloat")) if isPrimitive(num.tpe)  => rootParse(num.asExpr)
-    case Unseal(Select(num, "toDouble")) if isPrimitive(num.tpe) => rootParse(num.asExpr)
-    case Unseal(Select(num, "toLong")) if isPrimitive(num.tpe)   => rootParse(num.asExpr)
-    case Unseal(Select(num, "toByte")) if isPrimitive(num.tpe)   => rootParse(num.asExpr)
-    case Unseal(Select(num, "toChar")) if isPrimitive(num.tpe)   => rootParse(num.asExpr)
+    case Unseal(Select(num, "toInt")) if isValue(num.tpe)    => rootParse(num.asExpr)
+    case Unseal(Select(num, "toLong")) if isValue(num.tpe)   => rootParse(num.asExpr)
+    case Unseal(Select(num, "toShort")) if isValue(num.tpe)  => rootParse(num.asExpr)
+    case Unseal(Select(num, "toFloat")) if isValue(num.tpe)  => rootParse(num.asExpr)
+    case Unseal(Select(num, "toDouble")) if isValue(num.tpe) => rootParse(num.asExpr)
+    case Unseal(Select(num, "toByte")) if isValue(num.tpe)   => rootParse(num.asExpr)
+    case Unseal(Select(num, "toChar")) if isValue(num.tpe)   => rootParse(num.asExpr)
 
     // TODO not sure how I want to do this on an SQL level. Maybe implement using SQL function containers since
     // they should be more dialect-portable then just infix
@@ -803,12 +938,6 @@ class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootP
     case '{ ($str: String).toInt }                  => UnaryOperation(StringOperator.toInt, rootParse(str))
     case '{ ($left: String).startsWith($right) }    => BinaryOperation(rootParse(left), StringOperator.startsWith, rootParse(right))
     case '{ ($left: String).split($right: String) } => BinaryOperation(rootParse(left), StringOperator.split, rootParse(right))
-
-    /*
-    //SET Operations
-    case '{ ($set:String).contains() } =>
-      Conso le.printl("Wow you actually did it!")
-     */
 
     // 1 + 1
     // Apply(Select(Lit(1), +), Lit(1))
@@ -852,7 +981,7 @@ class OperationsParser(val rootParse: Parser)(using Quotes) extends Parser(rootP
  * null-constant can match anything e.g. a (something: SomeValue) clause. Found this out
  * when tried to do just '{ (infix: InfixValue) } and 'null' matched it
  */
-class ValueParser(rootParse: Parser)(using Quotes)
+class ValueParser(rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with QuatMaking {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
@@ -874,7 +1003,7 @@ class ValueParser(rootParse: Parser)(using Quotes)
   }
 }
 
-class ComplexValueParser(rootParse: Parser)(using Quotes)
+class ComplexValueParser(rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with QuatMaking
     with Helpers {
@@ -892,22 +1021,27 @@ class ComplexValueParser(rootParse: Parser)(using Quotes)
       if (fields.length != args.length)
         throw new IllegalArgumentException(s"In Case Class ${ccName}, does not have the same number of fields (${fields.length}) as it does arguments ${args.length} (fields: ${fields}, args: ${args.map(_.show)})")
       val argsAst = args.map(rootParse(_))
-      CaseClass(fields.zip(argsAst))
+      CaseClass(ccName, fields.zip(argsAst))
 
     case orig @ Unseal(i @ TIdent(x)) =>
-      val id = cleanIdent(i.symbol.name, InferQuat.ofType(i.tpe))
-      if (id.toString.contains("Ast"))
-        println(s"------------- Parsed: $id from ${Format.Expr(orig)}")
-      id
+      cleanIdent(i.symbol.name, InferQuat.ofType(i.tpe))
   }
 }
 
-class GenericExpressionsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PropertyParser {
+class GenericExpressionsParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with PropertyParser {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
+  import reflect.Selectable.reflectiveSelectable
 
   def attempt = {
     case expr @ ImplicitClassExtensionPattern(cls, constructorArg) =>
       report.throwError(ImplicitClassExtensionPattern.errorMessage(expr, cls, constructorArg), expr)
+
+    case UncastSelectable('{ reflectiveSelectable($v).selectDynamic($propNameExpr) }) =>
+      val propName =
+        propNameExpr match
+          case Expr(v) => v
+          case _       => report.throwError(s"Cannot parse the property ${Format.Expr(propNameExpr)}. It was not a static string property.")
+      Property(rootParse(v), propName)
 
     case AnyProperty(property) => property
 

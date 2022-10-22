@@ -2,10 +2,9 @@ package io.getquill.context.cassandra
 
 import scala.quoted._
 import io.getquill.metaprog.Extractors._
-import io.getquill.context.cassandra.UdtMeta
 import io.getquill.context.cassandra.util.UdtMetaUtils
 import io.getquill.util.Format
-import io.getquill.Udt
+import io.getquill.{Udt, UdtMeta}
 
 object UdtMetaDslMacro {
 

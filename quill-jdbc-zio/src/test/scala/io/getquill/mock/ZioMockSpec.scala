@@ -1,17 +1,14 @@
 // package io.getquill.mock
 
-// import io.getquill.ZioTestUtil._
+// import io.getquill.{ Literal, PostgresZioJdbcContext }
+// import org.mockito.scalatest.MockitoSugar
+// import org.scalatest.freespec.AnyFreeSpec
+// import org.scalatest.matchers.must.Matchers._
+// import zio.{ Unsafe, ZEnvironment }
 
 // import java.io.Closeable
 // import java.sql._
 // import javax.sql.DataSource
-// import io.getquill.{ Literal, PostgresZioJdbcContext }
-// import org.mockito.scalatest.MockitoSugar
-// import org.scalatest.matchers.must.Matchers._
-// import io.getquill.context.ZioJdbc._
-// import org.scalatest.freespec.AnyFreeSpec
-// import zio.Has
-
 // import scala.reflect.ClassTag
 
 // class ZioMockSpec extends AnyFreeSpec with MockitoSugar { //with AsyncMockitoSugar
@@ -57,6 +54,7 @@
 //     val rs = MockResultSet(people)
 
 //     when(ds.getConnection) thenReturn conn
+
 //     when(conn.prepareStatement(any[String], any[Int], any[Int])) thenReturn stmt
 //     when(stmt.executeQuery()) thenReturn rs
 //     when(conn.getAutoCommit) thenReturn true
@@ -65,11 +63,14 @@
 //     import ctx._
 
 //     val results =
-//       stream(query[Person])
-//         .fold(Seq[Person]())({ case (l, p) => p +: l })
-//         .map(_.reverse)
-//         .onDataSource
-//         .provide(Has(ds)).defaultRun
+//       Unsafe.unsafe { implicit unsafe => implicit u =>
+//         zio.Runtime.default.unsafe.run {
+//           stream(query[Person])
+//             .runFold(Seq[Person]())({ case (l, p) => p +: l })
+//             .map(_.reverse)
+//             .provideEnvironment(ZEnvironment(ds))
+//         }.getOrThrow()
+//       }
 
 //     results must equal(people)
 
@@ -106,8 +107,12 @@
 //     import ctx._
 
 //     val results =
-//       ctx.run(query[Person])
-//         .onDataSource.provide(Has(ds)).defaultRun
+//       Unsafe.unsafe { implicit unsafe => implicit u =>
+//         zio.Runtime.default.unsafe.run {
+//           ctx.run(query[Person])
+//             .provideEnvironment(ZEnvironment(ds))
+//         }.getOrThrow()
+//       }
 
 //     results must equal(people)
 
@@ -132,13 +137,16 @@
 //     import ctx._
 
 //     val resultMsg =
-//       stream(query[Person])
-//         .fold(Seq[Person]())({ case (l, p) => p +: l })
-//         .map(_.reverse)
-//         .onDataSource
-//         .provide(Has(ds)).foldCause(cause => cause.prettyPrint, _ => "").defaultRun
+//       Unsafe.unsafe { implicit unsafe => implicit u =>
+//         zio.Runtime.default.unsafe.run {
+//           stream(query[Person])
+//             .runFold(Seq[Person]())({ case (l, p) => p +: l })
+//             .map(_.reverse)
+//             .provideEnvironment(ZEnvironment(ds)).foldCause(cause => cause.prettyPrint, _ => "")
+//         }.getOrThrow()
+//       }
 
-//     resultMsg.contains("Fiber failed.") mustBe true
+//     resultMsg.contains("fiber") mustBe true
 //     resultMsg.contains(msg) mustBe true
 
 //     // In test suite verifications come after
@@ -167,14 +175,16 @@
 
 //     // In this case, instead of catching the error inside the observable, let it propogate to the top
 //     // and make sure that the connection is closed anyhow
-//     val resultMsg =
-//       stream(query[Person])
-//         .fold(Seq[Person]())({ case (l, p) => p +: l })
-//         .map(_.reverse)
-//         .onDataSource
-//         .provide(Has(ds)).foldCause(cause => cause.prettyPrint, _ => "").defaultRun
+//     val resultMsg = Unsafe.unsafe { implicit unsafe => implicit u =>
+//       zio.Runtime.default.unsafe.run {
+//         stream(query[Person])
+//           .runFold(Seq[Person]())({ case (l, p) => p +: l })
+//           .map(_.reverse)
+//           .provideEnvironment(ZEnvironment(ds)).foldCause(cause => cause.prettyPrint, success => s"Query SUCCEEDED with $success. This should not happen!")
+//       }.getOrThrow()
+//     }
 
-//     resultMsg.contains("Fiber failed.") mustBe true
+//     resultMsg.contains("fiber") mustBe true
 //     resultMsg.contains(msg) mustBe true
 
 //     // In test suite verifications come after

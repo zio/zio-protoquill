@@ -1,7 +1,6 @@
 package io.getquill.oracle
 
 import io.getquill.ZioSpec
-import io.getquill.Prefix
 import zio.{ Task, ZIO }
 import javax.sql.DataSource
 import io.getquill._
@@ -9,7 +8,6 @@ import zio.ZLayer
 
 class ZioJdbcContextSpec extends ZioSpec {
 
-  override def prefix: Prefix = Prefix("testSqlServerDB")
   val context = testContext
   import testContext._
 
@@ -31,7 +29,7 @@ class ZioJdbcContextSpec extends ZioSpec {
           } yield qry
         }
         r <- testContext.run(qr1)
-      } yield r).provideSomeLayer(ZLayer.service[DataSource] >>> ZLayer.succeed(33)).runSyncUnsafe().map(_.i) mustEqual List(33)
+      } yield r).provideSomeLayer(ZLayer.succeed(33)).runSyncUnsafe().map(_.i) mustEqual List(33)
     }
     "success - stream" in {
       (for {
@@ -39,7 +37,7 @@ class ZioJdbcContextSpec extends ZioSpec {
         seq <- testContext.transaction {
           for {
             _ <- testContext.run(qr1.insert(_.i -> 33))
-            s <- accumulateDS(testContext.stream(qr1))
+            s <- accumulate(testContext.stream(qr1))
           } yield s
         }
         r <- testContext.run(qr1)
@@ -53,13 +51,13 @@ class ZioJdbcContextSpec extends ZioSpec {
             testContext.transaction {
               ZIO.collectAll(Seq(
                 testContext.run(qr1.insert(_.i -> 18)),
-                Task {
+                ZIO.attempt {
                   throw new IllegalStateException
                 }
               ))
             }
         }.catchSome {
-          case e: Exception => Task(e.getClass.getSimpleName)
+          case e: Exception => ZIO.attempt(e.getClass.getSimpleName)
         }
         r <- testContext.run(qr1)
       } yield (e, r.isEmpty)).runSyncUnsafe() mustEqual (("IllegalStateException", true))

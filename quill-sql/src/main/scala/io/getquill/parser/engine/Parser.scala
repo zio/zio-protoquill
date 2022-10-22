@@ -7,7 +7,7 @@ import io.getquill.parser.ParserHelpers
 trait Parser(rootParse: Parser | Parser.Nil)(using Quotes):
   import quotes.reflect._
   def apply(input: Expr[_])(using History): Ast = attempt.lift(input).getOrElse(error(input))
-  protected def error(input: Expr[_]): Nothing = ParserError(input, classOf[Ast])
+  protected def error(input: Expr[_]): Nothing = failParse(input, classOf[Ast])
   protected def attempt: History ?=> PartialFunction[Expr[_], Ast]
   // Attempt the parser externally. Usually this is the just the `attempt` method
   // but in some cases we might want early-exist functionality.

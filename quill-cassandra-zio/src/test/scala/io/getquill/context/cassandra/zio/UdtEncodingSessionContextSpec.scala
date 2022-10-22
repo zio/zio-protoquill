@@ -1,8 +1,7 @@
 package io.getquill.context.cassandra.zio
 
 import io.getquill.context.cassandra.udt.UdtSpec
-import io.getquill._
-import io.getquill.context.cassandra.UdtMeta
+import io.getquill.*
 
 class UdtEncodingSessionContextSpec extends UdtSpec with ZioCassandraSpec {
 

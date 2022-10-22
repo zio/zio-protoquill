@@ -117,7 +117,7 @@ class QueryTest extends Spec with TestEntities {
 
       "with implicit property and generic" in {
         extension [T](q: Query[T]) {
-          inline def limitQuery = quote(infix"$q LIMIT 1".as[Query[T]])
+          inline def limitQuery = quote(sql"$q LIMIT 1".as[Query[T]])
         }
         inline def q = quote { query[TableData].limitQuery }
         val parseTime = Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, false, Quat.Generic)
@@ -130,7 +130,7 @@ class QueryTest extends Spec with TestEntities {
       }
       // "with implicit property and generic - old style" in {
       //   implicit class LimitQuery[T](q: Query[T]) {
-      //     inline def limitQuery = quote(infix"$q LIMIT 1".as[Query[T]])
+      //     inline def limitQuery = quote(sql"$q LIMIT 1".as[Query[T]])
       //   }
       //   inline def q = quote { query[TableData].limitQuery }
       //   q.ast mustEqual Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, Quat.Generic)
@@ -139,14 +139,14 @@ class QueryTest extends Spec with TestEntities {
       // Unfortunatly the dynamic case of this is also a bug
       // "with implicit property and generic - old style - dynamic" in {
       //   implicit class LimitQuery[T](q: Query[T]) {
-      //     def limitQuery = quote(infix"$q LIMIT 1".as[Query[T]])
+      //     def limitQuery = quote(sql"$q LIMIT 1".as[Query[T]])
       //   }
       //   val q = quote { query[TableData].limitQuery }
       //   println(io.getquill.util.Messages.qprint(q))
       //   q.runtimeQuotes(0).quoted.ast mustEqual Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, Quat.Generic)
       // }
       "with method and generic" in {
-        inline def limitQuery[T] = quote { (q: Query[T]) => infix"$q LIMIT 1".as[Query[T]] }
+        inline def limitQuery[T] = quote { (q: Query[T]) => sql"$q LIMIT 1".as[Query[T]] }
         inline def q = quote { limitQuery(query[TableData]) }
         val parseTime = Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, false, Quat.Generic)
         val evalTime = Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, false, Quat.LeafProduct("id"))
@@ -157,7 +157,7 @@ class QueryTest extends Spec with TestEntities {
         repickle(evalTime) mustEqual evalTime
       }
       "with method and generic - typed" in {
-        inline def limitQuery[T] = quote { (q: Query[T]) => infix"$q LIMIT 1".as[Query[T]] }
+        inline def limitQuery[T] = quote { (q: Query[T]) => sql"$q LIMIT 1".as[Query[T]] }
         inline def q = quote { limitQuery[TableData](query[TableData]) }
         val parseTime = Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, false, Quat.Generic)
         val evalTime = Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, false, Quat.LeafProduct("id"))
