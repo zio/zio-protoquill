@@ -29,7 +29,7 @@ object PlainAppDataSource {
         .tap(result => printLine(result.toString))
         .provide(zioDS)
 
-    Unsafe.unsafe {
+    Unsafe.unsafe { implicit unsafe =>
       Runtime.default.unsafe.run(qzio)
     }
     ()

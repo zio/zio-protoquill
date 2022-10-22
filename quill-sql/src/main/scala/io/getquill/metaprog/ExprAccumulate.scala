@@ -17,14 +17,14 @@ object DeserializeAstInstances:
     def isQuat(expr: Expr[_]) =
       expr.asTerm.tpe <:< TypeRepr.of[io.getquill.quat.Quat]
 
+    val exprMatch = new SerialHelper.Ast.Expr[io.getquill.ast.Ast]
+
     class CustomExprMap extends ExprMap {
       def transform[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] =
         expr match
-          case '{ SerialHelper.fromSerialized[a](${ Expr(serial) }) } =>
+          case exprMatch(ast) =>
             try {
-              val actualAst = SerialHelper.fromSerialized[io.getquill.ast.Ast](serial)
-              val astExpr = Lifter.NotSerializing.liftableAst(actualAst)
-
+              val astExpr = Lifter.NotSerializing.liftAst(ast)
               // Need to cast or may fail on an internal typecheck
               '{ $astExpr.asInstanceOf[TF] }
 

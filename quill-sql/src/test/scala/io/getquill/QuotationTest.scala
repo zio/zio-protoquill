@@ -27,6 +27,13 @@ class QuotationTest extends Spec with Inside {
   case class Person(name: String, age: Int, address: Address)
   import ShortAst._
 
+  object scalarTag {
+    def apply(uid: String) = ScalarTag(uid, External.Source.Parser)
+    def unapply(ast: Ast) =
+      ast match
+        case ScalarTag(uid, _) => Some(uid)
+        case _                 => None
+  }
   val IdentP = Ident("p", quatOf[Person])
   val PersonQuat = quatOf[Person].probit
 
@@ -79,7 +86,7 @@ class QuotationTest extends Spec with Inside {
     "query with a lazy lift" in {
       inline def q = quote { lazyLift("hello") }
       q must matchPattern {
-        case Quoted(ScalarTag(tagUid), List(LazyPlanter("hello", vaseUid)), List()) if (tagUid == vaseUid) =>
+        case Quoted(scalarTag(tagUid), List(LazyPlanter("hello", vaseUid)), List()) if (tagUid == vaseUid) =>
       }
     }
     "run lazy lift" in {
@@ -104,7 +111,7 @@ class QuotationTest extends Spec with Inside {
       inline def qqq = quote { qq.map(s => s + lift("hello")) }
       qqq must matchPattern {
         case Quoted(
-              Map(Map(Ent("Person"), IdentP, Property(Id("p"), "name")), Id("s"), Id("s") `(+)` ScalarTag(tagUid)),
+              Map(Map(Ent("Person"), IdentP, Property(Id("p"), "name")), Id("s"), Id("s") `(+)` scalarTag(tagUid)),
               List(EagerPlanter("hello", encoder, planterUid)), // Compare encoders by ref since all mirror encoders are same case class
               Nil
             ) if (tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
@@ -121,7 +128,7 @@ class QuotationTest extends Spec with Inside {
       inline def qq = quote { q.map(p => p.name + lift("how")) }
       qq must matchPattern {
         case Quoted(
-              Map(Entity("Person", List(), `PersonQuat`), IdentP, Property(IdentP, "name") `(+)` ScalarTag(tuid)),
+              Map(Entity("Person", List(), `PersonQuat`), IdentP, Property(IdentP, "name") `(+)` scalarTag(tuid)),
               List(EagerPlanter("how", enc, puid)),
               Nil
             ) if (tuid == puid) =>
@@ -130,7 +137,7 @@ class QuotationTest extends Spec with Inside {
       inline def qqq = quote { qq.map(s => s + lift("are you")) }
       qqq must matchPattern {
         case Quoted(
-              Map(Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` ScalarTag(tuid1)), Id("s"), Id("s") `(+)` ScalarTag(tuid2)),
+              Map(Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` scalarTag(tuid1)), Id("s"), Id("s") `(+)` scalarTag(tuid2)),
               List(EagerPlanter("how", enc1, puid1), EagerPlanter("are you", enc2, puid2)),
               Nil
             ) if (tuid1 == puid1 && tuid2 == puid2 && enc1.eq(summon[Encoder[String]])) =>
@@ -146,7 +153,7 @@ class QuotationTest extends Spec with Inside {
       inline def qq = quote { q.map(p => p.name + lazyLift("hello")) }
       qq must matchPattern {
         case Quoted(
-              Map(Entity("Person", List(), `PersonQuat`), IdentP, Property(IdentP, "name") `(+)` ScalarTag(uid)),
+              Map(Entity("Person", List(), `PersonQuat`), IdentP, Property(IdentP, "name") `(+)` scalarTag(uid)),
               List(LazyPlanter("hello", planterUid)),
               Nil
             ) if (uid == planterUid) =>
@@ -155,7 +162,7 @@ class QuotationTest extends Spec with Inside {
       inline def qqq = quote { qq.map(s => s + lift("how") + lazyLift("are you")) } // hellooooooo
       qqq must matchPattern {
         case Quoted(
-              Map(Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` ScalarTag(tuid1)), Id("s"), Id("s") `(+)` ScalarTag(tuid2) `(+)` ScalarTag(tuid3)),
+              Map(Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` scalarTag(tuid1)), Id("s"), Id("s") `(+)` scalarTag(tuid2) `(+)` scalarTag(tuid3)),
               List(LazyPlanter("hello", puid1), EagerPlanter("how", encoder, puid2), LazyPlanter("are you", puid3)),
               Nil
             ) if (tuid1 == puid1 && tuid2 == puid2 && tuid3 == puid3 && encoder.eq(summon[Encoder[String]])) =>
@@ -185,7 +192,7 @@ class QuotationTest extends Spec with Inside {
       import ctx._
       val q = quote { lift("hello") }
       q must matchPattern {
-        case Quoted(ScalarTag(tagUid), List(EagerPlanter("hello", encoder, vaseUid)), List()) if (tagUid == vaseUid) =>
+        case Quoted(scalarTag(tagUid), List(EagerPlanter("hello", encoder, vaseUid)), List()) if (tagUid == vaseUid) =>
       }
       List(Row("hello")) mustEqual q.encodeEagerLifts(Row(), MirrorSession.default)
     }
@@ -199,7 +206,7 @@ class QuotationTest extends Spec with Inside {
         case Quoted(
               QuotationTag(quotationTagId),
               Nil,
-              List(QuotationVase(Quoted(ScalarTag(scalarTagId), List(EagerPlanter("hello", encoder, planterId)), Nil), quotationVaseId))
+              List(QuotationVase(Quoted(scalarTag(scalarTagId), List(EagerPlanter("hello", encoder, planterId)), Nil), quotationVaseId))
             ) if (quotationTagId == quotationVaseId && scalarTagId == planterId && encoder.eq(summon[Encoder[String]])) =>
       }
       List(Row("hello")) mustEqual q.encodeEagerLifts(Row(), MirrorSession.default)
@@ -210,7 +217,7 @@ class QuotationTest extends Spec with Inside {
       inline def q = quote { query[Person].map(p => p.name + lift("hello")) }
       q must matchPattern {
         case Quoted(
-              Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` ScalarTag(tagUid)),
+              Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` scalarTag(tagUid)),
               List(EagerPlanter("hello", encoder, planterUid)),
               Nil
             ) if (tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
@@ -223,7 +230,7 @@ class QuotationTest extends Spec with Inside {
       val qq = quote { q.map(p => p.name + lift("hello")) }
       qq must matchPattern {
         case Quoted(
-              Map(QuotationTag(tid), IdentP, Property(IdentP, "name") `(+)` ScalarTag(tagUid)),
+              Map(QuotationTag(tid), IdentP, Property(IdentP, "name") `(+)` scalarTag(tagUid)),
               List(EagerPlanter("hello", encoder, planterUid)),
               List(QuotationVase(Quoted(Ent("Person"), Nil, Nil), vid))
             ) if (tid == vid && tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
@@ -241,7 +248,7 @@ class QuotationTest extends Spec with Inside {
       val qq = quote { q.map(p => p.name + lift("how")) }
       qq must matchPattern {
         case Quoted(
-              Map(QuotationTag(qid), IdentP, Property(IdentP, "name") `(+)` ScalarTag(tuid)),
+              Map(QuotationTag(qid), IdentP, Property(IdentP, "name") `(+)` scalarTag(tuid)),
               List(EagerPlanter("how", enc, puid)),
               List(QuotationVase(Quoted(Ent("Person"), Nil, Nil), vid))
             ) if (tuid == puid && qid == vid) =>
@@ -251,11 +258,11 @@ class QuotationTest extends Spec with Inside {
       val quat = quatOf[Person]
       qqq must matchPattern {
         case Quoted(
-              Map(QuotationTag(qid2), Id("s"), Id("s") `(+)` ScalarTag(tid2)),
+              Map(QuotationTag(qid2), Id("s"), Id("s") `(+)` scalarTag(tid2)),
               List(EagerPlanter("are you", enc2, pid2)),
               List(QuotationVase(
                 Quoted(
-                  Map(QuotationTag(qid), Id("p"), Property(Id("p"), "name") `(+)` ScalarTag(tid)),
+                  Map(QuotationTag(qid), Id("p"), Property(Id("p"), "name") `(+)` scalarTag(tid)),
                   List(EagerPlanter("how", enc, pid)),
                   List(QuotationVase(Quoted(Ent("Person"), Nil, Nil), vid))
                 ),
@@ -278,7 +285,7 @@ class QuotationTest extends Spec with Inside {
       inline def qq = quote { q.map(p => p.name + lift("hello")) }
       qq must matchPattern {
         case Quoted(
-              Map(QuotationTag(tid), `IdentP`, Property(`IdentP`, "name") `(+)` ScalarTag(tagUid)),
+              Map(QuotationTag(tid), `IdentP`, Property(`IdentP`, "name") `(+)` scalarTag(tagUid)),
               List(EagerPlanter("hello", encoder, planterUid)),
               List(QuotationVase(Quoted(Ent("Person"), Nil, Nil), vid))
             ) if (tid == vid && tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
@@ -294,7 +301,7 @@ class QuotationTest extends Spec with Inside {
       val qq = quote { q.map(p => p.name + lift("hello")) }
       qq must matchPattern {
         case Quoted(
-              Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` ScalarTag(tagUid)),
+              Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` scalarTag(tagUid)),
               List(EagerPlanter("hello", encoder, planterUid)),
               Nil
             ) if (tagUid == planterUid && encoder.eq(summon[Encoder[String]])) =>
@@ -315,7 +322,7 @@ class QuotationTest extends Spec with Inside {
       val qq = quote { q.map(p => p.name + lift("how")) }
       qq must matchPattern {
         case Quoted(
-              Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` ScalarTag(tuid)),
+              Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` scalarTag(tuid)),
               List(EagerPlanter("how", enc, puid)),
               Nil
             ) if (tuid == puid) =>
@@ -325,11 +332,11 @@ class QuotationTest extends Spec with Inside {
       // Should not match this pattern, should be spliced directly from the inline def
       qqq must matchPattern {
         case Quoted(
-              Map(QuotationTag(qid2), Id("s"), Id("s") `(+)` ScalarTag(tid2)),
+              Map(QuotationTag(qid2), Id("s"), Id("s") `(+)` scalarTag(tid2)),
               List(EagerPlanter("are you", enc2, pid2)),
               List(QuotationVase(
                 Quoted(
-                  Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` ScalarTag(tid)),
+                  Map(Ent("Person"), IdentP, Property(IdentP, "name") `(+)` scalarTag(tid)),
                   List(EagerPlanter("how", enc1, pid)),
                   Nil
                 ),
@@ -351,7 +358,7 @@ class QuotationTest extends Spec with Inside {
       inline def qq = quote { q.map(p => p.name + lift("how")) }
       qq must matchPattern {
         case Quoted(
-              Map(QuotationTag(qid), IdentP, Property(IdentP, "name") `(+)` ScalarTag(tuid)),
+              Map(QuotationTag(qid), IdentP, Property(IdentP, "name") `(+)` scalarTag(tuid)),
               List(EagerPlanter("how", enc, puid)),
               List(QuotationVase(Quoted(Ent("Person"), Nil, Nil), vid))
             ) if (tuid == puid && qid == vid) =>
@@ -361,11 +368,11 @@ class QuotationTest extends Spec with Inside {
       // Should not match this pattern, should be spliced directly from the inline def
       qqq must matchPattern {
         case Quoted(
-              Map(QuotationTag(qid2), Id("s"), Id("s") `(+)` ScalarTag(tid2)),
+              Map(QuotationTag(qid2), Id("s"), Id("s") `(+)` scalarTag(tid2)),
               List(EagerPlanter("how", enc, pid), EagerPlanter("are you", enc2, pid2)),
               List(QuotationVase(
                 Quoted(
-                  Map(QuotationTag(qid), IdentP, Property(IdentP, "name") `(+)` ScalarTag(tid)),
+                  Map(QuotationTag(qid), IdentP, Property(IdentP, "name") `(+)` scalarTag(tid)),
                   List(EagerPlanter("how", enc1, pid1)),
                   List(QuotationVase(Quoted(Ent("Person"), Nil, Nil), vid))
                 ),

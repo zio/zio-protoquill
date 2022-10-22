@@ -281,6 +281,36 @@ object QuotedExpr {
 sealed trait QuotationLotExpr
 object QuotationLotExpr {
 
+  def apply(expr: Expr[Any])(using Quotes): QuotationLotExpr =
+    unapply(expr).getOrElse { quotes.reflect.report.throwError(s"The expression: ${expr.show} is not a valid Quoted Expression and cannot be unquoted.") }
+
+  // Verify that a quotation is inline. It is inline if all the lifts are inline. There is no need
+  // to search the AST since it has been parsed already
+  def unapply(expr: Expr[Any])(using Quotes): Option[QuotationLotExpr] = {
+    import quotes.reflect._
+    expr match {
+      case vase @ `QuotationLot.apply`(quotation, uid, rest) =>
+        quotation match
+          case quoted @ QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), lifts) =>
+            // Note: If the `Quoted.apply` is inside an Inline, would we need to do the same thing that we do
+            // to the lifts (i.e. nesting the Inline inside them) to the 'rest' element? I don't think so
+            // because the Inline would be around `Quoted.apply` which is already inside of `QuotationLot.apply`
+            // i.e. it would be QuotationLot.apply(Inline(Quoted.apply(...)), ..., rest) so I don't see how 'rest'
+            // could get the contents of this Inner inline
+            Some(Uprootable(uid, ast, lifts)(quoted, vase.asInstanceOf[Expr[QuotationLot[Any]]], rest))
+
+          case _ =>
+            Some(Pluckable(uid, quotation, rest))
+
+      // If it's a QuotationLot but we can't extract it at all, need to throw an error
+      case '{ ($qb: QuotationLot[t]) } =>
+        Some(Pointable(qb))
+
+      case _ =>
+        None
+    }
+  }
+
   protected object `(QuotationLot).unquote` {
     def unapply(expr: Expr[Any])(using Quotes) = {
       import quotes.reflect._
@@ -308,7 +338,26 @@ object QuotationLotExpr {
 
     def unapply(expr: Expr[Any])(using Quotes): Option[(Expr[Quoted[Any]], String, List[Expr[_]])] = {
       import quotes.reflect._
-      UntypeExpr(expr) match {
+      /*
+       * Specifically the inner `Uninline` part allows using metas e.g. InsertMeta that
+       * are defined in parent contexts e.g.
+       * class Stuff { object InnertStuff { inline given InsertMeta[Product] = insertMeta(_.id) } }
+       * and then imported into other places e.g.
+       * class OtherStuff extends Stuff { import InnerStuff.{given, _} } because multiple `Inline` blocks
+       * will be nested around the InsertMeta.apply part.
+       * It looks something like this:
+       *  {
+       * // If you have a look at the Term-level, this outer layer is actually one or multiple Inlined(...) parts
+       * val BatchValuesSpec_this: BatchValuesJdbcSpec.this = Ex 1 - Batch Insert Normal$_this.1_<outer>
+       *  ((InsertMeta[Product](Quoted[Product](Tuple(List[Ast](Property.Opinionated(Ident.Opinionated("_$V", Quat.Product("id", "description", "sku")), "id", ...))).asInstanceOf[Ast], Nil, Nil),
+       *  "2e594955-b45c-4532-9bd5-ec3b3eb04138"): InsertMeta[Product]): InsertMeta[Product])
+       * }
+       * This will cause all manner of failure for example:
+       * "The InsertMeta form is invalid. It is Pointable." Also note that this is safe to do
+       * so long as we are not extracting any lifts from the Quoted.apply sections inside.
+       * Otherwise, we may run into unbound-variable issues when the lifts inside the Quoted.apply are extracted.
+       */
+      UntypeExpr(Uninline(expr)) match {
         // Extract the entity, the uid and any other expressions the qutation bin may have
         // (e.g. the extractor if the QuotationLot is a QueryMeta). That `Uninline`
         // is needed because in some cases, the `underlyingArgument` call (that gets called somewhere before here)
@@ -375,36 +424,6 @@ object QuotationLotExpr {
             None
         }
       }
-    }
-  }
-
-  def apply(expr: Expr[Any])(using Quotes): QuotationLotExpr =
-    unapply(expr).getOrElse { quotes.reflect.report.throwError(s"The expression: ${expr.show} is not a valid Quoted Expression and cannot be unquoted.") }
-
-  // Verify that a quotation is inline. It is inline if all the lifts are inline. There is no need
-  // to search the AST since it has been parsed already
-  def unapply(expr: Expr[Any])(using Quotes): Option[QuotationLotExpr] = {
-    import quotes.reflect._
-    expr match {
-      case vase @ `QuotationLot.apply`(quotation, uid, rest) =>
-        quotation match
-          case quoted @ QuotedExpr.UprootableWithLifts(QuotedExpr(ast, _, _), lifts) =>
-            // Note: If the `Quoted.apply` is inside an Inline, would we need to do the same thing that we do
-            // to the lifts (i.e. nesting the Inline inside them) to the 'rest' element? I don't think so
-            // because the Inline would be around `Quoted.apply` which is already inside of `QuotationLot.apply`
-            // i.e. it would be QuotationLot.apply(Inline(Quoted.apply(...)), ..., rest) so I don't see how 'rest'
-            // could get the contents of this Inner inline
-            Some(Uprootable(uid, ast, lifts)(quoted, vase.asInstanceOf[Expr[QuotationLot[Any]]], rest))
-
-          case _ =>
-            Some(Pluckable(uid, quotation, rest))
-
-      // If it's a QuotationLot but we can't extract it at all, need to throw an error
-      case '{ ($qb: QuotationLot[t]) } =>
-        Some(Pointable(qb))
-
-      case _ =>
-        None
     }
   }
 

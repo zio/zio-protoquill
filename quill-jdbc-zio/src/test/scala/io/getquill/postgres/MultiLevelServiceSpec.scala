@@ -23,7 +23,7 @@ class MultiLevelServiceSpec extends AnyFreeSpec with BeforeAndAfterAll with Matc
     super.beforeAll()
     val testContext = new Quill.Postgres(Literal, io.getquill.postgres.pool)
     import testContext._
-    Unsafe.unsafe {
+    Unsafe.unsafe { implicit unsafe =>
       zio.Runtime.default.unsafe.run(
         testContext.transaction {
           for {
@@ -76,7 +76,7 @@ class MultiLevelServiceSpec extends AnyFreeSpec with BeforeAndAfterAll with Matc
     val combinedLayer = dataSourceLive >>> postgresLive >>> dataServiceLive >>> applicationLive
 
     val (a, b, c, d, e) =
-      Unsafe.unsafe {
+      Unsafe.unsafe { implicit unsafe =>
         zio.Runtime.default.unsafe.run(
           (for {
             a <- Application.getJoes()

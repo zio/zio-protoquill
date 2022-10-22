@@ -59,7 +59,7 @@ object Quill {
     @targetName("runAction")
     inline def run[E](inline quoted: Quoted[Action[E]]): ZIO[Any, Throwable, Unit] = InternalApi.runAction(quoted)
     @targetName("runBatchAction")
-    inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[Any, Throwable, Unit] = InternalApi.runBatchAction(quoted)
+    inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[Any, Throwable, Unit] = InternalApi.runBatchAction(quoted, 1)
 
     def streamQuery[T](fetchSize: Option[Int], cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): ZStream[Any, Throwable, T] =
       onSessionStream(underlying.streamQuery(fetchSize, cql, prepare, extractor)(info, dc))

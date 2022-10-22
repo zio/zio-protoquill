@@ -15,6 +15,9 @@ import io.getquill.metaprog.TypeExtensions._
 import io.getquill.generic.DecodingType
 import io.getquill.util.Format
 import scala.annotation.tailrec
+import io.getquill.ast.External.Source
+import zio.Chunk
+import io.getquill.metaprog.Extractors
 
 /**
  * Elaboration can be different whether we are encoding or decoding because we could have
@@ -417,7 +420,7 @@ object ElaborateStructure {
       if (lifted.length == 1)
         lifted.head._1
       else {
-        CaseClass(lifted.map((ast, name) => (name, ast)))
+        CaseClass(Extractors.typeName[T], lifted.map((ast, name) => (name, ast)))
       }
     insert
   }
@@ -555,22 +558,30 @@ object ElaborateStructure {
    * Technicallly don't need Type T but it's very useful to know for errors and it's an internal API so I'll keep it for now
    */
   private[getquill] def productValueToAst[T: Type](node: Term /* i.e. the elaboration */ )(using Quotes): (String, Ast) =
-    def toAstRec(node: Term, parentTerm: String, topLevel: Boolean = false): (String, Ast) =
-      def notTopLevel(str: String) = if (topLevel) "" else str
+    def toAstRec(node: Term, parentTerms: Chunk[String], topLevel: Boolean = false): (String, Ast) =
+      def notTopLevel(termName: Chunk[String]) = if (topLevel) Chunk.empty else termName
       node match
         case Term(name, Leaf, _, _) =>
-          (name, ScalarTag(parentTerm + name))
+          // CC(foo: CC(bar: CC(baz: String))) should be: ScalarTag(foobarbaz, Source.UnparsedProperty("foo_bar_baz"))
+          // the UnparsedProperty part is potentially used in batch queries for property naming
+          val tagTerms = parentTerms :+ name
+          val tagName = tagTerms.mkString
+          // There could be variable names that have "$" in them e.g. anonymous tuples as in:
+          //   foreach(List((foo,bar),(baz,blin))).map { case (a, b) => query[Update](...a...) }
+          // so the batch identifier is unknown would manifest as x$1 etc... Make sure to at least remove $ from the variable name
+          val tagFieldName = tagTerms.mkString("_")
+          (name, ScalarTag(tagName, Source.UnparsedProperty(tagFieldName)))
         // On the top level, parent is "", and 1st parent in recursion is also ""
         case Term(name, Branch, list, false) =>
-          val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
-          (name, CaseClass(children))
+          val children = list.map(child => toAstRec(child, notTopLevel(parentTerms :+ name)))
+          (name, CaseClass(Extractors.typeName[T], children))
         // same logic for optionals
         case Term(name, Branch, list, true) =>
-          val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
-          (name, OptionSome(CaseClass(children)))
+          val children = list.map(child => toAstRec(child, notTopLevel(parentTerms :+ name)))
+          (name, OptionSome(CaseClass(Extractors.typeName[T], children)))
         case _ =>
           quotes.reflect.report.throwError(s"Illegal generic schema: $node from type ${Type.of[T]}")
-    toAstRec(node, "", true)
+    toAstRec(node, Chunk.empty, true)
 
   extension [T](opt: Option[T])
     def getOrThrow(msg: String) = opt.getOrElse { throw new IllegalArgumentException(msg) }
@@ -583,9 +594,9 @@ object ElaborateStructure {
     def reKeyWithUids(): TaggedLiftedCaseClass[A] = {
       def replaceKeys(newKeys: Map[String, String]): Ast =
         Transform(caseClass) {
-          case ScalarTag(keyName) =>
+          case ScalarTag(keyName, source) =>
             lazy val msg = s"Cannot find key: '${keyName}' in the list of replacements: ${newKeys}"
-            ScalarTag(newKeys.get(keyName).getOrThrow(msg))
+            ScalarTag(newKeys.get(keyName).getOrThrow(msg), source)
         }
 
       val oldAndNewKeys = lifts.map((key, expr) => (key, uuid(), expr))

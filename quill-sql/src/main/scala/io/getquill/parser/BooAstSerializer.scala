@@ -379,12 +379,15 @@ object AstPicklers {
   }
   implicit object caseClassPickler extends Pickler[CaseClass]:
     override def pickle(value: CaseClass)(implicit state: PickleState): Unit =
+      state.pickle(value.name)
       val map = LinkedHashMap[String, Ast]()
       value.values.foreach((k, v) => map.addOne(k, v))
       state.pickle(map)
       ()
     override def unpickle(implicit state: UnpickleState): CaseClass =
-      new CaseClass(state.unpickle[LinkedHashMap[String, Ast]].toList)
+      val name = state.unpickle[String]
+      val children = state.unpickle[LinkedHashMap[String, Ast]].toList
+      new CaseClass(name, children)
 
   // NullPointerException when this is commented out (maybe file an issue with BooPickle?)
   implicit object tuplePickler extends Pickler[Tuple]:
@@ -456,6 +459,10 @@ object AstPicklers {
   // ==== Lift Picker ====
   // Only care about the protoquill types here for now which only really cares about
   // ScalarTag and QuotationTag
+  implicit val externalSourcePickler: CompositePickler[External.Source] =
+    compositePickler[External.Source]
+      .addConcreteType[External.Source.Parser.type]
+      .addConcreteType[External.Source.UnparsedProperty]
   implicit val externalPickler: CompositePickler[Tag] =
     compositePickler[Tag]
       .addConcreteType[ScalarTag]

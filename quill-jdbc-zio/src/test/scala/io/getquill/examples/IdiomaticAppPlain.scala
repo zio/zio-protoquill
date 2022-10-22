@@ -11,7 +11,7 @@ object IdiomaticAppPlain {
   import IdiomaticAppData.Application
 
   def main(args: Array[String]): Unit = {
-    Unsafe.unsafe {
+    Unsafe.unsafe { implicit unsafe =>
       Runtime.default.unsafe.run(
         (for {
           joes <- Application.getPeopleByName("Joe")

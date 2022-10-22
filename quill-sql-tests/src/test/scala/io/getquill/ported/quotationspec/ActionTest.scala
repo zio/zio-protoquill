@@ -40,6 +40,8 @@ class ActionTest extends Spec with TestEntities with Inside {
         repickle(u) mustEqual u
       }
       "case class" in {
+        val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+        import ctx._
         inline def q = quote {
           (t: TestEntity) => qr1.updateValue(t)
         }
@@ -84,6 +86,8 @@ class ActionTest extends Spec with TestEntities with Inside {
         repickle(i) mustEqual i
       }
       "case class" in {
+        val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+        import ctx._
         inline def q = quote {
           (t: TestEntity) => qr1.insertValue(t)
         }
@@ -158,7 +162,7 @@ class ActionTest extends Spec with TestEntities with Inside {
           liftQuery(list).foreach(i => delete(i))
         }
         inside(quote(unquote(q)).ast) {
-          case Foreach(ScalarTag(_), Ident("i", quat), body) =>
+          case Foreach(ScalarTag(_, _), Ident("i", quat), body) =>
             body mustEqual delete.ast.body
             quat mustEqual Quat.Value
         }
@@ -180,7 +184,7 @@ class ActionTest extends Spec with TestEntities with Inside {
           liftQuery(list).foreach(row => insertRow(row))
         }
         inside(quote(unquote(q)).ast) {
-          case Foreach(ScalarTag(_), Ident("row", quat), body) =>
+          case Foreach(ScalarTag(_, _), Ident("row", quat), body) =>
             body mustEqual insertRow.ast.body
             quat mustEqual quatOf[ActionTestEntity]
         }

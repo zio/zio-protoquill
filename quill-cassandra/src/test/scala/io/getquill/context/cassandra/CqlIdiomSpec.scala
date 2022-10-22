@@ -383,15 +383,15 @@ class CqlIdiomSpec extends Spec {
 
     "ident" in {
       val a: Ast = Ident("a")
-      translate(a, Quat.Unknown, ExecutionType.Unknown, TranspileConfig.Empty) mustBe ((a, stmt"a", ExecutionType.Unknown))
+      translate(a, Quat.Unknown, ExecutionType.Unknown, IdiomContext.Empty) mustBe ((a, stmt"a", ExecutionType.Unknown))
     }
     "assignment" in {
       val a: Ast = Assignment(Ident("a"), Ident("b"), Ident("c"))
-      translate(a: Ast, Quat.Unknown, ExecutionType.Unknown, TranspileConfig.Empty) mustBe ((a, stmt"b = c", ExecutionType.Unknown))
+      translate(a: Ast, Quat.Unknown, ExecutionType.Unknown, IdiomContext.Empty) mustBe ((a, stmt"b = c", ExecutionType.Unknown))
     }
     "assignmentDual" in {
       val a: Ast = AssignmentDual(Ident("a1"), Ident("a2"), Ident("b"), Ident("c"))
-      translate(a: Ast, Quat.Unknown, ExecutionType.Unknown, TranspileConfig.Empty) mustBe ((a, stmt"b = c", ExecutionType.Unknown))
+      translate(a: Ast, Quat.Unknown, ExecutionType.Unknown, IdiomContext.Empty) mustBe ((a, stmt"b = c", ExecutionType.Unknown))
     }
     "aggregation" in {
       val t = implicitly[Tokenizer[AggregationOperator]]
@@ -400,7 +400,7 @@ class CqlIdiomSpec extends Spec {
     }
     "cql" in {
       val t = implicitly[Tokenizer[CqlQuery]]
-      val e = CqlQuery(Entity("name", Nil, QEP), None, Nil, None, Nil, distinct = true)
+      val e = CqlQuery(Entity("name", Nil, QEP("name")), None, Nil, None, Nil, distinct = true)
       intercept[IllegalStateException](t.token(e))
       t.token(e.copy(distinct = false)) mustBe stmt"SELECT * FROM name"
     }
@@ -411,7 +411,7 @@ class CqlIdiomSpec extends Spec {
       implicitly[Tokenizer[Value]].token(Tuple(List(Ident("a")))) mustBe stmt"a"
     }
     "value in caseclass" in {
-      implicitly[Tokenizer[Value]].token(CaseClass(List(("value", Ident("a"))))) mustBe stmt"a"
+      implicitly[Tokenizer[Value]].token(CaseClass("Value", List(("value", Ident("a"))))) mustBe stmt"a"
     }
     "action" in {
       val t = implicitly[Tokenizer[AstAction]]

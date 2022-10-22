@@ -10,7 +10,7 @@ import javax.sql.DataSource
 
 object ZioSpec {
   def runLayerUnsafe[T: Tag](layer: ZLayer[Any, Throwable, T]): T =
-    zio.Unsafe.unsafe {
+    zio.Unsafe.unsafe { implicit unsafe =>
       zio.Runtime.default.unsafe.run(zio.Scope.global.extend(layer.build)).getOrThrow()
     }.get
 }
@@ -21,12 +21,12 @@ trait ZioSpec extends Spec with BeforeAndAfterAll {
     stream.run(ZSink.collectAll).map(_.toList)
 
   def collect[T](stream: ZStream[Any, Throwable, T]): List[T] =
-    Unsafe.unsafe {
+    Unsafe.unsafe { implicit unsafe =>
       zio.Runtime.default.unsafe.run(stream.run(ZSink.collectAll).map(_.toList)).getOrThrow()
     }
 
   def collect[T](qzio: ZIO[Any, Throwable, T]): T =
-    Unsafe.unsafe {
+    Unsafe.unsafe { implicit unsafe =>
       zio.Runtime.default.unsafe.run(qzio).getOrThrow()
     }
 
@@ -48,18 +48,18 @@ trait ZioProxySpec extends Spec with BeforeAndAfterAll {
     stream.run(ZSink.collectAll).map(_.toList)
 
   def collect[T](stream: ZStream[DataSource, Throwable, T])(implicit runtime: Implicit[DataSource]): List[T] =
-    Unsafe.unsafe {
+    Unsafe.unsafe { implicit unsafe =>
       zio.Runtime.default.unsafe.run(stream.run(ZSink.collectAll).map(_.toList).provideEnvironment(ZEnvironment(runtime.env))).getOrThrow()
     }
 
   def collect[T](qzio: ZIO[DataSource, Throwable, T])(implicit runtime: Implicit[DataSource]): T =
-    Unsafe.unsafe {
+    Unsafe.unsafe { implicit unsafe =>
       zio.Runtime.default.unsafe.run(qzio.provideEnvironment(ZEnvironment(runtime.env))).getOrThrow()
     }
 
   implicit class ZioAnyOps[T](qzio: ZIO[Any, Throwable, T]) {
     def runSyncUnsafe() =
-      Unsafe.unsafe {
+      Unsafe.unsafe { implicit unsafe =>
         Runtime.default.unsafe.run(qzio).getOrThrow()
       }
   }

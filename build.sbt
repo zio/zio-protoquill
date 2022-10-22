@@ -138,9 +138,10 @@ lazy val `quill-sql` =
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.4.0",
         "com.lihaoyi" %% "pprint" % "0.6.6",
-        "io.getquill" %% "quill-engine" % "4.2.0",
-        "dev.zio" %% "zio" % "2.0.0",
-        ("io.getquill" %% "quill-util" % "4.2.0")
+        "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
+        "io.getquill" %% "quill-engine" % "4.6.0",
+        "dev.zio" %% "zio" % "2.0.2",
+        ("io.getquill" %% "quill-util" % "4.6.0")
           .excludeAll({
             if (isCommunityBuild)
               Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))
@@ -238,8 +239,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "2.0.0",
-        "dev.zio" %% "zio-streams" % "2.0.0"
+        "dev.zio" %% "zio" % "2.0.2",
+        "dev.zio" %% "zio-streams" % "2.0.2"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -250,6 +251,11 @@ lazy val `quill-jdbc-zio` =
     .settings(releaseSettings: _*)
     .settings(jdbcTestingLibraries: _*)
     .settings(
+      libraryDependencies ++= Seq(
+        // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
+        "org.postgresql" % "postgresql" % "42.3.6" %  "provided",
+        "dev.zio" %% "zio-json" % "0.3.0"
+      ),
        Test / runMain / fork := true,
        Test / fork := true,
        Test / testGrouping := {
@@ -287,8 +293,8 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.13.0",
-        "dev.zio" %% "zio" % "2.0.0",
-        "dev.zio" %% "zio-streams" % "2.0.0"
+        "dev.zio" %% "zio" % "2.0.2",
+        "dev.zio" %% "zio-streams" % "2.0.2"
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")
@@ -310,13 +316,17 @@ lazy val commonSettings =
   }
 
 lazy val jdbcTestingLibraries = Seq(
+  // JDBC Libraries for testing of quill-jdbc___ contexts
   libraryDependencies ++= Seq(
     "com.zaxxer"              %  "HikariCP"                % "3.4.5",
-    "mysql"                   %  "mysql-connector-java"    % "8.0.22"             % Test,
+    // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
+    "mysql"                   %  "mysql-connector-java"    % "8.0.29"             % Test,
     "com.h2database"          %  "h2"                      % "1.4.200"            % Test,
-    "org.postgresql"          %  "postgresql"              % "42.2.18"             % Test,
+    // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
+    "org.postgresql"          %  "postgresql"              % "42.3.6"             % Test,
     "org.xerial"              %  "sqlite-jdbc"             % "3.32.3.2"             % Test,
-    "com.microsoft.sqlserver" %  "mssql-jdbc"              % "7.1.1.jre8-preview" % Test,
+    // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
+    "com.microsoft.sqlserver" %  "mssql-jdbc"              % "7.2.2.jre8" % Test,
     "com.oracle.ojdbc"        %  "ojdbc8"                  % "19.3.0.0"           % Test,
     //"org.mockito"             %% "mockito-scala-scalatest" % "1.16.2"              % Test
   )

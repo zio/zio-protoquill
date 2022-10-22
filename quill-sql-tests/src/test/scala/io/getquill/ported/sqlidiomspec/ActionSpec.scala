@@ -9,6 +9,7 @@ import io.getquill.context.sql.testContext._
 import io.getquill._
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
+import io.getquill.context.ExecutionType
 
 class ActionSpec extends Spec {
   "action" - {
@@ -261,5 +262,49 @@ class ActionSpec extends Spec {
           "DELETE FROM TestEntity"
       }
     }
+  }
+
+  "no lift in values-clause" in {
+    case class Person(name: String, age: Int)
+    val list = List("U%", "I%")
+    inline def q = quote {
+      liftQuery(list).foreach { pat =>
+        query[Person].filter(_.name like pat).update(_.name -> "foo")
+      }
+    }
+    testContext.run(q).triple mustEqual (
+      "UPDATE Person AS x14 SET name = 'foo' WHERE x14.name like ?",
+      List(List("U%"), List("I%")),
+      ExecutionType.Static
+    )
+  }
+
+  "deep nested case class" in {
+    case class Name(first: String, last: String)
+    case class Contact(name: Option[Name], age: Int)
+    val contactsExpected = List(Contact(Some(Name("Joe", "Bloggs")), 123), Contact(None, 456))
+    inline def q = quote {
+      query[Contact]
+        .filter(p => p.name.map(_.first) == Option("foo"))
+        .update(_.name.map(_.last) -> Option("bar"))
+    }
+    testContext.run(q).string mustEqual
+      "UPDATE Contact AS p SET last = 'bar' WHERE p.first = 'foo'"
+  }
+
+  "deep nested case class - renamed fields" in {
+    case class Name(first: String, last: String)
+    case class ContactTable(name: Option[Name], age: Int)
+    val contactsExpected = List(ContactTable(Some(Name("Joe", "Bloggs")), 123), ContactTable(None, 456))
+    inline def contacts = quote {
+      querySchema[ContactTable]("Contact", _.name.map(_.first) -> "firstName", _.name.map(_.last) -> "lastName")
+    }
+    inline def q = quote {
+      contacts
+        .filter(p => p.name.map(_.first) == Option("foo"))
+        .update(_.name.map(_.last) -> Option("bar"))
+    }
+    testContext.run(q).string mustEqual
+      "UPDATE Contact AS p SET lastName = 'bar' WHERE p.firstName = 'foo'"
   }
 }

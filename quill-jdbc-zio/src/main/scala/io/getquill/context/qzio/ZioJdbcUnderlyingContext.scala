@@ -21,8 +21,7 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
   with JdbcContextVerbExecute[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]
-  with ZioTranslateContext[Dialect, Naming]
-  {
+  with ZioTranslateContext[Dialect, Naming] {
 
   override private[getquill] val logger = ContextLogger(classOf[ZioJdbcUnderlyingContext[_, _]])
 
@@ -52,9 +51,13 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
   @targetName("runActionReturningMany")
   inline def run[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): ZIO[Connection, SQLException, List[T]] = InternalApi.runActionReturningMany[E, T](quoted)
   @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[Connection, SQLException, List[Long]] = InternalApi.runBatchAction(quoted)
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): ZIO[Connection, SQLException, List[Long]] = InternalApi.runBatchAction(quoted, rowsPerBatch)
+  @targetName("runBatchActionDefault")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ZIO[Connection, SQLException, List[Long]] = InternalApi.runBatchAction(quoted, 1)
   @targetName("runBatchActionReturning")
-  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): ZIO[Connection, SQLException, List[T]] =  InternalApi.runBatchActionReturning(quoted)
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): ZIO[Connection, SQLException, List[T]] = InternalApi.runBatchActionReturning(quoted, rowsPerBatch)
+  @targetName("runBatchActionReturningDefault")
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): ZIO[Connection, SQLException, List[T]] = InternalApi.runBatchActionReturning(quoted, 1)
 
   // Need explicit return-type annotations due to scala/bug#8356. Otherwise macro system will not understand Result[Long]=Task[Long] etc...
   override def executeAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): QCIO[Long] =

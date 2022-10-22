@@ -19,8 +19,8 @@ class CalibanIntegrationSpec extends CalibanSpec {
         Ctx.run {
           query[PersonT].leftJoin(query[AddressT]).on((p, a) => p.id == a.ownerId)
             .map((p, a) => PersonAddress(p.id, p.first, p.last, p.age, a.map(_.street)))
-            .filterByKeys(filters)
-            .filterColumns(columns)
+          .filterByKeys(filters)
+            //.filterColumns(columns) // //
             .take(10)
         }.provideLayer(zioDS).tap(list => {
           println(s"Results: $list for columns: $columns")

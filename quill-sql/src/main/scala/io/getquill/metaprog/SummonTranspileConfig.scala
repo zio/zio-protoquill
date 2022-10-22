@@ -11,10 +11,11 @@ import io.getquill.util.Format
 import io.getquill.util.Messages.TraceType
 import io.getquill.norm.DisablePhase
 import io.getquill.norm.DisablePhaseNone
+import io.getquill.parser.Lifters
 
 object SummonTranspileConfig:
   // TODO Move the actual macro that calls this to a test. The regular code should only use SummonTranspileConfig.apply inside of other macros
-  inline def mac: Unit = ${ macImpl }
+  inline def mac: TranspileConfig = ${ macImpl }
   def macImpl(using Quotes): Expr[TranspileConfig] =
     val config = apply()
     TranspileConfigLiftable(config)
@@ -27,23 +28,31 @@ object SummonTranspileConfig:
     // report.info(conf.toString)
     conf
 
-  def summonTraceTypes()(using Quotes): List[TraceType] =
+  def summonTraceTypes(orFromProperties: Boolean = false)(using Quotes): List[TraceType] =
     import quotes.reflect._
-    val enableTraceExpr = Expr.summon[EnableTrace].getOrElse('{ EnableTraceNone })
-    val foundTraceTypeNames = findHListMembers(enableTraceExpr, "Trace").map(_.typeSymbol.name)
-    TraceType.values.filter { trace =>
-      val simpleName = parseSealedTraitClassName(trace.getClass)
-      foundTraceTypeNames.contains(simpleName)
-    }
+    Expr.summon[EnableTrace] match
+      case Some(enableTraceExpr) =>
+        val foundTraceTypeNames = findHListMembers(enableTraceExpr, "Trace").map(_.typeSymbol.name)
+        TraceType.values.filter { trace =>
+          val simpleName = parseSealedTraitClassName(trace.getClass)
+          foundTraceTypeNames.contains(simpleName)
+        }
+      case None =>
+        if (orFromProperties)
+          io.getquill.util.GetTraces()
+        else
+          List()
 
   def summonPhaseDisables()(using Quotes): List[OptionalPhase] =
     import quotes.reflect._
-    val disablePhaseExpr = Expr.summon[DisablePhase].getOrElse('{ DisablePhaseNone })
-    val disablePhaseTypeNames = findHListMembers(disablePhaseExpr, "Phase").map(_.typeSymbol.name)
-    OptionalPhase.all.filter { phase =>
-      val simpleName = parseSealedTraitClassName(phase.getClass)
-      disablePhaseTypeNames.contains(simpleName)
-    }
+    Expr.summon[DisablePhase] match
+      case Some(disablePhaseExpr) =>
+        val disablePhaseTypeNames = findHListMembers(disablePhaseExpr, "Phase").map(_.typeSymbol.name)
+        OptionalPhase.all.filter { phase =>
+          val simpleName = parseSealedTraitClassName(phase.getClass)
+          disablePhaseTypeNames.contains(simpleName)
+        }
+      case None => List()
 
   def findHListMembers(baseExpr: Expr[_], typeMemberName: String)(using Quotes): List[quotes.reflect.TypeRepr] =
     import quotes.reflect._
@@ -67,20 +76,22 @@ object SummonTranspileConfig:
 end SummonTranspileConfig
 
 private[getquill] object TranspileConfigLiftable:
-  def apply(transpileConfig: TranspileConfig)(using Quotes) =
-    liftableTranspileConfig(transpileConfig)
+  def apply(transpileConfig: TranspileConfig)(using Quotes): Expr[TranspileConfig] =
+    liftTranspileConfig(transpileConfig)
+  def apply(traceConfig: TraceConfig)(using Quotes): Expr[TraceConfig] =
+    liftTraceConfig(traceConfig)
 
   extension [T](t: T)(using ToExpr[T], Quotes)
     def expr: Expr[T] = Expr(t)
 
-  import io.getquill.parser.BasicLiftable
+  import io.getquill.parser.Lifters.Plain
   import io.getquill.util.Messages.TraceType
 
-  given liftableOptionalPhase: BasicLiftable[OptionalPhase] with
+  given liftOptionalPhase: Lifters.Plain[OptionalPhase] with
     def lift =
       case OptionalPhase.ApplyMap => '{ OptionalPhase.ApplyMap }
 
-  given liftableTraceType: BasicLiftable[TraceType] with
+  given liftTraceType: Lifters.Plain[TraceType] with
     def lift =
       case TraceType.SqlNormalizations      => '{ TraceType.SqlNormalizations }
       case TraceType.ExpandDistinct         => '{ TraceType.ExpandDistinct }
@@ -103,12 +114,13 @@ private[getquill] object TranspileConfigLiftable:
       case TraceType.Elaboration            => '{ TraceType.Elaboration }
       case TraceType.SqlQueryConstruct      => '{ TraceType.SqlQueryConstruct }
       case TraceType.FlattenOptionOperation => '{ TraceType.FlattenOptionOperation }
+      case TraceType.Particularization      => '{ TraceType.Particularization }
 
-  given liftableTraceConfig: BasicLiftable[TraceConfig] with
+  given liftTraceConfig: Lifters.Plain[TraceConfig] with
     def lift =
       case TraceConfig(enabledTraces) => '{ io.getquill.util.TraceConfig(${ enabledTraces.expr }) }
 
-  given liftableTranspileConfig: BasicLiftable[TranspileConfig] with
+  given liftTranspileConfig: Lifters.Plain[TranspileConfig] with
     def lift =
       case TranspileConfig(disablePhases, traceConfig) => '{ io.getquill.norm.TranspileConfig(${ disablePhases.expr }, ${ traceConfig.expr }) }
 
