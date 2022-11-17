@@ -140,7 +140,7 @@ lazy val `quill-sql` =
         "com.lihaoyi" %% "pprint" % "0.6.6",
         "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
         "io.getquill" %% "quill-engine" % "4.6.0",
-        "dev.zio" %% "zio" % "2.0.2",
+        "dev.zio" %% "zio" % "2.0.3",
         ("io.getquill" %% "quill-util" % "4.6.0")
           .excludeAll({
             if (isCommunityBuild)
@@ -239,8 +239,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "2.0.2",
-        "dev.zio" %% "zio-streams" % "2.0.2"
+        "dev.zio" %% "zio" % "2.0.3",
+        "dev.zio" %% "zio-streams" % "2.0.3"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -293,8 +293,8 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.13.0",
-        "dev.zio" %% "zio" % "2.0.2",
-        "dev.zio" %% "zio-streams" % "2.0.2"
+        "dev.zio" %% "zio" % "2.0.3",
+        "dev.zio" %% "zio-streams" % "2.0.3"
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")
