@@ -227,7 +227,7 @@ lazy val `quill-caliban` =
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql"          %  "postgresql"              % "42.2.18"             % Test,
+        "org.postgresql"          %  "postgresql"              % "42.2.27"             % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
