@@ -253,7 +253,7 @@ lazy val `quill-jdbc-zio` =
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
-        "org.postgresql" % "postgresql" % "42.3.6" %  "provided",
+        "org.postgresql" % "postgresql" % "42.3.8" %  "provided",
         "dev.zio" %% "zio-json" % "0.3.0"
       ),
        Test / runMain / fork := true,
@@ -323,7 +323,7 @@ lazy val jdbcTestingLibraries = Seq(
     "mysql"                   %  "mysql-connector-java"    % "8.0.29"             % Test,
     "com.h2database"          %  "h2"                      % "1.4.200"            % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
-    "org.postgresql"          %  "postgresql"              % "42.3.6"             % Test,
+    "org.postgresql"          %  "postgresql"              % "42.3.8"             % Test,
     "org.xerial"              %  "sqlite-jdbc"             % "3.32.3.2"             % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" %  "mssql-jdbc"              % "7.2.2.jre8" % Test,
