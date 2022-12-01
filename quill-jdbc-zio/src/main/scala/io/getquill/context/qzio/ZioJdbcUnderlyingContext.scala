@@ -16,6 +16,8 @@ import javax.sql.DataSource
 import scala.reflect.ClassTag
 import scala.util.Try
 import scala.annotation.targetName
+import zio.direct._
+import zio.direct.stream.{defer => deferStream, _}
 
 abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
   with JdbcContextVerbExecute[Dialect, Naming]
@@ -106,23 +108,23 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
    * they can be generalized to Something <: Connection. E.g. `Connection with OtherStuff` generalizes to `Something <: Connection`.
    */
   private[getquill] def withoutAutoCommit[R <: Connection, A, E <: Throwable: ClassTag](f: ZIO[R, E, A]): ZIO[R, E, A] = {
-    for {
-      conn <- ZIO.service[Connection]
-      autoCommitPrev = conn.getAutoCommit
-      r <- ZIO.acquireReleaseWith(sqlEffect(conn))(conn => ZIO.succeed(conn.setAutoCommit(autoCommitPrev))) { conn =>
+    defer {
+      val conn = ZIO.service[Connection].run
+      val autoCommitPrev = conn.getAutoCommit
+      ZIO.acquireReleaseWith(sqlEffect(conn))(conn => ZIO.succeed(conn.setAutoCommit(autoCommitPrev))) { conn =>
         sqlEffect(conn.setAutoCommit(false)).flatMap(_ => f)
-      }.refineToOrDie[E]
-    } yield r
+      }.refineToOrDie[E].run
+    }
   }
 
   private[getquill] def streamWithoutAutoCommit[A](f: ZStream[Connection, Throwable, A]): ZStream[Connection, Throwable, A] = {
-    for {
-      conn <- ZStream.service[Connection]
-      autoCommitPrev = conn.getAutoCommit
-      r <- ZStream.acquireReleaseWith(ZIO.attempt(conn.setAutoCommit(false)))(_ => {
+    deferStream {
+      val conn = ZStream.service[Connection].each
+      val autoCommitPrev = conn.getAutoCommit
+      ZStream.acquireReleaseWith(ZIO.attempt(conn.setAutoCommit(false)))(_ => {
         ZIO.succeed(conn.setAutoCommit(autoCommitPrev))
-      }).flatMap(_ => f)
-    } yield r
+      }).flatMap(_ => f).each
+    }
   }
 
   def transaction[R <: Connection, A](f: ZIO[R, Throwable, A]): ZIO[R, Throwable, A] = {
@@ -179,11 +181,12 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
 
     val scopedEnv: ZStream[Connection, Throwable, (Connection, PrepareRow, ResultSet)] =
       ZStream.scoped {
-        for {
-          conn <- ZIO.service[Connection]
-          ps <- scopedBestEffort(ZIO.attempt(prepareStatement(conn)))
-          rs <- scopedBestEffort(ZIO.attempt(ps.executeQuery()))
-        } yield (conn, ps, rs)
+        defer {
+          val conn = ZIO.service[Connection].run
+          val ps = scopedBestEffort(ZIO.attempt(prepareStatement(conn))).run
+          val rs = scopedBestEffort(ZIO.attempt(ps.executeQuery())).run
+          (conn, ps, rs)
+        }
       }
 
     val outStream: ZStream[Connection, Throwable, T] =

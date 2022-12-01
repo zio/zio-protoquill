@@ -95,6 +95,16 @@ class CassandraZioContext[+N <: NamingStrategy](val naming: N)
   }
 
   private[getquill] def execute(cql: String, prepare: Prepare, csession: CassandraZioSession, fetchSize: Option[Int]) =
+    /*
+    val p = prepareRowAndLog(cql, prepare).run
+    attempt {
+      fetchSize match {
+        case Some(value) => p.setPageSize
+        case None => p
+      }
+    }
+    ZIO.fromCompletionStage(csession.session.executeAsync(p)).await
+    */
     simpleBlocking {
       prepareRowAndLog(cql, prepare)
         .mapAttempt { p =>
@@ -153,6 +163,15 @@ class CassandraZioContext[+N <: NamingStrategy](val naming: N)
       rows <- ZIO.attempt(rs.currentPage())
       singleRow <- ZIO.attempt(handleSingleResult(cql, rows.asScala.map(row => extractor(row, csession)).toList))
     } yield singleRow
+
+    /*
+    val csession = ZIO.service[CassandraZioSession].run
+    val rs = execute(cql, prepare, csession, Some(1)).run
+    unsafe {
+      rows = rs.currentPage()
+      singleRow = handleSingleResult(cql, rows.asScala.map(row => extractor(row, csession)).toList)
+    }
+    */
   }
 
   def executeAction(cql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): CIO[Unit] = simpleBlocking {

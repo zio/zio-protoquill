@@ -240,7 +240,9 @@ lazy val `quill-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "dev.zio" %% "zio" % "2.0.8",
-        "dev.zio" %% "zio-streams" % "2.0.8"
+        "dev.zio" %% "zio-streams" % "2.0.8",
+        "dev.zio" %% "zio-direct" % "1.0.0-RC6",
+        "dev.zio" %% "zio-direct-streams" % "1.0.0-RC6"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")

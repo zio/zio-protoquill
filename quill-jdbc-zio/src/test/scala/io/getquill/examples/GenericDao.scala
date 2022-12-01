@@ -23,6 +23,9 @@ class Repo[T <: { def id: Int }](ds: DataSource) {
   inline def getById(inline id: Int) =
     run(query[T].filter(t => t.id == lift(id))).map(_.headOption).provideEnvironment(env)
 
+  inline def deleteById(inline id: Int) =
+    run(query[T].filter(t => t.id == lift(id)).delete).provideEnvironment(env)
+
   inline def insert(inline t: T) =
     run(query[T].insertValue(lift(t)).returning(_.id)).provideEnvironment(env)
 
@@ -46,6 +49,8 @@ object StructureBasedRepo extends ZIOAppDefault {
       joeId      <- peopleRepo.insert(joe)
       joeNew     <- peopleRepo.getById(joeId)
       allJoes    <- peopleRepo.searchByField(p => p.first == "Joe")
+      _          <- peopleRepo.deleteById(joeId)
+      allJoes1   <- peopleRepo.searchByField(p => p.first == "Joe")
       _          <-
         printLine("==== joe: " + joe) *>
         printLine("==== joeId: " + joeId) *>

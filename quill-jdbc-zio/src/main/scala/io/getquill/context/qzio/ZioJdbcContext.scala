@@ -16,6 +16,9 @@ import io.getquill.*
 import io.getquill.jdbczio.Quill
 import zio.ZIO.attemptBlocking
 import zio.ZIO.blocking
+import zio.direct._
+import zio.direct.core.metaprog.Verify
+import zio.Scope
 
 /**
  * Quill context that executes JDBC queries inside of ZIO. Unlike most other contexts
@@ -180,46 +183,51 @@ abstract class ZioJdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] e
    * </pre>
    */
   def transaction[R <: DataSource, A](op: ZIO[R, Throwable, A]): ZIO[R, Throwable, A] = {
-    blocking(currentConnection.get.flatMap {
-      // We can just return the op in the case that there is already a connection set on the fiber ref
-      // because the op is execute___ which will lookup the connection from the fiber ref via onConnection/onConnectionStream
-      // This will typically happen for nested transactions e.g. transaction(transaction(a *> b) *> c)
-      case Some(connection) => op
-      case None =>
-        val connection = for {
-          env <- ZIO.service[DataSource]
-          connection <- scopedBestEffort(attemptBlocking(env.getConnection))
-          // Get the current value of auto-commit
-          prevAutoCommit <- attemptBlocking(connection.getAutoCommit)
-          // Disable auto-commit since we need to be able to roll back. Once everything is done, set it
-          // to whatever the previous value was.
-          _ <- ZIO.acquireRelease(attemptBlocking(connection.setAutoCommit(false))) { _ =>
-            attemptBlocking(connection.setAutoCommit(prevAutoCommit)).orDie
-          }
-          _ <- ZIO.acquireRelease(currentConnection.set(Some(connection))) { _ =>
-            // Note. We are failing the fiber if auto-commit reset fails. For some circumstances this may be too aggresive.
-            // If the connection pool e.g. Hikari resets this property for a recycled connection anyway doing it here
-            // might not be necessary
-            currentConnection.set(None)
-          }
-          // Once the `use` of this outer-Scoped is done, rollback the connection if needed
-          _ <- ZIO.addFinalizerExit {
-            case Success(_)     => blocking(ZIO.succeed(connection.commit()))
-            case Failure(cause) => blocking(ZIO.succeed(connection.rollback()))
-          }
-        } yield ()
-
-        ZIO.scoped(connection *> op)
-    })
+    defer {
+      currentConnection.get.run match {
+        case Some(conn) => op.run
+        case None =>
+          ZIO.scoped(defer {
+            defer {
+              val env = ZIO.service[DataSource].run
+              val connection = scopedBestEffort(attemptBlocking(env.getConnection)).run
+              // Get the current value of auto-commit
+              val prevAutoCommit = attemptBlocking(connection.getAutoCommit).run
+              // Disable auto-commit since we need to be able to roll back. Once everything is done, set it
+              // to whatever the previous value was.
+              ZIO.acquireRelease(attemptBlocking(connection.setAutoCommit(false))) { _ =>
+                attemptBlocking(connection.setAutoCommit(prevAutoCommit)).orDie
+              }.run
+              ZIO.acquireRelease(currentConnection.set(Some(connection))) { _ =>
+                // Note. We are failing the fiber if auto-commit reset fails. For some circumstances this may be too aggresive.
+                // If the connection pool e.g. Hikari resets this property for a recycled connection anyway doing it here
+                // might not be necessary
+                currentConnection.set(None)
+              }.run
+              ZIO.addFinalizerExit {
+                case Success(_)     => blocking(ZIO.succeed(connection.commit()))
+                case Failure(cause) => blocking(ZIO.succeed(connection.rollback()))
+              }.run
+            }.run
+            op.run
+          }).run
+      }
+    }
   }
 
   private def onConnection[T](qlio: ZIO[Connection, SQLException, T]): ZIO[DataSource, SQLException, T] =
-    currentConnection.get.flatMap {
-      case Some(connection) =>
-        blocking(qlio.provideEnvironment(ZEnvironment(connection)))
-      case None =>
-        blocking(qlio.provideLayer(Quill.Connection.acquireScoped))
+    defer {
+      currentConnection.get.run match {
+        case Some(connection) =>
+          blocking(qlio.provideEnvironment(ZEnvironment(connection))).run
+        case None =>
+          blocking(qlio.provideLayer(Quill.Connection.acquireScoped)).run
+      }
     }
+
+  def foo(): Unit = {
+    val iter: ZIO[Scope, Nothing, Iterator[Either[Nothing, Option[Connection]]]] = ZStream.fromZIO(currentConnection.get).toIterator
+  }
 
   private def onConnectionStream[T](qstream: ZStream[Connection, SQLException, T]): ZStream[DataSource, SQLException, T] =
     streamBlocker *> ZStream.fromZIO(currentConnection.get).flatMap {
