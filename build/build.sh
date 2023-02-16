@@ -24,7 +24,7 @@ export ORIENTDB_HOST=127.0.0.1
 export ORIENTDB_PORT=12424
 
 export GC_OPTS="-XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -XX:+UseConcMarkSweepGC -XX:+CMSClassUnloadingEnabled"
-export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Xms1024m -Xmx3g -Xss5m ${GC_OPTS}"
+export JVM_OPTS="-Dcommunity=false -Dquill.macro.log=false -Xms1024m -Xmx4g -Xss5m ${GC_OPTS}"
 
 modules=$1
 
