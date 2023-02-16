@@ -117,15 +117,34 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
     }
   }
 
-  private[getquill] def streamWithoutAutoCommit[A](f: ZStream[Connection, Throwable, A]): ZStream[Connection, Throwable, A] = {
+  private[getquill] def streamWithoutAutoCommit[A](
+    f: ZStream[Connection, Throwable, A]
+  ): ZStream[Connection, Throwable, A] = {
     deferStream {
+      // Get JDBC connection from stream
       val conn = ZStream.service[Connection].each
+      // Get prev autocommit
       val autoCommitPrev = conn.getAutoCommit
-      ZStream.acquireReleaseWith(ZIO.attempt(conn.setAutoCommit(false)))(_ => {
+      // After 'each' connection (only one) restore autocommit
+      ZStream.acquireReleaseWith(
+        ZIO.attempt(conn.setAutoCommit(false))
+      )(_ => {
         ZIO.succeed(conn.setAutoCommit(autoCommitPrev))
-      }).flatMap(_ => f).each
+      }).each
+      // Then process each of the elements on the stream
+      f.each
     }
   }
+
+
+
+
+
+
+
+
+
+
 
   def transaction[R <: Connection, A](f: ZIO[R, Throwable, A]): ZIO[R, Throwable, A] = {
     ZIO.environment[R].flatMap(env =>
