@@ -137,7 +137,7 @@ lazy val `quill-sql` =
         // Needs to be in-sync with both quill-engine and scalafmt-core or ClassNotFound
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.4.0",
-        "com.lihaoyi" %% "pprint" % "0.8.1",
+        "com.lihaoyi" %% "pprint" % "0.6.6",
         "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
         "io.getquill" %% "quill-engine" % "4.6.0",
         "dev.zio" %% "zio" % "2.0.8",
@@ -241,8 +241,8 @@ lazy val `quill-zio` =
       libraryDependencies ++= Seq(
         "dev.zio" %% "zio" % "2.0.8",
         "dev.zio" %% "zio-streams" % "2.0.8",
-        "dev.zio" %% "zio-direct" % "1.0.0-RC6",
-        "dev.zio" %% "zio-direct-streams" % "1.0.0-RC6"
+        "dev.zio" %% "zio-direct" % "1.0.0-RC6" exclude("com.lihaoyi", "fansi_3"),
+        "dev.zio" %% "zio-direct-streams" % "1.0.0-RC6" exclude("com.lihaoyi", "fansi_3")
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
