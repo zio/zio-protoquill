@@ -280,7 +280,7 @@ lazy val `quill-cassandra` =
     .settings(
       Test / fork := false,
       libraryDependencies ++= Seq(
-        "com.datastax.oss" % "java-driver-core" % "4.15.0"
+        "com.datastax.oss" % "java-driver-core" % "4.13.0"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -292,7 +292,7 @@ lazy val `quill-cassandra-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.datastax.oss" % "java-driver-core" % "4.15.0",
+        "com.datastax.oss" % "java-driver-core" % "4.13.0",
         "dev.zio" %% "zio" % "2.0.2",
         "dev.zio" %% "zio-streams" % "2.0.2"
       )
