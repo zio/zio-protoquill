@@ -213,6 +213,9 @@ object StaticTranslationMacro:
       foreachIdent: Option[Ident] = None
   )(using qctx: Quotes, dialectTpe: Type[D], namingType: Type[N]): Option[StaticState] =
     import quotes.reflect.{Try => TTry, _}
+
+    val startTimeMs = System.currentTimeMillis()
+
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
 
@@ -269,20 +272,24 @@ object StaticTranslationMacro:
           )
 
       } yield {
-        if (io.getquill.util.Messages.debugEnabled)
-          queryPrint(PrintType.Query(query.basicQuery), Some(idiom))
+        if (io.getquill.util.Messages.debugEnabled) {
+          val timeTaken = System.currentTimeMillis() - startTimeMs
+          queryPrint(PrintType.Query(query.basicQuery, timeTaken), Some(idiom))
+        }
 
         StaticState(query, primaryLifts, returnAction, idiom, secondaryLifts)(ast)
       }
 
-    if (tryStatic.isEmpty)
-      queryPrint(PrintType.Message(s"Dynamic Query Detected"), None)
+    if (tryStatic.isEmpty) {
+      val timeTaken = System.currentTimeMillis() - startTimeMs
+      queryPrint(PrintType.Message(s"Dynamic Query Detected (compiled in ${timeTaken}ms)"), None)
+    }
 
     tryStatic
   end apply
 
   private[getquill] enum PrintType:
-    case Query(str: String)
+    case Query(str: String, timeTakenMs: Long)
     case Message(str: String)
 
   private[getquill] def queryPrint(printType: PrintType, idiomOpt: Option[Idiom])(using Quotes) =
@@ -291,17 +298,20 @@ object StaticTranslationMacro:
 
     val msg =
       printType match
-        case PrintType.Query(queryString) =>
+        case PrintType.Query(queryString, timeTaken) =>
           val formattedQueryString =
             if (io.getquill.util.Messages.prettyPrint)
               idiomOpt.map(idiom => idiom.format(queryString)).getOrElse(queryString)
             else
               queryString
 
+          val timeTakenStr =
+            s"compiled in ${if (timeTaken > 1000) f"${timeTaken.toDouble / 1000}%.1fs" else s"${timeTaken}ms"}"
+
           if (ProtoMessages.useStdOut)
-            s"Quill Query:\n${formattedQueryString.multiline(1, "")}"
+            s"Quill Query ($timeTakenStr):\n${formattedQueryString.multiline(1, "")}"
           else
-            s"Quill Query: ${formattedQueryString}"
+            s"Quill Query ($timeTakenStr): ${formattedQueryString}"
 
         case PrintType.Message(str) =>
           str
