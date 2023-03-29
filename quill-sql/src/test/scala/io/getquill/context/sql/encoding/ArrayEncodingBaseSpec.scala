@@ -2,6 +2,7 @@ package io.getquill.context.sql.encoding
 
 import java.time.LocalDate
 import java.util.Date
+import java.util.UUID
 
 import io.getquill.{MappedEncoding, Spec}
 import org.scalatest.{Assertion, BeforeAndAfterEach}
@@ -20,7 +21,8 @@ trait ArrayEncodingBaseSpec extends Spec with BeforeAndAfterEach {
       floats: Seq[Float],
       doubles: Seq[Double],
       timestamps: Seq[Date],
-      dates: Seq[LocalDate]
+      dates: Seq[LocalDate],
+      uuids: Seq[UUID]
   )
 
   val e = ArraysTestEntity(
@@ -34,7 +36,8 @@ trait ArrayEncodingBaseSpec extends Spec with BeforeAndAfterEach {
     Seq(1f, 2f),
     Seq(4d, 3d),
     Seq(new Date(System.currentTimeMillis())),
-    Seq(LocalDate.now())
+    Seq(LocalDate.now()),
+    Seq(UUID.randomUUID())
   )
 
   // casting types can be dangerous so we need to ensure that everything is ok
@@ -50,6 +53,7 @@ trait ArrayEncodingBaseSpec extends Spec with BeforeAndAfterEach {
     e1.doubles.head mustBe e2.doubles.head
     e1.timestamps.head mustBe e2.timestamps.head
     e1.dates.head mustBe e2.dates.head
+    e1.uuids.head mustBe e2.uuids.head
   }
 
   // Support Seq encoding basing on MappedEncoding
