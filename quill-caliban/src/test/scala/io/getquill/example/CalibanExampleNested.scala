@@ -40,8 +40,11 @@ object DaoNested:
         .filterByKeys(filters)
         .take(10)
     }
+
+  import compat._
+
   inline def plan(inline columns: List[String], inline filters: Map[String, String]) =
-    quote { sql"EXPLAIN ${q(columns, filters)}".pure.as[Query[String]] }
+    quote { qsql"EXPLAIN ${q(columns, filters)}".pure.as[Query[String]] }
 
   def personAddress(columns: List[String], filters: Map[String, String]) =
     println(s"Getting columns: $columns")
