@@ -1,11 +1,11 @@
 package io.getquill
 
-import caliban.GraphQL.graphQL
+import caliban.graphQL
 import caliban.schema.Annotations.GQLDescription
 import caliban.{RootResolver, ZHttpAdapter}
-import zhttp.http._
-import zhttp.service.Server
+import zio.http._
 import zio.{ExitCode, ZIO}
+
 import io.getquill._
 import io.getquill.context.qzio.ImplicitSyntax._
 import io.getquill.context.ZioJdbc._
@@ -18,6 +18,7 @@ import javax.sql.DataSource
 import scala.language.postfixOps
 import caliban.execution.Field
 import caliban.schema.ArgBuilder
+import caliban.schema.Schema
 import io.getquill.CalibanIntegration._
 import io.getquill.util.ContextLogger
 import io.getquill
@@ -66,6 +67,8 @@ object Dao:
 end Dao
 
 object CalibanExample extends zio.ZIOAppDefault:
+  import sttp.tapir.json.zio._
+  import Schema.auto._
 
   case class Queries(
       personAddress: Field => (ProductArgs[PersonAddress] => Task[List[PersonAddress]]),
@@ -94,12 +97,11 @@ object CalibanExample extends zio.ZIOAppDefault:
   val myApp = for {
     _ <- Dao.resetDatabase()
     interpreter <- endpoints
-    _ <- Server.start(
-        port = 8088,
-        http = Http.collectHttp[Request] { case _ -> !! / "api" / "graphql" =>
-          ZHttpAdapter.makeHttpService(interpreter)
-        }
-      )
+    _ <- Server.serve(
+        Http.collectRoute[Request] {
+          case _ -> !! / "api" / "graphql" => ZHttpAdapter.makeHttpService(interpreter)
+        }.withDefaultErrorResponse
+      ).provide(Server.defaultWithPort(8088))
       .forever
   } yield ()
 

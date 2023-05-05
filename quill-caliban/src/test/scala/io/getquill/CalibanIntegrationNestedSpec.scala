@@ -4,13 +4,15 @@ import zio.{ZIO, Task}
 import io.getquill.context.ZioJdbc._
 import caliban.execution.Field
 import caliban.schema.ArgBuilder
-import caliban.GraphQL.graphQL
+import caliban.graphQL
+import caliban.schema.Schema
 import caliban.schema.Annotations.GQLDescription
 import caliban.RootResolver
 import io.getquill.CalibanIntegration._
 
 class CalibanIntegrationNestedSpec extends CalibanSpec {
   import Ctx._
+  import Schema.auto._
 
   object Nested:
     import NestedSchema._

@@ -51,7 +51,7 @@ object CalibanIntegration:
         )
       }
 
-      protected[this] def toType(isInput: Boolean, isSubscription: Boolean): __Type =
+      def toType(isInput: Boolean, isSubscription: Boolean): __Type =
         __Type(
           __TypeKind.INPUT_OBJECT,
           inputFields = ev
