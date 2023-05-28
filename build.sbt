@@ -151,7 +151,7 @@ lazy val `quill-sql` =
         "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test
+        "com.vladsch.flexmark" % "flexmark-all" % "0.64.8" % Test
       )
     )
 
