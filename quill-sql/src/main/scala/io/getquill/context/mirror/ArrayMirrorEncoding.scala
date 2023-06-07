@@ -2,9 +2,12 @@ package io.getquill.context.mirror
 
 import java.time.LocalDate
 import java.util.Date
+import java.util.UUID
 
 import io.getquill.SqlMirrorContext
 import io.getquill.generic.ArrayEncoding
+
+import scala.collection.Factory
 
 trait ArrayMirrorEncoding extends ArrayEncoding {
   this: SqlMirrorContext[_, _] =>
@@ -20,6 +23,7 @@ trait ArrayMirrorEncoding extends ArrayEncoding {
   implicit def arrayDoubleEncoder[Col <: Seq[Double]]: Encoder[Col] = encoder[Col]
   implicit def arrayDateEncoder[Col <: Seq[Date]]: Encoder[Col] = encoder[Col]
   implicit def arrayLocalDateEncoder[Col <: Seq[LocalDate]]: Encoder[Col] = encoder[Col]
+  implicit def arrayUuidEncoder[Col <: Seq[UUID]]: Encoder[Col] = encoder[Col]
 
   implicit def arrayStringDecoder[Col <: Seq[String]](implicit bf: CBF[String, Col]): Decoder[Col] = decoderUnsafe[Col]
   implicit def arrayBigDecimalDecoder[Col <: Seq[BigDecimal]](implicit bf: CBF[BigDecimal, Col]): Decoder[Col] = decoderUnsafe[Col]
@@ -32,4 +36,5 @@ trait ArrayMirrorEncoding extends ArrayEncoding {
   implicit def arrayDoubleDecoder[Col <: Seq[Double]](implicit bf: CBF[Double, Col]): Decoder[Col] = decoderUnsafe[Col]
   implicit def arrayDateDecoder[Col <: Seq[Date]](implicit bf: CBF[Date, Col]): Decoder[Col] = decoderUnsafe[Col]
   implicit def arrayLocalDateDecoder[Col <: Seq[LocalDate]](implicit bf: CBF[LocalDate, Col]): Decoder[Col] = decoderUnsafe[Col]
+  implicit def arrayUuidDecoder[Col <: Seq[UUID]](implicit bf: Factory[UUID, Col]): Decoder[Col] = decoderUnsafe[Col]
 }
