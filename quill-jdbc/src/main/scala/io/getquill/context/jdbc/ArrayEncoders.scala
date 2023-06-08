@@ -4,6 +4,7 @@ import java.sql.{ Timestamp, Date => SqlDate }
 import java.sql.Types._
 import java.time.LocalDate
 import java.util.Date
+import java.util.UUID
 
 import io.getquill.generic.ArrayEncoding
 import scala.collection.compat._
@@ -23,6 +24,7 @@ trait ArrayEncoders extends ArrayEncoding {
   implicit def arrayDateEncoder[Col <: Seq[Date]]: Encoder[Col] = arrayRawEncoder[Date, Col](TIMESTAMP)
   implicit def arrayTimestampEncoder[Col <: Seq[Timestamp]]: Encoder[Col] = arrayRawEncoder[Timestamp, Col](TIMESTAMP)
   implicit def arrayLocalDateEncoder[Col <: Seq[LocalDate]]: Encoder[Col] = arrayEncoder[LocalDate, Col](parseJdbcType(DATE), SqlDate.valueOf)
+  implicit def arrayUuidEncoder[Col <: Seq[UUID]]: Encoder[Col] = arrayRawEncoder[UUID, Col]("uuid")
 
   /**
    * Generic encoder for JDBC arrays.

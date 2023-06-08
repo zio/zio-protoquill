@@ -138,10 +138,10 @@ lazy val `quill-sql` =
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.4.0",
         "com.lihaoyi" %% "pprint" % "0.8.1",
-        "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
-        "io.getquill" %% "quill-engine" % "4.6.0",
-        "dev.zio" %% "zio" % "2.0.2",
-        ("io.getquill" %% "quill-util" % "4.6.0")
+        "ch.qos.logback" % "logback-classic" % "1.2.12" % Test,
+        "io.getquill" %% "quill-engine" % "4.6.1",
+        "dev.zio" %% "zio" % "2.0.14",
+        ("io.getquill" %% "quill-util" % "4.6.1")
           .excludeAll({
             if (isCommunityBuild)
               Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))
@@ -151,7 +151,7 @@ lazy val `quill-sql` =
         "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "com.vladsch.flexmark" % "flexmark-all" % "0.35.10" % Test
+        "com.vladsch.flexmark" % "flexmark-all" % "0.64.8" % Test
       )
     )
 
@@ -194,7 +194,7 @@ lazy val `quill-jasync` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.jasync-sql" % "jasync-common" % "2.0.6"
+        "com.github.jasync-sql" % "jasync-common" % "2.0.9"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -206,7 +206,7 @@ lazy val `quill-jasync-postgres` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.jasync-sql" % "jasync-postgresql" % "2.0.6"
+        "com.github.jasync-sql" % "jasync-postgresql" % "2.0.9"
       )
     )
     .dependsOn(`quill-jasync` % "compile->compile;test->test")
@@ -222,12 +222,12 @@ lazy val `quill-caliban` =
         "com.github.ghostdogpr" %% "caliban-zio-http"   % "2.0.0",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
-        "ch.qos.logback" % "logback-classic" % "1.2.3" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.2.12" % Test,
         "io.d11" %% "zhttp"      % "2.0.0-RC10" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql"          %  "postgresql"              % "42.2.18"             % Test,
+        "org.postgresql"          %  "postgresql"              % "42.2.27"             % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -239,8 +239,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "2.0.2",
-        "dev.zio" %% "zio-streams" % "2.0.2"
+        "dev.zio" %% "zio" % "2.0.14",
+        "dev.zio" %% "zio-streams" % "2.0.14"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -253,8 +253,8 @@ lazy val `quill-jdbc-zio` =
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
-        "org.postgresql" % "postgresql" % "42.3.6" %  "provided",
-        "dev.zio" %% "zio-json" % "0.3.0"
+        "org.postgresql" % "postgresql" % "42.3.8" %  "provided",
+        "dev.zio" %% "zio-json" % "0.5.0"
       ),
        Test / runMain / fork := true,
        Test / fork := true,
@@ -293,8 +293,8 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.13.0",
-        "dev.zio" %% "zio" % "2.0.2",
-        "dev.zio" %% "zio-streams" % "2.0.2"
+        "dev.zio" %% "zio" % "2.0.14",
+        "dev.zio" %% "zio-streams" % "2.0.14"
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")
@@ -320,10 +320,10 @@ lazy val jdbcTestingLibraries = Seq(
   libraryDependencies ++= Seq(
     "com.zaxxer"              %  "HikariCP"                % "3.4.5",
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
-    "mysql"                   %  "mysql-connector-java"    % "8.0.29"             % Test,
+    "mysql"                   %  "mysql-connector-java"    % "8.0.33"             % Test,
     "com.h2database"          %  "h2"                      % "1.4.200"            % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
-    "org.postgresql"          %  "postgresql"              % "42.3.6"             % Test,
+    "org.postgresql"          %  "postgresql"              % "42.3.8"             % Test,
     "org.xerial"              %  "sqlite-jdbc"             % "3.32.3.2"             % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" %  "mssql-jdbc"              % "7.2.2.jre8" % Test,
@@ -345,7 +345,7 @@ lazy val basicSettings = Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
   scalaVersion := {
-    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.1.3"
+    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.2.2"
   },
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
