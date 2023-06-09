@@ -21,8 +21,7 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
   with JdbcContextVerbExecute[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]
-  with ZioTranslateContext[Dialect, Naming]
-  {
+  with ZioTranslateContext[Dialect, Naming] {
 
   override private[getquill] val logger = ContextLogger(classOf[ZioJdbcUnderlyingContext[_, _]])
 

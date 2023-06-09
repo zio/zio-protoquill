@@ -23,7 +23,7 @@ object PlainApp {
         .tap(result => printLine(result.toString))
         .provide(zioSession)
 
-    Unsafe.unsafe {
+    Unsafe.unsafe { implicit unsafe =>
       Runtime.default.unsafe.run(czio).getOrThrow()
     }
     ()

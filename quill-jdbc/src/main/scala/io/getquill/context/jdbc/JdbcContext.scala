@@ -12,12 +12,15 @@ import scala.util.control.NonFatal
 import io.getquill.Quoted
 import scala.annotation.targetName
 import io.getquill.context.ContextVerbTranslate
+import io.getquill.util.ContextLogger
 
 abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   extends JdbcContextBase[Dialect, Naming]
   with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbTranslate[Dialect, Naming]
   {
+
+  private val logger = ContextLogger(classOf[JdbcContext[_, _]])
 
   // Need to override these with same values as JdbcRunContext because SyncIOMonad imports them. The imported values need to be overridden
   override type Result[T] = T
@@ -32,7 +35,7 @@ abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   override protected def context: Runner = ()
   def translateContext: TranslateRunner = ()
 
-  val dataSource: DataSource with Closeable
+  val dataSource: DataSource
 
   @targetName("runQueryDefault")
   inline def run[T](inline quoted: Quoted[Query[T]]): List[T] = InternalApi.runQueryDefault(quoted)
@@ -68,7 +71,13 @@ abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
       finally conn.close()
     }
 
-  override def close() = dataSource.close()
+  override def close() =
+    dataSource match {
+      case closeable: java.io.Closeable =>
+        closeable.close()
+      case _ =>
+        logger.underlying.warn(s"Could not close the DataSource `$dataSource`. It is not an instance of java.io.Closeable.")
+    }
 
   def probe(sql: String) =
     Try {

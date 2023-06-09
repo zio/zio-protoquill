@@ -27,6 +27,12 @@ object QuatMaking:
       override def anyValBehavior = behavior
     }
 
+  inline def inferQuatType[T]: Quat = ${ inferQuatTypeImpl[T] }
+  def inferQuatTypeImpl[T: TType](using quotes: Quotes): Expr[Quat] = {
+    val quat = quatMaker().InferQuat.of[T]
+    Lifter.quat(quat)
+  }
+
   inline def inferQuat[T](value: T): Quat = ${ inferQuatImpl('value) }
   def inferQuatImpl[T: TType](value: Expr[T])(using quotes: Quotes): Expr[Quat] = {
     val quat = quatMaker().InferQuat.of[T]
@@ -48,25 +54,11 @@ object QuatMaking:
 
   private val encodeableCache: mutable.Map[QuotesTypeRepr, Boolean] = mutable.Map()
   def lookupIsEncodeable(tpe: QuotesTypeRepr)(computeEncodeable: () => Boolean) =
-    val lookup = encodeableCache.get(tpe)
-    lookup match
-      case Some(value) =>
-        value
-      case None =>
-        val encodeable = computeEncodeable()
-        encodeableCache.put(tpe, encodeable)
-        encodeable
+    computeEncodeable()
 
   private val quatCache: mutable.Map[QuotesTypeRepr, Quat] = mutable.Map()
   def lookupCache(tpe: QuotesTypeRepr)(computeQuat: () => Quat) =
-    val lookup = quatCache.get(tpe)
-    lookup match
-      case Some(value) =>
-        value
-      case None =>
-        val quat = computeQuat()
-        quatCache.put(tpe, quat)
-        quat
+    computeQuat()
 
   enum AnyValBehavior:
     case TreatAsValue
@@ -270,7 +262,7 @@ trait QuatMakingBase:
         import quotes.reflect._
         tpe match
           case CaseClassBaseType(name, fields) if !existsEncoderFor(tpe) || tpe <:< TypeRepr.of[Udt] =>
-            Some(Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, ParseType.parseType(fieldType)) }))
+            Some(Quat.Product(name, fields.map { case (fieldName, fieldType) => (fieldName, ParseType.parseType(fieldType)) }))
           case _ =>
             None
 
@@ -353,11 +345,11 @@ trait QuatMakingBase:
           // For other types of case classes (and if there does not exist an encoder for it)
           // the exception to that is a cassandra UDT that we treat like an encodeable entity even if it has a parsed type
           case CaseClassBaseType(name, fields) if !existsEncoderFor(tpe) || tpe <:< TypeRepr.of[Udt] =>
-            Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
+            Quat.Product(name, fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
 
           // If we are already inside a bounded type, treat an arbitrary type as a interface list
           case ArbitraryBaseType(name, fields) if (boundedInterfaceType) =>
-            Quat.Product(fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
+            Quat.Product(name, fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
 
           // If the quat is a coproduct, merge the sub quats that are recursively retrieved
           case CoProduct(quat) => quat
@@ -444,7 +436,7 @@ trait QuatMakingBase:
                 case (key, None, Some(second))        => (key, second)
                 case (key, None, None)                => throw new IllegalArgumentException(s"Invalid state for Quat key ${key}, both values of merging quats were null")
               }
-            Quat.Product(newFields)
+            Quat.Product(second.name, newFields)
 
           case (firstQuat, secondQuat) =>
             firstQuat.leastUpperType(secondQuat) match

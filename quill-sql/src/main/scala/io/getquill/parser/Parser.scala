@@ -33,6 +33,7 @@ import io.getquill.parser.engine._
 import io.getquill.context.VerifyFreeVariables
 import io.getquill.norm.TranspileConfig
 import io.getquill.ast.External.Source
+import io.getquill.quat.VerifyNoBranches
 
 trait ParserFactory:
   def assemble(using Quotes): ParserLibrary.ReadyParser
@@ -512,15 +513,22 @@ class QueryParser(val rootParse: Parser)(using Quotes, TranspileConfig)
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
   import MatchingOptimizers._
 
+  private def warnVerifyNoBranches(v: VerifyNoBranches.Output, expr: Expr[_]): Unit =
+    if (v.messages.nonEmpty)
+      report.warning("Questionable row-class found.\n" + v.messages.map(_.msg).mkString("\n"), expr)
+
   def attempt = {
-    case '{ type t; EntityQuery.apply[`t`] } =>
+    case expr @ '{ type t; EntityQuery.apply[`t`] } =>
       val tpe = TypeRepr.of[t]
       val name: String = tpe.classSymbol.get.name
-      Entity(name, List(), InferQuat.ofType(tpe).probit)
+      val quat = InferQuat.ofType(tpe).probit
+      warnVerifyNoBranches(VerifyNoBranches.in(quat), expr)
+      Entity(name, List(), quat)
 
-    case '{ querySchema[t](${ ConstExpr(name: String) }, ${ GenericSeq(properties) }: _*) } =>
-      val e: Entity = Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), InferQuat.of[t].probit, Renameable.Fixed)
-      e
+    case expr @ '{ querySchema[t](${ ConstExpr(name: String) }, ${ GenericSeq(properties) }: _*) } =>
+      val quat = InferQuat.of[t].probit
+      warnVerifyNoBranches(VerifyNoBranches.in(quat), expr)
+      Entity.Opinionated(name, properties.toList.map(PropertyAliasExpr.OrFail[t](_)), quat, Renameable.Fixed)
 
     case "map" -@> '{ ($q: Query[qt]).map[mt](${ Lambda1(ident, tpe, body) }) } =>
       Map(rootParse(q), cleanIdent(ident, tpe), rootParse(body))
@@ -1013,7 +1021,7 @@ class ComplexValueParser(rootParse: Parser)(using Quotes, TranspileConfig)
       if (fields.length != args.length)
         throw new IllegalArgumentException(s"In Case Class ${ccName}, does not have the same number of fields (${fields.length}) as it does arguments ${args.length} (fields: ${fields}, args: ${args.map(_.show)})")
       val argsAst = args.map(rootParse(_))
-      CaseClass(fields.zip(argsAst))
+      CaseClass(ccName, fields.zip(argsAst))
 
     case orig @ Unseal(i @ TIdent(x)) =>
       cleanIdent(i.symbol.name, InferQuat.ofType(i.tpe))
@@ -1022,10 +1030,18 @@ class ComplexValueParser(rootParse: Parser)(using Quotes, TranspileConfig)
 
 class GenericExpressionsParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with PropertyParser {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
+  import reflect.Selectable.reflectiveSelectable
 
   def attempt = {
     case expr @ ImplicitClassExtensionPattern(cls, constructorArg) =>
       report.throwError(ImplicitClassExtensionPattern.errorMessage(expr, cls, constructorArg), expr)
+
+    case UncastSelectable('{ reflectiveSelectable($v).selectDynamic($propNameExpr) }) =>
+      val propName =
+        propNameExpr match
+          case Expr(v) => v
+          case _       => report.throwError(s"Cannot parse the property ${Format.Expr(propNameExpr)}. It was not a static string property.")
+      Property(rootParse(v), propName)
 
     case AnyProperty(property) => property
 

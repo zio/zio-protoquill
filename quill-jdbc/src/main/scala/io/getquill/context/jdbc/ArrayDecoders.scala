@@ -3,6 +3,7 @@ package io.getquill.context.jdbc
 import java.sql.Timestamp
 import java.time.LocalDate
 import java.util.Date
+import java.util.UUID
 import java.sql.{ Date => SqlDate }
 import java.math.{ BigDecimal => JBigDecimal }
 
@@ -28,6 +29,7 @@ trait ArrayDecoders extends ArrayEncoding {
   implicit def arrayDateDecoder[Col <: Seq[Date]](implicit bf: CBF[Date, Col]): Decoder[Col] = arrayRawDecoder[Date, Col]
   implicit def arrayTimestampDecoder[Col <: Seq[Timestamp]](implicit bf: CBF[Timestamp, Col]): Decoder[Col] = arrayRawDecoder[Timestamp, Col]
   implicit def arrayLocalDateDecoder[Col <: Seq[LocalDate]](implicit bf: CBF[LocalDate, Col]): Decoder[Col] = arrayDecoder[SqlDate, LocalDate, Col](_.toLocalDate)
+  implicit def arrayUuidDecoder[Col <: Seq[UUID]](implicit bf: Factory[UUID, Col]): Decoder[Col] = arrayRawDecoder[UUID, Col]
 
   /**
    * Generic encoder for JDBC arrays.
