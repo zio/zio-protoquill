@@ -148,7 +148,7 @@ lazy val `quill-sql` =
             else
               Seq()
           }: _*),
-        "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4",
+        "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
         "com.vladsch.flexmark" % "flexmark-all" % "0.64.8" % Test
