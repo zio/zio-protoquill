@@ -45,12 +45,18 @@ import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 import io.getquill.generic.DecodeAlternate
 import com.typesafe.scalalogging.Logger
+import io.getquill.DynamicInsert
+import io.getquill.DynamicEntityQuery
+import io.getquill.DynamicUpdate
+import io.getquill.Insert
+import io.getquill.Update
+import io.getquill.EntityQuery
 
-trait ContextStandard[Idiom <: io.getquill.idiom.Idiom, Naming <: NamingStrategy]
+trait ContextStandard[+Idiom <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy]
     extends Context[Idiom, Naming]
     with ContextVerbPrepareLambda[Idiom, Naming]
 
-trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
+trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
     extends ProtoContextSecundus[Dialect, Naming] with EncodingDsl with Closeable:
   self =>
 
@@ -73,14 +79,37 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
   inline def liftQuery[U[_] <: Iterable[_], T](inline runtimeValue: U[T]): Query[T] =
     ${ LiftQueryMacro[T, U, PrepareRow, Session]('runtimeValue) }
 
+  // Originally insertValue/updateValue for EntityQuery[Query[T]]/Quoted[EntityQuery[Query[T]]] lived in
+  // Dsl.scala and did not require a context but when insertValue/updateValue for DynamicEntityQuery was introduced
+  // it caused oddities with how Scala 3 resolves/overrides extension methods. This required
+  // all of them to be moved to Context.scala or else compilation would fail because certain
+  // insertValue/updateValue methods were not found.
+  extension [T](inline dynamicQuery: DynamicEntityQuery[T])
+    inline def insertValue(value: T): DynamicInsert[T] =
+      DynamicInsert(io.getquill.quote(insertValueDynamic(dynamicQuery.q)(lift(value))))
+    inline def updateValue(value: T): DynamicUpdate[T] =
+      DynamicUpdate(io.getquill.quote(updateValueDynamic(dynamicQuery.q)(lift(value))))
+
+  extension [T](inline entity: EntityQuery[T])
+    inline def insertValue(inline value: T): Insert[T] = ${ InsertUpdateMacro.static[T, Insert]('entity, 'value) }
+    inline def updateValue(inline value: T): Update[T] = ${ InsertUpdateMacro.static[T, Update]('entity, 'value) }
+    private[getquill] inline def insertValueDynamic(inline value: T): Insert[T] = ${ InsertUpdateMacro.dynamic[T, Insert]('entity, 'value) }
+    private[getquill] inline def updateValueDynamic(inline value: T): Update[T] = ${ InsertUpdateMacro.dynamic[T, Update]('entity, 'value) }
+
+  extension [T](inline quotedEntity: Quoted[EntityQuery[T]])
+    inline def insertValue(inline value: T): Insert[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).insertValue(value)
+    inline def updateValue(inline value: T): Update[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).updateValue(value)
+    private[getquill] inline def insertValueDynamic(inline value: T): Insert[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).insertValueDynamic(value)
+    private[getquill] inline def updateValueDynamic(inline value: T): Update[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).updateValueDynamic(value)
+
   extension [T](inline q: Query[T]) {
 
     /**
      * When using this with FilterColumns make sure it comes FIRST. Otherwise the columns are you filtering
      * may have been nullified in the SQL before the filteration has actually happened.
      */
-    inline def filterByKeys(inline map: Map[String, String]) =
-      q.filter(p => MapFlicer[T, PrepareRow, Session](p, map, null, (a, b) => (a == b) || (b == (null))))
+    inline def filterByKeys(inline map: Map[String, Any]) =
+      q.filter(p => MapFlicer[T, PrepareRow, Session](p, map))
 
     inline def filterColumns(inline columns: List[String]) =
       q.map(p => ColumnsFlicer[T, PrepareRow, Session](p, columns))
@@ -115,7 +144,7 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
     inline def runQuery[T](inline quoted: Quoted[Query[T]], inline wrap: OuterSelectWrap): Result[RunQueryResult[T]] = {
       val ca = make.op[Nothing, T, Result[RunQueryResult[T]]] { arg =>
         val simpleExt = arg.extractor.requireSimple()
-        self.executeQuery(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
+        self.executeQuery(arg.sql, arg.prepare, simpleExt.extract)(arg.executionInfo, _summonRunner())
       }
       QueryExecution.apply(ca)(quoted, None, wrap)
     }
@@ -123,14 +152,14 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
     inline def runQuerySingle[T](inline quoted: Quoted[T]): Result[RunQuerySingleResult[T]] = {
       val ca = make.op[Nothing, T, Result[RunQuerySingleResult[T]]] { arg =>
         val simpleExt = arg.extractor.requireSimple()
-        self.executeQuerySingle(arg.sql, arg.prepare.head, simpleExt.extract)(arg.executionInfo, _summonRunner())
+        self.executeQuerySingle(arg.sql, arg.prepare, simpleExt.extract)(arg.executionInfo, _summonRunner())
       }
       QueryExecution.apply(ca)(QuerySingleAsQuery(quoted), None)
     }
 
     inline def runAction[E](inline quoted: Quoted[Action[E]]): Result[RunActionResult] = {
       val ca = make.op[E, Any, Result[RunActionResult]] { arg =>
-        self.executeAction(arg.sql, arg.prepare.head)(arg.executionInfo, _summonRunner())
+        self.executeAction(arg.sql, arg.prepare)(arg.executionInfo, _summonRunner())
       }
       QueryExecution.apply(ca)(quoted, None)
     }
@@ -139,7 +168,7 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
       val ca = make.op[E, T, Result[RunActionReturningResult[T]]] { arg =>
         // Need an extractor with special information that helps with the SQL returning specifics
         val returningExt = arg.extractor.requireReturning()
-        self.executeActionReturning(arg.sql, arg.prepare.head, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
+        self.executeActionReturning(arg.sql, arg.prepare, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
       }
       QueryExecution.apply(ca)(quoted, None)
     }
@@ -148,28 +177,28 @@ trait Context[Dialect <: Idiom, Naming <: NamingStrategy]
       val ca = make.op[E, T, Result[RunActionReturningResult[List[T]]]] { arg =>
         // Need an extractor with special information that helps with the SQL returning specifics
         val returningExt = arg.extractor.requireReturning()
-        self.executeActionReturningMany(arg.sql, arg.prepare.head, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
+        self.executeActionReturningMany(arg.sql, arg.prepare, returningExt.extract, returningExt.returningBehavior)(arg.executionInfo, _summonRunner())
       }
       QueryExecution.apply(ca)(quoted, None)
     }
 
-    inline def runBatchAction[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionResult] = {
+    inline def runBatchAction[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): Result[RunBatchActionResult] = {
       val ca = make.batch[I, Nothing, A, Result[RunBatchActionResult]] { arg =>
         // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-        val group = BatchGroup(arg.sql, arg.prepare.toList)
-        self.executeBatchAction(List(group))(arg.executionInfo, _summonRunner())
+        val groups = arg.groups.map((sql, prepare) => BatchGroup(sql, prepare))
+        self.executeBatchAction(groups.toList)(arg.executionInfo, _summonRunner())
       }
-      BatchQueryExecution.apply(ca)(quoted)
+      QueryExecutionBatch.apply(ca, rowsPerBatch)(quoted)
     }
 
-    inline def runBatchActionReturning[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): Result[RunBatchActionReturningResult[T]] = {
+    inline def runBatchActionReturning[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): Result[RunBatchActionReturningResult[T]] = {
       val ca = make.batch[I, T, A, Result[RunBatchActionReturningResult[T]]] { arg =>
         val returningExt = arg.extractor.requireReturning()
         // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-        val group = BatchGroupReturning(arg.sql, returningExt.returningBehavior, arg.prepare.toList)
-        self.executeBatchActionReturning[T](List(group), returningExt.extract)(arg.executionInfo, _summonRunner())
+        val groups = arg.groups.map((sql, prepare) => BatchGroupReturning(sql, returningExt.returningBehavior, prepare))
+        self.executeBatchActionReturning[T](groups.toList, returningExt.extract)(arg.executionInfo, _summonRunner())
       }
-      BatchQueryExecution.apply(ca)(quoted)
+      QueryExecutionBatch.apply(ca, rowsPerBatch)(quoted)
     }
   end InternalApi
 

@@ -1,13 +1,12 @@
 package io.getquill.postgres
 
 import io.getquill.PeopleZioSpec
-import io.getquill.Prefix
+
 import org.scalatest.matchers.should.Matchers._
 import io.getquill._
 
 class PeopleZioJdbcSpec extends PeopleZioSpec {
 
-  override def prefix: Prefix = Prefix("testPostgresDB")
   val context = testContext
   import testContext._
 

@@ -18,11 +18,14 @@ import io.getquill.Insert
 import io.getquill.Update
 import io.getquill.parser.ParserFactory
 import io.getquill.metaprog.SummonParser
+import io.getquill.metaprog.SummonTranspileConfig
 import io.getquill.parser.engine.History
+import io.getquill.norm.TranspileConfig
 
 object MetaMacro:
   def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): (Tuple, Expr[String]) =
     val parser = SummonParser().assemble
+    given TranspileConfig = SummonTranspileConfig()
 
     // Pull out individual args from the apply
     val excludes = excludesRaw match

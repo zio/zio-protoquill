@@ -1,7 +1,7 @@
 package io.getquill.context.cassandra.udt
 
 import com.datastax.oss.driver.api.core.CqlIdentifier
-import io.getquill.{CassandraContextConfig, CassandraSyncContext, SnakeCase}
+import io.getquill.{CassandraContextConfig, CassandraSyncContext, SnakeCase, UdtMeta}
 import io.getquill.context.cassandra.testSyncDB
 import io.getquill.util.LoadConfig
 import io.getquill._
@@ -9,7 +9,6 @@ import io.getquill.context.cassandra.encoding.CassandraMapper
 import com.datastax.oss.driver.api.core.data.UdtValue
 import com.typesafe.config.ConfigValueFactory
 import io.getquill.context.cassandra.encoding.MapperSide
-import io.getquill.context.cassandra.UdtMeta
 
 
 class UdtEncodingSessionContextSpec extends UdtSpec {

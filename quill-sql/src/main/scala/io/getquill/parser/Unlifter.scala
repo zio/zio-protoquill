@@ -45,12 +45,12 @@ object Unlifter {
     def attempt(expr: Expr[T])(using Quotes): Option[T] =
       import quotes.reflect._
       expr match
-        case '{ SerialHelper.fromSerialized[tt](${ Expr(serial: String) }) } if (TypeRepr.of[tt] <:< TypeRepr.of[Ast]) =>
-          Some(SerialHelper.fromSerialized[Ast](serial).asInstanceOf[T])
+        case '{ SerialHelper.Ast.fromSerialized(${ Expr(serial: String) }).asInstanceOf[t] } =>
+          Some(SerialHelper.Ast.fromSerialized(serial).asInstanceOf[T])
         // On JVM, a Quat must be serialized and then lifted from the serialized state i.e. as a FromSerialized using JVM (due to 64KB method limit)
-        case '{ SerialHelper.QuatProduct.fromSerialized(${ Expr(str: String) }) } =>
+        case '{ SerialHelper.QuatProduct.fromSerialized(${ Expr(str: String) }).asInstanceOf[t] } =>
           Some(SerialHelper.QuatProduct.fromSerialized(str).asInstanceOf[T])
-        case '{ SerialHelper.Quat.fromSerialized(${ Expr(str: String) }) } =>
+        case '{ SerialHelper.Quat.fromSerialized(${ Expr(str: String) }).asInstanceOf[t] } =>
           Some(SerialHelper.Quat.fromSerialized(str).asInstanceOf[T])
         case _ =>
           unlift.lift(expr)
@@ -240,11 +240,14 @@ object Unlifter {
 
   given unliftQuery: NiceUnliftable[AQuery] with
     def unlift =
-      case Is[Entity](ent)                                                                => unliftEntity(ent)
-      case Is[Map]('{ Map(${ query }, ${ alias }, ${ body }: Ast) })                      => Map(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[FlatMap]('{ FlatMap(${ query }, ${ alias }, ${ body }: Ast) })              => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[Filter]('{ Filter(${ query }, ${ alias }, ${ body }: Ast) })                => Filter(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[GroupBy]('{ GroupBy(${ query }, ${ alias }, ${ body }: Ast) })              => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Entity](ent)                                                   => unliftEntity(ent)
+      case Is[Map]('{ Map(${ query }, ${ alias }, ${ body }: Ast) })         => Map(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[FlatMap]('{ FlatMap(${ query }, ${ alias }, ${ body }: Ast) }) => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Filter]('{ Filter(${ query }, ${ alias }, ${ body }: Ast) })   => Filter(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[GroupBy]('{ GroupBy(${ query }, ${ alias }, ${ body }: Ast) }) => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[GroupByMap]('{ GroupByMap(${ query }, ${ byAlias }, ${ byBody }, ${ mapAlias }, ${ mapBody }) }) =>
+        GroupByMap(query.unexpr, byAlias.unexpr, byBody.unexpr, mapAlias.unexpr, mapBody.unexpr)
+
       case Is[SortBy]('{ SortBy(${ query }, ${ alias }, ${ criterias }, ${ ordering }) }) => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
       case Is[Distinct]('{ Distinct(${ a }) })                                            => Distinct(a.unexpr)
       case Is[DistinctOn]('{ DistinctOn(${ query }, ${ alias }, $body) })                 => DistinctOn(query.unexpr, alias.unexpr, body.unexpr)
@@ -285,7 +288,7 @@ object Unlifter {
       case Is[UnaryOperation]('{ UnaryOperation(${ operator }, ${ a }: Ast) })           => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
       case Is[BinaryOperation]('{ BinaryOperation(${ a }, ${ operator }, ${ b }: Ast) }) => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
       case Is[Property]('{ Property(${ ast }, ${ name }) })                              => Property(ast.unexpr, constString(name))
-      case Is[ScalarTag]('{ ScalarTag(${ uid }) })                                       => ScalarTag(constString(uid))
+      case Is[ScalarTag]('{ ScalarTag(${ uid }, ${ source }) })                          => ScalarTag(constString(uid), source.unexpr)
       case Is[QuotationTag]('{ QuotationTag($uid) })                                     => QuotationTag(constString(uid))
       case Is[Infix]('{ Infix($parts, $params, $pure, $transparent, $quat) })            => Infix(parts.unexpr, params.unexpr, pure.unexpr, transparent.unexpr, quat.unexpr)
       case Is[Tuple]('{ Tuple.apply($values) })                                          => Tuple(values.unexpr)
@@ -299,9 +302,14 @@ object Unlifter {
       case '{ NullValue }                                        => NullValue
   }
 
+  given unliftScalarTagSource: NiceUnliftable[External.Source] with
+    def unlift =
+      case '{ External.Source.Parser }                            => External.Source.Parser
+      case '{ External.Source.UnparsedProperty(${ Expr(name) }) } => External.Source.UnparsedProperty(name)
+
   given unliftCaseClass: NiceUnliftable[CaseClass] with
     def unlift =
-      case '{ CaseClass(${ values }: List[(String, Ast)]) } => CaseClass(values.unexpr)
+      case '{ CaseClass(${ name }, ${ values }: List[(String, Ast)]) } => CaseClass(name.unexpr, values.unexpr)
 
   given unliftOperator: NiceUnliftable[Operator] with {
     def unlift =
@@ -342,9 +350,8 @@ object Unlifter {
 
   given quatProductUnliftable: NiceUnliftable[Quat.Product] with {
     def unlift =
-      case '{ Quat.Product.WithRenamesCompact.apply($tpe)(${ Varargs(fields) }: _*)(${ Varargs(values) }: _*)(${ Varargs(renamesFrom) }: _*)(${ Varargs(renamesTo) }: _*) } =>
-        Quat.Product.WithRenamesCompact(tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
-    // case '{ Quat.Product.apply(${Varargs(fields)}: _*) } => Quat.Product(fields.unexprSeq: _*)
+      case '{ Quat.Product.WithRenamesCompact.apply($name, $tpe)(${ Varargs(fields) }: _*)(${ Varargs(values) }: _*)(${ Varargs(renamesFrom) }: _*)(${ Varargs(renamesTo) }: _*) } =>
+        Quat.Product.WithRenamesCompact(name.unexpr, tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
   }
 
   given quatUnliftable: NiceUnliftable[Quat] with {

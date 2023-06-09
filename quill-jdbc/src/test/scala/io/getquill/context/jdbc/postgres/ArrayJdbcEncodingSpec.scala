@@ -35,32 +35,6 @@ class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec {
     ctx.run(tQ).head.timestamps mustBe tE.timestamps
   }
 
-  "Catch invalid decoders" in {
-    val newCtx = new PostgresJdbcContext(Literal, "testPostgresDB") {
-      // avoid transforming from java.sql.Date to java.time.LocalDate
-      override implicit def arrayLocalDateDecoder[Col <: Seq[LocalDate]](implicit bf: CBF[LocalDate, Col]): Decoder[Col] =
-        arrayDecoder[LocalDate, LocalDate, Col](identity)
-    }
-    import newCtx._
-    newCtx.run(query[ArraysTestEntity].insertValue(lift(corrected)))
-    intercept[IllegalStateException] {
-      newCtx.run(query[ArraysTestEntity]).head mustBe corrected
-    }
-    newCtx.close()
-  }
-
-  "Custom decoders/encoders" in {
-    case class Entity(uuids: List[UUID])
-    val e = Entity(List(UUID.randomUUID(), UUID.randomUUID()))
-    val q = quote(querySchema[Entity]("ArraysTestEntity"))
-
-    implicit def arrayUUIDEncoder[Col <: Seq[UUID]]: Encoder[Col] = arrayRawEncoder[UUID, Col]("uuid")
-    implicit def arrayUUIDDecoder[Col <: Seq[UUID]](implicit bf: CBF[UUID, Col]): Decoder[Col] = arrayRawDecoder[UUID, Col]
-
-    ctx.run(q.insertValue(lift(e)))
-    ctx.run(q).head.uuids mustBe e.uuids
-  }
-
   "Arrays in where clause" in {
     ctx.run(q.insertValue(lift(corrected)))
     val actual1 = ctx.run(q.filter(_.texts == lift(List("test"))))

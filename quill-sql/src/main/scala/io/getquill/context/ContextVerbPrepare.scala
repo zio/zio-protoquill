@@ -44,7 +44,7 @@ import io.getquill.metaprog.etc.ColumnsFlicer
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 
-trait ContextVerbPrepare[Dialect <: Idiom, Naming <: NamingStrategy]:
+trait ContextVerbPrepare[+Dialect <: Idiom, +Naming <: NamingStrategy]:
   self: Context[Dialect, Naming] =>
 
   type Result[T]
@@ -69,7 +69,7 @@ trait ContextVerbPrepare[Dialect <: Idiom, Naming <: NamingStrategy]:
   @targetName("runPrepareQuery")
   inline def prepare[T](inline quoted: Quoted[Query[T]]): PrepareQueryResult = {
     val ca = make.op[Nothing, T, PrepareQueryResult] { arg =>
-      self.prepareQuery(arg.sql, arg.prepare.head)(arg.executionInfo, _summonPrepareRunner())
+      self.prepareQuery(arg.sql, arg.prepare)(arg.executionInfo, _summonPrepareRunner())
     }
     QueryExecution.apply(ca)(quoted, None)
   }
@@ -80,7 +80,7 @@ trait ContextVerbPrepare[Dialect <: Idiom, Naming <: NamingStrategy]:
   @targetName("runPrepareAction")
   inline def prepare[E](inline quoted: Quoted[Action[E]]): PrepareActionResult = {
     val ca = make.op[E, Any, PrepareActionResult] { arg =>
-      self.prepareAction(arg.sql, arg.prepare.head)(arg.executionInfo, _summonPrepareRunner())
+      self.prepareAction(arg.sql, arg.prepare)(arg.executionInfo, _summonPrepareRunner())
     }
     QueryExecution.apply(ca)(quoted, None)
   }
@@ -88,9 +88,9 @@ trait ContextVerbPrepare[Dialect <: Idiom, Naming <: NamingStrategy]:
   @targetName("runPrepareBatchAction")
   inline def prepare[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): PrepareBatchActionResult = {
     val ca = make.batch[I, Nothing, A, PrepareBatchActionResult] { arg =>
-      val group = BatchGroup(arg.sql, arg.prepare.toList)
-      self.prepareBatchAction(List(group))(arg.executionInfo, _summonPrepareRunner())
+      val groups = arg.groups.map((sql, prepare) => BatchGroup(sql, prepare))
+      self.prepareBatchAction(groups.toList)(arg.executionInfo, _summonPrepareRunner())
     }
-    BatchQueryExecution.apply(ca)(quoted)
+    QueryExecutionBatch.apply(ca, 1)(quoted)
   }
 end ContextVerbPrepare

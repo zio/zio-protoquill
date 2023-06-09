@@ -13,16 +13,16 @@ class FlicerCombinationSpec extends Spec with Inside {
   case class PersonAddress(first: String, last: String, street: Option[String])
 
   override def beforeAll(): Unit = {
-    ctx.run(infix"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
+    ctx.run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
     // Using sequence generation in the DB to create a table with a large amount of content fast. Otherwise
     // the test has to wait for 1000000 individual inserts which is very slow.
-    ctx.run(infix"insert into PersonT (first, last, age) select i, i, i from generate_series(1, 100000) as t(i);".as[Insert[PersonT]])
-    ctx.run(infix"insert into AddressT (ownerId, street) select i, i from generate_series(1, 100000) as t(i);".as[Insert[PersonT]])
+    ctx.run(sql"insert into PersonT (first, last, age) select i, i, i from generate_series(1, 100000) as t(i);".as[Insert[PersonT]])
+    ctx.run(sql"insert into AddressT (ownerId, street) select i, i from generate_series(1, 100000) as t(i);".as[Insert[PersonT]])
   }
 
   override def afterAll(): Unit = {
     // Want to truncate instead of delete so that plan cost will be consistent
-    ctx.run(infix"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
+    ctx.run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
   }
 
   "Selection should be correct when" - {

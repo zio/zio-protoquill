@@ -3,7 +3,6 @@ package io.getquill
 import io.getquill.parser._
 import scala.quoted._
 import scala.annotation.StaticAnnotation
-import io.getquill.util.printer.AstPrinter
 import scala.deriving._
 import io.getquill.generic.GenericEncoder
 import io.getquill.quotation.NonQuotedException
@@ -24,8 +23,26 @@ trait EntityQuery[T] extends EntityQueryModel[T] with Unquoteable:
   override def filter(f: T => Boolean): EntityQuery[T] = NonQuotedException()
   override def map[R](f: T => R): EntityQuery[R] = NonQuotedException()
 
-case class Quoted[+T](val ast: io.getquill.ast.Ast, lifts: List[Planter[_, _, _]], runtimeQuotes: List[QuotationVase]) {
-  override def toString = io.getquill.util.Messages.qprint(this).plainText
+class Quoted[+T](val ast: io.getquill.ast.Ast, val lifts: List[Planter[_, _, _]], val runtimeQuotes: List[QuotationVase]) {
+  // This is not a case-class because the dynamic API uses (quoted:Quoted[(foo, bar)])._1 etc... which would return quoted.ast
+  // where instead we want unquote(quoted)._1 to happen instead but the implicit unquote would never happen if quoted
+  // is a case class in the _1 property is available on the object.
+  protected lazy val id = Quoted.QuotedId(ast, lifts, runtimeQuotes)
+  override def toString = io.getquill.util.Messages.qprint(id).plainText
+  override def hashCode(): Int = id.hashCode
+  override def equals(other: Any): Boolean =
+    other match
+      case q: Quoted[_] => q.id == this.id
+      case _            => false
+  def copy(ast: io.getquill.ast.Ast = this.ast, lifts: List[Planter[_, _, _]] = this.lifts, runtimeQuotes: List[QuotationVase] = this.runtimeQuotes) =
+    Quoted(ast, lifts, runtimeQuotes)
+}
+object Quoted {
+  case class QuotedId(val ast: io.getquill.ast.Ast, val lifts: List[Planter[_, _, _]], val runtimeQuotes: List[QuotationVase])
+  def apply[T](ast: io.getquill.ast.Ast, lifts: List[Planter[_, _, _]], runtimeQuotes: List[QuotationVase]) =
+    new Quoted[T](ast, lifts, runtimeQuotes)
+  def unapply[T](quoted: Quoted[T]) =
+    Some((quoted.ast, quoted.lifts, quoted.runtimeQuotes))
 }
 
 // Planters contain trees that can be re-inserted into compile-time code.
@@ -48,6 +65,18 @@ private[getquill] trait InfixValue {
 implicit class InfixInterpolator(val sc: StringContext) {
   // @compileTimeOnly(NonQuotedException.message)
   def infix(args: Any*): InfixValue = NonQuotedException()
+}
+
+implicit class SqlInfixInterpolator(val sc: StringContext) {
+  // @compileTimeOnly(NonQuotedException.message)
+  def sql(args: Any*): InfixValue = NonQuotedException()
+}
+
+object compat {
+  implicit class QsqlInfixInterpolator(val sc: StringContext) {
+    // @compileTimeOnly(NonQuotedException.message)
+    def qsql(args: Any*): InfixValue = NonQuotedException()
+  }
 }
 
 case class InjectableEagerPlanter[T, PrepareRow, Session](inject: _ => T, encoder: GenericEncoder[T, PrepareRow, Session], uid: String) extends Planter[T, PrepareRow, Session] {
