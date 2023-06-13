@@ -51,6 +51,7 @@ import io.getquill.metaprog.SummonTranspileConfig
 import io.getquill.idiom.Token
 import io.getquill.util.Interpolator
 import io.getquill.util.Messages.TraceType
+import io.getquill.util.Format
 
 object ContextOperation:
   case class SingleArgument[I, T, A <: QAC[I, _] with Action[I], D <: Idiom, N <: NamingStrategy, PrepareRow, ResultRow, Session, Ctx <: Context[_, _], Res](
@@ -335,8 +336,10 @@ object QueryExecution:
       // we have Expr[Ast] instead of Ast in the times when we have Type[T]. We could Elaborate T during compile-time
       // and then decide to plug in the elaboration or not during runtime (depending on the type of Ast which would be runtime-checked)
       // but that would be less straightforward to do.
-      val pluckedAst = '{ $quote.ast }
-      val elaboratedAstQuote = '{ $quote.copy(ast = $pluckedAst) }
+      // Also note that doing something like // val pluckedAst = '{ $quote.ast }; '{ $quote.copy(ast = $pluckedAst) } will physically
+      // re-run all the terms in `ast` which in the dynamic-api case could re-generate UIDs which does cause consistencies
+      // because the UIDs would be replaced in the AST and overridden to values that are not the same as the EagerPlanters.
+      val elaboratedAstQuote = '{ $quote.asInstanceOf[io.getquill.Quoted[io.getquill.QAC[I, RawT]]] }
       val extractor: Expr[io.getquill.context.Extraction[ResultRow, Session, T]] = MakeExtractor[ResultRow, Session, T, RawT].dynamic(converter, extract)
 
       // TODO What about when an extractor is not neededX
@@ -466,7 +469,12 @@ object PrepareDynamicExecution:
       case (Extraction.Simple(extract), Some(returningAction)) => Extraction.Returning(extract, returningAction)
       case (Extraction.Simple(_), None)                        => rawExtractor
       case (Extraction.None, None)                             => rawExtractor
-      case (extractor, returningAction)                        => throw new IllegalArgumentException(s"Invalid state. Cannot have ${extractor} with a returning action ${returningAction}")
+      case (extractor, returningAction) =>
+        throw new IllegalArgumentException(
+          s"Invalid state. Cannot have ${extractor} with a returning action ${returningAction}. Sometimes this " +
+            s"happens when a ActionReturning[E, O] is accidentally widened to Action[E] hence no return-extractor " +
+            s"for the output type O can be summoned."
+        )
 
     val (_, externals) = Unparticular.Query.fromStatement(stmt, idiom.liftingPlaceholder)
 
@@ -487,9 +495,10 @@ object PrepareDynamicExecution:
         case Left(msg) =>
           throw new IllegalArgumentException(
             s"Could not process the lifts:\n" +
+              s"In the quotation:\n${Format(io.getquill.util.Messages.qprint(quoted).plainText)}\n" +
               s"${gatheredLifts.map(_.toString).mkString("====\n")}" +
               (if (additionalLifts.nonEmpty) s"${additionalLifts.map(_.toString).mkString("====\n")}" else "") +
-              s"Due to an error: $msg"
+              s"\nDue to an error: $msg"
           )
 
     (stmt, outputAst, sortedLifts, extractor, sortedSecondaryLifts)

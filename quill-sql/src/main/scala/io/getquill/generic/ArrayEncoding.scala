@@ -2,6 +2,7 @@ package io.getquill.generic
 
 import java.time.LocalDate
 import java.util.Date
+import java.util.UUID
 
 //import io.getquill.context.sql.SqlContext
 
@@ -27,6 +28,7 @@ trait ArrayEncoding extends EncodingDsl {
   implicit def arrayDoubleEncoder[Col <: Seq[Double]]: Encoder[Col]
   implicit def arrayDateEncoder[Col <: Seq[Date]]: Encoder[Col]
   implicit def arrayLocalDateEncoder[Col <: Seq[LocalDate]]: Encoder[Col]
+  implicit def arrayUuidEncoder[Col <: Seq[UUID]]: Encoder[Col]
 
   implicit def arrayStringDecoder[Col <: Seq[String]](implicit bf: CBF[String, Col]): Decoder[Col]
   implicit def arrayBigDecimalDecoder[Col <: Seq[BigDecimal]](implicit bf: CBF[BigDecimal, Col]): Decoder[Col]
@@ -39,6 +41,7 @@ trait ArrayEncoding extends EncodingDsl {
   implicit def arrayDoubleDecoder[Col <: Seq[Double]](implicit bf: CBF[Double, Col]): Decoder[Col]
   implicit def arrayDateDecoder[Col <: Seq[Date]](implicit bf: CBF[Date, Col]): Decoder[Col]
   implicit def arrayLocalDateDecoder[Col <: Seq[LocalDate]](implicit bf: CBF[LocalDate, Col]): Decoder[Col]
+  implicit def arrayUuidDecoder[Col <: Seq[UUID]](implicit bf: Factory[UUID, Col]): Decoder[Col]
 
   implicit def arrayMappedEncoder[I, O, Col[X] <: Seq[X]](
       implicit

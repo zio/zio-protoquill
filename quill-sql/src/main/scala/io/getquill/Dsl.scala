@@ -25,6 +25,7 @@ import io.getquill.context.LiftMacro
 import io.getquill._
 import io.getquill.context.StaticSpliceMacro
 import scala.language.implicitConversions
+import io.getquill.dsl.DateOps
 
 implicit val defaultParser: ParserLibrary = ParserLibrary
 
@@ -56,7 +57,7 @@ def sum[A](a: Option[A])(implicit n: Numeric[A]): Option[A] = NonQuotedException
 extension [T](o: Option[T])
   def filterIfDefined(f: T => Boolean): Boolean = NonQuotedException()
 
-object extras:
+object extras extends DateOps:
   extension [T](a: T)
     def getOrNull: T =
       throw new IllegalArgumentException(
@@ -93,13 +94,6 @@ inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ UnquoteMacro[T]
 
 inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteMacro[T]('body) }
 
-extension [T](inline entity: EntityQuery[T])
-  // Note that although this is in the static DSL if you lift a case class inside the insert or anything else, it will try to do a standard lift for that
-  // requiring a context to be present.
-  // Also note that the regular insert/update methods are not macros, they are defined on EntityQuery and captured by the Parser.
-  inline def insertValue(inline value: T): Insert[T] = ${ InsertUpdateMacro[T, Insert]('entity, 'value) }
-  inline def updateValue(inline value: T): Update[T] = ${ InsertUpdateMacro[T, Update]('entity, 'value) }
-
 // Doing:          val p = quote { query[Person] }
 // and then doing: val q = quote { p.insert(_.name -> "blah") }
 //  or then doing: val q = quote { p.insertValue(lift(Person("Joe", 123))) }
@@ -110,5 +104,3 @@ extension [T](inline entity: EntityQuery[T])
 extension [T](inline quotedEntity: Quoted[EntityQuery[T]])
   inline def insert(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Insert[T] = unquote[EntityQuery[T]](quotedEntity).insert(f, f2: _*)
   inline def update(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Update[T] = unquote[EntityQuery[T]](quotedEntity).update(f, f2: _*)
-  inline def insertValue(inline value: T): Insert[T] = unquote[EntityQuery[T]](quotedEntity).insertValue(value)
-  inline def updateValue(inline value: T): Update[T] = unquote[EntityQuery[T]](quotedEntity).updateValue(value)

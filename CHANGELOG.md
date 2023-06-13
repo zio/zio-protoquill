@@ -1,3 +1,28 @@
+# 4.6.0.1
+
+- [Upgrade to latest version of ZIO (2.0.8)](https://github.com/zio/zio-protoquill/pull/242)
+- [JDBC DataSource should not need to be closeable](https://github.com/zio/zio-protoquill/pull/205)
+
+# 4.6.0
+
+- [Json/Jsonb Encoding for Postgres. Bump ZIO](https://github.com/zio/zio-protoquill/pull/202)
+
+# 4.5.0
+
+- [Implement Dynamic Query DSL for ProtoQuill](https://github.com/zio/zio-protoquill/pull/198)
+- [Fix dynamic Insert/UpdateMeta and better warning message](https://github.com/zio/zio-protoquill/pull/197)
+- [Support for structural types in Quoted functions](https://github.com/zio/zio-protoquill/pull/199)
+- [Upstream changes. Add JDBC encoders for java.time dates](https://github.com/zio/zio-protoquill/pull/191)
+
+# 4.4.1
+
+- [Fixing Caliban Datatype conversion issues](https://github.com/zio/zio-protoquill/pull/188)
+- [Incorporate Quill 4.4.1 change from upstream](https://github.com/zio/zio-protoquill/pull/189)
+
+# 4.4.0
+
+- [Integrating upstream changes for Update VALUES-clause optimization](https://github.com/zio/zio-protoquill/pull/182)
+
 # 4.3.0
 
 - [Implementing multi-row insert for liftQuery(...).foreach](https://github.com/zio/zio-protoquill/pull/172)

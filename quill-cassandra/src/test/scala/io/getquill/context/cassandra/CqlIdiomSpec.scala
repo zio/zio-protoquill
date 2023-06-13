@@ -400,7 +400,7 @@ class CqlIdiomSpec extends Spec {
     }
     "cql" in {
       val t = implicitly[Tokenizer[CqlQuery]]
-      val e = CqlQuery(Entity("name", Nil, QEP), None, Nil, None, Nil, distinct = true)
+      val e = CqlQuery(Entity("name", Nil, QEP("name")), None, Nil, None, Nil, distinct = true)
       intercept[IllegalStateException](t.token(e))
       t.token(e.copy(distinct = false)) mustBe stmt"SELECT * FROM name"
     }
@@ -411,7 +411,7 @@ class CqlIdiomSpec extends Spec {
       implicitly[Tokenizer[Value]].token(Tuple(List(Ident("a")))) mustBe stmt"a"
     }
     "value in caseclass" in {
-      implicitly[Tokenizer[Value]].token(CaseClass(List(("value", Ident("a"))))) mustBe stmt"a"
+      implicitly[Tokenizer[Value]].token(CaseClass("Value", List(("value", Ident("a"))))) mustBe stmt"a"
     }
     "action" in {
       val t = implicitly[Tokenizer[AstAction]]

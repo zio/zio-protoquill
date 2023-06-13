@@ -8,6 +8,12 @@ import scala.math.BigDecimal.javaBigDecimal2bigDecimal
 
 // Needed as an import in Protoquill but not in Scala2 Quill. Not sure why
 import io.getquill.MappedEncoding
+import java.time.LocalTime
+import java.time.ZonedDateTime
+import java.time.OffsetDateTime
+import java.time.Instant
+import java.time.OffsetTime
+import java.time.ZoneOffset
 
 trait Decoders {
   this: JdbcContextTypes[_, _] =>
@@ -50,6 +56,10 @@ trait Decoders {
       }
     )
 
+  implicit val sqlDateDecoder: Decoder[java.sql.Date] = decoder(_.getDate)
+  implicit val sqlTimeDecoder: Decoder[java.sql.Time] = decoder(_.getTime)
+  implicit val sqlTimestampDecoder: Decoder[java.sql.Timestamp] = decoder(_.getTimestamp)
+
   implicit val stringDecoder: Decoder[String] = decoder(_.getString)
   implicit val bigDecimalDecoder: Decoder[BigDecimal] =
     decoder((index, row, session) =>
@@ -64,10 +74,62 @@ trait Decoders {
   implicit val dateDecoder: Decoder[util.Date] =
     decoder((index, row, session) =>
       new util.Date(row.getTimestamp(index, Calendar.getInstance(dateTimeZone)).getTime))
+}
+
+trait BasicTimeDecoders extends Decoders {
+  this: JdbcContextTypes[_, _] =>
+
   implicit val localDateDecoder: Decoder[LocalDate] =
     decoder((index, row, session) =>
-      row.getDate(index, Calendar.getInstance(dateTimeZone)).toLocalDate)
+      row.getDate(index).toLocalDate)
+  implicit val localTimeDecoder: Decoder[LocalTime] =
+    decoder((index, row, session) =>
+      row.getTime(index).toLocalTime)
   implicit val localDateTimeDecoder: Decoder[LocalDateTime] =
     decoder((index, row, session) =>
-      row.getTimestamp(index, Calendar.getInstance(dateTimeZone)).toLocalDateTime)
+      row.getTimestamp(index).toLocalDateTime)
+
+  implicit val zonedDateTimeDecoder: Decoder[ZonedDateTime] =
+    decoder((index, row, session) =>
+      ZonedDateTime.ofInstant(row.getTimestamp(index).toInstant, dateTimeZone.toZoneId))
+  implicit val instantDecoder: Decoder[Instant] =
+    decoder((index, row, session) =>
+      row.getTimestamp(index).toInstant)
+
+  implicit val offsetTimeDecoder: Decoder[OffsetTime] =
+    decoder((index, row, session) => {
+      val utcLocalTime = row.getTime(index).toLocalTime
+      utcLocalTime.atOffset(ZoneOffset.UTC)
+    })
+  implicit val offsetDateTimeDecoder: Decoder[OffsetDateTime] =
+    decoder((index, row, session) =>
+      OffsetDateTime.ofInstant(row.getTimestamp(index).toInstant, dateTimeZone.toZoneId))
+}
+
+trait ObjectGenericTimeDecoders extends Decoders {
+  this: JdbcContextTypes[_, _] =>
+
+  implicit val localDateDecoder: Decoder[LocalDate] =
+    decoder((index, row, session) =>
+      row.getObject(index, classOf[LocalDate]))
+  implicit val localTimeDecoder: Decoder[LocalTime] =
+    decoder((index, row, session) =>
+      row.getObject(index, classOf[LocalTime]))
+  implicit val localDateTimeDecoder: Decoder[LocalDateTime] =
+    decoder((index, row, session) =>
+      row.getObject(index, classOf[LocalDateTime]))
+
+  implicit val zonedDateTimeDecoder: Decoder[ZonedDateTime] =
+    decoder((index, row, session) =>
+      row.getObject(index, classOf[OffsetDateTime]).toZonedDateTime)
+  implicit val instantDecoder: Decoder[Instant] =
+    decoder((index, row, session) =>
+      row.getObject(index, classOf[OffsetDateTime]).toInstant)
+
+  implicit val offsetTimeDecoder: Decoder[OffsetTime] =
+    decoder((index, row, session) =>
+      row.getObject(index, classOf[OffsetTime]))
+  implicit val offsetDateTimeDecoder: Decoder[OffsetDateTime] =
+    decoder((index, row, session) =>
+      row.getObject(index, classOf[OffsetDateTime]))
 }

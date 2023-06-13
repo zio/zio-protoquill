@@ -24,7 +24,7 @@ object PlainApp {
         .tap(result => zio.ZIO.attempt(println(result.toString)))
         .provideLayer(zioDS)
 
-    Unsafe.unsafe {
+    Unsafe.unsafe { implicit unsafe =>
       Runtime.default.unsafe.run(qzio).getOrThrow()
     }
     ()
