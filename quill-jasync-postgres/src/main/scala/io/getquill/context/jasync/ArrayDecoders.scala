@@ -3,6 +3,7 @@ package io.getquill.context.jasync
 import java.time.{ LocalDate, LocalDateTime, ZoneId }
 import java.util
 import java.util.Date
+import java.util.UUID
 import io.getquill.{ PostgresJAsyncContext, PostgresJAsyncContextBase }
 import io.getquill.generic.ArrayEncoding
 import io.getquill.util.Messages.fail
@@ -26,6 +27,7 @@ trait ArrayDecoders extends ArrayEncoding {
   implicit def arrayDateDecoder[Col <: Seq[Date]](implicit bf: CBF[Date, Col]): Decoder[Col] = arrayDecoder[LocalDateTime, Date, Col](d => Date.from(d.atZone(ZoneId.systemDefault()).toInstant))
   implicit def arrayLocalDateDecoder[Col <: Seq[LocalDate]](implicit bf: CBF[LocalDate, Col]): Decoder[Col] = arrayRawDecoder[LocalDate, Col]
   implicit def arrayLocalDateTimeDecoder[Col <: Seq[LocalDateTime]](implicit bf: CBF[LocalDateTime, Col]): Decoder[Col] = arrayRawDecoder[LocalDateTime, Col]
+  implicit def arrayUuidDecoder[Col <: Seq[UUID]](implicit bf: Factory[UUID, Col]): Decoder[Col] = arrayRawDecoder[UUID, Col]
 
   def arrayDecoder[I, O, Col <: Seq[O]](mapper: I => O)(implicit bf: CBF[O, Col], iTag: ClassTag[I], oTag: ClassTag[O]): Decoder[Col] =
     AsyncDecoder[Col](SqlTypes.ARRAY)(new BaseDecoder[Col] {
