@@ -194,7 +194,7 @@ lazy val `quill-jasync` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.jasync-sql" % "jasync-common" % "2.0.9"
+        "com.github.jasync-sql" % "jasync-common" % "2.1.24"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -206,7 +206,7 @@ lazy val `quill-jasync-postgres` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.jasync-sql" % "jasync-postgresql" % "2.0.9"
+        "com.github.jasync-sql" % "jasync-postgresql" % "2.1.24"
       )
     )
     .dependsOn(`quill-jasync` % "compile->compile;test->test")
@@ -253,7 +253,7 @@ lazy val `quill-jdbc-zio` =
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
-        "org.postgresql" % "postgresql" % "42.3.8" %  "provided",
+        "org.postgresql" % "postgresql" % "42.6.0" %  "provided",
         "dev.zio" %% "zio-json" % "0.5.0"
       ),
        Test / runMain / fork := true,
@@ -280,7 +280,7 @@ lazy val `quill-cassandra` =
     .settings(
       Test / fork := false,
       libraryDependencies ++= Seq(
-        "com.datastax.oss" % "java-driver-core" % "4.15.0"
+        "com.datastax.oss" % "java-driver-core" % "4.16.0"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -292,7 +292,7 @@ lazy val `quill-cassandra-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.datastax.oss" % "java-driver-core" % "4.15.0",
+        "com.datastax.oss" % "java-driver-core" % "4.16.0",
         "dev.zio" %% "zio" % "2.0.14",
         "dev.zio" %% "zio-streams" % "2.0.14"
       )
@@ -323,7 +323,7 @@ lazy val jdbcTestingLibraries = Seq(
     "mysql"                   %  "mysql-connector-java"    % "8.0.33"             % Test,
     "com.h2database"          %  "h2"                      % "2.1.214"            % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
-    "org.postgresql"          %  "postgresql"              % "42.3.8"             % Test,
+    "org.postgresql"          %  "postgresql"              % "42.6.0"             % Test,
     "org.xerial"              %  "sqlite-jdbc"             % "3.32.3.3"             % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" %  "mssql-jdbc"              % "7.2.2.jre8" % Test,
