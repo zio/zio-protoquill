@@ -324,7 +324,7 @@ lazy val jdbcTestingLibraries = Seq(
     "com.h2database"          %  "h2"                      % "2.1.214"            % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
     "org.postgresql"          %  "postgresql"              % "42.6.0"             % Test,
-    "org.xerial"              %  "sqlite-jdbc"             % "3.32.3.3"             % Test,
+    "org.xerial"              %  "sqlite-jdbc"             % "3.42.0.0"             % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" %  "mssql-jdbc"              % "7.2.2.jre8" % Test,
     "com.oracle.ojdbc"        %  "ojdbc8"                  % "19.3.0.0"           % Test,
