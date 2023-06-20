@@ -312,13 +312,13 @@ lazy val commonSettings =
         Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
       )
     else
-      Seq()
+      Seq.empty
   }
 
 lazy val jdbcTestingLibraries = Seq(
   // JDBC Libraries for testing of quill-jdbc___ contexts
   libraryDependencies ++= Seq(
-    "com.zaxxer"              %  "HikariCP"                % "3.4.5",
+    "com.zaxxer"              %  "HikariCP"                % "4.0.3"  exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
     "mysql"                   %  "mysql-connector-java"    % "8.0.33"             % Test,
     "com.h2database"          %  "h2"                      % "2.1.214"            % Test,
@@ -339,14 +339,12 @@ lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
 lazy val basicSettings = Seq(
   Test / testOptions += Tests.Argument("-oI"),
   libraryDependencies ++= Seq(
-    ("org.scala-lang.modules" %% "scala-java8-compat" % "1.0.1")
+    ("org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2")
   ),
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
-  scalaVersion := {
-    if (isCommunityBuild) dottyLatestNightlyBuild().get else "3.2.2"
-  },
+  scalaVersion := "3.3.0",
   organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.

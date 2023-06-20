@@ -1,3 +1,7 @@
+# 4.7.0
+
+- [Update Scala to 3.3.0, sbt to 1.9.0 and HikariCP to 4.0.3](https://github.com/zio/zio-protoquill/pull/276)
+
 # 4.6.0.1
 
 - [Upgrade to latest version of ZIO (2.0.8)](https://github.com/zio/zio-protoquill/pull/242)
