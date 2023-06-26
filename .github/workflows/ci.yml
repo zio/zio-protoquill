@@ -21,7 +21,7 @@ jobs:
         module: [sqltest, db, async, bigdata]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Setup Java and Scala
       uses: olafurpg/setup-scala@v10
       with:
@@ -43,7 +43,7 @@ jobs:
         module: [base, db, async, bigdata, publish]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Setup Java and Scala
       uses: olafurpg/setup-scala@v10
       with:
