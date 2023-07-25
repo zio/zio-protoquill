@@ -1,6 +1,9 @@
-# 4.7.0
+# 4.6.0.2
 
 - [Update Scala to 3.3.0, sbt to 1.9.0 and HikariCP to 4.0.3](https://github.com/zio/zio-protoquill/pull/276)
+- [Remove unneccessary logging in DynamicDsl](https://github.com/zio/zio-protoquill/pull/258)
+- [Report query compilation times when compiling the code](https://github.com/zio/zio-protoquill/pull/254)
+- [Add encoding for UUID arrays in Postgres](https://github.com/zio/zio-protoquill/pull/237)
 
 # 4.6.0.1
 
