@@ -77,18 +77,17 @@ val filteredModules = {
   selectedModules
 }
 
-lazy val `quill` = {
+lazy val `quill` =
   (project in file("."))
     .settings(commonSettings: _*)
-    .aggregate(filteredModules.map(_.project): _*)
-    .dependsOn(filteredModules: _*)
     .settings(
       publishArtifact := false,
       publish / skip := true,
       publishLocal / skip := true,
       publishSigned / skip := true,
+      crossScalaVersions := Nil, // https://www.scala-sbt.org/1.x/docs/Cross-Build.html#Cross+building+a+project+statefully
     )
-}
+    .aggregate(filteredModules.map(_.project): _*)
 
 lazy val `quill-sql` =
   (project in file("quill-sql"))
@@ -130,7 +129,7 @@ lazy val `quill-sql-tests` =
     .settings(publish / skip := true)
     .settings(commonSettings: _*)
     .settings(
-       Test / testOptions += Tests.Argument("-oF")
+      Test / testOptions += Tests.Argument("-oF")
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
 
@@ -184,15 +183,15 @@ lazy val `quill-caliban` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.github.ghostdogpr" %% "caliban" % "2.0.2",
-        "com.github.ghostdogpr" %% "caliban-zio-http"   % "2.0.2",
+        "com.github.ghostdogpr" %% "caliban-zio-http" % "2.0.2",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.2.12" % Test,
-        "io.d11" %% "zhttp"      % "2.0.0-RC11" % Test,
+        "io.d11" %% "zhttp" % "2.0.0-RC11" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql"          %  "postgresql"              % "42.2.27"             % Test,
+        "org.postgresql" % "postgresql" % "42.2.27" % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -216,12 +215,12 @@ lazy val `quill-jdbc-zio` =
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
-        "org.postgresql" % "postgresql" % "42.6.0" %  "provided",
+        "org.postgresql" % "postgresql" % "42.6.0" % "provided",
         "dev.zio" %% "zio-json" % "0.6.2"
       ),
-       Test / runMain / fork := true,
-       Test / fork := true,
-       Test / testGrouping := {
+      Test / runMain / fork := true,
+      Test / fork := true,
+      Test / testGrouping := {
         (Test / definedTests).value map { test =>
           if (test.name endsWith "IntegrationSpec")
             Tests.Group(name = test.name, tests = Seq(test), runPolicy = Tests.SubProcess(
@@ -266,8 +265,7 @@ val includeFormatter =
   sys.props.getOrElse("formatScala", "false").toBoolean
 
 lazy val commonSettings =
-  basicSettings ++
-  {
+  basicSettings ++ {
     if (isCommunityRemoteBuild)
       Seq(
         Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
@@ -279,16 +277,16 @@ lazy val commonSettings =
 lazy val jdbcTestingLibraries = Seq(
   // JDBC Libraries for testing of quill-jdbc___ contexts
   libraryDependencies ++= Seq(
-    "com.zaxxer"              %  "HikariCP"                % "4.0.3"  exclude("org.slf4j", "*"),
+    "com.zaxxer" % "HikariCP" % "4.0.3" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
-    "com.mysql"                   %  "mysql-connector-j"    % "8.1.0"             % Test,
-    "com.h2database"          %  "h2"                      % "2.2.222"            % Test,
+    "com.mysql" % "mysql-connector-j" % "8.1.0" % Test,
+    "com.h2database" % "h2" % "2.2.222" % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
-    "org.postgresql"          %  "postgresql"              % "42.6.0"             % Test,
-    "org.xerial"              %  "sqlite-jdbc"             % "3.42.0.1"             % Test,
+    "org.postgresql" % "postgresql" % "42.6.0" % Test,
+    "org.xerial" % "sqlite-jdbc" % "3.42.0.1" % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
-    "com.microsoft.sqlserver" %  "mssql-jdbc"              % "7.2.2.jre8" % Test,
-    "com.oracle.ojdbc"        %  "ojdbc8"                  % "19.3.0.0"           % Test,
+    "com.microsoft.sqlserver" % "mssql-jdbc" % "7.2.2.jre8" % Test,
+    "com.oracle.ojdbc" % "ojdbc8" % "19.3.0.0" % Test,
     //"org.mockito"             %% "mockito-scala-scalatest" % "1.16.2"              % Test
   )
 )
@@ -306,7 +304,8 @@ lazy val basicSettings = Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
   scalaVersion := "3.3.1",
-  organization := "io.getquill",
+  //organization := "io.getquill",
+  organization := "dev.zio",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.
   // Test / testOptions ++= Seq(
