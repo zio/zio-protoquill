@@ -30,8 +30,9 @@ jobs:
         check-latest: true
 
     - name: Scala ${{ matrix.scala }} Building ${{ matrix.module }}
+      env:
+        SCALA_VERSION: ${{ matrix.scala }}
       run: |
-        export SCALA_VERSION=${{ matrix.scala }}
         echo "SCALA_VERSION='$SCALA_VERSION'"
         ./build/build.sh ${{ matrix.module }}
 
@@ -53,10 +54,11 @@ jobs:
         java-version: '8'
         check-latest: true
     - run: |
-        export ENCRYPTION_PASSWORD=${{ secrets.ENCRYPTION_PASSWORD }}
-        export PGP_PASSPHRASE=${{ secrets.PGP_PASSPHRASE }}
-        export PULL_REQUEST=${{ !!github.event.pull_request }}
         echo "PULL_REQUEST='$PULL_REQUEST'"
         export BRANCH=$(git for-each-ref ${{ github.ref }} --format='%(refname:short)')
         echo "BRANCH='$BRANCH'"
         ./build/release.sh ${{ matrix.module }}
+      env:
+        ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
+        PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+        PULL_REQUEST: ${{ !!github.event.pull_request }}
