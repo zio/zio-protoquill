@@ -11,6 +11,10 @@ on:
     branches:
       - master
 
+env:
+  JAVA_OPTS: -Xms6g -Xmx6g -XX:+UseG1GC
+  JDK_JAVA_OPTIONS: -Xms6g -Xmx6g -XX:+UseG1GC # See https://stackoverflow.com/a/73708006
+
 jobs:
   build:
     runs-on: ubuntu-latest
