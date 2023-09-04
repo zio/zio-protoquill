@@ -5,8 +5,6 @@ on:
   push:
     branches:
       - master
-      - 're-releases-*'
-      - '*-pushbuild'
 
 env:
   JAVA_OPTS: -Xms6g -Xmx6g -XX:+UseG1GC
@@ -18,24 +16,24 @@ jobs:
 
     strategy:
       matrix:
-        scala: [3.3.1]
-        module: [sqltest, db, async, bigdata]
+        scala: [ 3.3.1 ]
+        module: [ sqltest, db, async, bigdata ]
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup Java and Scala
-      uses: actions/setup-java@v3.12.0
-      with:
-        distribution: temurin
-        java-version: '8'
-        check-latest: true
+      - uses: actions/checkout@v4
+      - name: Setup Java and Scala
+        uses: actions/setup-java@v3.12.0
+        with:
+          distribution: temurin
+          java-version: '8'
+          check-latest: true
 
-    - name: Scala ${{ matrix.scala }} Building ${{ matrix.module }}
-      env:
-        SCALA_VERSION: ${{ matrix.scala }}
-      run: |
-        echo "SCALA_VERSION='$SCALA_VERSION'"
-        ./build/build.sh ${{ matrix.module }}
+      - name: Scala ${{ matrix.scala }} Building ${{ matrix.module }}
+        env:
+          SCALA_VERSION: ${{ matrix.scala }}
+        run: |
+          echo "SCALA_VERSION='$SCALA_VERSION'"
+          ./build/build.sh ${{ matrix.module }}
 
   release:
     if: ${{github.event_name != 'pull_request'}}
@@ -43,26 +41,22 @@ jobs:
     needs: build
     strategy:
       matrix:
-        scala: [3.3.1]
-        module: [base, db, async, bigdata, publish]
+        scala: [ 3.3.1 ]
+        module: [ base, db, async, bigdata, publish ]
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup Java and Scala
-      uses: actions/setup-java@v3.12.0
-      with:
-        distribution: temurin
-        java-version: '8'
-        check-latest: true
-    - run: |
-        echo "PULL_REQUEST='$PULL_REQUEST'"
-        export BRANCH=$(git for-each-ref ${{ github.ref }} --format='%(refname:short)')
-        echo "BRANCH='$BRANCH'"
-        ./build/release.sh ${{ matrix.module }}
-      env:
-        ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
-        PULL_REQUEST: ${{ !!github.event.pull_request }}
-        PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-        PGP_SECRET: ${{ secrets.PGP_SECRET }}
-        SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+      - uses: actions/checkout@v4
+      - name: Setup Java and Scala
+        uses: actions/setup-java@v3.12.0
+        with:
+          distribution: temurin
+          java-version: '8'
+          check-latest: true
+      - run: sbt ci-release
+        env:
+          ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
+          PULL_REQUEST: ${{ !!github.event.pull_request }}
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}

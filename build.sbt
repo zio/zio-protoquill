@@ -1,35 +1,9 @@
-import ReleaseTransformations._
-//import com.typesafe.sbt.SbtScalariform.ScalariformKeys
-//import scalariform.formatter.preferences._
 import com.jsuereth.sbtpgp.PgpKeys.publishSigned
-import sbtrelease.ReleasePlugin
-import scala.sys.process.Process
-import java.io.{File => JFile}
 
 ThisBuild / versionScheme := Some("always")
 
 addCommandAlias("runCommunityBuild", "; quill-sql/test; quill-sql-tests/test; quill-cassandra/Test/compile")
 addCommandAlias("fmt", "all scalafmt test:scalafmt")
-
-// During release cycles, GPG will expect passphrase user-input EVEN when --passphrase is specified
-// this should add --pinentry-loopback in order to disable that. See here for more info:
-// https://github.com/sbt/sbt-pgp/issues/178
-Global / useGpgPinentry := true
-
-releaseVersion     := { ver =>
-  println(s"=== Releasing on initially specified version: ${ver}")
-  ver
-}
-releaseNextVersion := { ver =>
-  val withoutLast = ver.reverse.dropWhile(_.isDigit).reverse
-  val last = ver.reverse.takeWhile(_.isDigit).reverse
-  println(s"=== Detected original version: ${ver}. Which is ${withoutLast} + ${last}")
-  // see if the last group of chars are numeric, if they are, just increment
-  val actualLast = scala.util.Try(last.toInt).map(i => (i + 1).toString).getOrElse(last)
-  val newVer = withoutLast + actualLast + "-SNAPSHOT"
-  println(s"=== Final computed version is: ${newVer}")
-  newVer
-}
 
 val isCommunityBuild =
   sys.props.getOrElse("community", "false").toBoolean
@@ -106,10 +80,6 @@ val filteredModules = {
 lazy val `quill` = {
   (project in file("."))
     .settings(commonSettings: _*)
-    // Unless release settings bubbled up here, they won't actually be used for the project
-    // release. E.g. if you don't want to run tests on a release (i.e. if they were run on a previous step)
-    // and release-settings here are not included tests will still be run etc...
-    .settings(releaseSettings: _*)
     .aggregate(filteredModules.map(_.project): _*)
     .dependsOn(filteredModules: _*)
     .settings(
@@ -123,7 +93,6 @@ lazy val `quill` = {
 lazy val `quill-sql` =
   (project in file("quill-sql"))
     .settings(commonSettings: _*)
-    .settings(releaseSettings: _*)
     .settings(
       resolvers ++= Seq(
         Resolver.mavenLocal,
@@ -158,6 +127,7 @@ lazy val `quill-sql` =
 // Moving heavy tests to separate module so it can be compiled in parallel with others
 lazy val `quill-sql-tests` =
   (project in file("quill-sql-tests"))
+    .settings(publish / skip := true)
     .settings(commonSettings: _*)
     .settings(
        Test / testOptions += Tests.Argument("-oF")
@@ -169,7 +139,6 @@ lazy val `quill-sql-tests` =
 lazy val `quill-jdbc` =
   (project in file("quill-jdbc"))
     .settings(commonSettings: _*)
-    .settings(releaseSettings: _*)
     .settings(jdbcTestingSettings: _*)
     .dependsOn(`quill-sql` % "compile->compile;test->test")
 
@@ -177,7 +146,6 @@ ThisBuild / libraryDependencySchemes += "org.typelevel" %% "cats-effect" % "alwa
 lazy val `quill-doobie` =
   (project in file("quill-doobie"))
     .settings(commonSettings: _*)
-    .settings(releaseSettings: _*)
     .settings(jdbcTestingSettings: _*)
     .settings(
       libraryDependencies ++= Seq(
@@ -190,7 +158,6 @@ lazy val `quill-doobie` =
 lazy val `quill-jasync` =
   (project in file("quill-jasync"))
     .settings(commonSettings: _*)
-    .settings(releaseSettings: _*)
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
@@ -202,7 +169,6 @@ lazy val `quill-jasync` =
 lazy val `quill-jasync-postgres` =
   (project in file("quill-jasync-postgres"))
     .settings(commonSettings: _*)
-    .settings(releaseSettings: _*)
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
@@ -214,7 +180,6 @@ lazy val `quill-jasync-postgres` =
 lazy val `quill-caliban` =
   (project in file("quill-caliban"))
     .settings(commonSettings: _*)
-    .settings(releaseSettings: _*)
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
@@ -235,7 +200,6 @@ lazy val `quill-caliban` =
 lazy val `quill-zio` =
   (project in file("quill-zio"))
     .settings(commonSettings: _*)
-    .settings(releaseSettings: _*)
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
@@ -248,7 +212,6 @@ lazy val `quill-zio` =
 lazy val `quill-jdbc-zio` =
   (project in file("quill-jdbc-zio"))
     .settings(commonSettings: _*)
-    .settings(releaseSettings: _*)
     .settings(jdbcTestingLibraries: _*)
     .settings(
       libraryDependencies ++= Seq(
@@ -276,7 +239,6 @@ lazy val `quill-jdbc-zio` =
 lazy val `quill-cassandra` =
   (project in file("quill-cassandra"))
     .settings(commonSettings: _*)
-    .settings(releaseSettings: _*)
     .settings(
       Test / fork := false,
       libraryDependencies ++= Seq(
@@ -288,7 +250,6 @@ lazy val `quill-cassandra` =
 lazy val `quill-cassandra-zio` =
   (project in file("quill-cassandra-zio"))
     .settings(commonSettings: _*)
-    .settings(releaseSettings: _*)
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
@@ -358,53 +319,3 @@ lazy val basicSettings = Seq(
     "-language:implicitConversions", "-explain"
   )
 )
-
-lazy val releaseSettings = ReleasePlugin.extraReleaseCommands ++ Seq(
-  releasePublishArtifactsAction := PgpKeys.publishSigned.value,
-  publishMavenStyle := true,
-  publishTo := {
-    val nexus = "https://oss.sonatype.org/"
-    if (isSnapshot.value)
-      Some("snapshots" at nexus + "content/repositories/snapshots")
-    else
-      Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-  },
-  pgpSecretRing := file("local.secring.gpg"),
-  pgpPublicRing := file("local.pubring.gpg"),
-  releaseVersionBump := sbtrelease.Version.Bump.Next,
-  releasePublishArtifactsAction := PgpKeys.publishSigned.value,
-  releaseProcess := {
-    Seq[ReleaseStep]() ++
-    doOnDefault(checkSnapshotDependencies) ++
-    doOnDefault(inquireVersions) ++
-    doOnDefault(runClean) ++
-    doOnPush   (setReleaseVersion) ++
-    doOnPush   (commitReleaseVersion) ++
-    doOnPush   (tagRelease) ++
-    doOnDefault(publishArtifacts) ++
-    doOnPush   (setNextVersion) ++
-    doOnPush   (commitNextVersion) ++
-    //doOnPush(releaseStepCommand("sonatypeReleaseAll")) ++
-    doOnPush   (pushChanges)
-  },
-  homepage := Some(url("http://github.com/getquill/protoquill")),
-  licenses := List(("Apache License 2.0", url("https://raw.githubusercontent.com/getquill/protoquill/master/LICENSE.txt"))),
-  developers := List(
-    Developer("deusaquilus", "Alexander Ioffe", "", url("https://github.com/deusaquilus"))
-  ),
-  scmInfo := Some(
-    ScmInfo(url("https://github.com/getquill/protoquill"), "git:git@github.com:getquill/protoquill.git")
-  )
-)
-
-def doOnDefault(steps: ReleaseStep*): Seq[ReleaseStep] =
-  Seq[ReleaseStep](steps: _*)
-
-def doOnPush(steps: ReleaseStep*): Seq[ReleaseStep] =
-  if (skipPush)
-    Seq[ReleaseStep]()
-  else
-    Seq[ReleaseStep](steps: _*)
-
-val skipPush =
-  sys.props.getOrElse("skipPush", "false").toBoolean
