@@ -58,10 +58,14 @@ jobs:
         java-version: '8'
         check-latest: true
     - run: |
-        export ENCRYPTION_PASSWORD=${{ secrets.ENCRYPTION_PASSWORD }}
-        export PGP_PASSPHRASE=${{ secrets.PGP_PASSPHRASE }}
-        export PULL_REQUEST=${{ !!github.event.pull_request }}
         echo "PULL_REQUEST='$PULL_REQUEST'"
         export BRANCH=$(git for-each-ref ${{ github.ref }} --format='%(refname:short)')
         echo "BRANCH='$BRANCH'"
         ./build/release.sh ${{ matrix.module }}
+      env:
+        ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
+        PULL_REQUEST: ${{ !!github.event.pull_request }}
+        PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+        PGP_SECRET: ${{ secrets.PGP_SECRET }}
+        SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
