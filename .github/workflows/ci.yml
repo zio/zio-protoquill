@@ -11,6 +11,10 @@ on:
     branches:
       - master
 
+env:
+  JAVA_OPTS: -Xms6g -Xmx6g -XX:+UseG1GC
+  JDK_JAVA_OPTIONS: -Xms6g -Xmx6g -XX:+UseG1GC # See https://stackoverflow.com/a/73708006
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,13 +27,16 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Setup Java and Scala
-      uses: olafurpg/setup-scala@v10
+      uses: actions/setup-java@v3.10.0
       with:
-        java-version: 1.8.0
+        distribution: temurin
+        java-version: '8'
+        check-latest: true
 
     - name: Scala ${{ matrix.scala }} Building ${{ matrix.module }}
+      env:
+        SCALA_VERSION: ${{ matrix.scala }}
       run: |
-        export SCALA_VERSION=${{ matrix.scala }}
         echo "SCALA_VERSION='$SCALA_VERSION'"
         ./build/build.sh ${{ matrix.module }}
 
@@ -45,14 +52,17 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Setup Java and Scala
-      uses: olafurpg/setup-scala@v10
+      uses: actions/setup-java@v3.10.0
       with:
-        java-version: 1.8.0
+        distribution: temurin
+        java-version: '8'
+        check-latest: true
     - run: |
-        export ENCRYPTION_PASSWORD=${{ secrets.ENCRYPTION_PASSWORD }}
-        export PGP_PASSPHRASE=${{ secrets.PGP_PASSPHRASE }}
-        export PULL_REQUEST=${{ !!github.event.pull_request }}
         echo "PULL_REQUEST='$PULL_REQUEST'"
         export BRANCH=$(git for-each-ref ${{ github.ref }} --format='%(refname:short)')
         echo "BRANCH='$BRANCH'"
         ./build/release.sh ${{ matrix.module }}
+      env:
+        ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
+        PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+        PULL_REQUEST: ${{ !!github.event.pull_request }}
