@@ -1,15 +1,12 @@
 name: Scala CI
 
 on:
+  pull_request:
   push:
     branches:
-      - "**"
-    # tags:
-    #   - "**"
-
-  pull_request:
-    branches:
       - master
+      - 're-releases-*'
+      - '*-pushbuild'
 
 env:
   JAVA_OPTS: -Xms6g -Xmx6g -XX:+UseG1GC
