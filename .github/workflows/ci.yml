@@ -18,24 +18,25 @@ jobs:
 
     strategy:
       matrix:
-        scala: [3.3.0]
-        module: [sqltest, db, async, bigdata]
+        scala: [ 3.3.0 ]
+        module: [ sqltest, db, async, bigdata ]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup Java and Scala
-      uses: actions/setup-java@v3.10.0
-      with:
-        distribution: temurin
-        java-version: '8'
-        check-latest: true
+      - run: gpg --version
+      - uses: actions/checkout@v4.0.0
+      - name: Setup Java and Scala
+        uses: actions/setup-java@v3.10.0
+        with:
+          distribution: temurin
+          java-version: '8'
+          check-latest: true
 
-    - name: Scala ${{ matrix.scala }} Building ${{ matrix.module }}
-      env:
-        SCALA_VERSION: ${{ matrix.scala }}
-      run: |
-        echo "SCALA_VERSION='$SCALA_VERSION'"
-        ./build/build.sh ${{ matrix.module }}
+      - name: Scala ${{ matrix.scala }} Building ${{ matrix.module }}
+        env:
+          SCALA_VERSION: ${{ matrix.scala }}
+        run: |
+          echo "SCALA_VERSION='$SCALA_VERSION'"
+          ./build/build.sh ${{ matrix.module }}
 
   release:
     if: ${{github.event_name != 'pull_request'}}
@@ -43,23 +44,24 @@ jobs:
     needs: build
     strategy:
       matrix:
-        scala: [3.3.0]
-        module: [base, db, async, bigdata, publish]
+        scala: [ 3.3.0 ]
+        module: [ base, db, async, bigdata, publish ]
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Setup Java and Scala
-      uses: actions/setup-java@v3.10.0
-      with:
-        distribution: temurin
-        java-version: '8'
-        check-latest: true
-    - run: |
-        echo "PULL_REQUEST='$PULL_REQUEST'"
-        export BRANCH=$(git for-each-ref ${{ github.ref }} --format='%(refname:short)')
-        echo "BRANCH='$BRANCH'"
-        ./build/release.sh ${{ matrix.module }}
-      env:
-        ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
-        PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
-        PULL_REQUEST: ${{ !!github.event.pull_request }}
+      - run: gpg --version
+      - uses: actions/checkout@v4.0.0
+      - name: Setup Java and Scala
+        uses: actions/setup-java@v3.10.0
+        with:
+          distribution: temurin
+          java-version: '8'
+          check-latest: true
+      - run: |
+          echo "PULL_REQUEST='$PULL_REQUEST'"
+          export BRANCH=$(git for-each-ref ${{ github.ref }} --format='%(refname:short)')
+          echo "BRANCH='$BRANCH'"
+          ./build/release.sh ${{ matrix.module }}
+        env:
+          ENCRYPTION_PASSWORD: ${{ secrets.ENCRYPTION_PASSWORD }}
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          PULL_REQUEST: ${{ !!github.event.pull_request }}
