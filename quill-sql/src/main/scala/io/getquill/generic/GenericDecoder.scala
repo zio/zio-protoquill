@@ -9,6 +9,11 @@ import io.getquill.metaprog.TypeExtensions._
 import io.getquill.util.Format
 import scala.annotation.tailrec
 import io.getquill.generic.GenericDecoder.FlattenData
+import scala.util.Left
+import scala.util.Right
+import io.getquill.util.ProtoMessages
+import io.getquill.metaprog.SummonTranspileConfig
+import io.getquill.util.Messages.TraceType
 
 trait GenericColumnResolver[ResultRow] {
   def apply(resultRow: ResultRow, columnName: String): Int
@@ -37,23 +42,31 @@ object Summon:
         // TODO Maybe check the session type and based on what it is, say "Cannot summon a JDBC null-chercker..."
         report.throwError(s"Cannot find a null-checker for the session type ${Format.TypeOf[Session]} (whose result-row type is: ${Format.TypeOf[ResultRow]})")
 
-  def decoder[ResultRow: Type, Session: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): Option[Expr[T]] =
+  def decoder[ResultRow: Type, Session: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): Either[String, Expr[T]] =
     import quotes.reflect.{Term => QTerm, _}
     // Try to summon a specific decoder, if it's not there, summon a generic one
-    Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Specific]] match
-      case Some(decoder) =>
-        Some('{ $decoder($index, $resultRow, $session) })
-      case None =>
-        None
+    summonOrFail[GenericDecoder[ResultRow, Session, T, DecodingType.Specific]] match
+      case Right(decoder) =>
+        Right('{ $decoder($index, $resultRow, $session) })
+      case Left(msg) =>
+        Left(msg)
 
   def decoderOrFail[ResultRow: Type, Session: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): Expr[T] =
     import quotes.reflect._
     decoder[ResultRow, Session, T](index, resultRow, session) match
-      case Some(value) => value
-      case None =>
-        println(s"WARNING Could not summon a decoder for the type: ${io.getquill.util.Format.TypeOf[T]}")
-        report.throwError(s"Cannot find decoder for the type: ${Format.TypeOf[T]}")
+      case Right(value) => value
+      case Left(msg) =>
+        println(s"WARNING Could not summon a decoder for the type: ${io.getquill.util.Format.TypeOf[T]} due to:\n" + msg)
+        report.throwError(s"Cannot find decoder for the type: ${Format.TypeOf[T]} due to:" + msg)
 end Summon
+
+def summonOrFail[T: Type](using Quotes) =
+  import quotes.reflect._
+  Implicits.search(TypeRepr.of[T]) match
+    case success: ImplicitSearchSuccess =>
+      Right(success.tree.asExprOf[T])
+    case failure: ImplicitSearchFailure =>
+      Left(failure.explanation)
 
 object GenericDecoder {
 
@@ -199,11 +212,11 @@ object GenericDecoder {
       // specifically if there is a decoder found, allow optional override of the index via a resolver
       val decoderIndex = overriddenIndex.getOrElse(elementIndex)
       Summon.decoder[ResultRow, Session, T](decoderIndex, resultRow, session) match
-        case Some(decoder) =>
+        case Right(decoder) =>
           val nullChecker = Summon.nullChecker[ResultRow, Session](decoderIndex, resultRow)
           FlattenData(Type.of[T], decoder, '{ !${ nullChecker } }, index)
 
-        case None =>
+        case Left(msg) =>
           Expr.summon[Mirror.Of[T]] match
             case Some(ev) =>
               // Otherwise, recursively summon fields
@@ -217,13 +230,20 @@ object GenericDecoder {
                   val children = flatten(index, baseIndex, resultRow, session)(Type.of[elementLabels], Type.of[elementTypes]).reverse
                   decodeProduct[T](children, m)
 
-                case _ => report.throwError(s"Decoder for ${Format.TypeOf[T]} could not be summoned. It has no decoder and is not a recognized Product or Sum type.")
+                case _ =>
+                  report.throwError(s"Decoder for ${Format.TypeOf[T]} could not be summoned. It has no decoder and is not a recognized Product or Sum type.${printDetailedError(msg)}")
               end match
             case _ =>
-              report.throwError(s"No Decoder found for ${Format.TypeOf[T]} and it is not a class representing a group of columns")
+              report.throwError(s"No Decoder found for ${Format.TypeOf[T]} and it is not a class representing a group of columns.${printDetailedError(msg)}")
           end match
       end match
   end decode
+
+  private[getquill] def printDetailedError(msg: String)(using Quotes) =
+    if (ProtoMessages.errorDetail || SummonTranspileConfig.summonTraceTypes().contains(TraceType.Meta))
+      s"\n=== Implicit Search Reported the First Error As: ===\n${msg}"
+    else
+      ""
 
   def summon[T: Type, ResultRow: Type, Session: Type](using quotes: Quotes): Expr[GenericDecoder[ResultRow, Session, T, DecodingType.Generic]] =
     import quotes.reflect._
