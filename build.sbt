@@ -140,7 +140,7 @@ lazy val `quill-sql` =
         "com.lihaoyi" %% "pprint" % "0.6.6",
         "ch.qos.logback" % "logback-classic" % "1.3.11" % Test,
         "io.getquill" %% "quill-engine" % "4.6.1",
-        "dev.zio" %% "zio" % "2.0.16",
+        "dev.zio" %% "zio" % "2.0.17",
         ("io.getquill" %% "quill-util" % "4.6.1")
           .excludeAll({
             if (isCommunityBuild)
@@ -218,12 +218,12 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban" % "2.0.0",
-        "com.github.ghostdogpr" %% "caliban-zio-http"   % "2.0.0",
+        "com.github.ghostdogpr" %% "caliban" % "2.0.2",
+        "com.github.ghostdogpr" %% "caliban-zio-http"   % "2.0.2",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.3.11" % Test,
-        "io.d11" %% "zhttp"      % "2.0.0-RC10" % Test,
+        "io.d11" %% "zhttp"      % "2.0.0-RC11" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
@@ -239,8 +239,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "2.0.16",
-        "dev.zio" %% "zio-streams" % "2.0.16"
+        "dev.zio" %% "zio" % "2.0.17",
+        "dev.zio" %% "zio-streams" % "2.0.17"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -293,8 +293,8 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.17.0",
-        "dev.zio" %% "zio" % "2.0.16",
-        "dev.zio" %% "zio-streams" % "2.0.16"
+        "dev.zio" %% "zio" % "2.0.17",
+        "dev.zio" %% "zio-streams" % "2.0.17"
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")
