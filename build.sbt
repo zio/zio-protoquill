@@ -1,6 +1,19 @@
 import com.jsuereth.sbtpgp.PgpKeys.publishSigned
 
-ThisBuild / versionScheme := Some("always")
+inThisBuild(
+  List(
+    organization := "io.getquill",
+    homepage := Some(url("https://zio.dev/zio-protoquill")),
+    licenses := List(("Apache License 2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))),
+    developers := List(
+      Developer("deusaquilus", "Alexander Ioffe", "", url("https://github.com/deusaquilus"))
+    ),
+    scmInfo := Some(
+      ScmInfo(url("https://github.com/zio/zio-protoquill"), "git:git@github.com:zio/zio-protoquill.git")
+    ),
+    versionScheme := Some("always"),
+  )
+)
 
 addCommandAlias("runCommunityBuild", "; quill-sql/test; quill-sql-tests/test; quill-cassandra/Test/compile")
 addCommandAlias("fmt", "all scalafmt test:scalafmt")
@@ -304,7 +317,6 @@ lazy val basicSettings = Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
   scalaVersion := "3.3.1",
-  organization := "io.getquill",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.
   // Test / testOptions ++= Seq(
