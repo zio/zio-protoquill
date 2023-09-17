@@ -72,7 +72,7 @@ enum ElaborationSide:
  * }}}
  *
  * Now, since Quats were introduced into Quill since 3.6.0 (technically since 3.5.3), this step is not necessarily needed
- * for query expansion since `Ident("p")` is now understood to expand into it's corresponding SelectValue fields so for queries,
+ * for query expansion since `Ident("p")` is now understood to expand into its corresponding SelectValue fields so for queries,
  * this stage could technically be elimiated. However, this logic is also useful for ActionMeta where we have
  * something like this:
  * {{{
@@ -408,10 +408,10 @@ object ElaborateStructure {
               alternatives.reduce((termA, termB) => termA.merge[T](termB))
             case _ =>
               report.throwError(
-                s"Althought a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator. It's mirror is ${Format.Expr(ev)}"
+                s"Althought a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator. Its mirror is ${Format.Expr(ev)}"
               )
         case None =>
-          report.throwError(s"A mirror of the type ${Format.TypeOf[T]} cannot be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator.")
+          report.throwError(s"A mirror of the type ${Format.TypeOf[T]} cannot be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator.")
   }
 
   private def productized[T: Type](side: ElaborationSide, baseName: String = "x")(using Quotes): Ast = {

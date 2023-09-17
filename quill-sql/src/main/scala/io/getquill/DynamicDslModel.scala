@@ -134,7 +134,6 @@ sealed class DynamicQuery[+T](val q: Quoted[Query[T]]) {
           q.runtimeQuotes
         )
       )
-    println(io.getquill.util.Messages.qprint(out))
     out
 
   def takeOpt(opt: Option[Int])(implicit enc: GenericEncoder[Int, _, _]): DynamicQuery[T] =
