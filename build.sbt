@@ -120,9 +120,9 @@ lazy val `quill-sql` =
         "io.suzaku" %% "boopickle" % "1.4.0",
         "com.lihaoyi" %% "pprint" % "0.6.6",
         "ch.qos.logback" % "logback-classic" % "1.3.11" % Test,
-        "io.getquill" %% "quill-engine" % "4.6.1",
+        "io.getquill" %% "quill-engine" % "4.7.0",
         "dev.zio" %% "zio" % "2.0.17",
-        ("io.getquill" %% "quill-util" % "4.6.1")
+        ("io.getquill" %% "quill-util" % "4.7.0")
           .excludeAll({
             if (isCommunityBuild)
               Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))
