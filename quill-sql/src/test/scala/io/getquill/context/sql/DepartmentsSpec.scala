@@ -16,8 +16,8 @@ trait DepartmentsSpec extends Spec {
   case class Task(emp: String, tsk: String)
 
   inline def departmentInsert =
-    quote {
-      (dpt: Department) => query[Department].insertValue(dpt)
+    quote { (dpt: Department) =>
+      query[Department].insertValue(dpt)
     }
 
   val departmentEntries =
@@ -29,8 +29,8 @@ trait DepartmentsSpec extends Spec {
     )
 
   inline def employeeInsert =
-    quote {
-      (emp: Employee) => query[Employee].insertValue(emp)
+    quote { (emp: Employee) =>
+      query[Employee].insertValue(emp)
     }
 
   val employeeEntries =
@@ -44,8 +44,8 @@ trait DepartmentsSpec extends Spec {
     )
 
   inline def taskInsert =
-    quote {
-      (tsk: Task) => query[Task].insertValue(tsk)
+    quote { (tsk: Task) =>
+      query[Task].insertValue(tsk)
     }
 
   val taskEntries =
@@ -64,21 +64,20 @@ trait DepartmentsSpec extends Spec {
     )
 
   inline def `Example 8 expertise naive` =
-    quote {
-      (u: String) =>
-        for {
-          d <- query[Department] if (
-            (for {
-              e <- query[Employee] if (
-                e.dpt == d.dpt && (
-                  for {
-                    t <- query[Task] if (e.emp == t.emp && t.tsk == u)
-                  } yield {}
-                ).isEmpty
-              )
-            } yield {}).isEmpty
-          )
-        } yield d.dpt
+    quote { (u: String) =>
+      for {
+        d <- query[Department] if (
+          (for {
+            e <- query[Employee] if (
+              e.dpt == d.dpt && (
+                for {
+                  t <- query[Task] if (e.emp == t.emp && t.tsk == u)
+                } yield {}
+              ).isEmpty
+            )
+          } yield {}).isEmpty
+        )
+      } yield d.dpt
     }
 
   val `Example 8 param` = "abstract"
@@ -117,25 +116,21 @@ trait DepartmentsSpec extends Spec {
 
   // TODO Typing error if add `quote` around this. Examine that more closely
   inline def all[T] =
-    (xs: Query[T]) =>
-      (p: T => Boolean) =>
-        !any(xs)(x => !p(x))
+    (xs: Query[T]) => (p: T => Boolean) => !any(xs)(x => !p(x))
 
   inline def contains[T] =
     quote { (xs: Query[T]) => (u: T) =>
       any(xs)(x => x == u)
     }
 
-  inline def `Example 9 expertise` = {
-    quote {
-      (u: String) =>
-        for {
-          (dpt, employees) <- nestedOrg if (all(employees) { case (emp, tasks) => contains(tasks)(u) })
-        } yield {
-          dpt
-        }
+  inline def `Example 9 expertise` =
+    quote { (u: String) =>
+      for {
+        (dpt, employees) <- nestedOrg if (all(employees) { case (emp, tasks) => contains(tasks)(u) })
+      } yield {
+        dpt
+      }
     }
-  }
 
   val `Example 9 param` = "abstract"
 

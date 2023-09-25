@@ -12,12 +12,15 @@ class IdentAndPropertyTest extends Spec with TestEntities {
   extension (ast: Ast)
     def body: Ast = ast match
       case f: Function => f.body
-      case f: Map => f.body
-      case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+      case f: Map      => f.body
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}"
+        )
 
   "ident" in {
-    inline def q = quote {
-      (s: String) => s
+    inline def q = quote { (s: String) =>
+      s
     }
     quote(unquote(q)).ast.body mustEqual Ident("s")
   }

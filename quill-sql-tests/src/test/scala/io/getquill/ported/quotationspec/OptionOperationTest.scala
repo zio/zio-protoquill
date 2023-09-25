@@ -23,16 +23,16 @@ class OptionOperationTest extends Spec with Inside {
 
     "map" - {
       "simple" in {
-        inline def q = quote {
-          (o: Option[Int]) => o.map(v => v)
+        inline def q = quote { (o: Option[Int]) =>
+          o.map(v => v)
         }
         val o = OptionMap(Ident("o"), Ident("v"), Ident("v"))
         quote(unquote(q)).ast.asFunction.body mustEqual o
         repickle(o) mustEqual o
       }
       "unchecked" in {
-        inline def q = quote {
-          (o: Option[Row]) => o.map(v => v)
+        inline def q = quote { (o: Option[Row]) =>
+          o.map(v => v)
         }
         val o = OptionTableMap(Ident("o"), Ident("v"), Ident("v"))
         quote(unquote(q)).ast.asFunction.body mustEqual o
@@ -41,16 +41,16 @@ class OptionOperationTest extends Spec with Inside {
     }
     "flatMap" - {
       "simple" in {
-        inline def q = quote {
-          (o: Option[Int]) => o.flatMap(v => Option(v))
+        inline def q = quote { (o: Option[Int]) =>
+          o.flatMap(v => Option(v))
         }
         val o = OptionFlatMap(Ident("o"), Ident("v"), OptionApply(Ident("v")))
         quote(unquote(q)).ast.asFunction.body mustEqual o
         repickle(o) mustEqual o
       }
       "unchecked" in {
-        inline def q = quote {
-          (o: Option[Row]) => o.flatMap(v => Option(v))
+        inline def q = quote { (o: Option[Row]) =>
+          o.flatMap(v => Option(v))
         }
         val o = OptionTableFlatMap(Ident("o"), Ident("v"), OptionApply(Ident("v")))
         quote(unquote(q)).ast.asFunction.body mustEqual o
@@ -58,16 +58,16 @@ class OptionOperationTest extends Spec with Inside {
       }
     }
     "getOrElse" in {
-      inline def q = quote {
-        (o: Option[Int]) => o.getOrElse(11)
+      inline def q = quote { (o: Option[Int]) =>
+        o.getOrElse(11)
       }
       val o = OptionGetOrElse(Ident("o"), Constant.auto(11))
       quote(unquote(q)).ast.asFunction.body mustEqual o
       repickle(o) mustEqual o
     }
     "map + getOrElse" in {
-      inline def q = quote {
-        (o: Option[Int]) => o.map(i => i < 10).getOrElse(true)
+      inline def q = quote { (o: Option[Int]) =>
+        o.map(i => i < 10).getOrElse(true)
       }
       val o =
         OptionGetOrElse(
@@ -78,52 +78,52 @@ class OptionOperationTest extends Spec with Inside {
       repickle(o) mustEqual o
     }
     "flatten" in {
-      inline def q = quote {
-        (o: Option[Option[Int]]) => o.flatten
+      inline def q = quote { (o: Option[Option[Int]]) =>
+        o.flatten
       }
       val o = OptionFlatten(Ident("o"))
       quote(unquote(q)).ast.asFunction.body mustEqual o
       repickle(o) mustEqual o
     }
     "Some" in {
-      inline def q = quote {
-        (i: Int) => Some(i)
+      inline def q = quote { (i: Int) =>
+        Some(i)
       }
       val o = OptionSome(Ident("i"))
       quote(unquote(q)).ast.asFunction.body mustEqual o
       repickle(o) mustEqual o
     }
     "apply" in {
-      inline def q = quote {
-        (i: Int) => Option(i)
+      inline def q = quote { (i: Int) =>
+        Option(i)
       }
       val o = OptionApply(Ident("i"))
       quote(unquote(q)).ast.asFunction.body mustEqual o
       repickle(o) mustEqual o
     }
     "orNull" in {
-      inline def q = quote {
-        (o: Option[String]) => o.orNull
+      inline def q = quote { (o: Option[String]) =>
+        o.orNull
       }
       quote(unquote(q)).ast.asFunction.body mustEqual OptionOrNull(Ident("o"))
     }
     "getOrNull" in {
       import extras._
-      inline def q = quote {
-        (o: Option[Int]) => o.getOrNull
+      inline def q = quote { (o: Option[Int]) =>
+        o.getOrNull
       }
       quote(unquote(q)).ast.asFunction.body mustEqual OptionGetOrNull(Ident("o"))
     }
     "None" in {
       inline def q = quote(None)
-      val o = OptionNone(Quat.Null)
+      val o        = OptionNone(Quat.Null)
       quote(unquote(q)).ast mustEqual o
       repickle(o) mustEqual o
     }
     "forall" - {
       "simple" in {
-        inline def q = quote {
-          (o: Option[Boolean]) => o.forall(v => v)
+        inline def q = quote { (o: Option[Boolean]) =>
+          o.forall(v => v)
         }
         val o = OptionForall(Ident("o"), Ident("v"), Ident("v"))
         quote(unquote(q)).ast.asFunction.body mustEqual o
@@ -137,16 +137,16 @@ class OptionOperationTest extends Spec with Inside {
     }
     "exists" - {
       "simple" in {
-        inline def q = quote {
-          (o: Option[Boolean]) => o.exists(v => v)
+        inline def q = quote { (o: Option[Boolean]) =>
+          o.exists(v => v)
         }
         val o = OptionExists(Ident("o"), Ident("v"), Ident("v"))
         quote(unquote(q)).ast.asFunction.body mustEqual o
         repickle(o) mustEqual o
       }
       "unchecked" in {
-        inline def q = quote {
-          (o: Option[Row]) => o.exists(v => v.id == 4)
+        inline def q = quote { (o: Option[Row]) =>
+          o.exists(v => v.id == 4)
         }
         val o = OptionTableExists(Ident("o"), Ident("v"), Property(Ident("v"), "id") +==+ Constant.auto(4))
         quote(unquote(q)).ast.asFunction.body mustEqual o
@@ -154,8 +154,8 @@ class OptionOperationTest extends Spec with Inside {
       }
       "embedded" in {
         case class EmbeddedEntity(id: Int) extends Embedded
-        inline def q = quote {
-          (o: Option[EmbeddedEntity]) => o.exists(v => v.id == 1)
+        inline def q = quote { (o: Option[EmbeddedEntity]) =>
+          o.exists(v => v.id == 1)
         }
         val o = OptionTableExists(Ident("o"), Ident("v"), Property(Ident("v"), "id") +==+ Constant.auto(1))
         quote(unquote(q)).ast.asFunction.body mustEqual o
@@ -163,32 +163,32 @@ class OptionOperationTest extends Spec with Inside {
       }
     }
     "contains" in {
-      inline def q = quote {
-        (o: Option[Boolean], v: Int) => o.contains(v)
+      inline def q = quote { (o: Option[Boolean], v: Int) =>
+        o.contains(v)
       }
       val o = OptionContains(Ident("o"), Ident("v"))
       quote(unquote(q)).ast.asFunction.body mustEqual o
       repickle(o) mustEqual o
     }
     "isEmpty" in {
-      inline def q = quote {
-        (o: Option[Boolean]) => o.isEmpty
+      inline def q = quote { (o: Option[Boolean]) =>
+        o.isEmpty
       }
       val o = OptionIsEmpty(Ident("o"))
       quote(unquote(q)).ast.asFunction.body mustEqual o
       repickle(o) mustEqual o
     }
     "nonEmpty" in {
-      inline def q = quote {
-        (o: Option[Boolean]) => o.nonEmpty
+      inline def q = quote { (o: Option[Boolean]) =>
+        o.nonEmpty
       }
       val o = OptionNonEmpty(Ident("o"))
       quote(unquote(q)).ast.asFunction.body mustEqual o
       repickle(o) mustEqual o
     }
     "isDefined" in {
-      inline def q = quote {
-        (o: Option[Boolean]) => o.isDefined
+      inline def q = quote { (o: Option[Boolean]) =>
+        o.isDefined
       }
       val o = OptionIsDefined(Ident("o"))
       quote(unquote(q)).ast.asFunction.body mustEqual o

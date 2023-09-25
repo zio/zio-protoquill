@@ -18,7 +18,12 @@ class QuerySortByTest extends Spec with Inside with TestEntities {
       inline def q = quote {
         qr1.sortBy(t => t.s)
       }
-      val s = SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t", TestEntityQuat), Property(Ident("t"), "s"), AscNullsFirst)
+      val s = SortBy(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t", TestEntityQuat),
+        Property(Ident("t"), "s"),
+        AscNullsFirst
+      )
       quote(unquote(q)).ast mustEqual s
       repickle(s) mustEqual s
     }
@@ -75,7 +80,12 @@ class QuerySortByTest extends Spec with Inside with TestEntities {
         inline def q = quote {
           qr1.sortBy(t => (t.s, t.i))(Ord.desc)
         }
-        val s = SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))), Desc)
+        val s = SortBy(
+          Entity("TestEntity", Nil, TestEntityQuat),
+          Ident("t"),
+          Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))),
+          Desc
+        )
         quote(unquote(q)).ast mustEqual s
         repickle(s) mustEqual s
       }
@@ -83,7 +93,12 @@ class QuerySortByTest extends Spec with Inside with TestEntities {
         inline def q = quote {
           qr1.sortBy(t => (t.s, t.i))(Ord(Ord.desc, Ord.asc))
         }
-        val s = SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))), TupleOrdering(List(Desc, Asc)))
+        val s = SortBy(
+          Entity("TestEntity", Nil, TestEntityQuat),
+          Ident("t"),
+          Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))),
+          TupleOrdering(List(Desc, Asc))
+        )
         quote(unquote(q)).ast mustEqual s
         repickle(s) mustEqual s
       }

@@ -21,8 +21,8 @@ class PeopleCassandraSpec extends Spec {
     ()
   }
 
-  inline def q = quote {
-    (ids: Query[Int]) => query[Person].filter(p => ids.contains(p.id))
+  inline def q = quote { (ids: Query[Int]) =>
+    query[Person].filter(p => ids.contains(p.id))
   }
 
   "Contains id" - {

@@ -64,9 +64,16 @@ trait PeopleAggregationSpec extends Spec {
     Need to look into this
      */
     inline def get = quote {
-      query[Contact].map(c => Name(c.firstName, c.lastName, c.age)).groupByMap(p => p.first)(p => (p.first, max(p.age))).filter(t => t._1 == "Joe")
+      query[Contact]
+        .map(c => Name(c.firstName, c.lastName, c.age))
+        .groupByMap(p => p.first)(p => (p.first, max(p.age)))
+        .filter(t => t._1 == "Joe")
     }
-    val expect = people.groupBy(_.firstName).map { case (name, people) => (name, people.map(_.age).max) }.filter(_._1 == "Joe").toSet
+    val expect = people
+      .groupBy(_.firstName)
+      .map { case (name, people) => (name, people.map(_.age).max) }
+      .filter(_._1 == "Joe")
+      .toSet
   }
 
   object `Ex 6 flatMap.groupByMap.map` {
@@ -78,11 +85,10 @@ trait PeopleAggregationSpec extends Spec {
     }
     val expect = {
       val addressMaxAges = people.groupBy(_.addressFk).map { case (address, q) => (address, q.map(_.age).max) }
-      val addressList = addresses.map(a => (a.id, a)).toMap
-      addressMaxAges
-        .map { case (addressId, maxAge) => (addressList.get(addressId), (addressId, maxAge)) }
-        .collect { case (Some(addr), tup) => (addr, tup) }
-        .toSet
+      val addressList    = addresses.map(a => (a.id, a)).toMap
+      addressMaxAges.map { case (addressId, maxAge) => (addressList.get(addressId), (addressId, maxAge)) }.collect {
+        case (Some(addr), tup) => (addr, tup)
+      }.toSet
     }
   }
 }

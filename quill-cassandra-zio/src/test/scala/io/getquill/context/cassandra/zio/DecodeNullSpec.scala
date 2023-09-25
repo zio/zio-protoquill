@@ -11,26 +11,27 @@ class DecodeNullSpec extends ZioCassandraSpec {
 
       val ret =
         for {
-          _ <- testZioDB.run(writeEntities.delete)
-          _ <- testZioDB.run(writeEntities.insertValue(lift(insertee)))
+          _      <- testZioDB.run(writeEntities.delete)
+          _      <- testZioDB.run(writeEntities.insertValue(lift(insertee)))
           result <- testZioDB.run(query[DecodeNullTestEntity])
         } yield {
           result
         }
 
-      result(ret.foldCause(
-        cause => {
-          cause.isDie must equal(true)
-          cause.dieOption match {
-            case Some(e: Exception) =>
-              e.isInstanceOf[IllegalStateException] must equal(true)
-            case _ =>
-              fail("Expected Fatal Error to be here (and to be a IllegalStateException")
-          }
-        },
-        success =>
-          fail("Expected Exception IllegalStateException but operation succeeded")
-      ))
+      result(
+        ret.foldCause(
+          cause => {
+            cause.isDie must equal(true)
+            cause.dieOption match {
+              case Some(e: Exception) =>
+                e.isInstanceOf[IllegalStateException] must equal(true)
+              case _ =>
+                fail("Expected Fatal Error to be here (and to be a IllegalStateException")
+            }
+          },
+          success => fail("Expected Exception IllegalStateException but operation succeeded")
+        )
+      )
       ()
     }
   }

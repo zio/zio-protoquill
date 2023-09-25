@@ -14,7 +14,7 @@ class AnyValEncodingSpec extends Spec {
 
   "simple anyval should encode and decode" in {
     // val id = Rec(Blah("Joe", 123), "Bloggs")
-    val name = Name("Joe")
+    val name   = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
     println(mirror)
   }

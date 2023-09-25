@@ -1,6 +1,6 @@
 package io.getquill.mysql
 
-import java.sql.{ Connection, ResultSet }
+import java.sql.{Connection, ResultSet}
 import javax.sql.DataSource
 import io.getquill.PrepareZioJdbcSpecBase
 import io.getquill.context.qzio.ImplicitSyntax.Implicit
@@ -10,7 +10,7 @@ import io.getquill._
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
-  implicit val ds: Implicit[DataSource] = Implicit(pool)
+  implicit val ds: Implicit[DataSource]    = Implicit(pool)
   val context: testContext.underlying.type = testContext.underlying
   import testContext.underlying._
 

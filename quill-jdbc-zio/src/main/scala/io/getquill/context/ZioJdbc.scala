@@ -15,10 +15,10 @@ import javax.sql.DataSource
 import zio.Scope
 
 object ZioJdbc {
-  type QIO[T] = ZIO[DataSource, SQLException, T]
+  type QIO[T]     = ZIO[DataSource, SQLException, T]
   type QStream[T] = ZStream[DataSource, SQLException, T]
 
-  type QCIO[T] = ZIO[Connection, SQLException, T]
+  type QCIO[T]     = ZIO[Connection, SQLException, T]
   type QCStream[T] = ZStream[Connection, SQLException, T]
 
   object QIO {
@@ -35,8 +35,11 @@ object ZioJdbc {
       ZLayer.scoped {
         for {
           blockingExecutor <- ZIO.blockingExecutor
-          ds <- ZIO.service[DataSource]
-          r <- ZioJdbc.scopedBestEffort(ZIO.attempt(ds.getConnection)).refineToOrDie[SQLException].onExecutor(blockingExecutor)
+          ds               <- ZIO.service[DataSource]
+          r <- ZioJdbc
+                 .scopedBestEffort(ZIO.attempt(ds.getConnection))
+                 .refineToOrDie[SQLException]
+                 .onExecutor(blockingExecutor)
         } yield r
       }
 
@@ -65,11 +68,13 @@ object ZioJdbc {
       fromJdbcConfigClosable(JdbcContextConfig(LoadConfig(prefix)))
 
     @deprecated("Use Quill.DataSource.fromJdbcConfigClosable instead", "3.3.0")
-    def fromJdbcConfigClosable(jdbcContextConfig: => JdbcContextConfig): ZLayer[Any, Throwable, DataSource with Closeable] =
+    def fromJdbcConfigClosable(
+      jdbcContextConfig: => JdbcContextConfig
+    ): ZLayer[Any, Throwable, DataSource with Closeable] =
       ZLayer.scoped {
         for {
           conf <- ZIO.attempt(jdbcContextConfig)
-          ds <- scopedBestEffort(ZIO.attempt(conf.dataSource))
+          ds   <- scopedBestEffort(ZIO.attempt(conf.dataSource))
         } yield ds
       }
   }
@@ -92,8 +97,8 @@ object ZioJdbc {
       (for {
         r <- ZIO.environment[R]
         q <- qzio
-          .provideSomeLayer[DataSource](ZLayer.succeedEnvironment(r))
-          .provideEnvironment(ZEnvironment(implicitEnv.env))
+               .provideSomeLayer[DataSource](ZLayer.succeedEnvironment(r))
+               .provideEnvironment(ZEnvironment(implicitEnv.env))
       } yield q).refineToOrDie[SQLException]
   }
 
@@ -109,16 +114,19 @@ object ZioJdbc {
     def implicitDS(implicit implicitEnv: Implicit[DataSource]): ZIO[Any, SQLException, T] =
       (for {
         q <- qzio
-          .provideSomeLayer(Quill.Connection.acquireScoped)
-          .provideEnvironment(ZEnvironment(implicitEnv.env))
+               .provideSomeLayer(Quill.Connection.acquireScoped)
+               .provideEnvironment(ZEnvironment(implicitEnv.env))
       } yield q).refineToOrDie[SQLException]
   }
 
   implicit class QuillZioExt[T, R](qzio: ZIO[Connection with R, Throwable, T])(implicit tag: Tag[R]) {
+
     /**
-     * Change `Connection` of a QIO to `DataSource with Closeable` by providing a `DataSourceLayer.live` instance
-     * which will grab a connection from the data-source, perform the QIO operation, and the immediately release the connection.
-     * This is used for data-sources that have pooled connections e.g. Hikari.
+     * Change `Connection` of a QIO to `DataSource with Closeable` by providing
+     * a `DataSourceLayer.live` instance which will grab a connection from the
+     * data-source, perform the QIO operation, and the immediately release the
+     * connection. This is used for data-sources that have pooled connections
+     * e.g. Hikari.
      * {{{
      *   def ds: DataSource with Closeable = ...
      *   run(query[Person]).onDataSource.provide(Has(ds))
@@ -128,22 +136,28 @@ object ZioJdbc {
       (for {
         r <- ZIO.environment[R]
         q <- qzio
-          .provideSomeLayer[Connection](ZLayer.succeedEnvironment(r))
-          .provideSomeLayer(Quill.Connection.acquireScoped)
+               .provideSomeLayer[Connection](ZLayer.succeedEnvironment(r))
+               .provideSomeLayer(Quill.Connection.acquireScoped)
       } yield q).refineToOrDie[SQLException]
   }
 
   /**
-   * This is the same as `ZIO.fromAutoCloseable` but if the `.close()` fails it will log `"close() of resource failed"`
-   * and continue instead of immediately throwing an error in the ZIO die-channel. That is because for JDBC purposes,
-   * a failure on the connection close is usually a recoverable failure. In the cases where it happens it occurs
-   * as the byproduct of a bad state (e.g. failing to close a transaction before closing the connection or failing to
-   * release a stale connection) which will eventually cause other operations (i.e. future reads/writes) to fail
-   * that have not occurred yet.
+   * This is the same as `ZIO.fromAutoCloseable` but if the `.close()` fails it
+   * will log `"close() of resource failed"` and continue instead of immediately
+   * throwing an error in the ZIO die-channel. That is because for JDBC
+   * purposes, a failure on the connection close is usually a recoverable
+   * failure. In the cases where it happens it occurs as the byproduct of a bad
+   * state (e.g. failing to close a transaction before closing the connection or
+   * failing to release a stale connection) which will eventually cause other
+   * operations (i.e. future reads/writes) to fail that have not occurred yet.
    */
   private[getquill] def scopedBestEffort[R, E, A <: AutoCloseable](effect: ZIO[R, E, A]): ZIO[R with Scope, E, A] =
     ZIO.acquireRelease(effect)(resource =>
-      ZIO.attemptBlocking(resource.close()).tapError(e => ZIO.attempt(logger.underlying.error(s"close() of resource failed", e)).ignore).ignore)
+      ZIO
+        .attemptBlocking(resource.close())
+        .tapError(e => ZIO.attempt(logger.underlying.error(s"close() of resource failed", e)).ignore)
+        .ignore
+    )
 
   private[getquill] val streamBlocker: ZStream[Any, Nothing, Any] =
     ZStream.scoped {

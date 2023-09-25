@@ -19,11 +19,10 @@ trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   override def beforeAll() = {
     import FlatSchema._
     (for { //
-        _ <- Ctx.run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
-        _ <- Ctx.run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insertValue(row)))
-        _ <- Ctx.run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insertValue(row)))
-      } yield ()
-    ).provideLayer(zioDS).unsafeRunSync()
+      _ <- Ctx.run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])
+      _ <- Ctx.run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insertValue(row)))
+      _ <- Ctx.run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insertValue(row)))
+    } yield ()).provideLayer(zioDS).unsafeRunSync()
   }
 
   // override def afterAll() = {
@@ -44,8 +43,7 @@ trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
       (for {
         interpreter <- api.interpreter
         result      <- interpreter.execute(queryString)
-      } yield (result)
-      ).tapError{ e =>
+      } yield (result)).tapError { e =>
         fail("GraphQL Validation Error", e)
         ZIO.unit
       }.unsafeRunSync()

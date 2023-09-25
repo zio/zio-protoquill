@@ -9,7 +9,8 @@ object WarnMac {
     import io.getquill.util.Format
     msg match
       case Expr(str: String) =>
-        println(s"${str} - ${Format.TypeRepr(TypeRepr.of[F])}: ${Format.TypeRepr(TypeRepr.of[T])} -> ${Format.TypeRepr(TypeRepr.of[Tail])}")
+        println(s"${str} - ${Format.TypeRepr(TypeRepr.of[F])}: ${Format.TypeRepr(TypeRepr.of[T])} -> ${Format
+            .TypeRepr(TypeRepr.of[Tail])}")
     '{ () }
   }
 }

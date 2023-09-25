@@ -13,7 +13,7 @@ class InsertLiftedSpec extends Spec {
       case class Name(first: First, last: String)
       case class Person(name: Name, age: Int)
 
-      inline def q = quote { query[Person].insertValue(lift(Person(Name(First("Joe"), "Bloggs"), 123))) }
+      inline def q = quote(query[Person].insertValue(lift(Person(Name(First("Joe"), "Bloggs"), 123))))
       ctx.run(q).triple mustEqual (
         "INSERT INTO Person (value,last,age) VALUES (?, ?, ?)",
         List("Joe", "Bloggs", 123),
@@ -26,7 +26,7 @@ class InsertLiftedSpec extends Spec {
       case class Name(first: First, last: String)
       case class Person(name: Option[Name], age: Int)
 
-      inline def q = quote { query[Person].insertValue(lift(Person(Some(Name(First(Some("Joe")), "Bloggs")), 123))) }
+      inline def q = quote(query[Person].insertValue(lift(Person(Some(Name(First(Some("Joe")), "Bloggs")), 123))))
       ctx.run(q).triple mustEqual (
         "INSERT INTO Person (value,last,age) VALUES (?, ?, ?)",
         List(Some("Joe"), Some("Bloggs"), 123),
@@ -39,7 +39,7 @@ class InsertLiftedSpec extends Spec {
       case class Name(first: First, last: String)
       case class Person(name: Option[Name], age: Int)
 
-      inline def q = quote { query[Person].insertValue(lift(Person(Some(Name(First("Joe"), "Bloggs")), 123))) }
+      inline def q = quote(query[Person].insertValue(lift(Person(Some(Name(First("Joe"), "Bloggs")), 123))))
       ctx.run(q).triple mustEqual (
         "INSERT INTO Person (value,last,age) VALUES (?, ?, ?)",
         List(Some("Joe"), Some("Bloggs"), 123),
@@ -53,7 +53,9 @@ class InsertLiftedSpec extends Spec {
       case class Name(first: First, last: String)
       case class Person(name: Option[Name], age: Int)
 
-      inline def q = quote { query[Person].insertValue(lift(Person(Some(Name(First(Value(Some("Joe"))), "Bloggs")), 123))) }
+      inline def q = quote {
+        query[Person].insertValue(lift(Person(Some(Name(First(Value(Some("Joe"))), "Bloggs")), 123)))
+      }
       ctx.run(q).triple mustEqual (
         "INSERT INTO Person (value,last,age) VALUES (?, ?, ?)",
         List(Some("Joe"), Some("Bloggs"), 123),

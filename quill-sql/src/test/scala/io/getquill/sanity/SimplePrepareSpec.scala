@@ -17,15 +17,15 @@ class SimplePrepareSpec extends Spec {
     case class Person(name: String, age: Int)
 
     "query" in {
-      inline def q = quote { query[Person] }
-      val result = prepare(q)
+      inline def q = quote(query[Person])
+      val result   = prepare(q)
       result.sql mustEqual "SELECT x.name, x.age FROM Person x"
     }
 
     "batch" in {
-      val list = List(Person("Joe", 1), Person("Jack", 2))
-      inline def q = quote { liftQuery(list).foreach(p => query[Person].insertValue(p)) }
-      val result = prepare(q)
+      val list     = List(Person("Joe", 1), Person("Jack", 2))
+      inline def q = quote(liftQuery(list).foreach(p => query[Person].insertValue(p)))
+      val result   = prepare(q)
       result.groups.length mustEqual 1
       result.groups(0)._1 mustEqual "INSERT INTO Person (name,age) VALUES (?, ?)"
       result.groups(0)._2.map(_.data) mustEqual List(Seq(("_1", "Joe"), ("_2", 1)), Seq(("_1", "Jack"), ("_2", 2)))

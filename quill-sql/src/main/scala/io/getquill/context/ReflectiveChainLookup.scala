@@ -24,7 +24,7 @@ private[getquill] object ReflectivePathChainLookup:
   end LookupElement
 
   case class LookupPath(element: LookupElement, path: String):
-    def cls = element.cls
+    def cls     = element.cls
     def current = element.current
 
   extension (elem: Option[Object])
@@ -64,20 +64,24 @@ private[getquill] object ReflectivePathChainLookup:
         // Get Foo.MODULE$
         val submodOpt: Option[Object] = lookupModuleObject(lookup.current)(lookup.cls)
         // Get Foo.MODULE$.fields. The `Field` unapply can be recycled for this purpose
-        submodOpt.map(submod =>
-          // I.e. lookup MODULE$.field
-          lookupFirstMethod(lookup.path)(lookup.cls, submod)("$MODULE.field").map(LookupElement.Value(_))
-        ).flatten
+        submodOpt
+          .map(submod =>
+            // I.e. lookup MODULE$.field
+            lookupFirstMethod(lookup.path)(lookup.cls, submod)("$MODULE.field").map(LookupElement.Value(_))
+          )
+          .flatten
 
     object HelperObjectMethod:
       def unapply(lookup: LookupPath): Option[LookupElement.Value] =
         // Get Foo.MODULE$
         val submodOpt: Option[Object] = lookupModuleObject(lookup.current)(lookup.cls)
         // Get Foo.MODULE$.methods. The `Method` unapply can be recycled for this purpose
-        submodOpt.map(submod =>
-          // I.e. lookup MODULE$.method
-          lookupFirstMethod(lookup.path)(lookup.cls, submod)("$MODULE.method").map(LookupElement.Value(_))
-        ).flatten
+        submodOpt
+          .map(submod =>
+            // I.e. lookup MODULE$.method
+            lookupFirstMethod(lookup.path)(lookup.cls, submod)("$MODULE.method").map(LookupElement.Value(_))
+          )
+          .flatten
 
     // Lookup object Foo { ... } element MODULE$ which is the singleton instance in the Java representation
     def lookupModuleObject(obj: Object)(cls: Class[_] = obj.getClass): Option[Object] =
@@ -103,7 +107,9 @@ private[getquill] object ReflectivePathChainLookup:
       case Lookup.HelperObjectField(elem)  => Some(elem)
       case _                               => None
 
-  def chainLookup(element: LookupElement, paths: List[String])(pathsSeen: List[String] = List()): Either[String, LookupElement] =
+  def chainLookup(element: LookupElement, paths: List[String])(
+    pathsSeen: List[String] = List()
+  ): Either[String, LookupElement] =
     import StringOps._
     paths match
       case Nil => Right(element)

@@ -5,7 +5,6 @@ import io.getquill._
 
 class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec {
 
-
   val context: testContext.type = testContext
   import testContext._
 
@@ -21,7 +20,7 @@ class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec {
   "Ex 0 insert.returning(_.generatedColumn) mod" in {
     import `Ex 0 insert.returning(_.generatedColumn) mod`._
     (for {
-      id <- testContext.run(op)
+      id     <- testContext.run(op)
       output <- testContext.run(get)
     } yield (output.toSet mustEqual result(id).toSet)).runSyncUnsafe()
   }
@@ -35,7 +34,7 @@ class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec {
   "Ex 1 insert.returningMany(_.generatedColumn) mod" in {
     import `Ex 1 insert.returningMany(_.generatedColumn) mod`._
     (for {
-      id <- testContext.run(op)
+      id     <- testContext.run(op)
       output <- testContext.run(get)
     } yield (output mustEqual result(id.head))).runSyncUnsafe()
   }
@@ -45,8 +44,8 @@ class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec {
     import `Ex 2 update.returningMany(_.singleColumn) mod`._
     (for {
       opResult <- testContext.run(op)
-      _ = opResult.toSet mustEqual expect.toSet
-      output <- testContext.run(get)
+      _         = opResult.toSet mustEqual expect.toSet
+      output   <- testContext.run(get)
     } yield (output.toSet mustEqual result.toSet)).runSyncUnsafe()
   }
 
@@ -61,8 +60,8 @@ class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec {
     import `Ex 4 update.returningMany(query)`._
     (for {
       opResult <- testContext.run(op)
-      _ = opResult.toSet mustEqual expect.toSet
-      output <- testContext.run(get)
+      _         = opResult.toSet mustEqual expect.toSet
+      output   <- testContext.run(get)
     } yield (output.toSet mustEqual result.toSet)).runSyncUnsafe()
   }
 }

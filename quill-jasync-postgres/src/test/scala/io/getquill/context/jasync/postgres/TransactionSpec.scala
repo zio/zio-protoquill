@@ -1,6 +1,6 @@
 package io.getquill.context.jasync.postgres
 
-import scala.concurrent.ExecutionContext.Implicits.{ global => ec }
+import scala.concurrent.ExecutionContext.Implicits.{global => ec}
 import io.getquill.context.sql.PeopleSpec
 import io.getquill._
 import scala.util.Try
@@ -35,14 +35,14 @@ class TransactionSpec extends PeopleSpec {
         testContext.transaction { implicit ec =>
           for {
             _ <- testContext.run(query[Couple].insertValue(lift(Couple("Alex", "Bert"))))
-            _ <- scala.concurrent.Future { throw new RuntimeException("Blahblahblah") }
+            _ <- scala.concurrent.Future(throw new RuntimeException("Blahblahblah"))
             _ <- testContext.run(query[Person].insertValue(lift(Person("Alex", 60))))
           } yield {}
         }
       }
     } match {
       case Success(value) => fail("Query with failure should not succeed")
-      case _ => println("Expected failure reached")
+      case _              => println("Expected failure reached")
     }
     await(testContext.run(query[Couple])) mustEqual List()
     await(testContext.run(query[Person])) mustEqual List()

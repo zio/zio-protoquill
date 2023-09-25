@@ -17,8 +17,7 @@ class PostgresDoobieContextSuite extends AnyFreeSpec with Matchers {
   import cats.effect.unsafe.implicits.global
 
   // A transactor that always rolls back.
-  lazy val xa = Transactor
-    .after
+  lazy val xa = Transactor.after
     .set(
       Transactor.fromDriverManager[IO](
         "org.postgresql.Driver",
@@ -26,7 +25,7 @@ class PostgresDoobieContextSuite extends AnyFreeSpec with Matchers {
         "postgres",
         System.getenv("POSTGRES_PASSWORD")
       ),
-      HC.rollback,
+      HC.rollback
     )
 
   val dc = new DoobieContext.Postgres[Literal](Literal)
@@ -70,7 +69,7 @@ class PostgresDoobieContextSuite extends AnyFreeSpec with Matchers {
         query[Country].filter(_.name like pat).update(_.name -> "foo")
       }
     }
-    val actual = dc.run(stmt).transact(xa).unsafeRunSync()
+    val actual   = dc.run(stmt).transact(xa).unsafeRunSync()
     val expected = List(2L, 1L)
     actual mustEqual expected
   }

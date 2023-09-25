@@ -10,23 +10,33 @@ import io.getquill.Planter
 import io.getquill.ast.Ast
 
 object LiftsExtractor:
-  /** For Dynamic queries, lazy lifts are not allowed. If one is encountered, fail */
+  /**
+   * For Dynamic queries, lazy lifts are not allowed. If one is encountered,
+   * fail
+   */
   object Dynamic:
     def apply[PrepareRowTemp, Session](allLifts: List[Planter[_, _, _]], row: PrepareRowTemp, session: Session) =
       val lifts = allLifts.map {
         case e: EagerPlanter[_, _, _]     => e
         case e: EagerListPlanter[_, _, _] => e
         case l: LazyPlanter[_, _, _] =>
-          throw new IllegalArgumentException(s"The value ${l.value} has a lazy lift which was spliced into a Dynamic Query. Lazy Lifts are only allowed for Compile-Time queries.")
+          throw new IllegalArgumentException(
+            s"The value ${l.value} has a lazy lift which was spliced into a Dynamic Query. Lazy Lifts are only allowed for Compile-Time queries."
+          )
         case other =>
-          throw new IllegalStateException(s"Found an illegal lift planter ${other} during lift extraction. All injectable and lazy lifts must have been resolved at this point.")
+          throw new IllegalStateException(
+            s"Found an illegal lift planter ${other} during lift extraction. All injectable and lazy lifts must have been resolved at this point."
+          )
       }
       LiftsExtractor.apply(lifts, row, session)
 
   def apply[PrepareRowTemp, Session](lifts: List[Planter[_, _, _]], row: PrepareRowTemp, session: Session) = {
 
     def encodeSingleElement(lift: EagerPlanter[_, _, _], idx: Int, row: PrepareRowTemp): (Int, PrepareRowTemp, Any) =
-      val prepRow = lift.asInstanceOf[EagerPlanter[Any, PrepareRowTemp, Session]].encoder(idx, lift.value, row, session).asInstanceOf[PrepareRowTemp]
+      val prepRow = lift
+        .asInstanceOf[EagerPlanter[Any, PrepareRowTemp, Session]]
+        .encoder(idx, lift.value, row, session)
+        .asInstanceOf[PrepareRowTemp]
       (1, prepRow, lift.value)
 
     // Since we have already expanded list-lifts into separate question marks in the Particularizer, now we
@@ -55,16 +65,17 @@ object LiftsExtractor:
     // Then:    b.encoder(1, b.value [i.e. "bar"], row) -> (0, "bar" :: "foo" :: Nil, row)
     // etc...
     val (_, values, prepare) =
-      lifts.foldLeft((0, List.empty[Any], row)) {
-        case ((idx, values, row), lift) =>
-          val (increment, newRow, value) =
-            lift match
-              case eager: EagerPlanter[_, _, _]         => encodeSingleElement(eager, idx, row)
-              case eagerList: EagerListPlanter[_, _, _] => encodeElementList(eagerList, idx, row)
-              case _ =>
-                throw new IllegalArgumentException(s"Lifts must be extracted from EagerLift or EagerList Lift but ${lift} found")
+      lifts.foldLeft((0, List.empty[Any], row)) { case ((idx, values, row), lift) =>
+        val (increment, newRow, value) =
+          lift match
+            case eager: EagerPlanter[_, _, _]         => encodeSingleElement(eager, idx, row)
+            case eagerList: EagerListPlanter[_, _, _] => encodeElementList(eagerList, idx, row)
+            case _ =>
+              throw new IllegalArgumentException(
+                s"Lifts must be extracted from EagerLift or EagerList Lift but ${lift} found"
+              )
 
-          (idx + increment, value :: values, newRow)
+        (idx + increment, value :: values, newRow)
       }
     (values, prepare)
   }

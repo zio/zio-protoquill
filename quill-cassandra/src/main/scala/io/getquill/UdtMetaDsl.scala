@@ -8,11 +8,16 @@ import scala.language.experimental.macros
 /**
  * Creates udt meta to override udt name / keyspace and rename columns
  *
- * @param path    - either `udt_name` or `keyspace.udt_name`
- * @param columns - columns to rename
- * @return udt meta
+ * @param path
+ *   \- either `udt_name` or `keyspace.udt_name`
+ * @param columns
+ *   \- columns to rename
+ * @return
+ *   udt meta
  */
-inline def udtMeta[T <: Udt](inline path: String, inline columns: (T => (Any, String))*): UdtMeta[T] = ${UdtMetaDslMacro[T]('path, 'columns)}
+inline def udtMeta[T <: Udt](inline path: String, inline columns: (T => (Any, String))*): UdtMeta[T] = ${
+  UdtMetaDslMacro[T]('path, 'columns)
+}
 
 trait UdtMeta[T <: Udt] {
   def keyspace: Option[String]
@@ -26,7 +31,7 @@ object UdtMeta:
     import quotes.reflect.*
     if (TypeRepr.of[T] =:= TypeRepr.of[Udt])
       // TODO quill.trace.types 'summoning' level should enable this
-      //println("Cannot derive schema for the base Udt (print the stack trace too)")
+      // println("Cannot derive schema for the base Udt (print the stack trace too)")
       '{ ??? }
     else
       Expr.summon[UdtMeta[T]] match
@@ -36,6 +41,6 @@ object UdtMeta:
         case None =>
           val typeName = TypeRepr.of[T].widen.typeSymbol.name
           // TODO quill.trace.types 'summoning' level should enable this
-          //println(s"Dsl not found. Making one with the type name: ${typeName}")
+          // println(s"Dsl not found. Making one with the type name: ${typeName}")
           UdtMetaDslMacro[T](Expr(typeName), Expr.ofList(Seq()))
 end UdtMeta

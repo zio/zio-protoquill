@@ -26,20 +26,24 @@ object LoadNaming {
       for {
         optClassSymbol <- Try(loadClassType.classSymbol)
         className <- Try {
-          optClassSymbol match
-            case Some(value) => Success(value.fullName)
-            case None =>
-              if (!loadClassType.termSymbol.moduleClass.isNoSymbol)
-                Success(loadClassType.termSymbol.moduleClass.fullName)
-              else
-                Failure(new IllegalArgumentException(s"The class ${loadClassType.show} cannot be loaded because it is not a scala class or module"))
-        }.flatten
+                       optClassSymbol match
+                         case Some(value) => Success(value.fullName)
+                         case None =>
+                           if (!loadClassType.termSymbol.moduleClass.isNoSymbol)
+                             Success(loadClassType.termSymbol.moduleClass.fullName)
+                           else
+                             Failure(
+                               new IllegalArgumentException(
+                                 s"The class ${loadClassType.show} cannot be loaded because it is not a scala class or module"
+                               )
+                             )
+                     }.flatten
         field <- Try {
-          val clsFull = `endWith$`(className)
-          val cls = Class.forName(clsFull)
-          val field = cls.getField("MODULE$")
-          field.get(cls).asInstanceOf[T]
-        }
+                   val clsFull = `endWith$`(className)
+                   val cls     = Class.forName(clsFull)
+                   val field   = cls.getField("MODULE$")
+                   field.get(cls).asInstanceOf[T]
+                 }
       } yield (field)
 
     CollectTry {
@@ -55,7 +59,8 @@ object LoadNaming {
         treeTpe match {
           case AppliedType(_, types) =>
             types
-              .filter(_.isInstanceOf[TypeRepr]).map(_.asInstanceOf[TypeRepr])
+              .filter(_.isInstanceOf[TypeRepr])
+              .map(_.asInstanceOf[TypeRepr])
               .filterNot(_ =:= TypeRepr.of[NamingStrategy])
               .filterNot(_ =:= TypeRepr.of[Nothing])
         }

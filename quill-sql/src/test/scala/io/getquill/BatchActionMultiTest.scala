@@ -18,12 +18,14 @@ import io.getquill.util.debug.PrintMac
 class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDialect, Literal] {
   // Need to fully type this otherwise scala compiler thinks it's still just 'Context' from the super-class
   // and the extensions (m: MirrorContext[_, _]#BatchActionMirror) etc... classes in Spec don't match their types correctly
-  val ctx: MirrorContext[PostgresDialect, Literal] = new MirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
+  val ctx: MirrorContext[PostgresDialect, Literal] =
+    new MirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
   import ctx._
 
   "Multi-row Batch Action Should work with" - {
     "inserts > batch-size - (2rows + 2rows) + (1row)" - {
-      val people = List(Person(1, "A", 111), Person(2, "B", 222), Person(3, "C", 333), Person(4, "D", 444), Person(5, "E", 555))
+      val people =
+        List(Person(1, "A", 111), Person(2, "B", 222), Person(3, "C", 333), Person(4, "D", 444), Person(5, "E", 555))
       def expect(executionType: ExecutionType) =
         List(
           (
@@ -61,12 +63,21 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
           )
         )
       "static - mixed" in {
-        val static = ctx.run(liftQuery(people).foreach(p => query[Person].insert(_.id -> p.id, _.name -> (lift("foo") + p.name + "bar"), _.age -> p.age)), 2)
+        val static = ctx.run(
+          liftQuery(people).foreach(p =>
+            query[Person].insert(_.id -> p.id, _.name -> (lift("foo") + p.name + "bar"), _.age -> p.age)
+          ),
+          2
+        )
         static.tripleBatchMulti mustEqual expect2(ExecutionType.Static)
       }
       "dynamic - mixed" in {
         // TODO Why does it not print that a dynamic query is being run?
-        val q = quote(liftQuery(people).foreach(p => query[Person].insert(_.id -> p.id, _.name -> (lift("foo") + p.name + "bar"), _.age -> p.age)))
+        val q = quote(
+          liftQuery(people).foreach(p =>
+            query[Person].insert(_.id -> p.id, _.name -> (lift("foo") + p.name + "bar"), _.age -> p.age)
+          )
+        )
         val static = ctx.run(q, 2)
         static.tripleBatchMulti mustEqual expect2(ExecutionType.Dynamic)
       }
@@ -141,12 +152,19 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
     "fallback for non-insert query (in a context that doesn't support update)" - {
       val ctx: MirrorContext[MySQLDialect, Literal] = new MirrorContext[MySQLDialect, Literal](MySQLDialect, Literal)
       import ctx._
-      val people = List(Person(1, "A", 111), Person(2, "B", 222), Person(3, "C", 333), Person(4, "D", 444), Person(5, "E", 555))
+      val people =
+        List(Person(1, "A", 111), Person(2, "B", 222), Person(3, "C", 333), Person(4, "D", 444), Person(5, "E", 555))
       def expect(executionType: ExecutionType) =
         List(
           (
             "UPDATE Person pt SET id = ?, name = ?, age = ? WHERE pt.id = ?",
-            List(List(1, "A", 111, 1), List(2, "B", 222, 2), List(3, "C", 333, 3), List(4, "D", 444, 4), List(5, "E", 555, 5)),
+            List(
+              List(1, "A", 111, 1),
+              List(2, "B", 222, 2),
+              List(3, "C", 333, 3),
+              List(4, "D", 444, 4),
+              List(5, "E", 555, 5)
+            ),
             executionType
           )
         )
@@ -163,7 +181,8 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
     }
 
     "update query" - {
-      val people = List(Person(1, "A", 111), Person(2, "B", 222), Person(3, "C", 333), Person(4, "D", 444), Person(5, "E", 555))
+      val people =
+        List(Person(1, "A", 111), Person(2, "B", 222), Person(3, "C", 333), Person(4, "D", 444), Person(5, "E", 555))
       def expect(executionType: ExecutionType) =
         List(
           (
@@ -190,7 +209,8 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
     }
 
     "supported contexts" - {
-      val people = List(Person(1, "A", 111), Person(2, "B", 222), Person(3, "C", 333), Person(4, "D", 444), Person(5, "E", 555))
+      val people =
+        List(Person(1, "A", 111), Person(2, "B", 222), Person(3, "C", 333), Person(4, "D", 444), Person(5, "E", 555))
       def makeRow(executionType: ExecutionType)(queryA: String, queryB: String) =
         List(
           (
@@ -232,36 +252,55 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
       "postgres - regular/returning" in {
         val ctx: MirrorContext[PostgresDialect, Literal] = new MirrorContext(PostgresDialect, Literal)
         import ctx._
-        ctx.run(liftQuery(people).foreach(p => insertPeople(p)), 2).tripleBatchMulti mustEqual expect(ExecutionType.Static)
-        ctx.run(liftQuery(people).foreach(p => insertPeople(p).returning(_.id)), 2).tripleBatchMulti mustEqual expectPostgresReturning(ExecutionType.Static)
+        ctx.run(liftQuery(people).foreach(p => insertPeople(p)), 2).tripleBatchMulti mustEqual expect(
+          ExecutionType.Static
+        )
+        ctx
+          .run(liftQuery(people).foreach(p => insertPeople(p).returning(_.id)), 2)
+          .tripleBatchMulti mustEqual expectPostgresReturning(ExecutionType.Static)
       }
       "sqlserver - regular/returning" in {
         val ctx: MirrorContext[SQLServerDialect, Literal] = new MirrorContext(SQLServerDialect, Literal)
         import ctx._
-        ctx.run(liftQuery(people).foreach(p => insertPeople(p)), 2).tripleBatchMulti mustEqual expect(ExecutionType.Static)
-        ctx.run(liftQuery(people).foreach(p => insertPeople(p).returning(_.id)), 2).tripleBatchMulti mustEqual expectSqlServerReturning(ExecutionType.Static)
+        ctx.run(liftQuery(people).foreach(p => insertPeople(p)), 2).tripleBatchMulti mustEqual expect(
+          ExecutionType.Static
+        )
+        ctx
+          .run(liftQuery(people).foreach(p => insertPeople(p).returning(_.id)), 2)
+          .tripleBatchMulti mustEqual expectSqlServerReturning(ExecutionType.Static)
       }
       "mysql - regular/returning" in {
         val ctx: MirrorContext[MySQLDialect, Literal] = new MirrorContext(MySQLDialect, Literal)
         import ctx._
-        ctx.run(liftQuery(people).foreach(p => insertPeople(p)), 2).tripleBatchMulti mustEqual expect(ExecutionType.Static)
-        ctx.run(liftQuery(people).foreach(p => insertPeople(p).returning(_.id)), 2).tripleBatchMulti mustEqual expect(ExecutionType.Static)
+        ctx.run(liftQuery(people).foreach(p => insertPeople(p)), 2).tripleBatchMulti mustEqual expect(
+          ExecutionType.Static
+        )
+        ctx.run(liftQuery(people).foreach(p => insertPeople(p).returning(_.id)), 2).tripleBatchMulti mustEqual expect(
+          ExecutionType.Static
+        )
       }
       "h2 - regular/returning" in {
         val ctx: MirrorContext[H2Dialect, Literal] = new MirrorContext(H2Dialect, Literal)
         import ctx._
-        ctx.run(liftQuery(people).foreach(p => insertPeople(p)), 2).tripleBatchMulti mustEqual expectH2(ExecutionType.Static)
-        ctx.run(liftQuery(people).foreach(p => insertPeople(p).returning(_.id)), 2).tripleBatchMulti mustEqual expectH2(ExecutionType.Static)
+        ctx.run(liftQuery(people).foreach(p => insertPeople(p)), 2).tripleBatchMulti mustEqual expectH2(
+          ExecutionType.Static
+        )
+        ctx.run(liftQuery(people).foreach(p => insertPeople(p).returning(_.id)), 2).tripleBatchMulti mustEqual expectH2(
+          ExecutionType.Static
+        )
       }
       "sqlite - only regular" in {
         val ctx: MirrorContext[SqliteDialect, Literal] = new MirrorContext(SqliteDialect, Literal)
         import ctx._
-        ctx.run(liftQuery(people).foreach(p => insertPeople(p)), 2).tripleBatchMulti mustEqual expect(ExecutionType.Static)
+        ctx.run(liftQuery(people).foreach(p => insertPeople(p)), 2).tripleBatchMulti mustEqual expect(
+          ExecutionType.Static
+        )
       }
     }
 
     "fallback for non-supported context" - {
-      val people = List(Person(1, "A", 111), Person(2, "B", 222), Person(3, "C", 333), Person(4, "D", 444), Person(5, "E", 555))
+      val people =
+        List(Person(1, "A", 111), Person(2, "B", 222), Person(3, "C", 333), Person(4, "D", 444), Person(5, "E", 555))
       def expect(executionType: ExecutionType) =
         List(
           (
@@ -272,7 +311,8 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         )
 
       "oracle" - {
-        val ctx: MirrorContext[OracleDialect, Literal] = new MirrorContext[OracleDialect, Literal](OracleDialect, Literal)
+        val ctx: MirrorContext[OracleDialect, Literal] =
+          new MirrorContext[OracleDialect, Literal](OracleDialect, Literal)
         import ctx._
         "static" in {
           val static = ctx.run(liftQuery(people).foreach(p => insertPeople(p)), 2)
@@ -284,7 +324,8 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         }
       }
       "sqlite - with returning clause" - {
-        val ctx: MirrorContext[OracleDialect, Literal] = new MirrorContext[OracleDialect, Literal](OracleDialect, Literal)
+        val ctx: MirrorContext[OracleDialect, Literal] =
+          new MirrorContext[OracleDialect, Literal](OracleDialect, Literal)
         import ctx._
         "static" in {
           val static = ctx.run(liftQuery(people).foreach(p => insertPeople(p).returning(_.id)), 2)

@@ -23,7 +23,7 @@ class IfSpec extends Spec {
       }
       testContext.run(q).string mustEqual
         // Originally was this:
-        //"SELECT CASE WHEN true THEN true ELSE false END FROM TestEntity t"
+        // "SELECT CASE WHEN true THEN true ELSE false END FROM TestEntity t"
         // But scala itself beta reduces the booleans
         "SELECT true FROM TestEntity t"
     }
@@ -40,7 +40,7 @@ class IfSpec extends Spec {
       }
       testContext.run(q).string mustEqual (
         // Originally was this
-        //"SELECT CASE WHEN true THEN true WHEN true THEN true ELSE false END FROM TestEntity t"
+        // "SELECT CASE WHEN true THEN true WHEN true THEN true ELSE false END FROM TestEntity t"
         // but scala beta reduces to this:
         "SELECT true FROM TestEntity t"
       )

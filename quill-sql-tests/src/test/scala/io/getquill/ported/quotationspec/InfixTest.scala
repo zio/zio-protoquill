@@ -19,7 +19,10 @@ class InfixTest extends Spec with Inside {
   extension (ast: Ast)
     def body: Ast = ast match
       case f: Function => f.body
-      case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}"
+        )
 
   "sql" - {
     "with `as`" in {
@@ -54,9 +57,8 @@ class InfixTest extends Spec with Inside {
       quote(unquote(q)).ast mustEqual i
     }
     "with params" in {
-      inline def q = quote {
-        (a: String, b: String) =>
-          sql"$a || $b".as[String]
+      inline def q = quote { (a: String, b: String) =>
+        sql"$a || $b".as[String]
       }
       val i = Infix(List("", " || ", ""), List(Ident("a"), Ident("b")), false, false, Quat.Value)
       quote(unquote(q)).ast.body mustEqual i
@@ -68,58 +70,58 @@ class InfixTest extends Spec with Inside {
         def unapply(vase: QuotationVase) =
           vase match
             case QuotationVase(Quoted(ast, Nil, Nil), uid) => Some((ast, uid))
-            case _ => None
+            case _                                         => None
 
       "at the end - pure" in {
         val b = "dyn"
-        inline def q = quote {
-          (a: String) =>
-            sql"$a || #$b".pure.as[String]
+        inline def q = quote { (a: String) =>
+          sql"$a || #$b".pure.as[String]
         }
         q must matchPattern {
           case Quoted(
-            Function(List(Ident("a", QV)), QuotationTag(idA)), Nil,
-            List(Vase(Infix(List("", " || dyn"), List(Ident("a", Quat.Value)), true, false, QV), idA1))
-          ) if (idA == idA1) =>
+                Function(List(Ident("a", QV)), QuotationTag(idA)),
+                Nil,
+                List(Vase(Infix(List("", " || dyn"), List(Ident("a", Quat.Value)), true, false, QV), idA1))
+              ) if (idA == idA1) =>
         }
       }
       "at the end" in {
         val b = "dyn"
-        val q = quote {
-          (a: String) =>
-            sql"$a || #$b".as[String]
+        val q = quote { (a: String) =>
+          sql"$a || #$b".as[String]
         }
         q must matchPattern {
           case Quoted(
-            Function(List(Ident("a", QV)), QuotationTag(idA)), Nil,
-            List(Vase(Infix(List("", " || dyn"), List(Ident("a", Quat.Value)), false, false, QV), idA1))
-          ) if (idA == idA1) =>
+                Function(List(Ident("a", QV)), QuotationTag(idA)),
+                Nil,
+                List(Vase(Infix(List("", " || dyn"), List(Ident("a", Quat.Value)), false, false, QV), idA1))
+              ) if (idA == idA1) =>
         }
       }
       "at the beginning - pure" in {
         val a = "dyn"
-        val q = quote {
-          (b: String) =>
-            sql"#$a || $b".pure.as[String]
+        val q = quote { (b: String) =>
+          sql"#$a || $b".pure.as[String]
         }
         q must matchPattern {
           case Quoted(
-            Function(List(Ident("b", QV)), QuotationTag(idA)), Nil,
-            List(Vase(Infix(List("dyn || ", ""), List(Ident("b", Quat.Value)), true, false, QV), idA1))
-          ) if (idA == idA1) =>
+                Function(List(Ident("b", QV)), QuotationTag(idA)),
+                Nil,
+                List(Vase(Infix(List("dyn || ", ""), List(Ident("b", Quat.Value)), true, false, QV), idA1))
+              ) if (idA == idA1) =>
         }
       }
       "at the beginning" in {
         val a = "dyn"
-        val q = quote {
-          (b: String) =>
-            sql"#$a || $b".as[String]
+        val q = quote { (b: String) =>
+          sql"#$a || $b".as[String]
         }
         q must matchPattern {
           case Quoted(
-            Function(List(Ident("b", QV)), QuotationTag(idA)), Nil,
-            List(Vase(Infix(List("dyn || ", ""), List(Ident("b", Quat.Value)), false, false, QV), idA1))
-          ) if (idA == idA1) =>
+                Function(List(Ident("b", QV)), QuotationTag(idA)),
+                Nil,
+                List(Vase(Infix(List("dyn || ", ""), List(Ident("b", Quat.Value)), false, false, QV), idA1))
+              ) if (idA == idA1) =>
         }
       }
       "only" in {
@@ -130,9 +132,10 @@ class InfixTest extends Spec with Inside {
 
         q must matchPattern {
           case Quoted(
-            QuotationTag(idA), Nil,
-            List(Vase(Infix(List("dyn1"), Nil, false, false, QV), idA1))
-          ) if (idA == idA1) =>
+                QuotationTag(idA),
+                Nil,
+                List(Vase(Infix(List("dyn1"), Nil, false, false, QV), idA1))
+              ) if (idA == idA1) =>
         }
       }
       "with lift" in {
@@ -144,10 +147,10 @@ class InfixTest extends Spec with Inside {
 
         q must matchPattern {
           case Quoted(
-            QuotationTag(idA),
-            List(EagerPlanter("foo", _, idB)),
-            List(Vase(Infix(List("dyn1 || ", ""), List(ScalarTag(idB1, _)), false, false, QV), idA1))
-          ) if (idA == idA1 && idB == idB1) =>
+                QuotationTag(idA),
+                List(EagerPlanter("foo", _, idB)),
+                List(Vase(Infix(List("dyn1 || ", ""), List(ScalarTag(idB1, _)), false, false, QV), idA1))
+              ) if (idA == idA1 && idB == idB1) =>
         }
       }
       "sequential - pure" in {
@@ -158,9 +161,10 @@ class InfixTest extends Spec with Inside {
         }
         q must matchPattern {
           case Quoted(
-            QuotationTag(idA), Nil,
-            List(Vase(Infix(List("dyn1dyn2"), Nil, true, false, QV), idA1))
-          ) if (idA == idA1) =>
+                QuotationTag(idA),
+                Nil,
+                List(Vase(Infix(List("dyn1dyn2"), Nil, true, false, QV), idA1))
+              ) if (idA == idA1) =>
         }
       }
       "sequential" in {
@@ -171,9 +175,10 @@ class InfixTest extends Spec with Inside {
         }
         q must matchPattern {
           case Quoted(
-            QuotationTag(idA), Nil,
-            List(Vase(Infix(List("dyn1dyn2"), Nil, false, false, QV), idA1))
-          ) if (idA == idA1) =>
+                QuotationTag(idA),
+                Nil,
+                List(Vase(Infix(List("dyn1dyn2"), Nil, false, false, QV), idA1))
+              ) if (idA == idA1) =>
         }
       }
       "non-string value" in {
@@ -184,9 +189,10 @@ class InfixTest extends Spec with Inside {
         }
         q must matchPattern {
           case Quoted(
-            QuotationTag(idA), Nil,
-            List(Vase(Infix(List("Value(dyn)"), Nil, false, false, QV), idA1))
-          ) if (idA == idA1) =>
+                QuotationTag(idA),
+                Nil,
+                List(Vase(Infix(List("Value(dyn)"), Nil, false, false, QV), idA1))
+              ) if (idA == idA1) =>
         }
       }
     }
@@ -203,7 +209,7 @@ class InfixTest extends Spec with Inside {
 
       "dynamic with property and lift" in {
         val liftVar = "LIFT_VAR"
-        val fun = "DYNAMIC_FUNC"
+        val fun     = "DYNAMIC_FUNC"
         ctx.run(query[Person].map(p => sql"#$fun(${p.name}, ${lift(liftVar)})".as[String])).triple mustEqual
           ("SELECT DYNAMIC_FUNC(p.name, ?) FROM Person p", List("LIFT_VAR"), ExecutionType.Dynamic)
       }

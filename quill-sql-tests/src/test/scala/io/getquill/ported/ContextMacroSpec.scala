@@ -8,7 +8,7 @@ import io.getquill.context.mirror.Row
 import io.getquill.idiom.Idiom
 import io.getquill.context.ExecutionType
 
-case class ValueClass(value: Int) extends AnyVal
+case class ValueClass(value: Int)         extends AnyVal
 case class GenericValueClass[T](value: T) extends AnyVal
 
 class ContextMacroSpec extends Spec {
@@ -28,8 +28,14 @@ class ContextMacroSpec extends Spec {
         inline def q = quote {
           query[Person].insertValue(lift(p)).returning(_.age)
         }
-        testContext.run(q).triple mustEqual (("""querySchema("Person").insert(_$V => _$V.name -> ?, _$V => _$V.age -> ?).returning((x1) => x1.age)""", List("Joe", 123), ExecutionType.Static))
-        testContext.translate(q) mustEqual """querySchema("Person").insert(_$V => _$V.name -> 'Joe', _$V => _$V.age -> 123).returning((x1) => x1.age)"""
+        testContext.run(q).triple mustEqual ((
+          """querySchema("Person").insert(_$V => _$V.name -> ?, _$V => _$V.age -> ?).returning((x1) => x1.age)""",
+          List("Joe", 123),
+          ExecutionType.Static
+        ))
+        testContext.translate(
+          q
+        ) mustEqual """querySchema("Person").insert(_$V => _$V.name -> 'Joe', _$V => _$V.age -> 123).returning((x1) => x1.age)"""
       }
       "single" in {
         inline def q = quote("123")
@@ -40,15 +46,27 @@ class ContextMacroSpec extends Spec {
         inline def q = quote {
           liftQuery(List(Person("Joe", 123))).foreach(e => query[Person].insertValue(e))
         }
-        testContext.run(q).triple mustEqual ("""querySchema("Person").insert(_$V => _$V.name -> ?, _$V => _$V.age -> ?)""", List(List("Joe", 123)), ExecutionType.Static)
-        testContext.translate(q) mustEqual List("""querySchema("Person").insert(_$V => _$V.name -> 'Joe', _$V => _$V.age -> 123)""")
+        testContext
+          .run(q)
+          .triple mustEqual ("""querySchema("Person").insert(_$V => _$V.name -> ?, _$V => _$V.age -> ?)""", List(
+          List("Joe", 123)
+        ), ExecutionType.Static)
+        testContext.translate(q) mustEqual List(
+          """querySchema("Person").insert(_$V => _$V.name -> 'Joe', _$V => _$V.age -> 123)"""
+        )
       }
       "batch returning" in {
         inline def q = quote {
           liftQuery(List(Person("Joe", 123))).foreach(e => query[Person].insertValue(e).returning(_.age))
         }
-        testContext.run(q).triple mustEqual ("""querySchema("Person").insert(_$V => _$V.name -> ?, _$V => _$V.age -> ?).returning((x2) => x2.age)""", List(List("Joe", 123)), ExecutionType.Static)
-        testContext.translate(q) mustEqual List("""querySchema("Person").insert(_$V => _$V.name -> 'Joe', _$V => _$V.age -> 123).returning((x2) => x2.age)""")
+        testContext
+          .run(q)
+          .triple mustEqual ("""querySchema("Person").insert(_$V => _$V.name -> ?, _$V => _$V.age -> ?).returning((x2) => x2.age)""", List(
+          List("Joe", 123)
+        ), ExecutionType.Static)
+        testContext.translate(q) mustEqual List(
+          """querySchema("Person").insert(_$V => _$V.name -> 'Joe', _$V => _$V.age -> 123).returning((x2) => x2.age)"""
+        )
       }
       "sql" in {
         inline def q = quote {
@@ -398,7 +416,9 @@ class ContextMacroSpec extends Spec {
       ctx.translate(query[TestEntity]) mustEqual """querySchema("TestEntity")"""
     }
     "four" in {
-      object ctx extends MirrorContext(MirrorIdiom, NamingStrategy(Literal, Escape, UpperCase, SnakeCase)) with TestEntities
+      object ctx
+          extends MirrorContext(MirrorIdiom, NamingStrategy(Literal, Escape, UpperCase, SnakeCase))
+          with TestEntities
       import ctx._
       ctx.run(query[TestEntity]).string mustEqual """querySchema("TestEntity")"""
       ctx.translate(query[TestEntity]) mustEqual """querySchema("TestEntity")"""

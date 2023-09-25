@@ -17,30 +17,29 @@ class CalibanIntegrationSpec extends CalibanSpec {
     object Dao:
       def personAddress(columns: List[String], filters: Map[String, String]): ZIO[Any, Throwable, List[PersonAddress]] =
         Ctx.run {
-          query[PersonT].leftJoin(query[AddressT]).on((p, a) => p.id == a.ownerId)
+          query[PersonT]
+            .leftJoin(query[AddressT])
+            .on((p, a) => p.id == a.ownerId)
             .map((p, a) => PersonAddress(p.id, p.first, p.last, p.age, a.map(_.street)))
-          .filterByKeys(filters)
-            //.filterColumns(columns) // //
+            .filterByKeys(filters)
+            // .filterColumns(columns) // //
             .take(10)
-        }.provideLayer(zioDS).tap(list => {
+        }.provideLayer(zioDS).tap { list =>
           println(s"Results: $list for columns: $columns")
           ZIO.unit
-        })
+        }
 
   case class Queries(
-    personAddressFlat: Field => (ProductArgs[FlatSchema.PersonAddress] => Task[List[FlatSchema.PersonAddress]]),
+    personAddressFlat: Field => (ProductArgs[FlatSchema.PersonAddress] => Task[List[FlatSchema.PersonAddress]])
   )
 
   val api = graphQL(
-      RootResolver(
-        Queries(
-          personAddressFlat =>
-            (productArgs =>
-              Flat.Dao.personAddress(quillColumns(personAddressFlat), productArgs.keyValues)
-            )
-        )
+    RootResolver(
+      Queries(personAddressFlat =>
+        (productArgs => Flat.Dao.personAddress(quillColumns(personAddressFlat), productArgs.keyValues))
       )
     )
+  )
 
   "Caliban integration should work for flat object" - {
     "with no filters" in {

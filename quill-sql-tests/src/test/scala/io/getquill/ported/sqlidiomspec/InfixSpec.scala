@@ -58,8 +58,8 @@ class InfixSpec extends Spec {
     }
     "do not nest query if infix starts with input query" in {
       case class Entity(i: Int)
-      val forUpdate = quote {
-        (q: Query[Entity]) => sql"$q FOR UPDATE".as[Query[Entity]].map(a => a.i)
+      val forUpdate = quote { (q: Query[Entity]) =>
+        sql"$q FOR UPDATE".as[Query[Entity]].map(a => a.i)
       }
       testContext.run(forUpdate(query[Entity])).string mustEqual
         "SELECT a.i FROM Entity a FOR UPDATE"

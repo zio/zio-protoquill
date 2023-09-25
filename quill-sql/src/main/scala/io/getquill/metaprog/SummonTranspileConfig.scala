@@ -22,9 +22,9 @@ object SummonTranspileConfig:
 
   def apply()(using Quotes): TranspileConfig =
     import quotes.reflect._
-    val traceTypes = summonTraceTypes()
+    val traceTypes     = summonTraceTypes()
     val disabledPhases = summonPhaseDisables()
-    val conf = TranspileConfig(disabledPhases, TraceConfig(traceTypes))
+    val conf           = TranspileConfig(disabledPhases, TraceConfig(traceTypes))
     // report.info(conf.toString)
     conf
 
@@ -56,8 +56,8 @@ object SummonTranspileConfig:
 
   def findHListMembers(baseExpr: Expr[_], typeMemberName: String)(using Quotes): List[quotes.reflect.TypeRepr] =
     import quotes.reflect._
-    val memberSymbol = baseExpr.asTerm.tpe.termSymbol.memberType(typeMemberName)
-    val hlistType = baseExpr.asTerm.select(memberSymbol).tpe.widen
+    val memberSymbol   = baseExpr.asTerm.tpe.termSymbol.memberType(typeMemberName)
+    val hlistType      = baseExpr.asTerm.select(memberSymbol).tpe.widen
     val extractedTypes = recurseConfigList(hlistType.asType)
     extractedTypes.map { case '[t] => TypeRepr.of[t] }.toList
 
@@ -71,7 +71,9 @@ object SummonTranspileConfig:
       case '[head :: tail] =>
         Type.of[head] :: recurseConfigList(Type.of[tail])
       case _ =>
-        report.throwError(s"Invalid config list member type: ${Format.Type(listMember)}. Need to be either :: or HNil types.")
+        report.throwError(
+          s"Invalid config list member type: ${Format.Type(listMember)}. Need to be either :: or HNil types."
+        )
 
 end SummonTranspileConfig
 
@@ -81,8 +83,7 @@ private[getquill] object TranspileConfigLiftable:
   def apply(traceConfig: TraceConfig)(using Quotes): Expr[TraceConfig] =
     liftTraceConfig(traceConfig)
 
-  extension [T](t: T)(using ToExpr[T], Quotes)
-    def expr: Expr[T] = Expr(t)
+  extension [T](t: T)(using ToExpr[T], Quotes) def expr: Expr[T] = Expr(t)
 
   import io.getquill.parser.Lifters.Plain
   import io.getquill.util.Messages.TraceType
@@ -122,6 +123,7 @@ private[getquill] object TranspileConfigLiftable:
 
   given liftTranspileConfig: Lifters.Plain[TranspileConfig] with
     def lift =
-      case TranspileConfig(disablePhases, traceConfig) => '{ io.getquill.norm.TranspileConfig(${ disablePhases.expr }, ${ traceConfig.expr }) }
+      case TranspileConfig(disablePhases, traceConfig) =>
+        '{ io.getquill.norm.TranspileConfig(${ disablePhases.expr }, ${ traceConfig.expr }) }
 
 end TranspileConfigLiftable

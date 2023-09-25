@@ -12,10 +12,9 @@ object NonAnsiMirrorSqlDialect extends NonAnsiMirrorSqlDialect {
 }
 
 class NonAnsiTestContextTemplate[+Naming <: NamingStrategy](naming: Naming)
-  extends SqlMirrorContext(NonAnsiMirrorSqlDialect, naming)
-  with TestEntities
-  with TestEncoders
-  with TestDecoders {
-}
+    extends SqlMirrorContext(NonAnsiMirrorSqlDialect, naming)
+    with TestEntities
+    with TestEncoders
+    with TestDecoders {}
 
 object nonAnsiTestContext extends NonAnsiTestContextTemplate(Literal)

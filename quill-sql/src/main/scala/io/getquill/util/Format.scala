@@ -40,7 +40,10 @@ object Format {
       import qctx.reflect._
       Printer.TreeShortCode.show(tree.asInstanceOf[qctx.reflect.Tree])
 
-  /** Same as TypeRepr but also widens the type since frequently types are singleton i.e. 'person.name' has the type 'name' as opposed to String */
+  /**
+   * Same as TypeRepr but also widens the type since frequently types are
+   * singleton i.e. 'person.name' has the type 'name' as opposed to String
+   */
   object TypeReprW {
     def apply(typeRepr: Quotes#reflectModule#TypeRepr)(using qctx: Quotes) =
       import qctx.reflect._
@@ -97,8 +100,8 @@ object Format {
   def apply(code: String, showErrorTrace: Boolean = false) = {
     val encosedCode =
       s"""|object DummyEnclosure {
-            |  ${code}
-            |}""".stripMargin
+          |  ${code}
+          |}""".stripMargin
 
     // NOTE: Very ineffifient way to get rid of DummyEnclosure on large blocks of code
     //       use only for debugging purposes!

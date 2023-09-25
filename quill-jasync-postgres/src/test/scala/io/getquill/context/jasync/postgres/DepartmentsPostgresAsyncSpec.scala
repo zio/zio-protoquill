@@ -1,6 +1,6 @@
 package io.getquill.context.jasync.postgres
 
-import scala.concurrent.ExecutionContext.Implicits.{ global => ec }
+import scala.concurrent.ExecutionContext.Implicits.{global => ec}
 import io.getquill.context.sql.DepartmentsSpec
 import io.getquill._
 
@@ -33,7 +33,7 @@ class DepartmentsPostgresAsyncSpec extends DepartmentsSpec {
   }
 
   // IO Monad Not implemented in ProtoQuill yet
-  //"performIO" in {
+  // "performIO" in {
   //  await(performIO(runIO(query[Task]).transactional))
-  //}
+  // }
 }

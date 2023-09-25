@@ -12,9 +12,10 @@ trait GenericEncoder[T, PrepareRow, Session] extends ((Int, T, PrepareRow, Sessi
 }
 
 case class GenericEncoderWithStringFallback[T, PrepareRow, Session](
-    nullableEncoder: GenericEncoder[Option[T], PrepareRow, Session],
-    stringConverter: Either[String, FromString[T]]
-)(classTagExpected: ClassTag[T]) extends GenericEncoder[Any, PrepareRow, Session] {
+  nullableEncoder: GenericEncoder[Option[T], PrepareRow, Session],
+  stringConverter: Either[String, FromString[T]]
+)(classTagExpected: ClassTag[T])
+    extends GenericEncoder[Any, PrepareRow, Session] {
 
   private def classTagFromInstance(t: Any) =
     // if the value is just null, use the original encoder, since value conversion shouldn't mater

@@ -18,16 +18,16 @@ trait ProductSpec extends Spec {
     query[Product]
   }
 
-  inline def productInsert = quote {
-    (p: Product) => query[Product].insertValue(p).returningGenerated(_.id)
+  inline def productInsert = quote { (p: Product) =>
+    query[Product].insertValue(p).returningGenerated(_.id)
   }
 
-  inline def productInsertBatch = quote {
-    (b: Query[Product]) => b.foreach(p => productInsert.apply(p))
+  inline def productInsertBatch = quote { (b: Query[Product]) =>
+    b.foreach(p => productInsert.apply(p))
   }
 
-  inline def productById = quote {
-    (id: Long) => product.filter(_.id == id)
+  inline def productById = quote { (id: Long) =>
+    product.filter(_.id == id)
   }
 
   val productEntries = List(

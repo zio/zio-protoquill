@@ -216,7 +216,8 @@ class QuerySpec extends Spec {
             p <- query[Person]
             a <- query[Address].join(a => a.fk == p.id)
           } yield (p, a))
-            .distinctOn(e => e._1.name).sortBy(e => e._1.name)(Ord.asc)
+            .distinctOn(e => e._1.name)
+            .sortBy(e => e._1.name)(Ord.asc)
         }
         // TODO Back here
 
@@ -307,8 +308,8 @@ class QuerySpec extends Spec {
     "grouped" - {
       "simple" in {
         inline def q = quote {
-          qr1.groupBy(t => t.i).map {
-            case (i, entities) => (i, entities.size)
+          qr1.groupBy(t => t.i).map { case (i, entities) =>
+            (i, entities.size)
           }
         }
         testContext.run(q).string mustEqual
@@ -317,9 +318,9 @@ class QuerySpec extends Spec {
       "nested" in {
         inline def q = quote {
           for {
-            (a, b) <- qr1.groupBy(t => t.i).map {
-              case (i, entities) => (i, entities.size)
-            }
+            (a, b) <- qr1.groupBy(t => t.i).map { case (i, entities) =>
+                        (i, entities.size)
+                      }
             c <- qr2 if c.i == a
           } yield {
             (a, b, c)
@@ -330,10 +331,12 @@ class QuerySpec extends Spec {
       }
       "limited" in {
         inline def q = quote {
-          qr1.groupBy(t => t.i).map {
-            case (i, e) =>
+          qr1
+            .groupBy(t => t.i)
+            .map { case (i, e) =>
               (i, e.map(_.l).min)
-          }.take(10)
+            }
+            .take(10)
         }
 
         testContext.run(q).string mustEqual
@@ -393,8 +396,8 @@ class QuerySpec extends Spec {
         }
         "with groupBy" in {
           inline def q = quote {
-            qr1.map(t => (t.i, t.s)).groupBy(t => t._1).map {
-              case (i, l) => l.size
+            qr1.map(t => (t.i, t.s)).groupBy(t => t._1).map { case (i, l) =>
+              l.size
             }
           }
           testContext.run(q).string mustEqual
@@ -426,8 +429,8 @@ class QuerySpec extends Spec {
       }
       "group by + binary op select" in {
         inline def q = quote {
-          qr1.groupBy(t => t.i).map {
-            case (i, list) => (i, list.size + 1)
+          qr1.groupBy(t => t.i).map { case (i, list) =>
+            (i, list.size + 1)
           }
         }
         testContext.run(q).string mustEqual

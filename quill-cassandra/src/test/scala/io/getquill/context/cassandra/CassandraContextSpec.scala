@@ -4,13 +4,14 @@ import io.getquill._
 import io.getquill.context.ExecutionInfo
 import io.getquill.ReturnAction.ReturnNothing
 
-import scala.concurrent.ExecutionContext.Implicits.{ global => ec }
-import scala.util.{ Success, Try }
+import scala.concurrent.ExecutionContext.Implicits.{global => ec}
+import scala.util.{Success, Try}
 
 class CassandraContextSpec extends Spec {
   // val et = io.getquill.context.ExecutionType
   // val vvv = et.lifts
-  val unknown = ExecutionInfo(io.getquill.context.ExecutionType.Static, io.getquill.ast.NullValue, io.getquill.quat.Quat.Value)
+  val unknown =
+    ExecutionInfo(io.getquill.context.ExecutionType.Static, io.getquill.ast.NullValue, io.getquill.quat.Quat.Value)
 
   "run non-batched action" - {
 
@@ -34,10 +35,10 @@ class CassandraContextSpec extends Spec {
 
   "fail on returning" in {
     import testSyncDB._
-    val p: Prepare = (x, session) => (Nil, x)
+    val p: Prepare        = (x, session) => (Nil, x)
     val e: Extractor[Int] = (_, _) => 1
 
-      intercept[IllegalStateException](executeBatchActionReturning(Nil, e)(unknown, ec)).getMessage
+    intercept[IllegalStateException](executeBatchActionReturning(Nil, e)(unknown, ec)).getMessage
   }
 
   "probe" in {

@@ -34,56 +34,53 @@ import java.util.UUID
 import io.getquill.metaprog.Extractors
 
 /**
- * TODO Right now this is just insert but we can easily extend to update and delete
+ * TODO Right now this is just insert but we can easily extend to update and
+ * delete
  *
- * The function call that regularly drives query insertion is
- * {code}
- * query[T].insert(_.field1 -> value, _.field2 -> value, etc...)
- * {code}
- * Let's call this the field-insertion api.
+ * The function call that regularly drives query insertion is {code}
+ * query[T].insert(_.field1 -> value, _.field2 -> value, etc...) {code} Let's
+ * call this the field-insertion api.
  *
- * This macro essentially takes an insert of the form `query[T].insert(T(...))` and converts into the former form.
+ * This macro essentially takes an insert of the form `query[T].insert(T(...))`
+ * and converts into the former form.
  *
- * Once we've parsed an insert e.g. `query[Person]insertValue(Person("Joe", "Bloggs"))` we then need to synthesize
- * the insertions that this would represent e.g. `query[Person].insert(_.firstName -> "Joe", _.lastName -> "Bloggs")`
+ * Once we've parsed an insert e.g. `query[Person]insertValue(Person("Joe",
+ * "Bloggs"))` we then need to synthesize the insertions that this would
+ * represent e.g. `query[Person].insert(_.firstName -> "Joe", _.lastName ->
+ * "Bloggs")`
  *
- * Each function of field-insertion API basically takes the form
- * {code} (v) => vAssignmentProperty -> assignmentValue (on the AST) {code}
+ * Each function of field-insertion API basically takes the form {code} (v) =>
+ * vAssignmentProperty -> assignmentValue (on the AST) {code}
  *
- * Let's take a look at a slighly more complex example
- * Given:
- * {code}
- *  case class Person(name: String, age: Option[Age]); Age(value: Int)
- *  quote { query[Person].insert(Person("Joe", Age(345))) }
- * {code}
+ * Let's take a look at a slighly more complex example Given: {code} case class
+ * Person(name: String, age: Option[Age]); Age(value: Int) quote {
+ * query[Person].insert(Person("Joe", Age(345))) } {code}
  *
- * This expands out into a series of statements which will be parsed to AST assignments
- * This: `(v: Person) => v.name -> (v:Person).name`
- * Will be parsed into this:
- * {code} Assignment(Id(v), Prop(Id(v), name), Constant("Joe")) {code}
- *
- * This: `(v: Person) => v.age.map(v => v.value) -> Option(v:Age).map(v => v.value)`
- * Will be parsed into this:
- * {code}
- *   Assignment(Id(v),
- *     OptionTableMap(Prop(Id(v), age), Id(v), Prop(Id(v), value))
- *     OptionTableMap(OptionApply(CaseClass(value=345)), Id(v), Prop(Id(v), value))
- *   )
+ * This expands out into a series of statements which will be parsed to AST
+ * assignments This: `(v: Person) => v.name -> (v:Person).name` Will be parsed
+ * into this: {code} Assignment(Id(v), Prop(Id(v), name), Constant("Joe"))
  * {code}
  *
- * The end result of this synthesis is a series of assignments for an insert for the given entity.
+ * This: `(v: Person) => v.age.map(v => v.value) -> Option(v:Age).map(v =>
+ * v.value)` Will be parsed into this: {code} Assignment(Id(v),
+ * OptionTableMap(Prop(Id(v), age), Id(v), Prop(Id(v), value))
+ * OptionTableMap(OptionApply(CaseClass(value=345)), Id(v), Prop(Id(v), value))
+ * ) {code}
  *
- * Another possiblity is that the entity is lifted:
- * {code}
- *  case class Person(name: String, age: Option[Age]); Age(value: Int)
- *  quote { query[Person].insertValue(lift(Person("Joe", Age(345)))) }
- * {code}
- * TODO Finish doc
+ * The end result of this synthesis is a series of assignments for an insert for
+ * the given entity.
  *
- * Note that as a result of the way this is implemented, if either the InsertMeta or the SchemaMeta is not
- * inline, the entire resulting query will not be inline since they both will be summoned and used in the
- * resulting expressions. It might be useful to introduce a configuration parameter to ignore non-inline InsertMetas
- * or non-inline SchemaMetas. Or maybe this could even be an annotation.
+ * Another possiblity is that the entity is lifted: {code} case class
+ * Person(name: String, age: Option[Age]); Age(value: Int) quote {
+ * query[Person].insertValue(lift(Person("Joe", Age(345)))) } {code} TODO Finish
+ * doc
+ *
+ * Note that as a result of the way this is implemented, if either the
+ * InsertMeta or the SchemaMeta is not inline, the entire resulting query will
+ * not be inline since they both will be summoned and used in the resulting
+ * expressions. It might be useful to introduce a configuration parameter to
+ * ignore non-inline InsertMetas or non-inline SchemaMetas. Or maybe this could
+ * even be an annotation.
  */
 object InsertUpdateMacro {
   // Using this ident since it is replaced in cleanIdent so user will not create something conflicting with it
@@ -98,13 +95,16 @@ object InsertUpdateMacro {
     def retrieveAssignmentTuple(quoted: Quoted[_]): Set[Ast] =
       quoted.ast match
         case Tuple(values) if (values.forall(_.isInstanceOf[Property])) => values.toSet
-        case other                                                      => throw new IllegalArgumentException(s"Invalid values in InsertMeta: ${other}. An InsertMeta AST must be a tuple of Property elements.")
+        case other =>
+          throw new IllegalArgumentException(
+            s"Invalid values in InsertMeta: ${other}. An InsertMeta AST must be a tuple of Property elements."
+          )
   }
 
   // Summon state of a schemaMeta (i.e. whether an implicit one could be summoned and whether it is static (i.e. can produce a compile-time query or dynamic))
   enum EntitySummonState[+T]:
     case Static(value: T, lifts: List[Expr[Planter[?, ?, ?]]]) extends EntitySummonState[T]
-    case Dynamic(uid: String, quotation: Expr[Quoted[Any]]) extends EntitySummonState[Nothing]
+    case Dynamic(uid: String, quotation: Expr[Quoted[Any]])    extends EntitySummonState[Nothing]
     def print(using Quotes): String =
       this match
         case Static(value, lifts) =>
@@ -114,18 +114,21 @@ object InsertUpdateMacro {
 
   // Summon state of a updateMeta/insertMeta that indicates which columns to ignore (i.e. whether an implicit one could be summoned and whether it is static (i.e. can produce a compile-time query or dynamic))
   enum IgnoresSummonState[+T]:
-    case Static(value: T) extends IgnoresSummonState[T]
+    case Static(value: T)                      extends IgnoresSummonState[T]
     case Dynamic(quotation: Expr[Quoted[Any]]) extends IgnoresSummonState[Nothing]
 
   /**
-   * Perform the pipeline of creating an insert statement. The 'insertee' is the case class on which the SQL insert
-   * statement is based. The schema is based on the EntityQuery which could potentially be an unquoted QuerySchema.
+   * Perform the pipeline of creating an insert statement. The 'insertee' is the
+   * case class on which the SQL insert statement is based. The schema is based
+   * on the EntityQuery which could potentially be an unquoted QuerySchema.
    */
-  class Pipeline[T: Type, A[T] <: Insert[T] | Update[T]: Type](isStatic: Boolean)(using Quotes) extends QuatMaking with QuatMakingBase:
+  class Pipeline[T: Type, A[T] <: Insert[T] | Update[T]: Type](isStatic: Boolean)(using Quotes)
+      extends QuatMaking
+      with QuatMakingBase:
     import quotes.reflect._
     import io.getquill.util.Messages.qprint
     given TranspileConfig = SummonTranspileConfig()
-    val parser = SummonParser().assemble
+    val parser            = SummonParser().assemble
 
     case class InserteeSchema(schemaRaw: Expr[EntityQuery[T]]):
       private def plainEntity: Entity =
@@ -165,7 +168,9 @@ object InsertUpdateMacro {
                   )
                 EntitySummonState.Dynamic(uid, quotation)
               case _ =>
-                report.throwError(s"Quotation Lot of Insert/UpdateMeta must be either pluckable or uprootable from: '${unquotation}'")
+                report.throwError(
+                  s"Quotation Lot of Insert/UpdateMeta must be either pluckable or uprootable from: '${unquotation}'"
+                )
 
           // Case where it's not just an EntityQuery that is in the front of the update/insertValue e.g. a filter
           //   quote { query[Person].filter(...).update/insertValue(...) }
@@ -177,7 +182,7 @@ object InsertUpdateMacro {
           //   quote { query[Person].filter(...lift(runtimeValue)...).update/insertValue(...) }
           // so these lifts need to be extracted.
           case scheme @ '{ ($q: EntityQuery[t]) } =>
-            val ast = parser(q)
+            val ast                      = parser(q)
             val (rawLifts, runtimeLifts) = ExtractLifts(q)
             if (!runtimeLifts.isEmpty)
               // In this particular case:
@@ -199,10 +204,14 @@ object InsertUpdateMacro {
               //   We Create  => |Quoted( Filter(QuoteTag(uid:111), u, ...ScalarTag(uid:222)...), EagerLift(uid:222,...), QuotationVase(uid:111, $v:query[Person]) )
               val uid = UUID.randomUUID().toString()
               if (isStatic)
-                report.warning(s"A non-inlined expression (that defines a query for ${Format.TypeRepr(schemaRaw.asTerm.tpe.widen)}) is forcing the query to become dynamic. Try to change its variable to inline in order to fix the issue.")
-              EntitySummonState.Dynamic(uid, '{ Quoted(${ Lifter(ast) }, ${ Expr.ofList(rawLifts) }, ${ Expr.ofList(runtimeLifts) }) })
-            else
-              EntitySummonState.Static(ast, rawLifts)
+                report.warning(
+                  s"A non-inlined expression (that defines a query for ${Format.TypeRepr(schemaRaw.asTerm.tpe.widen)}) is forcing the query to become dynamic. Try to change its variable to inline in order to fix the issue."
+                )
+              EntitySummonState.Dynamic(
+                uid,
+                '{ Quoted(${ Lifter(ast) }, ${ Expr.ofList(rawLifts) }, ${ Expr.ofList(runtimeLifts) }) }
+              )
+            else EntitySummonState.Static(ast, rawLifts)
 
           case _ =>
             report.throwError(s"Cannot process illegal insert meta: ${Format.Expr(schema)}")
@@ -219,7 +228,9 @@ object InsertUpdateMacro {
         else if (TypeRepr.of[A] <:< TypeRepr.of[Update])
           MacroType.Update
         else
-          report.throwError(s"Invalid macro action type ${io.getquill.util.Format.TypeOf[A[Any]]} must be either Insert or Update")
+          report.throwError(
+            s"Invalid macro action type ${io.getquill.util.Format.TypeOf[A[Any]]} must be either Insert or Update"
+          )
       def summonMetaOfThis() =
         ofThis() match
           case MacroType.Insert => Expr.summon[InsertMeta[T]]
@@ -243,10 +254,16 @@ object InsertUpdateMacro {
                   case Tuple(values) if (values.forall(_.isInstanceOf[Property])) =>
                     IgnoresSummonState.Static(values.toSet)
                   case other =>
-                    report.throwError(s"Invalid values in ${Format.TypeRepr(actionMeta.asTerm.tpe)}: ${other}. An ${Format.TypeRepr(actionMeta.asTerm.tpe)} AST must be a tuple of Property elements.")
+                    report.throwError(
+                      s"Invalid values in ${Format.TypeRepr(actionMeta.asTerm.tpe)}: ${other}. An ${Format
+                          .TypeRepr(actionMeta.asTerm.tpe)} AST must be a tuple of Property elements."
+                    )
               // if the meta is not inline
               case meta: Expr[InsertMeta[T] | UpdateMeta[T]] =>
-                if (isStatic) report.warning(s"The non-inlined variable `${Format.Expr(actionMeta)}:${Format.TypeRepr(actionMeta.asTerm.tpe.widen)}` will force the query to be dynamic. Try to change it to inline in order to fix the issue.")
+                if (isStatic)
+                  report.warning(
+                    s"The non-inlined variable `${Format.Expr(actionMeta)}:${Format.TypeRepr(actionMeta.asTerm.tpe.widen)}` will force the query to be dynamic. Try to change it to inline in order to fix the issue."
+                  )
                 IgnoresSummonState.Dynamic('{ InsertUpdateMacro.getQuotation($meta) })
               case null =>
                 report.throwError(
@@ -258,22 +275,18 @@ object InsertUpdateMacro {
             IgnoresSummonState.Static(Set.empty)
 
     /**
-     * Inserted object
-     * can either be static: query[Person]insertValue(Person("Joe", "Bloggs"))
-     * or it can be lifted:  query[Person].insertValue(lift(Person("Joe", "Bloggs")))
+     * Inserted object can either be static:
+     * query[Person]insertValue(Person("Joe", "Bloggs")) or it can be lifted:
+     * query[Person].insertValue(lift(Person("Joe", "Bloggs")))
      *
-     * In the later case, it will become:
-     * {{
-     *   //Assuming x := Person("Joe", "Bloggs")
-     *   CaseClassLift(
-     *    Quoted(ast: CaseClass(name -> lift(idA)), ...), lifts: List(EagerLift(x.name, idA), ...))
-     *   )
-     * }}
+     * In the later case, it will become: {{ //Assuming x := Person("Joe",
+     * "Bloggs") CaseClassLift( Quoted(ast: CaseClass(name -> lift(idA)), ...),
+     * lifts: List(EagerLift(x.name, idA), ...)) ) }}
      *
-     * For batch queries liftQuery(people).foreach(p => query[Person].insertValue(p))
-     * it will be just the ast Ident("p")
+     * For batch queries liftQuery(people).foreach(p =>
+     * query[Person].insertValue(p)) it will be just the ast Ident("p")
      */
-    def parseInsertee(insertee: Expr[Any]): CaseClass | AIdent = {
+    def parseInsertee(insertee: Expr[Any]): CaseClass | AIdent =
       insertee match
         // The case: query[Person].insertValue(lift(Person("Joe", "Bloggs")))
         case QuotationLotExpr(exprType) =>
@@ -283,45 +296,56 @@ object InsertUpdateMacro {
             case Uprootable.Ast(astExpr) =>
               val ast = Unlifter(astExpr)
               if (!ast.isInstanceOf[CaseClass])
-                report.throwError(s"The lifted insertion element needs to be parsed as a Ast CaseClass but it is: ${ast}")
+                report.throwError(
+                  s"The lifted insertion element needs to be parsed as a Ast CaseClass but it is: ${ast}"
+                )
               ast.asInstanceOf[CaseClass]
             case _ =>
-              report.throwError(s"Cannot uproot lifted element. A lifted Insert element e.g. query[T].insertValue(lift(element)) must be lifted directly inside the lift clause. The elment was:\n${insertee.show}")
+              report.throwError(
+                s"Cannot uproot lifted element. A lifted Insert element e.g. query[T].insertValue(lift(element)) must be lifted directly inside the lift clause. The elment was:\n${insertee.show}"
+              )
         // Otherwise the inserted element (i.e. the insertee) is static and should be parsed as an ordinary case class
         // i.e. the case query[Person]insertValue(Person("Joe", "Bloggs")) (or the batch case)
         case _ =>
           parseStaticInsertee(insertee)
-    }
 
     /**
-     * Parse the input to of query[Person]insertValue(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs")
+     * Parse the input to of query[Person]insertValue(Person("Joe", "Bloggs"))
+     * into CaseClass(firstName="Joe",lastName="Bloggs")
      */
     def parseStaticInsertee(insertee: Expr[_]): CaseClass | AIdent = {
       val rawAst = parser(insertee)
-      val ast = BetaReduction(rawAst)
+      val ast    = BetaReduction(rawAst)
       ast match
         case cc: CaseClass => cc
         case id: AIdent    => id
-        case _             => report.throwError(s"Parsed Insert Macro AST is not a Case Class: ${qprint(ast).plainText} (or a batch-query Ident)")
+        case _ =>
+          report.throwError(
+            s"Parsed Insert Macro AST is not a Case Class: ${qprint(ast).plainText} (or a batch-query Ident)"
+          )
     }
 
     /**
-     * Actually the same as deduceAssignmentsFromCaseClass, but I decided to write
-     * a separate function and comment it extensively since the logic is not simple to
-     * extrapolate.
-     * This function creates a series of assignments
-     * of a elaborated product. However, each assignment just assigns to the identifier
-     * which will be plugged in (i.e. BetaReduced) once the Ident is actually substituted.
-     * E.g. if we have something like this: `val ip = quote { (p: Person) => query[Person].insertValue(p) }`
-     * and then later: `run(ip(lift(Person("Joe",123))))` then the assignments list is just based
-     * on the `p` identifier of the `ip` quoted function i.e:
-     * `(v:Person) => v.firstName -> p.firstName` this is achived by doing
-     * BetaReduce(v.firstName, v -> p). Later on when `ip(lift(Person("Joe",123)))`
-     * happens the `CaseClass(firstName -> lift(...), age -> lift(...))` comes in and
-     * all the right values are plugged in correctly.
+     * Actually the same as deduceAssignmentsFromCaseClass, but I decided to
+     * write a separate function and comment it extensively since the logic is
+     * not simple to extrapolate. This function creates a series of assignments
+     * of a elaborated product. However, each assignment just assigns to the
+     * identifier which will be plugged in (i.e. BetaReduced) once the Ident is
+     * actually substituted. E.g. if we have something like this: `val ip =
+     * quote { (p: Person) => query[Person].insertValue(p) }` and then later:
+     * `run(ip(lift(Person("Joe",123))))` then the assignments list is just
+     * based on the `p` identifier of the `ip` quoted function i.e: `(v:Person)
+     * \=> v.firstName -> p.firstName` this is achived by doing
+     * BetaReduce(v.firstName, v -> p). Later on when
+     * `ip(lift(Person("Joe",123)))` happens the `CaseClass(firstName ->
+     * lift(...), age -> lift(...))` comes in and all the right values are
+     * plugged in correctly.
      */
     def deduceAssignmentsFromIdent(insertee: AIdent) = {
-      val expansionList = ElaborateStructure.ofProductType[T](VIdent.name, ElaborationSide.Encoding) // Elaboration side is Encoding since this is for an entity being inserted
+      val expansionList = ElaborateStructure.ofProductType[T](
+        VIdent.name,
+        ElaborationSide.Encoding
+      ) // Elaboration side is Encoding since this is for an entity being inserted
       def mapping(path: Ast) =
         val reduction = BetaReduction(path, VIdent -> insertee)
         Assignment(VIdent, path, reduction)
@@ -333,7 +357,10 @@ object InsertUpdateMacro {
     def deduceAssignmentsFromCaseClass(insertee: CaseClass) = {
       // Expand into a AST
       // T:Person(name:Str, age:Option[Age]) Age(value: Int) -> Ast: List(v.name, v.age.map(v => v.value))
-      val expansionList = ElaborateStructure.ofProductType[T](VIdent.name, ElaborationSide.Encoding) // Elaboration side is Encoding since this is for an entity being inserted
+      val expansionList = ElaborateStructure.ofProductType[T](
+        VIdent.name,
+        ElaborationSide.Encoding
+      ) // Elaboration side is Encoding since this is for an entity being inserted
 
       // Now synthesize (v) => vAssignmentProperty -> assignmentValue
       // e.g. (v:Person) => v.firstName -> "Joe"
@@ -376,15 +403,19 @@ object InsertUpdateMacro {
           // Pull out the exclusions from the quotation
           val exclusions = '{ DynamicUtil.retrieveAssignmentTuple($quotation) }
           // Lift ALL the assignments of the entity
-          val allAssignmentsLifted = Expr.ofList(assignmentsOfEntity.map(ast => Lifter.NotSerializingAst.assignment(ast)))
+          val allAssignmentsLifted =
+            Expr.ofList(assignmentsOfEntity.map(ast => Lifter.NotSerializingAst.assignment(ast)))
           // Create a statement that represents the filtered assignments during runtime
-          val liftedFilteredAssignments = '{ $allAssignmentsLifted.filterNot(asi => $exclusions.contains(asi.property)) }
+          val liftedFilteredAssignments = '{
+            $allAssignmentsLifted.filterNot(asi => $exclusions.contains(asi.property))
+          }
           // ... and return the filtered assignments
           AssignmentList.Dynamic(liftedFilteredAssignments)
 
     /**
-     * Note that the only reason Parser is needed here is to pass it into parseInsertee.
-     * The batch pipeline driven by createFromPremade currently doesn't need it.
+     * Note that the only reason Parser is needed here is to pass it into
+     * parseInsertee. The batch pipeline driven by createFromPremade currently
+     * doesn't need it.
      */
     def apply(schemaRaw: Expr[EntityQuery[T]], inserteeRaw: Expr[T]) = {
       val insertee = inserteeRaw.asTerm.underlyingArgument.asExpr
@@ -418,10 +449,17 @@ object InsertUpdateMacro {
     }
 
     /**
-     * Create a static or dynamic quotation based on the state. Wrap the expr using some additional functions if we need to.
-     * This is used for the createFromPremade if we need to wrap it into insertReturning which is used for batch-returning query execution.
+     * Create a static or dynamic quotation based on the state. Wrap the expr
+     * using some additional functions if we need to. This is used for the
+     * createFromPremade if we need to wrap it into insertReturning which is
+     * used for batch-returning query execution.
      */
-    def createQuotation(summonState: EntitySummonState[Ast], assignmentOfEntity: List[Assignment], lifts: List[Expr[Planter[?, ?, ?]]], pluckedUnquotes: List[Expr[QuotationVase]]) = {
+    def createQuotation(
+      summonState: EntitySummonState[Ast],
+      assignmentOfEntity: List[Assignment],
+      lifts: List[Expr[Planter[?, ?, ?]]],
+      pluckedUnquotes: List[Expr[QuotationVase]]
+    ) = {
       // Processed Assignments AST plus any lifts that may have come from the assignments AST themsevles.
       // That is usually the case when
       val assignmentList = processAssignmentsAndExclusions(assignmentOfEntity)
@@ -438,7 +476,13 @@ object InsertUpdateMacro {
               AUpdate(entity, assignmentsAst)
 
           // Now create the quote and lift the action. This is more efficient then the alternative because the whole action AST can be serialized
-          val quotation = '{ Quoted[A[T]](${ Lifter(action) }, ${ Expr.ofList(previousLifts ++ lifts) }, ${ Expr.ofList(pluckedUnquotes) }) }
+          val quotation = '{
+            Quoted[A[T]](
+              ${ Lifter(action) },
+              ${ Expr.ofList(previousLifts ++ lifts) },
+              ${ Expr.ofList(pluckedUnquotes) }
+            )
+          }
           // Unquote the quotation and return
           quotation
 
@@ -452,9 +496,15 @@ object InsertUpdateMacro {
               '{ Quoted[A[T]](AUpdate(${ Lifter(entity) }, ${ assignmentsList.splice }), Nil, Nil) }
 
           // create and lift the action
-          val uid = UUID.randomUUID().toString()
+          val uid          = UUID.randomUUID().toString()
           val runtimeQuote = '{ QuotationVase($actionQuote, ${ Expr(uid) }) }
-          val quotation = '{ Quoted[A[T]](QuotationTag(${ Expr(uid) }), ${ Expr.ofList(previousLifts ++ lifts) }, $runtimeQuote +: ${ Expr.ofList(pluckedUnquotes) }) }
+          val quotation = '{
+            Quoted[A[T]](
+              QuotationTag(${ Expr(uid) }),
+              ${ Expr.ofList(previousLifts ++ lifts) },
+              $runtimeQuote +: ${ Expr.ofList(pluckedUnquotes) }
+            )
+          }
           quotation
 
         // If we get a dynamic entity back we need to splice things as an Expr even if the assignmentsList is know at compile time
@@ -471,15 +521,21 @@ object InsertUpdateMacro {
           // Create the QuotationVase in which this dynamic quotation will go
           val runtimeQuote = '{ QuotationVase($entityQuotation, ${ Expr(uid) }) }
           // Then create the quotation, adding the new runtimeQuote to the list of pluckedUnquotes
-          val quotation = '{ Quoted[A[T]](${ action }, ${ Expr.ofList(lifts) }, $runtimeQuote +: ${ Expr.ofList(pluckedUnquotes) }) }
+          val quotation = '{
+            Quoted[A[T]](${ action }, ${ Expr.ofList(lifts) }, $runtimeQuote +: ${ Expr.ofList(pluckedUnquotes) })
+          }
           // Unquote the quotation and return
           quotation
     }
 
   end Pipeline
 
-  def static[T: Type, A[T] <: Insert[T] | Update[T]: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[A[T]] =
+  def static[T: Type, A[T] <: Insert[T] | Update[T]: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using
+    Quotes
+  ): Expr[A[T]] =
     new Pipeline[T, A](true).apply(entityRaw, bodyRaw)
-  def dynamic[T: Type, A[T] <: Insert[T] | Update[T]: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using Quotes): Expr[A[T]] =
+  def dynamic[T: Type, A[T] <: Insert[T] | Update[T]: Type](entityRaw: Expr[EntityQuery[T]], bodyRaw: Expr[T])(using
+    Quotes
+  ): Expr[A[T]] =
     new Pipeline[T, A](false).apply(entityRaw, bodyRaw)
 }

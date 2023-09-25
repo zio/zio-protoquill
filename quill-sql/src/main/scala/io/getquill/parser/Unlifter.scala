@@ -25,7 +25,10 @@ object Unlifter {
       // println(s"==================== Unlifting: ${Format.Expr(ast)} =================}")
       ast match
         case Is[Ast](ast) => unliftAst.attempt(ast)
-        case other        => report.throwError(s"Cannot unlift ${Format.Expr(ast)} to a ast because it's type is: ${Format.TypeRepr(ast.asTerm.tpe)}")
+        case other =>
+          report.throwError(
+            s"Cannot unlift ${Format.Expr(ast)} to a ast because it's type is: ${Format.TypeRepr(ast.asTerm.tpe)}"
+          )
 
   object caseClass:
     def unapply(ast: Expr[Ast])(using Quotes): Option[CaseClass] =
@@ -33,12 +36,15 @@ object Unlifter {
       // println(s"==================== Unlifting: ${Format.Expr(ast)} =================}")
       ast match
         case Is[CaseClass](ast) => unliftCaseClass.attempt(ast)
-        case other              => report.throwError(s"Cannot unlift ${Format.Expr(ast)} to a CaseClass because it's type is: ${Format.TypeRepr(ast.asTerm.tpe)}")
+        case other =>
+          report.throwError(
+            s"Cannot unlift ${Format.Expr(ast)} to a CaseClass because it's type is: ${Format.TypeRepr(ast.asTerm.tpe)}"
+          )
 
-  def apply(ast: Expr[Ast]): Quotes ?=> Ast = unliftAst.apply(ast) // can also do ast.lift but this makes some error messages simpler
+  def apply(ast: Expr[Ast]): Quotes ?=> Ast =
+    unliftAst.apply(ast) // can also do ast.lift but this makes some error messages simpler
 
-  extension [T](t: Expr[T])(using FromExpr[T], Quotes)
-    def unexpr: T = t.valueOrError
+  extension [T](t: Expr[T])(using FromExpr[T], Quotes) def unexpr: T = t.valueOrError
 
   trait NiceUnliftable[T: ClassTag] extends FromExpr[T] { // : ClassTag
     def unlift: Quotes ?=> PartialFunction[Expr[T], T]
@@ -57,20 +63,20 @@ object Unlifter {
 
     def apply(expr: Expr[T])(using Quotes): T =
       import quotes.reflect._
-      attempt(expr)
-        .getOrElse {
-          report.throwError(
-            s"Could not Unlift AST type ${classTag[T].runtimeClass.getSimpleName} from the element:\n" +
-              s"${section(Format.Expr.Detail(expr))}\n" +
-              s"of the Quill Abstract Syntax Tree",
-            expr
-          )
-        }
+      attempt(expr).getOrElse {
+        report.throwError(
+          s"Could not Unlift AST type ${classTag[T].runtimeClass.getSimpleName} from the element:\n" +
+            s"${section(Format.Expr.Detail(expr))}\n" +
+            s"of the Quill Abstract Syntax Tree",
+          expr
+        )
+      }
 
     /**
-     * For things that contain subclasses, don't strictly check the super type and fail the match
-     * if the type fails since we can't do that when it could be a sub-type of the type being matched.
-     * The only thing we can do in that case is go through the sub-parser and see if anything matches.
+     * For things that contain subclasses, don't strictly check the super type
+     * and fail the match if the type fails since we can't do that when it could
+     * be a sub-type of the type being matched. The only thing we can do in that
+     * case is go through the sub-parser and see if anything matches.
      */
     def unapply(expr: Expr[T])(using Quotes): Option[T] = Some(apply(expr))
     // TODO Maybe want to go to stricter version of this going back to Some(apply(expr)). See comment below about quoted matching being covariant.
@@ -126,7 +132,8 @@ object Unlifter {
 
   given unliftAssignmentDual: NiceUnliftable[AssignmentDual] with
     def unlift =
-      case '{ AssignmentDual($alias1, $alias2, $property, $value) } => AssignmentDual(alias1.unexpr, alias2.unexpr, property.unexpr, value.unexpr)
+      case '{ AssignmentDual($alias1, $alias2, $property, $value) } =>
+        AssignmentDual(alias1.unexpr, alias2.unexpr, property.unexpr, value.unexpr)
 
   given unliftPropertyAlias: NiceUnliftable[PropertyAlias] with {
     def unlift =
@@ -149,23 +156,26 @@ object Unlifter {
         // OptionNone.quat which would otherwise happen if quat.unexper would be passed directly.
         val unliftedQuat = quat.unexpr
         OptionNone(unliftedQuat)
-      case Is[OptionIsEmpty]('{ OptionIsEmpty.apply($a) })                   => OptionIsEmpty(a.unexpr)
-      case Is[OptionNonEmpty]('{ OptionNonEmpty.apply($a) })                 => OptionNonEmpty(a.unexpr)
-      case Is[OptionIsDefined]('{ OptionIsDefined.apply($a) })               => OptionIsDefined(a.unexpr)
-      case Is[OptionGetOrElse]('{ OptionGetOrElse.apply($a, $b) })           => OptionGetOrElse(a.unexpr, b.unexpr)
-      case Is[OptionGetOrNull]('{ OptionGetOrNull.apply($a) })               => OptionGetOrNull(a.unexpr)
-      case Is[OptionOrNull]('{ OptionOrNull.apply($a) })                     => OptionOrNull(a.unexpr)
-      case Is[FilterIfDefined]('{ FilterIfDefined.apply($a, $b, $c) })       => FilterIfDefined(a.unexpr, b.unexpr, c.unexpr)
-      case Is[OptionContains]('{ OptionContains.apply($a, $b) })             => OptionContains(a.unexpr, b.unexpr)
-      case Is[OptionMap]('{ OptionMap.apply($a, $b, $c) })                   => OptionMap(a.unexpr, b.unexpr, c.unexpr)
-      case Is[OptionFlatMap]('{ OptionFlatMap.apply($a, $b, $c) })           => OptionFlatMap(a.unexpr, b.unexpr, c.unexpr)
-      case Is[OptionFlatten]('{ OptionFlatten.apply($a) })                   => OptionFlatten(a.unexpr)
-      case Is[OptionTableMap]('{ OptionTableMap.apply($a, $b, $c) })         => OptionTableMap(a.unexpr, b.unexpr, c.unexpr)
-      case Is[OptionTableFlatMap]('{ OptionTableFlatMap.apply($a, $b, $c) }) => OptionTableFlatMap(a.unexpr, b.unexpr, c.unexpr)
-      case Is[OptionExists]('{ OptionExists.apply($a, $b, $c) })             => OptionExists(a.unexpr, b.unexpr, c.unexpr)
-      case Is[OptionForall]('{ OptionForall.apply($a, $b, $c) })             => OptionForall(a.unexpr, b.unexpr, c.unexpr)
-      case Is[OptionTableExists]('{ OptionTableExists.apply($a, $b, $c) })   => OptionTableExists(a.unexpr, b.unexpr, c.unexpr)
-      case Is[OptionTableForall]('{ OptionTableForall.apply($a, $b, $c) })   => OptionTableForall(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionIsEmpty]('{ OptionIsEmpty.apply($a) })             => OptionIsEmpty(a.unexpr)
+      case Is[OptionNonEmpty]('{ OptionNonEmpty.apply($a) })           => OptionNonEmpty(a.unexpr)
+      case Is[OptionIsDefined]('{ OptionIsDefined.apply($a) })         => OptionIsDefined(a.unexpr)
+      case Is[OptionGetOrElse]('{ OptionGetOrElse.apply($a, $b) })     => OptionGetOrElse(a.unexpr, b.unexpr)
+      case Is[OptionGetOrNull]('{ OptionGetOrNull.apply($a) })         => OptionGetOrNull(a.unexpr)
+      case Is[OptionOrNull]('{ OptionOrNull.apply($a) })               => OptionOrNull(a.unexpr)
+      case Is[FilterIfDefined]('{ FilterIfDefined.apply($a, $b, $c) }) => FilterIfDefined(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionContains]('{ OptionContains.apply($a, $b) })       => OptionContains(a.unexpr, b.unexpr)
+      case Is[OptionMap]('{ OptionMap.apply($a, $b, $c) })             => OptionMap(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionFlatMap]('{ OptionFlatMap.apply($a, $b, $c) })     => OptionFlatMap(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionFlatten]('{ OptionFlatten.apply($a) })             => OptionFlatten(a.unexpr)
+      case Is[OptionTableMap]('{ OptionTableMap.apply($a, $b, $c) })   => OptionTableMap(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionTableFlatMap]('{ OptionTableFlatMap.apply($a, $b, $c) }) =>
+        OptionTableFlatMap(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionExists]('{ OptionExists.apply($a, $b, $c) }) => OptionExists(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionForall]('{ OptionForall.apply($a, $b, $c) }) => OptionForall(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionTableExists]('{ OptionTableExists.apply($a, $b, $c) }) =>
+        OptionTableExists(a.unexpr, b.unexpr, c.unexpr)
+      case Is[OptionTableForall]('{ OptionTableForall.apply($a, $b, $c) }) =>
+        OptionTableForall(a.unexpr, b.unexpr, c.unexpr)
   }
 
   def constString(expr: Expr[String])(using Quotes): String = expr match
@@ -220,13 +230,16 @@ object Unlifter {
 
   given unliftAction: NiceUnliftable[Action] with
     def unlift =
-      case Is[Update]('{ Update($query, $assignments) })                                            => Update(query.unexpr, assignments.unexpr)
-      case Is[Insert]('{ Insert($query, $assignments) })                                            => Insert(query.unexpr, assignments.unexpr)
-      case Is[Delete]('{ Delete($query) })                                                          => Delete(query.unexpr)
-      case Is[Returning]('{ Returning(${ action }, ${ alias }, ${ body }: Ast) })                   => Returning(action.unexpr, alias.unexpr, body.unexpr)
-      case Is[ReturningGenerated]('{ ReturningGenerated(${ action }, ${ alias }, ${ body }: Ast) }) => ReturningGenerated(action.unexpr, alias.unexpr, body.unexpr)
-      case Is[Foreach]('{ Foreach(${ query }, ${ alias }, ${ body }: Ast) })                        => Foreach(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[OnConflict]('{ OnConflict($a, $b, $c) })                                              => OnConflict(a.unexpr, b.unexpr, c.unexpr)
+      case Is[Update]('{ Update($query, $assignments) }) => Update(query.unexpr, assignments.unexpr)
+      case Is[Insert]('{ Insert($query, $assignments) }) => Insert(query.unexpr, assignments.unexpr)
+      case Is[Delete]('{ Delete($query) })               => Delete(query.unexpr)
+      case Is[Returning]('{ Returning(${ action }, ${ alias }, ${ body }: Ast) }) =>
+        Returning(action.unexpr, alias.unexpr, body.unexpr)
+      case Is[ReturningGenerated]('{ ReturningGenerated(${ action }, ${ alias }, ${ body }: Ast) }) =>
+        ReturningGenerated(action.unexpr, alias.unexpr, body.unexpr)
+      case Is[Foreach]('{ Foreach(${ query }, ${ alias }, ${ body }: Ast) }) =>
+        Foreach(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[OnConflict]('{ OnConflict($a, $b, $c) }) => OnConflict(a.unexpr, b.unexpr, c.unexpr)
 
   given unliftConflictTarget: NiceUnliftable[OnConflict.Target] with
     def unlift =
@@ -240,25 +253,33 @@ object Unlifter {
 
   given unliftQuery: NiceUnliftable[AQuery] with
     def unlift =
-      case Is[Entity](ent)                                                   => unliftEntity(ent)
-      case Is[Map]('{ Map(${ query }, ${ alias }, ${ body }: Ast) })         => Map(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[FlatMap]('{ FlatMap(${ query }, ${ alias }, ${ body }: Ast) }) => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[Filter]('{ Filter(${ query }, ${ alias }, ${ body }: Ast) })   => Filter(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[GroupBy]('{ GroupBy(${ query }, ${ alias }, ${ body }: Ast) }) => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Entity](ent)                                           => unliftEntity(ent)
+      case Is[Map]('{ Map(${ query }, ${ alias }, ${ body }: Ast) }) => Map(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[FlatMap]('{ FlatMap(${ query }, ${ alias }, ${ body }: Ast) }) =>
+        FlatMap(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Filter]('{ Filter(${ query }, ${ alias }, ${ body }: Ast) }) =>
+        Filter(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[GroupBy]('{ GroupBy(${ query }, ${ alias }, ${ body }: Ast) }) =>
+        GroupBy(query.unexpr, alias.unexpr, body.unexpr)
       case Is[GroupByMap]('{ GroupByMap(${ query }, ${ byAlias }, ${ byBody }, ${ mapAlias }, ${ mapBody }) }) =>
         GroupByMap(query.unexpr, byAlias.unexpr, byBody.unexpr, mapAlias.unexpr, mapBody.unexpr)
 
-      case Is[SortBy]('{ SortBy(${ query }, ${ alias }, ${ criterias }, ${ ordering }) }) => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
-      case Is[Distinct]('{ Distinct(${ a }) })                                            => Distinct(a.unexpr)
-      case Is[DistinctOn]('{ DistinctOn(${ query }, ${ alias }, $body) })                 => DistinctOn(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[Nested]('{ Nested(${ a }) })                                                => Nested(a.unexpr)
-      case Is[Union]('{ Union($a, $b) })                                                  => Union(a.unexpr, b.unexpr)
-      case Is[UnionAll]('{ UnionAll($a, $b) })                                            => UnionAll(a.unexpr, b.unexpr)
-      case Is[Join]('{ Join($typ, $a, $b, $aliasA, $aliasB, $on) })                       => Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
-      case Is[FlatJoin]('{ FlatJoin($typ, $a, $aliasA, $on) })                            => FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
-      case Is[Take]('{ Take($query, $num) })                                              => Take(query.unexpr, num.unexpr)
-      case Is[Drop]('{ Drop($query, $num) })                                              => Drop(query.unexpr, num.unexpr)
-      case Is[ConcatMap]('{ ConcatMap(${ query }, ${ alias }, ${ body }: Ast) })          => ConcatMap(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[SortBy]('{ SortBy(${ query }, ${ alias }, ${ criterias }, ${ ordering }) }) =>
+        SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
+      case Is[Distinct]('{ Distinct(${ a }) }) => Distinct(a.unexpr)
+      case Is[DistinctOn]('{ DistinctOn(${ query }, ${ alias }, $body) }) =>
+        DistinctOn(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Nested]('{ Nested(${ a }) })     => Nested(a.unexpr)
+      case Is[Union]('{ Union($a, $b) })       => Union(a.unexpr, b.unexpr)
+      case Is[UnionAll]('{ UnionAll($a, $b) }) => UnionAll(a.unexpr, b.unexpr)
+      case Is[Join]('{ Join($typ, $a, $b, $aliasA, $aliasB, $on) }) =>
+        Join(typ.unexpr, a.unexpr, b.unexpr, aliasA.unexpr, aliasB.unexpr, on.unexpr)
+      case Is[FlatJoin]('{ FlatJoin($typ, $a, $aliasA, $on) }) =>
+        FlatJoin(typ.unexpr, a.unexpr, aliasA.unexpr, on.unexpr)
+      case Is[Take]('{ Take($query, $num) }) => Take(query.unexpr, num.unexpr)
+      case Is[Drop]('{ Drop($query, $num) }) => Drop(query.unexpr, num.unexpr)
+      case Is[ConcatMap]('{ ConcatMap(${ query }, ${ alias }, ${ body }: Ast) }) =>
+        ConcatMap(query.unexpr, alias.unexpr, body.unexpr)
       // Note: Aggregation is actually a Query-Type. Not sure why in Scala2-Quill it's not in the query-unlifter
       case Is[Aggregation]('{ Aggregation(${ operator }, ${ query }) }) => Aggregation(operator.unexpr, query.unexpr)
 
@@ -275,25 +296,28 @@ object Unlifter {
 
   given unliftAst: NiceUnliftable[Ast] with {
     def unlift =
-      case Is[AQuery](q)                                                                 => unliftQuery(q)
-      case Is[Constant](c)                                                               => unliftConstant(c)
-      case Is[Action](a)                                                                 => unliftAction(a)
-      case Is[Entity](p)                                                                 => unliftEntity(p)
-      case Is[Property](p)                                                               => unliftProperty(p)
-      case Is[AIdent](i)                                                                 => unliftIdent(i)
-      case Is[Ordering](o)                                                               => unliftOrdering(o)
-      case Is[If]('{ If($cond, $thenStmt, $elseStmt) })                                  => If(cond.unexpr, thenStmt.unexpr, elseStmt.unexpr)
-      case Is[Function]('{ Function($params, $body) })                                   => Function(params.unexpr, body.unexpr)
-      case Is[FunctionApply]('{ FunctionApply($function, $values) })                     => FunctionApply(function.unexpr, values.unexpr)
-      case Is[UnaryOperation]('{ UnaryOperation(${ operator }, ${ a }: Ast) })           => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
-      case Is[BinaryOperation]('{ BinaryOperation(${ a }, ${ operator }, ${ b }: Ast) }) => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
-      case Is[Property]('{ Property(${ ast }, ${ name }) })                              => Property(ast.unexpr, constString(name))
-      case Is[ScalarTag]('{ ScalarTag(${ uid }, ${ source }) })                          => ScalarTag(constString(uid), source.unexpr)
-      case Is[QuotationTag]('{ QuotationTag($uid) })                                     => QuotationTag(constString(uid))
-      case Is[Infix]('{ Infix($parts, $params, $pure, $transparent, $quat) })            => Infix(parts.unexpr, params.unexpr, pure.unexpr, transparent.unexpr, quat.unexpr)
-      case Is[Tuple]('{ Tuple.apply($values) })                                          => Tuple(values.unexpr)
-      case Is[CaseClass](ast)                                                            => unliftCaseClass(ast)
-      case Is[IterableOperation](unliftTraversableOperation(o))                          => o
+      case Is[AQuery](q)                                             => unliftQuery(q)
+      case Is[Constant](c)                                           => unliftConstant(c)
+      case Is[Action](a)                                             => unliftAction(a)
+      case Is[Entity](p)                                             => unliftEntity(p)
+      case Is[Property](p)                                           => unliftProperty(p)
+      case Is[AIdent](i)                                             => unliftIdent(i)
+      case Is[Ordering](o)                                           => unliftOrdering(o)
+      case Is[If]('{ If($cond, $thenStmt, $elseStmt) })              => If(cond.unexpr, thenStmt.unexpr, elseStmt.unexpr)
+      case Is[Function]('{ Function($params, $body) })               => Function(params.unexpr, body.unexpr)
+      case Is[FunctionApply]('{ FunctionApply($function, $values) }) => FunctionApply(function.unexpr, values.unexpr)
+      case Is[UnaryOperation]('{ UnaryOperation(${ operator }, ${ a }: Ast) }) =>
+        UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
+      case Is[BinaryOperation]('{ BinaryOperation(${ a }, ${ operator }, ${ b }: Ast) }) =>
+        BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
+      case Is[Property]('{ Property(${ ast }, ${ name }) })     => Property(ast.unexpr, constString(name))
+      case Is[ScalarTag]('{ ScalarTag(${ uid }, ${ source }) }) => ScalarTag(constString(uid), source.unexpr)
+      case Is[QuotationTag]('{ QuotationTag($uid) })            => QuotationTag(constString(uid))
+      case Is[Infix]('{ Infix($parts, $params, $pure, $transparent, $quat) }) =>
+        Infix(parts.unexpr, params.unexpr, pure.unexpr, transparent.unexpr, quat.unexpr)
+      case Is[Tuple]('{ Tuple.apply($values) })                 => Tuple(values.unexpr)
+      case Is[CaseClass](ast)                                   => unliftCaseClass(ast)
+      case Is[IterableOperation](unliftTraversableOperation(o)) => o
       // TODO Is the matching covariant? In that case can do "case '{ $oo: OptionOperation } and then strictly throw an error"
       case Is[OptionOperation](ast)                              => unliftOptionOperation(ast)
       case Is[Assignment](ast)                                   => unliftAssignment(ast)
@@ -345,13 +369,18 @@ object Unlifter {
       case '{ Quat.Product.Type.Abstract } => Quat.Product.Type.Abstract
   }
 
-  extension [T](expr: Seq[Expr[T]])(using FromExpr[T], Quotes)
-    def unexprSeq = expr.map(_.valueOrError)
+  extension [T](expr: Seq[Expr[T]])(using FromExpr[T], Quotes) def unexprSeq = expr.map(_.valueOrError)
 
   given quatProductUnliftable: NiceUnliftable[Quat.Product] with {
     def unlift =
-      case '{ Quat.Product.WithRenamesCompact.apply($name, $tpe)(${ Varargs(fields) }: _*)(${ Varargs(values) }: _*)(${ Varargs(renamesFrom) }: _*)(${ Varargs(renamesTo) }: _*) } =>
-        Quat.Product.WithRenamesCompact(name.unexpr, tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
+      case '{
+            Quat.Product.WithRenamesCompact.apply($name, $tpe)(${ Varargs(fields) }: _*)(${ Varargs(values) }: _*)(${
+              Varargs(renamesFrom)
+            }: _*)(${ Varargs(renamesTo) }: _*)
+          } =>
+        Quat.Product.WithRenamesCompact(name.unexpr, tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(
+          renamesFrom.unexprSeq: _*
+        )(renamesTo.unexprSeq: _*)
   }
 
   given quatUnliftable: NiceUnliftable[Quat] with {

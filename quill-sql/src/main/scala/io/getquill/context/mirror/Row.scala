@@ -8,7 +8,7 @@ object Row:
   case class Data(key: String, value: Any)
   @targetName("columns")
   def apply(values: (String, Any)*) = new Row(values.map((k, v) => Data(k, v)).toList)
-  def apply(values: Any*) = new Row(values.zipWithIndex.map((v, i) => Data(s"_${i + 1}", v)).toList)
+  def apply(values: Any*)           = new Row(values.zipWithIndex.map((v, i) => Data(s"_${i + 1}", v)).toList)
   object TupleIndex {
     def unapply(str: Any): Option[Int] =
       if (str.toString.matches("_([0-9]+)"))
@@ -49,8 +49,8 @@ case class Row(elements: List[Row.Data]) {
       }
     }
   private def nextNumberedRow = maxNumberedRow + 1
-  private def nextTupleIndex = s"_${nextNumberedRow}"
+  private def nextTupleIndex  = s"_${nextNumberedRow}"
 
-  def add(value: Any) = Row(elements :+ Row.Data(nextTupleIndex, value))
+  def add(value: Any)              = Row(elements :+ Row.Data(nextTupleIndex, value))
   def add(key: String, value: Any) = Row(elements :+ Row.Data(key, value))
 }

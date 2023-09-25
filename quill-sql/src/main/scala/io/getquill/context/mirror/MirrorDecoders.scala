@@ -10,8 +10,8 @@ import io.getquill.MappedEncoding
 trait MirrorDecoders extends EncodingDsl {
 
   override type PrepareRow = Row
-  override type ResultRow = Row
-  type Decoder[T] = MirrorDecoder[T]
+  override type ResultRow  = Row
+  type Decoder[T]          = MirrorDecoder[T]
 
   case class MirrorDecoder[T](decoder: DecoderMethod[T]) extends BaseDecoder[T] {
     override def apply(index: Int, row: ResultRow, session: Session) =
@@ -19,7 +19,7 @@ trait MirrorDecoders extends EncodingDsl {
   }
 
   def decoder[T: ClassTag]: Decoder[T] =
-    MirrorDecoder((index: Int, row: ResultRow, session: Session) => {
+    MirrorDecoder { (index: Int, row: ResultRow, session: Session) =>
       val cls = implicitly[ClassTag[T]].runtimeClass
       if (cls.isPrimitive && row.nullAt(index))
         0.asInstanceOf[T]
@@ -27,9 +27,10 @@ trait MirrorDecoders extends EncodingDsl {
         null.asInstanceOf[T]
       else
         row[T](index)
-    })
+    }
 
-  def decoderUnsafe[T]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow, session: Session) => row.data(index).asInstanceOf[T])
+  def decoderUnsafe[T]: Decoder[T] =
+    MirrorDecoder((index: Int, row: ResultRow, session: Session) => row.data(index).asInstanceOf[T])
 
   implicit def mappedDecoder[I, O](implicit mapped: MappedEncoding[I, O], d: Decoder[I]): Decoder[O] =
     MirrorDecoder((index: Int, row: ResultRow, session: Session) => mapped.f(d.apply(index, row, session)))
@@ -42,17 +43,17 @@ trait MirrorDecoders extends EncodingDsl {
         Some(d(index, row, session))
     )
 
-  implicit val stringDecoder: Decoder[String] = decoder[String]
+  implicit val stringDecoder: Decoder[String]         = decoder[String]
   implicit val bigDecimalDecoder: Decoder[BigDecimal] = decoder[BigDecimal]
-  implicit val booleanDecoder: Decoder[Boolean] = decoder[Boolean]
-  implicit val byteDecoder: Decoder[Byte] = decoder[Byte]
-  implicit val shortDecoder: Decoder[Short] = decoder[Short]
-  implicit val intDecoder: Decoder[Int] = decoder[Int]
-  implicit val longDecoder: Decoder[Long] = decoder[Long]
-  implicit val floatDecoder: Decoder[Float] = decoder[Float]
-  implicit val doubleDecoder: Decoder[Double] = decoder[Double]
+  implicit val booleanDecoder: Decoder[Boolean]       = decoder[Boolean]
+  implicit val byteDecoder: Decoder[Byte]             = decoder[Byte]
+  implicit val shortDecoder: Decoder[Short]           = decoder[Short]
+  implicit val intDecoder: Decoder[Int]               = decoder[Int]
+  implicit val longDecoder: Decoder[Long]             = decoder[Long]
+  implicit val floatDecoder: Decoder[Float]           = decoder[Float]
+  implicit val doubleDecoder: Decoder[Double]         = decoder[Double]
   implicit val byteArrayDecoder: Decoder[Array[Byte]] = decoder[Array[Byte]]
-  implicit val dateDecoder: Decoder[Date] = decoder[Date]
-  implicit val localDateDecoder: Decoder[LocalDate] = decoder[LocalDate]
-  implicit val uuidDecoder: Decoder[UUID] = decoder[UUID]
+  implicit val dateDecoder: Decoder[Date]             = decoder[Date]
+  implicit val localDateDecoder: Decoder[LocalDate]   = decoder[LocalDate]
+  implicit val uuidDecoder: Decoder[UUID]             = decoder[UUID]
 }

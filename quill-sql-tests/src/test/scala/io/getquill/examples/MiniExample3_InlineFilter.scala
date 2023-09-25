@@ -3,7 +3,6 @@ package io.getquill.examples
 import scala.language.implicitConversions
 import io.getquill._
 
-
 object MiniExample3_InlineFilter {
 
   case class Person(name: String, age: Int)
@@ -20,9 +19,9 @@ object MiniExample3_InlineFilter {
       query[Person].filter(onlyJoes)
     }
 
-    println( run(q) )
+    println(run(q))
 
-    println( List(Person("Joe", 22), Person("Jack", 33)).filter(onlyJoes) )
+    println(List(Person("Joe", 22), Person("Jack", 33)).filter(onlyJoes))
 
   }
 }

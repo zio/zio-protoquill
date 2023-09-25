@@ -10,7 +10,7 @@ import io.getquill._
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
-  implicit val ds: Implicit[DataSource] = Implicit(pool)
+  implicit val ds: Implicit[DataSource]    = Implicit(pool)
   val context: testContext.underlying.type = testContext.underlying
   import testContext.underlying._
 

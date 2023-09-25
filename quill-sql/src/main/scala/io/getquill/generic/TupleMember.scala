@@ -18,13 +18,15 @@ object TupleMember:
     object ElaboratedField:
       def apply(tpe: TypeRepr, fieldName: String) =
         val typeSymbol = tpe.typeSymbol
-        typeSymbol.methodMembers.find(m => m.name == fieldName && m.paramSymss == List()).map(ZeroArgsMethod(_))
+        typeSymbol.methodMembers
+          .find(m => m.name == fieldName && m.paramSymss == List())
+          .map(ZeroArgsMethod(_))
           .orElse(typeSymbol.fieldMembers.find(m => m.name == fieldName).map(Field(_)))
           .getOrElse(NotFound)
 
       case class ZeroArgsMethod(symbol: Symbol) extends ElaboratedField
-      case class Field(symbol: Symbol) extends ElaboratedField
-      case object NotFound extends ElaboratedField
+      case class Field(symbol: Symbol)          extends ElaboratedField
+      case object NotFound                      extends ElaboratedField
     end ElaboratedField
 
     val clsType = TypeRepr.of[T]
@@ -34,8 +36,10 @@ object TupleMember:
     // val memberSymbol = clsType.typeSymbol.fieldMember("_1")
     val elab = ElaboratedField(clsType, matchMember)
     elab match
-      case ElaboratedField.ZeroArgsMethod(sym) => report.info(s"${sym} is a zero-args member whose type is ${clsType.widen.memberType(sym).widen}")
-      case ElaboratedField.Field(sym)          => report.info(s"${sym} is a field whose type is ${clsType.widen.memberType(sym).widen}")
-      case ElaboratedField.NotFound            => report.info(s"${matchMember} was not found")
+      case ElaboratedField.ZeroArgsMethod(sym) =>
+        report.info(s"${sym} is a zero-args member whose type is ${clsType.widen.memberType(sym).widen}")
+      case ElaboratedField.Field(sym) =>
+        report.info(s"${sym} is a field whose type is ${clsType.widen.memberType(sym).widen}")
+      case ElaboratedField.NotFound => report.info(s"${matchMember} was not found")
 
     '{ () }

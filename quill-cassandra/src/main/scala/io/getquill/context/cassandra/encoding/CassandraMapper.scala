@@ -9,8 +9,10 @@ import io.getquill.context.UdtValueLookup
  */
 case class CassandraMapper[I, O, Side <: MapperSide](f: (I, UdtValueLookup) => O)
 object CassandraMapper {
-  def encode[I, O](f: I => O): CassandraMapper[I, O, MapperSide.Encode] = CassandraMapper[I, O, MapperSide.Encode]((iOrig, _) => f(iOrig))
-  def decode[I, O](f: I => O): CassandraMapper[I, O, MapperSide.Decode] = CassandraMapper[I, O, MapperSide.Decode]((iOrig, _) => f(iOrig))
+  def encode[I, O](f: I => O): CassandraMapper[I, O, MapperSide.Encode] =
+    CassandraMapper[I, O, MapperSide.Encode]((iOrig, _) => f(iOrig))
+  def decode[I, O](f: I => O): CassandraMapper[I, O, MapperSide.Decode] =
+    CassandraMapper[I, O, MapperSide.Decode]((iOrig, _) => f(iOrig))
 }
 
 sealed trait MapperSide

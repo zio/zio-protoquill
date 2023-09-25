@@ -21,8 +21,8 @@ class OptionJdbcSpec extends OptionQuerySpec {
 
   // Hack because Quill does not have correct SQL Server infix concatenation. See issue #1054 for more info.
   val `Simple Map with GetOrElse Infix` = quote {
-    query[Address].map(
-      a => (a.street, a.otherExtraInfo.map(info => sql"${info} + ' suffix'".as[String]).getOrElse("baz"))
+    query[Address].map(a =>
+      (a.street, a.otherExtraInfo.map(info => sql"${info} + ' suffix'".as[String]).getOrElse("baz"))
     )
   }
 
@@ -31,7 +31,9 @@ class OptionJdbcSpec extends OptionQuerySpec {
   }
 
   "Example 1.0.1 - Simple Map with GetOrElse Infix" in {
-    testContext.run(`Simple Map with GetOrElse Infix`) should contain theSameElementsAs `Simple Map with GetOrElse Result`
+    testContext.run(
+      `Simple Map with GetOrElse Infix`
+    ) should contain theSameElementsAs `Simple Map with GetOrElse Result`
   }
 
   "Example 1.1 - Simple Map with GetOrElse" in {
@@ -39,7 +41,9 @@ class OptionJdbcSpec extends OptionQuerySpec {
   }
 
   "Example 1.2 - Simple Map with Condition and GetOrElse" in {
-    testContext.run(`Simple Map with Condition and GetOrElse`) should contain theSameElementsAs `Simple Map with Condition and GetOrElse Result`
+    testContext.run(
+      `Simple Map with Condition and GetOrElse`
+    ) should contain theSameElementsAs `Simple Map with Condition and GetOrElse Result`
   }
 
   "Example 2 - Simple GetOrElse" in {

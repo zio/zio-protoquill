@@ -27,12 +27,12 @@ object failParse:
     val traces = Thread.currentThread.getStackTrace.take(50).map("  " + _.toString).mkString("\n")
     report.throwError(
       s"""|
-      |s"==== ${message} ====
-      |  ${Format(Printer.TreeShortCode.show(term)) /* Or Maybe just expr? */}
-      |==== Extractors ===
-      |  ${Format(Printer.TreeStructure.show(term))}
-      |==== Stacktrace ===
-      |${traces}""".stripMargin,
+          |s"==== ${message} ====
+          |  ${Format(Printer.TreeShortCode.show(term)) /* Or Maybe just expr? */}
+          |==== Extractors ===
+          |  ${Format(Printer.TreeStructure.show(term))}
+          |==== Stacktrace ===
+          |${traces}""".stripMargin,
       expr
     )
   end apply

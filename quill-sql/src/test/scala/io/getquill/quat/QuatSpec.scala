@@ -36,13 +36,22 @@ class QuatSpec extends AnyFreeSpec {
     //   quote(query[TestEnum.MyEnumContainer])
     // }
     "should succeed product-type enum" in {
-      quatOf[TestEnum.ProductEnum] mustEqual Quat.Product("ProductEnum", "stuff" -> Quat.Value, "otherStuff" -> Quat.Value)
+      quatOf[TestEnum.ProductEnum] mustEqual Quat.Product(
+        "ProductEnum",
+        "stuff"      -> Quat.Value,
+        "otherStuff" -> Quat.Value
+      )
     }
   }
 
   "boolean and optional boolean" in {
     case class MyPerson(name: String, isHuman: Boolean, isRussian: Option[Boolean])
-    val MyPersonQuat = Quat.Product("MyPersonQuat", "name" -> Quat.Value, "isHuman" -> Quat.BooleanValue, "isRussian" -> Quat.BooleanValue)
+    val MyPersonQuat = Quat.Product(
+      "MyPersonQuat",
+      "name"      -> Quat.Value,
+      "isHuman"   -> Quat.BooleanValue,
+      "isRussian" -> Quat.BooleanValue
+    )
     MyPersonQuat mustEqual quatOf[MyPerson]
     quote(query[MyPerson]).ast.quat mustEqual MyPersonQuat
   }
@@ -56,24 +65,29 @@ class QuatSpec extends AnyFreeSpec {
 
   "should support embedded" in {
     case class MyName(first: String, last: String) extends Embedded
-    case class MyPerson(name: MyName, age: Int) extends Embedded
-    val MyPersonQuat = Quat.Product("MyPersonQuat", "name" -> Quat.LeafProduct("MyName", "first", "last"), "age" -> Quat.Value)
+    case class MyPerson(name: MyName, age: Int)    extends Embedded
+    val MyPersonQuat =
+      Quat.Product("MyPersonQuat", "name" -> Quat.LeafProduct("MyName", "first", "last"), "age" -> Quat.Value)
     MyPersonQuat mustEqual quatOf[MyPerson]
     quote(query[MyPerson]).ast.quat mustEqual MyPersonQuat
   }
 
   "should support multi-level embedded" in {
     case class MyName(first: String, last: String) extends Embedded
-    case class MyId(name: MyName, memberNum: Int) extends Embedded
+    case class MyId(name: MyName, memberNum: Int)  extends Embedded
     case class MyPerson(name: MyId, age: Int)
-    val MyPersonQuat = Quat.Product("MyPersonQuat", "name" -> Quat.Product("Prod", "name" -> Quat.LeafProduct("MyName", "first", "last"), "memberNum" -> Quat.Value), "age" -> Quat.Value)
+    val MyPersonQuat = Quat.Product(
+      "MyPersonQuat",
+      "name" -> Quat.Product("Prod", "name" -> Quat.LeafProduct("MyName", "first", "last"), "memberNum" -> Quat.Value),
+      "age"  -> Quat.Value
+    )
     MyPersonQuat mustEqual quatOf[MyPerson]
     quote(query[MyPerson]).ast.quat mustEqual MyPersonQuat
   }
 
   "should support least upper types" - {
     val AnimalQuat = Quat.LeafProduct("Animal", "name")
-    val CatQuat = Quat.LeafProduct("Cat", "name", "color")
+    val CatQuat    = Quat.LeafProduct("Cat", "name", "color")
 
     "simple reduction" in {
       AnimalQuat.leastUpperType(CatQuat).get mustEqual AnimalQuat
@@ -84,8 +98,8 @@ class QuatSpec extends AnyFreeSpec {
       trait Animal { def name: String }
       case class Cat(name: String, color: Int) extends Animal
 
-      inline def isSpot[A <: Animal] = quote {
-        (animals: Query[A]) => animals.filter(a => a.name == "Spot")
+      inline def isSpot[A <: Animal] = quote { (animals: Query[A]) =>
+        animals.filter(a => a.name == "Spot")
       }
       quote(isSpot[Cat](query[Cat])).ast.quat mustEqual CatQuat
 
@@ -100,8 +114,8 @@ class QuatSpec extends AnyFreeSpec {
   }
 
   "lookup" - {
-    val bar = Quat.Product("bar", "baz" -> Quat.Value)
-    val foo = Quat.Product("foo", "v" -> Quat.Value, "bar" -> bar)
+    val bar     = Quat.Product("bar", "baz" -> Quat.Value)
+    val foo     = Quat.Product("foo", "v" -> Quat.Value, "bar" -> bar)
     val example = Quat.Product("example", "v" -> Quat.Value, "foo" -> foo)
     "path" in {
       example.lookup("foo", true) mustEqual foo
@@ -125,15 +139,15 @@ class QuatSpec extends AnyFreeSpec {
       "Prod",
       "bv" -> Quat.BooleanValue,
       "be" -> Quat.BooleanExpression,
-      "v" -> Quat.Value,
-      "p" -> Quat.Product("Emb", "vv" -> Quat.Value, "pp" -> Quat.Product("EmbSingle", "ppp" -> Quat.Value))
+      "v"  -> Quat.Value,
+      "p"  -> Quat.Product("Emb", "vv" -> Quat.Value, "pp" -> Quat.Product("EmbSingle", "ppp" -> Quat.Value))
     )
     val expect = Quat.Product(
       "expect",
       "bva" -> Quat.BooleanValue,
-      "be" -> Quat.BooleanExpression,
-      "v" -> Quat.Value,
-      "pa" -> Quat.Product("Emb", "vv" -> Quat.Value, "pp" -> Quat.Product("EmbSingle", "ppp" -> Quat.Value))
+      "be"  -> Quat.BooleanExpression,
+      "v"   -> Quat.Value,
+      "pa"  -> Quat.Product("Emb", "vv" -> Quat.Value, "pp" -> Quat.Product("EmbSingle", "ppp" -> Quat.Value))
     )
     val value = Quat.Value
     "rename field" in {
@@ -147,7 +161,13 @@ class QuatSpec extends AnyFreeSpec {
   "should serialize" - {
     // Need to import implicits from BooQuatSerializer otherwise c_jl_UnsupportedOperationException happens in JS
     import BooQuatSerializer._
-    val example = Quat.Product("Prod", "bv" -> Quat.BooleanValue, "be" -> Quat.BooleanExpression, "v" -> Quat.Value, "p" -> Quat.Product("EmbSingle", "vv" -> Quat.Value))
+    val example = Quat.Product(
+      "Prod",
+      "bv" -> Quat.BooleanValue,
+      "be" -> Quat.BooleanExpression,
+      "v"  -> Quat.Value,
+      "p"  -> Quat.Product("EmbSingle", "vv" -> Quat.Value)
+    )
     "with boo" in {
       Quat.fromSerialized(serialize(example)) mustEqual example
     }
@@ -157,21 +177,21 @@ class QuatSpec extends AnyFreeSpec {
   "should support types in Query[T] position" - {
     "boolean value" in {
       // TODO Does the non-inline version of this work
-      inline def func = quote {
-        (q: Query[Boolean]) => q.filter(p => p == true)
+      inline def func = quote { (q: Query[Boolean]) =>
+        q.filter(p => p == true)
       }
       func.ast.quat mustEqual Quat.BooleanValue
     }
     "boolean value - type" in {
       type Bool = Boolean
-      def func = quote {
-        (q: Query[Bool]) => q.filter(p => p == true)
+      def func = quote { (q: Query[Bool]) =>
+        q.filter(p => p == true)
       }
       func.ast.quat mustEqual Quat.BooleanValue
     }
     "value" in {
-      def func = quote {
-        (q: Query[Int]) => q.filter(p => p == 1)
+      def func = quote { (q: Query[Int]) =>
+        q.filter(p => p == 1)
       }
       func.ast.quat mustEqual Quat.Value
     }
@@ -197,64 +217,64 @@ class QuatSpec extends AnyFreeSpec {
      */
     "case class" in {
       case class MyPerson(name: String, isRussian: Boolean)
-      def func = quote {
-        (q: Query[MyPerson]) => q.filter(p => p.name == "Joe")
+      def func = quote { (q: Query[MyPerson]) =>
+        q.filter(p => p.name == "Joe")
       }
       func.ast.quat mustEqual Quat.Product("Prod", "name" -> Quat.Value, "isRussian" -> Quat.BooleanValue)
     }
     "case class with boundary" in {
       case class MyPerson(name: String, isRussian: Boolean)
-      def func[T <: MyPerson] = quote {
-        (q: Query[T]) => q.filter(p => p.name == "Joe")
+      def func[T <: MyPerson] = quote { (q: Query[T]) =>
+        q.filter(p => p.name == "Joe")
       }
       func.ast.quat mustEqual Quat.Generic
     }
     "interface" in {
       trait LikePerson { def name: String; def isRussian: Boolean }
-      def func = quote {
-        (q: Query[LikePerson]) => q.filter(p => p.name == "Joe")
+      def func = quote { (q: Query[LikePerson]) =>
+        q.filter(p => p.name == "Joe")
       }
       // TODO What about abstract classes? What does Flags.Abstract do?
       func.ast.quat mustEqual Quat.Generic // helloooo
     }
     "interface with boundary" in {
       trait LikePerson { def name: String; def isRussian: Boolean }
-      def func[T <: LikePerson] = quote {
-        (q: Query[T]) => q.filter(p => p.name == "Joe")
+      def func[T <: LikePerson] = quote { (q: Query[T]) =>
+        q.filter(p => p.name == "Joe")
       }
       func.ast.quat mustEqual Quat.Generic
     }
     "interface with boundary boolean indirect" in {
       type Bool = Boolean
       trait LikePerson { def name: String; def isRussian: Bool }
-      def func[T <: LikePerson] = quote {
-        (q: Query[T]) => q.filter(p => p.name == "Joe")
+      def func[T <: LikePerson] = quote { (q: Query[T]) =>
+        q.filter(p => p.name == "Joe")
       }
       func.ast.quat mustEqual Quat.Generic
     }
     "boundary with value" in {
-      def func[T <: Int] = quote {
-        (q: Query[T]) => q
+      def func[T <: Int] = quote { (q: Query[T]) =>
+        q
       }
       func.ast.quat mustEqual Quat.Value
     }
     "boundary with value - boolean" in {
-      def func[T <: Boolean] = quote {
-        (q: Query[T]) => q
+      def func[T <: Boolean] = quote { (q: Query[T]) =>
+        q
       }
       func.ast.quat mustEqual Quat.BooleanValue
     }
     "boundary with value and type - boolean" in {
       type Bool = Boolean
-      def func[T <: Bool] = quote {
-        (q: Query[T]) => q
+      def func[T <: Bool] = quote { (q: Query[T]) =>
+        q
       }
       func.ast.quat mustEqual Quat.BooleanValue
     }
     "any" in {
       // TODO Non Inline Version also once QuotationTag issue fixed
-      def func = quote {
-        (q: Query[Any]) => q
+      def func = quote { (q: Query[Any]) =>
+        q
       }
       func.ast.quat mustEqual Quat.Generic
     }
@@ -262,21 +282,21 @@ class QuatSpec extends AnyFreeSpec {
 
   "should support types" - {
     "boolean value" in {
-      def func = quote {
-        (q: Boolean) => q
+      def func = quote { (q: Boolean) =>
+        q
       }
       func.ast.quat mustEqual Quat.BooleanValue
     }
     "boolean value - type" in {
       type Bool = Boolean
-      def func = quote {
-        (q: Bool) => q
+      def func = quote { (q: Bool) =>
+        q
       }
       func.ast.quat mustEqual Quat.BooleanValue
     }
     "value" in {
-      def func = quote {
-        (q: Int) => q
+      def func = quote { (q: Int) =>
+        q
       }
       func.ast.quat mustEqual Quat.Value
     }
@@ -299,8 +319,8 @@ class QuatSpec extends AnyFreeSpec {
     }
     "case class" in {
       case class MyPerson(name: String, isRussian: Boolean)
-      def func = quote {
-        (q: MyPerson) => q
+      def func = quote { (q: MyPerson) =>
+        q
       }
       func.ast.quat mustEqual Quat.Product("Prod", "name" -> Quat.Value, "isRussian" -> Quat.BooleanValue)
     }
@@ -314,8 +334,8 @@ class QuatSpec extends AnyFreeSpec {
     }
     "interface" in {
       trait LikePerson { def name: String; def isRussian: Boolean }
-      def func = quote {
-        (q: LikePerson) => q
+      def func = quote { (q: LikePerson) =>
+        q
       }
       func.ast.quat mustEqual Quat.Generic
     }
@@ -337,27 +357,27 @@ class QuatSpec extends AnyFreeSpec {
       // func.ast.quat mustEqual Quat.Product("Prod", "name" -> Quat.Value, "isRussian" -> Quat.BooleanValue)
     }
     "boundary with value" in {
-      def func[T <: Int] = quote {
-        (q: T) => q
+      def func[T <: Int] = quote { (q: T) =>
+        q
       }
       func.ast.quat mustEqual Quat.Value
     }
     "boundary with value - boolean" in {
-      def func[T <: Boolean] = quote {
-        (q: T) => q
+      def func[T <: Boolean] = quote { (q: T) =>
+        q
       }
       func.ast.quat mustEqual Quat.BooleanValue
     }
     "boundary with value and type - boolean" in {
       type Bool = Boolean
-      def func[T <: Bool] = quote {
-        (q: T) => q
+      def func[T <: Bool] = quote { (q: T) =>
+        q
       }
       func.ast.quat mustEqual Quat.BooleanValue
     }
     "any" in {
-      def func = quote {
-        (q: Any) => q
+      def func = quote { (q: Any) =>
+        q
       }
       func.ast.quat mustEqual Quat.Generic
     }

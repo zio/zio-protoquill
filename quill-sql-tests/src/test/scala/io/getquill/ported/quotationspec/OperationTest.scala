@@ -21,29 +21,29 @@ class OperationTest extends Spec with TestEntities with Inside {
   extension (ast: Ast)
     def body: Ast = ast match
       case f: Function => f.body
-      case _ => fail(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+      case _           => fail(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
 
   "binary operation" - {
     "==" - {
       "normal" in {
-        inline def q = quote {
-          (a: Int, b: Int) => a == b
+        inline def q = quote { (a: Int, b: Int) =>
+          a == b
         }
         val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
         repickle(b) mustEqual b
       }
       "succeeds when different numerics are used Int/Long" in {
-        inline def q = quote {
-          (a: Int, b: Long) => a == b
+        inline def q = quote { (a: Int, b: Long) =>
+          a == b
         }
         val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
         repickle(b) mustEqual b
       }
       "succeeds when different numerics are used Long/Int" in {
-        inline def q = quote {
-          (a: Long, b: Int) => a == b
+        inline def q = quote { (a: Long, b: Int) =>
+          a == b
         }
         val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
@@ -61,11 +61,13 @@ class OperationTest extends Spec with TestEntities with Inside {
         val ib = Ident("b")
 
         "succeeds when Option/Option" in {
-          inline def q = quote {
-            (a: Option[Int], b: Option[Int]) => a == b
+          inline def q = quote { (a: Option[Int], b: Option[Int]) =>
+            a == b
           }
 
-          quote(unquote(q)).ast.body mustEqual (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib))
+          quote(unquote(q)).ast.body mustEqual (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(
+            ia
+          ) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib))
         }
         "succeeds when Option/T" in {
           """
@@ -116,26 +118,32 @@ class OperationTest extends Spec with TestEntities with Inside {
           trait Bart
 
           "succeeds when Option[T]/Option[T]" in {
-            inline def q = quote {
-              (a: Option[Foo], b: Option[Foo]) => a == b
+            inline def q = quote { (a: Option[Foo], b: Option[Foo]) =>
+              a == b
             }
-            val o = (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib))
+            val o = (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(
+              ib
+            ) +&&+ (ia +==+ ib))
             quote(unquote(q)).ast.body mustEqual o
             repickle(o) mustEqual o
           }
           "succeeds when Option[T]/Option[subclass T]" in {
-            inline def q = quote {
-              (a: Option[Foo], b: Option[Foo with Foot]) => a == b
+            inline def q = quote { (a: Option[Foo], b: Option[Foo with Foot]) =>
+              a == b
             }
-            val o = (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib))
+            val o = (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(
+              ib
+            ) +&&+ (ia +==+ ib))
             quote(unquote(q)).ast.body mustEqual o
             repickle(o) mustEqual o
           }
           "succeeds when Option[subclass T]/Option[T]" in {
-            inline def q = quote {
-              (a: Option[Foo with Foot], b: Option[Foo]) => a == b
+            inline def q = quote { (a: Option[Foo with Foot], b: Option[Foo]) =>
+              a == b
             }
-            val o = (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib))
+            val o = (OptionIsEmpty(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsDefined(ia) +&&+ OptionIsDefined(
+              ib
+            ) +&&+ (ia +==+ ib))
             quote(unquote(q)).ast.body mustEqual o
             repickle(o) mustEqual o
           }
@@ -162,74 +170,74 @@ class OperationTest extends Spec with TestEntities with Inside {
         val ib = Ident("b")
 
         "normal" in {
-          inline def q = quote {
-            (a: Int, b: Int) => a === b
+          inline def q = quote { (a: Int, b: Int) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
         }
         "normal - string" in {
-          inline def q = quote {
-            (a: String, b: String) => a === b
+          inline def q = quote { (a: String, b: String) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
         }
         "succeeds when different numerics are used Int/Long" in {
-          inline def q = quote {
-            (a: Int, b: Long) => a === b
+          inline def q = quote { (a: Int, b: Long) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
         }
         "succeeds when Option/Option" in {
-          inline def q = quote {
-            (a: Option[Int], b: Option[Int]) => a === b
+          inline def q = quote { (a: Option[Int], b: Option[Int]) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib)
         }
         "succeeds when Option/T" in {
-          inline def q = quote {
-            (a: Option[Int], b: Int) => a === b
+          inline def q = quote { (a: Option[Int], b: Int) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +==+ ib)
         }
         "succeeds when T/Option" in {
-          inline def q = quote {
-            (a: Int, b: Option[Int]) => a === b
+          inline def q = quote { (a: Int, b: Option[Int]) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +==+ ib)
         }
         "succeeds when Option/Option - Different Numerics" in {
-          inline def q = quote {
-            (a: Option[Int], b: Option[Long]) => a === b
+          inline def q = quote { (a: Option[Int], b: Option[Long]) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib)
         }
         "succeeds when Option/T - Different Numerics" in {
-          inline def q = quote {
-            (a: Option[Int], b: Long) => a === b
+          inline def q = quote { (a: Option[Int], b: Long) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +==+ ib)
         }
         "succeeds when T/Option - Different Numerics" in {
-          inline def q = quote {
-            (a: Int, b: Option[Long]) => a === b
+          inline def q = quote { (a: Int, b: Option[Long]) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +==+ ib)
         }
         "succeeds when Option/Option - String" in {
-          inline def q = quote {
-            (a: Option[String], b: Option[String]) => a === b
+          inline def q = quote { (a: Option[String], b: Option[String]) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +==+ ib)
         }
         "succeeds when Option/T - String" in {
-          inline def q = quote {
-            (a: Option[String], b: String) => a === b
+          inline def q = quote { (a: Option[String], b: String) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +==+ ib)
         }
         "succeeds when T/Option - String" in {
-          inline def q = quote {
-            (a: String, b: Option[String]) => a === b
+          inline def q = quote { (a: String, b: Option[String]) =>
+            a === b
           }
           quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +==+ ib)
         }
@@ -238,16 +246,16 @@ class OperationTest extends Spec with TestEntities with Inside {
 
     "equals" - {
       "equals method" in {
-        inline def q = quote {
-          (a: Int, b: Int) => a.equals(b)
+        inline def q = quote { (a: Int, b: Int) =>
+          a.equals(b)
         }
         val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
         repickle(b) mustEqual b
       }
       "==" in {
-        inline def q = quote {
-          (a: Int, b: Int) => a == b
+        inline def q = quote { (a: Int, b: Int) =>
+          a == b
         }
         val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
@@ -260,24 +268,24 @@ class OperationTest extends Spec with TestEntities with Inside {
       trait Bart
 
       "should succeed if right is subclass" in {
-        inline def q = quote {
-          (a: Foo, b: Foo with Foot) => a.equals(b)
+        inline def q = quote { (a: Foo, b: Foo with Foot) =>
+          a.equals(b)
         }
         val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
         repickle(b) mustEqual b
       }
       "should succeed if left is subclass" in {
-        inline def q = quote {
-          (a: Foo with Foot, b: Foo) => a.equals(b)
+        inline def q = quote { (a: Foo with Foot, b: Foo) =>
+          a.equals(b)
         }
         val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
         repickle(b) mustEqual b
       }
       "should succeed with refinements" in {
-        inline def q = quote {
-          (a: Foo with Foot, b: Foo with Foot) => a.equals(b)
+        inline def q = quote { (a: Foo with Foot, b: Foo with Foot) =>
+          a.equals(b)
         }
         val b = BinaryOperation(Ident("a"), EqualityOperator.`_==`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
@@ -292,24 +300,24 @@ class OperationTest extends Spec with TestEntities with Inside {
     }
     "!=" - {
       "normal" in {
-        inline def q = quote {
-          (a: Int, b: Int) => a != b
+        inline def q = quote { (a: Int, b: Int) =>
+          a != b
         }
         val b = BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
         repickle(b) mustEqual b
       }
       "succeeds when different numerics are used Int/Long" in {
-        inline def q = quote {
-          (a: Int, b: Long) => a != b
+        inline def q = quote { (a: Int, b: Long) =>
+          a != b
         }
         val b = BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
         repickle(b) mustEqual b
       }
       "succeeds when different numerics are used Long/Int" in {
-        inline def q = quote {
-          (a: Long, b: Int) => a != b
+        inline def q = quote { (a: Long, b: Int) =>
+          a != b
         }
         val b = BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
@@ -327,10 +335,12 @@ class OperationTest extends Spec with TestEntities with Inside {
         val ib = Ident("b")
 
         "succeeds when Option/Option" in {
-          inline def q = quote {
-            (a: Option[Int], b: Option[Int]) => a != b
+          inline def q = quote { (a: Option[Int], b: Option[Int]) =>
+            a != b
           }
-          val o = (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(ib)) +||+ (ia +!=+ ib)
+          val o = (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(
+            ib
+          )) +||+ (ia +!=+ ib)
           quote(unquote(q)).ast.body mustEqual o
           repickle(o) mustEqual o
         }
@@ -383,18 +393,22 @@ class OperationTest extends Spec with TestEntities with Inside {
           trait Bart
 
           "succeeds when Option[T]/Option[subclass T]" in {
-            inline def q = quote {
-              (a: Option[Foo], b: Option[Foo with Foot]) => a != b
+            inline def q = quote { (a: Option[Foo], b: Option[Foo with Foot]) =>
+              a != b
             }
-            val o = (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(ib)) +||+ (ia +!=+ ib)
+            val o = (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib)) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(
+              ib
+            )) +||+ (ia +!=+ ib)
             quote(unquote(q)).ast.body mustEqual o
             repickle(o) mustEqual o
           }
           "succeeds when Option[subclass T]/Option[T]" in {
-            inline def q = quote {
-              (a: Option[Foo with Foot], b: Option[Foo]) => a != b
+            inline def q = quote { (a: Option[Foo with Foot], b: Option[Foo]) =>
+              a != b
             }
-            val o = (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(ib)) +||+ (ia +!=+ ib))
+            val o = (OptionIsDefined(ia) +&&+ OptionIsEmpty(ib) +||+ (OptionIsEmpty(ia) +&&+ OptionIsDefined(
+              ib
+            )) +||+ (ia +!=+ ib))
             quote(unquote(q)).ast.body mustEqual o
             repickle(o) mustEqual o
           }
@@ -472,24 +486,24 @@ class OperationTest extends Spec with TestEntities with Inside {
       // }
     }
     "&&" in {
-      inline def q = quote {
-        (a: Boolean, b: Boolean) => a && b
+      inline def q = quote { (a: Boolean, b: Boolean) =>
+        a && b
       }
       val b = BinaryOperation(Ident("a"), BooleanOperator.`&&`, Ident("b"))
       quote(unquote(q)).ast.body mustEqual b
       repickle(b) mustEqual b
     }
     "||" in {
-      inline def q = quote {
-        (a: Boolean, b: Boolean) => a || b
+      inline def q = quote { (a: Boolean, b: Boolean) =>
+        a || b
       }
       val b = BinaryOperation(Ident("a"), BooleanOperator.`||`, Ident("b"))
       quote(unquote(q)).ast.body mustEqual b
       repickle(b) mustEqual b
     }
     "-" in {
-      inline def q = quote {
-        (a: Int, b: Int) => a - b
+      inline def q = quote { (a: Int, b: Int) =>
+        a - b
       }
       val b = BinaryOperation(Ident("a"), NumericOperator.`-`, Ident("b"))
       quote(unquote(q)).ast.body mustEqual b
@@ -497,16 +511,16 @@ class OperationTest extends Spec with TestEntities with Inside {
     }
     "+" - {
       "numeric" in {
-        inline def q = quote {
-          (a: Int, b: Int) => a + b
+        inline def q = quote { (a: Int, b: Int) =>
+          a + b
         }
         val b = BinaryOperation(Ident("a"), NumericOperator.`+`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
         repickle(b) mustEqual b
       }
       "string" in {
-        inline def q = quote {
-          (a: String, b: String) => a + b
+        inline def q = quote { (a: String, b: String) =>
+          a + b
         }
         val b = BinaryOperation(Ident("a"), StringOperator.`+`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
@@ -540,56 +554,56 @@ class OperationTest extends Spec with TestEntities with Inside {
       }
     }
     "*" in {
-      inline def q = quote {
-        (a: Int, b: Int) => a * b
+      inline def q = quote { (a: Int, b: Int) =>
+        a * b
       }
       val b = BinaryOperation(Ident("a"), NumericOperator.`*`, Ident("b"))
       quote(unquote(q)).ast.body mustEqual b
       repickle(b) mustEqual b
     }
     ">" in {
-      inline def q = quote {
-        (a: Int, b: Int) => a > b
+      inline def q = quote { (a: Int, b: Int) =>
+        a > b
       }
       val b = BinaryOperation(Ident("a"), NumericOperator.`>`, Ident("b"))
       quote(unquote(q)).ast.body mustEqual b
       repickle(b) mustEqual b
     }
     ">=" in {
-      inline def q = quote {
-        (a: Int, b: Int) => a >= b
+      inline def q = quote { (a: Int, b: Int) =>
+        a >= b
       }
       val b = BinaryOperation(Ident("a"), NumericOperator.`>=`, Ident("b"))
       quote(unquote(q)).ast.body mustEqual b
       repickle(b) mustEqual b
     }
     "<" in {
-      inline def q = quote {
-        (a: Int, b: Int) => a < b
+      inline def q = quote { (a: Int, b: Int) =>
+        a < b
       }
       val b = BinaryOperation(Ident("a"), NumericOperator.`<`, Ident("b"))
       quote(unquote(q)).ast.body mustEqual b
       repickle(b) mustEqual b
     }
     "<=" in {
-      inline def q = quote {
-        (a: Int, b: Int) => a <= b
+      inline def q = quote { (a: Int, b: Int) =>
+        a <= b
       }
       val b = BinaryOperation(Ident("a"), NumericOperator.`<=`, Ident("b"))
       quote(unquote(q)).ast.body mustEqual b
       repickle(b) mustEqual b
     }
     "/" in {
-      inline def q = quote {
-        (a: Int, b: Int) => a / b
+      inline def q = quote { (a: Int, b: Int) =>
+        a / b
       }
       val b = BinaryOperation(Ident("a"), NumericOperator.`/`, Ident("b"))
       quote(unquote(q)).ast.body mustEqual b
       repickle(b) mustEqual b
     }
     "%" in {
-      inline def q = quote {
-        (a: Int, b: Int) => a % b
+      inline def q = quote { (a: Int, b: Int) =>
+        a % b
       }
       val b = BinaryOperation(Ident("a"), NumericOperator.`%`, Ident("b"))
       quote(unquote(q)).ast.body mustEqual b
@@ -598,9 +612,8 @@ class OperationTest extends Spec with TestEntities with Inside {
 
     "contains" - {
       "query" in {
-        inline def q = quote {
-          (a: Query[TestEntity], b: TestEntity) =>
-            a.contains(b)
+        inline def q = quote { (a: Query[TestEntity], b: TestEntity) =>
+          a.contains(b)
         }
         val b = BinaryOperation(Ident("a"), SetOperator.`contains`, Ident("b"))
         quote(unquote(q)).ast.body mustEqual b
@@ -646,16 +659,16 @@ class OperationTest extends Spec with TestEntities with Inside {
 
   "unary operation" - {
     "-" in {
-      inline def q = quote {
-        (a: Int) => -a
+      inline def q = quote { (a: Int) =>
+        -a
       }
       val v = UnaryOperation(NumericOperator.`-`, Ident("a"))
       quote(unquote(q)).ast.body mustEqual v
       repickle(v) mustEqual v
     }
     "!" in {
-      inline def q = quote {
-        (a: Boolean) => !a
+      inline def q = quote { (a: Boolean) =>
+        !a
       }
       val v = UnaryOperation(BooleanOperator.`!`, Ident("a"))
       quote(unquote(q)).ast.body mustEqual v
@@ -681,7 +694,11 @@ class OperationTest extends Spec with TestEntities with Inside {
       inline def q = quote {
         qr1.map(t => t.s.toUpperCase)
       }
-      val v = Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toUpperCase`, Property(Ident("t"), "s")))
+      val v = Map(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t"),
+        UnaryOperation(StringOperator.`toUpperCase`, Property(Ident("t"), "s"))
+      )
       quote(unquote(q)).ast mustEqual v
       repickle(v) mustEqual v
     }
@@ -689,7 +706,11 @@ class OperationTest extends Spec with TestEntities with Inside {
       inline def q = quote {
         qr1.map(t => t.s.toLowerCase)
       }
-      val v = Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toLowerCase`, Property(Ident("t"), "s")))
+      val v = Map(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t"),
+        UnaryOperation(StringOperator.`toLowerCase`, Property(Ident("t"), "s"))
+      )
       quote(unquote(q)).ast mustEqual v
       repickle(v) mustEqual v
     }
@@ -697,7 +718,11 @@ class OperationTest extends Spec with TestEntities with Inside {
       inline def q = quote {
         qr1.map(t => t.s.toLong)
       }
-      val v = Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toLong`, Property(Ident("t"), "s")))
+      val v = Map(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t"),
+        UnaryOperation(StringOperator.`toLong`, Property(Ident("t"), "s"))
+      )
       quote(unquote(q)).ast mustEqual v
       repickle(v) mustEqual v
     }
@@ -705,7 +730,11 @@ class OperationTest extends Spec with TestEntities with Inside {
       inline def q = quote {
         qr1.map(t => t.s.toInt)
       }
-      val v = Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), UnaryOperation(StringOperator.`toInt`, Property(Ident("t"), "s")))
+      val v = Map(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t"),
+        UnaryOperation(StringOperator.`toInt`, Property(Ident("t"), "s"))
+      )
       quote(unquote(q)).ast mustEqual v
       repickle(v) mustEqual v
     }

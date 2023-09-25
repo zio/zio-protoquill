@@ -1,7 +1,7 @@
 package io.getquill.context.cassandra
 
-import java.time.{ Instant, LocalDate }
-import java.util.{ Date, UUID }
+import java.time.{Instant, LocalDate}
+import java.util.{Date, UUID}
 import io.getquill._
 
 class SetsEncodingSpec extends CollectionsSpec {
@@ -9,21 +9,31 @@ class SetsEncodingSpec extends CollectionsSpec {
   import ctx._
 
   case class SetsEntity(
-    id:         Int,
-    texts:      Set[String],
-    decimals:   Set[BigDecimal],
-    bools:      Set[Boolean],
-    ints:       Set[Int],
-    longs:      Set[Long],
-    floats:     Set[Float],
-    doubles:    Set[Double],
-    dates:      Set[LocalDate],
+    id: Int,
+    texts: Set[String],
+    decimals: Set[BigDecimal],
+    bools: Set[Boolean],
+    ints: Set[Int],
+    longs: Set[Long],
+    floats: Set[Float],
+    doubles: Set[Double],
+    dates: Set[LocalDate],
     timestamps: Set[Instant],
-    uuids:      Set[UUID]
+    uuids: Set[UUID]
   )
-  val e = SetsEntity(1, Set("c"), Set(BigDecimal(1.33)), Set(true), Set(1, 2), Set(2, 3), Set(1f, 3f),
-    Set(5d), Set(LocalDate.now()),
-    Set(Instant.now()), Set(UUID.randomUUID()))
+  val e = SetsEntity(
+    1,
+    Set("c"),
+    Set(BigDecimal(1.33)),
+    Set(true),
+    Set(1, 2),
+    Set(2, 3),
+    Set(1f, 3f),
+    Set(5d),
+    Set(LocalDate.now()),
+    Set(Instant.now()),
+    Set(UUID.randomUUID())
+  )
   inline def q = quote(query[SetsEntity])
 
   "Set encoders/decoders" in {
@@ -33,7 +43,7 @@ class SetsEncodingSpec extends CollectionsSpec {
 
   "Empty sets and optional fields" in {
     case class Entity(id: Int, texts: Option[Set[String]], bools: Option[Set[Boolean]], ints: Set[Int])
-    val e = Entity(1, Some(Set("1", "2")), None, Set())
+    val e        = Entity(1, Some(Set("1", "2")), None, Set())
     inline def q = quote(querySchema[Entity]("SetsEntity"))
 
     ctx.run(q.insertValue(lift(e)))
@@ -42,7 +52,7 @@ class SetsEncodingSpec extends CollectionsSpec {
 
   "Mapped encoding for CassandraType" in {
     case class StrEntity(id: Int, texts: Set[StrWrap])
-    val e = StrEntity(1, Set("1", "2").map(StrWrap.apply))
+    val e        = StrEntity(1, Set("1", "2").map(StrWrap.apply))
     inline def q = quote(querySchema[StrEntity]("SetsEntity"))
 
     ctx.run(q.insertValue(lift(e)))
@@ -51,7 +61,7 @@ class SetsEncodingSpec extends CollectionsSpec {
 
   "Mapped encoding for CassandraMapper types" in {
     case class IntEntity(id: Int, ints: Set[IntWrap])
-    val e = IntEntity(1, Set(1, 2).map(IntWrap.apply))
+    val e        = IntEntity(1, Set(1, 2).map(IntWrap.apply))
     inline def q = quote(querySchema[IntEntity]("SetsEntity"))
 
     ctx.run(q.insertValue(lift(e)))
@@ -60,12 +70,11 @@ class SetsEncodingSpec extends CollectionsSpec {
 
   "Blob (Array[Byte]) support" in {
     case class BlobsEntity(id: Int, blobs: Set[Array[Byte]])
-    val e = BlobsEntity(1, Set(Array(1.toByte, 2.toByte), Array(2.toByte)))
+    val e        = BlobsEntity(1, Set(Array(1.toByte, 2.toByte), Array(2.toByte)))
     inline def q = quote(querySchema[BlobsEntity]("SetsEntity"))
 
     ctx.run(q.insertValue(lift(e)))
-    ctx.run(q.filter(_.id == 1))
-      .head.blobs.map(_.toSet) mustBe e.blobs.map(_.toSet)
+    ctx.run(q.filter(_.id == 1)).head.blobs.map(_.toSet) mustBe e.blobs.map(_.toSet)
   }
 
   "Set in where clause" in {

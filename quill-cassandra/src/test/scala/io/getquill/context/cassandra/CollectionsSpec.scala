@@ -1,6 +1,6 @@
 package io.getquill.context.cassandra
 
-import io.getquill.{ MappedEncoding, Spec }
+import io.getquill.{MappedEncoding, Spec}
 import org.scalatest.BeforeAndAfterEach
 import io.getquill.MappedEncoding
 import io.getquill.context.cassandra.encoding.CassandraMapper

@@ -15,7 +15,7 @@ class StreamingWithFetchSpec extends ZioProxySpec with BeforeAndAfter {
   case class Person(name: String, age: Int)
 
   inline def selectAll = quote(query[Person])
-  inline def insert = quote { (p: Person) => query[Person].insertValue(p) }
+  inline def insert    = quote((p: Person) => query[Person].insertValue(p))
 
   def result[T](qzio: QIO[T]): T =
     Unsafe.unsafe { implicit unsafe =>

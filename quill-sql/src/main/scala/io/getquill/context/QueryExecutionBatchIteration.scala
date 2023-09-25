@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ReturnAction}
+import io.getquill.ReturnAction
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -73,15 +73,15 @@ object QueryExecutionBatchIteration {
   private[getquill] val logger = ContextLogger(classOf[QueryExecutionBatchIteration.type])
 
   def apply[PrepareRow, Session](
-      idiom: io.getquill.idiom.Idiom,
-      query: Unparticular.Query,
-      perRowLifts: List[SingleEntityLifts],
-      otherLifts: List[Planter[?, ?, ?]],
-      originalEntityLifts: List[InjectableEagerPlanter[_, _, _]],
-      liftingPlaceholder: Int => String,
-      emptyContainsToken: Token => Token,
-      batchingBehavior: BatchingBehavior,
-      extractBehavior: BatchExtractBehavior
+    idiom: io.getquill.idiom.Idiom,
+    query: Unparticular.Query,
+    perRowLifts: List[SingleEntityLifts],
+    otherLifts: List[Planter[?, ?, ?]],
+    originalEntityLifts: List[InjectableEagerPlanter[_, _, _]],
+    liftingPlaceholder: Int => String,
+    emptyContainsToken: Token => Token,
+    batchingBehavior: BatchingBehavior,
+    extractBehavior: BatchExtractBehavior
   )(traceConfig: TraceConfig): List[(String, List[(PrepareRow, Session) => (List[Any], PrepareRow)])] =
     new Executor(
       idiom,
@@ -97,16 +97,16 @@ object QueryExecutionBatchIteration {
     ).apply()
 
   private[getquill] class Executor[PrepareRow, Session](
-      idiom: io.getquill.idiom.Idiom,
-      query: Unparticular.Query,
-      perRowLifts: List[SingleEntityLifts],
-      otherLifts: List[Planter[?, ?, ?]],
-      originalEntityLifts: List[InjectableEagerPlanter[_, _, _]],
-      liftingPlaceholder: Int => String,
-      emptyContainsToken: Token => Token,
-      batchingBehavior: BatchingBehavior,
-      extractBehavior: BatchExtractBehavior,
-      traceConfig: TraceConfig
+    idiom: io.getquill.idiom.Idiom,
+    query: Unparticular.Query,
+    perRowLifts: List[SingleEntityLifts],
+    otherLifts: List[Planter[?, ?, ?]],
+    originalEntityLifts: List[InjectableEagerPlanter[_, _, _]],
+    liftingPlaceholder: Int => String,
+    emptyContainsToken: Token => Token,
+    batchingBehavior: BatchingBehavior,
+    extractBehavior: BatchExtractBehavior,
+    traceConfig: TraceConfig
   ) {
     def apply(): List[(String, List[(PrepareRow, Session) => (List[Any], PrepareRow)])] =
       batchingBehavior match
@@ -150,14 +150,21 @@ object QueryExecutionBatchIteration {
     //   Query1: INSERT INTO Person (name, age) VALUES ('Joe', 22), ('Jack', 33), ('Jill', 44) WHERE something=liftedValue
     // We will have just one group:
     //   Query1: sing:[ SingleEntityLifts([l:'Joe', l:22]), SingleEntityLifts([l:'Jack', l:33]), SingleEntityLifts([l:'Jill', l:44]) ], otherLifts:[liftedValue]
-    def concatenatedRowIteration(numEntitiesPerQuery: Int): List[(String, List[(PrepareRow, Session) => (List[Any], PrepareRow)])] = {
+    def concatenatedRowIteration(
+      numEntitiesPerQuery: Int
+    ): List[(String, List[(PrepareRow, Session) => (List[Any], PrepareRow)])] = {
       val totalEntityCount = perRowLifts.length
-      val templateOfLifts = originalEntityLifts ++ otherLifts
+      val templateOfLifts  = originalEntityLifts ++ otherLifts
 
       // if (entitiesCount <= batchSize)
       //   batch(single)(entitiesSize%batchSize)
       if (totalEntityCount <= numEntitiesPerQuery) {
-        val (singleGroupQuery, liftsOrderer) = Particularize.Dynamic(query, templateOfLifts, liftingPlaceholder, emptyContainsToken, /*valueClauseRepeats*/ totalEntityCount)(traceConfig)
+        val (singleGroupQuery, liftsOrderer) = Particularize.Dynamic(
+          query,
+          templateOfLifts,
+          liftingPlaceholder,
+          emptyContainsToken, /*valueClauseRepeats*/ totalEntityCount
+        )(traceConfig)
 
         // Since the entire query will fit into one bach, we don't need to subdivide the batches
         // just make prepares based on all of the lifts
@@ -176,9 +183,15 @@ object QueryExecutionBatchIteration {
       //   The 1st and 2nd that insert 1000 rows each, that's the queryForMostGroups
       //   The 3rd which only inserts 200 i.e. 2200 % batchSize
       else {
-        val (anteriorQuery, anteriorLiftsOrderer) = Particularize.Dynamic(query, templateOfLifts, liftingPlaceholder, emptyContainsToken, numEntitiesPerQuery)(traceConfig)
+        val (anteriorQuery, anteriorLiftsOrderer) =
+          Particularize.Dynamic(query, templateOfLifts, liftingPlaceholder, emptyContainsToken, numEntitiesPerQuery)(
+            traceConfig
+          )
         val lastQueryEntityCount = totalEntityCount % numEntitiesPerQuery
-        val (lastQuery, lastLiftsOrderer) = Particularize.Dynamic(query, templateOfLifts, liftingPlaceholder, emptyContainsToken, lastQueryEntityCount)(traceConfig)
+        val (lastQuery, lastLiftsOrderer) =
+          Particularize.Dynamic(query, templateOfLifts, liftingPlaceholder, emptyContainsToken, lastQueryEntityCount)(
+            traceConfig
+          )
         // println(s"Most Queries: ${numEntitiesPerQuery} Entities, Last Query: ${lastQueryEntityCount} Entities")
 
         // Say you have `liftQuery(A,B,C,D,E).foreach(...)` and numEntitiesPerQuery:=2 you need to do the following:
@@ -206,7 +219,7 @@ object QueryExecutionBatchIteration {
               LiftsExtractor.apply[PrepareRow, Session](liftsInThisGroup, row, session)
           }
         val lastPrepare = {
-          val lastEntities = groupedLifts.last
+          val lastEntities     = groupedLifts.last
           val liftsInThisGroup = lastLiftsOrderer.orderLifts(lastEntities, otherLifts)
           (row: PrepareRow, session: Session) =>
             LiftsExtractor.apply[PrepareRow, Session](liftsInThisGroup, row, session)
@@ -242,9 +255,9 @@ object QueryExecutionBatchIteration {
       else
         Left(
           s"""|The dialect ${idiom.getClass.getName} does not support inserting multiple rows-per-batch (e.g. it cannot support multiple VALUES clauses).
-            |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server, Sqlite).
-            |Falling back to the regular single-row-per-batch insert behavior.
-            |""".stripMargin
+              |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server, Sqlite).
+              |Falling back to the regular single-row-per-batch insert behavior.
+              |""".stripMargin
         )
     }
 
@@ -252,7 +265,9 @@ object QueryExecutionBatchIteration {
       import io.getquill.context.InsertValueMulti
       val hasCapability =
         if (idiom.isInstanceOf[IdiomInsertReturningValueCapability])
-          idiom.asInstanceOf[IdiomInsertReturningValueCapability].idiomInsertReturningValuesCapability == InsertReturningValueMulti
+          idiom
+            .asInstanceOf[IdiomInsertReturningValueCapability]
+            .idiomInsertReturningValuesCapability == InsertReturningValueMulti
         else
           false
 
@@ -261,10 +276,10 @@ object QueryExecutionBatchIteration {
       else
         Left(
           s"""|The dialect ${idiom.getClass.getName} does not support inserting multiple rows-per-batch (e.g. it cannot support multiple VALUES clauses)
-            |when batching with query-returns and/or generated-keys.
-            |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server).
-            |Falling back to the regular single-row-per-batch insert-returning behavior.
-            |""".stripMargin
+              |when batching with query-returns and/or generated-keys.
+              |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server).
+              |Falling back to the regular single-row-per-batch insert-returning behavior.
+              |""".stripMargin
         )
     }
 
@@ -286,9 +301,9 @@ object QueryExecutionBatchIteration {
       else
         Left(
           s"""|Cannot insert multiple (i.e. ${entitiesPerQuery}) rows per-batch-query since the query ${query.basicQuery} has no VALUES clause.
-            |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server, Sqlite).
-            |Falling back to the regular single-row-per-batch insert behavior.
-            |""".stripMargin
+              |Currently this functionality is only supported for INSERT queries for select databases (Postgres, H2, SQL Server, Sqlite).
+              |Falling back to the regular single-row-per-batch insert behavior.
+              |""".stripMargin
         )
     }
 
@@ -296,15 +311,16 @@ object QueryExecutionBatchIteration {
       val numEntitiesInAllQueries = 1
       // Since every batch consists of one row inserted, can use the original InjectableEagerPlanter here to Particularize (i.e. insert the right number of '?' into) the query
       val liftsInAllGroups = originalEntityLifts ++ otherLifts
-      val (allGroupsQuery, liftsOrderer) = Particularize.Dynamic(query, liftsInAllGroups, liftingPlaceholder, emptyContainsToken, numEntitiesInAllQueries)(traceConfig)
+      val (allGroupsQuery, liftsOrderer) =
+        Particularize.Dynamic(query, liftsInAllGroups, liftingPlaceholder, emptyContainsToken, numEntitiesInAllQueries)(
+          traceConfig
+        )
       val prepares =
-        perRowLifts.map {
-          liftsInThisGroup =>
-            val orderedLifts = liftsOrderer.orderLifts(List(liftsInThisGroup), otherLifts)
-            {
-              (row: PrepareRow, session: Session) =>
-                LiftsExtractor.apply[PrepareRow, Session](orderedLifts, row, session)
-            }
+        perRowLifts.map { liftsInThisGroup =>
+          val orderedLifts = liftsOrderer.orderLifts(List(liftsInThisGroup), otherLifts)
+          { (row: PrepareRow, session: Session) =>
+            LiftsExtractor.apply[PrepareRow, Session](orderedLifts, row, session)
+          }
         }
       List((allGroupsQuery, prepares))
     }

@@ -27,8 +27,8 @@ class TestContextTemplate[+Dialect <: SqlIdiom, +Naming <: NamingStrategy](diale
 
 trait UpperCaseNonDefault extends NamingStrategy {
   override def column(s: String): String = s.toUpperCase
-  override def table(s: String): String = s.toUpperCase
-  override def default(s: String) = s
+  override def table(s: String): String  = s.toUpperCase
+  override def default(s: String)        = s
 }
 //object UpperCaseNonDefault extends getquill.UpperCaseNonDefault
 

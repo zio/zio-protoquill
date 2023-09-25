@@ -1,10 +1,10 @@
 package io.getquill.context.jdbc
-import java.sql.{ Connection, PreparedStatement, ResultSet }
+import java.sql.{Connection, PreparedStatement, ResultSet}
 
 import io.getquill.context.sql.ProductSpec
 import io.getquill.util.Using.Manager
 import org.scalactic.Equality
-import scala.util.{ Success, Failure }
+import scala.util.{Success, Failure}
 import io.getquill.generic.GenericDecoder
 import io.getquill.generic.DecodingType.Generic
 
@@ -41,7 +41,7 @@ trait PrepareJdbcSpecBase extends ProductSpec {
 
   def batchInsert(conn: => Connection)(prep: Connection => List[PreparedStatement]) = {
     val r = Manager { use =>
-      val c = use(conn)
+      val c  = use(conn)
       val st = prep(c)
       appendExecuteSequence(st)
     }
@@ -51,9 +51,11 @@ trait PrepareJdbcSpecBase extends ProductSpec {
     }
   }
 
-  def extractResults[T](conn: => Connection)(prep: Connection => PreparedStatement)(extractor: (ResultSet, Connection) => T) = {
+  def extractResults[T](
+    conn: => Connection
+  )(prep: Connection => PreparedStatement)(extractor: (ResultSet, Connection) => T) = {
     val r = Manager { use =>
-      val c = use(conn)
+      val c  = use(conn)
       val st = use(prep(c))
       val rs = st.executeQuery()
       ResultSetExtractor(rs, c, extractor)
@@ -67,12 +69,11 @@ trait PrepareJdbcSpecBase extends ProductSpec {
   def extractProducts(conn: => Connection)(prep: Connection => PreparedStatement): List[Product] =
     extractResults(conn)(prep)(productExtractor)
 
-  def appendExecuteSequence(actions: => List[PreparedStatement]) = {
+  def appendExecuteSequence(actions: => List[PreparedStatement]) =
     Manager { use =>
       actions.map { stmt =>
         val s = use(stmt)
         s.execute()
       }
     }
-  }
 }

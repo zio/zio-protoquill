@@ -26,7 +26,7 @@ object StaticSealedTraitExample {
   sealed trait Shape
   object Shape {
     case class Square(width: Int, height: Int) extends Shape
-    case class Circle(radius: Int) extends Shape
+    case class Circle(radius: Int)             extends Shape
   }
 }
 
@@ -54,7 +54,7 @@ class GenericDecoderCoproductTest extends Spec {
   }
 
   "test coproduct type" in {
-    val s = MySession
+    val s  = MySession
     val r1 = MyResult("tpe" -> "square", "radius" -> 890, "width" -> 123, "height" -> 456)
     autoDecoder[Shape](0, r1, s) mustEqual Shape.Square(123, 456)
     val r2 = MyResult("tpe" -> "circle", "radius" -> 890, "width" -> 123, "height" -> 456)

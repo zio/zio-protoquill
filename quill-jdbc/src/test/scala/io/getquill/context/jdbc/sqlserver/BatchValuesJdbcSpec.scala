@@ -3,7 +3,6 @@ package io.getquill.context.jdbc.sqlserver
 import io.getquill.context.sql.BatchValuesSpec
 import io.getquill._
 
-
 class BatchValuesJdbcSpec extends BatchValuesSpec { //
 
   val context = testContext

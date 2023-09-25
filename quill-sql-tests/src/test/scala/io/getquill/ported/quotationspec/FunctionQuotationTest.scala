@@ -14,18 +14,18 @@ class FunctionQuotationTest extends Spec with Inside {
 
   "function" - {
     "anonymous function" in {
-      inline def q = quote {
-        (s: String) => s
+      inline def q = quote { (s: String) =>
+        s
       }
       val f = Function(List(Ident("s")), Ident("s"))
       quote(unquote(q)).ast mustEqual f
       repickle(f) mustEqual f
     }
     "with type parameter" in {
-      inline def q[T] = quote {
-        (q: Query[T]) => q
+      inline def q[T] = quote { (q: Query[T]) =>
+        q
       }
-      //IsDynamic(q.ast) mustEqual false
+      // IsDynamic(q.ast) mustEqual false
       val f = Function(List(Ident("q")), Ident("q"))
       quote(unquote(q)).ast mustEqual f
       repickle(f) mustEqual f
@@ -33,8 +33,8 @@ class FunctionQuotationTest extends Spec with Inside {
   }
   "function apply" - {
     "local function" in {
-      inline def f = quote {
-        (s: String) => s
+      inline def f = quote { (s: String) =>
+        s
       }
       inline def q = quote {
         f("s")
@@ -44,8 +44,8 @@ class FunctionQuotationTest extends Spec with Inside {
       repickle(c) mustEqual c
     }
     "function reference" in {
-      inline def q = quote {
-        (f: String => String) => f("a")
+      inline def q = quote { (f: String => String) =>
+        f("a")
       }
       val ff = Function(List(Ident("f")), FunctionApply(Ident("f"), List(Constant("a", Quat.Value))))
       quote(unquote(q)).ast mustEqual ff

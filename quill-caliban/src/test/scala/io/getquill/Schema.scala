@@ -20,7 +20,7 @@ object FlatSchema:
       List(
         PersonAddress(1, "One", "A", 44, Some("123 St")),
         PersonAddress(2, "Two", "B", 55, Some("123 St")),
-        PersonAddress(3, "Three", "C", 66, None),
+        PersonAddress(3, "Three", "C", 66, None)
       )
 
 object NestedSchema:
@@ -45,5 +45,5 @@ object NestedSchema:
       List(
         PersonAddressNested(1, Name("One", "A"), 44, Some("123 St")),
         PersonAddressNested(2, Name("Two", "B"), 55, Some("123 St")),
-        PersonAddressNested(3, Name("Three", "C"), 66, None),
+        PersonAddressNested(3, Name("Three", "C"), 66, None)
       )

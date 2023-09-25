@@ -19,7 +19,7 @@ import io.getquill.util.CommonExtensions.Throwable._
 object SerialHelper:
   import io.getquill.quat.{Quat => QQuat}
   object Ast:
-    def fromSerialized(serial: String): Ast = BooSerializer.Ast.deserialize(serial)
+    def fromSerialized(serial: String): Ast  = BooSerializer.Ast.deserialize(serial)
     def toSerialized(value: ast.Ast): String = BooSerializer.Ast.serialize(value)
     class Expr[T]:
       def apply(value: ast.Ast)(using Quotes, TType[T]) =
@@ -36,7 +36,7 @@ object SerialHelper:
 
   object Quat:
     def fromSerialized(serial: String): QQuat = BooSerializer.Quat.deserialize(serial)
-    def toSerialized(quat: QQuat): String = BooSerializer.Quat.serialize(quat)
+    def toSerialized(quat: QQuat): String     = BooSerializer.Quat.serialize(quat)
     class Expr[T]:
       def apply(value: QQuat)(using Quotes, TType[T]) =
         import quotes.reflect._
@@ -52,7 +52,7 @@ object SerialHelper:
 
   object QuatProduct:
     def fromSerialized(serial: String): QQuat.Product = BooSerializer.QuatProduct.deserialize(serial)
-    def toSerialized(quat: QQuat.Product): String = BooSerializer.QuatProduct.serialize(quat)
+    def toSerialized(quat: QQuat.Product): String     = BooSerializer.QuatProduct.serialize(quat)
     class Expr[T]:
       def apply(value: QQuat.Product)(using Quotes, TType[T]) =
         import quotes.reflect._

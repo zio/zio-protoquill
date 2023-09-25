@@ -7,7 +7,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ReturnAction}
+import io.getquill.ReturnAction
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -30,37 +30,31 @@ import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.quat.Quat
 
 /**
- * A QueryMeta allows contra-mapping some Query[T] to a combination of a Query[R] and then
- * an extractor R => T. That is to say a function Query[T] => Query[R] and R => T function
- * is automatically swapped in for a Query[T].
+ * A QueryMeta allows contra-mapping some Query[T] to a combination of a
+ * Query[R] and then an extractor R => T. That is to say a function Query[T] =>
+ * Query[R] and R => T function is automatically swapped in for a Query[T].
  *
- * Internally, we use the term 'quip' (i.e. query + flip) to mean the QueryMeta construct,
- * The Query[T] => Query[R] function itself is called the Quipper.
- * Since a QueryMeta comes with an R=>M contramap
- * function to apply to an extractor we call that the 'baq' since it mapps the inner query back
- * from R to T.
+ * Internally, we use the term 'quip' (i.e. query + flip) to mean the QueryMeta
+ * construct, The Query[T] => Query[R] function itself is called the Quipper.
+ * Since a QueryMeta comes with an R=>M contramap function to apply to an
+ * extractor we call that the 'baq' since it mapps the inner query back from R
+ * to T.
  *
- * Once the quip is summoned, it is applied to the original user-created query and then called
- * a requip (i.e. re-applied quip). That it to say the requip is:
- * `FunctionApply(Query[T] => Query[R], Query[R])`
+ * Once the quip is summoned, it is applied to the original user-created query
+ * and then called a requip (i.e. re-applied quip). That it to say the requip
+ * is: `FunctionApply(Query[T] => Query[R], Query[R])`
  *
- * Note that since internally, a QueryMeta carries a Quoted instance, the QueryMeta itself
- * is a QuotationLot. For that reason, we call the whole QueryMeta structure a quip-lot.
- * (Metaphorically speaking, a 'lot' meta real-estate containing a quip)
+ * Note that since internally, a QueryMeta carries a Quoted instance, the
+ * QueryMeta itself is a QuotationLot. For that reason, we call the whole
+ * QueryMeta structure a quip-lot. (Metaphorically speaking, a 'lot' meta
+ * real-estate containing a quip)
  *
- * Given a PersonName(name: String) we can define a QueryMeta like this:
- * {{
- *   inline given QueryMeta[PersonName, String] =
- *    queryMeta(
- *      quote { (q: Query[PersonName]) => q.map(p => p.name) } // The Quipper
- *    )((name: String) => PersonName(name)) // The Baq
- * }}
- * When we do something like:
- * {{
- *   inline def people = quote { query[PersonName] }
- *   val result = ctx.run(people)
- * }}
- * The Query-Lot AST becomes EntityQuery("Person")
+ * Given a PersonName(name: String) we can define a QueryMeta like this: {{
+ * inline given QueryMeta[PersonName, String] = queryMeta( quote { (q:
+ * Query[PersonName]) => q.map(p => p.name) } // The Quipper )((name: String) =>
+ * PersonName(name)) // The Baq }} When we do something like: {{ inline def
+ * people = quote { query[PersonName] } val result = ctx.run(people) }} The
+ * Query-Lot AST becomes EntityQuery("Person")
  */
 object QueryMetaExtractor {
   import io.getquill.parser._
@@ -84,9 +78,9 @@ object QueryMetaExtractor {
   case class StaticRequip[T, R](requip: Expr[Quoted[Query[R]]], baq: Expr[R => T])
 
   def attemptStaticRequip[T: Type, R: Type](
-      queryLot: QuotedExpr,
-      queryLifts: List[PlanterExpr[_, _, _]],
-      quip: Expr[QueryMeta[T, R]]
+    queryLot: QuotedExpr,
+    queryLifts: List[PlanterExpr[_, _, _]],
+    quip: Expr[QueryMeta[T, R]]
   )(using Quotes): Option[StaticRequip[T, R]] = {
     import quotes.reflect.report
 
@@ -127,7 +121,9 @@ object QueryMetaExtractor {
         // which means that the Context will require a parser as well. That will
         // make the parser harder to customize by users
         val reappliedQuery =
-          '{ Quoted[Query[R]]($astApply, ${ Expr.ofList(newLifts) }, Nil) } // has to be strictly Nil otherwise does not match
+          '{
+            Quoted[Query[R]]($astApply, ${ Expr.ofList(newLifts) }, Nil)
+          } // has to be strictly Nil otherwise does not match
 
         val extractorFunc = '{ $baq.asInstanceOf[R => T] }
 
@@ -141,11 +137,11 @@ object QueryMetaExtractor {
   }
 
   def applyImpl[T: Type, R: Type, D <: io.getquill.idiom.Idiom: Type, N <: io.getquill.NamingStrategy: Type](
-      quotedRaw: Expr[Quoted[Query[T]]],
-      topLevelQuat: Quat
+    quotedRaw: Expr[Quoted[Query[T]]],
+    topLevelQuat: Quat
   )(using Quotes): (Expr[Quoted[Query[R]]], Expr[R => T], Option[StaticState]) = {
     import quotes.reflect.{Try => TTry, _}
-    val quotedArg = quotedRaw.asTerm.underlyingArgument.asExprOf[Quoted[Query[T]]]
+    val quotedArg    = quotedRaw.asTerm.underlyingArgument.asExprOf[Quoted[Query[T]]]
     val summonedMeta = Expr.summon[QueryMeta[T, R]].map(x => x.asTerm.underlyingArgument.asExprOf[QueryMeta[T, R]])
     summonedMeta match {
       case Some(quip) =>
@@ -156,17 +152,26 @@ object QueryMetaExtractor {
             attemptStaticRequip[T, R](queryLot, queryLifts, quip) match {
 
               case Some(StaticRequip(requip, baq)) =>
-                val staticTranslation = StaticTranslationMacro[D, N](requip, ElaborationBehavior.Elaborate, topLevelQuat)
+                val staticTranslation =
+                  StaticTranslationMacro[D, N](requip, ElaborationBehavior.Elaborate, topLevelQuat)
                 (requip, baq, staticTranslation)
 
               case None =>
-                report.warning(s"Query Was Static but a Dynamic Meta was found: `${io.getquill.util.Format.Expr(quip)}`.This has forced the query to become dynamic!")
+                report.warning(
+                  s"Query Was Static but a Dynamic Meta was found: `${io.getquill.util.Format.Expr(quip)}`.This has forced the query to become dynamic!"
+                )
 
                 val reappliedAst =
                   '{ FunctionApply($quip.entity.ast, List($quotedArg.ast)) }
 
                 val requip =
-                  '{ Quoted[Query[R]]($reappliedAst, $quip.entity.lifts ++ $quotedArg.lifts, $quip.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes) }
+                  '{
+                    Quoted[Query[R]](
+                      $reappliedAst,
+                      $quip.entity.lifts ++ $quotedArg.lifts,
+                      $quip.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes
+                    )
+                  }
 
                 (requip, '{ $quip.extract }, None)
             }
@@ -176,7 +181,13 @@ object QueryMetaExtractor {
               '{ FunctionApply($quip.entity.ast, List($quotedArg.ast)) }
 
             val requip =
-              '{ Quoted[Query[R]]($reappliedAst, $quip.entity.lifts ++ $quotedArg.lifts, $quip.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes) }
+              '{
+                Quoted[Query[R]](
+                  $reappliedAst,
+                  $quip.entity.lifts ++ $quotedArg.lifts,
+                  $quip.entity.runtimeQuotes ++ $quotedArg.runtimeQuotes
+                )
+              }
 
             (requip, '{ $quip.extract }, None)
         }

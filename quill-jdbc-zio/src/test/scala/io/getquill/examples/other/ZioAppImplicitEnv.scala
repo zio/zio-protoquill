@@ -19,16 +19,14 @@ object ZioAppImplicitEnv extends ZIOAppDefault {
     import Ctx._
     given Implicit[DataSource] = Implicit(ds)
 
-    val joes = Ctx.run(query[Person].filter(p => p.name == "Joe")).implicitly
-    val jills = Ctx.run(query[Person].filter(p => p.name == "Jill")).implicitly
+    val joes   = Ctx.run(query[Person].filter(p => p.name == "Joe")).implicitly
+    val jills  = Ctx.run(query[Person].filter(p => p.name == "Jill")).implicitly
     val alexes = Ctx.run(query[Person].filter(p => p.name == "Alex")).implicitly
-    val janes = Ctx.stream(query[Person].filter(p => p.name == "Jane")).implicitly.runCollect
+    val janes  = Ctx.stream(query[Person].filter(p => p.name == "Jane")).implicitly.runCollect
   }
 
-  override def run = {
-    MyQueryService(dataSource)
-      .joes
+  override def run =
+    MyQueryService(dataSource).joes
       .tap(result => printLine(result.toString))
       .exitCode
-  }
 }

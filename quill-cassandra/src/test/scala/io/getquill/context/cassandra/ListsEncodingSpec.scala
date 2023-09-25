@@ -1,7 +1,7 @@
 package io.getquill.context.cassandra
 
-import java.util.{ Date, UUID }
-import java.time.{ Instant, LocalDate }
+import java.util.{Date, UUID}
+import java.time.{Instant, LocalDate}
 import io.getquill._
 
 class ListsEncodingSpec extends CollectionsSpec {
@@ -10,23 +10,35 @@ class ListsEncodingSpec extends CollectionsSpec {
   import ctx._
 
   case class ListsEntity(
-    id:         Int,
-    texts:      List[String],
-    decimals:   List[BigDecimal],
-    bools:      List[Boolean],
-    bytes:      List[Byte],
-    shorts:     List[Short],
-    ints:       List[Int],
-    longs:      List[Long],
-    floats:     List[Float],
-    doubles:    List[Double],
-    dates:      List[LocalDate],
+    id: Int,
+    texts: List[String],
+    decimals: List[BigDecimal],
+    bools: List[Boolean],
+    bytes: List[Byte],
+    shorts: List[Short],
+    ints: List[Int],
+    longs: List[Long],
+    floats: List[Float],
+    doubles: List[Double],
+    dates: List[LocalDate],
     timestamps: List[Instant],
-    uuids:      List[UUID]
+    uuids: List[UUID]
   )
-  val e = ListsEntity(1, List("c"), List(BigDecimal(1.33)), List(true), List(0, 1), List(3, 2), List(1, 2), List(2, 3),
-    List(1f, 3f), List(5d), List(LocalDate.now()),
-    List(Instant.now()), List(UUID.randomUUID()))
+  val e = ListsEntity(
+    1,
+    List("c"),
+    List(BigDecimal(1.33)),
+    List(true),
+    List(0, 1),
+    List(3, 2),
+    List(1, 2),
+    List(2, 3),
+    List(1f, 3f),
+    List(5d),
+    List(LocalDate.now()),
+    List(Instant.now()),
+    List(UUID.randomUUID())
+  )
 
   inline def q = quote(query[ListsEntity])
   val qDynamic = quote(query[ListsEntity])
@@ -43,7 +55,7 @@ class ListsEncodingSpec extends CollectionsSpec {
 
   "Empty lists and optional fields" in {
     case class Entity(id: Int, texts: Option[List[String]], bools: Option[List[Boolean]], ints: List[Int])
-    val e = Entity(1, Some(List("1", "2")), None, Nil)
+    val e        = Entity(1, Some(List("1", "2")), None, Nil)
     inline def q = quote(querySchema[Entity]("ListsEntity"))
 
     ctx.run(q.insertValue(lift(e)))
@@ -53,7 +65,7 @@ class ListsEncodingSpec extends CollectionsSpec {
 
   "Mapped encoding for CassandraType" in {
     case class StrEntity(id: Int, texts: List[StrWrap])
-    val e = StrEntity(1, List("1", "2").map(StrWrap.apply))
+    val e        = StrEntity(1, List("1", "2").map(StrWrap.apply))
     inline def q = quote(querySchema[StrEntity]("ListsEntity"))
 
     ctx.run(q.insertValue(lift(e)))
@@ -62,7 +74,7 @@ class ListsEncodingSpec extends CollectionsSpec {
 
   "Mapped encoding for CassandraMapper types" in {
     case class IntEntity(id: Int, ints: List[IntWrap])
-    val e = IntEntity(1, List(1, 2).map(IntWrap.apply))
+    val e        = IntEntity(1, List(1, 2).map(IntWrap.apply))
     inline def q = quote(querySchema[IntEntity]("ListsEntity"))
 
     ctx.run(q.insertValue(lift(e)))
@@ -71,12 +83,11 @@ class ListsEncodingSpec extends CollectionsSpec {
 
   "Blob (Array[Byte]) support" in {
     case class BlobsEntity(id: Int, blobs: List[Array[Byte]])
-    val e = BlobsEntity(1, List(Array(1.toByte, 2.toByte), Array(2.toByte)))
+    val e        = BlobsEntity(1, List(Array(1.toByte, 2.toByte), Array(2.toByte)))
     inline def q = quote(querySchema[BlobsEntity]("ListsEntity"))
 
     ctx.run(q.insertValue(lift(e)))
-    ctx.run(q.filter(_.id == 1))
-      .head.blobs.map(_.toList) mustBe e.blobs.map(_.toList)
+    ctx.run(q.filter(_.id == 1)).head.blobs.map(_.toList) mustBe e.blobs.map(_.toList)
   }
 
   "List in where clause / contains" in {

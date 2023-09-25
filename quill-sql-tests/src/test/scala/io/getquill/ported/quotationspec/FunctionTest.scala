@@ -17,20 +17,23 @@ class FunctionTest extends Spec with TestEntities {
   extension (ast: Ast)
     def body: Ast = ast match
       case f: Function => f.body
-      case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}"
+        )
 
   "function" - {
     "anonymous function" in {
-      inline def q = quote {
-        (s: String) => s
+      inline def q = quote { (s: String) =>
+        s
       }
       val f = Function(List(Ident("s")), Ident("s"))
       quote(unquote(q)).ast mustEqual f
       repickle(f) mustEqual f
     }
     "with type parameter" in {
-      inline def q[T] = quote {
-        (q: Query[T]) => q
+      inline def q[T] = quote { (q: Query[T]) =>
+        q
       }
       // IsDynamic(q.ast) mustEqual false
       val f = Function(List(Ident("q")), Ident("q"))
@@ -40,8 +43,8 @@ class FunctionTest extends Spec with TestEntities {
   }
   "function apply" - {
     "local function" in {
-      inline def f = quote {
-        (s: String) => s
+      inline def f = quote { (s: String) =>
+        s
       }
       inline def q = quote {
         f("s")
@@ -51,8 +54,8 @@ class FunctionTest extends Spec with TestEntities {
       repickle(c) mustEqual c
     }
     "function reference" in {
-      inline def q = quote {
-        (f: String => String) => f("a")
+      inline def q = quote { (f: String => String) =>
+        f("a")
       }
       val f = FunctionApply(Ident("f"), List(Constant.auto("a")))
       quote(unquote(q)).ast.body mustEqual f

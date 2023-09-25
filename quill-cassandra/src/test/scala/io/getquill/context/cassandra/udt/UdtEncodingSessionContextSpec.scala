@@ -10,12 +10,15 @@ import com.datastax.oss.driver.api.core.data.UdtValue
 import com.typesafe.config.ConfigValueFactory
 import io.getquill.context.cassandra.encoding.MapperSide
 
-
 class UdtEncodingSessionContextSpec extends UdtSpec {
 
   val ctx1 = testSyncDB
-  val config0 = CassandraContextConfig(LoadConfig("testSyncDB").withValue("keyspace", ConfigValueFactory.fromAnyRef("system")))
-  val config2 = CassandraContextConfig(LoadConfig("testSyncDB").withValue("keyspace", ConfigValueFactory.fromAnyRef("quill_test_2")))
+  val config0 = CassandraContextConfig(
+    LoadConfig("testSyncDB").withValue("keyspace", ConfigValueFactory.fromAnyRef("system"))
+  )
+  val config2 = CassandraContextConfig(
+    LoadConfig("testSyncDB").withValue("keyspace", ConfigValueFactory.fromAnyRef("quill_test_2"))
+  )
   val ctx2 = new CassandraSyncContext(SnakeCase, config2)
 
   "Provide encoding for UDT" - {
@@ -34,7 +37,7 @@ class UdtEncodingSessionContextSpec extends UdtSpec {
     }
     "nested" in {
       // Can use this to check if the mapper could be summoned
-      //implicitly[CassandraMapper[Name, UDTValue, MapperSide.Encode]]
+      // implicitly[CassandraMapper[Name, UDTValue, MapperSide.Encode]]
       implicitly[Decoder[Personal]]
       implicitly[Encoder[Personal]]
       implicitly[Decoder[List[Personal]]]
@@ -59,14 +62,19 @@ class UdtEncodingSessionContextSpec extends UdtSpec {
     "without meta" in {
       case class WithEverything(id: Int, personal: Personal, nameList: List[Name])
 
-      val e = WithEverything(1, Personal(1, "strt",
-        Name("first", Some("last")),
-        Some(Name("f", None)),
-        List("e"),
-        Set(1, 2),
-        Map(1 -> "1", 2 -> "2")
+      val e = WithEverything(
+        1,
+        Personal(
+          1,
+          "strt",
+          Name("first", Some("last")),
+          Some(Name("f", None)),
+          List("e"),
+          Set(1, 2),
+          Map(1 -> "1", 2 -> "2")
         ),
-        List(Name("first", None)))
+        List(Name("first", None))
+      )
       ctx1.run(query[WithEverything].insertValue(lift(e)))
       ctx1.run(query[WithEverything].filter(_.id == 1)).headOption must contain(e)
     }
@@ -129,7 +137,6 @@ class UdtEncodingSessionContextSpec extends UdtSpec {
     ()
   }
 
-  override protected def afterAll(): Unit = {
+  override protected def afterAll(): Unit =
     ctx2.close()
-  }
 }

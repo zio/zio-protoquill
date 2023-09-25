@@ -17,34 +17,36 @@ class CalibanIntegrationNestedSpec extends CalibanSpec {
     object Dao:
       def personAddress(columns: List[String], filters: Map[String, String]) =
         Ctx.run {
-          query[PersonT].leftJoin(query[AddressT]).on((p, a) => p.id == a.ownerId)
+          query[PersonT]
+            .leftJoin(query[AddressT])
+            .on((p, a) => p.id == a.ownerId)
             .map((p, a) => PersonAddressNested(p.id, p.name, p.age, a.map(_.street)))
             .filterByKeys(filters)
             .filterColumns(columns)
             .take(10)
-        }.provideLayer(zioDS).tap(list => {
-          println(s"Results: $list for columns: $columns and filters: ${io.getquill.util.Messages.qprint(filters)}")
-          ZIO.unit
-        })
-        .tapError(e => {
-          println(s"ERROR $e")
-          ZIO.unit
-        })
+        }.provideLayer(zioDS)
+          .tap { list =>
+            println(s"Results: $list for columns: $columns and filters: ${io.getquill.util.Messages.qprint(filters)}")
+            ZIO.unit
+          }
+          .tapError { e =>
+            println(s"ERROR $e")
+            ZIO.unit
+          }
 
   case class Queries(
-    personAddressNested: Field => (ProductArgs[NestedSchema.PersonAddressNested] => Task[List[NestedSchema.PersonAddressNested]])
+    personAddressNested: Field => (
+      ProductArgs[NestedSchema.PersonAddressNested] => Task[List[NestedSchema.PersonAddressNested]]
+    )
   )
 
   val api = graphQL(
-      RootResolver(
-        Queries(
-          personAddressNested =>
-            (productArgs =>
-              Nested.Dao.personAddress(quillColumns(personAddressNested), productArgs.keyValues)
-            ),
-        )
+    RootResolver(
+      Queries(personAddressNested =>
+        (productArgs => Nested.Dao.personAddress(quillColumns(personAddressNested), productArgs.keyValues)),
       )
     )
+  )
 
   "Caliban integration should work for nested object" - {
     "with no top-level filter" in {
@@ -113,7 +115,9 @@ class CalibanIntegrationNestedSpec extends CalibanSpec {
             }
           }
         }"""
-      unsafeRunQuery(query) mustEqual """{"personAddressNested":[{"id":1,"age":44,"name":{"first":"One","last":"A"}}]}"""
+      unsafeRunQuery(
+        query
+      ) mustEqual """{"personAddressNested":[{"id":1,"age":44,"name":{"first":"One","last":"A"}}]}"""
     }
   }
 }

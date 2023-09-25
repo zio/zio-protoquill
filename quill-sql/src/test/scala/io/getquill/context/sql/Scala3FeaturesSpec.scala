@@ -28,11 +28,11 @@ class Scala3FeaturesSpec extends Spec {
 
       sealed trait Filter
       object Filter:
-        case class ByName(name: String) extends Filter
+        case class ByName(name: String)      extends Filter
         case class ByAge(from: Int, to: Int) extends Filter
 
       enum FilterEnum:
-        case ByName(name: String) extends FilterEnum
+        case ByName(name: String)      extends FilterEnum
         case ByAge(from: Int, to: Int) extends FilterEnum
 
       // Can't do it like this:

@@ -19,7 +19,8 @@ object PlainApp {
       query[Person]
     }
     val czio =
-      MyZioPostgresContext.run(people)
+      MyZioPostgresContext
+        .run(people)
         .tap(result => printLine(result.toString))
         .provide(zioSession)
 

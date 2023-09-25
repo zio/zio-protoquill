@@ -25,11 +25,13 @@ import io.getquill.generic.DecodingType
 import io.getquill.generic.GenericNullChecker
 
 object GenericDecoderCoproductTestAdditional {
-  implicit inline def autoDecoder[T]: GenericDecoder[MyResult, MySession, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, MyResult, MySession] }
+  implicit inline def autoDecoder[T]: GenericDecoder[MyResult, MySession, T, DecodingType.Generic] = ${
+    GenericDecoder.summon[T, MyResult, MySession]
+  }
 
   sealed trait MySession {
     type BaseNullChecker = GenericNullChecker[MyResult, MySession]
-    type NullChecker = MirrorNullChecker
+    type NullChecker     = MirrorNullChecker
     class MirrorNullChecker extends BaseNullChecker {
       override def apply(index: Int, row: MyResult): Boolean = row.nullAt(index)
     }
@@ -38,10 +40,10 @@ object GenericDecoderCoproductTestAdditional {
   object MySession extends MySession
 
   case class MyResult(values: (String, Any)*) {
-    lazy val list = LinkedHashMap[String, Any](values.toList: _*)
-    def nullAt(i: Int) = list.values.toList(i) == null
-    def get(i: Int): String = list.values.toList(i).toString
-    def get(key: String): String = list.apply(key).toString
+    lazy val list                 = LinkedHashMap[String, Any](values.toList: _*)
+    def nullAt(i: Int)            = list.values.toList(i) == null
+    def get(i: Int): String       = list.values.toList(i).toString
+    def get(key: String): String  = list.apply(key).toString
     def resolve(key: String): Int = list.keysIterator.toList.indexOf(key)
   }
 
@@ -53,8 +55,7 @@ object GenericDecoderCoproductTestAdditional {
 
   // TODO automatically provide this in 'context'
   given res: GenericColumnResolver[MyResult] with {
-    def apply(resultRow: MyResult, columnName: String): Int = {
+    def apply(resultRow: MyResult, columnName: String): Int =
       resultRow.resolve(columnName)
-    }
   }
 }

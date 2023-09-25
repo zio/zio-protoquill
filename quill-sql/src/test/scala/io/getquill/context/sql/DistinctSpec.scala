@@ -102,7 +102,8 @@ trait DistinctSpec extends Spec {
     query[Person]
       .join(
         query[Couple].map(_.him).distinct
-      ).on((p, cm) => p.name == cm)
+      )
+      .on((p, cm) => p.name == cm)
   }
   val `Ex 5 Distinct Subquery with Map Single Field Result` =
     List(
@@ -114,7 +115,8 @@ trait DistinctSpec extends Spec {
     query[Person]
       .join(
         query[Couple].map(c => (c.him, c.her)).distinct
-      ).on(_.name == _._1)
+      )
+      .on(_.name == _._1)
   }
   val `Ex 6 Distinct Subquery with Map Multi Field Result` =
     List(
@@ -130,7 +132,8 @@ trait DistinctSpec extends Spec {
     query[Person]
       .join(
         query[Couple].map(c => TwoField(c.him, c.her)).distinct
-      ).on(_.name == _.one)
+      )
+      .on(_.name == _.one)
   }
   val `Ex 7 Distinct Subquery with Map Multi Field Tuple Result` =
     List(
@@ -143,7 +146,8 @@ trait DistinctSpec extends Spec {
 
   inline def `Ex 8 Distinct With Sort` = quote {
     query[Person]
-      .join(query[Couple]).on(_.name == _.him)
+      .join(query[Couple])
+      .on(_.name == _.him)
       .distinct
       .sortBy(_._1.name)(Ord.asc)
   }
@@ -164,7 +168,8 @@ trait DistinctSpec extends Spec {
 
   inline def `Ex 10 DistinctOn With Applicative Join` = quote {
     query[Person]
-      .join(query[Couple]).on(_.name == _.him)
+      .join(query[Couple])
+      .on(_.name == _.him)
       .distinctOn(_._1.name)
       .sortBy(_._1.name)(Ord.asc)
       .map(t => (t._1, t._2.him))

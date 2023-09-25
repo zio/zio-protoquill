@@ -16,13 +16,14 @@ import io.getquill.Query
 import io.getquill.context.mirror.Row
 
 abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
-  val QV = Quat.Value
-  def QEP(name: String) = Quat.Product.empty(name)
+  val QV                                = Quat.Value
+  def QEP(name: String)                 = Quat.Product.empty(name)
   def QP(name: String, fields: String*) = Quat.LeafProduct(name, fields: _*)
 
   extension (m: MirrorContextBase[_, _]#BatchActionReturningMirror[_])
     def triple =
-      if (m.groups.length != 1) fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
+      if (m.groups.length != 1)
+        fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
       val (queryString, returnAction, prepares) = m.groups(0)
       (
         queryString,
@@ -61,7 +62,8 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
 
   extension (m: MirrorContextBase[_, _]#BatchActionMirror)
     def triple =
-      if (m.groups.length != 1) fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
+      if (m.groups.length != 1)
+        fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
       val (queryString, prepares) = m.groups(0)
       (
         queryString,
@@ -137,21 +139,20 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
 
   extension [T, PrepareRow, Session](q: Quoted[T])
     def encodeEagerLifts(row: PrepareRow, session: Session) =
-      q.lifts.zipWithIndex.collect {
-        case (ep: EagerPlanter[String, PrepareRow, Session], idx) => ep.encoder(idx, ep.value, row, session)
+      q.lifts.zipWithIndex.collect { case (ep: EagerPlanter[String, PrepareRow, Session], idx) =>
+        ep.encoder(idx, ep.value, row, session)
       }
 
-  extension (ast: Ast)
-    def asFunction = ast.asInstanceOf[Function]
+  extension (ast: Ast) def asFunction = ast.asInstanceOf[Function]
 
   object ShortAst {
     object Id {
       def apply(str: String, quat: Quat) = Ident(str, quat)
-      def unapply(id: Ident) = Some(id.name)
+      def unapply(id: Ident)             = Some(id.name)
     }
     object Ent {
       def apply(name: String, quat: Quat.Product) = Entity(name, Nil, quat)
-      def unapply(entity: Entity) = Some(entity.name)
+      def unapply(entity: Entity)                 = Some(entity.name)
     }
     object `(+)` {
       def apply(a: Ast, b: Ast) = BinaryOperation(a, StringOperator.+, b)

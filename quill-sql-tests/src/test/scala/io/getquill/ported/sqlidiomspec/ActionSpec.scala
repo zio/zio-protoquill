@@ -35,30 +35,37 @@ class ActionSpec extends Spec {
             query[TestEntity].insertValue(v)
           }
           val v = TestEntity("s", 1, 2L, Some(1), true)
-          ctx.run(q(lift(v)).returning(v => v.i)).string mustEqual "INSERT INTO TestEntity (s,i,l,o,b) VALUES (?, ?, ?, ?, ?)"
+          ctx
+            .run(q(lift(v)).returning(v => v.i))
+            .string mustEqual "INSERT INTO TestEntity (s,i,l,o,b) VALUES (?, ?, ?, ?, ?)"
         }
         "returning generated" in {
           val q = quote { (v: TestEntity) =>
             query[TestEntity].insertValue(v)
           }
           val v = TestEntity("s", 1, 2L, Some(1), true)
-          testContext.run(q(lift(v)).returningGenerated(v => v.i)).string mustEqual "INSERT INTO TestEntity (s,l,o,b) VALUES (?, ?, ?, ?)"
+          testContext
+            .run(q(lift(v)).returningGenerated(v => v.i))
+            .string mustEqual "INSERT INTO TestEntity (s,l,o,b) VALUES (?, ?, ?, ?)"
         }
         "foreach" in {
           val v = TestEntity("s", 1, 2L, Some(1), true)
           val groups =
-            testContext.run(
-              liftQuery(List(v)).foreach(v => query[TestEntity].insertValue(v))
-            ).groups mustEqual
-              List((
-                "INSERT INTO TestEntity (s,i,l,o,b) VALUES (?, ?, ?, ?, ?)",
-                List(Row("_1" -> "s", "_2" -> 1, "_3" -> 2L, "_4" -> Some("_1" -> 1), "_5" -> true))
+            testContext
+              .run(
+                liftQuery(List(v)).foreach(v => query[TestEntity].insertValue(v))
               )
-            )
+              .groups mustEqual
+              List(
+                (
+                  "INSERT INTO TestEntity (s,i,l,o,b) VALUES (?, ?, ?, ?, ?)",
+                  List(Row("_1" -> "s", "_2" -> 1, "_3" -> 2L, "_4" -> Some("_1" -> 1), "_5" -> true))
+                )
+              )
         }
         "foreach returning" in testContext.withDialect(MirrorSqlDialectWithReturnMulti) { ctx =>
           import ctx._
-          val v = TestEntity("s", 1, 2L, Some(1), true)
+          val v      = TestEntity("s", 1, 2L, Some(1), true)
           val result = ctx.run(liftQuery(List(v)).foreach(v => query[TestEntity].insertValue(v).returning(v => v.i)))
           result.groups(0)._1 mustEqual "INSERT INTO TestEntity (s,i,l,o,b) VALUES (?, ?, ?, ?, ?)"
 
@@ -82,7 +89,7 @@ class ActionSpec extends Spec {
           //   ))
         }
       }
-      "simple" in { //helloooo
+      "simple" in { // helloooo
         val q = quote {
           qr1.insert(_.i -> 1, _.s -> "s")
         }
@@ -158,7 +165,13 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = 's'", List("s", 1, 2L, Some(1), true), Static)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = 's'", List(
+            "s",
+            1,
+            2L,
+            Some(1),
+            true
+          ), Static)
       }
       "with filter and lift" in {
         inline def q = quote {
@@ -166,7 +179,14 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Static)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List(
+            "s",
+            1,
+            2L,
+            Some(1),
+            true,
+            "s"
+          ), Static)
       }
       "quoted with filter and lift" in {
         inline def orig = quote {
@@ -177,7 +197,14 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Static)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List(
+            "s",
+            1,
+            2L,
+            Some(1),
+            true,
+            "s"
+          ), Static)
       }
       "quoted dynamic with filter and lift" in {
         val orig = quote {
@@ -188,7 +215,14 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Dynamic)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List(
+            "s",
+            1,
+            2L,
+            Some(1),
+            true,
+            "s"
+          ), Dynamic)
       }
       "fully dynamic with filter and lift" in {
         val orig = quote {
@@ -198,7 +232,14 @@ class ActionSpec extends Spec {
           orig.updateValue(lift(v))
         }
         testContext.run(q).triple mustEqual
-          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Dynamic)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List(
+            "s",
+            1,
+            2L,
+            Some(1),
+            true,
+            "s"
+          ), Dynamic)
       }
     }
     "update" - {

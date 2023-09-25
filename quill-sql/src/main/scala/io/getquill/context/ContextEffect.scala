@@ -4,9 +4,9 @@ import scala.language.higherKinds
 
 // TODO In the Scala 2 Quill, move this into the Portable module
 /**
- * In order to be able to reuse methods in the Jdbc Context as well as others, there must be a way
- * to encapsulate the effects of these contexts. This simple interface provides them in a fairly
- * generic manner.
+ * In order to be able to reuse methods in the Jdbc Context as well as others,
+ * there must be a way to encapsulate the effects of these contexts. This simple
+ * interface provides them in a fairly generic manner.
  */
 trait ContextEffect[F[_]] {
 
@@ -22,7 +22,8 @@ trait ContextEffect[F[_]] {
 
   /**
    * Aggregate a list of effects into a single effect element. Most effect types
-   * used in Quill context easily support this kind of operation e.g. Futures, monix Tasks, Observables, etc...
+   * used in Quill context easily support this kind of operation e.g. Futures,
+   * monix Tasks, Observables, etc...
    */
   def seq[A](f: List[F[A]]): F[List[A]]
 }

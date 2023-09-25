@@ -16,10 +16,13 @@ class ActionTest extends Spec with TestEntities with Inside {
   extension (ast: Ast)
     def body: Ast = ast match
       case f: Function => f.body
-      case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+      case _ =>
+        throw new IllegalArgumentException(
+          s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}"
+        )
 
   def internalizeVLabel(ast: Ast) =
-    NameChangeIdent{ case "v" => "_$V" }.apply(ast)
+    NameChangeIdent { case "v" => "_$V" }.apply(ast)
 
   "action" - {
     "update" - {
@@ -27,7 +30,10 @@ class ActionTest extends Spec with TestEntities with Inside {
         inline def q = quote {
           qr1.update(t => t.s -> "s")
         }
-        val u = Update(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s"))))
+        val u = Update(
+          Entity("TestEntity", Nil, TestEntityQuat),
+          List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))
+        )
         quote(unquote(q)).ast mustEqual u
         repickle(u) mustEqual u
       }
@@ -35,25 +41,33 @@ class ActionTest extends Spec with TestEntities with Inside {
         inline def q = quote {
           qr1.update(t => t.i -> (t.i + 1))
         }
-        val u = Update(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "i"), BinaryOperation(Property(Ident("t"), "i"), NumericOperator.`+`, Constant.auto(1)))))
+        val u = Update(
+          Entity("TestEntity", Nil, TestEntityQuat),
+          List(
+            Assignment(
+              Ident("t"),
+              Property(Ident("t"), "i"),
+              BinaryOperation(Property(Ident("t"), "i"), NumericOperator.`+`, Constant.auto(1))
+            )
+          )
+        )
         quote(unquote(q)).ast mustEqual u
         repickle(u) mustEqual u
       }
       "case class" in {
         val ctx = new MirrorContext(MirrorSqlDialect, Literal)
         import ctx._
-        inline def q = quote {
-          (t: TestEntity) => qr1.updateValue(t)
+        inline def q = quote { (t: TestEntity) =>
+          qr1.updateValue(t)
         }
-        val n = quote {
-          (t: TestEntity) =>
-            qr1.update(
-              v => v.s -> t.s,
-              v => v.i -> t.i,
-              v => v.l -> t.l,
-              v => v.o -> t.o,
-              v => v.b -> t.b
-            )
+        val n = quote { (t: TestEntity) =>
+          qr1.update(
+            v => v.s -> t.s,
+            v => v.i -> t.i,
+            v => v.l -> t.l,
+            v => v.o -> t.o,
+            v => v.b -> t.b
+          )
         }
 
         val u = internalizeVLabel(n.ast)
@@ -64,7 +78,10 @@ class ActionTest extends Spec with TestEntities with Inside {
         inline def q = quote {
           qr1.update(t => Predef.ArrowAssoc(t.s).->[String]("s"))
         }
-        val u = Update(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s"))))
+        val u = Update(
+          Entity("TestEntity", Nil, TestEntityQuat),
+          List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))
+        )
         quote(unquote(q)).ast mustEqual u
         repickle(u) mustEqual u
       }
@@ -81,25 +98,27 @@ class ActionTest extends Spec with TestEntities with Inside {
         inline def q = quote {
           qr1.insert(t => t.s -> "s")
         }
-        val i = Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s"))))
+        val i = Insert(
+          Entity("TestEntity", Nil, TestEntityQuat),
+          List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))
+        )
         quote(unquote(q)).ast mustEqual i
         repickle(i) mustEqual i
       }
       "case class" in {
         val ctx = new MirrorContext(MirrorSqlDialect, Literal)
         import ctx._
-        inline def q = quote {
-          (t: TestEntity) => qr1.insertValue(t)
+        inline def q = quote { (t: TestEntity) =>
+          qr1.insertValue(t)
         }
-        val n = quote {
-          (t: TestEntity) =>
-            qr1.insert(
-              v => v.s -> t.s,
-              v => v.i -> t.i,
-              v => v.l -> t.l,
-              v => v.o -> t.o,
-              v => v.b -> t.b
-            )
+        val n = quote { (t: TestEntity) =>
+          qr1.insert(
+            v => v.s -> t.s,
+            v => v.i -> t.i,
+            v => v.l -> t.l,
+            v => v.o -> t.o,
+            v => v.b -> t.b
+          )
         }
         val i = internalizeVLabel(n.ast)
         quote(unquote(q)).ast mustEqual i
@@ -112,7 +131,10 @@ class ActionTest extends Spec with TestEntities with Inside {
           }
           val oc =
             OnConflict(
-              Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
+              Insert(
+                Entity("TestEntity", Nil, TestEntityQuat),
+                List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))
+              ),
               OnConflict.NoTarget,
               OnConflict.Ignore
             )
@@ -125,7 +147,10 @@ class ActionTest extends Spec with TestEntities with Inside {
           }
           val oc =
             OnConflict(
-              Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
+              Insert(
+                Entity("TestEntity", Nil, TestEntityQuat),
+                List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))
+              ),
               OnConflict.Properties(List(Property(Ident("r"), "i"))),
               OnConflict.Ignore
             )
@@ -139,12 +164,25 @@ class ActionTest extends Spec with TestEntities with Inside {
           def IdT(name: String) = Ident(name, TestEntityQuat)
           val oc =
             OnConflict(
-              Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
+              Insert(
+                Entity("TestEntity", Nil, TestEntityQuat),
+                List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))
+              ),
               OnConflict.NoTarget,
               OnConflict.Update(
                 List(
-                  AssignmentDual(IdT("t"), IdT("e"), Property(IdT("t"), "s"), Property(OnConflict.Excluded(IdT("e")), "s")),
-                  AssignmentDual(IdT("t"), IdT("e"), Property(IdT("t"), "l"), Property(OnConflict.Excluded(IdT("e")), "l"))
+                  AssignmentDual(
+                    IdT("t"),
+                    IdT("e"),
+                    Property(IdT("t"), "s"),
+                    Property(OnConflict.Excluded(IdT("e")), "s")
+                  ),
+                  AssignmentDual(
+                    IdT("t"),
+                    IdT("e"),
+                    Property(IdT("t"), "l"),
+                    Property(OnConflict.Excluded(IdT("e")), "l")
+                  )
                 )
               )
             )
@@ -156,15 +194,14 @@ class ActionTest extends Spec with TestEntities with Inside {
         val ctx = new MirrorContext(MirrorSqlDialect, Literal)
         import ctx._
 
-        val list = List(1, 2)
+        val list          = List(1, 2)
         inline def delete = quote((i: Int) => qr1.filter(_.i == i).delete)
         inline def q = quote {
           liftQuery(list).foreach(i => delete(i))
         }
-        inside(quote(unquote(q)).ast) {
-          case Foreach(ScalarTag(_, _), Ident("i", quat), body) =>
-            body mustEqual delete.ast.body
-            quat mustEqual Quat.Value
+        inside(quote(unquote(q)).ast) { case Foreach(ScalarTag(_, _), Ident("i", quat), body) =>
+          body mustEqual delete.ast.body
+          quat mustEqual Quat.Value
         }
         // Since ScalarTag has different ID every time, need to do write result of q.ast before pickling
         val a = q.ast
@@ -183,10 +220,9 @@ class ActionTest extends Spec with TestEntities with Inside {
         inline def q = quote {
           liftQuery(list).foreach(row => insertRow(row))
         }
-        inside(quote(unquote(q)).ast) {
-          case Foreach(ScalarTag(_, _), Ident("row", quat), body) =>
-            body mustEqual insertRow.ast.body
-            quat mustEqual quatOf[ActionTestEntity]
+        inside(quote(unquote(q)).ast) { case Foreach(ScalarTag(_, _), Ident("row", quat), body) =>
+          body mustEqual insertRow.ast.body
+          quat mustEqual quatOf[ActionTestEntity]
         }
         // Since ScalarTag has different ID every time, need to do write result of q.ast before pickling
         val a = q.ast

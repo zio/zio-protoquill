@@ -12,6 +12,9 @@ inThisBuild(
       ScmInfo(url("https://github.com/zio/zio-protoquill"), "git:git@github.com:zio/zio-protoquill.git")
     ),
     versionScheme := Some("always"),
+    scalafmtCheck     := true,
+    scalafmtSbtCheck  := true,
+    scalafmtOnCompile := !insideCI.value
   )
 )
 

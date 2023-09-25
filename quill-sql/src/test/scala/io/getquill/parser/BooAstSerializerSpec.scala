@@ -15,7 +15,8 @@ class BooSerializerSpec extends Spec {
   }
 
   "entity" in {
-    val v = new Entity("Person", List())(Quat.Product("Prod", "name" -> Quat.Value, "age" -> Quat.Value))(Renameable.neutral)
+    val v =
+      new Entity("Person", List())(Quat.Product("Prod", "name" -> Quat.Value, "age" -> Quat.Value))(Renameable.neutral)
     assert(repickle(v) == v)
   }
 
@@ -38,22 +39,28 @@ class BooSerializerSpec extends Spec {
   }
 
   "insert" in {
-    val QV = Quat.Value
-    val QBV = Quat.BooleanValue
+    val QV             = Quat.Value
+    val QBV            = Quat.BooleanValue
     val TestEntityQuat = Quat.Product("Prod", "s" -> QV, "i" -> QV, "l" -> QV, "o" -> QV, "b" -> QBV)
-    val v = Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s"))))
+    val v = Insert(
+      Entity("TestEntity", Nil, TestEntityQuat),
+      List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))
+    )
     assert(repickle(v) == v)
   }
 
   "onConflict" in {
     import io.getquill.ast._
-    val QV = Quat.Value
-    val QBV = Quat.BooleanValue
-    val TestEntityQuat = Quat.Product("Prod", "s" -> QV, "i" -> QV, "l" -> QV, "o" -> QV, "b" -> QBV)
+    val QV                = Quat.Value
+    val QBV               = Quat.BooleanValue
+    val TestEntityQuat    = Quat.Product("Prod", "s" -> QV, "i" -> QV, "l" -> QV, "o" -> QV, "b" -> QBV)
     def IdT(name: String) = Ident(name, TestEntityQuat)
     val v =
       OnConflict(
-        Insert(Entity("TestEntity", Nil, TestEntityQuat), List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))),
+        Insert(
+          Entity("TestEntity", Nil, TestEntityQuat),
+          List(Assignment(Ident("t"), Property(Ident("t"), "s"), Constant.auto("s")))
+        ),
         OnConflict.NoTarget,
         OnConflict.Update(
           List(
@@ -88,10 +95,10 @@ class BooSerializerSpec extends Spec {
   }
 
   "sortByWithEntity" in {
-    val QV = Quat.Value
-    val QBV = Quat.BooleanValue
-    val TestEntityQuat = Quat.Product("Prod", "s" -> QV, "i" -> QV, "l" -> QV, "o" -> QV, "b" -> QBV)
-    def IdT(name: String) = Ident(name, TestEntityQuat)
+    val QV                              = Quat.Value
+    val QBV                             = Quat.BooleanValue
+    val TestEntityQuat                  = Quat.Product("Prod", "s" -> QV, "i" -> QV, "l" -> QV, "o" -> QV, "b" -> QBV)
+    def IdT(name: String)               = Ident(name, TestEntityQuat)
     def PropT(id: String, prop: String) = Property(Ident(id, TestEntityQuat), prop)
 
     val v =

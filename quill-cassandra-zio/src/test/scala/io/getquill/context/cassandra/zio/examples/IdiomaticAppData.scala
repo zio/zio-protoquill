@@ -15,8 +15,8 @@ object IdiomaticAppData {
     inline def people = quote {
       query[Person]
     }
-    inline def peopleByName = quote {
-      (name: String) => people.filter(p => p.name == name).allowFiltering
+    inline def peopleByName = quote { (name: String) =>
+      people.filter(p => p.name == name).allowFiltering
     }
   }
 
@@ -32,7 +32,8 @@ object IdiomaticAppData {
 
     def getPeople(): ZIO[Any, Throwable, List[Person]] = quill.run(queryService.people)
 
-    def getPeopleByName(name: String): ZIO[Any, Throwable, List[Person]] = quill.run(queryService.peopleByName(lift(name)))
+    def getPeopleByName(name: String): ZIO[Any, Throwable, List[Person]] =
+      quill.run(queryService.peopleByName(lift(name)))
   }
 
   object DataService {

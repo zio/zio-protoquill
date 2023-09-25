@@ -3,7 +3,6 @@ package io.getquill.context.cassandra
 import io.getquill.CassandraSyncContext
 import io.getquill._
 
-
 class QueryResultTypeCassandraSyncSpec extends QueryResultTypeCassandraSpec {
 
   val context: CassandraSyncContext[Literal.type] with CassandraTestEntities = testSyncDB

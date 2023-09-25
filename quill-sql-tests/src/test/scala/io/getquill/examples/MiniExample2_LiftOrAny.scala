@@ -3,7 +3,6 @@ package io.getquill.examples
 import scala.language.implicitConversions
 import io.getquill._
 
-
 object MiniExample2_LiftOrAny {
 
   case class Person(name: String, age: Int)
@@ -20,7 +19,7 @@ object MiniExample2_LiftOrAny {
       query[Person].filter(p => liftOrAny(p.name, runtimeValue))
     }
 
-    println( run(q) )
+    println(run(q))
   }
 
   def usingEqual() = {
@@ -32,11 +31,11 @@ object MiniExample2_LiftOrAny {
       query[Person].filter(p => liftOrAny(p.name, runtimeValue))
     }
 
-    println( run(q) )
+    println(run(q))
   }
 
   def main(args: Array[String]): Unit = {
     usingLike()
-    usingEqual() //hello
+    usingEqual() // hello
   }
 }

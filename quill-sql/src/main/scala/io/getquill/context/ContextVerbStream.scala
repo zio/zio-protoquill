@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ReturnAction}
+import io.getquill.ReturnAction
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -44,22 +44,28 @@ import io.getquill.metaprog.etc.ColumnsFlicer
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 
-trait ContextVerbStream[+Dialect <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy] extends ProtoStreamContext[Dialect, Naming]:
+trait ContextVerbStream[+Dialect <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy]
+    extends ProtoStreamContext[Dialect, Naming]:
   self: Context[Dialect, Naming] =>
 
   // Must be lazy since idiom/naming are null (in some contexts) initially due to initialization order
-  private lazy val make = ContextOperation.Factory[Dialect, Naming, PrepareRow, ResultRow, Session, this.type](self.idiom, self.naming)
+  private lazy val make =
+    ContextOperation.Factory[Dialect, Naming, PrepareRow, ResultRow, Session, this.type](self.idiom, self.naming)
 
   @targetName("streamQuery")
   inline def stream[T](inline quoted: Quoted[Query[T]]): StreamResult[T] = _streamInternal[T](quoted, None)
   @targetName("streamQueryWithFetchSize")
-  inline def stream[T](inline quoted: Quoted[Query[T]], fetchSize: Int): StreamResult[T] = _streamInternal[T](quoted, Some(fetchSize))
+  inline def stream[T](inline quoted: Quoted[Query[T]], fetchSize: Int): StreamResult[T] =
+    _streamInternal[T](quoted, Some(fetchSize))
 
   /** Internal API that cannot be made private due to how inline functions */
   inline def _streamInternal[T](inline quoted: Quoted[Query[T]], fetchSize: Option[Int]): StreamResult[T] = {
     val ca = make.op[Nothing, T, StreamResult[T]] { arg =>
       val simpleExt = arg.extractor.requireSimple()
-      self.streamQuery(arg.fetchSize, arg.sql, arg.prepare, simpleExt.extract)(arg.executionInfo, InternalApi._summonRunner())
+      self.streamQuery(arg.fetchSize, arg.sql, arg.prepare, simpleExt.extract)(
+        arg.executionInfo,
+        InternalApi._summonRunner()
+      )
     }
     QueryExecution.apply(ca)(quoted, fetchSize)
   }

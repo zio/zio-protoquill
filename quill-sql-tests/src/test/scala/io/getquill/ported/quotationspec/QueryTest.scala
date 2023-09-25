@@ -11,9 +11,9 @@ import io.getquill.quat.quatOf
 import io.getquill.ast.Implicits._
 import io.getquill.PicklingHelper._
 
-import scala.math.BigDecimal.{ double2bigDecimal, int2bigDecimal, javaBigDecimal2bigDecimal, long2bigDecimal }
+import scala.math.BigDecimal.{double2bigDecimal, int2bigDecimal, javaBigDecimal2bigDecimal, long2bigDecimal}
 
-case class CustomAnyValue(i: Int) extends AnyVal
+case class CustomAnyValue(i: Int)           extends AnyVal
 case class EmbeddedValue(s: String, i: Int) extends Embedded
 
 class QueryTest extends Spec with TestEntities {
@@ -67,7 +67,12 @@ class QueryTest extends Spec with TestEntities {
           quatOf[TestEnt]
             .productOrFail()
             .renameAtPath(List("ev"), List("s" -> "theS", "i" -> "theI"))
-        val e = Entity.Opinionated("SomeAlias", List(PropertyAlias(List("ev", "s"), "theS"), PropertyAlias(List("ev", "i"), "theI")), renamedQuat, Fixed)
+        val e = Entity.Opinionated(
+          "SomeAlias",
+          List(PropertyAlias(List("ev", "s"), "theS"), PropertyAlias(List("ev", "i"), "theI")),
+          renamedQuat,
+          Fixed
+        )
         quote(unquote(q)).ast mustEqual e
         repickle(e) mustEqual e
       }
@@ -79,7 +84,12 @@ class QueryTest extends Spec with TestEntities {
           quatOf[TestEnt2]
             .productOrFail()
             .renameAtPath(List("ev"), List("s" -> "theS", "i" -> "theI"))
-        val e = Entity.Opinionated("SomeAlias", List(PropertyAlias(List("ev", "s"), "theS"), PropertyAlias(List("ev", "i"), "theI")), renamedQuat, Fixed)
+        val e = Entity.Opinionated(
+          "SomeAlias",
+          List(PropertyAlias(List("ev", "s"), "theS"), PropertyAlias(List("ev", "i"), "theI")),
+          renamedQuat,
+          Fixed
+        )
         quote(unquote(q)).ast mustEqual e
         repickle(e) mustEqual e
       }
@@ -88,7 +98,7 @@ class QueryTest extends Spec with TestEntities {
           querySchema[TestEntity]("TestEntity", e => Predef.ArrowAssoc(e.s).->[String]("theS"))
         }
         val renamedQuat = TestEntityQuat.renameAtPath(Nil, List("s" -> "theS"))
-        val e = Entity.Opinionated("TestEntity", List(PropertyAlias(List("s"), "theS")), renamedQuat, Fixed)
+        val e           = Entity.Opinionated("TestEntity", List(PropertyAlias(List("s"), "theS")), renamedQuat, Fixed)
         quote(unquote(q)).ast mustEqual e
         repickle(e) mustEqual e
       }
@@ -106,8 +116,11 @@ class QueryTest extends Spec with TestEntities {
         }
         val renamedQuat = TestEntityQuat.renameAtPath(Nil, List("s" -> "theS"))
         val f =
-          Filter(Entity.Opinionated("SomeAlias", List(PropertyAlias(List("s"), "theS")), renamedQuat, Fixed), Ident("t", renamedQuat),
-            (Property(Ident("t", renamedQuat), "s") +==+ Constant.auto("s")) +&&+ (Property(Ident("t", renamedQuat), "i") +==+ Constant.auto(1))
+          Filter(
+            Entity.Opinionated("SomeAlias", List(PropertyAlias(List("s"), "theS")), renamedQuat, Fixed),
+            Ident("t", renamedQuat),
+            (Property(Ident("t", renamedQuat), "s") +==+ Constant
+              .auto("s")) +&&+ (Property(Ident("t", renamedQuat), "i") +==+ Constant.auto(1))
           )
         quote(unquote(q)).ast mustEqual f
         repickle(f) mustEqual f
@@ -119,9 +132,21 @@ class QueryTest extends Spec with TestEntities {
         extension [T](q: Query[T]) {
           inline def limitQuery = quote(sql"$q LIMIT 1".as[Query[T]])
         }
-        inline def q = quote { query[TableData].limitQuery }
-        val parseTime = Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, false, Quat.Generic)
-        val evalTime = Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, false, Quat.LeafProduct("id"))
+        inline def q = quote(query[TableData].limitQuery)
+        val parseTime = Infix(
+          List("", " LIMIT 1"),
+          List(Entity("TableData", List(), Quat.LeafProduct("id"))),
+          false,
+          false,
+          Quat.Generic
+        )
+        val evalTime = Infix(
+          List("", " LIMIT 1"),
+          List(Entity("TableData", List(), Quat.LeafProduct("id"))),
+          false,
+          false,
+          Quat.LeafProduct("id")
+        )
         q.ast mustEqual parseTime
         quote(unquote(q)).ast mustEqual evalTime
 
@@ -146,10 +171,22 @@ class QueryTest extends Spec with TestEntities {
       //   q.runtimeQuotes(0).quoted.ast mustEqual Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, Quat.Generic)
       // }
       "with method and generic" in {
-        inline def limitQuery[T] = quote { (q: Query[T]) => sql"$q LIMIT 1".as[Query[T]] }
-        inline def q = quote { limitQuery(query[TableData]) }
-        val parseTime = Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, false, Quat.Generic)
-        val evalTime = Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, false, Quat.LeafProduct("id"))
+        inline def limitQuery[T] = quote((q: Query[T]) => sql"$q LIMIT 1".as[Query[T]])
+        inline def q             = quote(limitQuery(query[TableData]))
+        val parseTime = Infix(
+          List("", " LIMIT 1"),
+          List(Entity("TableData", List(), Quat.LeafProduct("id"))),
+          false,
+          false,
+          Quat.Generic
+        )
+        val evalTime = Infix(
+          List("", " LIMIT 1"),
+          List(Entity("TableData", List(), Quat.LeafProduct("id"))),
+          false,
+          false,
+          Quat.LeafProduct("id")
+        )
         q.ast mustEqual parseTime
         quote(unquote(q)).ast mustEqual evalTime
 
@@ -157,13 +194,24 @@ class QueryTest extends Spec with TestEntities {
         repickle(evalTime) mustEqual evalTime
       }
       "with method and generic - typed" in {
-        inline def limitQuery[T] = quote { (q: Query[T]) => sql"$q LIMIT 1".as[Query[T]] }
-        inline def q = quote { limitQuery[TableData](query[TableData]) }
-        val parseTime = Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, false, Quat.Generic)
-        val evalTime = Infix(List("", " LIMIT 1"), List(Entity("TableData", List(), Quat.LeafProduct("id"))), false, false, Quat.LeafProduct("id"))
+        inline def limitQuery[T] = quote((q: Query[T]) => sql"$q LIMIT 1".as[Query[T]])
+        inline def q             = quote(limitQuery[TableData](query[TableData]))
+        val parseTime = Infix(
+          List("", " LIMIT 1"),
+          List(Entity("TableData", List(), Quat.LeafProduct("id"))),
+          false,
+          false,
+          Quat.Generic
+        )
+        val evalTime = Infix(
+          List("", " LIMIT 1"),
+          List(Entity("TableData", List(), Quat.LeafProduct("id"))),
+          false,
+          false,
+          Quat.LeafProduct("id")
+        )
         q.ast mustEqual parseTime
         quote(unquote(q)).ast mustEqual evalTime
-
 
       }
     }
@@ -171,7 +219,11 @@ class QueryTest extends Spec with TestEntities {
       inline def q = quote {
         qr1.filter(t => t.s == "s")
       }
-      val qry = Filter(Entity("TestEntity", Nil, TestEntityQuat), Ident("t", TestEntityQuat), BinaryOperation(Property(Ident("t", TestEntityQuat), "s"), EqualityOperator.`_==`, Constant.auto("s")))
+      val qry = Filter(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t", TestEntityQuat),
+        BinaryOperation(Property(Ident("t", TestEntityQuat), "s"), EqualityOperator.`_==`, Constant.auto("s"))
+      )
       quote(unquote(q)).ast mustEqual qry
       repickle(qry) mustEqual qry
     }
@@ -179,7 +231,11 @@ class QueryTest extends Spec with TestEntities {
       inline def q = quote {
         qr1.withFilter(t => t.s == "s")
       }
-      val qry = Filter(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), BinaryOperation(Property(Ident("t"), "s"), EqualityOperator.`_==`, Constant.auto("s")))
+      val qry = Filter(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t"),
+        BinaryOperation(Property(Ident("t"), "s"), EqualityOperator.`_==`, Constant.auto("s"))
+      )
       quote(unquote(q)).ast mustEqual qry
       repickle(qry) mustEqual qry
     }
@@ -195,7 +251,11 @@ class QueryTest extends Spec with TestEntities {
       inline def q = quote {
         qr1.flatMap(t => qr2)
       }
-      val qry = FlatMap(Entity("TestEntity", Nil, TestEntityQuat), Ident("t", TestEntityQuat), Entity("TestEntity2", Nil, TestEntity2Quat))
+      val qry = FlatMap(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t", TestEntityQuat),
+        Entity("TestEntity2", Nil, TestEntity2Quat)
+      )
       quote(unquote(q)).ast mustEqual qry
       repickle(qry) mustEqual qry
     }
@@ -203,7 +263,11 @@ class QueryTest extends Spec with TestEntities {
       inline def q = quote {
         qr1.concatMap(t => t.s.split(" "))
       }
-      val qry = ConcatMap(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), BinaryOperation(Property(Ident("t", TestEntityQuat), "s"), StringOperator.`split`, Constant.auto(" ")))
+      val qry = ConcatMap(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t"),
+        BinaryOperation(Property(Ident("t", TestEntityQuat), "s"), StringOperator.`split`, Constant.auto(" "))
+      )
       quote(unquote(q)).ast mustEqual qry
       repickle(qry) mustEqual qry
     }
@@ -212,7 +276,12 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.sortBy(t => t.s)
         }
-        val qry = SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t", TestEntityQuat), Property(Ident("t"), "s"), AscNullsFirst)
+        val qry = SortBy(
+          Entity("TestEntity", Nil, TestEntityQuat),
+          Ident("t", TestEntityQuat),
+          Property(Ident("t"), "s"),
+          AscNullsFirst
+        )
         quote(unquote(q)).ast mustEqual qry
         repickle(qry) mustEqual qry
       }
@@ -236,7 +305,8 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.sortBy(t => t.s)(Ord.ascNullsFirst)
         }
-        val qry = SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t"), "s"), AscNullsFirst)
+        val qry =
+          SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t"), "s"), AscNullsFirst)
         quote(unquote(q)).ast mustEqual qry
         repickle(qry) mustEqual qry
       }
@@ -244,7 +314,8 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.sortBy(t => t.s)(Ord.descNullsFirst)
         }
-        val qry = SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t"), "s"), DescNullsFirst)
+        val qry =
+          SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t"), "s"), DescNullsFirst)
         quote(unquote(q)).ast mustEqual qry
         repickle(qry) mustEqual qry
       }
@@ -260,7 +331,8 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.sortBy(t => t.s)(Ord.descNullsLast)
         }
-        val qry = SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t"), "s"), DescNullsLast)
+        val qry =
+          SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t"), "s"), DescNullsLast)
         quote(unquote(q)).ast mustEqual qry
         repickle(qry) mustEqual qry
       }
@@ -269,7 +341,12 @@ class QueryTest extends Spec with TestEntities {
           inline def q = quote {
             qr1.sortBy(t => (t.s, t.i))(Ord.desc)
           }
-          val qry = SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))), Desc)
+          val qry = SortBy(
+            Entity("TestEntity", Nil, TestEntityQuat),
+            Ident("t"),
+            Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))),
+            Desc
+          )
           quote(unquote(q)).ast mustEqual qry
           repickle(qry) mustEqual qry
         }
@@ -277,7 +354,12 @@ class QueryTest extends Spec with TestEntities {
           inline def q = quote {
             qr1.sortBy(t => (t.s, t.i))(Ord(Ord.desc, Ord.asc))
           }
-          val qry = SortBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))), TupleOrdering(List(Desc, Asc)))
+          val qry = SortBy(
+            Entity("TestEntity", Nil, TestEntityQuat),
+            Ident("t"),
+            Tuple(List(Property(Ident("t"), "s"), Property(Ident("t"), "i"))),
+            TupleOrdering(List(Desc, Asc))
+          )
           quote(unquote(q)).ast mustEqual qry
           repickle(qry) mustEqual qry
         }
@@ -287,7 +369,11 @@ class QueryTest extends Spec with TestEntities {
       inline def q = quote {
         qr1.groupBy(t => t.s)
       }
-      val qry = GroupBy(Entity("TestEntity", Nil, TestEntityQuat), Ident("t", TestEntityQuat), Property(Ident("t", TestEntityQuat), "s"))
+      val qry = GroupBy(
+        Entity("TestEntity", Nil, TestEntityQuat),
+        Ident("t", TestEntityQuat),
+        Property(Ident("t", TestEntityQuat), "s")
+      )
       quote(unquote(q)).ast mustEqual qry
       repickle(qry) mustEqual qry
     }
@@ -297,7 +383,14 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.map(t => t.i).min
         }
-        val qry = Aggregation(AggregationOperator.`min`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t", TestEntityQuat), Property(Ident("t", TestEntityQuat), "i")))
+        val qry = Aggregation(
+          AggregationOperator.`min`,
+          Map(
+            Entity("TestEntity", Nil, TestEntityQuat),
+            Ident("t", TestEntityQuat),
+            Property(Ident("t", TestEntityQuat), "i")
+          )
+        )
         quote(unquote(q)).ast mustEqual qry
         repickle(qry) mustEqual qry
       }
@@ -305,7 +398,10 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.map(t => t.i).max
         }
-        val qry = Aggregation(AggregationOperator.`max`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i")))
+        val qry = Aggregation(
+          AggregationOperator.`max`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i"))
+        )
         quote(unquote(q)).ast mustEqual qry
         repickle(qry) mustEqual qry
       }
@@ -313,7 +409,10 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.map(t => t.i).avg
         }
-        val qry = Aggregation(AggregationOperator.`avg`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i")))
+        val qry = Aggregation(
+          AggregationOperator.`avg`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i"))
+        )
         quote(unquote(q)).ast mustEqual qry
         repickle(qry) mustEqual qry
       }
@@ -321,7 +420,10 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.map(t => t.i).sum
         }
-        val qry = Aggregation(AggregationOperator.`sum`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i")))
+        val qry = Aggregation(
+          AggregationOperator.`sum`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i"))
+        )
         quote(unquote(q)).ast mustEqual qry
         repickle(qry) mustEqual qry
       }
@@ -329,7 +431,10 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.map(t => t.i).size
         }
-        val qry = Aggregation(AggregationOperator.`size`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i")))
+        val qry = Aggregation(
+          AggregationOperator.`size`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "i"))
+        )
         quote(unquote(q)).ast mustEqual qry
         repickle(qry) mustEqual qry
       }
@@ -340,7 +445,10 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.map(t => t.s).min
         }
-        val qry = Aggregation(AggregationOperator.`min`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "s")))
+        val qry = Aggregation(
+          AggregationOperator.`min`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "s"))
+        )
         quote(unquote(q)).ast mustEqual qry
         repickle(qry) mustEqual qry
       }
@@ -348,7 +456,10 @@ class QueryTest extends Spec with TestEntities {
         inline def q = quote {
           qr1.map(t => t.s).max
         }
-        val qry = Aggregation(AggregationOperator.`max`, Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "s")))
+        val qry = Aggregation(
+          AggregationOperator.`max`,
+          Map(Entity("TestEntity", Nil, TestEntityQuat), Ident("t"), Property(Ident("t", TestEntityQuat), "s"))
+        )
         quote(unquote(q)).ast mustEqual qry
         repickle(qry) mustEqual qry
       }
@@ -414,7 +525,14 @@ class QueryTest extends Spec with TestEntities {
     "join" - {
 
       def tree(t: JoinType) =
-        Join(t, Entity("TestEntity", Nil, TestEntityQuat), Entity("TestEntity2", Nil, TestEntity2Quat), Ident("a"), Ident("b"), BinaryOperation(Property(Ident("a"), "s"), EqualityOperator.`_==`, Property(Ident("b"), "s")))
+        Join(
+          t,
+          Entity("TestEntity", Nil, TestEntityQuat),
+          Entity("TestEntity2", Nil, TestEntity2Quat),
+          Ident("a"),
+          Ident("b"),
+          BinaryOperation(Property(Ident("a"), "s"), EqualityOperator.`_==`, Property(Ident("b"), "s"))
+        )
 
       "inner join" in {
         inline def q = quote {

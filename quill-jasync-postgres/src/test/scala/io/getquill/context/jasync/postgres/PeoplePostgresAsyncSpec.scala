@@ -1,6 +1,6 @@
 package io.getquill.context.jasync.postgres
 
-import scala.concurrent.ExecutionContext.Implicits.{ global => ec }
+import scala.concurrent.ExecutionContext.Implicits.{global => ec}
 import io.getquill.context.sql.PeopleSpec
 import io.getquill._
 
@@ -34,7 +34,9 @@ class PeoplePostgresAsyncSpec extends PeopleSpec {
   }
 
   "Example 2 - range simple" in {
-    await(testContext.run(`Ex 2 rangeSimple`(lift(`Ex 2 param 1`), lift(`Ex 2 param 2`)))) mustEqual `Ex 2 expected result`
+    await(
+      testContext.run(`Ex 2 rangeSimple`(lift(`Ex 2 param 1`), lift(`Ex 2 param 2`)))
+    ) mustEqual `Ex 2 expected result`
   }
 
   "Examples 3 - satisfies" in {
@@ -54,13 +56,13 @@ class PeoplePostgresAsyncSpec extends PeopleSpec {
   }
 
   "Example 7 - predicate 1" in {
-    val q = quote { satisfies(eval(`Ex 7 predicate`)) }
+    val q = quote(satisfies(eval(`Ex 7 predicate`)))
     await(testContext.run(satisfies(eval(`Ex 7 predicate`)))) mustEqual `Ex 7 expected result`
   }
 
-  //"Example 8 - contains empty" in {
+  // "Example 8 - contains empty" in {
   //  await(testContext.run(`Ex 8 and 9 contains`(liftQuery(`Ex 8 param`)))) mustEqual `Ex 8 expected result`
-  //}
+  // }
 
   "Example 9 - contains non empty" in {
     await(testContext.run(`Ex 8 and 9 contains`(liftQuery(`Ex 9 param`)))) mustEqual `Ex 9 expected result`

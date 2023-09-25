@@ -11,8 +11,7 @@ import io.getquill.parser.engine.Parser
 import io.getquill.norm.TranspileConfig
 
 object CustomOps {
-  extension (i: Int)
-    def **(exponent: Int) = Math.pow(i, exponent)
+  extension (i: Int) def **(exponent: Int) = Math.pow(i, exponent)
 }
 
 object CustomParser extends ParserLibrary:
