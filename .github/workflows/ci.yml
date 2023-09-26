@@ -22,7 +22,7 @@ jobs:
         module: [ sqltest, db, async, bigdata ]
 
     steps:
-      - uses: actions/checkout@v4.0.0
+      - uses: actions/checkout@v4.1.0
       - name: Setup Java and Scala
         uses: actions/setup-java@v3.13.0
         with:
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - uses: actions/checkout@v4.0.0
+      - uses: actions/checkout@v4.1.0
       - name: Setup Java and Scala
         uses: actions/setup-java@v3.13.0
         with:
