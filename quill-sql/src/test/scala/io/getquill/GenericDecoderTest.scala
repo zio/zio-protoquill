@@ -35,11 +35,13 @@ class GenericDecoderTest extends Spec {
   case class Person(name: String, age: Int)
 
   "domain-model product using row-typer" - {
-    given RowTyper[Shape] with
+    given RowTyper[Shape] with {
       def apply(row: Row) =
-        row.apply[String]("type") match
+        row.apply[String]("type") match {
           case "square" => classTag[Shape.Square]
           case "circle" => classTag[Shape.Circle]
+        }
+    }
 
     "test product type" in {
       val s = MirrorSession.default
@@ -74,7 +76,8 @@ class GenericDecoderTest extends Spec {
   }
 }
 object StaticEnumExample {
-  enum Shape(val id: Int):
+  enum Shape(val id: Int) {
     case Square(override val id: Int, width: Int, height: Int) extends Shape(id)
     case Circle(override val id: Int, radius: Int) extends Shape(id)
+  }
 }

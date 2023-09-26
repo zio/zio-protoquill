@@ -16,10 +16,12 @@ import io.getquill.PicklingHelper._
 import io.getquill.context.ExecutionType
 
 class InfixTest extends Spec with Inside {
-  extension (ast: Ast)
-    def body: Ast = ast match
+  extension (ast: Ast) {
+    def body: Ast = ast match {
       case f: Function => f.body
       case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+    }
+  }
 
   "sql" - {
     "with `as`" in {
@@ -64,11 +66,13 @@ class InfixTest extends Spec with Inside {
     }
 
     "with dynamic string" - {
-      object Vase:
+      object Vase {
         def unapply(vase: QuotationVase) =
-          vase match
+          vase match {
             case QuotationVase(Quoted(ast, Nil, Nil), uid) => Some((ast, uid))
             case _ => None
+          }
+      }
 
       "at the end - pure" in {
         val b = "dyn"

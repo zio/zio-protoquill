@@ -11,15 +11,16 @@ import caliban.Value
 
 case class ProductArgs[T](keyValues: Map[String, String])
 
-object CalibanIntegration:
+object CalibanIntegration {
 
-  def quillColumns(field: Field) =
+  def quillColumns(field: Field) = {
     def recurseFetchFields(field: Field): List[Field] =
       if (Types.innerType(field.fieldType).kind == __TypeKind.OBJECT)
           field.fields.flatMap(recurseFetchFields(_))
       else
         List(field)
     field.fields.flatMap(recurseFetchFields(_)).map(_.name)
+  }
 
   def flattenToPairs(key: String, value: InputValue): List[(String, String)] =
     value match {
@@ -63,4 +64,4 @@ object CalibanIntegration:
       def resolve(value: ProductArgs[T]): Step[Any] = Step.NullStep
     }
 
-end CalibanIntegration
+} // end CalibanIntegration

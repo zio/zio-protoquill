@@ -9,11 +9,13 @@ import io.getquill.norm.OptionalPhase
 object SummonTraceTypeUse {
   def main(args: Array[String]): Unit = {
     import io.getquill.norm.ConfigList._
-    given EnableTrace with
+    given EnableTrace with {
       override type Trace = TraceType.ApplyMap :: HNil
+    }
 
-    given DisablePhase with
+    given DisablePhase with {
       override type Phase = OptionalPhase.ApplyMap :: HNil
+    }
 
     SummonTranspileConfig.mac //
   }

@@ -12,21 +12,27 @@ object TypeclassExample_Monad {
   case class Person(id: Int, name: String, age: Int)
   case class Address(street: String, zip: Int) extends Embedded
 
-  trait Monad[F[_]]: // extends Functor[F]
+  trait Monad[F[_]] { // extends Functor[F]
     //inline def pure[A](x: A): F[A]
-    extension [A, B](inline x: F[A])
+    extension [A, B](inline x: F[A]) {
       inline def map(inline f: A => B): F[B]
       inline def flatMap(inline f: A => F[B]): F[B]
+    }
+  }
 
-  inline given Monad[List] with
-    extension [A, B](inline xs: List[A])
+  inline given Monad[List] with {
+    extension [A, B](inline xs: List[A]) {
       inline def map(inline f: A => B): List[B] = xs.map(f)
       inline def flatMap(inline f: A => List[B]): List[B] = xs.flatMap(f)
+    }
+  }
 
-  inline given Monad[Query] with
-    extension [A, B](inline xs: Query[A])
+  inline given Monad[Query] with {
+    extension [A, B](inline xs: Query[A]) {
       inline def map(inline f: A => B): Query[B] = xs.map(f)
       inline def flatMap(inline f: A => Query[B]): Query[B] = xs.flatMap(f)
+    }
+  }
 
   extension [F[_], A, B](inline from: F[A])(using inline fun: Monad[F]) {
     inline def mapM(inline f: A => B) = from.map(f)

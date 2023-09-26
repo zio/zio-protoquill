@@ -57,7 +57,7 @@ trait ContextStandard[+Idiom <: io.getquill.idiom.Idiom, +Naming <: NamingStrate
     with ContextVerbPrepareLambda[Idiom, Naming]
 
 trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
-    extends ProtoContextSecundus[Dialect, Naming] with EncodingDsl with Closeable:
+    extends ProtoContextSecundus[Dialect, Naming] with EncodingDsl with Closeable {
   self =>
 
   /**
@@ -84,23 +84,26 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
   // it caused oddities with how Scala 3 resolves/overrides extension methods. This required
   // all of them to be moved to Context.scala or else compilation would fail because certain
   // insertValue/updateValue methods were not found.
-  extension [T](inline dynamicQuery: DynamicEntityQuery[T])
+  extension [T](inline dynamicQuery: DynamicEntityQuery[T]) {
     inline def insertValue(value: T): DynamicInsert[T] =
       DynamicInsert(io.getquill.quote(insertValueDynamic(dynamicQuery.q)(lift(value))))
     inline def updateValue(value: T): DynamicUpdate[T] =
       DynamicUpdate(io.getquill.quote(updateValueDynamic(dynamicQuery.q)(lift(value))))
+  }
 
-  extension [T](inline entity: EntityQuery[T])
+  extension [T](inline entity: EntityQuery[T]) {
     inline def insertValue(inline value: T): Insert[T] = ${ InsertUpdateMacro.static[T, Insert]('entity, 'value) }
     inline def updateValue(inline value: T): Update[T] = ${ InsertUpdateMacro.static[T, Update]('entity, 'value) }
     private[getquill] inline def insertValueDynamic(inline value: T): Insert[T] = ${ InsertUpdateMacro.dynamic[T, Insert]('entity, 'value) }
     private[getquill] inline def updateValueDynamic(inline value: T): Update[T] = ${ InsertUpdateMacro.dynamic[T, Update]('entity, 'value) }
+  }
 
-  extension [T](inline quotedEntity: Quoted[EntityQuery[T]])
+  extension [T](inline quotedEntity: Quoted[EntityQuery[T]]) {
     inline def insertValue(inline value: T): Insert[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).insertValue(value)
     inline def updateValue(inline value: T): Update[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).updateValue(value)
     private[getquill] inline def insertValueDynamic(inline value: T): Insert[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).insertValueDynamic(value)
     private[getquill] inline def updateValueDynamic(inline value: T): Update[T] = io.getquill.unquote[EntityQuery[T]](quotedEntity).updateValueDynamic(value)
+  }
 
   extension [T](inline q: Query[T]) {
 
@@ -131,7 +134,7 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
    * This is quite confusing. Therefore we define the methods in an object and then
    * delegate to these in the individual contexts.
    */
-  object InternalApi:
+  object InternalApi {
     /** Internal API that cannot be made private due to how inline functions */
     inline def _summonRunner() = DatasourceContextInjectionMacro[RunnerBehavior, Runner, self.type](context)
 
@@ -200,7 +203,7 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
       }
       QueryExecutionBatch.apply(ca, rowsPerBatch)(quoted)
     }
-  end InternalApi
+  } // end InternalApi
 
   protected def handleSingleResult[T](sql: String, list: List[T]) =
     list match {
@@ -222,4 +225,4 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
 
   // Can close context. Does nothing by default.
   def close(): Unit = ()
-end Context
+} // end Context

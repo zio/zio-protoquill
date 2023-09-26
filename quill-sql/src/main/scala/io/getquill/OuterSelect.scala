@@ -5,33 +5,38 @@ import io.getquill.util.Format
 /**
  * TODO Not needed now since elabration does not do OntoAst?
  */
-enum OuterSelectWrap:
+enum OuterSelectWrap {
   case Always
   case Never
   case Default
+}
 
-object OuterSelectWrap:
+object OuterSelectWrap {
   import scala.quoted._
 
-  given ToExpr[OuterSelectWrap] with
+  given ToExpr[OuterSelectWrap] with {
     def apply(e: OuterSelectWrap)(using Quotes): Expr[OuterSelectWrap] =
-      e match
+      e match {
         case OuterSelectWrap.Always  => '{ OuterSelectWrap.Always }
         case OuterSelectWrap.Never   => '{ OuterSelectWrap.Never }
         case OuterSelectWrap.Default => '{ OuterSelectWrap.Default }
+      }
+  }
 
-  given FromExpr[OuterSelectWrap] with
+  given FromExpr[OuterSelectWrap] with {
     def unapply(e: Expr[OuterSelectWrap])(using Quotes): Option[OuterSelectWrap] =
-      e match
+      e match {
         case '{ OuterSelectWrap.Always }  => Some(OuterSelectWrap.Always)
         case '{ OuterSelectWrap.Never }   => Some(OuterSelectWrap.Never)
         case '{ OuterSelectWrap.Default } => Some(OuterSelectWrap.Default)
         case _                            => None
+      }
+  }
 
   def lift(e: OuterSelectWrap)(using Quotes) = Expr(e)
-  def unlift(e: Expr[OuterSelectWrap])(using Quotes) =
+  def unlift(e: Expr[OuterSelectWrap])(using Quotes) = {
     import quotes.reflect._
-    e match
+    e match {
       case Expr(expr) => expr
       case _ => report.throwError(
           s"""
@@ -40,4 +45,6 @@ object OuterSelectWrap:
         |run(query[Person].map(p => p.name), OuterSelectWrap.Never)
         """.stripMargin
         )
-end OuterSelectWrap
+    }
+  }
+} // end OuterSelectWrap

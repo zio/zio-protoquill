@@ -44,7 +44,7 @@ import io.getquill.metaprog.etc.ColumnsFlicer
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 
-trait ContextVerbPrepare[+Dialect <: Idiom, +Naming <: NamingStrategy]:
+trait ContextVerbPrepare[+Dialect <: Idiom, +Naming <: NamingStrategy] {
   self: Context[Dialect, Naming] =>
 
   type Result[T]
@@ -93,4 +93,4 @@ trait ContextVerbPrepare[+Dialect <: Idiom, +Naming <: NamingStrategy]:
     }
     QueryExecutionBatch.apply(ca, 1)(quoted)
   }
-end ContextVerbPrepare
+} // end ContextVerbPrepare

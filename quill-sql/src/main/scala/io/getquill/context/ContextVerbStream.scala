@@ -44,7 +44,7 @@ import io.getquill.metaprog.etc.ColumnsFlicer
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 
-trait ContextVerbStream[+Dialect <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy] extends ProtoStreamContext[Dialect, Naming]:
+trait ContextVerbStream[+Dialect <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy] extends ProtoStreamContext[Dialect, Naming] {
   self: Context[Dialect, Naming] =>
 
   // Must be lazy since idiom/naming are null (in some contexts) initially due to initialization order
@@ -63,4 +63,4 @@ trait ContextVerbStream[+Dialect <: io.getquill.idiom.Idiom, +Naming <: NamingSt
     }
     QueryExecution.apply(ca)(quoted, fetchSize)
   }
-end ContextVerbStream
+} // end ContextVerbStream

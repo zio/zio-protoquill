@@ -6,7 +6,7 @@ import io.getquill.quotation.FreeVariables
 import scala.quoted._
 import io.getquill.util.Format
 
-object VerifyFreeVariables:
+object VerifyFreeVariables {
   def verify(ast: Ast) =
     FreeVariables(ast) match {
       case free if free.isEmpty => Right(ast)
@@ -24,13 +24,17 @@ object VerifyFreeVariables:
           |        Do this: `def byName(n: String) = quote(query[Person].filter(_.name == lift(n)))`
         """.stripMargin)
     }
-  def apply(ast: Ast)(using Quotes) =
+  def apply(ast: Ast)(using Quotes) = {
     import quotes.reflect._
-    verify(ast) match
+    verify(ast) match {
       case Right(ast)  => ast
       case Left(error) => report.throwError(error)
+    }
+  }
 
   def runtime(ast: Ast) =
-    verify(ast) match
+    verify(ast) match {
       case Right(ast)  => ast
       case Left(error) => throw new IllegalStateException(error)
+    }
+}

@@ -33,13 +33,14 @@ trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
 
   def api: GraphQL[Any]
 
-  extension [A](qzio: ZIO[Any, Throwable, A])
+  extension [A](qzio: ZIO[Any, Throwable, A]) {
     def unsafeRunSync(): A =
       zio.Unsafe.unsafe { implicit unsafe =>
         zio.Runtime.default.unsafe.run(qzio).getOrThrow()
       }
+  }
 
-  def unsafeRunQuery(queryString: String) =
+  def unsafeRunQuery(queryString: String) = {
     val output =
       (for {
         interpreter <- api.interpreter
@@ -54,5 +55,5 @@ trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
       fail(s"GraphQL Validation Failures: ${output.errors}")
     else
       output.data.toString
-  end unsafeRunQuery
+  } // end unsafeRunQuery
 }

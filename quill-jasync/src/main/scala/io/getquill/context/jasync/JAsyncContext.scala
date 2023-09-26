@@ -85,9 +85,10 @@ abstract class JAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: ConcreteC
       .map(_.getRows.asScala.iterator.map(row => extractor(row, ())).toList)
   }
 
-  def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[T] =
+  def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[T] = {
     implicit val ec = dc
     executeQuery(sql, prepare, extractor)(executionInfo, dc).map(handleSingleResult(sql, _))
+  }
 
   def executeAction(sql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[Long] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
@@ -110,7 +111,7 @@ abstract class JAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: ConcreteC
       .map(extractActionResult(returningAction, extractor))
   }
 
-  def executeBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[Long]] =
+  def executeBatchAction(groups: List[BatchGroup])(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[Long]] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
     Future.sequence {
       groups.map {
@@ -123,8 +124,9 @@ abstract class JAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: ConcreteC
           }.map(_.result())
       }
     }.map(_.flatten.toList)
+  }
 
-  def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[T]] =
+  def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(executionInfo: ExecutionInfo, dc: ExecutionContext): Future[List[T]] = {
     implicit val ec = dc // implicitly define the execution context that will be passed in
     Future.sequence {
       groups.map {
@@ -137,6 +139,7 @@ abstract class JAsyncContext[D <: SqlIdiom, +N <: NamingStrategy, C <: ConcreteC
           }.map(_.result())
       }
     }.map(_.flatten.toList)
+  }
 
   override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] =
     prepare(Nil, ())._2.map(prepareParam)

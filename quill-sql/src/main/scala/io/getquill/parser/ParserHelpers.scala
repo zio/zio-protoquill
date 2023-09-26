@@ -22,11 +22,11 @@ import io.getquill.parser.engine._
 import io.getquill.quat.QuatMakingBase
 import io.getquill.norm.TranspileConfig
 
-object ParserHelpers:
+object ParserHelpers {
 
   trait Helpers(using Quotes) extends Idents with QuatMaking with QuatMakingBase
 
-  trait Idents extends QuatMaking:
+  trait Idents extends QuatMaking {
     def parseName(rawName: String) =
       // val name = rawName.replace("_$", "x").replace("$", "")
       // if (name.trim == "") "x" else name.trim
@@ -35,8 +35,9 @@ object ParserHelpers:
       AIdent(parseName(name), quat)
     def cleanIdent(using Quotes)(name: String, tpe: quotes.reflect.TypeRepr): AIdent =
       AIdent(parseName(name), InferQuat.ofType(tpe))
+  }
 
-  trait Assignments extends Idents:
+  trait Assignments extends Idents {
 
     import io.getquill.util.Interpolator
     import io.getquill.util.Messages.TraceType
@@ -45,21 +46,25 @@ object ParserHelpers:
 
     def rootParse: Parser
 
-    object AssignmentTerm:
-      object Components:
+    object AssignmentTerm {
+      object Components {
         def unapply(expr: Expr[_])(using Quotes) =
-          UntypeExpr(expr) match
+          UntypeExpr(expr) match {
             case Lambda1(ident, identTpe, ArrowFunction(prop, value)) => Some((ident, identTpe, prop, value))
             case _                                                    => None
+          }
+      }
 
-      object TwoComponents:
+      object TwoComponents {
         def unapply(expr: Expr[_])(using Quotes) =
-          UntypeExpr(expr) match
+          UntypeExpr(expr) match {
             case Lambda2(ident1, identTpe1, ident2, identTpe2, ArrowFunction(prop, value)) => Some((ident1, identTpe1, ident2, identTpe2, prop, value))
             case _                                                                         => None
+          }
+      }
 
-      object CheckTypes:
-        def checkPropAndValue(parent: Expr[Any], prop: Expr[Any], value: Expr[Any])(using Quotes) =
+      object CheckTypes {
+        def checkPropAndValue(parent: Expr[Any], prop: Expr[Any], value: Expr[Any])(using Quotes) = {
           import quotes.reflect._
           val valueTpe = value.asTerm.tpe.widen
           val propTpe = prop.asTerm.tpe.widen
@@ -80,29 +85,33 @@ object ParserHelpers:
               parent
             )
           }
-        def apply(expr: Expr[_])(using Quotes) =
+        }
+        def apply(expr: Expr[_])(using Quotes) = {
           import quotes.reflect._
-          expr match
+          expr match {
             case Components(_, _, prop, value)          => checkPropAndValue(expr, prop, value)
             case TwoComponents(_, _, _, _, prop, value) => checkPropAndValue(expr, prop, value)
             case other =>
               report.throwError(s"The assignment statement ${Format.Expr(expr)} is invalid.")
-      end CheckTypes
+          }
+        }
+      } // end CheckTypes
 
       def OrFail(expr: Expr[_])(using Quotes, History) =
         unapply(expr).getOrElse { failParse(expr, classOf[Assignment]) }
 
       def unapply(expr: Expr[_])(using Quotes, History): Option[Assignment] =
-        UntypeExpr(expr) match
+        UntypeExpr(expr) match {
           case Components(ident, identTpe, prop, value) =>
             Some(Assignment(cleanIdent(ident, identTpe), rootParse(prop), rootParse(value)))
           case _ => None
+        }
 
-      object Double:
+      object Double {
         def OrFail(expr: Expr[_])(using Quotes, History) =
           unapply(expr).getOrElse { failParse(expr, classOf[AssignmentDual]) }
         def unapply(expr: Expr[_])(using Quotes, History): Option[AssignmentDual] =
-          UntypeExpr(expr) match
+          UntypeExpr(expr) match {
             case TwoComponents(ident1, identTpe1, ident2, identTpe2, prop, value) =>
               val i1 = cleanIdent(ident1, identTpe1)
               val i2 = cleanIdent(ident2, identTpe2)
@@ -112,9 +121,11 @@ object ParserHelpers:
               }
               Some(AssignmentDual(i1, i2, rootParse(prop), valueAst))
             case _ => None
+          }
+      }
 
-    end AssignmentTerm
-  end Assignments
+    } // end AssignmentTerm
+  } // end Assignments
 
   trait PropertyParser(implicit val qctx: Quotes) {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
@@ -123,33 +134,38 @@ object ParserHelpers:
     def rootParse: Parser
 
     // Parses (e:Entity) => e.foo (or e.foo.bar etc...)
-    object LambdaToProperty:
-      object OrFail:
+    object LambdaToProperty {
+      object OrFail {
         def apply(expr: Expr[_])(using History): Property =
-          unapply(expr) match
+          unapply(expr) match {
             case Some(value) => value
             case None =>
               report.throwError(s"Could not parse a (x) => x.property expression from: ${Format.Expr(expr)}", expr)
+          }
+      }
 
       def unapply(expr: Expr[_])(using History): Option[Property] =
-        expr match
+        expr match {
           case Lambda1(id, tpe, body) =>
             val bodyProperty = AnyProperty.OrFail(body)
             // TODO Get the inner ident and verify that it's the same is 'id'
             Some(bodyProperty)
           case _ => None
-    end LambdaToProperty
+        }
+    } // end LambdaToProperty
 
-    object AnyProperty:
-      object OrFail:
+    object AnyProperty {
+      object OrFail {
         def apply(expr: Expr[_])(using History): Property =
-          unapply(expr) match
+          unapply(expr) match {
             case Some(value) => value
             case None =>
               report.throwError(s"Could not parse a ast.Property from the expression: ${Format.Expr(expr)}", expr)
+          }
+      }
 
       def unapply(expr: Expr[_])(using History): Option[Property] =
-        expr match
+        expr match {
           case Unseal(value @ Select(Seal(prefix), member)) =>
             val propertyAst = Property(rootParse(prefix), member)
             // Generally when you have nested select properties (e.g. query[Person].map(p => p.name.first)) then you want to
@@ -172,7 +188,8 @@ object ParserHelpers:
             else
               Some(propertyAst)
           case _ => None
-    end AnyProperty
+        }
+    } // end AnyProperty
   }
 
   trait PropertyAliases(using Quotes) {
@@ -185,25 +202,27 @@ object ParserHelpers:
     def rootParse: Parser
 
     object PropertyAliasExpr {
-      def OrFail[T: Type](expr: Expr[Any]) = expr match
+      def OrFail[T: Type](expr: Expr[Any]) = expr match {
         case PropertyAliasExpr(propAlias) => propAlias
         case _                            => failParse(expr, classOf[PropertyAlias])
+      }
 
       def unapply[T: Type](expr: Expr[Any]): Option[PropertyAlias] =
-        expr match
+        expr match {
           case Lambda1(_, _, '{ ($prop: Any).->[v](${ ConstExpr(alias: String) }) }) =>
             def path(tree: Expr[_]): List[String] =
-              tree match
+              tree match {
                 case a `.` b =>
                   path(a) :+ b
                 case '{ (${ a `.` b }: Option[t]).map[r](${ Lambda1(arg, tpe, body) }) } =>
                   path(a) ++ (b :: path(body))
                 case _ =>
                   Nil
-            end path
+              }
             Some(PropertyAlias(path(prop), alias))
           case _ =>
             None
+        }
     }
   }
 
@@ -212,7 +231,7 @@ object ParserHelpers:
    * of different equality paradigms across ANSI-SQL and Scala for objects that may be Optional or not. Several
    * techniques are implemented to resolve these inconsistencies.
    */
-  trait ComparisonTechniques:
+  trait ComparisonTechniques {
 
     // To be able to access the external parser the extends this
     def rootParse: Parser
@@ -226,14 +245,14 @@ object ParserHelpers:
      * is not macro specific so a good deal of it can be refactored out into the quill-sql-portable module.
      * Do equality checking on the database level with the same truth-table as idiomatic scala
      */
-    def equalityWithInnerTypechecksIdiomatic(using Quotes, History)(left: quotes.reflect.Term, right: quotes.reflect.Term)(equalityBehavior: EqualityBehavior) =
+    def equalityWithInnerTypechecksIdiomatic(using Quotes, History)(left: quotes.reflect.Term, right: quotes.reflect.Term)(equalityBehavior: EqualityBehavior) = {
       import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
       import io.getquill.ast.Implicits._
       val (leftIsOptional, rightIsOptional) = checkInnerTypes(left, right, ForbidInnerCompare)
       val a = rootParse(left.asExpr)
       val b = rootParse(right.asExpr)
       val comparison = BinaryOperation(a, equalityBehavior.operator, b)
-      (leftIsOptional, rightIsOptional, equalityBehavior) match
+      (leftIsOptional, rightIsOptional, equalityBehavior) match {
         // == two optional things. Either they are both null or they are both defined and the same
         case (true, true, Equal) => (OptionIsEmpty(a) +&&+ OptionIsEmpty(b)) +||+ (OptionIsDefined(a) +&&+ OptionIsDefined(b) +&&+ comparison)
         // != two optional things. Either one is null and the other isn't. Or they are both defined and have different values
@@ -245,23 +264,27 @@ object ParserHelpers:
           val lopString = (if (lop) "Optional" else "Non-Optional") + s" ${left}}"
           val ropString = (if (rop) "Optional" else "Non-Optional") + s" ${right}}"
           report.throwError(s"Cannot compare ${lopString} with ${ropString} using operator ${equalityBehavior.operator}", left.asExpr)
+      }
+    }
 
     /**
      * (not used yet but will be used when support for 'extras' dsl functionality is added)
      * Do equality checking on the database level with the ansi-style truth table (i.e. always false if one side is null)
      */
-    def equalityWithInnerTypechecksAnsi(using Quotes, History)(left: quotes.reflect.Term, right: quotes.reflect.Term)(equalityBehavior: EqualityBehavior) =
+    def equalityWithInnerTypechecksAnsi(using Quotes, History)(left: quotes.reflect.Term, right: quotes.reflect.Term)(equalityBehavior: EqualityBehavior) = {
       import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
       import io.getquill.ast.Implicits._
       val (leftIsOptional, rightIsOptional) = checkInnerTypes(left, right, AllowInnerCompare)
       val a = rootParse(left.asExpr)
       val b = rootParse(right.asExpr)
       val comparison = BinaryOperation(a, equalityBehavior.operator, b)
-      (leftIsOptional, rightIsOptional) match
+      (leftIsOptional, rightIsOptional) match {
         case (true, true)   => OptionIsDefined(a) +&&+ OptionIsDefined(b) +&&+ comparison
         case (true, false)  => OptionIsDefined(a) +&&+ comparison
         case (false, true)  => OptionIsDefined(b) +&&+ comparison
         case (false, false) => comparison
+      }
+    }
 
     trait OptionCheckBehavior
 
@@ -278,7 +301,7 @@ object ParserHelpers:
      * the 'weak conformance' operator is used and a subclass is allowed on either side of the `==`. Weak
      * conformance is necessary so that Longs can be compared to Ints etc...
      */
-    def checkInnerTypes(using Quotes)(lhs: quotes.reflect.Term, rhs: quotes.reflect.Term, optionCheckBehavior: OptionCheckBehavior): (Boolean, Boolean) =
+    def checkInnerTypes(using Quotes)(lhs: quotes.reflect.Term, rhs: quotes.reflect.Term, optionCheckBehavior: OptionCheckBehavior): (Boolean, Boolean) = {
       import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
       val leftType = lhs.tpe
       val rightType = rhs.tpe
@@ -293,7 +316,7 @@ object ParserHelpers:
       val rightIsOptional = isOptionType(rightType) && !(rightType.widen =:= TypeRepr.of[Nothing]) && !(rightType.widen =:= TypeRepr.of[Null])
       val typesMatch = wideMatchTypes(rightInner, leftInner)
 
-      optionCheckBehavior match
+      optionCheckBehavior match {
         case AllowInnerCompare if typesMatch =>
           (leftIsOptional, rightIsOptional)
         case ForbidInnerCompare if ((leftIsOptional && rightIsOptional) || (!leftIsOptional && !rightIsOptional)) && typesMatch =>
@@ -306,12 +329,14 @@ object ParserHelpers:
             )
           else
             report.throwError(s"${Format.TypeReprW(leftType)} == ${Format.TypeReprW(rightType)} is not allowed since they are different types.", lhs.asExpr)
+      }
 
-    end checkInnerTypes
+    } // end checkInnerTypes
 
-    def isOptionType(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+    def isOptionType(using Quotes)(tpe: quotes.reflect.TypeRepr) = {
       import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
       tpe <:< TypeRepr.of[Option[_]]
+    }
 
     /**
      * Match types in the most wide way possible. This function is not for generalized type equality since quill does not directly
@@ -325,16 +350,18 @@ object ParserHelpers:
     def wideMatchTypes(using Quotes)(a: quotes.reflect.TypeRepr, b: quotes.reflect.TypeRepr) =
       a.widen =:= b.widen || a.widen <:< b.widen || b.widen <:< a.widen || (isNumeric(a.widen) && isNumeric(b.widen))
 
-    def innerOptionParam(using Quotes)(tpe: quotes.reflect.TypeRepr): quotes.reflect.TypeRepr =
+    def innerOptionParam(using Quotes)(tpe: quotes.reflect.TypeRepr): quotes.reflect.TypeRepr = {
       import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
       if (tpe <:< TypeRepr.of[Option[_]])
-        tpe.asType match
+        tpe.asType match {
           case '[Option[t]] => TypeRepr.of[t]
+        }
       else
         tpe
-  end ComparisonTechniques
+    }
+  } // end ComparisonTechniques
 
-  trait PatternMatchingValues extends Parser with QuatMaking:
+  trait PatternMatchingValues extends Parser with QuatMaking {
     import io.getquill.util.Interpolator
     import io.getquill.util.Messages.TraceType
     import io.getquill.norm.BetaReduction
@@ -343,7 +370,7 @@ object ParserHelpers:
 
     // don't change to ValDef or might override the real valdef in qctx.reflect
     object ValDefTerm {
-      def unapply(using Quotes, History, TranspileConfig)(tree: quotes.reflect.Tree): Option[Ast] =
+      def unapply(using Quotes, History, TranspileConfig)(tree: quotes.reflect.Tree): Option[Ast] = {
         import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
         tree match {
           case TValDef(name, tpe, Some(t @ PatMatchTerm.SimpleClause(ast))) =>
@@ -380,10 +407,11 @@ object ParserHelpers:
 
           case _ => None
         }
+      }
     }
 
     case class PatMatchClause(body: Ast, guard: Ast)
-    enum PatMatch:
+    enum PatMatch {
       // Represents a variable assignment pattern match i.e. single clause with no guards e.g.
       // ptups.map { case (name, age) => ... } where ptups := people.map(p => (p.name, p.age))
       case SimpleClause(body: Ast) extends PatMatch
@@ -391,17 +419,20 @@ object ParserHelpers:
       // In some cases, scala compiler adds a trivial boolean clause to a tuple pattern match
       // we detect these and can just spliced TRUE or 1=1 in those cases
       case AutoAddedTrivialClause
+    }
 
-    object PatMatchTerm:
-      object SimpleClause:
+    object PatMatchTerm {
+      object SimpleClause {
         def unapply(using Quotes, History, TranspileConfig)(term: quotes.reflect.Term): Option[Ast] =
-          PatMatchTerm.unapply(term) match
+          PatMatchTerm.unapply(term) match {
             case Some(PatMatch.SimpleClause(ast)) => Some(ast)
             case _                                => None
+          }
+      }
 
-      def unapply(using Quotes, History, TranspileConfig)(root: quotes.reflect.Term): Option[PatMatch] =
+      def unapply(using Quotes, History, TranspileConfig)(root: quotes.reflect.Term): Option[PatMatch] = {
         import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
-        root match
+        root match {
           case Match(expr, List(CaseDef(fields, None, body))) =>
             Some(PatMatch.SimpleClause(betaReduceTupleFields(expr, fields)(body)))
 
@@ -426,7 +457,9 @@ object ParserHelpers:
             Some(PatMatch.MultiClause(clauses))
 
           case other => None
-      end unapply
+        }
+      } // end unapply
+    }
 
     /**
      * Beta-reduces out tuple members that have been pattern matched to their corresponding components
@@ -463,9 +496,10 @@ object ParserHelpers:
             List()
           case other =>
             val addition =
-              messageExpr match
+              messageExpr match {
                 case Some(expr) => s" in the expression: ${Format.Tree(expr)}"
                 case None       => ""
+              }
             report.throwError(s"Invalid Pattern Matching Term: ${Format.Tree(other)}${addition}.\n" +
               s"Quill Query Pattern matches must be correctly matching tuples.\n" +
               s"For example for query[Person].map(p => (p.name, p.age)) you can then do:\n" +
@@ -496,26 +530,30 @@ object ParserHelpers:
       trace"Result: ${result}".andLog()
       result
     }
-  end PatternMatchingValues
+  } // end PatternMatchingValues
 
-  object ImplicitClassExtensionPattern:
-    private def isImplicitClassMaker(using Quotes)(term: quotes.reflect.Term): Boolean =
+  object ImplicitClassExtensionPattern {
+    private def isImplicitClassMaker(using Quotes)(term: quotes.reflect.Term): Boolean = {
       import quotes.reflect._
       term.tpe.typeSymbol.flags.is(Flags.Implicit) && term.tpe.classSymbol.isDefined
+    }
 
-    private def isImplicitClassMethod(using Quotes)(term: quotes.reflect.Term): Boolean =
+    private def isImplicitClassMethod(using Quotes)(term: quotes.reflect.Term): Boolean = {
       import quotes.reflect._
       term.tpe.termSymbol.flags.is(Flags.Final | Flags.Implicit | Flags.Method)
+    }
 
-    def unapply(expr: Expr[_])(using Quotes) =
+    def unapply(expr: Expr[_])(using Quotes) = {
       import quotes.reflect._
-      expr match
+      expr match {
         // Putting a type-apply in all possible places to detect all possible variations of the
         // implicit class pattern that we need to warn about for Scala 3 (since it no-longer works).
         case expr @ Unseal(UntypeApply(cc @ Apply(UntypeApply(ccid), List(constructorArg)))) if (isImplicitClassMaker(cc) && isImplicitClassMethod(ccid)) =>
           Some((ccid.tpe, constructorArg))
         case _ =>
           None
+      }
+    }
     def errorMessage(using Quotes)(expr: Expr[_], ccid: quotes.reflect.TypeRepr, constructorArg: quotes.reflect.Term) =
       s"""|Error in the expression:
           |  ${Format.Expr(expr)}
@@ -531,5 +569,6 @@ object ParserHelpers:
           |extension (inline input: ${Format.TypeRepr(constructorArg.tpe.widen)})
           |  inline def myMethod = [method content]
           |"""".stripMargin
+  }
 
-end ParserHelpers
+} // end ParserHelpers

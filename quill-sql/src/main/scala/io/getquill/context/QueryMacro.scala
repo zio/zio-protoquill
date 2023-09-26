@@ -9,7 +9,7 @@ import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.QuotedExpr.UprootableWithLifts
 import io.getquill.metaprog.QuotedExpr
 
-object QueryMacro:
+object QueryMacro {
   def apply[T: Type](using Quotes): Expr[EntityQuery[T]] = {
     import quotes.reflect._
     import scala.quoted.Expr.summon
@@ -40,4 +40,4 @@ object QueryMacro:
         '{ EntityQuery.apply[T] }
     }
   }
-end QueryMacro
+} // end QueryMacro

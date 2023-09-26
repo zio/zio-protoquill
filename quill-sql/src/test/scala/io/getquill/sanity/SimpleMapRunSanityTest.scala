@@ -17,8 +17,9 @@ import io.getquill.context.SplicingBehavior
 class SimpleMapRunSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)
 
-  given SplicingBehaviorHint with
+  given SplicingBehaviorHint with {
     override type BehaviorType = SplicingBehavior.FailOnDynamic
+  }
 
   "simple test for inline query and map translated to the mirror idiom" in {
     inline def q = quote {

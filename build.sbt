@@ -1,5 +1,7 @@
 import com.jsuereth.sbtpgp.PgpKeys.publishSigned
 
+Global / onChangedBuildSource := ReloadOnSourceChanges
+
 inThisBuild(
   List(
     organization := "io.getquill",
@@ -326,6 +328,8 @@ lazy val basicSettings = Seq(
   //   //Tests.Argument(TestFrameworks.ScalaTest, "-h", "testresults")
   // ),
   scalacOptions ++= Seq(
-    "-language:implicitConversions", "-explain"
+    "-language:implicitConversions", "-explain",
+    // See https://docs.scala-lang.org/scala3/guides/migration/tooling-syntax-rewriting.html
+    "-no-indent"
   )
 )

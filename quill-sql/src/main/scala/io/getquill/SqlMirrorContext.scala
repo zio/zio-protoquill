@@ -11,7 +11,7 @@ class SqlMirrorContext[+Idiom <: BaseIdiom, +Naming <: NamingStrategy](val idiom
     extends MirrorContextBase[Idiom, Naming]
     with AstSplicing
     with SqlContext[Idiom, Naming]
-    with ArrayMirrorEncoding:
+    with ArrayMirrorEncoding {
 
   val session: MirrorSession = MirrorSession("DefaultMirrorContextSession")
-end SqlMirrorContext
+} // end SqlMirrorContext

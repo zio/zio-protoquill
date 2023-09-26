@@ -46,15 +46,16 @@ import io.getquill.OuterSelectWrap
 import scala.annotation.tailrec
 
 trait ContextVerbTranslate[+Dialect <: Idiom, +Naming <: NamingStrategy]
-    extends ContextTranslateMacro[Dialect, Naming]:
+    extends ContextTranslateMacro[Dialect, Naming] {
   self: Context[Dialect, Naming] =>
   override type TranslateResult[T] = T
   override def wrap[T](t: => T): T = t
   override def push[A, B](result: A)(f: A => B): B = f(result)
   override def seq[A](list: List[A]): List[A] = list
+}
 
 trait ContextTranslateMacro[+Dialect <: Idiom, +Naming <: NamingStrategy]
-    extends ContextTranslateProto[Dialect, Naming]:
+    extends ContextTranslateProto[Dialect, Naming] {
   self: Context[Dialect, Naming] =>
 
   type TranslateResult[T]
@@ -145,9 +146,9 @@ trait ContextTranslateMacro[+Dialect <: Idiom, +Naming <: NamingStrategy]
     }
     QueryExecutionBatch.apply(ca, 1)(quoted)
   }
-end ContextTranslateMacro
+} // end ContextTranslateMacro
 
-trait ContextTranslateProto[+Dialect <: Idiom, +Naming <: NamingStrategy]:
+trait ContextTranslateProto[+Dialect <: Idiom, +Naming <: NamingStrategy] {
   self: Context[Dialect, Naming] =>
 
   type TranslateResult[T]
@@ -201,4 +202,4 @@ trait ContextTranslateProto[+Dialect <: Idiom, +Naming <: NamingStrategy]:
     case str: String => s"'$str'"
     case _           => param.toString
   }
-end ContextTranslateProto
+} // end ContextTranslateProto
