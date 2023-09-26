@@ -18,10 +18,12 @@ class OperationTest extends Spec with TestEntities with Inside {
   // remove the === matcher from scalatest so that we can test === in Context.extra
   override def convertToEqualizer[T](left: T): Equalizer[T] = new Equalizer(left)
 
-  extension (ast: Ast)
-    def body: Ast = ast match
+  extension (ast: Ast) {
+    def body: Ast = ast match {
       case f: Function => f.body
       case _ => fail(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+    }
+  }
 
   "binary operation" - {
     "==" - {

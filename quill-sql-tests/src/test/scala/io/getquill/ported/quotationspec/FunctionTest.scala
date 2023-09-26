@@ -14,10 +14,12 @@ class FunctionTest extends Spec with TestEntities {
       CollectAst(a) { case d: Dynamic => d }.nonEmpty
   }
 
-  extension (ast: Ast)
-    def body: Ast = ast match
+  extension (ast: Ast) {
+    def body: Ast = ast match {
       case f: Function => f.body
       case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+    }
+  }
 
   "function" - {
     "anonymous function" in {

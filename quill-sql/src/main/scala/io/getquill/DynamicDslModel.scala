@@ -124,7 +124,7 @@ sealed class DynamicQuery[+T](val q: Quoted[Query[T]]) {
   def take(n: Quoted[Int]): DynamicQuery[T] =
     dyn(Take(q.ast, n.ast), q.lifts ++ n.lifts, q.runtimeQuotes ++ n.runtimeQuotes)
 
-  def take(n: Int)(implicit enc: GenericEncoder[Int, _, _]): DynamicQuery[T] =
+  def take(n: Int)(implicit enc: GenericEncoder[Int, _, _]): DynamicQuery[T] = {
     val uid = UUID.randomUUID().toString
     val out =
       DynamicQuery[T](
@@ -135,6 +135,7 @@ sealed class DynamicQuery[+T](val q: Quoted[Query[T]]) {
         )
       )
     out
+  }
 
   def takeOpt(opt: Option[Int])(implicit enc: GenericEncoder[Int, _, _]): DynamicQuery[T] =
     opt match {
@@ -309,7 +310,7 @@ case class DynamicEntityQuery[T](override val q: Quoted[EntityQuery[T]]) extends
         (setPropertyQuote, setValueQuote, Assignment(v, setPropertyQuote.ast, setValueQuote.ast))
     }
 
-  def insert(l: DynamicSet[T, _]*): DynamicInsert[T] =
+  def insert(l: DynamicSet[T, _]*): DynamicInsert[T] = {
     val outputs = propsValuesAndQuotes(l.toList)
     val assignemnts = outputs.map(_._3)
     val lifts = (outputs.map(_._1.lifts).flatten ++ outputs.map(_._2.lifts).flatten).distinct
@@ -317,8 +318,9 @@ case class DynamicEntityQuery[T](override val q: Quoted[EntityQuery[T]]) extends
     DynamicInsert(
       Quoted[Insert[T]](io.getquill.ast.Insert(DynamicEntityQuery.this.q.ast, assignemnts), q.lifts ++ lifts, q.runtimeQuotes ++ runtimeQuotes)
     )
+  }
 
-  def update(sets: DynamicSet[T, _]*): DynamicUpdate[T] =
+  def update(sets: DynamicSet[T, _]*): DynamicUpdate[T] = {
     val outputs = propsValuesAndQuotes(sets.toList)
     val assignemnts = outputs.map(_._3)
     val lifts = (outputs.map(_._1.lifts).flatten ++ outputs.map(_._2.lifts).flatten).distinct
@@ -330,6 +332,7 @@ case class DynamicEntityQuery[T](override val q: Quoted[EntityQuery[T]]) extends
         q.runtimeQuotes ++ runtimeQuotes
       )
     )
+  }
 
   def delete: DynamicDelete[T] =
     DynamicDelete(

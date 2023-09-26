@@ -6,7 +6,7 @@ import scala.collection.mutable.{Map => MutableMap}
 /**
  * Should eventualy unify this with io.getquill.util.Messages in Scala2-Quill
  */
-object ProtoMessages:
+object ProtoMessages {
   private def variable(propName: String, envName: String, default: String) =
     Option(System.getProperty(propName)).orElse(sys.env.get(envName)).getOrElse(default)
 
@@ -20,4 +20,4 @@ object ProtoMessages:
   private[getquill] def maxQuatFields = cache("quill.quat.tooManyFields", variable("quill.quat.tooManyFields", "quill_quat_tooManyFields", "4").toInt)
   private[getquill] def errorDetail = cache("quill.error.detail", variable("quill.error.detail", "quill_error_detail", "false").toBoolean)
 
-end ProtoMessages
+} // end ProtoMessages

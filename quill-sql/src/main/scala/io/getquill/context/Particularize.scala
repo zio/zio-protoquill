@@ -37,10 +37,10 @@ import io.getquill.parser.Lifters
  * that represents the Query that is to be during runtime based on the content of the list
  * which has to be manipulated inside of a '{ ... } block.
  */
-object Particularize:
+object Particularize {
 
   // the following should test for that: update - extra lift + scalars + liftQuery/setContains
-  object Static:
+  object Static {
     /** Convenience constructor for doing particularization from an Unparticular.Query */
     def apply[PrepareRowTemp: Type](
         query: Unparticular.Query,
@@ -48,15 +48,16 @@ object Particularize:
         runtimeLiftingPlaceholder: Expr[Int => String],
         emptySetContainsToken: Expr[Token => Token],
         valuesClauseRepeats: Expr[Int]
-    )(traceConfig: TraceConfig)(using Quotes): Expr[String] =
+    )(traceConfig: TraceConfig)(using Quotes): Expr[String] = {
       import quotes.reflect._
       val liftsExpr: Expr[List[Planter[?, ?, ?]]] = Expr.ofList(lifts)
       val queryExpr: Expr[Unparticular.Query] = UnparticularQueryLiftable(query)
       val traceConfigExpr = TranspileConfigLiftable(traceConfig)
       '{ Dynamic[PrepareRowTemp]($queryExpr, $liftsExpr, $runtimeLiftingPlaceholder, $emptySetContainsToken)($traceConfigExpr)._1 }
-  end Static
+    }
+  } // end Static
 
-  object Dynamic:
+  object Dynamic {
     /** Convenience constructor for doing particularization from an Unparticular.Query */
     def apply[PrepareRowTemp](
         query: Unparticular.Query,
@@ -66,16 +67,18 @@ object Particularize:
         valuesClauseRepeats: Int = 1
     )(traceConfig: TraceConfig): (String, LiftsOrderer) =
       new Dynamic(traceConfig)(query.realQuery, lifts, liftingPlaceholder, emptySetContainsToken, valuesClauseRepeats)
+  }
 
-  private[getquill] class Dynamic[PrepareRowTemp, Session](traceConfig: TraceConfig):
+  private[getquill] class Dynamic[PrepareRowTemp, Session](traceConfig: TraceConfig) {
     val interp = new Interpolator(TraceType.Particularization, traceConfig, 1)
     import interp._
 
     def apply(statements: Statement, lifts: List[Planter[_, _, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token, valuesClauseRepeats: Int): (String, LiftsOrderer) = {
-      enum LiftChoice:
+      enum LiftChoice {
         case ListLift(value: EagerListPlanter[Any, PrepareRowTemp, Session])
         case SingleLift(value: Planter[Any, PrepareRowTemp, Session])
         case InjectableLift(value: Planter[Any, PrepareRowTemp, Session])
+      }
 
       val listLifts = lifts.collect { case e: EagerListPlanter[_, _, _] => e.asInstanceOf[EagerListPlanter[Any, PrepareRowTemp, Session]] }.map(lift => (lift.uid, lift)).toMap
       val singleLifts = lifts.collect { case e: EagerPlanter[_, _, _] => e.asInstanceOf[EagerPlanter[Any, PrepareRowTemp, Session]] }.map(lift => (lift.uid, lift)).toMap
@@ -90,9 +93,9 @@ object Particularize:
           }
 
       // TODO Also need to account for empty tokens but since we actually have a reference to the list can do that directly
-      def placeholders(uid: String, initialIndex: Int): (Int, String, LiftChoice) =
+      def placeholders(uid: String, initialIndex: Int): (Int, String, LiftChoice) = {
         val liftChoiceKind = getLifts(uid)
-        liftChoiceKind match
+        liftChoiceKind match {
           case LiftChoice.ListLift(lifts) =>
             // using index 1 since SQL prepares start with $1 typically
             val liftsPlaceholder =
@@ -103,11 +106,14 @@ object Particularize:
             (1, liftingPlaceholder(initialIndex), liftChoiceKind)
           case LiftChoice.InjectableLift(lift) =>
             (1, liftingPlaceholder(initialIndex), liftChoiceKind)
+        }
+      }
 
       def isEmptyListLift(uid: String) =
-        getLifts(uid) match
+        getLifts(uid) match {
           case LiftChoice.ListLift(lifts) => lifts.values.isEmpty
           case _                          => false
+        }
 
       trait Work
       case class Item(token: io.getquill.idiom.Token) extends Work
@@ -134,20 +140,22 @@ object Particularize:
             head match {
               case Item(StringToken(s2)) => apply(tail, sqlResult :+ s2, lifts, liftsCount, valueClausesIndex)
               case Item(SetContainsToken(a, op, b)) =>
-                b match
+                b match {
                   case ScalarTagToken(tag) if isEmptyListLift(tag.uid) =>
                     apply(Item(emptySetContainsToken(a)) +: tail, sqlResult, lifts, liftsCount, valueClausesIndex)
                   case _ =>
                     apply(Item(stmt"$a $op ($b)") +: tail, sqlResult, lifts, liftsCount, valueClausesIndex)
+                }
               case Item(ScalarTagToken(tag)) =>
                 val (liftsLength, liftPlaceholders, liftChoice) = placeholders(tag.uid, liftsCount)
                 val newLift =
-                  liftChoice match
+                  liftChoice match {
                     case LiftChoice.InjectableLift(_) =>
                       LiftSlot.makeNumbered(valueClausesIndex, tag)
                     case _ =>
                       trace"Making Normal Lift ${tag.uid}".andLog()
                       LiftSlot.makePlain(tag)
+                  }
 
                 apply(tail, sqlResult :+ liftPlaceholders, lifts :+ newLift, liftsCount + liftsLength, valueClausesIndex)
               case Item(ValuesClauseToken(stmt)) =>
@@ -184,7 +192,7 @@ object Particularize:
 
       token2String(statements)
     }
-  end Dynamic
+  } // end Dynamic
 
   private implicit class IterableExtensions[A](list: Iterable[A]) extends AnyVal {
     def toChunk[A] = Chunk.fromIterable(list)
@@ -205,21 +213,26 @@ object Particularize:
 
   case class LiftSlot(rank: LiftSlot.Rank, external: ScalarTag)
   object LiftSlot {
-    enum Rank:
+    enum Rank {
       case Numbered(num: Int) // for values-clauses
       case Universal // for regular lifts
+    }
     def makePlain(lift: ScalarTag) = LiftSlot(Rank.Universal, lift)
     def makeNumbered(number: Int, lift: ScalarTag) = LiftSlot(Rank.Numbered(number), lift)
-    object Numbered:
+    object Numbered {
       def unapply(liftSlot: LiftSlot) =
-        liftSlot match
+        liftSlot match {
           case LiftSlot(Rank.Numbered(num), ScalarTag(uid, _)) => Some((num, uid))
           case _                                               => None
-    object Plain:
+        }
+    }
+    object Plain {
       def unapply(liftSlot: LiftSlot) =
-        liftSlot match
+        liftSlot match {
           case LiftSlot(Rank.Universal, ScalarTag(uid, _)) => Some((uid))
           case _                                           => None
+        }
+    }
   }
 
   case class LiftsOrderer(slots: List[LiftSlot])(traceConfig: TraceConfig) {
@@ -258,24 +271,26 @@ object Particularize:
     }
   }
 
-  private[getquill] object UnparticularQueryLiftable:
+  private[getquill] object UnparticularQueryLiftable {
     def apply(token: Unparticular.Query)(using Quotes) = liftUnparticularQuery(token)
     extension [T](t: T)(using ToExpr[T], Quotes) def expr: Expr[T] = Expr(t)
     import io.getquill.parser.Lifters.Plain
 
-    given liftUnparticularQuery: Lifters.Plain[Unparticular.Query] with
-      def lift =
+    given liftUnparticularQuery: Lifters.Plain[Unparticular.Query] with {
+      def lift = {
         case Unparticular.Query(basicQuery: String, realQuery: Statement) =>
           '{ Unparticular.Query(${ basicQuery.expr }, ${ StatementLiftable(realQuery) }) }
-  end UnparticularQueryLiftable
+      }
+    }
+  } // end UnparticularQueryLiftable
 
-  private[getquill] object StatementLiftable:
+  private[getquill] object StatementLiftable {
     def apply(token: Statement)(using Quotes) = liftStatement(token)
     extension [T](t: T)(using ToExpr[T], Quotes) def expr: Expr[T] = Expr(t)
     import io.getquill.parser.Lifters.Plain
 
-    given liftToken: Lifters.Plain[Token] with
-      def lift =
+    given liftToken: Lifters.Plain[Token] with {
+      def lift = {
         // Note strange errors about SerializeHelper.fromSerialized types can happen here if NotSerializing is not true.
         // Anyway we do not want tag-serialization here for the sake of simplicity for the tokenization which happens at runtime.
         // AST serialization is generally used to make unlifting deeply nested ASTs simpler but Quotation/Scalar Tags are only 1-level deep.
@@ -286,9 +301,13 @@ object Particularize:
         case SetContainsToken(a, op, b)            => '{ io.getquill.idiom.SetContainsToken(${ a.expr }, ${ op.expr }, ${ b.expr }) }
         case ScalarLiftToken(lift)                 => quotes.reflect.report.throwError("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
         case ValuesClauseToken(stmt)               => '{ io.getquill.idiom.ValuesClauseToken(${ stmt.expr }) }
+      }
+    }
 
-    given liftStatement: Lifters.Plain[Statement] with
-      def lift =
+    given liftStatement: Lifters.Plain[Statement] with {
+      def lift = {
         case Statement(tokens) => '{ io.getquill.idiom.Statement(${ tokens.expr }) }
-  end StatementLiftable
-end Particularize
+      }
+    }
+  } // end StatementLiftable
+} // end Particularize

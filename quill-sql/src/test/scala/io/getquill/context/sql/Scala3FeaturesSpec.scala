@@ -27,13 +27,15 @@ class Scala3FeaturesSpec extends Spec {
     "inline case class match" - {
 
       sealed trait Filter
-      object Filter:
+      object Filter {
         case class ByName(name: String) extends Filter
         case class ByAge(from: Int, to: Int) extends Filter
+      }
 
-      enum FilterEnum:
+      enum FilterEnum {
         case ByName(name: String) extends FilterEnum
         case ByAge(from: Int, to: Int) extends FilterEnum
+      }
 
       // Can't do it like this:
       /*
@@ -50,9 +52,10 @@ class Scala3FeaturesSpec extends Spec {
       // Need to do it like this
       "with lift" in {
         inline def filterPerson(inline q: Query[Person])(inline f: Filter) =
-          inline f match
+          inline f match {
             case Filter.ByName(name)    => q.filter(p => p.name == name)
             case Filter.ByAge(from, to) => q.filter(p => p.age > from && p.age < to)
+          }
 
         ctx.run(filterPerson(query[Person])(Filter.ByName(lift("Joe")))).triple mustEqual (
           "SELECT p.name, p.age FROM Person p WHERE p.name = ?",
@@ -77,9 +80,10 @@ class Scala3FeaturesSpec extends Spec {
 
       "regular" in {
         inline def filterPerson(inline q: Query[Person])(inline f: Filter) =
-          inline f match
+          inline f match {
             case Filter.ByName(name)    => q.filter(p => p.name == name)
             case Filter.ByAge(from, to) => q.filter(p => p.age > from && p.age < to)
+          }
 
         ctx.run(filterPerson(query[Person])(Filter.ByName("Joe"))).triple mustEqual (
           "SELECT p.name, p.age FROM Person p WHERE p.name = 'Joe'",

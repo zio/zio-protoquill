@@ -20,8 +20,8 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   def QEP(name: String) = Quat.Product.empty(name)
   def QP(name: String, fields: String*) = Quat.LeafProduct(name, fields: _*)
 
-  extension (m: MirrorContextBase[_, _]#BatchActionReturningMirror[_])
-    def triple =
+  extension (m: MirrorContextBase[_, _]#BatchActionReturningMirror[_]) {
+    def triple = {
       if (m.groups.length != 1) fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
       val (queryString, returnAction, prepares) = m.groups(0)
       (
@@ -35,8 +35,10 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         },
         m.info.executionType
       )
+    }
+  }
 
-  extension (m: MirrorContextBase[_, _]#BatchActionReturningMirror[_])
+  extension (m: MirrorContextBase[_, _]#BatchActionReturningMirror[_]) {
     def tripleBatchMulti =
       m.groups.map { (queryString, returnAction, prepares) =>
         (
@@ -51,16 +53,18 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
           m.info.executionType
         )
       }
+  }
 
   private def deIndexify(value: Any): Any =
-    value match
+    value match {
       case Some((Row.TupleIndex(a) -> b)) => Some(deIndexify(b))
       case list: Seq[Any]                 => list.map(deIndexify(_))
       case Row.TupleIndex(a) -> b         => b
       case other                          => other
+    }
 
-  extension (m: MirrorContextBase[_, _]#BatchActionMirror)
-    def triple =
+  extension (m: MirrorContextBase[_, _]#BatchActionMirror) {
+    def triple = {
       if (m.groups.length != 1) fail(s"Expected all batch groups per design to only have one root element but has multiple ${m.groups}")
       val (queryString, prepares) = m.groups(0)
       (
@@ -74,8 +78,10 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         },
         m.info.executionType
       )
+    }
+  }
 
-  extension (m: MirrorContextBase[_, _]#BatchActionMirror)
+  extension (m: MirrorContextBase[_, _]#BatchActionMirror) {
     def tripleBatchMulti =
       m.groups.map { (queryString, prepares) =>
         (
@@ -90,8 +96,9 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
           m.info.executionType
         )
       }
+  }
 
-  extension (m: MirrorContextBase[_, _]#ActionMirror)
+  extension (m: MirrorContextBase[_, _]#ActionMirror) {
     def triple =
       (
         m.string,
@@ -101,8 +108,9 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         },
         m.info.executionType
       )
+  }
 
-  extension (m: MirrorContextBase[_, _]#ActionReturningMirror[_, _])
+  extension (m: MirrorContextBase[_, _]#ActionReturningMirror[_, _]) {
     def triple =
       (
         m.string,
@@ -112,8 +120,9 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         },
         m.info.executionType
       )
+  }
 
-  extension [T](m: MirrorContextBase[_, _]#QueryMirror[_])
+  extension [T](m: MirrorContextBase[_, _]#QueryMirror[_]) {
     def triple =
       (
         m.string,
@@ -123,9 +132,10 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         },
         m.info.executionType
       )
+  }
 
-  extension [T, D <: Idiom, N <: NamingStrategy](ctx: MirrorContextBase[D, N])
-    inline def pull(inline q: Query[T]) =
+  extension [T, D <: Idiom, N <: NamingStrategy](ctx: MirrorContextBase[D, N]) {
+    inline def pull(inline q: Query[T]) = {
       val r = ctx.run(q)
       (
         r.prepareRow match {
@@ -134,15 +144,19 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
         },
         r.info.executionType
       )
+    }
+  }
 
-  extension [T, PrepareRow, Session](q: Quoted[T])
+  extension [T, PrepareRow, Session](q: Quoted[T]) {
     def encodeEagerLifts(row: PrepareRow, session: Session) =
       q.lifts.zipWithIndex.collect {
         case (ep: EagerPlanter[String, PrepareRow, Session], idx) => ep.encoder(idx, ep.value, row, session)
       }
+  }
 
-  extension (ast: Ast)
+  extension (ast: Ast) {
     def asFunction = ast.asInstanceOf[Function]
+  }
 
   object ShortAst {
     object Id {
@@ -156,9 +170,10 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
     object `(+)` {
       def apply(a: Ast, b: Ast) = BinaryOperation(a, StringOperator.+, b)
       def unapply(ast: Ast) =
-        ast match
+        ast match {
           case BinaryOperation(a, StringOperator.+, b) => Some(a, b)
           case _                                       => None
+        }
     }
   }
 
@@ -172,6 +187,7 @@ abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
       }
   }
 
-  case class NameChangeIdent(nameChange: PartialFunction[String, String]) extends StatelessTransformer:
+  case class NameChangeIdent(nameChange: PartialFunction[String, String]) extends StatelessTransformer {
     override def applyIdent(id: Ident) = id.copy(name = nameChange.lift(id.name).getOrElse(id.name))
+  }
 }

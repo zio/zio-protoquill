@@ -13,17 +13,21 @@ import com.datastax.oss.driver.api.core.data.UdtValue
 import com.datastax.oss.driver.api.core.cql.Row
 import com.datastax.oss.driver.api.core.cql.BoundStatement
 
-trait CassandraEncoderMaker[Encoder[_], T]:
+trait CassandraEncoderMaker[Encoder[_], T] {
   def apply(e: (Int, T, BoundStatement, UdtValueLookup) => BoundStatement): Encoder[T]
+}
 
-trait CassandraDecoderMaker[Decoder[_], T]:
+trait CassandraDecoderMaker[Decoder[_], T] {
   def apply(e: (Int, Row, UdtValueLookup) => T): Decoder[T]
+}
 
-trait CassandraEncodeMapperMaker[Encoder[_], T]:
+trait CassandraEncodeMapperMaker[Encoder[_], T] {
   def apply(f: (T, UdtValueLookup) => UdtValue): CassandraMapper[T, UdtValue, MapperSide.Encode]
+}
 
-trait CassandraDecodeMapperMaker[Encoder[_], T]:
+trait CassandraDecodeMapperMaker[Encoder[_], T] {
   def apply(f: (UdtValue, UdtValueLookup) => T): CassandraMapper[UdtValue, T, MapperSide.Decode]
+}
 
 trait Encoders
 extends CassandraRowContext

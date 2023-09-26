@@ -7,7 +7,7 @@ import io.getquill.util.Format
 import scala.util.Try
 
 /** Remove all instances of SerialHelper.fromSerialized from a tree (for printing purposes) */
-object DeserializeAstInstances:
+object DeserializeAstInstances {
   def apply[T: Type](input: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect.{Try => _, _}
     import io.getquill.parser.SerialHelper
@@ -21,7 +21,7 @@ object DeserializeAstInstances:
 
     class CustomExprMap extends ExprMap {
       def transform[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] =
-        expr match
+        expr match {
           case exprMatch(ast) =>
             try {
               val astExpr = Lifter.NotSerializing.liftAst(ast)
@@ -46,6 +46,7 @@ object DeserializeAstInstances:
 
           case other =>
             Try(transformChildren(other)).getOrElse(other)
+        }
     }
 
     try {
@@ -56,7 +57,7 @@ object DeserializeAstInstances:
         input
     }
   }
-end DeserializeAstInstances
+} // end DeserializeAstInstances
 
 object ExprAccumulate {
   def apply[T: Type, ExpectedType](input: Expr[Any], recurseWhenMatched: Boolean = true)(matcher: PartialFunction[Expr[Any], T])(using Quotes): List[T] = {
@@ -73,7 +74,7 @@ object ExprAccumulate {
       override def transformChildren[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] = {
         try {
           // If it is a Quat we immediately know it's not a Uprootable (i.e. we have gone too far down the chain)
-          expr match
+          expr match {
             case _ if isQuat(expr) => expr
             // Not sure why but transformChildren causes a varargs case to fail with
             // "Expr cast exception Seq[TF] could not be cast to type _*"
@@ -85,6 +86,7 @@ object ExprAccumulate {
               expr
             case _ =>
               super.transformChildren(expr)
+          }
 
         } catch {
           case e if e.getMessage.startsWith("Expr cast exception:") => // hello
@@ -103,12 +105,13 @@ object ExprAccumulate {
       def transform[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] = {
         val found =
           if (!isQuat(expr))
-            matcher.lift(expr) match
+            matcher.lift(expr) match {
               case Some(result) =>
                 buff += result
                 true
               case None =>
                 false
+            }
           else
             false
 
@@ -116,12 +119,13 @@ object ExprAccumulate {
         // if we have found something and are told to continue recursion then continue recursion
         val continue = !found || recurseWhenMatched
 
-        expr.asTerm match
+        expr.asTerm match {
           // Not including this causes execption "scala.tasty.reflect.ExprCastError: Expr: [ : Nothing]" in certain situations
           case Repeated(Nil, Inferred()) => expr
           case _ if (isQuat(expr))       => expr
           case _ if continue             => transformChildren[TF](expr)
           case _                         => expr
+        }
       }
     }
 

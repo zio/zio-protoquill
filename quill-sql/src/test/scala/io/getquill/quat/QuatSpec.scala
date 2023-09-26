@@ -8,14 +8,17 @@ import io.getquill.quat._
 
 import io.getquill._
 
-object TestEnum:
-  enum MyEnum:
+object TestEnum {
+  enum MyEnum {
     case Foo
     case Bar
+  }
   case class MyEnumContainer(e: MyEnum)
-  enum ProductEnum:
+  enum ProductEnum {
     case Foo(stuff: String)
     case Bar(stuff: String, otherStuff: String)
+  }
+}
 
 class QuatSpec extends AnyFreeSpec {
 

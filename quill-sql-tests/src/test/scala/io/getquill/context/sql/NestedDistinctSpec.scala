@@ -9,8 +9,9 @@ import io.getquill.context.SplicingBehavior
 class NestedDistinctSpec extends Spec {
 
   // Make sure that all queries in this file are static, fail the compile if any are dynamic
-  given SplicingBehaviorHint with
+  given SplicingBehaviorHint with {
     override type BehaviorType = SplicingBehavior.FailOnDynamic
+  }
 
   val v = "foo"
 

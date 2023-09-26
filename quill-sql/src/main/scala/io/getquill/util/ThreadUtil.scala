@@ -1,5 +1,6 @@
 package io.getquill.util
 
-object ThreadUtil:
+object ThreadUtil {
   def currentThreadTrace =
     Thread.currentThread.getStackTrace.map("  " + _.toString).mkString("\n")
+}

@@ -20,16 +20,16 @@ trait UdtMeta[T <: Udt] {
   def alias(col: String): Option[String]
 }
 
-object UdtMeta:
+object UdtMeta {
   import scala.quoted.*
-  def build[T <: Udt: Type](using Quotes): Expr[UdtMeta[T]] =
+  def build[T <: Udt: Type](using Quotes): Expr[UdtMeta[T]] = {
     import quotes.reflect.*
     if (TypeRepr.of[T] =:= TypeRepr.of[Udt])
       // TODO quill.trace.types 'summoning' level should enable this
       //println("Cannot derive schema for the base Udt (print the stack trace too)")
       '{ ??? }
     else
-      Expr.summon[UdtMeta[T]] match
+      Expr.summon[UdtMeta[T]] match {
         // if there is an implicit meta
         case Some(meta) => meta
         // def apply[T <: Udt: Type](path: Expr[String], columns: Expr[Seq[T => (Any, String)]])(using Quotes): Expr[UdtMeta[T]] = {
@@ -38,4 +38,6 @@ object UdtMeta:
           // TODO quill.trace.types 'summoning' level should enable this
           //println(s"Dsl not found. Making one with the type name: ${typeName}")
           UdtMetaDslMacro[T](Expr(typeName), Expr.ofList(Seq()))
-end UdtMeta
+      }
+  }
+} // end UdtMeta

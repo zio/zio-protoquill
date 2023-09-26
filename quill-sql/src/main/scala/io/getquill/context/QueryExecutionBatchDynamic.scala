@@ -62,7 +62,7 @@ import io.getquill.ast.External.Source
 import io.getquill.ast.Ident
 import io.getquill.util.TraceConfig
 
-object QueryExecutionBatchDynamic:
+object QueryExecutionBatchDynamic {
   import QueryExecutionBatchModel._
   import PrepareDynamicExecution._
 
@@ -121,11 +121,12 @@ object QueryExecutionBatchDynamic:
 
     // equivalent to static expandQuotation result
     val dynamicExpandedQuotation =
-      batchActionType match
+      batchActionType match {
         case BatchActionType.Insert => Quoted[Insert[I]](actionQueryAst, perRowLifts, Nil) // Already gathered queries and lifts from sub-clauses, don't need them anymore
         case BatchActionType.Update => Quoted[Update[I]](actionQueryAst, perRowLifts, Nil)
         // We need lifts for 'Delete' because it could have a WHERE clause
         case BatchActionType.Delete => Quoted[Delete[I]](actionQueryAst, perRowLifts, Nil)
+      }
 
     val (stmt, outputAst, sortedLiftsRaw, extractor, sortedSecondaryLifts) =
       PrepareDynamicExecution[I, T, T, D, N, PrepareRow, ResultRow, Session](
@@ -150,11 +151,12 @@ object QueryExecutionBatchDynamic:
 
     // Get the planters needed for every element lift (see primaryPlanterLifts in BatchStatic for more detail)
     val primaryPlanterLifts =
-      primaryPlanter match
+      primaryPlanter match {
         case PlanterKind.PrimaryEntitiesList(entitiesPlanter) =>
           expandLiftQueryMembers(sortedLifts, entitiesPlanter.value).toList
         case PlanterKind.PrimaryScalarList(scalarsPlanter) =>
           expandLiftQueryMembers(sortedLifts, scalarsPlanter.values).toList
+      }
 
     val (unparticularQuery, _) = Unparticular.Query.fromStatement(stmt, batchContextOperation.idiom.liftingPlaceholder)
 
@@ -176,19 +178,22 @@ object QueryExecutionBatchDynamic:
     batchContextOperation.execute(ContextOperation.BatchArgument(batchGroups, extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst, topLevelQuat), None))
   }
 
-  extension [T](element: Either[String, T])
+  extension [T](element: Either[String, T]) {
     def rightOrException() =
-      element match
+      element match {
         case Right(value) => value
         case Left(error)  => throw new IllegalArgumentException(error)
+      }
+  }
 
   // NOTE We don't need to process secondary planters anymore because that list is not being used.
   // It is handled by the static state. Can removing everything having to do with secondary planters list in a future PR.
   sealed trait PlanterKind
-  object PlanterKind:
+  object PlanterKind {
     case class PrimaryEntitiesList(planter: EagerEntitiesPlanter[?, ?, ?]) extends PlanterKind
     case class PrimaryScalarList(planter: EagerListPlanter[?, ?, ?]) extends PlanterKind
     case class Other(planter: Planter[?, ?, ?]) extends PlanterKind
+  }
 
   def organizePlanters(planters: List[Planter[?, ?, ?]]) =
     planters.foldLeft((Option.empty[PlanterKind.PrimaryEntitiesList | PlanterKind.PrimaryScalarList], List.empty[PlanterKind.Other])) {
@@ -214,7 +219,7 @@ object QueryExecutionBatchDynamic:
       extractionBehavior: QueryExecutionBatchModel.BatchExtractBehavior,
       traceConfig: TraceConfig
   ): (Ident, Ast, BatchActionType, List[InjectableEagerPlanter[?, PrepareRow, Session]]) =
-    primaryPlanter match
+    primaryPlanter match {
       // In the case of liftQuery(entities)
       case PlanterKind.PrimaryEntitiesList(planter) =>
         val (foreachIdent, actionQueryAst, batchActionType) = PrepareBatchComponents[I, PrepareRow](ast, planter.fieldClass, extractionBehavior, traceConfig).rightOrException()
@@ -232,5 +237,6 @@ object QueryExecutionBatchDynamic:
         val (foreachIdent, actionQueryAst, batchActionType) = PrepareBatchComponents[I, PrepareRow](ast, foreachReplacementAst, extractionBehavior, traceConfig).rightOrException()
         // return the combined batch components
         (foreachIdent, actionQueryAst, batchActionType, List(perRowLift))
+    }
 
-end QueryExecutionBatchDynamic
+} // end QueryExecutionBatchDynamic

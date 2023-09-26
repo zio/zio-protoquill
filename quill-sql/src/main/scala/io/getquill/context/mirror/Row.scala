@@ -4,7 +4,7 @@ import scala.reflect.ClassTag
 import scala.collection.mutable.LinkedHashMap
 import scala.annotation.targetName
 
-object Row:
+object Row {
   case class Data(key: String, value: Any)
   @targetName("columns")
   def apply(values: (String, Any)*) = new Row(values.map((k, v) => Data(k, v)).toList)
@@ -16,6 +16,7 @@ object Row:
       else
         None
   }
+}
 
 case class Row(elements: List[Row.Data]) {
   private lazy val dataMap = LinkedHashMap(elements.map(d => (d.key, d.value)): _*)
@@ -36,10 +37,11 @@ case class Row(elements: List[Row.Data]) {
       case other => throw new RuntimeException(s"Invalid column type. Expected '${t.runtimeClass}', but got '$other'")
     }
 
-  def indexOfKey(key: String) =
+  def indexOfKey(key: String) = {
     val output = data.indexWhere(d => d._1 == key)
     if (output == -1) throw new IllegalArgumentException(s"Cannot find a property called '${key}'")
     output
+  }
 
   private def maxNumberedRow =
     dataMap.keySet.foldLeft(0) { (currIndex, key) =>

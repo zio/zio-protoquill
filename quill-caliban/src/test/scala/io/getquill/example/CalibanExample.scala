@@ -24,7 +24,7 @@ import io.getquill
 import io.getquill.FlatSchema._
 
 
-object Dao:
+object Dao {
   case class PersonAddressPlanQuery(plan: String, pa: List[PersonAddress])
   private val logger = ContextLogger(classOf[Dao.type])
 
@@ -44,12 +44,13 @@ object Dao:
   inline def plan(inline columns: List[String], inline filters: Map[String, String]) =
     quote { sql"EXPLAIN ${q(columns, filters)}".pure.as[Query[String]] }
 
-  def personAddress(columns: List[String], filters: Map[String, String]) =
+  def personAddress(columns: List[String], filters: Map[String, String]) = {
     println(s"Getting columns: $columns")
     run(q(columns, filters)).implicitDS.mapError(e => {
       logger.underlying.error("personAddress query failed", e)
       e
     })
+  }
 
   def personAddressPlan(columns: List[String], filters: Map[String, String]) =
     run(plan(columns, filters), OuterSelectWrap.Never).map(_.mkString("\n")).implicitDS.mapError(e => {
@@ -63,9 +64,9 @@ object Dao:
       _ <- run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insertValue(row)))
       _ <- run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insertValue(row)))
     } yield ()).implicitDS
-end Dao
+} // end Dao
 
-object CalibanExample extends zio.ZIOAppDefault:
+object CalibanExample extends zio.ZIOAppDefault {
 
   case class Queries(
       personAddress: Field => (ProductArgs[PersonAddress] => Task[List[PersonAddress]]),
@@ -106,4 +107,4 @@ object CalibanExample extends zio.ZIOAppDefault:
   override def run =
     myApp.exitCode
 
-end CalibanExample
+} // end CalibanExample

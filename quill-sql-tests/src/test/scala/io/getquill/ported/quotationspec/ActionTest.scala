@@ -13,10 +13,12 @@ import io.getquill.PicklingHelper._
 class ActionTest extends Spec with TestEntities with Inside {
   case class ActionTestEntity(id: Int)
 
-  extension (ast: Ast)
-    def body: Ast = ast match
+  extension (ast: Ast) {
+    def body: Ast = ast match {
       case f: Function => f.body
       case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+    }
+  }
 
   def internalizeVLabel(ast: Ast) =
     NameChangeIdent{ case "v" => "_$V" }.apply(ast)

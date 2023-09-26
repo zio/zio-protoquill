@@ -75,11 +75,12 @@ object QuoteMacro {
     case class Extractee(uid: String, dynamic: Dynamic)
     case class Transform(state: List[Extractee]) extends StatefulTransformer[List[Extractee]] {
       override def apply(e: Ast): (Ast, StatefulTransformer[List[Extractee]]) =
-        e match
+        e match {
           case dyn: Dynamic =>
             val uid = UUID.randomUUID().toString()
             (QuotationTag(uid), Transform(Extractee(uid, dyn) +: state))
           case _ => super.apply(e)
+        }
 
     }
 
@@ -105,13 +106,14 @@ object QuoteMacro {
         extracted.map {
           case Extractee(uid, Dynamic(value, quat)) =>
             val quotation =
-              value match
+              value match {
                 case expr: Expr[_] if (is[Quoted[_]](expr)) =>
                   expr.asExprOf[Quoted[_]]
                 case expr: Expr[_] =>
                   report.throwError(s"Dynamic value has invalid expression: ${Format.Expr(expr)} in the AST:\n${printAstWithCustom(newAst)(uid, "<INVALID-HERE>")}")
                 case other =>
                   report.throwError(s"Dynamic value is not an expression: ${other} in the AST:\n${printAstWithCustom(newAst)(uid, "<INVALID-HERE>")}")
+              }
 
             '{ QuotationVase($quotation, ${ Expr(uid) }) }
         }

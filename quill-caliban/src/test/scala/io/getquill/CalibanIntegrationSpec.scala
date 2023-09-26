@@ -12,9 +12,9 @@ import io.getquill.CalibanIntegration._
 class CalibanIntegrationSpec extends CalibanSpec {
   import Ctx._
 
-  object Flat:
+  object Flat {
     import FlatSchema._
-    object Dao:
+    object Dao {
       def personAddress(columns: List[String], filters: Map[String, String]): ZIO[Any, Throwable, List[PersonAddress]] =
         Ctx.run {
           query[PersonT].leftJoin(query[AddressT]).on((p, a) => p.id == a.ownerId)
@@ -26,6 +26,8 @@ class CalibanIntegrationSpec extends CalibanSpec {
           println(s"Results: $list for columns: $columns")
           ZIO.unit
         })
+    }
+  }
 
   case class Queries(
     personAddressFlat: Field => (ProductArgs[FlatSchema.PersonAddress] => Task[List[FlatSchema.PersonAddress]]),

@@ -11,14 +11,17 @@ object TypeclassExample_Show {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
-  trait Show[T]:
+  trait Show[T] {
     inline def show(inline t: T): String
+  }
 
-  inline given Show[String] with
+  inline given Show[String] with {
     inline def show(inline t: String): String = t + "-suffix"
+  }
 
-  inline given Show[Int] with
+  inline given Show[Int] with {
     inline def show(inline t: Int): String = t.toString + "-suffix"
+  }
 
   inline def show[T](inline element: T)(using inline shower: Show[T]): String = {
     shower.show(element)

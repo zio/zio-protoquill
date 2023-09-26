@@ -18,10 +18,11 @@ def querySchema[T](entity: String, columns: (T => (Any, String))*): EntityQuery[
 
 sealed trait Unquoteable
 
-trait EntityQuery[T] extends EntityQueryModel[T] with Unquoteable:
+trait EntityQuery[T] extends EntityQueryModel[T] with Unquoteable {
   override def withFilter(f: T => Boolean): EntityQuery[T] = NonQuotedException()
   override def filter(f: T => Boolean): EntityQuery[T] = NonQuotedException()
   override def map[R](f: T => R): EntityQuery[R] = NonQuotedException()
+}
 
 class Quoted[+T](val ast: io.getquill.ast.Ast, val lifts: List[Planter[_, _, _]], val runtimeQuotes: List[QuotationVase]) {
   // This is not a case-class because the dynamic API uses (quoted:Quoted[(foo, bar)])._1 etc... which would return quoted.ast
@@ -31,9 +32,10 @@ class Quoted[+T](val ast: io.getquill.ast.Ast, val lifts: List[Planter[_, _, _]]
   override def toString = io.getquill.util.Messages.qprint(id).plainText
   override def hashCode(): Int = id.hashCode
   override def equals(other: Any): Boolean =
-    other match
+    other match {
       case q: Quoted[_] => q.id == this.id
       case _            => false
+    }
   def copy(ast: io.getquill.ast.Ast = this.ast, lifts: List[Planter[_, _, _]] = this.lifts, runtimeQuotes: List[QuotationVase] = this.runtimeQuotes) =
     Quoted(ast, lifts, runtimeQuotes)
 }
