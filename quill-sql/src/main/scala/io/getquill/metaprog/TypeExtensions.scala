@@ -10,24 +10,27 @@ import scala.quoted._
 
 object TypeExtensions {
 
-  extension (tpe: Type[_])(using Quotes)
+  extension (tpe: Type[_])(using Quotes) {
 
-    def constValue: String =
+    def constValue: String = {
       import quotes.reflect._
       TypeRepr.of(using tpe) match {
         case ConstantType(IntConstant(value))    => value.toString
         case ConstantType(StringConstant(value)) => value.toString
         // Macro error
       }
+    }
 
-    def isProduct: Boolean =
+    def isProduct: Boolean = {
       import quotes.reflect._
       TypeRepr.of(using tpe) <:< TypeRepr.of[Product]
+    }
 
-    def notOption: Boolean =
+    def notOption: Boolean = {
       import quotes.reflect._
       !(TypeRepr.of(using tpe) <:< TypeRepr.of[Option[Any]])
+    }
 
-  end extension
+  } // end extension
 
 }

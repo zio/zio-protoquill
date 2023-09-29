@@ -48,6 +48,12 @@ trait LowPriorityImplicits { self: EncodingDsl =>
     )
 }
 
+// Generic null checker does not need to access the session but it needs to be typed on it for the context
+// to know which one to summon.
+trait GenericNullChecker[ResultRow, Session] {
+  def apply(columnIndex: Int, resultRow: ResultRow): Boolean
+}
+
 trait EncodingDsl extends LowPriorityImplicits { self => // extends LowPriorityImplicits
   type PrepareRow
   type ResultRow
@@ -62,11 +68,13 @@ trait EncodingDsl extends LowPriorityImplicits { self => // extends LowPriorityI
   // are defined only abstractly.
   type Encoder[T] <: GenericEncoder[T, PrepareRow, Session]
   type Decoder[T] <: GenericDecoder[ResultRow, Session, T, DecodingType.Specific]
+  type NullChecker <: GenericNullChecker[ResultRow, Session]
 
   // Initial Encoder/Decoder classes that Context implementations will subclass for their
   // respective Encoder[T]/Decoder[T] implementations e.g. JdbcEncoder[T](...) extends BaseEncoder[T]
   type BaseEncoder[T] = GenericEncoder[T, PrepareRow, Session]
   type BaseDecoder[T] = GenericDecoder[ResultRow, Session, T, DecodingType.Specific]
+  type BaseNullChecker = GenericNullChecker[ResultRow, Session]
 
   type ColumnResolver = GenericColumnResolver[ResultRow]
   type RowTyper[T] = GenericRowTyper[ResultRow, T]
@@ -93,4 +101,5 @@ trait EncodingDsl extends LowPriorityImplicits { self => // extends LowPriorityI
   implicit def intEncoder: Encoder[Int]
   implicit def longEncoder: Encoder[Long]
   implicit def doubleEncoder: Encoder[Double]
+  // implicit def nullEncoder: Encoder[Null]
 }

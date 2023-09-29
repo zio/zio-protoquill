@@ -2,18 +2,28 @@ package io.getquill.metaprog
 
 import scala.quoted._
 import scala.quoted.Varargs
-import io.getquill.util.printer
 import io.getquill.util.Format
+import io.getquill.util.Messages.TraceType
 
-class Is[T: Type]:
-  def unapply(expr: Expr[Any])(using Quotes) =
+class Is[T: Type] {
+  def unapply(expr: Expr[Any])(using Quotes) = {
     import quotes.reflect._
     if (expr.asTerm.tpe <:< TypeRepr.of[T])
       Some(expr.asExprOf[T])
     else
       None
+  }
+}
 
 object Extractors {
+  inline def typeName[T]: String = ${ typeNameImpl[T] }
+  def typeNameImpl[T: Type](using Quotes): Expr[String] = {
+    import quotes.reflect._
+    val tpe = TypeRepr.of[T]
+    val name: String = tpe.classSymbol.get.name
+    Expr(name)
+  }
+
   def printExpr(using Quotes)(expr: Expr[_], label: String = "") = {
     import quotes.reflect._
     if (label != "")
@@ -29,24 +39,30 @@ object Extractors {
     println(pprint.apply(Untype(expr.asTerm)))
   }
 
-  extension [T: Type](expr: Expr[T])
-    def reseal(using Quotes): Expr[T] =
+  extension [T: Type](expr: Expr[T]) {
+    def reseal(using Quotes): Expr[T] = {
       import quotes.reflect._
       expr.asTerm.underlyingArgument.asExprOf[T]
+    }
+  }
 
   object SelectApplyN {
-    def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String, List[Expr[_]])] =
+    def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String, List[Expr[_]])] = {
       import quotes.reflect._
       SelectApplyN.Term.unapply(term.asTerm).map((sub, method, obj) => (sub.asExpr, method, obj.map(_.asExpr)))
+    }
 
-    object Term:
-      def unapply(using Quotes)(term: quotes.reflect.Term): Option[(quotes.reflect.Term, String, List[quotes.reflect.Term])] =
+    object Term {
+      def unapply(using Quotes)(term: quotes.reflect.Term): Option[(quotes.reflect.Term, String, List[quotes.reflect.Term])] = {
         import quotes.reflect._
-        term match
+        term match {
           // case Apply(Select(body, method), args) => Some((body, method, args))
           // case Apply(TypeApply(Select(body, method), _), args) => Some((body, method, args))
           case Applys(Select(body, method), args) => Some((body, method, args))
           case _                                  => None
+        }
+      }
+    }
   }
 
   /**
@@ -54,22 +70,26 @@ object Extractors {
    * where predicate can be a simple method or something selected from something else e.g:
    * foo.method(bar) or foo.method[T](bar)
    */
-  object Applys:
-    def unapply(using Quotes)(term: quotes.reflect.Term) =
+  object Applys {
+    def unapply(using Quotes)(term: quotes.reflect.Term) = {
       import quotes.reflect._
-      term match
+      term match {
         // TypeApply predicate has to be first because the 2nd one with match everything
         case Apply(TypeApply(predicate, _), args) => Some((predicate, args))
         case Apply(predicate, args)               => Some((predicate, args))
         case _                                    => None
+      }
+    }
+  }
 
   object SelectApply1 {
-    def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String, Expr[_])] =
+    def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String, Expr[_])] = {
       import quotes.reflect._
       term match {
         case Unseal(Applys(Select(body, method), List(arg))) => Some((body.asExpr, method, arg.asExpr))
         case _                                               => None
       }
+    }
   }
 
   // Designed to be a more generic version the Varargs which does not handle all cases.
@@ -95,14 +115,16 @@ object Extractors {
   // '{ ((blah: BlahType): BlahType) } ). If there are no type ascriptions, just return the term.
   // The unapply allows it to be done inside of a matcher.
   object UntypeExpr {
-    def unapply(using Quotes)(expr: Expr[_]): Option[Expr[_]] =
+    def unapply(using Quotes)(expr: Expr[_]): Option[Expr[_]] = {
       import quotes.reflect._
       Untype.unapply(expr.asTerm).map(_.asExpr)
+    }
 
-    def apply(using Quotes)(expr: Expr[_]): Expr[_] =
+    def apply(using Quotes)(expr: Expr[_]): Expr[_] = {
       import quotes.reflect._
       import scala.util.{Try, Success, Failure}
       Untype.unapply(expr.asTerm).map(_.asExpr).get
+    }
   }
 
   // Always match (whether ast starts with Typed or not). If it does, strip the Typed node.
@@ -125,112 +147,130 @@ object Extractors {
    * hence this would be done recursively like `Untype`
    */
   object IgnoreApplyNoargs {
-    def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+    def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] = {
       import quotes.reflect._
       term match {
         case Apply(inner, Nil) => Some(inner)
         case _                 => Some(term)
       }
+    }
   }
 
   object TypedMatroshkaTerm {
-    def recurse(using Quotes)(innerTerm: quotes.reflect.Term): quotes.reflect.Term =
+    def recurse(using Quotes)(innerTerm: quotes.reflect.Term): quotes.reflect.Term = {
       import quotes.reflect._
-      innerTerm match
+      innerTerm match {
         case Typed(innerTree, _) => recurse(innerTree)
         case other               => other
+      }
+    }
 
-    def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+    def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] = {
       import quotes.reflect._
-      term match
+      term match {
         case Typed(tree, _) => Some(recurse(tree))
         case other          => None
+      }
+    }
   }
 
   object TypedMatroshka {
-    def unapply(using Quotes)(term: Expr[Any]): Option[Expr[Any]] =
+    def unapply(using Quotes)(term: Expr[Any]): Option[Expr[Any]] = {
       import quotes.reflect._
       TypedMatroshkaTerm.unapply(term.asTerm).map(_.asExpr)
+    }
   }
 
   object SelectExpr {
-    def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String)] =
+    def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String)] = {
       import quotes.reflect._
       term match {
         case Unseal(Select(Seal(prefix), memberName)) => Some((prefix, memberName))
         case _                                        => None
       }
+    }
   }
 
   object `.` {
-    def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String)] =
+    def unapply(using Quotes)(term: Expr[_]): Option[(Expr[_], String)] = {
       import quotes.reflect._
       term match {
         case Unseal(Select(Seal(prefix), memberName)) => Some((prefix, memberName))
         case _                                        => None
       }
+    }
   }
 
   extension (expr: Expr[_]) {
     def `.(caseField)`(property: String)(using Quotes) = {
       import quotes.reflect._
-      val cls =
-        expr.asTerm.tpe.widen.classSymbol.getOrElse {
-          report.throwError(s"Cannot find class symbol of the property ${expr.show}", expr)
-        }
-      val method =
-        cls.caseFields
-          .find(sym => sym.name == property)
-          .getOrElse {
-            report.throwError(s"Cannot find property '${property}' of (${expr.show}:${cls.name}) fields are: ${cls.caseFields.map(_.name)}", expr)
-          }
+      val tpe = expr.asTerm.tpe
+      val cls = tpe.widen.typeSymbol
+      if (!cls.flags.is(Flags.Case))
+        report.throwError(
+          s"The class ${Format.TypeRepr(expr.asTerm.tpe)} (symbol: ${cls}) is not a case class in the expression: ${Format.Expr(expr)}\n" +
+            s"Therefore you cannot lookup the property `${property}` on it!"
+        )
+      else {
+        val method =
+          cls.caseFields
+            .find(sym => sym.name == property)
+            .getOrElse {
+              report.throwError(s"Cannot find property '${property}' of (${expr.show}:${cls.name}) fields are: ${cls.caseFields.map(_.name)}", expr)
+            }
 
-      '{ (${ Select(expr.asTerm, method).asExpr }) }
+        '{ (${ Select(expr.asTerm, method).asExpr }) }
+      }
     }
   }
 
   object SelectExprOpt {
-    def unapply(using Quotes)(term: Expr[_]): Option[(Expr[Option[_]], String)] =
+    def unapply(using Quotes)(term: Expr[_]): Option[(Expr[Option[_]], String)] = {
       import quotes.reflect._
       term match {
         case Unseal(Select(prefix, memberName)) => Some((prefix.asExprOf[Option[Any]], memberName))
         case _                                  => None
       }
+    }
   }
 
   object Lambda1 {
-    def unapply(using Quotes)(expr: Expr[_]): Option[(String, quotes.reflect.TypeRepr, quoted.Expr[_])] =
+    def unapply(using Quotes)(expr: Expr[_]): Option[(String, quotes.reflect.TypeRepr, quoted.Expr[_])] = {
       import quotes.reflect._
       Lambda1.Term.unapply(expr.asTerm).map((str, tpe, expr) => (str, tpe, expr.asExpr))
+    }
 
     // TODO I like this pattern of doing 'Term' in a sub-object should do more of this in future
     object Term {
-      def unapply(using Quotes)(term: quotes.reflect.Term): Option[(String, quotes.reflect.TypeRepr, quotes.reflect.Term)] =
+      def unapply(using Quotes)(term: quotes.reflect.Term): Option[(String, quotes.reflect.TypeRepr, quotes.reflect.Term)] = {
         import quotes.reflect._
         Untype(term) match {
           case Lambda(List(ValDef(ident, tpeTree, _)), methodBody) => Some((ident, tpeTree.tpe, methodBody))
           case Block(List(), expr)                                 => Lambda1.Term.unapply(expr)
           case _                                                   => None
         }
+      }
     }
   }
 
   object Lambda2 {
-    def unapply(using Quotes)(expr: Expr[_]): Option[(String, quotes.reflect.TypeRepr, String, quotes.reflect.TypeRepr, quoted.Expr[_])] =
+    def unapply(using Quotes)(expr: Expr[_]): Option[(String, quotes.reflect.TypeRepr, String, quotes.reflect.TypeRepr, quoted.Expr[_])] = {
       import quotes.reflect._
       unapplyTerm(expr.asTerm).map((str1, tpe1, str2, tpe2, expr) => (str1, tpe1, str2, tpe2, expr.asExpr))
+    }
 
-    def unapplyTerm(using Quotes)(term: quotes.reflect.Term): Option[(String, quotes.reflect.TypeRepr, String, quotes.reflect.TypeRepr, quotes.reflect.Term)] =
+    def unapplyTerm(using Quotes)(term: quotes.reflect.Term): Option[(String, quotes.reflect.TypeRepr, String, quotes.reflect.TypeRepr, quotes.reflect.Term)] = {
       import quotes.reflect._
       Untype(term) match {
         case Lambda(List(ValDef(ident1, tpe1, _), ValDef(ident2, tpe2, _)), methodBody) => Some((ident1, tpe1.tpe, ident2, tpe2.tpe, methodBody))
         case Block(List(), expr)                                                        => unapplyTerm(expr)
         case _                                                                          => None
       }
+    }
   }
 
   object RawLambdaN {
-    def unapply(using Quotes)(term: quotes.reflect.Term): Option[(List[(String, quotes.reflect.TypeRepr)], quotes.reflect.Term)] =
+    def unapply(using Quotes)(term: quotes.reflect.Term): Option[(List[(String, quotes.reflect.TypeRepr)], quotes.reflect.Term)] = {
       import quotes.reflect._
       Untype(term) match {
         case Lambda(valDefs, methodBody) =>
@@ -243,12 +283,14 @@ object Extractors {
         case Block(List(), expr) => unapply(expr)
         case _                   => None
       }
+    }
   }
 
   object LambdaN {
-    def unapply(using Quotes)(term: Expr[_]): Option[(List[(String, quotes.reflect.TypeRepr)], quoted.Expr[_])] =
+    def unapply(using Quotes)(term: Expr[_]): Option[(List[(String, quotes.reflect.TypeRepr)], quoted.Expr[_])] = {
       import quotes.reflect._
       RawLambdaN.unapply(term.asTerm).map((strAndTpe, term) => (strAndTpe, term.asExpr))
+    }
   }
 
   // object Lambda2 {
@@ -259,9 +301,10 @@ object Extractors {
   // }
 
   object Unseal {
-    def unapply(using Quotes)(t: Expr[Any]): Option[quotes.reflect.Term] =
+    def unapply(using Quotes)(t: Expr[Any]): Option[quotes.reflect.Term] = {
       import quotes.reflect._
       Some(t.asTerm)
+    }
   }
   object Seal {
     def apply[T](using Quotes)(e: quotes.reflect.Term) = {
@@ -275,23 +318,27 @@ object Extractors {
     }
   }
 
-  object ArrowFunction:
-    def unapply(expr: Expr[_])(using Quotes) =
+  object ArrowFunction {
+    def unapply(expr: Expr[_])(using Quotes) = {
       import quotes.reflect._
-      expr match
+      expr match {
         case '{ type v; ($prop: Any).->[`v`](($value: `v`)) } => Some((prop, value))
         case _                                                => None
+      }
+    }
+  }
 
   object TupleName {
     def unapply(str: String): Boolean = str.matches("Tuple[0-9]+")
   }
   object TupleIdent {
-    def unapply(using Quotes)(term: quotes.reflect.Term): Boolean =
+    def unapply(using Quotes)(term: quotes.reflect.Term): Boolean = {
       import quotes.reflect._
       term match {
         case Ident(TupleName()) => true
         case _                  => false
       }
+    }
   }
 
   object UntypeApply {
@@ -312,21 +359,23 @@ object Extractors {
   // }
 
   object Method0 {
-    def unapply(using Quotes)(term: quotes.reflect.Term): Option[(quotes.reflect.Term, String)] =
+    def unapply(using Quotes)(term: quotes.reflect.Term): Option[(quotes.reflect.Term, String)] = {
       import quotes.reflect._
       term match {
         case UntypeApply(Select(source, methodName)) => Some((source, methodName))
         case _                                       => None
       }
+    }
   }
 
   object UntypeTree {
-    def recurse(using Quotes)(innerTerm: quotes.reflect.Tree): quotes.reflect.Tree =
+    def recurse(using Quotes)(innerTerm: quotes.reflect.Tree): quotes.reflect.Tree = {
       import quotes.reflect._
       innerTerm match {
         case Typed(innerTree, _) => recurse(innerTree)
         case other               => other
       }
+    }
 
     def unapply(using Quotes)(term: quotes.reflect.Tree): Option[quotes.reflect.Tree] = Some(recurse(term))
     def apply(using Quotes)(term: quotes.reflect.Tree) = UntypeTree.unapply(term).get
@@ -342,7 +391,7 @@ object Extractors {
     }
   }
 
-  object ConstantValue:
+  object ConstantValue {
     type Kind = String | Char | Int | Long | Boolean | Float | Double | Byte
     def unapply(any: Any): Option[Kind] =
       any match {
@@ -356,15 +405,16 @@ object Extractors {
         case _: Byte    => Some(any.asInstanceOf[Kind])
         case _          => None
       }
+  }
 
-  object ConstantExpr:
+  object ConstantExpr {
     // def Any(v: Any): Expr[Any] =
     //   v match
     //     case cv: String | Char | Int | Long | Boolean | Float | Double | Byte => apply(cv)
     // case _ => report.throwError(s"Cannot lift constant value: ${v}, it is not one of the allowed constant types: String | Int | Long | Boolean | Float | Double | Byte")
 
     def apply[T <: ConstantValue.Kind](using Quotes)(const: T): Expr[T] =
-      const match
+      const match {
         case v: String  => Expr(v)
         case v: Char    => Expr(v)
         case v: Int     => Expr(v)
@@ -373,16 +423,19 @@ object Extractors {
         case v: Float   => Expr(v)
         case v: Double  => Expr(v)
         case v: Byte    => Expr(v)
+      }
 
     def unapply[T <: ConstantValue.Kind](using Quotes)(t: Expr[T]) =
-      t match
+      t match {
         case ConstExpr(v) => Some(v)
         case _            => None
+      }
+  }
 
-  object ConstantTerm:
-    def unapply(using Quotes)(term: quotes.reflect.Term): Option[ConstantValue.Kind] =
+  object ConstantTerm {
+    def unapply(using Quotes)(term: quotes.reflect.Term): Option[ConstantValue.Kind] = {
       import quotes.reflect._
-      term match
+      term match {
         case Literal(StringConstant(v: String))   => Some(v)
         case Literal(IntConstant(v: Int))         => Some(v)
         case Literal(LongConstant(v: Long))       => Some(v)
@@ -391,35 +444,109 @@ object Extractors {
         case Literal(DoubleConstant(v: Double))   => Some(v)
         case Literal(ByteConstant(v: Byte))       => Some(v)
         case _                                    => None
+      }
+    }
+  }
 
-  object ClassSymbol:
-    def unapply(using Quotes)(expr: Expr[Any]): Option[quotes.reflect.Symbol] =
+  object ClassSymbol {
+    def unapply(using Quotes)(expr: Expr[Any]): Option[quotes.reflect.Symbol] = {
       import quotes.reflect._
       expr.asTerm.tpe.classSymbol
+    }
+  }
 
-  object ClassSymbolAndUnseal:
-    def unapply(using Quotes)(expr: Expr[Any]): Option[(quotes.reflect.Symbol, quotes.reflect.Term)] =
+  object ClassSymbolAndUnseal {
+    def unapply(using Quotes)(expr: Expr[Any]): Option[(quotes.reflect.Symbol, quotes.reflect.Term)] = {
       import quotes.reflect._
       expr.asTerm.tpe.classSymbol.map(sym => (sym, expr.asTerm))
+    }
+  }
+
+  object UncastSelectable {
+    def unapply(expr: Expr[_])(using Quotes): Option[Expr[_]] = {
+      import quotes.reflect._
+      UncastSelectable.Term.unapply(expr.asTerm).map(_.asExpr)
+    }
+    object Term {
+      def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] = {
+        import quotes.reflect._
+        term match {
+          case AsInstanceOf(inner) => Some(recurse(inner))
+          case other               => Some(other)
+        }
+      }
+      def recurse(using Quotes)(term: quotes.reflect.Term): quotes.reflect.Term = {
+        import quotes.reflect._
+        term match {
+          case AsInstanceOf(inner) => recurse(inner)
+          case other               => other
+        }
+      }
+      private object AsInstanceOf {
+        def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] = {
+          import quotes.reflect._
+          term match {
+            case TypeApply(Select(inner, "$asInstanceOf$"), _) => Some(inner)
+            case _                                             => None
+          }
+        }
+      }
+    }
+  } // end UncastSelectable
+
+  object Uncast {
+    def unapply(expr: Expr[_])(using Quotes): Option[Expr[_]] = {
+      import quotes.reflect._
+      Uncast.Term.unapply(expr.asTerm).map(_.asExpr)
+    }
+    object Term {
+      def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] = {
+        import quotes.reflect._
+        term match {
+          case AsInstanceOf(inner) => Some(recurse(inner))
+          case other               => Some(other)
+        }
+      }
+      def recurse(using Quotes)(term: quotes.reflect.Term): quotes.reflect.Term = {
+        import quotes.reflect._
+        term match {
+          case AsInstanceOf(inner) => recurse(inner)
+          case other               => other
+        }
+      }
+      private object AsInstanceOf {
+        def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] = {
+          import quotes.reflect._
+          term match {
+            case TypeApply(Select(inner, "asInstanceOf"), _) => Some(inner)
+            case _                                           => None
+          }
+        }
+      }
+    }
+  } // end Uncast
 
   /**
    * Matches `case class Person(first: String, last: String)` creation of the forms:
    *   Person("Joe","Bloggs")
    *   new Person("Joe","Bloggs")
    */
-  object CaseClassCreation:
+  object CaseClassCreation {
     // For modules, the _ in Select coule be a couple of things (say the class is Person):
     //   New(TypeIdent("Person$")), "<init>"), Nil) - When the case class is declared in a function body
     //   Select(This(This(Some(outerClass))), name) - When the case class is declared in the same class as the context (currently happens in actions, see the "macro" test in ActionTest.scala)
     //   Ident("Person")                            - When the case class is declared in an object or top-level
-    object ModuleCreation:
-      def unapply(using Quotes)(term: quotes.reflect.Term) =
+    object ModuleCreation {
+      def unapply(using Quotes)(term: quotes.reflect.Term) = {
         import quotes.reflect._
-        term match
+        term match {
           case Apply(Select(New(TypeIdent(moduleType)), "<init>"), list) if (list.length == 0) && moduleType.endsWith("$") => true
           case Select(This(outerClass), name)                                                                              => true
           case Ident(name)                                                                                                 => true
           case _                                                                                                           => false
+        }
+      }
+    }
 
     def unapply(using Quotes)(expr: Expr[Any]): Option[(String, List[String], List[Expr[Any]])] = {
       import quotes.reflect._
@@ -431,7 +558,7 @@ object Extractors {
 
       // def companionIsProduct(classSymbol: Symbol) = expr.asTerm.tpe.select(classSymbol.companionClass) <:< TypeRepr.of[Product]
       val out =
-        UntypeExpr(expr) match
+        UntypeExpr(expr) match {
           // case Unseal(theExpr @ Apply(Select(foo, "apply"), list)) if (foo.show.contains("Contact")) =>
           // println("**************** STOP HERE ****************")
           // println(Printer.TreeStructure.show(theExpr))
@@ -456,37 +583,45 @@ object Extractors {
             Some((sym.name, sym.caseFields.map(_.name), args.map(_.asExpr)))
           case _ =>
             None
+        }
 
       out
     }
+  }
 
   // TODO Change to 'is'
-  def isType[T: Type](using Quotes)(expr: Expr[_]) =
+  def isType[T: Type](using Quotes)(expr: Expr[_]) = {
     import quotes.reflect._
     expr.asTerm.tpe <:< TypeRepr.of[T]
+  }
 
-  def isType[T: Type](using Quotes)(term: quotes.reflect.Term) =
+  def isType[T: Type](using Quotes)(term: quotes.reflect.Term) = {
     import quotes.reflect._
     term.tpe <:< TypeRepr.of[T]
+  }
 
-  def isPrimitive(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+  def isPrimitive(using Quotes)(tpe: quotes.reflect.TypeRepr) = {
     import quotes.reflect._
     tpe <:< TypeRepr.of[String] ||
     tpe <:< TypeRepr.of[Int] ||
+    tpe <:< TypeRepr.of[Short] ||
     tpe <:< TypeRepr.of[Long] ||
     tpe <:< TypeRepr.of[Float] ||
     tpe <:< TypeRepr.of[Double] ||
     tpe <:< TypeRepr.of[Byte] ||
     tpe <:< TypeRepr.of[Char]
+  }
 
-  def isNumeric(using Quotes)(tpe: quotes.reflect.TypeRepr) =
+  def isNumeric(using Quotes)(tpe: quotes.reflect.TypeRepr) = {
     import quotes.reflect._
     tpe <:< TypeRepr.of[Int] ||
     tpe <:< TypeRepr.of[Long] ||
+    tpe <:< TypeRepr.of[Short] ||
     tpe <:< TypeRepr.of[Float] ||
     tpe <:< TypeRepr.of[Double] ||
     tpe <:< TypeRepr.of[scala.math.BigDecimal] ||
     tpe <:< TypeRepr.of[java.math.BigDecimal]
+  }
 
   def isNumericPrimitive(using Quotes)(tpe: quotes.reflect.TypeRepr) =
     isNumeric(tpe) && isPrimitive(tpe)
@@ -497,7 +632,7 @@ object Extractors {
    * This is used to determine what can be assigned into what (e.g. in a insert(_.age -> 4.toShort) statement)
    * and still be considered a valid transpilation.
    */
-  def numericPrimitiveFitsInto(using Quotes)(into: quotes.reflect.TypeRepr, from: quotes.reflect.TypeRepr) =
+  def numericPrimitiveFitsInto(using Quotes)(into: quotes.reflect.TypeRepr, from: quotes.reflect.TypeRepr) = {
     import quotes.reflect._
     def score(tpe: TypeRepr) =
       if (tpe <:< TypeRepr.of[Short]) 1
@@ -509,56 +644,68 @@ object Extractors {
     val fromScore = score(from)
     val intoScore = score(into)
     (intoScore & fromScore) != 0 && intoScore >= fromScore
+  }
 
   // TODO Change to 'are'
-  def is[T: Type](using Quotes)(inputs: Expr[_]*): Boolean =
+  def is[T: Type](using Quotes)(inputs: Expr[_]*): Boolean = {
     import quotes.reflect._
     inputs.forall(input => input.asTerm.tpe <:< TypeRepr.of[T])
+  }
 
-  object `Option[...[t]...]`:
+  object `Option[...[t]...]` {
     def innerOrTopLevelT(tpe: Type[_])(using Quotes): Type[_] =
-      tpe match
+      tpe match {
         case '[Option[t]] => innerOrTopLevelT(Type.of[t])
         case '[t]         => Type.of[t]
-    def innerT(tpe: Type[_])(using Quotes) =
+      }
+    def innerT(tpe: Type[_])(using Quotes) = {
       import quotes.reflect._
-      tpe match
+      tpe match {
         case '[Option[t]] => innerOrTopLevelT(Type.of[t])
         case '[t]         => report.throwError(s"The Type ${Format.TypeOf[t]} is not an Option")
+      }
+    }
+  }
 
-  object SealedInline:
-    def unapply[T: Type](using Quotes)(expr: Expr[T]) =
+  object SealedInline {
+    def unapply[T: Type](using Quotes)(expr: Expr[T]) = {
       import quotes.reflect._
-      expr.asTerm match
+      expr.asTerm match {
         case Inlined(parent, defs, v) => Some((parent, defs, v.asExprOf[T]))
         case _                        => None
+      }
+    }
+  }
 
   /**
    * Uninline the term no matter what (TODO should reove the unapply case) that pattern always matches
    * and is too confusing
    */
   object Uninline {
-    def unapply[T: Type](using Quotes)(any: Expr[T]): Option[Expr[T]] =
+    def unapply[T: Type](using Quotes)(any: Expr[T]): Option[Expr[T]] = {
       import quotes.reflect.{Term => _, _}
       Some(Term.apply(any.asTerm).asExprOf[T])
-    def apply[T: Type](using Quotes)(any: Expr[T]): Expr[T] =
+    }
+    def apply[T: Type](using Quotes)(any: Expr[T]): Expr[T] = {
       import quotes.reflect.{Term => _, _}
       Term.apply(any.asTerm).asExprOf[T]
+    }
 
-    object Term:
+    object Term {
       def unapply(using Quotes)(any: quotes.reflect.Term): Option[quotes.reflect.Term] =
         Some(Term.apply(any))
-      def apply(using Quotes)(any: quotes.reflect.Term): quotes.reflect.Term =
+      def apply(using Quotes)(any: quotes.reflect.Term): quotes.reflect.Term = {
         import quotes.reflect._
-        any match
+        any match {
           //
           case i @ Inlined(_, pv, v) =>
-            // TODO File a bug for this? Try exprMap to fill in the variables
-            // println Format(Printer.TreeStructure.show(i.underlyingArgument))
-            report.warning(s"Ran into an inline on a clause: ${Format(Printer.TreeStructure.show(i.underlyingArgument))}. Proxy variables will be discarded: ${pv}")
-            // report.warning(s"Ran into an inline on a clause: ${Format.Term(i)}. Proxy variables will be discarded: ${pv}")
+            if (SummonTranspileConfig.summonTraceTypes(true).contains(TraceType.Meta))
+              report.warning(s"Ran into an inline on a clause: ${Format(Printer.TreeStructure.show(i.underlyingArgument))}. Proxy variables will be discarded: ${pv}")
             v.underlyingArgument
           case _ => any
+        }
+      }
+    }
   }
 
   object ConstExpr {
@@ -583,11 +730,12 @@ object Extractors {
       import quotes.reflect._
       def rec(tree: Term): Option[T] = tree match {
         case Literal(c) =>
-          c match
+          c match {
             // case Constant.Null() => None
             // case Constant.Unit() => None
             // case Constant.ClassOf(_) => None
             case _ => Some(c.value.asInstanceOf[T])
+          }
         case Block(Nil, e)      => rec(e)
         case Typed(e, _)        => rec(e)
         case Inlined(_, Nil, e) => rec(e)
@@ -597,9 +745,10 @@ object Extractors {
     }
   }
 
-  def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], defs: List[quotes.reflect.Definition])(expr: Expr[_]): Expr[_] =
+  def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], defs: List[quotes.reflect.Definition])(expr: Expr[_]): Expr[_] = {
     import quotes.reflect._
     Inlined(call, defs, expr.asTerm).asExpr
+  }
 
   /**
    * Since things like the QueryParser slow are because Quoted matching is slow (or at least slower then I'd like them to be),
@@ -618,30 +767,39 @@ object Extractors {
    * This will check that there's a `Apply(TypeApply(Select(_, "map"), _), _)` being called
    * and then only proceecd into the quoted-matcher if that is the case.
    */
-  object MatchingOptimizers:
-    object --> :
-      def unapply(using Quotes)(expr: Expr[_]) =
+  object MatchingOptimizers {
+    object --> {
+      def unapply(using Quotes)(expr: Expr[_]) = {
         import quotes.reflect._
         // Doing UntypeExpr will make this match foo.bar as well as foo.bar[T] but it might be slower
-        expr.asTerm match
+        expr.asTerm match {
           case Select(_, methodName) =>
             Some((methodName, expr))
           case _ => None
+        }
+      }
+    }
 
-    object -@> :
-      def unapply(using Quotes)(expr: Expr[_]) =
+    object -@> {
+      def unapply(using Quotes)(expr: Expr[_]) = {
         import quotes.reflect._
-        expr.asTerm match
+        expr.asTerm match {
           case SelectApplyN.Term(_, methodName, _) =>
             Some((methodName, expr))
           case _ => None
+        }
+      }
+    }
 
-    object -@@> :
-      def unapply(using Quotes)(expr: Expr[_]) =
+    object -@@> {
+      def unapply(using Quotes)(expr: Expr[_]) = {
         import quotes.reflect._
-        expr.asTerm match
+        expr.asTerm match {
           case Applys(SelectApplyN.Term(_, methodName, _), _) =>
             Some((methodName, expr))
           case _ => None
-  end MatchingOptimizers
+        }
+      }
+    }
+  } // end MatchingOptimizers
 }

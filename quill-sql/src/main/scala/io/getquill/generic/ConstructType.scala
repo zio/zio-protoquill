@@ -4,8 +4,8 @@ import scala.quoted._
 import scala.deriving._
 import io.getquill.util.Format
 
-object ConstructType:
-  def apply[T: Type](m: Expr[Mirror.ProductOf[T]], children: List[(Type[_], Expr[_])])(using Quotes) =
+object ConstructType {
+  def apply[T: Type](m: Expr[Mirror.ProductOf[T]], children: List[(Type[_], Expr[_])])(using Quotes) = {
     import quotes.reflect._
     // println(s"---- Constructing Type for: ${Format.TypeOf[T]}")
 
@@ -24,8 +24,9 @@ object ConstructType:
           TypeApply(
             Select(New(TypeTree.of[T]), constructor),
             types.map { tpe =>
-              tpe match
+              tpe match {
                 case '[tt] => TypeTree.of[tt]
+              }
             }
           ),
           terms.map(_.asTerm)
@@ -46,5 +47,5 @@ object ConstructType:
       // println(s"=========== Create from Mirror ${Format.Expr(m)} ===========")
       '{ $m.fromProduct(${ Expr.ofTupleFromSeq(terms) }) }.asExprOf[T]
     }
-  end apply
-end ConstructType
+  } // end apply
+} // end ConstructType

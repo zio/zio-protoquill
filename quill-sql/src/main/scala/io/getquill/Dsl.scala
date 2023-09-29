@@ -5,9 +5,7 @@ import io.getquill.parser.*
 
 import scala.quoted.*
 import scala.annotation.StaticAnnotation
-import io.getquill.util.printer.AstPrinter
-
-import scala.deriving.*
+import scala.deriving._
 import io.getquill.generic.GenericEncoder
 import io.getquill.parser.ParserFactory
 import io.getquill.quotation.NonQuotedException
@@ -33,6 +31,7 @@ import java.sql.Timestamp
 import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, OffsetTime, ZonedDateTime}
 import java.util.Date
 import scala.language.implicitConversions
+import io.getquill.dsl.DateOps
 
 implicit val defaultParser: ParserLibrary = ParserLibrary
 
@@ -52,21 +51,43 @@ extension (str: String) {
 inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
 inline def select[T]: Query[T] = ${ QueryMacro[T] }
 
-object extras:
-  extension [T](a: T)
+def max[A](a: A): A = NonQuotedException()
+def min[A](a: A): A = NonQuotedException()
+def count[A](a: A): A = NonQuotedException()
+def avg[A](a: A)(implicit n: Numeric[A]): BigDecimal = NonQuotedException()
+def sum[A](a: A)(implicit n: Numeric[A]): A = NonQuotedException()
+
+def avg[A](a: Option[A])(implicit n: Numeric[A]): Option[BigDecimal] = NonQuotedException()
+def sum[A](a: Option[A])(implicit n: Numeric[A]): Option[A] = NonQuotedException()
+
+extension [T](o: Option[T]) {
+  def filterIfDefined(f: T => Boolean): Boolean = NonQuotedException()
+}
+
+object extras extends DateOps {
+  extension [T](a: T) {
+    def getOrNull: T =
+      throw new IllegalArgumentException(
+        "Cannot use getOrNull outside of database queries since only database value-types (e.g. Int, Double, etc...) can be null."
+      )
+
     def ===(b: T): Boolean =
-      (a, b) match
+      (a, b) match {
         case (a: Option[_], b: Option[_]) => a.exists(av => b.exists(bv => av == bv))
         case (a: Option[_], b)            => a.exists(av => av == b)
         case (a, b: Option[_])            => b.exists(bv => bv == a)
         case (a, b)                       => a == b
+      }
 
     def =!=(b: T): Boolean =
-      (a, b) match
+      (a, b) match {
         case (a: Option[_], b: Option[_]) => a.exists(av => b.exists(bv => av != bv))
         case (a: Option[_], b)            => a.exists(av => av != b)
         case (a, b: Option[_])            => b.exists(bv => bv != a)
         case (a, b)                       => a != b
+      }
+  }
+}
 
 inline def static[T](inline value: T): T = ${ StaticSpliceMacro('value) }
 
@@ -84,13 +105,6 @@ inline implicit def unquote[T](inline quoted: Quoted[T]): T = ${ UnquoteMacro[T]
 
 inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteMacro[T]('body) }
 
-extension [T](inline entity: EntityQuery[T])
-  // Note that although this is in the static DSL if you lift a case class inside the insert or anything else, it will try to do a standard lift for that
-  // requiring a context to be present.
-  // Also note that the regular insert/update methods are not macros, they are defined on EntityQuery and captured by the Parser.
-  inline def insertValue(inline value: T): Insert[T] = ${ InsertUpdateMacro[T, Insert]('entity, 'value) }
-  inline def updateValue(inline value: T): Update[T] = ${ InsertUpdateMacro[T, Update]('entity, 'value) }
-
 // Doing:          val p = quote { query[Person] }
 // and then doing: val q = quote { p.insert(_.name -> "blah") }
 //  or then doing: val q = quote { p.insertValue(lift(Person("Joe", 123))) }
@@ -98,11 +112,10 @@ extension [T](inline entity: EntityQuery[T])
 // variant of the function it is supposed to use. Therefore we have to explicitly define
 // these functions on the quoted variant of the EntityQuery for the types to infer correctly.
 // see ActionSpec.scala action->insert->simple, using nested select, etc... tets for examples of this
-extension [T](inline quotedEntity: Quoted[EntityQuery[T]])
+extension [T](inline quotedEntity: Quoted[EntityQuery[T]]) {
   inline def insert(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Insert[T] = unquote[EntityQuery[T]](quotedEntity).insert(f, f2: _*)
   inline def update(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Update[T] = unquote[EntityQuery[T]](quotedEntity).update(f, f2: _*)
-  inline def insertValue(inline value: T): Insert[T] = unquote[EntityQuery[T]](quotedEntity).insertValue(value)
-  inline def updateValue(inline value: T): Update[T] = unquote[EntityQuery[T]](quotedEntity).updateValue(value)
+}
 
 extension (a: Date)
   def ===(b: Date): Boolean = a.getTime == b.getTime

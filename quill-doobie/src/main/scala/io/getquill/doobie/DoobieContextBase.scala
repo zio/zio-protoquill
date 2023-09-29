@@ -23,13 +23,13 @@ import io.getquill.context.jdbc.JdbcContextBase
 import io.getquill.util.ContextLogger
 import scala.language.implicitConversions
 import io.getquill.context.jdbc.JdbcContextTypes
-import io.getquill.context.ProtoContext
+import io.getquill.context.ProtoContextSecundus
 import scala.annotation.targetName
 
 /** Base trait from which vendor-specific variants are derived. */
-trait DoobieContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy]
+trait DoobieContextBase[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   extends JdbcContextTypes[Dialect, Naming]
-    with ProtoContext[Dialect, Naming]
+    with ProtoContextSecundus[Dialect, Naming]
     with ContextVerbStream[Dialect, Naming] {
 
   override type Result[A] = ConnectionIO[A]
@@ -54,10 +54,16 @@ trait DoobieContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   inline def run[E](inline quoted: Quoted[Action[E]]): ConnectionIO[Long] = InternalApi.runAction(quoted)
   @targetName("runActionReturning")
   inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): ConnectionIO[T] = InternalApi.runActionReturning[E, T](quoted)
+  @targetName("runActionReturningMany")
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): ConnectionIO[List[T]] = InternalApi.runActionReturningMany[E, T](quoted)
   @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ConnectionIO[List[Long]] = InternalApi.runBatchAction(quoted)
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): ConnectionIO[List[Long]] = InternalApi.runBatchAction(quoted, rowsPerBatch)
+  @targetName("runBatchActionDefault")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): ConnectionIO[List[Long]] = InternalApi.runBatchAction(quoted, 1)
   @targetName("runBatchActionReturning")
-  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): ConnectionIO[List[T]] =  InternalApi.runBatchActionReturning(quoted)
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): ConnectionIO[List[T]] = InternalApi.runBatchActionReturning(quoted, rowsPerBatch)
+  @targetName("runBatchActionReturningDefault")
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): ConnectionIO[List[T]] = InternalApi.runBatchActionReturning(quoted, 1)
 
   // Logging behavior should be identical to JdbcContextBase.scala, which includes a couple calls
   // to log.underlying below.
@@ -156,11 +162,22 @@ trait DoobieContextBase[Dialect <: SqlIdiom, Naming <: NamingStrategy]
     info: ExecutionInfo,
     dc: Runner,
   ): ConnectionIO[A] =
-    prepareConnections[A](returningBehavior)(sql) {
+    executeActionReturningMany[A](sql, prepare, extractor, returningBehavior)(info, dc).map(handleSingleResult(sql, _))
+
+  override def executeActionReturningMany[A](
+    sql: String,
+    prepare: Prepare = identityPrepare,
+    extractor: Extractor[A],
+    returningBehavior: ReturnAction,
+  )(
+    info: ExecutionInfo,
+    dc: Runner,
+  ): ConnectionIO[List[A]] =
+    prepareConnections[List[A]](returningBehavior)(sql) {
       useConnection { implicit connection =>
         prepareAndLog(sql, prepare) *>
           FPS.executeUpdate *>
-          HPS.getGeneratedKeys(HRS.getUnique(extractor))
+          HPS.getGeneratedKeys[List[A]](HRS.list(extractor))
       }
     }
 

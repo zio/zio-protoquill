@@ -37,17 +37,17 @@ import io.getquill.Literal
 import scala.annotation.targetName
 import io.getquill.NamingStrategy
 import io.getquill.idiom.Idiom
-import io.getquill.context.ProtoContext
+import io.getquill.context.ProtoContextSecundus
 import io.getquill.context.AstSplicing
 import io.getquill.context.RowContext
 import io.getquill.metaprog.etc.ColumnsFlicer
 import io.getquill.context.Execution.ElaborationBehavior
 import io.getquill.OuterSelectWrap
 
-trait ContextVerbPrepareLambda[Dialect <: Idiom, Naming <: NamingStrategy] extends ContextVerbPrepare[Dialect, Naming]:
+trait ContextVerbPrepareLambda[+Dialect <: Idiom, +Naming <: NamingStrategy] extends ContextVerbPrepare[Dialect, Naming] {
   self: Context[Dialect, Naming] =>
 
   type PrepareQueryResult = Session => Result[PrepareRow]
   type PrepareActionResult = Session => Result[PrepareRow]
   type PrepareBatchActionResult = Session => Result[List[PrepareRow]]
-end ContextVerbPrepareLambda
+} // end ContextVerbPrepareLambda

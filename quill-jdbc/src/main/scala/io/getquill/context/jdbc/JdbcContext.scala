@@ -5,19 +5,22 @@ import java.sql.{ Connection, PreparedStatement }
 import javax.sql.DataSource
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill._
-import io.getquill.context.{ ExecutionInfo, ProtoContext, ContextVerbTranslate }
+import io.getquill.context.{ ExecutionInfo, ProtoContextSecundus, ContextVerbTranslate }
 
 import scala.util.{ DynamicVariable, Try }
 import scala.util.control.NonFatal
 import io.getquill.Quoted
 import scala.annotation.targetName
 import io.getquill.context.ContextVerbTranslate
+import io.getquill.util.ContextLogger
 
-abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
+abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   extends JdbcContextBase[Dialect, Naming]
-  with ProtoContext[Dialect, Naming]
+  with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbTranslate[Dialect, Naming]
   {
+
+  private val logger = ContextLogger(classOf[JdbcContext[_, _]])
 
   // Need to override these with same values as JdbcRunContext because SyncIOMonad imports them. The imported values need to be overridden
   override type Result[T] = T
@@ -32,7 +35,7 @@ abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   override protected def context: Runner = ()
   def translateContext: TranslateRunner = ()
 
-  val dataSource: DataSource with Closeable
+  val dataSource: DataSource
 
   @targetName("runQueryDefault")
   inline def run[T](inline quoted: Quoted[Query[T]]): List[T] = InternalApi.runQueryDefault(quoted)
@@ -44,10 +47,16 @@ abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
   inline def run[E](inline quoted: Quoted[Action[E]]): Long = InternalApi.runAction(quoted)
   @targetName("runActionReturning")
   inline def run[E, T](inline quoted: Quoted[ActionReturning[E, T]]): T = InternalApi.runActionReturning[E, T](quoted)
+  @targetName("runActionReturningMany")
+  inline def run[E, T](inline quoted: Quoted[ActionReturning[E, List[T]]]): List[T] = InternalApi.runActionReturningMany[E, T](quoted)
   @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): List[Long] = InternalApi.runBatchAction(quoted)
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): List[Long] = InternalApi.runBatchAction(quoted, rowsPerBatch)
+  @targetName("runBatchActionDefault")
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): List[Long] = InternalApi.runBatchAction(quoted, 1)
   @targetName("runBatchActionReturning")
-  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): List[T] =  InternalApi.runBatchActionReturning(quoted)
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): List[T] = InternalApi.runBatchActionReturning(quoted, rowsPerBatch)
+  @targetName("runBatchActionReturningDefault")
+  inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): List[T] = InternalApi.runBatchActionReturning(quoted, 1)
 
   override def wrap[T](t: => T): T = t
   override def push[A, B](result: A)(f: A => B): B = f(result)
@@ -62,7 +71,13 @@ abstract class JdbcContext[Dialect <: SqlIdiom, Naming <: NamingStrategy]
       finally conn.close()
     }
 
-  override def close() = dataSource.close()
+  override def close() =
+    dataSource match {
+      case closeable: java.io.Closeable =>
+        closeable.close()
+      case _ =>
+        logger.underlying.warn(s"Could not close the DataSource `$dataSource`. It is not an instance of java.io.Closeable.")
+    }
 
   def probe(sql: String) =
     Try {

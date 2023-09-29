@@ -15,7 +15,7 @@ case class StaticState(
     // For a batch query, lifts other than the one from the primary liftQuery go here. THey need to be know about separately
     // in the batch query case. Should be empty & ignored for non batch cases.
     secondaryLifts: List[PlanterExpr[?, ?, ?]] = List()
-)(queryAst: => Ast):
+)(queryAst: => Ast) {
   /**
    * Plant all the lifts and return them.
    * NOTE: If this is used frequently would it be worth caching (i.e. since this object is immutable)
@@ -23,3 +23,4 @@ case class StaticState(
    */
   def lifts(using Quotes) = rawLifts.map(_.plant)
   def ast: Ast = queryAst
+}

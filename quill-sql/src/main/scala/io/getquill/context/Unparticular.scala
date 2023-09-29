@@ -28,7 +28,7 @@ import io.getquill.idiom.Statement
 import io.getquill.QAC
 import io.getquill.NamingStrategy
 
-object Unparticular:
+object Unparticular {
   import io.getquill.ast._
   import io.getquill.util.Interleave
   import io.getquill.idiom.StatementInterpolator._
@@ -46,10 +46,12 @@ object Unparticular:
    * Particularize(r)
    */
   case class Query(basicQuery: String, realQuery: Statement)
-  object Query:
-    def fromStatement(stmt: Statement, liftingPlaceholder: Int => String) =
+  object Query {
+    def fromStatement(stmt: Statement, liftingPlaceholder: Int => String) = {
       val (basicQuery, lifts) = token2string(stmt, liftingPlaceholder)
       (Query(basicQuery, stmt), lifts)
+    }
+  }
 
   def translateNaive(stmt: Statement, liftingPlaceholder: Int => String): String =
     token2string(stmt, liftingPlaceholder)._1
@@ -69,6 +71,7 @@ object Unparticular:
           case SetContainsToken(a, op, b) => apply(stmt"$a $op ($b)" +: tail, sqlResult, liftingResult, liftingSize)
           case ScalarTagToken(tag)        => apply(tail, liftingPlaceholder(liftingSize) +: sqlResult, tag +: liftingResult, liftingSize + 1)
           case Statement(tokens)          => apply(tokens.foldRight(tail)(_ +: _), sqlResult, liftingResult, liftingSize)
+          case ValuesClauseToken(stmt)    => apply(stmt +: tail, sqlResult, liftingResult, liftingSize)
           case _: ScalarLiftToken =>
             throw new UnsupportedOperationException("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
           case _: QuotationTagToken =>
@@ -79,4 +82,4 @@ object Unparticular:
     apply(List(token), Seq(), Seq(), 0)
   }
 
-end Unparticular
+} // end Unparticular

@@ -18,6 +18,15 @@ import io.getquill.idiom._
 import scala.quoted._
 import io.getquill.util.Format
 import io.getquill.metaprog.InjectableEagerPlanterExpr
+import io.getquill.parser.Lifter
+import io.getquill.context.QueryExecutionBatchModel.SingleEntityLifts
+import zio.Chunk
+import io.getquill.metaprog.TranspileConfigLiftable
+import io.getquill.util.Interpolator2
+import io.getquill.util.Messages.TraceType
+import io.getquill.util.TraceConfig
+import io.getquill.util.Interpolator
+import io.getquill.parser.Lifters
 
 /**
  * For a query that has a filter(p => liftQuery(List("Joe","Jack")).contains(p.name)) we need to turn
@@ -28,231 +37,48 @@ import io.getquill.metaprog.InjectableEagerPlanterExpr
  * that represents the Query that is to be during runtime based on the content of the list
  * which has to be manipulated inside of a '{ ... } block.
  */
-object Particularize:
-  // ====================================== TODO additional-lifts case here too ======================================
-  // ====================================== TODO additional-lifts case here too ======================================
-  // ====================================== TODO additional-lifts case here too ======================================
-  // ====================================== TODO additional-lifts case here too ======================================
-  // ====================================== TODO additional-lifts case here too ======================================
+object Particularize {
+
   // the following should test for that: update - extra lift + scalars + liftQuery/setContains
-  object Static:
+  object Static {
     /** Convenience constructor for doing particularization from an Unparticular.Query */
-    def apply[PrepareRowTemp](query: Unparticular.Query, lifts: List[Expr[Planter[_, _, _]]], runtimeLiftingPlaceholder: Expr[Int => String], emptySetContainsToken: Token => Token)(using Quotes): Expr[String] =
-      raw(query.realQuery, lifts, runtimeLiftingPlaceholder, emptySetContainsToken)
-
-    private[getquill] def raw[PrepareRowTemp, Session](statement: Statement, lifts: List[Expr[Planter[_, _, _]]], runtimeLiftingPlaceholder: Expr[Int => String], emptySetContainsToken: Token => Token)(using Quotes): Expr[String] = {
+    def apply[PrepareRowTemp: Type](
+        query: Unparticular.Query,
+        lifts: List[Expr[Planter[_, _, _]]],
+        runtimeLiftingPlaceholder: Expr[Int => String],
+        emptySetContainsToken: Expr[Token => Token],
+        valuesClauseRepeats: Expr[Int]
+    )(traceConfig: TraceConfig)(using Quotes): Expr[String] = {
       import quotes.reflect._
-
-      enum LiftChoice:
-        case ListLift(value: EagerListPlanterExpr[Any, PrepareRowTemp, Session])
-        case SingleLift(value: PlanterExpr[Any, PrepareRowTemp, Session])
-
-      val listLifts: Map[String, EagerListPlanterExpr[Any, PrepareRowTemp, Session]] =
-        lifts.collect {
-          case PlanterExpr.Uprootable(planterExpr: EagerListPlanterExpr[_, _, _]) =>
-            planterExpr.asInstanceOf[EagerListPlanterExpr[Any, PrepareRowTemp, Session]]
-        }.map(lift => (lift.uid, lift)).toMap
-
-      val singleLifts: Map[String, EagerPlanterExpr[Any, PrepareRowTemp, Session]] =
-        lifts.collect {
-          case PlanterExpr.Uprootable(planterExpr: EagerPlanterExpr[_, _, _]) =>
-            planterExpr.asInstanceOf[EagerPlanterExpr[Any, PrepareRowTemp, Session]]
-        }.map(lift => (lift.uid, lift)).toMap
-
-      val injectableLifts: Map[String, InjectableEagerPlanterExpr[Any, PrepareRowTemp, Session]] =
-        lifts.collect {
-          case PlanterExpr.Uprootable(planterExpr: InjectableEagerPlanterExpr[_, _, _]) =>
-            planterExpr.asInstanceOf[InjectableEagerPlanterExpr[Any, PrepareRowTemp, Session]]
-        }.map(lift => (lift.uid, lift)).toMap
-
-      def getLifts(uid: String): LiftChoice =
-        listLifts.get(uid).map(LiftChoice.ListLift(_))
-          .orElse(singleLifts.get(uid).map(LiftChoice.SingleLift(_)))
-          .orElse(injectableLifts.get(uid).map(LiftChoice.SingleLift(_)))
-          .getOrElse {
-            throw new IllegalArgumentException(s"Cannot find list-lift with UID ${uid} (from all the lifts ${lifts.map(io.getquill.util.Format.Expr(_))})")
-          }
-
-      /**
-       * Actual go from a liftQuery(List("Joe", "Jack")) to "?, ?" using the lifting placeholder.
-       * Also return how much the index should be incremented
-       */
-      def placeholders(uid: String, initialIndex: Expr[Int]): (Expr[Int], Expr[String], LiftChoice) =
-        val liftType = getLifts(uid)
-        liftType match
-          case LiftChoice.ListLift(lifts) =>
-            // using index 1 since SQL prepares start with $1 typically
-            val liftsPlaceholder = '{ ${ lifts.expr }.zipWithIndex.map((_, index) => $runtimeLiftingPlaceholder($initialIndex + index)).mkString(", ") }
-            val liftsLength = '{ ${ lifts.expr }.length }
-            (liftsLength, liftsPlaceholder, liftType)
-          case LiftChoice.SingleLift(lift) =>
-            (Expr(1), '{ $runtimeLiftingPlaceholder($initialIndex) }, liftType)
-
-      object Matrowl:
-        sealed trait Ground:
-          override def toString = "Gnd"
-        case object Ground extends Ground
-        def Bottom = Matrowl(List(), Matrowl.Ground)
-
-      /**
-       * A Matrowl lit. Matroshka + Bowl is essentially a stack where each frame consists of a list of items.
-       * You can add to the list on the top of the stack, pop the current Matrowl, or stack another one on top of it.
-       * This datastructure became necessary in the token2Expr function when I realized in that in the case of:
-       * Work.Token(SetContainsToken(a, op, b @ ScalarTagToken(tag))), the list this tag points to can be empty which means
-       * that the emptySetContainsToken needs to be expanded instead of the Expr[String] that is returned by the placeholders
-       * function. The problem however is that we only know at runtime whether the list is zero or non-zero elements long.
-       * This leads us to the requirement to either make token2Expr on tail recursive and introduce a something like this:
-       * {{
-       *   case Work.Token(SetContainsToken(a, op, b @ ScalarTagToken(tag))) =>
-       *   '{if (list.length != 0)
-       *      token2Expr(...)
-       *     else
-       *      token2Expr(emptySetContainsToken(a), ...)
-       *    }
-       * }}
-       * This of course is no longer tail-recursive and therefore would require a stack-frame for every token
-       * that needs to be Expr[String]'ed. One possible alternative would be to trampoline the entire execution
-       * however, that would likely introduce a significant performance penalty. Instead, a simplification can be made
-       * in which variations of the conditional (i.e. the regular expansion and the emptySetContainsToken one)
-       * are expanded and they are kept separate in the 'done-pile' of token2Expr in some kind of data strucuture
-       * from which they can be picked up later.
-       * The following sequence of steps therefore emerges when running into a
-       * `case Work.Token(SetContainsToken(a, op, b @ ScalarTagToken(tag)))` where `tag` is a list lift:
-       * <li> Take the current done-area of token2Expr and stack a new matrowl above it
-       * <li> Process all the tokens that would be needed to apply a emptySetContainsToken tokenization
-       * <li> Add yet another stack frame on top of the matrowl
-       * <li> Process all the tokens that would be needed to apply a regular tokenization of the list
-       * i.e. `stmt"$a $op (") :: Work.AlreadyDone(liftsExpr) :: Work.Token(stmt")")` etc... and place them
-       * onto a the matrowl we just created.
-       * <li> Pop the two created stack frames into groups (one, two) and splice them into the '{if (list.length != 0) {one} else {two}}`
-       * note that they will come out in the opposite order from which they were put in.
-       */
-      case class Matrowl private (doneWorks: List[Expr[String]], below: Matrowl | Matrowl.Ground):
-        def dropIn(doneWork: Expr[String]): Matrowl =
-          // println(s"Dropping: ${Format.Expr(doneWork)} into ${this.toString}")
-          this.copy(doneWorks = doneWork +: this.doneWorks)
-        def stack: Matrowl =
-          // println(s"Stack New Matrowl ():=> ${this.toString}")
-          Matrowl(List(), this)
-        def pop: (List[Expr[String]], Matrowl) =
-          // println(s"Pop Top Matrowl: ${this.toString}")
-          below match
-            case m: Matrowl        => (doneWorks, m)
-            case e: Matrowl.Ground => report.throwError("Tokenization error, attempted to pop a bottom-level element")
-        def pop2: (List[Expr[String]], List[Expr[String]], Matrowl) =
-          // println(s"Pop Two Matrowls...")
-          val (one, firstBelow) = pop
-          val (two, secondBelow) = firstBelow.pop
-          (one, two, secondBelow)
-        def isBottom: Boolean =
-          below match
-            case m: Matrowl        => false
-            case e: Matrowl.Ground => true
-        def scoop: List[Expr[String]] =
-          // println(s"Scoop From Matrowl: ${this.toString}")
-          doneWorks
-        override def toString = s"(${doneWorks.map(Format.Expr(_)).mkString(", ")}) -> ${below.toString}"
-      end Matrowl
-
-      enum Work:
-        case AlreadyDone(expr: Expr[String])
-        case Token(token: io.getquill.idiom.Token)
-        // Stack the Matrowl
-        case Stack
-        // Pop the Matrowl
-        case Pop2(finished: (Expr[String], Expr[String]) => Expr[String])
-      object Work:
-        def StackL = List(Work.Stack)
-
-      extension (stringExprs: Seq[Expr[String]])
-        def mkStringExpr = stringExprs.foldLeft(Expr(""))((concatonation, nextExpr) => '{ $concatonation + $nextExpr })
-
-      def token2Expr(token: Token): Expr[String] = {
-        @tailrec
-        def apply(
-            workList: List[Work],
-            matrowl: Matrowl,
-            placeholderCount: Expr[Int] // I.e. the index of the '?' that is inserted in the query (that represents a lift) or the $N if an actual number is used (e.g. in the H2 context)
-        ): Expr[String] = workList match {
-          case Nil =>
-            if (!matrowl.isBottom)
-              report.throwError("Did not get to the bottom of the stack while tokenizing")
-            matrowl.scoop.reverse.mkStringExpr
-          case head :: tail =>
-            head match {
-              case Work.Stack          => apply(tail, matrowl.stack, placeholderCount)
-              case Work.Pop2(finished) =>
-                // we expect left := workIfListNotEmpty and right := workIfListEmpty
-                // this is the logical completion of the SetContainsToken(a, op, ScalarTagToken(tag)) case
-                // (note that these should come off in reversed order from the one they were put in)
-                val (left, right, restOfMatrowl) = matrowl.pop2
-                val finishedExpr = finished(left.reverse.mkStringExpr, right.reverse.mkStringExpr)
-                apply(tail, restOfMatrowl.dropIn(finishedExpr), placeholderCount)
-
-              case Work.AlreadyDone(expr)      => apply(tail, matrowl.dropIn(expr), placeholderCount)
-              case Work.Token(StringToken(s2)) => apply(tail, matrowl.dropIn(Expr(s2)), placeholderCount)
-              case Work.Token(SetContainsToken(a, op, b @ ScalarTagToken(tag))) =>
-                val (liftsLength, liftsExpr, liftChoice) = placeholders(tag.uid, placeholderCount)
-                liftChoice match
-                  // If it is a list that could be empty, we have to create a branch structure that will expand
-                  // both variants of that using the Matrowl nested structure
-                  case LiftChoice.ListLift(_) =>
-                    val workIfListNotEmpty = Work.Token(stmt"$a $op (") :: Work.AlreadyDone(liftsExpr) :: Work.Token(stmt")") :: Nil
-                    val workIfListEmpty = List(Work.Token(emptySetContainsToken(a)))
-                    val complete =
-                      (workIfListNotEmpty: Expr[String], workIfListEmpty: Expr[String]) =>
-                        '{
-                          if ($liftsLength != 0) $workIfListNotEmpty else $workIfListEmpty
-                        }
-                    val work = Work.StackL ::: workIfListEmpty ::: Work.StackL ::: workIfListNotEmpty ::: List(Work.Pop2(complete))
-                    // println(s"** Push Two Variants ** - \nWork is: ${work}\nTail is: ${tail}")
-                    // We can spliced liftsLength combo even if we're not splicing in the array itself (i.e. in cases)
-                    // where we're splicing the empty token. That's fine since when we're splicing the empty token, the
-                    // array length is zero.
-                    apply(work ::: tail, matrowl, '{ $placeholderCount + $liftsLength })
-
-                  // Otherwise it's just a regular scalar-token expansion
-                  case _ =>
-                    // println(s"** Push One Variant ** - \nWork is: ${stmt"$a $op ($b)"}\nTail is: ${tail}")
-                    apply(Work.Token(stmt"$a $op ($b)") +: tail, matrowl, placeholderCount)
-
-              // The next two variants cannot be a list operation now since that was handled in the
-              // Work.Token(SetContainsToken(a, op, b @ ScalarTagToken(tag))) case above
-              // They can be set-operations on a lift but not one that can be empty
-              case Work.Token(SetContainsToken(a, op, b)) =>
-                apply(Work.Token(stmt"$a $op ($b)") +: tail, matrowl, placeholderCount)
-              case Work.Token(ScalarTagToken(tag)) =>
-                val (liftsLength, liftsExpr, _) = placeholders(tag.uid, placeholderCount)
-                apply(tail, matrowl.dropIn(liftsExpr), '{ $placeholderCount + $liftsLength })
-
-              case Work.Token(Statement(tokens)) =>
-                apply(tokens.map(Work.Token(_)) ::: tail, matrowl, placeholderCount)
-              case Work.Token(_: ScalarLiftToken) =>
-                throw new UnsupportedOperationException("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
-              case Work.Token(_: QuotationTagToken) =>
-                throw new UnsupportedOperationException("Quotation Tags must be resolved before a reification.")
-            }
-        }
-        apply(List(Work.Token(token)), Matrowl.Bottom, Expr(0))
-      }
-      token2Expr(statement)
+      val liftsExpr: Expr[List[Planter[?, ?, ?]]] = Expr.ofList(lifts)
+      val queryExpr: Expr[Unparticular.Query] = UnparticularQueryLiftable(query)
+      val traceConfigExpr = TranspileConfigLiftable(traceConfig)
+      '{ Dynamic[PrepareRowTemp]($queryExpr, $liftsExpr, $runtimeLiftingPlaceholder, $emptySetContainsToken)($traceConfigExpr)._1 }
     }
-  end Static
+  } // end Static
 
-  object Dynamic:
+  object Dynamic {
     /** Convenience constructor for doing particularization from an Unparticular.Query */
     def apply[PrepareRowTemp](
         query: Unparticular.Query,
         lifts: List[Planter[_, _, _]],
         liftingPlaceholder: Int => String,
-        emptySetContainsToken: Token => Token
-    ): String =
-      raw(query.realQuery, lifts, liftingPlaceholder, emptySetContainsToken)
+        emptySetContainsToken: Token => Token,
+        valuesClauseRepeats: Int = 1
+    )(traceConfig: TraceConfig): (String, LiftsOrderer) =
+      new Dynamic(traceConfig)(query.realQuery, lifts, liftingPlaceholder, emptySetContainsToken, valuesClauseRepeats)
+  }
 
-    private[getquill] def raw[PrepareRowTemp, Session](statements: Statement, lifts: List[Planter[_, _, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token): String = {
-      enum LiftChoice:
+  private[getquill] class Dynamic[PrepareRowTemp, Session](traceConfig: TraceConfig) {
+    val interp = new Interpolator(TraceType.Particularization, traceConfig, 1)
+    import interp._
+
+    def apply(statements: Statement, lifts: List[Planter[_, _, _]], liftingPlaceholder: Int => String, emptySetContainsToken: Token => Token, valuesClauseRepeats: Int): (String, LiftsOrderer) = {
+      enum LiftChoice {
         case ListLift(value: EagerListPlanter[Any, PrepareRowTemp, Session])
         case SingleLift(value: Planter[Any, PrepareRowTemp, Session])
+        case InjectableLift(value: Planter[Any, PrepareRowTemp, Session])
+      }
 
       val listLifts = lifts.collect { case e: EagerListPlanter[_, _, _] => e.asInstanceOf[EagerListPlanter[Any, PrepareRowTemp, Session]] }.map(lift => (lift.uid, lift)).toMap
       val singleLifts = lifts.collect { case e: EagerPlanter[_, _, _] => e.asInstanceOf[EagerPlanter[Any, PrepareRowTemp, Session]] }.map(lift => (lift.uid, lift)).toMap
@@ -261,60 +87,227 @@ object Particularize:
       def getLifts(uid: String): LiftChoice =
         listLifts.get(uid).map(LiftChoice.ListLift(_))
           .orElse(singleLifts.get(uid).map(LiftChoice.SingleLift(_)))
-          .orElse(injectableLifts.get(uid).map(LiftChoice.SingleLift(_)))
+          .orElse(injectableLifts.get(uid).map(LiftChoice.InjectableLift(_)))
           .getOrElse {
             throw new IllegalArgumentException(s"Cannot find list-lift with UID ${uid} (from all the lifts ${lifts})")
           }
 
       // TODO Also need to account for empty tokens but since we actually have a reference to the list can do that directly
-      def placeholders(uid: String, initialIndex: Int): (Int, String) =
-        getLifts(uid) match
+      def placeholders(uid: String, initialIndex: Int): (Int, String, LiftChoice) = {
+        val liftChoiceKind = getLifts(uid)
+        liftChoiceKind match {
           case LiftChoice.ListLift(lifts) =>
             // using index 1 since SQL prepares start with $1 typically
             val liftsPlaceholder =
               lifts.values.zipWithIndex.map((_, index) => liftingPlaceholder(index + initialIndex)).mkString(", ")
             val liftsLength = lifts.values.length
-            (liftsLength, liftsPlaceholder)
+            (liftsLength, liftsPlaceholder, liftChoiceKind)
           case LiftChoice.SingleLift(lift) =>
-            (1, liftingPlaceholder(initialIndex))
+            (1, liftingPlaceholder(initialIndex), liftChoiceKind)
+          case LiftChoice.InjectableLift(lift) =>
+            (1, liftingPlaceholder(initialIndex), liftChoiceKind)
+        }
+      }
 
       def isEmptyListLift(uid: String) =
-        getLifts(uid) match
+        getLifts(uid) match {
           case LiftChoice.ListLift(lifts) => lifts.values.isEmpty
           case _                          => false
+        }
 
-      def token2String(token: Token): String = {
+      trait Work
+      case class Item(token: io.getquill.idiom.Token) extends Work
+      case class SetValueClauseNum(num: Int) extends Work
+      case class DoneValueClauseNum(num: Int, isLast: Boolean) extends Work
+
+      def token2String(token: io.getquill.idiom.Token): (String, LiftsOrderer) = {
+        trace"Tokenization for query: $token".andLog()
         @tailrec
         def apply(
-            workList: List[Token],
-            sqlResult: Seq[String],
-            placeholderIndex: Int // I.e. the index of the '?' that is inserted in the query (that represents a lift)
-        ): String = workList match {
-          case Nil => sqlResult.reverse.foldLeft("")((concatonation, nextExpr) => concatonation + nextExpr)
-          case head :: tail =>
+            workList: Chunk[Work],
+            sqlResult: Chunk[String],
+            lifts: Chunk[LiftSlot],
+            liftsCount: Int, // I.e. the index of the '?' that is inserted in the query (that represents a lift)
+            valueClausesIndex: Int
+        ): (String, LiftsOrderer) = {
+          // Completed all work
+          if (workList.isEmpty) {
+            val query = sqlResult.foldLeft("")((concatonation, nextExpr) => concatonation + nextExpr)
+            (query, LiftsOrderer(lifts.toList)(traceConfig))
+          } else {
+            val head = workList.head
+            val tail = workList.tail
             head match {
-              case StringToken(s2) => apply(tail, s2 +: sqlResult, placeholderIndex)
-              case SetContainsToken(a, op, b) =>
-                b match
+              case Item(StringToken(s2)) => apply(tail, sqlResult :+ s2, lifts, liftsCount, valueClausesIndex)
+              case Item(SetContainsToken(a, op, b)) =>
+                b match {
                   case ScalarTagToken(tag) if isEmptyListLift(tag.uid) =>
-                    apply(emptySetContainsToken(a) +: tail, sqlResult, placeholderIndex)
+                    apply(Item(emptySetContainsToken(a)) +: tail, sqlResult, lifts, liftsCount, valueClausesIndex)
                   case _ =>
-                    apply(stmt"$a $op ($b)" +: tail, sqlResult, placeholderIndex)
-              case ScalarTagToken(tag) =>
-                val (liftsLength, lifts) = placeholders(tag.uid, placeholderIndex)
-                apply(tail, lifts +: sqlResult, placeholderIndex + liftsLength)
-              case Statement(tokens) => apply(tokens.foldRight(tail)(_ +: _), sqlResult, placeholderIndex)
-              case _: ScalarLiftToken =>
+                    apply(Item(stmt"$a $op ($b)") +: tail, sqlResult, lifts, liftsCount, valueClausesIndex)
+                }
+              case Item(ScalarTagToken(tag)) =>
+                val (liftsLength, liftPlaceholders, liftChoice) = placeholders(tag.uid, liftsCount)
+                val newLift =
+                  liftChoice match {
+                    case LiftChoice.InjectableLift(_) =>
+                      LiftSlot.makeNumbered(valueClausesIndex, tag)
+                    case _ =>
+                      trace"Making Normal Lift ${tag.uid}".andLog()
+                      LiftSlot.makePlain(tag)
+                  }
+
+                apply(tail, sqlResult :+ liftPlaceholders, lifts :+ newLift, liftsCount + liftsLength, valueClausesIndex)
+              case Item(ValuesClauseToken(stmt)) =>
+                val repeatedClauses =
+                  (0 until valuesClauseRepeats)
+                    .toChunk
+                    .mapWithHasNext((i, hasNext) => List(SetValueClauseNum(i), Item(stmt), DoneValueClauseNum(i, !hasNext)))
+                    .flatten
+
+                trace"Instructions for releated clauses: ${repeatedClauses}".andLog()
+                apply(repeatedClauses ++ tail, sqlResult, lifts, liftsCount, valueClausesIndex)
+              case Item(Statement(tokens)) =>
+                apply(tokens.toChunk.map(Item(_)) ++ tail, sqlResult, lifts, liftsCount, valueClausesIndex)
+              case Item(_: ScalarLiftToken) =>
                 throw new UnsupportedOperationException("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
-              case _: QuotationTagToken =>
+              case Item(_: QuotationTagToken) =>
                 throw new UnsupportedOperationException("Quotation Tags must be resolved before a reification.")
+              case SetValueClauseNum(num) =>
+                trace"Setting value clause: ${num}".andLog()
+                apply(tail, sqlResult, lifts, liftsCount, num)
+              case DoneValueClauseNum(num, isLast) =>
+                trace"Finished value clause: ${num}".andLog()
+                val reaminingWork =
+                  if (!isLast)
+                    Item(stmt", ") +: tail
+                  else
+                    tail
+                apply(reaminingWork, sqlResult, lifts, liftsCount, num)
             }
+          }
         }
-        apply(List(token), Seq(), 0)
+        apply(Chunk.single(Item(token)), Chunk.empty, Chunk.empty, 0, 0)
       }
 
       token2String(statements)
     }
-  end Dynamic
+  } // end Dynamic
 
-end Particularize
+  private implicit class IterableExtensions[A](list: Iterable[A]) extends AnyVal {
+    def toChunk[A] = Chunk.fromIterable(list)
+  }
+  private implicit class ChunkExtensions[A](val as: Chunk[A]) extends AnyVal {
+    def mapWithHasNext[B](f: (A, Boolean) => B): Chunk[B] = {
+      val b = Chunk.newBuilder[B]
+      val it = as.iterator
+      if (it.hasNext) {
+        b += f(it.next(), it.hasNext)
+        while (it.hasNext) {
+          b += f(it.next(), it.hasNext)
+        }
+      }
+      b.result()
+    }
+  }
+
+  case class LiftSlot(rank: LiftSlot.Rank, external: ScalarTag)
+  object LiftSlot {
+    enum Rank {
+      case Numbered(num: Int) // for values-clauses
+      case Universal // for regular lifts
+    }
+    def makePlain(lift: ScalarTag) = LiftSlot(Rank.Universal, lift)
+    def makeNumbered(number: Int, lift: ScalarTag) = LiftSlot(Rank.Numbered(number), lift)
+    object Numbered {
+      def unapply(liftSlot: LiftSlot) =
+        liftSlot match {
+          case LiftSlot(Rank.Numbered(num), ScalarTag(uid, _)) => Some((num, uid))
+          case _                                               => None
+        }
+    }
+    object Plain {
+      def unapply(liftSlot: LiftSlot) =
+        liftSlot match {
+          case LiftSlot(Rank.Universal, ScalarTag(uid, _)) => Some((uid))
+          case _                                           => None
+        }
+    }
+  }
+
+  case class LiftsOrderer(slots: List[LiftSlot])(traceConfig: TraceConfig) {
+    val interp = new Interpolator(TraceType.Particularization, traceConfig, 1)
+    import interp._
+
+    case class ValueLiftKey(i: Int, uid: String)
+    def orderLifts(valueClauseLifts: List[SingleEntityLifts], regularLifts: List[Planter[?, ?, ?]]) = {
+      val valueClauseLiftIndexes =
+        valueClauseLifts
+          .zipWithIndex
+          .flatMap((entity, i) =>
+            entity.lifts.map(lift => ValueLiftKey(i, lift.uid) -> lift)
+          )
+          .toMap
+      val regularLiftIndexes =
+        regularLifts.map(lift => (lift.uid, lift)).toMap
+
+      trace"Organizing into Lift Slots: ${slots}".andLog()
+      slots.map {
+        case LiftSlot.Numbered(valueClauseNum, uid) =>
+          valueClauseLiftIndexes
+            .get(ValueLiftKey(valueClauseNum, uid))
+            .getOrElse {
+              throw new IllegalStateException(s"Could not find the Value-Clause lift index:${valueClauseNum},uid:${uid}. Existing values are: ${valueClauseLiftIndexes}")
+            }
+        case LiftSlot.Plain(uid) =>
+          regularLiftIndexes
+            .get(uid)
+            .getOrElse {
+              throw new IllegalStateException(s"Could not find the lift uid:${uid},uid:${uid}. Existing values are: ${regularLiftIndexes}")
+            }
+        case other =>
+          throw new IllegalStateException(s"Illegal LiftSlot: ${other}")
+      }
+    }
+  }
+
+  private[getquill] object UnparticularQueryLiftable {
+    def apply(token: Unparticular.Query)(using Quotes) = liftUnparticularQuery(token)
+    extension [T](t: T)(using ToExpr[T], Quotes) def expr: Expr[T] = Expr(t)
+    import io.getquill.parser.Lifters.Plain
+
+    given liftUnparticularQuery: Lifters.Plain[Unparticular.Query] with {
+      def lift = {
+        case Unparticular.Query(basicQuery: String, realQuery: Statement) =>
+          '{ Unparticular.Query(${ basicQuery.expr }, ${ StatementLiftable(realQuery) }) }
+      }
+    }
+  } // end UnparticularQueryLiftable
+
+  private[getquill] object StatementLiftable {
+    def apply(token: Statement)(using Quotes) = liftStatement(token)
+    extension [T](t: T)(using ToExpr[T], Quotes) def expr: Expr[T] = Expr(t)
+    import io.getquill.parser.Lifters.Plain
+
+    given liftToken: Lifters.Plain[Token] with {
+      def lift = {
+        // Note strange errors about SerializeHelper.fromSerialized types can happen here if NotSerializing is not true.
+        // Anyway we do not want tag-serialization here for the sake of simplicity for the tokenization which happens at runtime.
+        // AST serialization is generally used to make unlifting deeply nested ASTs simpler but Quotation/Scalar Tags are only 1-level deep.
+        case ScalarTagToken(lift: ScalarTag)       => '{ io.getquill.idiom.ScalarTagToken(${ Lifter.NotSerializing.scalarTag(lift) }) }
+        case QuotationTagToken(lift: QuotationTag) => '{ io.getquill.idiom.QuotationTagToken(${ Lifter.NotSerializing.quotationTag(lift) }) }
+        case StringToken(string)                   => '{ io.getquill.idiom.StringToken(${ string.expr }) }
+        case s: Statement                          => liftStatement(s)
+        case SetContainsToken(a, op, b)            => '{ io.getquill.idiom.SetContainsToken(${ a.expr }, ${ op.expr }, ${ b.expr }) }
+        case ScalarLiftToken(lift)                 => quotes.reflect.report.throwError("Scalar Lift Tokens are not used in Dotty Quill. Only Scalar Lift Tokens.")
+        case ValuesClauseToken(stmt)               => '{ io.getquill.idiom.ValuesClauseToken(${ stmt.expr }) }
+      }
+    }
+
+    given liftStatement: Lifters.Plain[Statement] with {
+      def lift = {
+        case Statement(tokens) => '{ io.getquill.idiom.Statement(${ tokens.expr }) }
+      }
+    }
+  } // end StatementLiftable
+} // end Particularize

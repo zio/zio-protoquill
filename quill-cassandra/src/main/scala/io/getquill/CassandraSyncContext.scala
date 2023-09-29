@@ -9,7 +9,7 @@ import io.getquill.util.{ ContextLogger, LoadConfig }
 import scala.jdk.CollectionConverters._
 import scala.annotation.targetName
 
-class CassandraSyncContext[N <: NamingStrategy](
+class CassandraSyncContext[+N <: NamingStrategy](
   naming:                     N,
   session:                    CqlSession,
   preparedStatementCacheSize: Long
@@ -39,7 +39,7 @@ class CassandraSyncContext[N <: NamingStrategy](
   @targetName("runAction")
   inline def run[E](inline quoted: Quoted[Action[E]]): Unit = InternalApi.runAction(quoted)
   @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Unit = InternalApi.runBatchAction(quoted)
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Unit = InternalApi.runBatchAction(quoted, 1)
 
   override protected def context: Runner = ()
 
@@ -56,7 +56,7 @@ class CassandraSyncContext[N <: NamingStrategy](
   }
 
   def executeQuerySingle[T](cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): T =
-    handleSingleResult(executeQuery(cql, prepare, extractor)(info, dc))
+    handleSingleResult(cql, executeQuery(cql, prepare, extractor)(info, dc))
 
   def executeAction(cql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): Unit = {
     val (params, bs) = prepare(this.prepare(cql), this)

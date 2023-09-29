@@ -8,21 +8,24 @@ import io.getquill.ast.Infix
 import io.getquill.quat.Quat
 import io.getquill.parser.engine.ParserChain
 import io.getquill.parser.engine.Parser
+import io.getquill.norm.TranspileConfig
 
 object CustomOps {
-  extension (i: Int)
+  extension (i: Int) {
     def **(exponent: Int) = Math.pow(i, exponent)
+  }
 }
 
-object CustomParser extends ParserLibrary:
-  override def operationsParser(using Quotes) =
+object CustomParser extends ParserLibrary {
+  override def operationsParser(using Quotes, TranspileConfig) =
     ParserChain.attempt(OperationsParser(_)) orElse
       ParserChain.attempt(CustomOperationsParser(_))
+}
 
 class CustomOperationsParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
   import quotes.reflect._
   import CustomOps._
-  def attempt =
+  def attempt = {
     case '{ ($i: Int) ** ($j: Int) } =>
       Infix(
         List("power(", " ,", ")"),
@@ -31,4 +34,5 @@ class CustomOperationsParser(rootParse: Parser)(using Quotes) extends Parser(roo
         false,
         Quat.Value
       )
+  }
 }

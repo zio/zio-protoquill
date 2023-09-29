@@ -12,13 +12,15 @@ trait CollectionDecoders extends EncodingDsl with CassandraRowContext {
   this: Decoders =>
 
   // TODO Remove variable b and put directly
-  implicit def listDecoder[T, Cas](implicit mapper: CassandraMapper[Cas, T, MapperSide.Decode], ct: ClassTag[Cas]): Decoder[List[T]] =
+  implicit def listDecoder[T, Cas](implicit mapper: CassandraMapper[Cas, T, MapperSide.Decode], ct: ClassTag[Cas]): Decoder[List[T]] = {
     val b: BaseDecoder[List[T]] = (index, row, session) => row.getList[Cas](index, asClassOf[Cas]).asScala.map(row => mapper.f(row, session)).toList
     decoder(b)
+  }
 
-  implicit def setDecoder[T, Cas](implicit mapper: CassandraMapper[Cas, T, MapperSide.Decode], ct: ClassTag[Cas]): Decoder[Set[T]] =
+  implicit def setDecoder[T, Cas](implicit mapper: CassandraMapper[Cas, T, MapperSide.Decode], ct: ClassTag[Cas]): Decoder[Set[T]] = {
     val b: BaseDecoder[Set[T]] = (index, row, session) => row.getSet[Cas](index, asClassOf[Cas]).asScala.map(row => mapper.f(row, session)).toSet
     decoder(b)
+  }
 
   implicit def mapDecoder[K, V, KCas, VCas](
     implicit

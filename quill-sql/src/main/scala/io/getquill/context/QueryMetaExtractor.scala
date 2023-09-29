@@ -156,7 +156,7 @@ object QueryMetaExtractor {
             attemptStaticRequip[T, R](queryLot, queryLifts, quip) match {
 
               case Some(StaticRequip(requip, baq)) =>
-                val staticTranslation = StaticTranslationMacro[Nothing, R, D, N](requip, ElaborationBehavior.Elaborate, topLevelQuat)
+                val staticTranslation = StaticTranslationMacro[D, N](requip, ElaborationBehavior.Elaborate, topLevelQuat)
                 (requip, baq, staticTranslation)
 
               case None =>

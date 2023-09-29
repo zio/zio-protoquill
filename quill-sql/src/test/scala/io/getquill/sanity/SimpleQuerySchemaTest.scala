@@ -7,8 +7,9 @@ import io.getquill.context.SplicingBehavior
 
 class SimpleQuerySchemaTest extends Spec {
 
-  given SplicingBehaviorHint with
+  given SplicingBehaviorHint with {
     override type BehaviorType = SplicingBehavior.FailOnDynamic
+  }
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._

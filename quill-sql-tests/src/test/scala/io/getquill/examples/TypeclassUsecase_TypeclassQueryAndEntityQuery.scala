@@ -15,40 +15,52 @@ object TypeclassUsecase_TypeclassQueryAndEntityQuery {
   case class Worker(shard: Int, lastTime: Int, reply: String)
 
 
-  trait GroupKey[T, G]:
+  trait GroupKey[T, G] {
     inline def apply(inline t: T): G
-  trait EarlierThan[T]:
+  }
+  trait EarlierThan[T] {
     inline def apply(inline a: T, inline b: T): Boolean
+  }
   
-  inline given GroupKey[Node, Int] with
+  inline given GroupKey[Node, Int] with {
     inline def apply(inline t: Node): Int = t.id
-  inline given GroupKey[Master, Int] with
+  }
+  inline given GroupKey[Master, Int] with {
     inline def apply(inline t: Master): Int = t.key
-  inline given GroupKey[Worker, Int] with 
+  }
+  inline given GroupKey[Worker, Int] with { 
     inline def apply(inline t: Worker): Int = t.shard
+  }
 
-  inline given EarlierThan[Node] with 
+  inline given EarlierThan[Node] with { 
     inline def apply(inline a: Node, inline b: Node) = a.timestamp < b.timestamp
-  inline given EarlierThan[Master] with 
+  }
+  inline given EarlierThan[Master] with { 
     inline def apply(inline a: Master, inline b: Master) = a.lastCheck < b.lastCheck
-  inline given EarlierThan[Worker] with 
+  }
+  inline given EarlierThan[Worker] with { 
     inline def apply(inline a: Worker, inline b: Worker) = a.lastTime < b.lastTime
+  }
 
-  trait JoiningFunctor[F[_]]:
-    extension [A, B](inline xs: F[A])
+  trait JoiningFunctor[F[_]] {
+    extension [A, B](inline xs: F[A]) {
       inline def map(inline f: A => B): F[B]
       inline def filter(inline f: A => Boolean): F[A]
       inline def leftJoin(inline ys: F[B])(inline f: (A, B) => Boolean): F[(A, Option[B])]
+    }
+  }
 
-  class QueryJoiningFunctor extends JoiningFunctor[Query]:
-    extension [A, B](inline xs: Query[A])
+  class QueryJoiningFunctor extends JoiningFunctor[Query] {
+    extension [A, B](inline xs: Query[A]) {
       inline def map(inline f: A => B): Query[B] = xs.map(f)
       inline def filter(inline f: A => Boolean): Query[A] = xs.filter(f)
       inline def leftJoin(inline ys: Query[B])(inline f: (A, B) => Boolean): Query[(A, Option[B])] = 
         xs.leftJoin(ys).on(f)
+    }
+  }
 
-  class ListJoiningFunctor extends JoiningFunctor[List]:
-    extension [A, B](inline xs: List[A])
+  class ListJoiningFunctor extends JoiningFunctor[List] {
+    extension [A, B](inline xs: List[A]) {
       inline def map(inline f: A => B): List[B] = xs.map(f)
       inline def filter(inline f: A => Boolean): List[A] = xs.filter(f)
       inline def leftJoin(inline ys: List[B])(inline f: (A, B) => Boolean): List[(A, Option[B])] =
@@ -56,6 +68,8 @@ object TypeclassUsecase_TypeclassQueryAndEntityQuery {
           val matching = ys.filter(y => f(x, y)).map(y => (x, Some(y)))
           if (matching.length == 0) List((x, None)) else matching
         }
+    }
+  }
 
   inline given queryJoiningFunctor: QueryJoiningFunctor = new QueryJoiningFunctor
   inline given listJoiningFunctor: ListJoiningFunctor = new ListJoiningFunctor

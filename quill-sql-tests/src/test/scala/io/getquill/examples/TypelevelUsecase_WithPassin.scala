@@ -17,19 +17,21 @@ object TypelevelUsecase_WithPassin {
   case class RoleToPermission(roleId: Int, permissionId: Int)
   case class Permission(id: Int, name: Int)
 
-  trait Path[From, To]:
+  trait Path[From, To] {
     type Out
     inline def get(inline from: From): Out
+  }
   
-  inline given Path[User, Role] with
+  inline given Path[User, Role] with {
     type Out = Query[(User, Role)]
     inline def get(inline s: User): Query[(User, Role)] =
       for {
         sr <- query[UserToRole].join(sr => sr.userId == s.id)
         r <- query[Role].join(r => r.id == sr.roleId)
       } yield (s, r)
+  }
   
-  inline given Path[User, Permission] with
+  inline given Path[User, Permission] with {
     type Out = Query[(User, Role, Permission)]
     inline def get(inline s: User): Query[(User, Role, Permission)] =
       for {
@@ -38,8 +40,9 @@ object TypelevelUsecase_WithPassin {
         rp <- query[RoleToPermission].join(rp => rp.roleId == r.id)
         p <- query[Permission].join(p => p.id == rp.roleId)
       } yield (s, r, p)
+  }
 
-  inline def path[F, T](inline from: F)(using inline path: Path[F, T]): path.Out = path.get(from)
+  inline def path[F, T](inline from: F)(using path: Path[F, T]): path.Out = path.get(from)
   
   inline def joes = query[User].filter(u => u.name == "Joe")
   // Change to 'symbol' and odd set of explosions happen

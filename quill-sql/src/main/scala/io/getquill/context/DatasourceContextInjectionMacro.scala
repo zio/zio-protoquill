@@ -11,12 +11,13 @@ object DatasourceContextInjectionMacro {
     import quotes.reflect._
     val dciType = TypeRepr.of[DCI]
     if (dciType <:< TypeRepr.of[RunnerSummoningBehavior.Implicit])
-      Expr.summon[Runner] match
+      Expr.summon[Runner] match {
         case Some(dc) =>
           // println(s"============ Using Summoned DataSource from context =========")
           dc
         case None =>
           report.throwError(s"Cannot find implicit data-source '${Printer.TypeReprCode.show(TypeRepr.of[Runner])}'")
+      }
     else {
       memberDc
     }

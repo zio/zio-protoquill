@@ -23,9 +23,10 @@ object ColumnsFlicer {
 }
 
 class ColumnsFlicerMacro {
-  def isProduct(using Quotes)(tpe: Type[_]): Boolean =
+  def isProduct(using Quotes)(tpe: Type[_]): Boolean = {
     import quotes.reflect._
     TypeRepr.of(using tpe) <:< TypeRepr.of[Product]
+  }
 
   private def recurse[T, PrepareRow, Session, Fields, Types](using
       Quotes
@@ -41,7 +42,7 @@ class ColumnsFlicerMacro {
         // 'invocation' of the found method e.g. p.name
         val childTTerm = '{ (${ Select(id, fieldMethod).asExprOf[tpe] }) }
 
-        if (Expr.summon[GenericDecoder[_, Session, tpe, DecodingType.Specific]].isDefined) then
+        if (Expr.summon[GenericDecoder[_, Session, tpe, DecodingType.Specific]].isDefined) then {
           // TODO Maybe use ==1 versus 'true' in this case. See how this plays out with VendorizeBooleans behavior
           val liftClause = '{ $columns.contains(${ Expr(fieldString) }) }
           val liftedCondition = LiftMacro.apply[Boolean, PrepareRow, Session](liftClause)
@@ -51,7 +52,8 @@ class ColumnsFlicerMacro {
           val expr = (Type.of[tpe], columnSplice)
           val rec = recurse[T, PrepareRow, Session, fields, types](id, Type.of[fields], Type.of[types])(columns)(using baseType)
           expr +: rec
-        else
+        }
+        else {
           // TODO Recursive delving for optional product types
           // inner class construct e.g. case class Person(name: Name, age: Int),  case class Name(first: String, last: String)
           // so this property would be p.name in a query query[Person].map(p => Person(Name({p.name}.first, {p.name}.last), ...)
@@ -59,6 +61,7 @@ class ColumnsFlicerMacro {
           val expr = (Type.of[tpe], subMapping)
           val rec = recurse[T, PrepareRow, Session, fields, types](id, Type.of[fields], Type.of[types])(columns)(using baseType)
           expr +: rec
+        }
 
       case (_, '[EmptyTuple]) => Nil
       case _                  => report.throwError("Cannot generically derive Types In Expression:\n" + (fieldsTup, typesTup))

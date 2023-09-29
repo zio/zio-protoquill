@@ -35,8 +35,10 @@ import io.getquill.util.Messages.TraceType
 import io.getquill.util.ProtoMessages
 import io.getquill.context.StaticTranslationMacro
 import io.getquill.quat.Quat
+import io.getquill.metaprog.SummonTranspileConfig
+import io.getquill.IdiomContext
 
-object StaticTranslationMacro:
+object StaticTranslationMacro {
   import io.getquill.parser._
   import scala.quoted._ // Expr.summon is actually from here
   import io.getquill.Planter
@@ -48,38 +50,51 @@ object StaticTranslationMacro:
   import io.getquill.NamingStrategy
 
   // Process the AST during compile-time. Return `None` if that can't be done.
-  private[getquill] def processAst[T: Type](astExpr: Expr[Ast], topLevelQuat: Quat, wrap: ElaborationBehavior, idiom: Idiom, naming: NamingStrategy)(using Quotes): Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] =
+  private[getquill] def processAst(
+      astExpr: Expr[Ast],
+      topLevelQuat: Quat,
+      wrap: ElaborationBehavior,
+      idiom: Idiom,
+      naming: NamingStrategy,
+      foreachIdent: Option[Ident] // identifier of a batch query, if this is a batch query
+  )(using Quotes): Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] = {
     import io.getquill.ast.{CollectAst, QuotationTag}
 
     def noRuntimeQuotations(ast: Ast) =
       CollectAst.byType[QuotationTag](ast).isEmpty
 
     val unliftedAst = VerifyFreeVariables(Unlifter(astExpr))
+    val idiomContext = {
+      val transpileConfig = SummonTranspileConfig()
+      val queryType = IdiomContext.QueryType.discoverFromAst(unliftedAst, foreachIdent.map(_.name))
+      IdiomContext(transpileConfig, queryType)
+    }
 
     if (noRuntimeQuotations(unliftedAst)) {
       val expandedAst = ElaborateTrivial(wrap)(unliftedAst)
-      val (ast, stmt, _) = idiom.translate(expandedAst, topLevelQuat, ExecutionType.Static)(using naming)
+      val (ast, stmt, _) = idiom.translate(expandedAst, topLevelQuat, ExecutionType.Static, idiomContext)(using naming)
 
       val liftColumns =
         (ast: Ast, stmt: Statement) => Unparticular.translateNaive(stmt, idiom.liftingPlaceholder)
 
       val returningAction =
-        expandedAst match
+        expandedAst match {
           // If we have a returning action, we need to compute some additional information about how to return things.
           // Different database dialects handle these things differently. Some allow specifying a list of column-names to
           // return from the query. Others compute this information from the query data directly. This information is stored
           // in the dialect and therefore is computed here.
           case r: ReturningAction =>
-            Some(io.getquill.norm.ExpandReturning.applyMap(r)(liftColumns)(idiom, naming))
+            Some(io.getquill.norm.ExpandReturning.applyMap(r)(liftColumns)(idiom, naming, idiomContext))
           case _ =>
             None
+        }
 
       val (unparticularQuery, externals) = Unparticular.Query.fromStatement(stmt, idiom.liftingPlaceholder)
       Some((unparticularQuery, externals, returningAction, unliftedAst))
     } else {
       None
     }
-  end processAst
+  } // end processAst
 
   /**
    * There are some cases where we actually do not want to use all of the lifts in a Quoted.
@@ -101,7 +116,7 @@ object StaticTranslationMacro:
       lifts: List[PlanterExpr[_, _, _]],
       matchingExternals: List[External],
       secondaryLifts: List[PlanterExpr[_, _, _]] = List()
-  )(using Quotes): Either[String, (List[PlanterExpr[_, _, _]], List[PlanterExpr[_, _, _]])] =
+  )(using Quotes): Either[String, (List[PlanterExpr[_, _, _]], List[PlanterExpr[_, _, _]])] = {
     import quotes.reflect.report
 
     val encodeablesMap =
@@ -115,39 +130,45 @@ object StaticTranslationMacro:
         case tag: ScalarTag => tag.uid
       }
 
-    enum UidStatus:
+    enum UidStatus {
       // Most normal lifts and the liftQuery of batches
       case Primary(uid: String, planter: PlanterExpr[?, ?, ?])
       // In batch queries, any lifts that are not part of the initial liftQuery
       case Secondary(uid: String, planter: PlanterExpr[?, ?, ?])
       // Lift planter was not found, this means an error
       case NotFound(uid: String)
-      def print: String = this match
+      def print: String = this match {
         case Primary(uid, planter)   => s"PrimaryPlanter($uid, ${Format.Expr(planter.plant)})"
         case Secondary(uid, planter) => s"SecondaryPlanter($uid, ${Format.Expr(planter.plant)})"
         case NotFound(uid)           => s"NotFoundPlanter($uid)"
+      }
+    }
 
     val sortedEncodeables =
       uidsOfScalarTags
         .map { uid =>
-          encodeablesMap.get(uid) match
+          encodeablesMap.get(uid) match {
             case Some(element) => UidStatus.Primary(uid, element)
             case None =>
-              secondaryEncodeablesMap.get(uid) match
+              secondaryEncodeablesMap.get(uid) match {
                 case Some(element) => UidStatus.Secondary(uid, element)
                 case None          => UidStatus.NotFound(uid)
+              }
+          }
         }
 
-    object HasNotFoundUids:
-      def unapply(statuses: List[UidStatus]) =
+    object HasNotFoundUids {
+      def unapply(statuses: List[UidStatus]) = {
         val collected =
           statuses.collect {
             case UidStatus.NotFound(uid) => uid
           }
         if (collected.nonEmpty) Some(collected) else None
+      }
+    }
 
-    object PrimaryThenSecondary:
-      def unapply(statuses: List[UidStatus]) =
+    object PrimaryThenSecondary {
+      def unapply(statuses: List[UidStatus]) = {
         val (primaries, secondaries) =
           statuses.partition {
             case UidStatus.Primary(_, _) => true
@@ -161,9 +182,11 @@ object StaticTranslationMacro:
           Some((primariesFound.map(_.planter), secondariesFound.map(_.planter)))
         else
           None
+      }
+    }
 
     val outputEncodeables =
-      sortedEncodeables match
+      sortedEncodeables match {
         case HasNotFoundUids(uids) =>
           Left(s"Invalid Transformations Encountered. Cannot find lift with IDs: ${uids}.")
         case PrimaryThenSecondary(primaryPlanters, secondaryPlanters /*or List() if none*/ ) =>
@@ -174,13 +197,14 @@ object StaticTranslationMacro:
               s"All secondary planters must come after all primary ones but found:\n" +
               s"${other.map(_.print).mkString("=====\n")}"
           )
+      }
 
     // TODO This should be logged if some fine-grained debug logging is enabled. Maybe as part of some phase that can be enabled via -Dquill.trace.types config
     // val remaining = encodeables.removedAll(uidsOfScalarTags)
     // if (!remaining.isEmpty)
     //   println(s"Ignoring the following lifts: [${remaining.map((_, v) => Format.Expr(v.plant)).mkString(", ")}]")
     outputEncodeables
-  end processLifts
+  } // end processLifts
 
   def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using Quotes, Type[D], Type[N]): Try[(Idiom, NamingStrategy)] =
     for {
@@ -188,42 +212,53 @@ object StaticTranslationMacro:
       namingStrategy <- LoadNaming.static[N]
     } yield (idiom, namingStrategy)
 
-  def apply[I: Type, T: Type, D <: Idiom, N <: NamingStrategy](
-      quotedRaw: Expr[Quoted[QAC[I, T]]],
+  def apply[D <: Idiom, N <: NamingStrategy](
+      quotedRaw: Expr[Quoted[QAC[?, ?]]],
       wrap: ElaborationBehavior,
       topLevelQuat: Quat,
       // Optional lifts that need to be passed in if they exist e.g. in the liftQuery(...).foreach(p => query[P].filter(pq => pq.id == lift(foo)).updateValue(p))
       // the `lift(foo)` needs to be additionally passed in because it is not part of the original lifts
-      additionalLifts: List[PlanterExpr[?, ?, ?]] = List()
-  )(using qctx: Quotes, dialectTpe: Type[D], namingType: Type[N]): Option[StaticState] =
+      additionalLifts: List[PlanterExpr[?, ?, ?]] = List(),
+      // Identifier of the batch query, if this is a batch query
+      foreachIdent: Option[Ident] = None
+  )(using qctx: Quotes, dialectTpe: Type[D], namingType: Type[N]): Option[StaticState] = {
     import quotes.reflect.{Try => TTry, _}
+
+    val startTimeMs = System.currentTimeMillis()
+
     // NOTE Can disable if needed and make quoted = quotedRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val quoted = quotedRaw.asTerm.underlyingArgument.asExpr
 
-    extension [T](opt: Option[T])
+    extension [T](opt: Option[T]) {
       def errPrint(str: => String) =
-        opt match
+        opt match {
           case s: Some[T] => s
           case None =>
             if (HasDynamicSplicingHint.fail)
               report.throwError(str)
-            else
+            else {
               if (io.getquill.util.Messages.tracesEnabled(TraceType.Standard))
                 println(s"[StaticTranslationError] ${str}")
               None
+            }
+        }
+    }
 
-    extension [T](opt: Either[String, T])
+    extension [T](opt: Either[String, T]) {
       def errPrintEither(str: => String) =
-        opt match
+        opt match {
           case Right(v) => Some(v)
           case Left(errorStr) =>
             val msg = str + errorStr
             if (HasDynamicSplicingHint.fail)
               report.throwError(msg)
-            else
+            else {
               if (io.getquill.util.Messages.tracesEnabled(TraceType.Standard))
                 println(s"[StaticTranslationError] ${msg}")
               None
+            }
+        }
+    }
 
     val tryStatic =
       for {
@@ -241,61 +276,71 @@ object StaticTranslationMacro:
           )
 
         (query, externals, returnAction, ast) <-
-          processAst[T](quotedExpr.ast, topLevelQuat, wrap, idiom, naming).errPrint(s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}")
+          processAst(quotedExpr.ast, topLevelQuat, wrap, idiom, naming, foreachIdent).errPrint(s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}")
 
         (primaryLifts, secondaryLifts) <-
           processLifts(lifts, externals, additionalLifts).errPrintEither(
             s"Could not process the lifts:\n" +
+              s"In the quotation:\n${Format.Expr(quoted)}\n" +
               s"${lifts.map(_.toString).mkString("====\n")}" +
               (if (additionalLifts.nonEmpty) s"${additionalLifts.map(_.toString).mkString("====\n")}" else "") +
-              s"Due to an error: "
+              s"\nDue to an error: "
           )
 
       } yield {
-        if (io.getquill.util.Messages.debugEnabled)
-          queryPrint(PrintType.Query(query.basicQuery), Some(idiom))
+        if (io.getquill.util.Messages.debugEnabled) {
+          val timeTaken = System.currentTimeMillis() - startTimeMs
+          queryPrint(PrintType.Query(query.basicQuery, timeTaken), Some(idiom))
+        }
 
         StaticState(query, primaryLifts, returnAction, idiom, secondaryLifts)(ast)
       }
 
-    if (tryStatic.isEmpty)
-      queryPrint(PrintType.Message(s"Dynamic Query Detected"), None)
+    if (tryStatic.isEmpty) {
+      val timeTaken = System.currentTimeMillis() - startTimeMs
+      queryPrint(PrintType.Message(s"Dynamic Query Detected (compiled in ${timeTaken}ms)"), None)
+    }
 
     tryStatic
-  end apply
+  } // end apply
 
-  private[getquill] enum PrintType:
-    case Query(str: String)
+  private[getquill] enum PrintType {
+    case Query(str: String, timeTakenMs: Long)
     case Message(str: String)
+  }
 
-  private[getquill] def queryPrint(printType: PrintType, idiomOpt: Option[Idiom])(using Quotes) =
+  private[getquill] def queryPrint(printType: PrintType, idiomOpt: Option[Idiom])(using Quotes) = {
     import quotes.reflect._
     import io.getquill.util.IndentUtil._
 
     val msg =
-      printType match
-        case PrintType.Query(queryString) =>
+      printType match {
+        case PrintType.Query(queryString, timeTaken) =>
           val formattedQueryString =
             if (io.getquill.util.Messages.prettyPrint)
               idiomOpt.map(idiom => idiom.format(queryString)).getOrElse(queryString)
             else
               queryString
 
+          val timeTakenStr =
+            s"compiled in ${if (timeTaken > 1000) f"${timeTaken.toDouble / 1000}%.1fs" else s"${timeTaken}ms"}"
+
           if (ProtoMessages.useStdOut)
-            s"Quill Query:\n${formattedQueryString.multiline(1, "")}"
+            s"Quill Query ($timeTakenStr):\n${formattedQueryString.multiline(1, "")}"
           else
-            s"Quill Query: ${formattedQueryString}"
+            s"Quill Query ($timeTakenStr): ${formattedQueryString}"
 
         case PrintType.Message(str) =>
           str
-      end match
+      } // end match
 
-    if (ProtoMessages.useStdOut)
+    if (ProtoMessages.useStdOut) {
       val posValue = Position.ofMacroExpansion
       val pos = s"\nat: ${posValue.sourceFile}:${posValue.startLine + 1}:${posValue.startColumn + 1}"
       println(msg + pos)
+    }
     else
       report.info(msg)
-  end queryPrint
+  } // end queryPrint
 
-end StaticTranslationMacro
+} // end StaticTranslationMacro

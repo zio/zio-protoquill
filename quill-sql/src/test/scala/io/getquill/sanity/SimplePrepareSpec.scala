@@ -10,8 +10,9 @@ class SimplePrepareSpec extends Spec {
   val ctx = SqlMirrorContext(PostgresDialect, Literal)
   import ctx._
 
-  given SplicingBehaviorHint with
+  given SplicingBehaviorHint with {
     override type BehaviorType = SplicingBehavior.FailOnDynamic
+  }
 
   "prepare should work for" - {
     case class Person(name: String, age: Int)

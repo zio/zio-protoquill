@@ -4,6 +4,12 @@ import io.getquill.context.mirror.Row
 import io.getquill.util.StringOps._
 import io.getquill.context.ExecutionType
 import io.getquill.util.debug.PrintMac
+import io.getquill.context.mirror.MirrorSession
+import java.time.Instant
+import java.time.ZonedDateTime
+import java.time.ZoneId
+import java.util.TimeZone
+import java.time.LocalDate
 
 class FlicersSpec extends Spec {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
@@ -19,7 +25,7 @@ class FlicersSpec extends Spec {
   case class NameOpt(first: Option[String], last: String)
   case class PersonNestOptField(name: Option[NameOpt], age: Int)
 
-  val s = io.getquill.MirrorSession.default
+  val s = MirrorSession.default
 
   "MapFlicer should" - {
     "Splice on a flat object" in {
@@ -29,9 +35,42 @@ class FlicersSpec extends Spec {
       }
       val r = ctx.run(q)
       val (qry, lifts, executionType) = r.triple
-      qry mustEqual "SELECT p.firstName, p.lastName, p.age FROM PersonFlat p WHERE (p.firstName = ? OR ? IS NULL) AND (p.lastName = ? OR ? IS NULL) AND (cast(p.age as VARCHAR) = ? OR ? IS NULL)"
-      lifts mustEqual List("Joe", "Joe", null, null, "123", "123")
+      qry mustEqual "SELECT p.firstName, p.lastName, p.age FROM PersonFlat p WHERE (p.firstName = ? OR ?) AND (p.lastName = ? OR ?) AND (p.age = ? OR ?)"
+      lifts mustEqual List(Some("Joe"), false, None, true, Some(123), false)
       executionType mustEqual ExecutionType.Static
+    }
+
+    "Support all encoding types" - {
+      val now = LocalDate.of(2022, 1, 1)
+      inline def q(inline keys: Map[String, Any]) = quote {
+        query[ManyTypes].filterByKeys(keys)
+      }
+
+      case class ManyTypes(s: String, so: Option[String], i: Int, io: Option[Int], ld: LocalDate, ldo: Option[LocalDate])
+      "Splice on an object multiple encoding types" in {
+        val keys = Map[String, Any]("s" -> "Joe", "so" -> "Joe", "i" -> 123, "io" -> 123, "ld" -> now, "ldo" -> now)
+        val r = ctx.run(q(keys))
+        val (qry, lifts, executionType) = r.triple
+        qry mustEqual "SELECT p.s, p.so, p.i, p.io, p.ld, p.ldo FROM ManyTypes p WHERE (p.s = ? OR ?) AND (p.so = ? OR ?) AND (p.i = ? OR ?) AND (p.io = ? OR ?) AND (p.ld = ? OR ?) AND (p.ldo = ? OR ?)"
+        lifts mustEqual List(Some("Joe"), false, Some("Joe"), false, Some(123), false, Some(123), false, Some(now), false, Some(now), false)
+        executionType mustEqual ExecutionType.Static
+      }
+      "Splice on an object multiple encoding types - missing Nones" in {
+        val keys = Map[String, Any]("s" -> "Joe", "i" -> 123, "ld" -> now)
+        val r = ctx.run(q(keys))
+        val (qry, lifts, executionType) = r.triple
+        qry mustEqual "SELECT p.s, p.so, p.i, p.io, p.ld, p.ldo FROM ManyTypes p WHERE (p.s = ? OR ?) AND (p.so = ? OR ?) AND (p.i = ? OR ?) AND (p.io = ? OR ?) AND (p.ld = ? OR ?) AND (p.ldo = ? OR ?)"
+        lifts mustEqual List(Some("Joe"), false, None, true, Some(123), false, None, true, Some(now), false, None, true)
+        executionType mustEqual ExecutionType.Static
+      }
+      "Splice on an object multiple encoding types - missing All" in {
+        val keys = Map[String, Any]("s" -> "Joe", "i" -> 123, "ld" -> now)
+        val r = ctx.run(q(keys))
+        val (qry, lifts, executionType) = r.triple
+        qry mustEqual "SELECT p.s, p.so, p.i, p.io, p.ld, p.ldo FROM ManyTypes p WHERE (p.s = ? OR ?) AND (p.so = ? OR ?) AND (p.i = ? OR ?) AND (p.io = ? OR ?) AND (p.ld = ? OR ?) AND (p.ldo = ? OR ?)"
+        lifts mustEqual List(Some("Joe"), false, None, true, Some(123), false, None, true, Some(now), false, None, true)
+        executionType mustEqual ExecutionType.Static
+      }
     }
 
     "Splice on a object with an optional field" in {
@@ -41,8 +80,8 @@ class FlicersSpec extends Spec {
       }
       val r = ctx.run(q)
       val (qry, lifts, executionType) = r.triple
-      qry mustEqual "SELECT p.firstName, p.lastName, p.age FROM PersonFlatOpt p WHERE (p.firstName = ? OR ? IS NULL) AND (p.lastName = ? OR ? IS NULL) AND (cast(p.age as VARCHAR) = ? OR ? IS NULL)"
-      lifts mustEqual List("Joe", "Joe", null, null, "123", "123")
+      qry mustEqual "SELECT p.firstName, p.lastName, p.age FROM PersonFlatOpt p WHERE (p.firstName = ? OR ?) AND (p.lastName = ? OR ?) AND (p.age = ? OR ?)"
+      lifts mustEqual List(Some("Joe"), false, None, true, Some(123), false)
       executionType mustEqual ExecutionType.Static
     }
 
@@ -52,11 +91,9 @@ class FlicersSpec extends Spec {
         query[PersonNest].filterByKeys(keys)
       }
       val r = ctx.run(q)
-      println("========= Prepares ======\n" + r.prepareRow)
-
       val (qry, lifts, executionType) = r.triple
-      qry mustEqual "SELECT p.first, p.last, p.age FROM PersonNest p WHERE (p.first = ? OR ? IS NULL) AND (p.last = ? OR ? IS NULL) AND (cast(p.age as VARCHAR) = ? OR ? IS NULL)"
-      lifts mustEqual List("Joe", "Joe", null, null, "123", "123")
+      qry mustEqual "SELECT p.first, p.last, p.age FROM PersonNest p WHERE (p.first = ? OR ?) AND (p.last = ? OR ?) AND (p.age = ? OR ?)"
+      lifts mustEqual List(Some("Joe"), false, None, true, Some(123), false)
       executionType mustEqual ExecutionType.Static
     }
 
@@ -65,10 +102,10 @@ class FlicersSpec extends Spec {
       inline def q = quote {
         query[PersonNestOpt].filterByKeys(keys)
       }
-      val r = ctx.run(q) //
+      val r = ctx.run(q)
       val (qry, lifts, executionType) = r.triple
-      qry mustEqual "SELECT p.first, p.last, p.age FROM PersonNestOpt p WHERE (p.first = ? OR ? IS NULL) AND (p.last = ? OR ? IS NULL) AND (cast(p.age as VARCHAR) = ? OR ? IS NULL)"
-      lifts mustEqual List("Joe", "Joe", null, null, "123", "123")
+      qry mustEqual "SELECT p.first, p.last, p.age FROM PersonNestOpt p WHERE (p.first = ? OR ?) AND (p.last = ? OR ?) AND (p.age = ? OR ?)"
+      lifts mustEqual List(Some("Joe"), false, None, true, Some(123), false)
       executionType mustEqual ExecutionType.Static
     }
 
@@ -79,8 +116,8 @@ class FlicersSpec extends Spec {
       }
       val r = ctx.run(q) //
       val (qry, lifts, executionType) = r.triple
-      qry mustEqual "SELECT p.first, p.last, p.age FROM PersonNestOptField p WHERE (p.first = ? OR ? IS NULL) AND (p.last = ? OR ? IS NULL) AND (cast(p.age as VARCHAR) = ? OR ? IS NULL)"
-      lifts mustEqual List("Joe", "Joe", null, null, "123", "123")
+      qry mustEqual "SELECT p.first, p.last, p.age FROM PersonNestOptField p WHERE (p.first = ? OR ?) AND (p.last = ? OR ?) AND (p.age = ? OR ?)"
+      lifts mustEqual List(Some("Joe"), false, None, true, Some(123), false)
       executionType mustEqual ExecutionType.Static
     }
   }

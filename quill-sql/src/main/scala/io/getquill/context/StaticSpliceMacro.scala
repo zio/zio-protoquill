@@ -1,7 +1,7 @@
 package io.getquill.context
 
 import scala.quoted._
-import io.getquill.StaticSplice
+import io.getquill.ToString
 import io.getquill.util.Load
 import io.getquill.metaprog.Extractors
 import scala.util.Success
@@ -14,7 +14,7 @@ import io.getquill.Quoted
 import io.getquill.quat.QuatMaking
 import io.getquill.parser.Lifter
 import scala.util.Try
-import io.getquill.StaticSplice
+import io.getquill.StringCodec
 import io.getquill.util.CommonExtensions.Either._
 import io.getquill.util.CommonExtensions.Throwable._
 import io.getquill.util.CommonExtensions.For._
@@ -22,57 +22,68 @@ import io.getquill.util.CommonExtensions.For._
 object StaticSpliceMacro {
   import Extractors._
 
-  private[getquill] object SelectPath:
-    def recurseInto(using Quotes)(term: quotes.reflect.Term, accum: List[String] = List()): Option[(quotes.reflect.Term, List[String])] =
+  private[getquill] object SelectPath {
+    def recurseInto(using Quotes)(term: quotes.reflect.Term, accum: List[String] = List()): Option[(quotes.reflect.Term, List[String])] = {
       import quotes.reflect._
-      term match
+      term match {
         // Recurses through a series of selects do the core identifier e.g:
         // Select(Select(Ident("core"), "foo"), "bar") => recurseInto( {Select(Ident("core"), "foo")}, "bar" +: List("baz") )
         case IgnoreApplyNoargs(Select(inner, pathNode)) => recurseInto(inner, pathNode +: accum)
         case id: Ident                                  => Some((id, accum))
         // If at the core of the nested selects is not a Ident, this does not match
         case other => None
+      }
+    }
 
-    def unapply(using Quotes)(term: quotes.reflect.Term): Option[(quotes.reflect.Term, List[String])] =
+    def unapply(using Quotes)(term: quotes.reflect.Term): Option[(quotes.reflect.Term, List[String])] = {
       import quotes.reflect._
-      term match
+      term match {
         // recurse on Module.Something
         case select: Select => recurseInto(select)
         // recurse on Module.SomethingAply() from which the empty-args apply i.e. `()` needs to be ignored
         case select @ IgnoreApplyNoargs(_: Select) => recurseInto(select)
         case id: Ident                             => Some((id, List()))
         case _                                     => None
-  end SelectPath
+      }
+    }
+  } // end SelectPath
 
-  extension [T](opt: Option[T])
+  extension [T](opt: Option[T]) {
     def nullAsNone =
-      opt match
+      opt match {
         case Some(null) => None
         case _          => opt
+      }
+  }
 
-  object DefTerm:
-    def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] =
+  object DefTerm {
+    def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] = {
       import quotes.reflect._
       if (term.tpe.termSymbol.isValDef || term.tpe.termSymbol.isDefDef) Some(term)
       else None
+    }
+  }
 
-  def isModule(using Quotes)(sym: quotes.reflect.Symbol) =
+  def isModule(using Quotes)(sym: quotes.reflect.Symbol) = {
     import quotes.reflect._
     val f = sym.flags
     f.is(Flags.Module) && !f.is(Flags.Package) && !f.is(Flags.Param) && !f.is(Flags.ParamAccessor) && !f.is(Flags.Method)
+  }
 
-  object TermIsModule:
-    def unapply(using Quotes)(value: quotes.reflect.Term): Boolean =
+  object TermIsModule {
+    def unapply(using Quotes)(value: quotes.reflect.Term): Boolean = {
       import quotes.reflect.{Try => _, _}
       val tpe = value.tpe.widen
       if (isModule(tpe.typeSymbol))
         true
       else
         false
+    }
+  }
 
   /** The term is a static module but not a package */
-  object TermOwnerIsModule:
-    def unapply(using Quotes)(value: quotes.reflect.Term): Option[quotes.reflect.TypeRepr] =
+  object TermOwnerIsModule {
+    def unapply(using Quotes)(value: quotes.reflect.Term): Option[quotes.reflect.TypeRepr] = {
       import quotes.reflect.{Try => _, _}
       Try(value.tpe.termSymbol.owner).toOption.flatMap { owner =>
         val memberType = value.tpe.memberType(owner)
@@ -81,8 +92,10 @@ object StaticSpliceMacro {
         else
           None
       }
+    }
+  }
 
-  def apply[T: Type](valueRaw: Expr[T])(using Quotes): Expr[T] =
+  def apply[T: Type](valueRaw: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect.{Try => _, _}
     import ReflectivePathChainLookup.StringOps._
     import io.getquill.ast._
@@ -99,14 +112,15 @@ object StaticSpliceMacro {
     // should think about this more later. For now just do toString to check that stuff from the main return works
 
     val (pathRoot, selectPath) =
-      Untype(value) match
+      Untype(value) match {
         case SelectPath(pathRoot, selectPath) => (pathRoot, selectPath)
         case other                            =>
           // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
           report.throwError(s"Could not load a static value `${Format.Term(value)}` from ${Printer.TreeStructure.show(other)}")
+      }
 
     val (ownerTpe, path) =
-      pathRoot match
+      pathRoot match {
         case term @ DefTerm(TermIsModule()) =>
           (pathRoot.tpe, selectPath)
         // TODO Maybe only check module owner if Path is Nil?
@@ -114,6 +128,7 @@ object StaticSpliceMacro {
           (owner, pathRoot.symbol.name +: selectPath)
         case _ =>
           report.throwError(s"Cannot evaluate the static path ${Format.Term(value)}. Neither it's type ${Format.TypeRepr(pathRoot.tpe)} nor the owner of this type is a static module.")
+      }
 
     val module = Load.Module.fromTypeRepr(ownerTpe).toEither.discardLeft(e =>
       // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
@@ -133,14 +148,16 @@ object StaticSpliceMacro {
     val spliceEither =
       for {
         castSplice <- Try(splicedValue.current.asInstanceOf[T]).toEither.mapLeft(e => errorMsg(e.getMessage))
-        splicer <- StaticSplice.summon[T].mapLeft(str => errorMsg(str))
-        splice <- Try(splicer(castSplice)).toEither.mapLeft(e => errorMsg(e.getMessage))
+        splicer <- StringCodec.ToSql.summon[T].mapLeft(str => errorMsg(str))
+        splice <- Try(splicer.toSql(castSplice)).toEither.mapLeft(e => errorMsg(e.getMessage))
       } yield splice
 
     val spliceStr =
-      spliceEither match
+      spliceEither match {
         case Left(msg)    => report.throwError(msg, valueRaw)
         case Right(value) => value
+      }
 
     UnquoteMacro('{ Quoted[T](Infix(List(${ Expr(spliceStr) }), List(), true, false, $quat), Nil, Nil) })
+  }
 }

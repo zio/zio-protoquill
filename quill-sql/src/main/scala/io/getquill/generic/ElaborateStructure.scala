@@ -15,6 +15,9 @@ import io.getquill.metaprog.TypeExtensions._
 import io.getquill.generic.DecodingType
 import io.getquill.util.Format
 import scala.annotation.tailrec
+import io.getquill.ast.External.Source
+import zio.Chunk
+import io.getquill.metaprog.Extractors
 
 /**
  * Elaboration can be different whether we are encoding or decoding because we could have
@@ -23,9 +26,10 @@ import scala.annotation.tailrec
  * or vice versa. Therefore, we need to differentiate whether elaboration is used on the
  * encoding side or the decoding side.
  */
-enum ElaborationSide:
+enum ElaborationSide {
   case Encoding
   case Decoding
+}
 
 /**
  * Based on valueComputation and materializeQueryMeta from the old Quill
@@ -69,7 +73,7 @@ enum ElaborationSide:
  * }}}
  *
  * Now, since Quats were introduced into Quill since 3.6.0 (technically since 3.5.3), this step is not necessarily needed
- * for query expansion since `Ident("p")` is now understood to expand into it's corresponding SelectValue fields so for queries,
+ * for query expansion since `Ident("p")` is now understood to expand into its corresponding SelectValue fields so for queries,
  * this stage could technically be elimiated. However, this logic is also useful for ActionMeta where we have
  * something like this:
  * {{{
@@ -95,29 +99,34 @@ object ElaborateStructure {
   case object Branch extends TermType
 
   // TODO Good use-case for zio-chunk
-  case class TermPath(terms: List[Term]):
+  case class TermPath(terms: List[Term]) {
     def append(term: Term) = this.copy(terms = this.terms :+ term)
     def concat(path: TermPath) = this.copy(terms = this.terms ++ path.terms)
     def mkString(separator: String = "", dropFirst: Boolean = true) =
       (if (dropFirst) terms.drop(1) else terms).map(_.name).mkString(separator)
-  object TermPath:
+  }
+  object TermPath {
     def single(term: Term) = TermPath(List(term))
+  }
 
   // TODO Rename to Structure
   case class Term(name: String, typeType: TermType, children: List[Term] = List(), optional: Boolean = false) {
     def withChildren(children: List[Term]) = this.copy(children = children)
     def toAst = Term.toAstTop(this)
     def asLeaf = this.copy(typeType = Leaf, children = List())
-    def paths =
-      def pathsRecurse(node: Term, topLevel: Boolean = false): List[String] =
+    def paths = {
+      def pathsRecurse(node: Term, topLevel: Boolean = false): List[String] = {
         def emptyIfTop(str: String) = if (topLevel) "" else str
-        node match
+        node match {
           case Term(name, _, Nil, _) => List(name)
           case Term(name, _, childProps, _) =>
             childProps
               .flatMap(childTerm => pathsRecurse(childTerm))
               .map(childName => emptyIfTop(name) + childName)
+        }
+      }
       pathsRecurse(this, true)
+    }
 
     // Used by coproducts, merges all fields of a term with another if this is valid
     // Note that T is only needed for the error message. Maybe take it out once we store Types inside of Term
@@ -157,7 +166,7 @@ object ElaborateStructure {
 
   }
 
-  object Term:
+  object Term {
     import io.getquill.ast._
 
     // Not sure if Branch Terms should have hidden properties
@@ -263,7 +272,7 @@ object ElaborateStructure {
     private[getquill] def ofProduct[T: Type](side: ElaborationSide, baseName: String = "notused", udtBehavior: UdtBehavior = UdtBehavior.Leaf)(using Quotes) =
       base[T](Term(baseName, Branch), side, udtBehavior)
 
-  end Term
+  } // end Term
 
   /** Go through all possibilities that the element might be and collect their fields */
   def collectFields[Fields, Types](node: Term, fieldsTup: Type[Fields], typesTup: Type[Types], side: ElaborationSide)(using Quotes): List[Term] = {
@@ -296,17 +305,20 @@ object ElaborateStructure {
 
       case ('[field *: fields], '[Option[firstInnerTpe] *: types]) =>
         // Option[firstInnerTpe] could be Option[tpe] or Option[Option[tpe]] etc... so we need to find the most inner type
-        `Option[...[t]...]`.innerOrTopLevelT(Type.of[firstInnerTpe]) match
+        `Option[...[t]...]`.innerOrTopLevelT(Type.of[firstInnerTpe]) match {
           case '[tpe] =>
-            if (Type.of[tpe].isProduct)
+            if (Type.of[tpe].isProduct) {
               val childTerm = Term(Type.of[field].constValue, Branch, optional = true)
               // println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a product ----------")
               val baseTerm = base[tpe](childTerm, side)
               flatten(node, Type.of[fields], Type.of[types], side, baseTerm +: accum)
-            else
+            }
+            else {
               val childTerm = Term(Type.of[field].constValue, Leaf, optional = true)
               // println(s"------ Optional field expansion ${Type.of[field].constValue.toString}:${TypeRepr.of[tpe].show} is a Leaf ----------")
               flatten(node, Type.of[fields], Type.of[types], side, childTerm +: accum)
+            }
+        }
 
       case ('[field *: fields], '[tpe *: types]) if Type.of[tpe].isProduct && Type.of[tpe].notOption =>
         val childTerm = Term(Type.of[field].constValue, Branch)
@@ -325,9 +337,10 @@ object ElaborateStructure {
     }
   }
 
-  enum UdtBehavior:
+  enum UdtBehavior {
     case Leaf
     case Derive
+  }
 
   /**
    * Expand the structure of base term into series of terms for a given type
@@ -353,27 +366,30 @@ object ElaborateStructure {
 
     // for errors/warnings
     def encDecText =
-      side match
+      side match {
         case ElaborationSide.Encoding => "encodeable"
         case ElaborationSide.Decoding => "decodeable"
+      }
 
     val isAutomaticLeaf =
-      side match
+      side match {
         // Not sure why the UDT part is needed since it shuold always have a GenericEncoder/Decoder anyway
         case _ if (TypeRepr.of[T] <:< TypeRepr.of[io.getquill.Udt]) =>
           // println(s"------- TREATING UDT as Leaf ${Format.TypeOf[T]}")
           // If we are elaborating a UDT and are told to wrap normally, make sure that this is done
           // even if an encoder exists for the UDT. Otherwise, automatically treat the UDT as a Leaf entity
           // (since an encoder for it should have been derived by the macro that used UdtBehavior.Derive)
-          udtBehavior match
+          udtBehavior match {
             case UdtBehavior.Leaf   => true
             case UdtBehavior.Derive => false
+          }
         case ElaborationSide.Encoding =>
           // println(s"------- ALREDY EXISTS Encoder for ${Format.TypeOf[T]}")
           Expr.summon[GenericEncoder[T, _, _]].isDefined
         case ElaborationSide.Decoding =>
           // println(s"------- ALREDY EXISTS Decoder for ${Format.TypeOf[T]}")
           Expr.summon[GenericDecoder[_, _, T, DecodingType.Specific]].isDefined
+      }
 
     // TODO Back here. Should have a input arg that asks whether elaboration is
     //      on the encoding or on the decoding side.
@@ -388,10 +404,10 @@ object ElaborateStructure {
     // Otherwise, summon the mirror and wrap the value
     else
       // if there is a decoder for the term, just return the term
-      Expr.summon[Mirror.Of[T]] match
+      Expr.summon[Mirror.Of[T]] match {
         case Some(ev) =>
           // Otherwise, recursively summon fields
-          ev match
+          ev match {
             case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
               val children = flatten(term, Type.of[elementLabels], Type.of[elementTypes], side)
               term.withChildren(children)
@@ -405,10 +421,12 @@ object ElaborateStructure {
               alternatives.reduce((termA, termB) => termA.merge[T](termB))
             case _ =>
               report.throwError(
-                s"Althought a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator. It's mirror is ${Format.Expr(ev)}"
+                s"Althought a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator. Its mirror is ${Format.Expr(ev)}"
               )
+          }
         case None =>
-          report.throwError(s"A mirror of the type ${Format.TypeOf[T]} cannot be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so it's fields cannot be understood in the structure-elaborator.")
+          report.throwError(s"A mirror of the type ${Format.TypeOf[T]} cannot be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator.")
+      }
   }
 
   private def productized[T: Type](side: ElaborationSide, baseName: String = "x")(using Quotes): Ast = {
@@ -417,7 +435,7 @@ object ElaborateStructure {
       if (lifted.length == 1)
         lifted.head._1
       else {
-        CaseClass(lifted.map((ast, name) => (name, ast)))
+        CaseClass(Extractors.typeName[T], lifted.map((ast, name) => (name, ast)))
       }
     insert
   }
@@ -484,24 +502,27 @@ object ElaborateStructure {
     decomposedLiftsOfProductValue(elaborated)
   }
 
-  def decomposedProductValueDetails[T: Type](side: ElaborationSide, udtBehavior: UdtBehavior)(using Quotes) =
+  def decomposedProductValueDetails[T: Type](side: ElaborationSide, udtBehavior: UdtBehavior)(using Quotes) = {
     import quotes.reflect._
 
     def innerType(tpe: Type[_]) =
-      tpe match
+      tpe match {
         case '[Option[t]] => Type.of[t]
         case _            => tpe
+      }
 
     def isOptional(tpe: Type[_]) =
-      tpe match
+      tpe match {
         case '[Option[t]] => true
         case _            => false
+      }
 
-    def summonElaboration[T: Type] =
+    def summonElaboration[T: Type] = {
       val elaboration = ElaborateStructure.Term.ofProduct[T](side, udtBehavior = udtBehavior)
       if (elaboration.typeType == Leaf)
         report.throwError(s"Error encoding UDT: ${Format.TypeOf[T]}. Elaboration detected no fields (i.e. was a leaf-type). This should not be possible.")
       elaboration
+    }
 
     val elaboration = summonElaboration[T]
     // If it is get the components
@@ -520,23 +541,25 @@ object ElaborateStructure {
         (term.name, isOpt, getter, tpe)
       })
     (components, elaboration.typeType)
-  end decomposedProductValueDetails
+  } // end decomposedProductValueDetails
 
-  private[getquill] def liftsOfProductValue[T: Type](elaboration: Term, productValue: Expr[T])(using Quotes) =
+  private[getquill] def liftsOfProductValue[T: Type](elaboration: Term, productValue: Expr[T])(using Quotes) = {
     import quotes.reflect._
     // for t:T := Person(name: String, age: Int) it will be paths := List[Expr](t.name, t.age) (labels: List("name", "age"))
     // for t:T := Person(name: Name, age: Int), Name(first:String, last: String) it will be paths := List[Expr](t.name.first, t.name.last, t.age) (labels: List(namefirst, namelast, age))
     val labels = elaboration.paths
     val pathLambdas = DeconstructElaboratedEntityLevels[T](elaboration)
     val paths: List[Expr[_]] = pathLambdas.map { (exprPath, exprType) =>
-      exprType match
+      exprType match {
         case '[t] =>
-          if (TypeRepr.of[t] =:= TypeRepr.of[Any])
+          if (TypeRepr.of[t] =:= TypeRepr.of[Any]) {
             lazy val showableExprPath = '{ (input: T) => ${ exprPath('input) } }
             report.warning(s"The following the expression was typed `Any`: ${Format.Expr(showableExprPath)}. Will likely not be able to summon an encoder for this (the actual type was: ${Format.TypeOf[T]} in ${Format.TypeRepr(
               showableExprPath.asTerm.tpe
             )})  (the other param was ${Format.TypeOf[T]}.")
+          }
           '{ ${ exprPath(productValue) }.asInstanceOf[t] }
+      }
     }
     if (labels.length != pathLambdas.length)
       report.throwError(s"List of (${labels.length}) labels: ${labels} does not match list of (${paths.length}) paths that they represent: ${paths.map(Format.Expr(_))}")
@@ -546,6 +569,7 @@ object ElaborateStructure {
         report.warning(s"`Any` value found for the path ${label} at the expression ${Format.Expr(exprPath)}. Will likely not be able to summon an encoder for this.")
     }
     outputs
+  }
 
   private[getquill] def decomposedLiftsOfProductValue[T: Type](elaboration: Term)(using Quotes): List[(Expr[T] => Expr[_], Type[_])] =
     DeconstructElaboratedEntityLevels[T](elaboration)
@@ -554,26 +578,38 @@ object ElaborateStructure {
    * Flatten the elaboration from 'node' into a completely flat product type
    * Technicallly don't need Type T but it's very useful to know for errors and it's an internal API so I'll keep it for now
    */
-  private[getquill] def productValueToAst[T: Type](node: Term /* i.e. the elaboration */ )(using Quotes): (String, Ast) =
-    def toAstRec(node: Term, parentTerm: String, topLevel: Boolean = false): (String, Ast) =
-      def notTopLevel(str: String) = if (topLevel) "" else str
-      node match
+  private[getquill] def productValueToAst[T: Type](node: Term /* i.e. the elaboration */ )(using Quotes): (String, Ast) = {
+    def toAstRec(node: Term, parentTerms: Chunk[String], topLevel: Boolean = false): (String, Ast) = {
+      def notTopLevel(termName: Chunk[String]) = if (topLevel) Chunk.empty else termName
+      node match {
         case Term(name, Leaf, _, _) =>
-          (name, ScalarTag(parentTerm + name))
+          // CC(foo: CC(bar: CC(baz: String))) should be: ScalarTag(foobarbaz, Source.UnparsedProperty("foo_bar_baz"))
+          // the UnparsedProperty part is potentially used in batch queries for property naming
+          val tagTerms = parentTerms :+ name
+          val tagName = tagTerms.mkString
+          // There could be variable names that have "$" in them e.g. anonymous tuples as in:
+          //   foreach(List((foo,bar),(baz,blin))).map { case (a, b) => query[Update](...a...) }
+          // so the batch identifier is unknown would manifest as x$1 etc... Make sure to at least remove $ from the variable name
+          val tagFieldName = tagTerms.mkString("_")
+          (name, ScalarTag(tagName, Source.UnparsedProperty(tagFieldName)))
         // On the top level, parent is "", and 1st parent in recursion is also ""
         case Term(name, Branch, list, false) =>
-          val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
-          (name, CaseClass(children))
+          val children = list.map(child => toAstRec(child, notTopLevel(parentTerms :+ name)))
+          (name, CaseClass(Extractors.typeName[T], children))
         // same logic for optionals
         case Term(name, Branch, list, true) =>
-          val children = list.map(child => toAstRec(child, notTopLevel(parentTerm + name)))
-          (name, OptionSome(CaseClass(children)))
+          val children = list.map(child => toAstRec(child, notTopLevel(parentTerms :+ name)))
+          (name, OptionSome(CaseClass(Extractors.typeName[T], children)))
         case _ =>
           quotes.reflect.report.throwError(s"Illegal generic schema: $node from type ${Type.of[T]}")
-    toAstRec(node, "", true)
+      }
+    }
+    toAstRec(node, Chunk.empty, true)
+  }
 
-  extension [T](opt: Option[T])
+  extension [T](opt: Option[T]) {
     def getOrThrow(msg: String) = opt.getOrElse { throw new IllegalArgumentException(msg) }
+  }
 
   case class TaggedLiftedCaseClass[A <: Ast](caseClass: A, lifts: List[(String, Expr[_])]) {
     import java.util.UUID
@@ -583,9 +619,9 @@ object ElaborateStructure {
     def reKeyWithUids(): TaggedLiftedCaseClass[A] = {
       def replaceKeys(newKeys: Map[String, String]): Ast =
         Transform(caseClass) {
-          case ScalarTag(keyName) =>
+          case ScalarTag(keyName, source) =>
             lazy val msg = s"Cannot find key: '${keyName}' in the list of replacements: ${newKeys}"
-            ScalarTag(newKeys.get(keyName).getOrThrow(msg))
+            ScalarTag(newKeys.get(keyName).getOrThrow(msg), source)
         }
 
       val oldAndNewKeys = lifts.map((key, expr) => (key, uuid(), expr))

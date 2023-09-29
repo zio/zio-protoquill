@@ -4,31 +4,35 @@ import scala.quoted._
 import scala.reflect.ClassTag
 import io.getquill.ast.Ast
 import io.getquill.util.Format
+import io.getquill.norm.TranspileConfig
 
-sealed trait ParserChain(using scala.quoted.Quotes):
+sealed trait ParserChain(using Quotes, TranspileConfig) {
   self =>
   def name: String
   protected def build(rootParse: Parser): Parser
   def orElse(that: ParserChain): ParserChain = ParserChain.OrElse(self, that)
   lazy val complete: Parser =
-    new Parser(Parser.Nil):
+    new Parser(Parser.Nil) {
       built =>
       def attempt = build(built).attemptProper
+    }
+}
 
-object ParserChain:
+object ParserChain {
   import scala.quoted._
-  def attempt[P <: Parser: ClassTag](rootInjector: Parser => P)(using Quotes): ParserChain =
+  def attempt[P <: Parser: ClassTag](rootInjector: Parser => P)(using Quotes, TranspileConfig): ParserChain =
     Attempt[P](rootInjector)
 
-  private final case class Attempt[P <: Parser: ClassTag](rootInjector: Parser => P)(using Quotes) extends ParserChain:
+  private final case class Attempt[P <: Parser: ClassTag](rootInjector: Parser => P)(using Quotes, TranspileConfig) extends ParserChain {
     lazy val name = summon[ClassTag[P]].runtimeClass.getSimpleName
     protected def build(rootParse: Parser) = rootInjector(rootParse)
+  }
 
-  private final case class OrElse(left: ParserChain, right: ParserChain)(using Quotes) extends ParserChain:
+  private final case class OrElse(left: ParserChain, right: ParserChain)(using Quotes, TranspileConfig) extends ParserChain {
     def name = s"${left.name}_or_${right.name}"
     protected def build(rootParse: Parser): Parser =
-      new Parser(rootParse):
-        def attempt =
+      new Parser(rootParse) {
+        def attempt = {
           val leftOrRightMatch: PartialFunction[Expr[_], Option[Ast]] =
             PartialFunction.fromFunction[Expr[_], Option[Ast]](expr => {
               val leftParser = left.build(rootParse)
@@ -42,4 +46,7 @@ object ParserChain:
               leftLift(expr).orElse(rightLift(expr))
             })
           leftOrRightMatch.unlift
-        end attempt
+        } // end attempt
+      }
+  }
+}

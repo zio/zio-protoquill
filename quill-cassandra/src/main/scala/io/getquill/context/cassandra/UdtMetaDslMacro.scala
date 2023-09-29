@@ -2,10 +2,9 @@ package io.getquill.context.cassandra
 
 import scala.quoted._
 import io.getquill.metaprog.Extractors._
-import io.getquill.context.cassandra.UdtMeta
 import io.getquill.context.cassandra.util.UdtMetaUtils
 import io.getquill.util.Format
-import io.getquill.Udt
+import io.getquill.{Udt, UdtMeta}
 
 object UdtMetaDslMacro {
 
@@ -19,11 +18,12 @@ object UdtMetaDslMacro {
     import quotes.reflect._
 
     val columnsList =
-      columns match
+      columns match {
         case '{ Nil } => Nil
         case '{ List() } => Nil
         case Varargs(cols) => cols
         case _ => report.throwError(s"Invalid UdtMeta columns list: ${Format.Expr(columns)}", columns)
+      }
 
     // Do we need to do asTerm.underlyingArgument.asExpr to the terms here? As far as I understand,
     // it is not a good idea to splice trees back in that have been underlyingArgumented (check conversations with Stucki)

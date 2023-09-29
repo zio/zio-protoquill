@@ -14,7 +14,7 @@ import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.annotation.targetName
 
-class CassandraAsyncContext[N <: NamingStrategy](
+class CassandraAsyncContext[+N <: NamingStrategy](
   naming:                     N,
   session:                    CqlSession,
   preparedStatementCacheSize: Long
@@ -56,7 +56,7 @@ class CassandraAsyncContext[N <: NamingStrategy](
   @targetName("runAction")
   inline def run[E](inline quoted: Quoted[Action[E]]): Future[Unit] = InternalApi.runAction(quoted)
   @targetName("runBatchAction")
-  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Future[Unit] = InternalApi.runBatchAction(quoted)
+  inline def run[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): Future[Unit] = InternalApi.runBatchAction(quoted, 1)
 
   // override def performIO[T](io: IO[T, _], transactional: Boolean = false)(implicit ec: ExecutionContext): Result[T] = {
   //   if (transactional) logger.underlying.warn("Cassandra doesn't support transactions, ignoring `io.transactional`")
@@ -71,7 +71,7 @@ class CassandraAsyncContext[N <: NamingStrategy](
 
   def executeQuerySingle[T](cql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): Result[RunQuerySingleResult[T]] = {
     implicit val ec = dc
-    executeQuery(cql, prepare, extractor)(info, dc).map(handleSingleResult)
+    executeQuery(cql, prepare, extractor)(info, dc).map(handleSingleResult(cql, _))
   }
 
   def executeAction(cql: String, prepare: Prepare = identityPrepare)(executionInfo: ExecutionInfo, dc: Runner): Result[RunActionResult] = {

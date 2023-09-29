@@ -10,7 +10,7 @@ import io.getquill.util.ContextLogger
 import java.sql.{ Connection, JDBCType, PreparedStatement, ResultSet, Statement }
 import java.util.TimeZone
 
-trait JdbcContextTypes[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends Context[Dialect, Naming]
+trait JdbcContextTypes[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends Context[Dialect, Naming]
   with SqlContext[Dialect, Naming]
   with Encoders
   with Decoders {
@@ -22,6 +22,15 @@ trait JdbcContextTypes[Dialect <: SqlIdiom, Naming <: NamingStrategy] extends Co
   type ResultRow = ResultSet
   type Session = Connection
   type Runner = Unit
+
+  override type NullChecker = JdbcNullChecker
+  class JdbcNullChecker extends BaseNullChecker {
+    override def apply(index: Int, row: ResultSet): Boolean = {
+      // Note that JDBC-rows are 1-indexed
+      row.getObject(index + 1) == null
+    }
+  }
+  implicit val nullChecker: JdbcNullChecker = new JdbcNullChecker()
 
   protected val dateTimeZone = TimeZone.getDefault
 

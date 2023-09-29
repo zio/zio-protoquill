@@ -9,6 +9,7 @@ import io.getquill.context.sql.testContext._
 import io.getquill._
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
+import io.getquill.context.ExecutionType
 
 class ActionSpec extends Spec {
   "action" - {
@@ -132,21 +133,21 @@ class ActionSpec extends Spec {
           qr1.filter(t => t.s == "s").updateValue(TestEntity("s", 1, 2L, Some(1), true))
         }
         testContext.run(q).string mustEqual
-          "UPDATE TestEntity SET s = 's', i = 1, l = 2, o = 1, b = true WHERE s = 's'"
+          "UPDATE TestEntity AS t SET s = 's', i = 1, l = 2, o = 1, b = true WHERE t.s = 's'"
       }
       "entity with filter" in {
         inline def q = quote {
           qr1.filter(t => t.s == "s").updateValue(TestEntity("s", 1, 2L, Some(1), true))
         }
         testContext.run(q).string mustEqual
-          "UPDATE TestEntity SET s = 's', i = 1, l = 2, o = 1, b = true WHERE s = 's'"
+          "UPDATE TestEntity AS t SET s = 's', i = 1, l = 2, o = 1, b = true WHERE t.s = 's'"
       }
       "entity with filter and lift" in {
         inline def q = quote {
           qr1.filter(t => t.s == lift("s")).updateValue(TestEntity("s", 1, 2L, Some(1), true))
         }
         testContext.run(q).triple mustEqual
-          ("UPDATE TestEntity SET s = 's', i = 1, l = 2, o = 1, b = true WHERE s = ?", List("s"), Static)
+          ("UPDATE TestEntity AS t SET s = 's', i = 1, l = 2, o = 1, b = true WHERE t.s = ?", List("s"), Static)
       }
     }
     "updateValue" - {
@@ -157,7 +158,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = 's'", List("s", 1, 2L, Some(("_1", 1)), true), Static)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = 's'", List("s", 1, 2L, Some(1), true), Static)
       }
       "with filter and lift" in {
         inline def q = quote {
@@ -165,7 +166,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Static)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Static)
       }
       "quoted with filter and lift" in {
         inline def orig = quote {
@@ -176,7 +177,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Static)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Static)
       }
       "quoted dynamic with filter and lift" in {
         val orig = quote {
@@ -187,7 +188,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Dynamic)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Dynamic)
       }
       "fully dynamic with filter and lift" in {
         val orig = quote {
@@ -197,7 +198,7 @@ class ActionSpec extends Spec {
           orig.updateValue(lift(v))
         }
         testContext.run(q).triple mustEqual
-          ("UPDATE TestEntity SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE s = ?", List("s", 1, 2L, Some(("_1", 1)), true, "s"), Dynamic)
+          ("UPDATE TestEntity AS t SET s = ?, i = ?, l = ?, o = ?, b = ? WHERE t.s = ?", List("s", 1, 2L, Some(1), true, "s"), Dynamic)
       }
     }
     "update" - {
@@ -206,14 +207,14 @@ class ActionSpec extends Spec {
           qr1.filter(t => t.s == null).update(_.s -> "s")
         }
         testContext.run(q).string mustEqual
-          "UPDATE TestEntity SET s = 's' WHERE s IS NULL"
+          "UPDATE TestEntity AS t SET s = 's' WHERE t.s IS NULL"
       }
       "with filter" in {
         inline def q = quote {
           qr1.filter(t => t.s == "s").update(_.s -> "s")
         }
         testContext.run(q).string mustEqual
-          "UPDATE TestEntity SET s = 's' WHERE s = 's'"
+          "UPDATE TestEntity AS t SET s = 's' WHERE t.s = 's'"
       }
       "with filter and lift" in {
         inline def q = quote {
@@ -221,7 +222,7 @@ class ActionSpec extends Spec {
         }
         val result = testContext.run(q)
         result.triple mustEqual
-          ("UPDATE TestEntity SET s = 's' WHERE s = ?", List("s"), Static)
+          ("UPDATE TestEntity AS t SET s = 's' WHERE t.s = ?", List("s"), Static)
       }
       "without filter" in {
         val q = quote {
@@ -251,7 +252,7 @@ class ActionSpec extends Spec {
           qr1.filter(t => t.s == null).delete
         }
         testContext.run(q).string mustEqual
-          "DELETE FROM TestEntity WHERE s IS NULL"
+          "DELETE FROM TestEntity AS t WHERE t.s IS NULL"
       }
       "without filter" in {
         val q = quote {
@@ -261,5 +262,49 @@ class ActionSpec extends Spec {
           "DELETE FROM TestEntity"
       }
     }
+  }
+
+  "no lift in values-clause" in {
+    case class Person(name: String, age: Int)
+    val list = List("U%", "I%")
+    inline def q = quote {
+      liftQuery(list).foreach { pat =>
+        query[Person].filter(_.name like pat).update(_.name -> "foo")
+      }
+    }
+    testContext.run(q).triple mustEqual (
+      "UPDATE Person AS x14 SET name = 'foo' WHERE x14.name like ?",
+      List(List("U%"), List("I%")),
+      ExecutionType.Static
+    )
+  }
+
+  "deep nested case class" in {
+    case class Name(first: String, last: String)
+    case class Contact(name: Option[Name], age: Int)
+    val contactsExpected = List(Contact(Some(Name("Joe", "Bloggs")), 123), Contact(None, 456))
+    inline def q = quote {
+      query[Contact]
+        .filter(p => p.name.map(_.first) == Option("foo"))
+        .update(_.name.map(_.last) -> Option("bar"))
+    }
+    testContext.run(q).string mustEqual
+      "UPDATE Contact AS p SET last = 'bar' WHERE p.first = 'foo'"
+  }
+
+  "deep nested case class - renamed fields" in {
+    case class Name(first: String, last: String)
+    case class ContactTable(name: Option[Name], age: Int)
+    val contactsExpected = List(ContactTable(Some(Name("Joe", "Bloggs")), 123), ContactTable(None, 456))
+    inline def contacts = quote {
+      querySchema[ContactTable]("Contact", _.name.map(_.first) -> "firstName", _.name.map(_.last) -> "lastName")
+    }
+    inline def q = quote {
+      contacts
+        .filter(p => p.name.map(_.first) == Option("foo"))
+        .update(_.name.map(_.last) -> Option("bar"))
+    }
+    testContext.run(q).string mustEqual
+      "UPDATE Contact AS p SET lastName = 'bar' WHERE p.firstName = 'foo'"
   }
 }

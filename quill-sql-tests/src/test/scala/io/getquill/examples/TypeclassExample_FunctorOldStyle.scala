@@ -14,8 +14,9 @@ object TypeclassExample_FunctorOldStyle {
 
 
   // This works!
-  trait Functor[F[_]]:
+  trait Functor[F[_]] {
     inline def map[A, B](inline xs: F[A], inline f: A => B): F[B]
+  }
 
   // This doesn't work!
   // inline given Functor[List] = new Functor[List] with
@@ -23,11 +24,13 @@ object TypeclassExample_FunctorOldStyle {
   // If you want to use = you have to define "class ListFunctor extends Functor[List]" first and then do:
   // inline given ListFunctor = new ListFunctor
   
-  inline given Functor[List] with
+  inline given Functor[List] with {
     inline def map[A, B](inline xs: List[A], inline f: A => B): List[B] = xs.map(f)
+  }
 
-  class QueryFunctor extends Functor[Query]:
+  class QueryFunctor extends Functor[Query] {
     inline def map[A, B](inline xs: Query[A], inline f: A => B): Query[B] = xs.map(f)
+  }
 
   //inline given listFunctor: ListFunctor = new ListFunctor
   inline given queryFunctor: QueryFunctor = new QueryFunctor

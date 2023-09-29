@@ -16,16 +16,18 @@ import scala.collection.mutable.LinkedHashMap
 object QuatPicklers {
   implicit object productPickler extends Pickler[Quat.Product] {
     override def pickle(value: Quat.Product)(implicit state: PickleState): Unit = {
+      state.pickle(value.name)
       state.pickle(value.tpe)
       state.pickle(value.fields)
       state.pickle(value.renames)
       ()
     }
     override def unpickle(implicit state: UnpickleState): Quat.Product = {
+      val n = state.unpickle[String]
       val a = state.unpickle[Quat.Product.Type]
       val b = state.unpickle[LinkedHashMap[String, Quat]]
       val c = state.unpickle[LinkedHashMap[String, String]]
-      Quat.Product.WithRenames(a, b, c)
+      Quat.Product.WithRenames(n, a, b, c)
     }
   }
 

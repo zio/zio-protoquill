@@ -1,11 +1,16 @@
 package io.getquill
 
 import io.getquill.context.{ CanReturnField, CanReturnMultiField, CannotReturn }
+import io.getquill.idiom.Idiom
+import io.getquill.norm.EqualityBehavior
+import io.getquill.norm.EqualityBehavior.NonAnsiEquality
+import io.getquill.context.sql.TestEncoders
+import io.getquill.context.sql.TestDecoders
 
-class TestMirrorContextTemplate[Dialect <: MirrorIdiomBase, Naming <: NamingStrategy](dialect: Dialect, naming: Naming)
+class TestMirrorContextTemplate[+Dialect <: Idiom, +Naming <: NamingStrategy](dialect: Dialect, naming: Naming)
   extends MirrorContext[Dialect, Naming](dialect, naming) with TestEntities {
 
-  def withDialect[I <: MirrorIdiomBase](dialect: I)(f: TestMirrorContextTemplate[I, Naming] => Any): Unit = {
+  def withDialect[I <: Idiom](dialect: I)(f: TestMirrorContextTemplate[I, Naming] => Any): Unit = {
     val ctx = new TestMirrorContextTemplate[I, Naming](dialect, naming)
     f(ctx)
     ctx.close

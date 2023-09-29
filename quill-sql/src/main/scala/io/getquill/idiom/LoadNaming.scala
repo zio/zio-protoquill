@@ -15,24 +15,25 @@ import io.getquill.util.CommonExtensions.Option._
 
 object LoadNaming {
 
-  def static[T: TType](using Quotes): Try[NamingStrategy] =
+  def static[T: TType](using Quotes): Try[NamingStrategy] = {
     import quotes.reflect.{Try => _, _}
 
     def `endWith$`(str: String) =
       if (str.endsWith("$")) str else str + "$"
 
-    def loadFromTastyType[T](tpe: TypeRepr): Try[T] =
+    def loadFromTastyType[T](tpe: TypeRepr): Try[T] = {
       val loadClassType = tpe
       for {
         optClassSymbol <- Try(loadClassType.classSymbol)
         className <- Try {
-          optClassSymbol match
+          optClassSymbol match {
             case Some(value) => Success(value.fullName)
             case None =>
               if (!loadClassType.termSymbol.moduleClass.isNoSymbol)
                 Success(loadClassType.termSymbol.moduleClass.fullName)
               else
                 Failure(new IllegalArgumentException(s"The class ${loadClassType.show} cannot be loaded because it is not a scala class or module"))
+          }
         }.flatten
         field <- Try {
           val clsFull = `endWith$`(className)
@@ -41,11 +42,12 @@ object LoadNaming {
           field.get(cls).asInstanceOf[T]
         }
       } yield (field)
+    }
 
     CollectTry {
       strategies[T].map(loadFromTastyType[NamingStrategy](_))
     }.map(NamingStrategy(_))
-  end static
+  } // end static
 
   private def strategies[T: TType](using Quotes) = {
     import quotes.reflect._

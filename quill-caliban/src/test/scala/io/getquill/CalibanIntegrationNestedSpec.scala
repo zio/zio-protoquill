@@ -1,6 +1,5 @@
 package io.getquill
 
-import io.getquill.context.ZioJdbc.DataSourceLayer
 import zio.{ZIO, Task}
 import io.getquill.context.ZioJdbc._
 import caliban.execution.Field
@@ -13,9 +12,9 @@ import io.getquill.CalibanIntegration._
 class CalibanIntegrationNestedSpec extends CalibanSpec {
   import Ctx._
 
-  object Nested:
+  object Nested {
     import NestedSchema._
-    object Dao:
+    object Dao {
       def personAddress(columns: List[String], filters: Map[String, String]) =
         Ctx.run {
           query[PersonT].leftJoin(query[AddressT]).on((p, a) => p.id == a.ownerId)
@@ -31,6 +30,8 @@ class CalibanIntegrationNestedSpec extends CalibanSpec {
           println(s"ERROR $e")
           ZIO.unit
         })
+    }
+  }
 
   case class Queries(
     personAddressNested: Field => (ProductArgs[NestedSchema.PersonAddressNested] => Task[List[NestedSchema.PersonAddressNested]])

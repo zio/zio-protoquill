@@ -1,6 +1,6 @@
 # Introduction
 
-ProtoQuill is the continuation of [Quill: Free/Libre Compile-time Language Integrated Queries for Scala](https://getquill.io/). Although is is already considerably feature-full, it is still very-much in beta so please use it carefuly. For those migrating, or exploring migration from Scala2-Quill, most Queries written in Scala2-Quill should work readily in ProtoQuill but they will become Dynamic. Change them to `inline def` expressions and they should once-again be compile-time (see the [Rationale](#rationale-for-inline) section for some info on why I chose to do this). Also see the [Migration Notes](#migration-notes) section.
+ProtoQuill is the Scala 3 version of [Quill: Free/Libre Compile-time Language Integrated Queries for Scala](https://getquill.io/). For those migrating, or exploring migration from Scala2-Quill, most Queries written in Scala2-Quill should work readily in ProtoQuill but they will become Dynamic. Change them to `inline def` expressions and they should once-again be compile-time (see the [Rationale](#rationale-for-inline) section for some info on why I chose to do this). Also see the [Migration Notes](#migration-notes) section.
 
 Not all Contexts and not all Functionality is Supported yet. Here is a rough list of both:
 
@@ -15,12 +15,12 @@ Currently Supported:
  - Prepare Query (i.e. `context.prepare(query)`)
  - Translate Query (i.e. `context.translate(query)`)
  - Cassandra Contexts (using V4 drivers!)
+ - Dynamic Query API (i.e. [this](https://getquill.io/#quotation-dynamic-queries-dynamic-query-api))
 
 Not Supported:
  - Implicit class based extensions. Please see the [Extensions](https://github.com/zio/zio-protoquill#extensions) section below on how to do this.
 
 Planned Future Support
- - Dynamic Query API (i.e. [this](https://getquill.io/#quotation-dynamic-queries-dynamic-query-api))
  - Monix JDBC (and Cassandra) Contexts (Coming Soon!)
  - OrientDB Contexts
  - Spark Context
@@ -51,17 +51,17 @@ Add the following to your SBT file:
 ```scala
 libraryDependencies ++= Seq(
   // Syncronous JDBC Modules
-  "io.getquill" %% "quill-jdbc" % "3.12.0.Beta1.7",
+  "io.getquill" %% "quill-jdbc" % "4.7.3",
   // Or ZIO Modules
-  "io.getquill" %% "quill-jdbc-zio" % "3.12.0.Beta1.7",
+  "io.getquill" %% "quill-jdbc-zio" % "4.7.3",
   // Or Postgres Async
-  "io.getquill" %% "quill-jasync-postgres" % "3.12.0.Beta1.7",
+  "io.getquill" %% "quill-jasync-postgres" % "4.7.3",
   // Or Cassandra
-  "io.getquill" %% "quill-cassandra" % "3.12.0.Beta1.7",
+  "io.getquill" %% "quill-cassandra" % "4.7.3",
   // Or Cassandra + ZIO
-  "io.getquill" %% "quill-cassandra-zio" % "3.12.0.Beta1.7",
+  "io.getquill" %% "quill-cassandra-zio" % "4.7.3",
   // Add for Caliban Integration
-  "io.getquill" %% "quill-caliban" % "3.12.0.Beta1.7"
+  "io.getquill" %% "quill-caliban" % "4.7.3"
 )
 ```
 
@@ -427,7 +427,7 @@ import io.getquill._
 
 object MyBusinessLogic:
   extension (inline i: Int)
-    inline def **(exponent: Int) = quote { infix"power($i, $exponent)" }
+    inline def **(exponent: Int) = quote { sql"power($i, $exponent)" }
 
 def main(args: Array[String]) =
   import MyBusinessLogic._

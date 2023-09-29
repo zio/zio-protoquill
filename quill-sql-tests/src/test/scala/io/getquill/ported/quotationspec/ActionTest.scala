@@ -13,10 +13,12 @@ import io.getquill.PicklingHelper._
 class ActionTest extends Spec with TestEntities with Inside {
   case class ActionTestEntity(id: Int)
 
-  extension (ast: Ast)
-    def body: Ast = ast match
+  extension (ast: Ast) {
+    def body: Ast = ast match {
       case f: Function => f.body
       case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+    }
+  }
 
   def internalizeVLabel(ast: Ast) =
     NameChangeIdent{ case "v" => "_$V" }.apply(ast)
@@ -40,6 +42,8 @@ class ActionTest extends Spec with TestEntities with Inside {
         repickle(u) mustEqual u
       }
       "case class" in {
+        val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+        import ctx._
         inline def q = quote {
           (t: TestEntity) => qr1.updateValue(t)
         }
@@ -84,6 +88,8 @@ class ActionTest extends Spec with TestEntities with Inside {
         repickle(i) mustEqual i
       }
       "case class" in {
+        val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+        import ctx._
         inline def q = quote {
           (t: TestEntity) => qr1.insertValue(t)
         }
@@ -158,7 +164,7 @@ class ActionTest extends Spec with TestEntities with Inside {
           liftQuery(list).foreach(i => delete(i))
         }
         inside(quote(unquote(q)).ast) {
-          case Foreach(ScalarTag(_), Ident("i", quat), body) =>
+          case Foreach(ScalarTag(_, _), Ident("i", quat), body) =>
             body mustEqual delete.ast.body
             quat mustEqual Quat.Value
         }
@@ -180,7 +186,7 @@ class ActionTest extends Spec with TestEntities with Inside {
           liftQuery(list).foreach(row => insertRow(row))
         }
         inside(quote(unquote(q)).ast) {
-          case Foreach(ScalarTag(_), Ident("row", quat), body) =>
+          case Foreach(ScalarTag(_, _), Ident("row", quat), body) =>
             body mustEqual insertRow.ast.body
             quat mustEqual quatOf[ActionTestEntity]
         }

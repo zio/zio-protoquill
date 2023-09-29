@@ -19,43 +19,52 @@ object UnlifterType {
 object Unlifter {
   import UnlifterType._
 
-  object ast:
-    def unapply(ast: Expr[Ast])(using Quotes): Option[Ast] =
+  object ast {
+    def unapply(ast: Expr[Ast])(using Quotes): Option[Ast] = {
       import quotes.reflect._
       // println(s"==================== Unlifting: ${Format.Expr(ast)} =================}")
-      ast match
+      ast match {
         case Is[Ast](ast) => unliftAst.attempt(ast)
         case other        => report.throwError(s"Cannot unlift ${Format.Expr(ast)} to a ast because it's type is: ${Format.TypeRepr(ast.asTerm.tpe)}")
+      }
+    }
+  }
 
-  object caseClass:
-    def unapply(ast: Expr[Ast])(using Quotes): Option[CaseClass] =
+  object caseClass {
+    def unapply(ast: Expr[Ast])(using Quotes): Option[CaseClass] = {
       import quotes.reflect._
       // println(s"==================== Unlifting: ${Format.Expr(ast)} =================}")
-      ast match
+      ast match {
         case Is[CaseClass](ast) => unliftCaseClass.attempt(ast)
         case other              => report.throwError(s"Cannot unlift ${Format.Expr(ast)} to a CaseClass because it's type is: ${Format.TypeRepr(ast.asTerm.tpe)}")
+      }
+    }
+  }
 
   def apply(ast: Expr[Ast]): Quotes ?=> Ast = unliftAst.apply(ast) // can also do ast.lift but this makes some error messages simpler
 
-  extension [T](t: Expr[T])(using FromExpr[T], Quotes)
+  extension [T](t: Expr[T])(using FromExpr[T], Quotes) {
     def unexpr: T = t.valueOrError
+  }
 
   trait NiceUnliftable[T: ClassTag] extends FromExpr[T] { // : ClassTag
     def unlift: Quotes ?=> PartialFunction[Expr[T], T]
-    def attempt(expr: Expr[T])(using Quotes): Option[T] =
+    def attempt(expr: Expr[T])(using Quotes): Option[T] = {
       import quotes.reflect._
-      expr match
-        case '{ SerialHelper.fromSerialized[tt](${ Expr(serial: String) }) } if (TypeRepr.of[tt] <:< TypeRepr.of[Ast]) =>
-          Some(SerialHelper.fromSerialized[Ast](serial).asInstanceOf[T])
+      expr match {
+        case '{ SerialHelper.Ast.fromSerialized(${ Expr(serial: String) }).asInstanceOf[t] } =>
+          Some(SerialHelper.Ast.fromSerialized(serial).asInstanceOf[T])
         // On JVM, a Quat must be serialized and then lifted from the serialized state i.e. as a FromSerialized using JVM (due to 64KB method limit)
-        case '{ SerialHelper.QuatProduct.fromSerialized(${ Expr(str: String) }) } =>
+        case '{ SerialHelper.QuatProduct.fromSerialized(${ Expr(str: String) }).asInstanceOf[t] } =>
           Some(SerialHelper.QuatProduct.fromSerialized(str).asInstanceOf[T])
-        case '{ SerialHelper.Quat.fromSerialized(${ Expr(str: String) }) } =>
+        case '{ SerialHelper.Quat.fromSerialized(${ Expr(str: String) }).asInstanceOf[t] } =>
           Some(SerialHelper.Quat.fromSerialized(str).asInstanceOf[T])
         case _ =>
           unlift.lift(expr)
+      }
+    }
 
-    def apply(expr: Expr[T])(using Quotes): T =
+    def apply(expr: Expr[T])(using Quotes): T = {
       import quotes.reflect._
       attempt(expr)
         .getOrElse {
@@ -66,6 +75,7 @@ object Unlifter {
             expr
           )
         }
+    }
 
     /**
      * For things that contain subclasses, don't strictly check the super type and fail the match
@@ -76,26 +86,32 @@ object Unlifter {
     // TODO Maybe want to go to stricter version of this going back to Some(apply(expr)). See comment below about quoted matching being covariant.
   }
 
-  given unliftVisibility: NiceUnliftable[Visibility] with
-    def unlift =
+  given unliftVisibility: NiceUnliftable[Visibility] with {
+    def unlift = {
       case '{ Visibility.Hidden }  => Visibility.Hidden
       case '{ Visibility.Visible } => Visibility.Visible
+    }
+  }
 
-  given unliftAggregation: NiceUnliftable[AggregationOperator] with
-    def unlift =
+  given unliftAggregation: NiceUnliftable[AggregationOperator] with {
+    def unlift = {
       case '{ AggregationOperator.`min` }  => AggregationOperator.`min`
       case '{ AggregationOperator.`max` }  => AggregationOperator.`max`
       case '{ AggregationOperator.`avg` }  => AggregationOperator.`avg`
       case '{ AggregationOperator.`sum` }  => AggregationOperator.`sum`
       case '{ AggregationOperator.`size` } => AggregationOperator.`size`
+    }
+  }
 
-  given unliftRenameable: NiceUnliftable[Renameable] with
-    def unlift =
+  given unliftRenameable: NiceUnliftable[Renameable] with {
+    def unlift = {
       case '{ Renameable.ByStrategy } => Renameable.ByStrategy
       case '{ Renameable.Fixed }      => Renameable.Fixed
+    }
+  }
 
-  given unliftIdent: NiceUnliftable[AIdent] with
-    def unlift =
+  given unliftIdent: NiceUnliftable[AIdent] with {
+    def unlift = {
       case '{ AIdent(${ Expr(name: String) }, $quat) } =>
         // Performance optimization! Since Ident.quat is a by-name parameter, unless we force it to unexpr here,
         // it will be done over and over again each time quat.unexpr is called which is extremely wasteful.
@@ -104,44 +120,56 @@ object Unlifter {
       case '{ AIdent.Opinionated(${ Expr(name: String) }, $quat, $visibility) } =>
         val unliftedQuat = quat.unexpr
         AIdent.Opinionated(name, unliftedQuat, visibility.unexpr)
+    }
+  }
 
-  given unliftJoinType: NiceUnliftable[JoinType] with
-    def unlift =
+  given unliftJoinType: NiceUnliftable[JoinType] with {
+    def unlift = {
       case '{ InnerJoin } => InnerJoin
       case '{ LeftJoin }  => LeftJoin
       case '{ RightJoin } => RightJoin
       case '{ FullJoin }  => FullJoin
+    }
+  }
 
-  given unliftProperty: NiceUnliftable[Property] with
+  given unliftProperty: NiceUnliftable[Property] with {
     // Unlike in liftProperty, we need both variants here since we are matching the scala AST expressions
-    def unlift =
+    def unlift = {
       case '{ Property(${ ast }, ${ name }) } =>
         Property(ast.unexpr, constString(name))
       case '{ Property.Opinionated(${ ast }, ${ name }, ${ renameable }, ${ visibility }) } =>
         Property.Opinionated(ast.unexpr, constString(name), unliftRenameable(renameable), unliftVisibility(visibility))
+    }
+  }
 
-  given unliftAssignment: NiceUnliftable[Assignment] with
-    def unlift =
+  given unliftAssignment: NiceUnliftable[Assignment] with {
+    def unlift = {
       case '{ Assignment($alias, $property, $value) } => Assignment(alias.unexpr, property.unexpr, value.unexpr)
+    }
+  }
 
-  given unliftAssignmentDual: NiceUnliftable[AssignmentDual] with
-    def unlift =
+  given unliftAssignmentDual: NiceUnliftable[AssignmentDual] with {
+    def unlift = {
       case '{ AssignmentDual($alias1, $alias2, $property, $value) } => AssignmentDual(alias1.unexpr, alias2.unexpr, property.unexpr, value.unexpr)
+    }
+  }
 
   given unliftPropertyAlias: NiceUnliftable[PropertyAlias] with {
-    def unlift =
+    def unlift = {
       case '{ PropertyAlias($paths, $b) } => PropertyAlias(paths.unexpr, b.unexpr)
+    }
   }
 
   given unliftTraversableOperation: NiceUnliftable[IterableOperation] with {
-    def unlift =
+    def unlift = {
       case '{ MapContains($a, $b) }  => MapContains(a.unexpr, b.unexpr)
       case '{ SetContains($a, $b) }  => SetContains(a.unexpr, b.unexpr)
       case '{ ListContains($a, $b) } => ListContains(a.unexpr, b.unexpr)
+    }
   }
 
   given unliftOptionOperation: NiceUnliftable[OptionOperation] with {
-    def unlift =
+    def unlift = {
       case Is[OptionApply]('{ OptionApply.apply($a) }) => OptionApply(a.unexpr)
       case Is[OptionSome]('{ OptionSome.apply($a) })   => OptionSome(a.unexpr)
       case Is[OptionNone]('{ OptionNone($quat) })      =>
@@ -153,6 +181,9 @@ object Unlifter {
       case Is[OptionNonEmpty]('{ OptionNonEmpty.apply($a) })                 => OptionNonEmpty(a.unexpr)
       case Is[OptionIsDefined]('{ OptionIsDefined.apply($a) })               => OptionIsDefined(a.unexpr)
       case Is[OptionGetOrElse]('{ OptionGetOrElse.apply($a, $b) })           => OptionGetOrElse(a.unexpr, b.unexpr)
+      case Is[OptionGetOrNull]('{ OptionGetOrNull.apply($a) })               => OptionGetOrNull(a.unexpr)
+      case Is[OptionOrNull]('{ OptionOrNull.apply($a) })                     => OptionOrNull(a.unexpr)
+      case Is[FilterIfDefined]('{ FilterIfDefined.apply($a, $b, $c) })       => FilterIfDefined(a.unexpr, b.unexpr, c.unexpr)
       case Is[OptionContains]('{ OptionContains.apply($a, $b) })             => OptionContains(a.unexpr, b.unexpr)
       case Is[OptionMap]('{ OptionMap.apply($a, $b, $c) })                   => OptionMap(a.unexpr, b.unexpr, c.unexpr)
       case Is[OptionFlatMap]('{ OptionFlatMap.apply($a, $b, $c) })           => OptionFlatMap(a.unexpr, b.unexpr, c.unexpr)
@@ -163,14 +194,16 @@ object Unlifter {
       case Is[OptionForall]('{ OptionForall.apply($a, $b, $c) })             => OptionForall(a.unexpr, b.unexpr, c.unexpr)
       case Is[OptionTableExists]('{ OptionTableExists.apply($a, $b, $c) })   => OptionTableExists(a.unexpr, b.unexpr, c.unexpr)
       case Is[OptionTableForall]('{ OptionTableForall.apply($a, $b, $c) })   => OptionTableForall(a.unexpr, b.unexpr, c.unexpr)
+    }
   }
 
-  def constString(expr: Expr[String])(using Quotes): String = expr match
+  def constString(expr: Expr[String])(using Quotes): String = expr match {
     case Expr(str: String) => str
     case _                 => throw new IllegalArgumentException(s"The expression: ${expr.show} is not a constant String")
+  }
 
-  given unliftOrdering: NiceUnliftable[Ordering] with
-    def unlift =
+  given unliftOrdering: NiceUnliftable[Ordering] with {
+    def unlift = {
       case '{ io.getquill.ast.TupleOrdering.apply($elems) } => TupleOrdering(elems.unexpr)
       case '{ io.getquill.ast.Asc }                         => Asc
       case '{ io.getquill.ast.Desc }                        => Desc
@@ -178,9 +211,11 @@ object Unlifter {
       case '{ io.getquill.ast.DescNullsFirst }              => DescNullsFirst
       case '{ io.getquill.ast.AscNullsLast }                => AscNullsLast
       case '{ io.getquill.ast.DescNullsLast }               => DescNullsLast
+    }
+  }
 
-  given unliftConstant: NiceUnliftable[Constant] with
-    def unlift =
+  given unliftConstant: NiceUnliftable[Constant] with {
+    def unlift = {
       case '{ Constant(${ Expr(b: Double) }: Double, $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant(b, unliftedQuat)
@@ -214,9 +249,11 @@ object Unlifter {
       case '{ Constant((), $quat) } =>
         val unliftedQuat = quat.unexpr // Performance optimization, same as Ident and Entity
         Constant((), unliftedQuat)
+    }
+  }
 
-  given unliftAction: NiceUnliftable[Action] with
-    def unlift =
+  given unliftAction: NiceUnliftable[Action] with {
+    def unlift = {
       case Is[Update]('{ Update($query, $assignments) })                                            => Update(query.unexpr, assignments.unexpr)
       case Is[Insert]('{ Insert($query, $assignments) })                                            => Insert(query.unexpr, assignments.unexpr)
       case Is[Delete]('{ Delete($query) })                                                          => Delete(query.unexpr)
@@ -224,24 +261,33 @@ object Unlifter {
       case Is[ReturningGenerated]('{ ReturningGenerated(${ action }, ${ alias }, ${ body }: Ast) }) => ReturningGenerated(action.unexpr, alias.unexpr, body.unexpr)
       case Is[Foreach]('{ Foreach(${ query }, ${ alias }, ${ body }: Ast) })                        => Foreach(query.unexpr, alias.unexpr, body.unexpr)
       case Is[OnConflict]('{ OnConflict($a, $b, $c) })                                              => OnConflict(a.unexpr, b.unexpr, c.unexpr)
+    }
+  }
 
-  given unliftConflictTarget: NiceUnliftable[OnConflict.Target] with
-    def unlift =
+  given unliftConflictTarget: NiceUnliftable[OnConflict.Target] with {
+    def unlift = {
       case '{ OnConflict.NoTarget }       => OnConflict.NoTarget
       case '{ OnConflict.Properties($a) } => OnConflict.Properties(a.unexpr)
+    }
+  }
 
-  given unliftConflictAction: NiceUnliftable[OnConflict.Action] with
-    def unlift =
+  given unliftConflictAction: NiceUnliftable[OnConflict.Action] with {
+    def unlift = {
       case '{ OnConflict.Ignore }     => OnConflict.Ignore
       case '{ OnConflict.Update($a) } => OnConflict.Update(a.unexpr)
+    }
+  }
 
-  given unliftQuery: NiceUnliftable[AQuery] with
-    def unlift =
-      case Is[Entity](ent)                                                                => unliftEntity(ent)
-      case Is[Map]('{ Map(${ query }, ${ alias }, ${ body }: Ast) })                      => Map(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[FlatMap]('{ FlatMap(${ query }, ${ alias }, ${ body }: Ast) })              => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[Filter]('{ Filter(${ query }, ${ alias }, ${ body }: Ast) })                => Filter(query.unexpr, alias.unexpr, body.unexpr)
-      case Is[GroupBy]('{ GroupBy(${ query }, ${ alias }, ${ body }: Ast) })              => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
+  given unliftQuery: NiceUnliftable[AQuery] with {
+    def unlift = {
+      case Is[Entity](ent)                                                   => unliftEntity(ent)
+      case Is[Map]('{ Map(${ query }, ${ alias }, ${ body }: Ast) })         => Map(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[FlatMap]('{ FlatMap(${ query }, ${ alias }, ${ body }: Ast) }) => FlatMap(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[Filter]('{ Filter(${ query }, ${ alias }, ${ body }: Ast) })   => Filter(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[GroupBy]('{ GroupBy(${ query }, ${ alias }, ${ body }: Ast) }) => GroupBy(query.unexpr, alias.unexpr, body.unexpr)
+      case Is[GroupByMap]('{ GroupByMap(${ query }, ${ byAlias }, ${ byBody }, ${ mapAlias }, ${ mapBody }) }) =>
+        GroupByMap(query.unexpr, byAlias.unexpr, byBody.unexpr, mapAlias.unexpr, mapBody.unexpr)
+
       case Is[SortBy]('{ SortBy(${ query }, ${ alias }, ${ criterias }, ${ ordering }) }) => SortBy(query.unexpr, alias.unexpr, criterias.unexpr, ordering.unexpr)
       case Is[Distinct]('{ Distinct(${ a }) })                                            => Distinct(a.unexpr)
       case Is[DistinctOn]('{ DistinctOn(${ query }, ${ alias }, $body) })                 => DistinctOn(query.unexpr, alias.unexpr, body.unexpr)
@@ -255,9 +301,11 @@ object Unlifter {
       case Is[ConcatMap]('{ ConcatMap(${ query }, ${ alias }, ${ body }: Ast) })          => ConcatMap(query.unexpr, alias.unexpr, body.unexpr)
       // Note: Aggregation is actually a Query-Type. Not sure why in Scala2-Quill it's not in the query-unlifter
       case Is[Aggregation]('{ Aggregation(${ operator }, ${ query }) }) => Aggregation(operator.unexpr, query.unexpr)
+    }
+  }
 
-  given unliftEntity: NiceUnliftable[Entity] with
-    def unlift =
+  given unliftEntity: NiceUnliftable[Entity] with {
+    def unlift = {
       case Is[Entity]('{ Entity.apply(${ Expr(b: String) }, $elems, $quat) }) =>
         // Performance optimization, same as for Ident. Entity.quat is by-name so make sure to do unexper once here.
         val unliftedQuat = quat.unexpr
@@ -266,9 +314,11 @@ object Unlifter {
         // Performance optimization, same as for Ident. Entity.quat is by-name so make sure to do unexper once here.
         val unliftedQuat = quat.unexpr
         Entity.Opinionated(b, elems.unexpr, unliftedQuat, renameable.unexpr)
+    }
+  }
 
   given unliftAst: NiceUnliftable[Ast] with {
-    def unlift =
+    def unlift = {
       case Is[AQuery](q)                                                                 => unliftQuery(q)
       case Is[Constant](c)                                                               => unliftConstant(c)
       case Is[Action](a)                                                                 => unliftAction(a)
@@ -282,7 +332,7 @@ object Unlifter {
       case Is[UnaryOperation]('{ UnaryOperation(${ operator }, ${ a }: Ast) })           => UnaryOperation(unliftOperator(operator).asInstanceOf[UnaryOperator], a.unexpr)
       case Is[BinaryOperation]('{ BinaryOperation(${ a }, ${ operator }, ${ b }: Ast) }) => BinaryOperation(a.unexpr, unliftOperator(operator).asInstanceOf[BinaryOperator], b.unexpr)
       case Is[Property]('{ Property(${ ast }, ${ name }) })                              => Property(ast.unexpr, constString(name))
-      case Is[ScalarTag]('{ ScalarTag(${ uid }) })                                       => ScalarTag(constString(uid))
+      case Is[ScalarTag]('{ ScalarTag(${ uid }, ${ source }) })                          => ScalarTag(constString(uid), source.unexpr)
       case Is[QuotationTag]('{ QuotationTag($uid) })                                     => QuotationTag(constString(uid))
       case Is[Infix]('{ Infix($parts, $params, $pure, $transparent, $quat) })            => Infix(parts.unexpr, params.unexpr, pure.unexpr, transparent.unexpr, quat.unexpr)
       case Is[Tuple]('{ Tuple.apply($values) })                                          => Tuple(values.unexpr)
@@ -294,14 +344,24 @@ object Unlifter {
       case Is[OnConflict.Excluded]('{ OnConflict.Excluded($a) }) => OnConflict.Excluded(a.unexpr)
       case Is[OnConflict.Existing]('{ OnConflict.Existing($a) }) => OnConflict.Existing(a.unexpr)
       case '{ NullValue }                                        => NullValue
+    }
   }
 
-  given unliftCaseClass: NiceUnliftable[CaseClass] with
-    def unlift =
-      case '{ CaseClass(${ values }: List[(String, Ast)]) } => CaseClass(values.unexpr)
+  given unliftScalarTagSource: NiceUnliftable[External.Source] with {
+    def unlift = {
+      case '{ External.Source.Parser }                            => External.Source.Parser
+      case '{ External.Source.UnparsedProperty(${ Expr(name) }) } => External.Source.UnparsedProperty(name)
+    }
+  }
+
+  given unliftCaseClass: NiceUnliftable[CaseClass] with {
+    def unlift = {
+      case '{ CaseClass(${ name }, ${ values }: List[(String, Ast)]) } => CaseClass(name.unexpr, values.unexpr)
+    }
+  }
 
   given unliftOperator: NiceUnliftable[Operator] with {
-    def unlift =
+    def unlift = {
       case '{ SetOperator.contains }       => SetOperator.contains
       case '{ SetOperator.nonEmpty }       => SetOperator.nonEmpty
       case '{ SetOperator.isEmpty }        => SetOperator.isEmpty
@@ -326,26 +386,29 @@ object Unlifter {
       case '{ BooleanOperator.|| }         => BooleanOperator.||
       case '{ BooleanOperator.&& }         => BooleanOperator.&&
       case '{ BooleanOperator.! }          => BooleanOperator.!
+    }
   }
 
   given quatProductTypeUnliftable: NiceUnliftable[Quat.Product.Type] with {
-    def unlift =
+    def unlift = {
       case '{ Quat.Product.Type.Concrete } => Quat.Product.Type.Concrete
       case '{ Quat.Product.Type.Abstract } => Quat.Product.Type.Abstract
+    }
   }
 
-  extension [T](expr: Seq[Expr[T]])(using FromExpr[T], Quotes)
+  extension [T](expr: Seq[Expr[T]])(using FromExpr[T], Quotes) {
     def unexprSeq = expr.map(_.valueOrError)
+  }
 
   given quatProductUnliftable: NiceUnliftable[Quat.Product] with {
-    def unlift =
-      case '{ Quat.Product.WithRenamesCompact.apply($tpe)(${ Varargs(fields) }: _*)(${ Varargs(values) }: _*)(${ Varargs(renamesFrom) }: _*)(${ Varargs(renamesTo) }: _*) } =>
-        Quat.Product.WithRenamesCompact(tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
-    // case '{ Quat.Product.apply(${Varargs(fields)}: _*) } => Quat.Product(fields.unexprSeq: _*)
+    def unlift = {
+      case '{ Quat.Product.WithRenamesCompact.apply($name, $tpe)(${ Varargs(fields) }: _*)(${ Varargs(values) }: _*)(${ Varargs(renamesFrom) }: _*)(${ Varargs(renamesTo) }: _*) } =>
+        Quat.Product.WithRenamesCompact(name.unexpr, tpe.unexpr)(fields.unexprSeq: _*)(values.unexprSeq: _*)(renamesFrom.unexprSeq: _*)(renamesTo.unexprSeq: _*)
+    }
   }
 
   given quatUnliftable: NiceUnliftable[Quat] with {
-    def unlift =
+    def unlift = {
       case Is[Quat.Product](p)         => quatProductUnliftable(p)
       case '{ Quat.Value }             => Quat.Value
       case '{ Quat.Null }              => Quat.Null
@@ -353,6 +416,7 @@ object Unlifter {
       case '{ Quat.Unknown }           => Quat.Unknown
       case '{ Quat.BooleanValue }      => Quat.BooleanValue
       case '{ Quat.BooleanExpression } => Quat.BooleanExpression
+    }
   }
 
 }
