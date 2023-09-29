@@ -30,9 +30,10 @@ class QuotationTest extends Spec with Inside {
   object scalarTag {
     def apply(uid: String) = ScalarTag(uid, External.Source.Parser)
     def unapply(ast: Ast) =
-      ast match
+      ast match {
         case ScalarTag(uid, _) => Some(uid)
         case _                 => None
+      }
   }
   val IdentP = Ident("p", quatOf[Person])
   val PersonQuat = quatOf[Person].probit

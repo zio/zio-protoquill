@@ -13,8 +13,9 @@ import io.getquill.context.SplicingBehavior
 class SimpleMapSqlSanityTest extends Spec {
   case class SanePerson(name: String, age: Int)
 
-  given SplicingBehaviorHint with
+  given SplicingBehaviorHint with {
     override type BehaviorType = SplicingBehavior.FailOnDynamic
+  }
 
   "simple test for one inline query converted to sql" in {
     inline def q = quote {

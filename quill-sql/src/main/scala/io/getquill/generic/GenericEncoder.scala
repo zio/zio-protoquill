@@ -28,13 +28,13 @@ case class GenericEncoderWithStringFallback[T, PrepareRow, Session](
     else if (t.isInstanceOf[Byte]) classTag[Byte]
     else ClassTag(t.getClass())
 
-  def apply(i: Int, t: Any, row: PrepareRow, session: Session): PrepareRow =
+  def apply(i: Int, t: Any, row: PrepareRow, session: Session): PrepareRow = {
     val classTagActual = classTagFromInstance(t)
     if (t == null || classTagActual <:< classTagExpected)
       // println(s"=============== ENCODING ${classTagActual}: $t as: ${Option(t.asInstanceOf[T])}")
       nullableEncoder(i, Option(t.asInstanceOf[T]), row, session)
     else
-      stringConverter match
+      stringConverter match {
         case Right(converter) =>
           // using pprint here because want quotes if it is a string value etc...
           println(
@@ -45,4 +45,6 @@ case class GenericEncoderWithStringFallback[T, PrepareRow, Session](
           throw new IllegalStateException(
             s"The field value: ${pprint(t).plainText} had the type `${classTagActual}` but was expecting the type `${classTagExpected}` and could not summon a from-string converter for the type."
           )
+      }
+  }
 }

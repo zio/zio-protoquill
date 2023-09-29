@@ -22,15 +22,16 @@ import io.getquill.metaprog.SummonTranspileConfig
 import io.getquill.parser.engine.History
 import io.getquill.norm.TranspileConfig
 
-object MetaMacro:
-  def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): (Tuple, Expr[String]) =
+object MetaMacro {
+  def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): (Tuple, Expr[String]) = {
     val parser = SummonParser().assemble
     given TranspileConfig = SummonTranspileConfig()
 
     // Pull out individual args from the apply
-    val excludes = excludesRaw match
+    val excludes = excludesRaw match {
       case Varargs(exprs) => exprs
       case _              => quotes.reflect.report.throwError(s"Could not parse: ${excludesRaw.show} as a varargs parameter")
+    }
 
     // Parse those into Function(params, Property) asts
     val excludeAstMethods =
@@ -49,15 +50,19 @@ object MetaMacro:
     val excludeTuple = Tuple(excludeAstProps.toList)
     val uuid = Expr(java.util.UUID.randomUUID().toString)
     (excludeTuple, uuid)
-  end apply
-end MetaMacro
+  } // end apply
+} // end MetaMacro
 
-object InsertMetaMacro:
-  def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[InsertMeta[T]] =
+object InsertMetaMacro {
+  def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[InsertMeta[T]] = {
     val (excludeTuple, uuid) = MetaMacro[T](excludesRaw)
     '{ InsertMeta(Quoted[T](${ Lifter.tuple(excludeTuple) }, Nil, Nil), $uuid) }
+  }
+}
 
-object UpdateMetaMacro:
-  def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[UpdateMeta[T]] =
+object UpdateMetaMacro {
+  def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[UpdateMeta[T]] = {
     val (excludeTuple, uuid) = MetaMacro[T](excludesRaw)
     '{ UpdateMeta(Quoted[T](${ Lifter.tuple(excludeTuple) }, Nil, Nil), $uuid) }
+  }
+}

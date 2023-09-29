@@ -109,7 +109,7 @@ object QueryExecutionBatchIteration {
       traceConfig: TraceConfig
   ) {
     def apply(): List[(String, List[(PrepareRow, Session) => (List[Any], PrepareRow)])] =
-      batchingBehavior match
+      batchingBehavior match {
         // If we have MultiRowsPerBatch behavior and we are instructed to concatenate multiple rows together (i.e. entitiesPerQuery > 1)
         case BatchingBehavior.MultiRowsPerBatch(entitiesPerQuery) if (entitiesPerQuery > 1) =>
           val validations =
@@ -118,15 +118,17 @@ object QueryExecutionBatchIteration {
               _ <- validateIdiomSupportsConcatenatedIteration(idiom, extractBehavior)
             } yield ()
 
-          validations match
+          validations match {
             case Left(msg) =>
               logger.underlying.warn(msg)
               singleRowIteration()
             case Right(_) =>
               concatenatedRowIteration(entitiesPerQuery)
+          }
 
         case _ =>
           singleRowIteration()
+      }
 
     // NOTE: First we can particularize for every query as explained below.
     // If needed, at some point we can optimize and have just two query particularizations:
@@ -223,11 +225,12 @@ object QueryExecutionBatchIteration {
     }
 
     private def validateIdiomSupportsConcatenatedIteration(idiom: Idiom, extractBehavior: BatchExtractBehavior) =
-      extractBehavior match
+      extractBehavior match {
         case ExtractBehavior.Skip =>
           validateIdiomSupportsConcatenatedIterationNormal(idiom)
         case ExtractBehavior.ExtractWithReturnAction =>
           validateIdiomSupportsConcatenatedIterationReturning(idiom)
+      }
 
     private def validateIdiomSupportsConcatenatedIterationNormal(idiom: Idiom) = {
       import io.getquill.context.InsertValueMulti
@@ -271,7 +274,7 @@ object QueryExecutionBatchIteration {
     private def validateConcatenatedIterationPossible(query: Unparticular.Query, entitiesPerQuery: Int) = {
       import io.getquill.idiom._
       def valueClauseExistsIn(token: Token): Boolean =
-        token match
+        token match {
           case _: ValuesClauseToken           => true
           case _: StringToken                 => false
           case _: ScalarTagToken              => false
@@ -280,6 +283,7 @@ object QueryExecutionBatchIteration {
           case Statement(tokens: List[Token]) => tokens.exists(valueClauseExistsIn(_) == true)
           case SetContainsToken(a: Token, op: Token, b: Token) =>
             valueClauseExistsIn(a) || valueClauseExistsIn(op) || valueClauseExistsIn(b)
+        }
 
       if (valueClauseExistsIn(query.realQuery))
         Right(())

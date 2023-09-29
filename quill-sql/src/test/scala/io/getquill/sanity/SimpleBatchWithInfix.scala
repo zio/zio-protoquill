@@ -8,8 +8,9 @@ object SimpleBatchWithInfix extends Spec {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
-  given SplicingBehaviorHint with
+  given SplicingBehaviorHint with {
     override type BehaviorType = SplicingBehavior.FailOnDynamic
+  }
 
   "batch must work with simple sql" in {
     case class Person[T](name: String, age: Int)

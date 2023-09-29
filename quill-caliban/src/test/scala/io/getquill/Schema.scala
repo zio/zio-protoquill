@@ -1,10 +1,10 @@
 package io.getquill
 
-object FlatSchema:
+object FlatSchema {
   case class PersonT(id: Int, first: String, last: String, age: Int)
   case class AddressT(ownerId: Int, street: String)
   case class PersonAddress(id: Int, first: String, last: String, age: Int, street: Option[String])
-  object ExampleData:
+  object ExampleData {
     val people =
       List(
         PersonT(1, "One", "A", 44),
@@ -22,14 +22,16 @@ object FlatSchema:
         PersonAddress(2, "Two", "B", 55, Some("123 St")),
         PersonAddress(3, "Three", "C", 66, None),
       )
+  }
+}
 
-object NestedSchema:
+object NestedSchema {
   case class Name(first: String, last: String)
   case class PersonT(id: Int, name: Name, age: Int)
   case class AddressT(ownerId: Int, street: String)
   // Needs to be named differently from Flat.PersonAddress___ since Caliban infers from this class & name must be different
   case class PersonAddressNested(id: Int, name: Name, age: Int, street: Option[String])
-  object ExampleData:
+  object ExampleData {
     val people =
       List(
         PersonT(1, Name("One", "A"), 44),
@@ -46,4 +48,5 @@ object NestedSchema:
         PersonAddressNested(1, Name("One", "A"), 44, Some("123 St")),
         PersonAddressNested(2, Name("Two", "B"), 55, Some("123 St")),
         PersonAddressNested(3, Name("Three", "C"), 66, None),
-      )
+      )  }
+}

@@ -14,51 +14,69 @@ object TypeclassExample_For {
 
   case class Person(id: Int, name: String, age: Int)
 
-  trait Functor[F[_]]:
-    extension [A, B](inline x: F[A])
+  trait Functor[F[_]] {
+    extension [A, B](inline x: F[A]) {
       inline def map(inline f: A => B): F[B]
+    }
+  }
 
-  trait Monad[F[_]] extends Functor[F]:
+  trait Monad[F[_]] extends Functor[F] {
     //inline def pure[A](x: A): F[A]
-    extension [A, B](inline x: F[A])
+    extension [A, B](inline x: F[A]) {
       inline def map(inline f: A => B): F[B]
       inline def flatMap(inline f: A => F[B]): F[B]
+    }
+  }
       
-  trait For[F[_]]: //extends Monad[F]:
-    extension [A, B](inline x: F[A])
+  trait For[F[_]] { //extends Monad[F]:
+    extension [A, B](inline x: F[A]) {
       inline def map(inline f: A => B): F[B]
       inline def flatMap(inline f: A => F[B]): F[B]
       inline def withFilter(inline f: A => Boolean): F[A]
+    }
+  }
 
-  class ListFunctor extends Functor[List]:
-    extension [A, B](inline xs: List[A])
+  class ListFunctor extends Functor[List] {
+    extension [A, B](inline xs: List[A]) {
       inline def map(inline f: A => B): List[B] = xs.map(f)
+    }
+  }
 
-  class ListMonad extends Monad[List]:
-    extension [A, B](inline xs: List[A])
+  class ListMonad extends Monad[List] {
+    extension [A, B](inline xs: List[A]) {
       inline def map(inline f: A => B): List[B] = xs.map(f)
       inline def flatMap(inline f: A => List[B]): List[B] = xs.flatMap(f)
+    }
+  }
 
-  class ListFor extends For[List]:
-    extension [A, B](inline xs: List[A])
+  class ListFor extends For[List] {
+    extension [A, B](inline xs: List[A]) {
       inline def map(inline f: A => B): List[B] = xs.map(f)
       inline def flatMap(inline f: A => List[B]): List[B] = xs.flatMap(f)
       inline def withFilter(inline f: A => Boolean): List[A] = xs.filter(f)
+    }
+  }
    
-  class QueryFunctor extends Functor[Query]:
-    extension [A, B](inline xs: Query[A])
+  class QueryFunctor extends Functor[Query] {
+    extension [A, B](inline xs: Query[A]) {
       inline def map(inline f: A => B): Query[B] = xs.map(f)
+    }
+  }
 
-  class QueryMonad extends Monad[Query]:
-    extension [A, B](inline xs: Query[A])
+  class QueryMonad extends Monad[Query] {
+    extension [A, B](inline xs: Query[A]) {
       inline def map(inline f: A => B): Query[B] = xs.map(f)
       inline def flatMap(inline f: A => Query[B]): Query[B] = xs.flatMap(f)
+    }
+  }
 
-  class QueryFor extends For[Query]:
-    extension [A, B](inline xs: Query[A])
+  class QueryFor extends For[Query] {
+    extension [A, B](inline xs: Query[A]) {
       inline def map(inline f: A => B): Query[B] = xs.map(f)
       inline def flatMap(inline f: A => Query[B]): Query[B] = xs.flatMap(f)
       inline def withFilter(inline f: A => Boolean): Query[A] = xs.withFilter(f)
+    }
+  }
 
   inline given listFunctor: ListFunctor = new ListFunctor
   inline given queryFunctor: QueryFunctor = new QueryFunctor
@@ -78,13 +96,15 @@ object TypeclassExample_For {
     inline def flatMapM(inline f: A => F[B]) = from.flatMap(f)
   }
   
-  object UseCase:
-    extension [F[_]](inline people: F[Person])(using inline fun: For[F])
+  object UseCase {
+    extension [F[_]](inline people: F[Person])(using inline fun: For[F]) {
       inline def joesAddresses(inline addresses: F[Address]) =
         for {
           p <- people if (p.name == "Joe")
           a <- addresses if (p.id == a.fk)
         } yield (p, a)
+    }
+  }
 
   def main(args: Array[String]): Unit = {
     inline def people: Query[Person] = query[Person]

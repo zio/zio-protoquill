@@ -45,11 +45,13 @@ object GenericDecoderCoproductTestAdditional {
     def resolve(key: String): Int = list.keysIterator.toList.indexOf(key)
   }
 
-  given GenericDecoder[MyResult, MySession, String, DecodingType.Specific] with
+  given GenericDecoder[MyResult, MySession, String, DecodingType.Specific] with {
     def apply(index: Int, row: MyResult, session: MySession): String = row.get(index).toString
+  }
 
-  given GenericDecoder[MyResult, MySession, Int, DecodingType.Specific] with
+  given GenericDecoder[MyResult, MySession, Int, DecodingType.Specific] with {
     def apply(index: Int, row: MyResult, session: MySession): Int = row.get(index).toString.toInt
+  }
 
   // TODO automatically provide this in 'context'
   given res: GenericColumnResolver[MyResult] with {

@@ -36,13 +36,14 @@ object StringOrNull {
  */
 class MapFlicerMacro {
 
-  def isProduct(using Quotes)(tpe: Type[_]): Boolean =
+  def isProduct(using Quotes)(tpe: Type[_]): Boolean = {
     import quotes.reflect._
     TypeRepr.of(using tpe) <:< TypeRepr.of[Product]
+  }
 
-  private def buildClause[T: Type, PrepareRow: Type, Session: Type](core: Expr[T])(map: Expr[Map[String, Any]])(using Quotes): Expr[Boolean] =
+  private def buildClause[T: Type, PrepareRow: Type, Session: Type](core: Expr[T])(map: Expr[Map[String, Any]])(using Quotes): Expr[Boolean] = {
     import quotes.reflect._
-    ElaborateStructure.decomposedProductValueDetails[T](ElaborationSide.Encoding, UdtBehavior.Leaf) match
+    ElaborateStructure.decomposedProductValueDetails[T](ElaborationSide.Encoding, UdtBehavior.Leaf) match {
       case (terms, Leaf) => report.throwError("Not supported yet", core)
       case (terms, Branch) =>
         val boolTerms =
@@ -50,14 +51,15 @@ class MapFlicerMacro {
             val childTTerm = getter(core)
             val actualChildType =
               if (isOptional)
-                childTTerm.asTerm.tpe.asType match
+                childTTerm.asTerm.tpe.asType match {
                   case '[Option[t]] => TypeRepr.of[t]
+                }
               else
                 childTTerm.asTerm.tpe
 
             // Note usually `default` is null and cannot do asExprOf[T] on it otherwise will get a `of type: scala.Any... did not conform to type: java.lang.String/Int/etc...` exception
             def mapSplice = '{ $map.getOrElse(${ Expr[String](fieldString) }, null) }
-            def fieldInject[T](field: Expr[T])(using Type[T]) =
+            def fieldInject[T](field: Expr[T])(using Type[T]) = {
               val printType = Expr(Format.TypeOf[T].toString)
               val printTerm = Expr(Format.Expr(childTTerm).toString)
               '{
@@ -68,9 +70,10 @@ class MapFlicerMacro {
                 // So instead we just splice a check if the value is null into the `lift` call and the problem is entirely avoided.
                 $field == ${ LiftMacro.valueOrString[T, PrepareRow, Session](mapSplice) } || ${ LiftMacro[Boolean, PrepareRow, Session]('{ $mapSplice == null }) }
               }
+            }
 
             // If the field is optional, the inner type has already been unpacked by `decomposedProductValueDetails` so we just use it
-            tpe match
+            tpe match {
               case '[inner] =>
                 // Assuming: actualChildType <:< TypeRepr.of[inner]
                 if (isOptional)
@@ -81,8 +84,11 @@ class MapFlicerMacro {
                   }
                 else
                   fieldInject[inner](childTTerm.asExprOf[inner])
+            }
           }
         boolTerms.reduce((a, b) => '{ $a && $b })
+    }
+  }
 
   def base[T, PrepareRow, Session](using
       Quotes

@@ -133,7 +133,8 @@ trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
       info
     )
 
-  override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] =
+  override private[getquill] def prepareParams(statement: String, prepare: Prepare): Seq[String] = {
     val prepData = prepare(Row(), session)._2.data.map(_._2)
     prepData.map(prepareParam)
+  }
 }

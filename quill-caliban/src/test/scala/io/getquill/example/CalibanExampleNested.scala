@@ -23,7 +23,7 @@ import io.getquill.util.ContextLogger
 import io.getquill.NestedSchema._
 
 
-object DaoNested:
+object DaoNested {
   case class PersonAddressPlanQuery(plan: String, pa: List[PersonAddressNested])
   private val logger = ContextLogger(classOf[DaoNested.type])
 
@@ -43,12 +43,13 @@ object DaoNested:
   inline def plan(inline columns: List[String], inline filters: Map[String, String]) =
     quote { sql"EXPLAIN ${q(columns, filters)}".pure.as[Query[String]] }
 
-  def personAddress(columns: List[String], filters: Map[String, String]) =
+  def personAddress(columns: List[String], filters: Map[String, String]) = {
     println(s"Getting columns: $columns")
     run(q(columns, filters)).implicitDS.mapError(e => {
       logger.underlying.error("personAddress query failed", e)
       e
     })
+  }
 
   def personAddressPlan(columns: List[String], filters: Map[String, String]) =
     run(plan(columns, filters), OuterSelectWrap.Never).map(_.mkString("\n")).implicitDS.mapError(e => {
@@ -62,9 +63,9 @@ object DaoNested:
       _ <- run(liftQuery(ExampleData.people).foreach(row => query[PersonT].insertValue(row)))
       _ <- run(liftQuery(ExampleData.addresses).foreach(row => query[AddressT].insertValue(row)))
     } yield ()).implicitDS
-end DaoNested
+} // end DaoNested
 
-object CalibanExampleNested extends zio.ZIOAppDefault:
+object CalibanExampleNested extends zio.ZIOAppDefault {
   private val logger = ContextLogger(classOf[CalibanExampleNested.type])
 
   case class Queries(
@@ -107,4 +108,4 @@ object CalibanExampleNested extends zio.ZIOAppDefault:
   override def run =
     myApp.exitCode
 
-end CalibanExampleNested
+} // end CalibanExampleNested

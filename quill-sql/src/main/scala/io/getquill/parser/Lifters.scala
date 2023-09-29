@@ -18,9 +18,9 @@ import io.getquill.quat
 import io.getquill.util.CommonExtensions.Throwable._
 import io.getquill.util.Messages.qprint
 
-object Lifters:
+object Lifters {
 
-  trait Proxy:
+  trait Proxy {
     def default: Lifter
 
     def apply(ast: Ast): Quotes ?=> Expr[Ast] = default.liftAst(ast) // can also do ast.lift but this makes some error messages simpler
@@ -41,9 +41,9 @@ object Lifters:
 
     def scalarTag(v: ScalarTag): Quotes ?=> Expr[ScalarTag] = default.liftScalarTag(v)
     def quotationTag(v: QuotationTag): Quotes ?=> Expr[QuotationTag] = default.liftQuotationTag(v)
-  end Proxy
+  } // end Proxy
 
-  trait WithSerializing[T <: SerBase, SerBase]:
+  trait WithSerializing[T <: SerBase, SerBase] {
     protected def tryLiftSerialized(element: T)(using Quotes, TType[T]): Option[Expr[T]]
     protected def tryOrWarn(element: T, tryToSerializeElement: => Expr[T])(using Quotes, TType[T]): Option[Expr[T]] =
       try {
@@ -65,42 +65,47 @@ object Lifters:
     }
 
     // Convenience method for implementors to use
-    protected def hasSerializeDisabledTypeclass(using Quotes): Boolean =
+    protected def hasSerializeDisabledTypeclass(using Quotes): Boolean = {
       import quotes.reflect._
-      Expr.summon[DoSerialize] match
+      Expr.summon[DoSerialize] match {
         case Some(SerialHelper.BehaviorEnabled()) =>
           true
         case Some(value) =>
           false
         case _ =>
           false
-  end WithSerializing
+      }
+    }
+  } // end WithSerializing
 
-  object WithSerializing:
-    trait Ast[T <: ast.Ast] extends WithSerializing[T, ast.Ast]:
+  object WithSerializing {
+    trait Ast[T <: ast.Ast] extends WithSerializing[T, ast.Ast] {
       private val astToExpr = new SerialHelper.Ast.Expr[T]
       protected def tryLiftSerialized(element: T)(using Quotes, TType[T]): Option[Expr[T]] =
         tryOrWarn(element, astToExpr(element))
+    }
 
-    trait Quat[T <: quat.Quat] extends WithSerializing[T, quat.Quat]:
+    trait Quat[T <: quat.Quat] extends WithSerializing[T, quat.Quat] {
       private val quatToExpr = new SerialHelper.Quat.Expr[T]
       protected def tryLiftSerialized(element: T)(using Quotes, TType[T]): Option[Expr[T]] =
         tryOrWarn(element, quatToExpr(element))
-  end WithSerializing
+    }
+  } // end WithSerializing
 
-  trait Plain[T: ClassTag] extends ToExpr[T]:
+  trait Plain[T: ClassTag] extends ToExpr[T] {
     def lift: Quotes ?=> PartialFunction[T, Expr[T]]
 
     // The primary entry-point for external usage
     def orFail(element: T)(using Quotes): Expr[T] =
       liftPlainOrFail(element)
 
-    private[getquill] def liftPlainOrFail(element: T)(using Quotes): Expr[T] =
+    private[getquill] def liftPlainOrFail(element: T)(using Quotes): Expr[T] = {
       import quotes.reflect._
       import io.getquill.util.Messages.qprint
       lift.lift(element).getOrElse {
         report.throwError(failMsg(element))
       }
+    }
 
     protected def failMsg(element: T) =
       s"""|Could not Lift ${classTag[T].runtimeClass.getSimpleName} from the element:
@@ -109,20 +114,22 @@ object Lifters:
 
     def unapply(element: T)(using Quotes) = Some(orFail(element))
     def apply(element: T)(using Quotes): Expr[T] = orFail(element)
-  end Plain
+  } // end Plain
 
-  object Plain:
-    trait Ast[T: ClassTag] extends Plain[T]:
+  object Plain {
+    trait Ast[T: ClassTag] extends Plain[T] {
       override protected def failMsg(element: T) =
         s"Could not Lift AST type ${classTag[T].runtimeClass.getSimpleName} from the element:\n" +
           s"${section(io.getquill.util.Messages.qprint(element).toString)}\n" +
           s"of the Quill Abstract Syntax Tree"
+    }
 
-    trait Quat[T: ClassTag] extends Plain[T]:
+    trait Quat[T: ClassTag] extends Plain[T] {
       override protected def failMsg(element: T) =
         s"Could not Lift AST Quat-type ${classTag[T].runtimeClass.getSimpleName} from the element:\n" +
           s"${section(io.getquill.util.Messages.qprint(element).toString)}\n" +
           s"of the Quill (Quat) Abstract Syntax Tree"
-  end Plain
+    }
+  } // end Plain
 
-end Lifters
+} // end Lifters

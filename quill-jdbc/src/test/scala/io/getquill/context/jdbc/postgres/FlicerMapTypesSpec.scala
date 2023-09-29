@@ -9,9 +9,10 @@ import java.time.ZoneId
 
 object FlicerMapTypesSpec {
   // Need to define here since AnyVal class cannot be local
-  object `Should succeed with AnyValue`:
+  object `Should succeed with AnyValue` {
     case class Info(value: String) extends AnyVal
     case class ContactComplex(firstName: String, lastName: String, age: Int, addressFk: Int, extraInfo: Info)
+  }
 }
 
 class FlicerMapTypesSpec extends Spec with Inside {

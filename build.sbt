@@ -1,5 +1,7 @@
 import com.jsuereth.sbtpgp.PgpKeys.publishSigned
 
+Global / onChangedBuildSource := ReloadOnSourceChanges
+
 inThisBuild(
   List(
     organization := "io.getquill",
@@ -90,6 +92,8 @@ val filteredModules = {
   selectedModules
 }
 
+val zioQuillVersion = "4.7.3"
+
 lazy val `quill` =
   (project in file("."))
     .settings(commonSettings: _*)
@@ -120,14 +124,14 @@ lazy val `quill-sql` =
         "io.suzaku" %% "boopickle" % "1.4.0",
         "com.lihaoyi" %% "pprint" % "0.8.1",
         "ch.qos.logback" % "logback-classic" % "1.3.11" % Test,
-        "io.getquill" %% "quill-engine" % "4.6.1",
-        "dev.zio" %% "zio" % "2.0.17",
-        ("io.getquill" %% "quill-util" % "4.6.1")
+        "io.getquill" %% "quill-engine" % zioQuillVersion,
+        "dev.zio" %% "zio" % "2.0.18",
+        ("io.getquill" %% "quill-util" % zioQuillVersion)
           .excludeAll({
             if (isCommunityBuild)
               Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))
             else
-              Seq()
+              Seq.empty
           }: _*),
         "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
@@ -215,8 +219,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "2.0.17",
-        "dev.zio" %% "zio-streams" % "2.0.17"
+        "dev.zio" %% "zio" % "2.0.18",
+        "dev.zio" %% "zio-streams" % "2.0.18"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -266,8 +270,8 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.17.0",
-        "dev.zio" %% "zio" % "2.0.17",
-        "dev.zio" %% "zio-streams" % "2.0.17"
+        "dev.zio" %% "zio" % "2.0.18",
+        "dev.zio" %% "zio-streams" % "2.0.18"
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")
@@ -293,7 +297,7 @@ lazy val jdbcTestingLibraries = Seq(
     "com.zaxxer" % "HikariCP" % "4.0.3" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
     "com.mysql" % "mysql-connector-j" % "8.1.0" % Test,
-    "com.h2database" % "h2" % "2.2.222" % Test,
+    "com.h2database" % "h2" % "2.2.224" % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
     "org.postgresql" % "postgresql" % "42.6.0" % Test,
     "org.xerial" % "sqlite-jdbc" % "3.42.0.1" % Test,
@@ -326,6 +330,8 @@ lazy val basicSettings = Seq(
   //   //Tests.Argument(TestFrameworks.ScalaTest, "-h", "testresults")
   // ),
   scalacOptions ++= Seq(
-    "-language:implicitConversions", "-explain"
+    "-language:implicitConversions", "-explain",
+    // See https://docs.scala-lang.org/scala3/guides/migration/tooling-syntax-rewriting.html
+    "-no-indent"
   )
 )

@@ -3,7 +3,7 @@ package io.getquill.context.sql
 import java.time.LocalDate
 import io.getquill._ //
 
-object StaticDateExample:
+object StaticDateExample {
   case class Person(name: String, birthDate: LocalDate)
 
   val ctx = new SqlMirrorContext(PostgresDialect, Literal)
@@ -13,3 +13,4 @@ object StaticDateExample:
   // Makes NO Sense: inline def staticDate = "'19820101'".asInstanceOf[String]
 
   val result = run(query[Person].filter(p => p.birthDate == staticDate))
+}

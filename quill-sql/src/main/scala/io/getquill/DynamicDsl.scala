@@ -48,12 +48,14 @@ implicit class ToDynamicActionReturning[T, U](
 private[getquill] def dyn[T](ast: Ast, lifts: List[Planter[_, _, _]], runtimeQuotes: List[QuotationVase]): DynamicQuery[T] =
   DynamicQuery[T](Quoted[Query[T]](ast, lifts, runtimeQuotes))
 
-private[getquill] def spliceLift[O](o: O, otherLifts: List[Planter[_, _, _]], runtimeQuotes: List[QuotationVase])(implicit enc: GenericEncoder[O, _, _]) =
+private[getquill] def spliceLift[O](o: O, otherLifts: List[Planter[_, _, _]], runtimeQuotes: List[QuotationVase])(implicit enc: GenericEncoder[O, _, _]) = {
   val uid = UUID.randomUUID().toString + "foo"
   new Quoted[O](ScalarTag(uid, External.Source.Parser), EagerPlanter(o, enc, uid) +: otherLifts, runtimeQuotes)
+}
 
-private[getquill] object DynamicDslModel:
+private[getquill] object DynamicDslModel {
   val nextIdentId = new DynamicVariable(0)
+}
 
 private[getquill] def withFreshIdent[R](f: Ident => R)(quat: Quat): R = {
   val idx = DynamicDslModel.nextIdentId.value

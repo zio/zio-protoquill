@@ -51,17 +51,17 @@ Add the following to your SBT file:
 ```scala
 libraryDependencies ++= Seq(
   // Syncronous JDBC Modules
-  "io.getquill" %% "quill-jdbc" % "4.5.0",
+  "io.getquill" %% "quill-jdbc" % "4.7.3",
   // Or ZIO Modules
-  "io.getquill" %% "quill-jdbc-zio" % "4.5.0",
+  "io.getquill" %% "quill-jdbc-zio" % "4.7.3",
   // Or Postgres Async
-  "io.getquill" %% "quill-jasync-postgres" % "4.5.0",
+  "io.getquill" %% "quill-jasync-postgres" % "4.7.3",
   // Or Cassandra
-  "io.getquill" %% "quill-cassandra" % "4.5.0",
+  "io.getquill" %% "quill-cassandra" % "4.7.3",
   // Or Cassandra + ZIO
-  "io.getquill" %% "quill-cassandra-zio" % "4.5.0",
+  "io.getquill" %% "quill-cassandra-zio" % "4.7.3",
   // Add for Caliban Integration
-  "io.getquill" %% "quill-caliban" % "4.5.0"
+  "io.getquill" %% "quill-caliban" % "4.7.3"
 )
 ```
 

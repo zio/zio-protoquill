@@ -26,15 +26,16 @@ import io.getquill.util.CommonExtensions.Throwable._
 case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) extends Lifters.Proxy {
   val default = this
 
-  extension [T](t: T)(using ToExpr[T], Quotes)
+  extension [T](t: T)(using ToExpr[T], Quotes) {
     def expr: Expr[T] = Expr(t)
+  }
 
-  trait LiftAstSerialize[T <: Ast: ClassTag] extends ToExpr[T] with Lifters.WithSerializing.Ast[T] with Lifters.Plain.Ast[T]:
+  trait LiftAstSerialize[T <: Ast: ClassTag] extends ToExpr[T] with Lifters.WithSerializing.Ast[T] with Lifters.Plain.Ast[T] {
     def typeTag: Quotes ?=> TType[T]
     def lift: Quotes ?=> PartialFunction[T, Expr[T]]
 
     // The primary entry-point for external usage
-    override def orFail(element: T)(using Quotes): Expr[T] =
+    override def orFail(element: T)(using Quotes): Expr[T] = {
       given TType[T] = typeTag
       if (serializeAst == SerializeAst.None)
         liftPlainOrFail(element)
@@ -44,14 +45,15 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
         tryLiftSerialized(element).getOrElse { liftPlainOrFail(element) }
       else
         liftPlainOrFail(element)
-  end LiftAstSerialize
+    }
+  } // end LiftAstSerialize
 
-  trait LiftQuatSerialize[T <: Quat: ClassTag] extends ToExpr[T] with Lifters.WithSerializing.Quat[T] with Lifters.Plain.Quat[T]:
+  trait LiftQuatSerialize[T <: Quat: ClassTag] extends ToExpr[T] with Lifters.WithSerializing.Quat[T] with Lifters.Plain.Quat[T] {
     def typeTag: Quotes ?=> TType[T]
     def lift: Quotes ?=> PartialFunction[T, Expr[T]]
 
     // The primary entry-point for external usage
-    override def orFail(element: T)(using Quotes): Expr[T] =
+    override def orFail(element: T)(using Quotes): Expr[T] = {
       given TType[T] = typeTag
       if (serializeQuat == SerializeQuat.None)
         liftPlainOrFail(element)
@@ -61,33 +63,40 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
         tryLiftSerialized(element).getOrElse { liftPlainOrFail(element) }
       else
         liftPlainOrFail(element)
-  end LiftQuatSerialize
+    }
+  } // end LiftQuatSerialize
 
   // Technically not part of the AST this needs to be lifted in the QueryExecution and returned to the executeActionReturning context clause
-  given liftReturnAction: Lifters.Plain[ReturnAction] with
-    def lift =
+  given liftReturnAction: Lifters.Plain[ReturnAction] with {
+    def lift = {
       case ReturnAction.ReturnNothing         => '{ ReturnAction.ReturnNothing }
       case ReturnAction.ReturnColumns(colums) => '{ ReturnAction.ReturnColumns(${ colums.expr }) }
       case ReturnAction.ReturnRecord          => '{ ReturnAction.ReturnRecord }
+    }
+  }
 
-  given liftRenameable: Lifters.Plain[Renameable] with
-    def lift =
+  given liftRenameable: Lifters.Plain[Renameable] with {
+    def lift = {
       case Renameable.ByStrategy => '{ Renameable.ByStrategy }
       case Renameable.Fixed      => '{ Renameable.Fixed }
+    }
+  }
 
   given liftVisbility: Lifters.Plain[Visibility] with {
-    def lift =
+    def lift = {
       case Visibility.Visible => '{ Visibility.Visible }
       case Visibility.Hidden  => '{ Visibility.Hidden }
+    }
   }
 
   given liftAggregation: Lifters.Plain[AggregationOperator] with {
-    def lift =
+    def lift = {
       case AggregationOperator.`min`  => '{ AggregationOperator.`min` }
       case AggregationOperator.`max`  => '{ AggregationOperator.`max` }
       case AggregationOperator.`avg`  => '{ AggregationOperator.`avg` }
       case AggregationOperator.`sum`  => '{ AggregationOperator.`sum` }
       case AggregationOperator.`size` => '{ AggregationOperator.`size` }
+    }
   }
 
   given liftProperty: LiftAstSerialize[Property] with {
@@ -102,51 +111,60 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
 
   given liftIdent: LiftAstSerialize[AIdent] with {
     def typeTag = TType.of[AIdent]
-    def lift =
+    def lift = {
       case AIdent.Opinionated(name: String, quat, visibility) =>
         '{ AIdent.Opinionated(${ name.expr }, ${ quat.expr }, ${ visibility.expr }) }
+    }
   }
 
   given liftPropertyAlias: Lifters.Plain[PropertyAlias] with {
-    def lift =
+    def lift = {
       case PropertyAlias(a, b) => '{ PropertyAlias(${ a.expr }, ${ b.expr }) }
+    }
   }
 
-  given liftAssignment: LiftAstSerialize[Assignment] with
+  given liftAssignment: LiftAstSerialize[Assignment] with {
     def typeTag = TType.of[Assignment]
-    def lift =
+    def lift = {
       case Assignment(ident, property, value) => '{ Assignment(${ ident.expr }, ${ property.expr }, ${ value.expr }) }
+    }
+  }
 
-  given liftAssignmentDual: LiftAstSerialize[AssignmentDual] with
+  given liftAssignmentDual: LiftAstSerialize[AssignmentDual] with {
     def typeTag = TType.of[AssignmentDual]
-    def lift =
+    def lift = {
       case AssignmentDual(ident1, ident2, property, value) => '{ AssignmentDual(${ ident1.expr }, ${ ident2.expr }, ${ property.expr }, ${ value.expr }) }
+    }
+  }
 
   given liftJoinType: Lifters.Plain[JoinType] with {
-    def lift =
+    def lift = {
       case InnerJoin => '{ InnerJoin }
       case LeftJoin  => '{ LeftJoin }
       case RightJoin => '{ RightJoin }
       case FullJoin  => '{ FullJoin }
+    }
   }
 
   given liftQuatProduct: LiftQuatSerialize[Quat.Product] with {
     def typeTag = TType.of[Quat.Product]
-    def lift =
+    def lift = {
       case Quat.Product.WithRenamesCompact(name, tpe, fields, values, renamesFrom, renamesTo) =>
         '{
           io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${ name.expr }, ${ tpe.expr })(${ fields.toList.spliceVarargs }: _*)(${ values.toList.spliceVarargs }: _*)(${ renamesFrom.toList.spliceVarargs }: _*)(${
             renamesTo.toList.spliceVarargs
           }: _*)
         }
+    }
   }
 
-  extension [T: TType](list: List[T])(using ToExpr[T], Quotes)
+  extension [T: TType](list: List[T])(using ToExpr[T], Quotes) {
     def spliceVarargs = Varargs(list.map(Expr(_)).toSeq)
+  }
 
   given liftQuat: LiftQuatSerialize[Quat] with {
     def typeTag = TType.of[Quat]
-    def lift =
+    def lift = {
       case Quat.Product.WithRenamesCompact(name, tpe, fields, values, renamesFrom, renamesTo) => '{
           io.getquill.quat.Quat.Product.WithRenamesCompact.apply(${ name.expr }, ${ tpe.expr })(${ fields.toList.spliceVarargs }: _*)(${ values.toList.spliceVarargs }: _*)(${ renamesFrom.toList.spliceVarargs }: _*)(${
             renamesTo.toList.spliceVarargs
@@ -158,25 +176,28 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case Quat.Unknown           => '{ io.getquill.quat.Quat.Unknown }
       case Quat.BooleanValue      => '{ io.getquill.quat.Quat.BooleanValue }
       case Quat.BooleanExpression => '{ io.getquill.quat.Quat.BooleanExpression }
+    }
   }
 
   given liftQuatProductType: Lifters.Plain[Quat.Product.Type] with {
-    def lift =
+    def lift = {
       case Quat.Product.Type.Concrete => '{ io.getquill.quat.Quat.Product.Type.Concrete }
       case Quat.Product.Type.Abstract => '{ io.getquill.quat.Quat.Product.Type.Abstract }
+    }
   }
 
   given liftTraversableOperation: LiftAstSerialize[IterableOperation] with {
     def typeTag = TType.of[IterableOperation]
-    def lift =
+    def lift = {
       case MapContains(a, b)  => '{ MapContains(${ a.expr }, ${ b.expr }) }
       case SetContains(a, b)  => '{ SetContains(${ a.expr }, ${ b.expr }) }
       case ListContains(a, b) => '{ ListContains(${ a.expr }, ${ b.expr }) }
+    }
   }
 
   given liftOptionOperation: LiftAstSerialize[OptionOperation] with {
     def typeTag = TType.of[OptionOperation]
-    def lift =
+    def lift = {
       case OptionApply(a)              => '{ OptionApply(${ a.expr }) }
       case OptionSome(a)               => '{ OptionSome(${ a.expr }) }
       case OptionNone(quat)            => '{ OptionNone(${ quat.expr }) }
@@ -197,28 +218,35 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case OptionForall(a, b, c)       => '{ OptionForall(${ a.expr }, ${ b.expr }, ${ c.expr }) }
       case OptionTableExists(a, b, c)  => '{ OptionTableExists(${ a.expr }, ${ b.expr }, ${ c.expr }) }
       case OptionTableForall(a, b, c)  => '{ OptionTableForall(${ a.expr }, ${ b.expr }, ${ c.expr }) }
+    }
   }
 
-  given liftEntity: LiftAstSerialize[Entity] with
+  given liftEntity: LiftAstSerialize[Entity] with {
     def typeTag = TType.of[Entity]
-    def lift =
+    def lift = {
       // case ast if (serializeAst == SerializeAst.All) => tryToSerialize[Entity](ast)
       case Entity.Opinionated(name: String, list, quat, renameable) => '{ Entity.Opinionated(${ name.expr }, ${ list.expr }, ${ quat.expr }, ${ renameable.expr }) }
+    }
+  }
 
-  given liftCaseClass: LiftAstSerialize[CaseClass] with
+  given liftCaseClass: LiftAstSerialize[CaseClass] with {
     def typeTag = TType.of[CaseClass]
-    def lift =
+    def lift = {
       case cc @ CaseClass(name, lifts) =>
         '{ CaseClass(${ name.expr }, ${ lifts.expr }) } // List lifter and tuple lifter come built in so can just do Expr(lifts) (or lifts.expr for short)
+    }
+  }
 
-  given liftTuple: LiftAstSerialize[Tuple] with
+  given liftTuple: LiftAstSerialize[Tuple] with {
     def typeTag = TType.of[Tuple]
-    def lift =
+    def lift = {
       case Tuple(values) => '{ Tuple(${ values.expr }) }
+    }
+  }
 
-  given orderingLiftable: LiftAstSerialize[Ordering] with
+  given orderingLiftable: LiftAstSerialize[Ordering] with {
     def typeTag = TType.of[Ordering]
-    def lift =
+    def lift = {
       case TupleOrdering(elems) => '{ io.getquill.ast.TupleOrdering(${ elems.expr }) }
       case Asc                  => '{ io.getquill.ast.Asc }
       case Desc                 => '{ io.getquill.ast.Desc }
@@ -226,10 +254,12 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case DescNullsFirst       => '{ io.getquill.ast.DescNullsFirst }
       case AscNullsLast         => '{ io.getquill.ast.AscNullsLast }
       case DescNullsLast        => '{ io.getquill.ast.DescNullsLast }
+    }
+  }
 
-  given liftAction: LiftAstSerialize[Action] with
+  given liftAction: LiftAstSerialize[Action] with {
     def typeTag = TType.of[Action]
-    def lift =
+    def lift = {
       case Insert(query: Ast, assignments: List[Assignment])         => '{ Insert(${ query.expr }, ${ assignments.expr }) }
       case Update(query: Ast, assignments: List[Assignment])         => '{ Update(${ query.expr }, ${ assignments.expr }) }
       case Delete(query: Ast)                                        => '{ Delete(${ query.expr }) }
@@ -237,20 +267,26 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case ReturningGenerated(action: Ast, alias: AIdent, body: Ast) => '{ ReturningGenerated(${ action.expr }, ${ alias.expr }, ${ body.expr }) }
       case Foreach(query: Ast, alias: AIdent, body: Ast)             => '{ Foreach(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
       case OnConflict(a, b, c)                                       => '{ OnConflict(${ a.expr }, ${ b.expr }, ${ c.expr }) }
+    }
+  }
 
-  given liftConflictTarget: Lifters.Plain[OnConflict.Target] with
-    def lift =
+  given liftConflictTarget: Lifters.Plain[OnConflict.Target] with {
+    def lift = {
       case OnConflict.NoTarget      => '{ OnConflict.NoTarget }
       case OnConflict.Properties(a) => '{ OnConflict.Properties(${ a.expr }) }
+    }
+  }
 
-  given liftConflictAction: Lifters.Plain[OnConflict.Action] with
-    def lift =
+  given liftConflictAction: Lifters.Plain[OnConflict.Action] with {
+    def lift = {
       case OnConflict.Ignore    => '{ OnConflict.Ignore }
       case OnConflict.Update(a) => '{ OnConflict.Update(${ a.expr }) }
+    }
+  }
 
-  given liftQuery: LiftAstSerialize[AQuery] with
+  given liftQuery: LiftAstSerialize[AQuery] with {
     def typeTag = TType.of[AQuery]
-    def lift =
+    def lift = {
       case e: Entity                                                        => liftEntity(e)
       case Filter(query: Ast, alias: AIdent, body: Ast)                     => '{ Filter(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
       case Map(query: Ast, alias: AIdent, body: Ast)                        => '{ Map(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
@@ -271,10 +307,12 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case DistinctOn(query, alias, body)        => '{ DistinctOn(${ query.expr }, ${ alias.expr }, ${ body.expr }) }
       case Distinct(a: Ast)                      => '{ Distinct(${ a.expr }) }
       case Nested(a: Ast)                        => '{ Nested(${ a.expr }) }
+    }
+  }
 
   given liftAst: LiftAstSerialize[Ast] with {
     def typeTag = TType.of[Ast]
-    def lift =
+    def lift = {
       case q: AQuery                                                 => liftQuery(q)
       case v: Property                                               => liftProperty(v)
       case v: AIdent                                                 => liftIdent(v)
@@ -300,25 +338,32 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case OnConflict.Excluded(a)                                    => '{ OnConflict.Excluded(${ a.expr }) }
       case OnConflict.Existing(a)                                    => '{ OnConflict.Existing(${ a.expr }) }
       case NullValue                                                 => '{ NullValue }
+    }
   }
 
-  given liftScalarTagSource: Lifters.Plain[External.Source] with
-    def lift =
+  given liftScalarTagSource: Lifters.Plain[External.Source] with {
+    def lift = {
       case External.Source.Parser                 => '{ External.Source.Parser }
       case External.Source.UnparsedProperty(name) => '{ External.Source.UnparsedProperty(${ Expr(name) }) }
+    }
+  }
 
-  given liftScalarTag: LiftAstSerialize[ScalarTag] with
+  given liftScalarTag: LiftAstSerialize[ScalarTag] with {
     def typeTag = TType.of[ScalarTag]
-    def lift =
+    def lift = {
       case ScalarTag(uid: String, source) => '{ ScalarTag(${ uid.expr }, ${ source.expr }) }
+    }
+  }
 
-  given liftQuotationTag: LiftAstSerialize[QuotationTag] with
+  given liftQuotationTag: LiftAstSerialize[QuotationTag] with {
     def typeTag = TType.of[QuotationTag]
-    def lift =
+    def lift = {
       case QuotationTag(uid: String) => '{ QuotationTag(${ uid.expr }) }
+    }
+  }
 
-  given liftOperator: Lifters.Plain[Operator] with
-    def lift =
+  given liftOperator: Lifters.Plain[Operator] with {
+    def lift = {
       case SetOperator.contains       => '{ SetOperator.contains }
       case SetOperator.nonEmpty       => '{ SetOperator.nonEmpty }
       case SetOperator.isEmpty        => '{ SetOperator.isEmpty }
@@ -343,6 +388,8 @@ case class Lifter(serializeQuat: SerializeQuat, serializeAst: SerializeAst) exte
       case BooleanOperator.||         => '{ BooleanOperator.|| }
       case BooleanOperator.&&         => '{ BooleanOperator.&& }
       case BooleanOperator.!          => '{ BooleanOperator.! }
+    }
+  }
 }
 
 object Lifter extends Lifters.Proxy {
@@ -354,8 +401,9 @@ object Lifter extends Lifters.Proxy {
     Lifter(serializeQuat.getOrElse(SerializeQuat.global), serializeAst.getOrElse(SerializeAst.global))
 
   private[getquill] def doSerializeQuat(quat: Quat, serializeQuat: SerializeQuat) =
-    serializeQuat match
+    serializeQuat match {
       case SerializeQuat.All                                 => true
       case SerializeQuat.ByFieldCount(maxNonSerializeFields) => quat.countFields > maxNonSerializeFields
       case SerializeQuat.None                                => false
+    }
 }

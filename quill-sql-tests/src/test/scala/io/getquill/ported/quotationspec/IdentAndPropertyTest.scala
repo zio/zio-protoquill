@@ -9,11 +9,13 @@ import io.getquill._
 import io.getquill.PicklingHelper._
 
 class IdentAndPropertyTest extends Spec with TestEntities {
-  extension (ast: Ast)
-    def body: Ast = ast match
+  extension (ast: Ast) {
+    def body: Ast = ast match {
       case f: Function => f.body
       case f: Map => f.body
       case _ => throw new IllegalArgumentException(s"Cannot get body from ast element: ${io.getquill.util.Messages.qprint(ast)}")
+    }
+  }
 
   "ident" in {
     inline def q = quote {
