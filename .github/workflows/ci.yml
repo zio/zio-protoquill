@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         scala: [ 3.3.1 ]
         module: [ sqltest, db, async, bigdata ]
