@@ -1,10 +1,11 @@
 package io.getquill.context.jdbc.postgres
 
 import java.time.LocalDateTime
-
 import io.getquill.context.sql.EncodingSpec
-import io.getquill._
+import io.getquill.*
+
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
 
 class JdbcEncodingSpec extends EncodingSpec {
 
@@ -38,7 +39,7 @@ class JdbcEncodingSpec extends EncodingSpec {
   // IO Monad not working yet so need to do regular queries
   "LocalDateTime" in {
     case class EncodingTestEntity(v11: Option[LocalDateTime])
-    val now = LocalDateTime.now()
+    val now = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS)
     val e1 = EncodingTestEntity(Some(now))
     val e2 = EncodingTestEntity(None)
     val res: (List[EncodingTestEntity], List[EncodingTestEntity]) = {
