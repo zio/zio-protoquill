@@ -332,6 +332,8 @@ lazy val basicSettings = Seq(
   scalacOptions ++= Seq(
     "-language:implicitConversions", "-explain",
     // See https://docs.scala-lang.org/scala3/guides/migration/tooling-syntax-rewriting.html
-    "-no-indent"
-  )
+    "-no-indent",
+    "-release:11",
+  ),
+  javacOptions := Seq("-source", "11", "-target", "11"),
 )
