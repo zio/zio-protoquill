@@ -1,8 +1,10 @@
 package io.getquill.context.cassandra
 
-import java.util.{ Date, UUID }
-import java.time.{ Instant, LocalDate }
-import io.getquill._
+import java.util.{Date, UUID}
+import java.time.{Instant, LocalDate}
+import io.getquill.*
+
+import java.time.temporal.ChronoUnit
 
 class ListsEncodingSpec extends CollectionsSpec {
 
@@ -26,7 +28,9 @@ class ListsEncodingSpec extends CollectionsSpec {
   )
   val e = ListsEntity(1, List("c"), List(BigDecimal(1.33)), List(true), List(0, 1), List(3, 2), List(1, 2), List(2, 3),
     List(1f, 3f), List(5d), List(LocalDate.now()),
-    List(Instant.now()), List(UUID.randomUUID()))
+    List(Instant.now().truncatedTo(ChronoUnit.MILLIS)),
+    List(UUID.randomUUID())
+  )
 
   inline def q = quote(query[ListsEntity])
   val qDynamic = quote(query[ListsEntity])

@@ -1,12 +1,12 @@
 package io.getquill.context.jasync.postgres
 
-import java.time.{ LocalDate, LocalDateTime }
-import java.util.{ Date, UUID }
-
+import java.time.{LocalDate, LocalDateTime}
+import java.util.{Date, UUID}
 import io.getquill.context.sql.EncodingTestType
 import io.getquill.context.sql.encoding.ArrayEncodingBaseSpec
-import io.getquill._
+import io.getquill.*
 
+import java.time.temporal.ChronoUnit
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
@@ -25,7 +25,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
 
     "Java8 times" in {
       case class Java8Times(timestamps: Seq[LocalDateTime], dates: Seq[LocalDate])
-      val jE = Java8Times(Seq(LocalDateTime.now()), Seq(LocalDate.now()))
+      val jE = Java8Times(Seq(LocalDateTime.now().truncatedTo(ChronoUnit.MICROS)), Seq(LocalDate.now()))
       inline def jQ = quote(querySchema[Java8Times]("ArraysTestEntity"))
       await(ctx.run(jQ.insertValue(lift(jE))))
       val actual = await(ctx.run(jQ)).head
@@ -138,7 +138,7 @@ class ArrayAsyncEncodingSpec extends ArrayEncodingBaseSpec {
 
     "Java8 times" in {
       case class Java8Times(timestamps: Seq[LocalDateTime], dates: Seq[LocalDate])
-      val jE = Java8Times(Seq(LocalDateTime.now()), Seq(LocalDate.now()))
+      val jE = Java8Times(Seq(LocalDateTime.now().truncatedTo(ChronoUnit.MICROS)), Seq(LocalDate.now()))
       val jQ = quote(querySchema[Java8Times]("ArraysTestEntity"))
       await(ctx.run(jQ.insertValue(lift(jE))))
       val actual = await(ctx.run(jQ)).head

@@ -1,8 +1,10 @@
 package io.getquill.context.cassandra
 
-import java.time.{ Instant, LocalDate }
-import java.util.{ Date, UUID }
-import io.getquill._
+import java.time.{Instant, LocalDate}
+import java.util.{Date, UUID}
+import io.getquill.*
+
+import java.time.temporal.ChronoUnit
 
 class MapsEncodingSpec extends CollectionsSpec {
   val ctx = testSyncDB
@@ -18,7 +20,8 @@ class MapsEncodingSpec extends CollectionsSpec {
   )
   val e = MapsEntity(1, Map("1" -> BigDecimal(1)), Map(1 -> 1d, 2 -> 2d, 3 -> 3d), Map(1L -> 3f),
     Map(true -> LocalDate.now()),
-    Map(UUID.randomUUID() -> Instant.now()))
+    Map(UUID.randomUUID() -> Instant.now().truncatedTo(ChronoUnit.MILLIS))
+  )
   inline def q = quote(query[MapsEntity])
 
   "Map encoders/decoders" in {

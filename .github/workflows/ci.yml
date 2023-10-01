@@ -9,14 +9,18 @@ on:
     types: [ published ] # Triggers the CI when a new GitHub Release is published
 
 env:
-  JAVA_OPTS: -Xms6g -Xmx6g -XX:+UseG1GC
-  JDK_JAVA_OPTIONS: -Xms6g -Xmx6g -XX:+UseG1GC # See https://stackoverflow.com/a/73708006
+  # See:
+  #  - https://stackoverflow.com/a/73708006
+  #  - https://stackoverflow.com/questions/73465937/apache-spark-3-3-0-breaks-on-java-17-with-cannot-access-class-sun-nio-ch-direct
+  JAVA_OPTS: -Xms6G -Xmx6G -XX:+UseG1GC -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -Dcommunity=false -Dquill.macro.log=false --add-exports java.base/sun.nio.ch=ALL-UNNAMED
+  JDK_JAVA_OPTIONS: -Xms6G -Xmx6G -XX:+UseG1GC -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -Dcommunity=false -Dquill.macro.log=false --add-exports java.base/sun.nio.ch=ALL-UNNAMED
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     strategy:
+      fail-fast: false
       matrix:
         scala: [ 3.3.1 ]
         module: [ sqltest, db, async, bigdata ]
@@ -27,7 +31,7 @@ jobs:
         uses: actions/setup-java@v3.13.0
         with:
           distribution: temurin
-          java-version: '8'
+          java-version: '17'
           check-latest: true
 
       - name: Scala ${{ matrix.scala }} Building ${{ matrix.module }}
@@ -47,7 +51,7 @@ jobs:
         uses: actions/setup-java@v3.13.0
         with:
           distribution: temurin
-          java-version: '8'
+          java-version: '17'
           check-latest: true
       - run: sbt ci-release
         env:

@@ -27,7 +27,7 @@ val isCommunityRemoteBuild =
   sys.props.getOrElse("communityRemote", "false").toBoolean
 
 lazy val scalatestVersion =
-  if (isCommunityRemoteBuild) "3.2.7" else "3.2.9"
+  if (isCommunityRemoteBuild) "3.2.7" else "3.2.17"
 
 lazy val baseModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-sql`
@@ -123,7 +123,7 @@ lazy val `quill-sql` =
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.4.0",
         "com.lihaoyi" %% "pprint" % "0.8.1",
-        "ch.qos.logback" % "logback-classic" % "1.3.11" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.4.11" % Test,
         "io.getquill" %% "quill-engine" % zioQuillVersion,
         "dev.zio" %% "zio" % "2.0.18",
         ("io.getquill" %% "quill-util" % zioQuillVersion)
@@ -203,12 +203,12 @@ lazy val `quill-caliban` =
         "com.github.ghostdogpr" %% "caliban-zio-http" % "2.0.2",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
-        "ch.qos.logback" % "logback-classic" % "1.3.11" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.4.11" % Test,
         "io.d11" %% "zhttp" % "2.0.0-RC11" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql" % "postgresql" % "42.2.27" % Test,
+        "org.postgresql" % "postgresql" % "42.6.0" % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -294,7 +294,7 @@ lazy val commonSettings =
 lazy val jdbcTestingLibraries = Seq(
   // JDBC Libraries for testing of quill-jdbc___ contexts
   libraryDependencies ++= Seq(
-    "com.zaxxer" % "HikariCP" % "4.0.3" exclude("org.slf4j", "*"),
+    "com.zaxxer" % "HikariCP" % "5.0.1" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
     "com.mysql" % "mysql-connector-j" % "8.1.0" % Test,
     "com.h2database" % "h2" % "2.2.224" % Test,
@@ -302,7 +302,7 @@ lazy val jdbcTestingLibraries = Seq(
     "org.postgresql" % "postgresql" % "42.6.0" % Test,
     "org.xerial" % "sqlite-jdbc" % "3.42.0.1" % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
-    "com.microsoft.sqlserver" % "mssql-jdbc" % "7.2.2.jre8" % Test,
+    "com.microsoft.sqlserver" % "mssql-jdbc" % "7.2.2.jre11" % Test,
     "com.oracle.ojdbc" % "ojdbc8" % "19.3.0.0" % Test,
     //"org.mockito"             %% "mockito-scala-scalatest" % "1.16.2"              % Test
   )
@@ -332,6 +332,8 @@ lazy val basicSettings = Seq(
   scalacOptions ++= Seq(
     "-language:implicitConversions", "-explain",
     // See https://docs.scala-lang.org/scala3/guides/migration/tooling-syntax-rewriting.html
-    "-no-indent"
-  )
+    "-no-indent",
+    "-release:11",
+  ),
+  javacOptions := Seq("-source", "11", "-target", "11"),
 )
