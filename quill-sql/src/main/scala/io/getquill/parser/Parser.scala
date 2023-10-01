@@ -160,6 +160,7 @@ class ValParser(val rootParse: Parser)(using Quotes, TranspileConfig)
 class BlockParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with PatternMatchingValues {
+  import quotes.reflect.{Block => TBlock, _}
 
   def attempt = {
     case block @ Unseal(TBlock(parts, lastPart)) if (parts.length > 0) =>
@@ -428,6 +429,7 @@ class BatchActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with Parser.PrefilterType[BatchAction[_]]
     with Assignments {
+  import quotes.reflect.{Constant => TConstant, _}
 
   def attempt = {
     case '{ type a <: Action[_] with QAC[_, _]; ($q: Query[t]).foreach[`a`, b](${ Lambda1(ident, tpe, body) })($unq) } =>
@@ -661,6 +663,7 @@ class SetOperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig)
  * parses things like query.sum, query.size etc... when needed.
  */
 class QueryScalarsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PropertyAliases {
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
 
   def attempt = {
     case '{ type t; type u >: `t`; ($q: Query[`t`]).value[`u`] }   => rootParse(q)
@@ -869,12 +872,25 @@ class ExtrasParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends
       }
   }
 
+  private object ComparisonOpLabel {
+    def unapply(str: String): Option[BinaryOperator] =
+      str match {
+        case ">" => Some(NumericOperator.`>`)
+        case ">" => Some(NumericOperator.`>`)
+        case "<" => Some(NumericOperator.`<`)
+        case ">=" => Some(NumericOperator.`>=`)
+        case "<=" => Some(NumericOperator.`<=`)
+        case _ => None
+      }
+  }
+
+
   def attempt = {
     case ExtrasMethod(a, "===", b) =>
       equalityWithInnerTypechecksAnsi(a, b)(Equal)
     case ExtrasMethod(a, "=!=", b) =>
       equalityWithInnerTypechecksAnsi(a, b)(NotEqual)
-    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[Date](a) && is[Datee](b) =>
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[Date](a) && is[Date](b) =>
       BinaryOperation(rootParse(a), op, rootParse(b))
     case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[Timestamp](a) && is[Timestamp](b) =>
       BinaryOperation(rootParse(a), op, rootParse(b))
@@ -893,17 +909,6 @@ class ExtrasParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends
     case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[ZonedDateTime](a) && is[ZonedDateTime](b) =>
       BinaryOperation(rootParse(a), op, rootParse(b))
 
-  object ComparisonOpLabel {
-    def unapply(str: String): Option[BinaryOperator] =
-      str match {
-        case ">"  => Some(NumericOperator.`>`)
-        case ">"  => Some(NumericOperator.`>`)
-        case "<"  => Some(NumericOperator.`<`)
-        case ">=" => Some(NumericOperator.`>=`)
-        case "<=" => Some(NumericOperator.`<=`)
-        case _    => None
-      }
-  }
   }
 }
 
@@ -1054,6 +1059,7 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
 class ValueParser(rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with QuatMaking {
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
 
   def attempt = {
     // Parse Null values
@@ -1076,6 +1082,7 @@ class ComplexValueParser(rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with QuatMaking
     with Helpers {
+  import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
 
   def attempt = {
     case ArrowFunction(prop, value) =>
