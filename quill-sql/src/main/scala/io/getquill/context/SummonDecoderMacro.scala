@@ -7,7 +7,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ReturnAction}
+import io.getquill.ReturnAction
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -32,7 +32,9 @@ object SummonDecoderMacro {
   import scala.quoted._ // Expr.summon is actually from here
   import io.getquill.Planter
 
-  def apply[T: Type, ResultRow: Type, Session: Type](using Quotes): Expr[GenericDecoder[ResultRow, Session, T, DecodingType]] = {
+  def apply[T: Type, ResultRow: Type, Session: Type](using
+    Quotes
+  ): Expr[GenericDecoder[ResultRow, Session, T, DecodingType]] = {
     import quotes.reflect._
     Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Specific]] match {
       case Some(decoder) => decoder

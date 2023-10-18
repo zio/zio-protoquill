@@ -25,7 +25,11 @@ class SimpleMapSqlSanityTest extends Spec {
       q.map(p => p.name)
     }
     val quat = quatOf[SanePerson]
-    qq.ast mustEqual Map(Entity("SanePerson", List(), quat.probit), Ident("p", quat), Property(Ident("p", quat), "name"))
+    qq.ast mustEqual Map(
+      Entity("SanePerson", List(), quat.probit),
+      Ident("p", quat),
+      Property(Ident("p", quat), "name")
+    )
     val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
     val output = ctx.run(qq).string

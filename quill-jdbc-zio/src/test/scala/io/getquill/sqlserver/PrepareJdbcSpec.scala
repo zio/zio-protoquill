@@ -2,7 +2,7 @@ package io.getquill.sqlserver
 
 import io.getquill.context.qzio.ImplicitSyntax.Implicit
 import javax.sql.DataSource
-import java.sql.{ Connection, ResultSet }
+import java.sql.{Connection, ResultSet}
 import io.getquill.PrepareZioJdbcSpecBase
 
 import org.scalatest.BeforeAndAfter
@@ -10,7 +10,7 @@ import io.getquill._
 
 class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
-  implicit val ds: Implicit[DataSource] = Implicit(pool)
+  implicit val ds: Implicit[DataSource]    = Implicit(pool)
   val context: testContext.underlying.type = testContext.underlying
   import testContext.underlying._
 
@@ -20,7 +20,7 @@ class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
 
   val prepareQuery = prepare(query[Product])
   // TODO Try removing 'inline' and do the old implicit way and see if an error results
-    inline given InsertMeta[Product] = insertMeta[Product](_.id)
+  inline given InsertMeta[Product] = insertMeta[Product](_.id)
 
   "single" in {
     val prepareInsert = prepare(query[Product].insertValue(lift(productEntries.head)))

@@ -23,7 +23,10 @@ object SummonMac {
         actualType match {
           case '[t] =>
             val loaded =
-              Load.Module[t].getOrElse { report.throwError(s"Could not summon genie of type: ${Format.TypeOf[t]}") }.asInstanceOf[Genie]
+              Load
+                .Module[t]
+                .getOrElse(report.throwError(s"Could not summon genie of type: ${Format.TypeOf[t]}"))
+                .asInstanceOf[Genie]
             println("My Greeting Is: " + loaded.greet)
         }
       case None =>

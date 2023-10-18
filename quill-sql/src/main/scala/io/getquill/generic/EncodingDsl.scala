@@ -8,26 +8,31 @@ import io.getquill.MappedEncoding
 import io.getquill.generic.DecodingType
 
 /**
- * Note that much of the implementation of anyValEncoder/anyValDecoder is a workaround for:
+ * Note that much of the implementation of anyValEncoder/anyValDecoder is a
+ * workaround for:
  * https://github.com/lampepfl/dotty/issues/12179#issuecomment-826294510
  *
- * Originally, the idea was to simply pass the `self` in `LowPriorityImplicits` directly
- * into the macro that creates the AnyValEncoders. That way, the implementation would be as simple as:
+ * Originally, the idea was to simply pass the `self` in `LowPriorityImplicits`
+ * directly into the macro that creates the AnyValEncoders. That way, the
+ * implementation would be as simple as:
  * {{{
  *   trait LowPriorityImplicits { self: EncodingDsl =>
  *     implicit inline def anyValEncoder[Cls <: AnyVal]: Encoder[Cls] =
  *       new MappedEncoderMaker[Encoder, Cls](self)
  *   }
  * }}}
- * Then, the MappedEncoderMaker could just internally call `self.mappedEncoder(mapped, encoder)`
- * (where this `self` is the one that is passed in from the `LowPriorityImplicits`).
+ * Then, the MappedEncoderMaker could just internally call
+ * `self.mappedEncoder(mapped, encoder)` (where this `self` is the one that is
+ * passed in from the `LowPriorityImplicits`).
  *
- * Unfortunately however, because of Dotty#12179, this would create an implicit encoder which would
- * never be found. This created the need for the additional abstraction of AnyValEncoderContext and
- * AnyValDecoderContext which would define `makeMappedEncoder`/`makeMappedDecoder` stub methods
- * that the `LowPriorityImplicits` methods `anyValEncoder`/`anyValDecoder` could delegate the actual
- * encoding/decoding work into. Hopefully when Dotty#12179 is resolved all of this convoluted logic
- * can be removed and we can go back to the simpler implementation.
+ * Unfortunately however, because of Dotty#12179, this would create an implicit
+ * encoder which would never be found. This created the need for the additional
+ * abstraction of AnyValEncoderContext and AnyValDecoderContext which would
+ * define `makeMappedEncoder`/`makeMappedDecoder` stub methods that the
+ * `LowPriorityImplicits` methods `anyValEncoder`/`anyValDecoder` could delegate
+ * the actual encoding/decoding work into. Hopefully when Dotty#12179 is
+ * resolved all of this convoluted logic can be removed and we can go back to
+ * the simpler implementation.
  */
 trait LowPriorityImplicits { self: EncodingDsl =>
 
@@ -72,24 +77,36 @@ trait EncodingDsl extends LowPriorityImplicits { self => // extends LowPriorityI
 
   // Initial Encoder/Decoder classes that Context implementations will subclass for their
   // respective Encoder[T]/Decoder[T] implementations e.g. JdbcEncoder[T](...) extends BaseEncoder[T]
-  type BaseEncoder[T] = GenericEncoder[T, PrepareRow, Session]
-  type BaseDecoder[T] = GenericDecoder[ResultRow, Session, T, DecodingType.Specific]
+  type BaseEncoder[T]  = GenericEncoder[T, PrepareRow, Session]
+  type BaseDecoder[T]  = GenericDecoder[ResultRow, Session, T, DecodingType.Specific]
   type BaseNullChecker = GenericNullChecker[ResultRow, Session]
 
   type ColumnResolver = GenericColumnResolver[ResultRow]
-  type RowTyper[T] = GenericRowTyper[ResultRow, T]
+  type RowTyper[T]    = GenericRowTyper[ResultRow, T]
 
   // For: Mapped := Foo(value: String), Base := String
   // Encoding follows: (MappedEncoding(Foo) => String) <=(contramap)= Encoder(Foo)
-  implicit def mappedEncoder[Mapped, Base](implicit mapped: MappedEncoding[Mapped, Base], encoder: Encoder[Base]): Encoder[Mapped]
+  implicit def mappedEncoder[Mapped, Base](implicit
+    mapped: MappedEncoding[Mapped, Base],
+    encoder: Encoder[Base]
+  ): Encoder[Mapped]
 
   // For: Base := String, Mapped := Foo(value: String)
   // Decoding follows: (MappedEncoding(String) => Foo) =(map)=> Decoder(Foo)
-  implicit def mappedDecoder[Base, Mapped](implicit mapped: MappedEncoding[Base, Mapped], decoder: Decoder[Base]): Decoder[Mapped]
+  implicit def mappedDecoder[Base, Mapped](implicit
+    mapped: MappedEncoding[Base, Mapped],
+    decoder: Decoder[Base]
+  ): Decoder[Mapped]
 
-  protected def mappedBaseEncoder[Mapped, Base](mapped: MappedEncoding[Mapped, Base], encoder: EncoderMethod[Base]): EncoderMethod[Mapped] =
+  protected def mappedBaseEncoder[Mapped, Base](
+    mapped: MappedEncoding[Mapped, Base],
+    encoder: EncoderMethod[Base]
+  ): EncoderMethod[Mapped] =
     (index, value, row, session) => encoder(index, mapped.f(value), row, session)
-  protected def mappedBaseDecoder[Base, Mapped](mapped: MappedEncoding[Base, Mapped], decoder: DecoderMethod[Base]): DecoderMethod[Mapped] =
+  protected def mappedBaseDecoder[Base, Mapped](
+    mapped: MappedEncoding[Base, Mapped],
+    decoder: DecoderMethod[Base]
+  ): DecoderMethod[Mapped] =
     (index, row, session) => mapped.f(decoder(index, row, session))
 
   // Define some standard encoders that all contexts should have

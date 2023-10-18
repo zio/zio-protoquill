@@ -3,7 +3,7 @@ package io.getquill.examples.other
 import com.zaxxer.hikari.HikariDataSource
 import io.getquill.context.ZioJdbc._
 import io.getquill.util.LoadConfig
-import io.getquill.{ JdbcContextConfig, Literal, PostgresZioJdbcContext }
+import io.getquill.{JdbcContextConfig, Literal, PostgresZioJdbcContext}
 import zio.Console.printLine
 import zio.Runtime
 import io.getquill._
@@ -25,7 +25,8 @@ object PlainAppDataSource {
       query[Person].filter(p => p.name == "Alex")
     }
     val qzio =
-      MyPostgresContext.run(people)
+      MyPostgresContext
+        .run(people)
         .tap(result => printLine(result.toString))
         .provide(zioDS)
 

@@ -1,6 +1,6 @@
 package io.getquill.misc
 
-import io.getquill.{ JdbcContextConfig, PeopleZioSpec }
+import io.getquill.{JdbcContextConfig, PeopleZioSpec}
 
 import java.io.Closeable
 import javax.sql.DataSource
@@ -32,8 +32,8 @@ class ImplicitEnvPatternSpec extends PeopleZioProxySpec {
     implicit val env: Implicit[DataSource] = Implicit(ds)
 
     def alexes = testContext.run(query[Person].filter(p => p.name == "Alex"))
-    def berts = testContext.run(query[Person].filter(p => p.name == "Bert"))
-    def coras = testContext.run(query[Person].filter(p => p.name == "Cora"))
+    def berts  = testContext.run(query[Person].filter(p => p.name == "Bert"))
+    def coras  = testContext.run(query[Person].filter(p => p.name == "Cora"))
   }
 
   def makeDataSource() = io.getquill.postgres.pool
@@ -43,10 +43,10 @@ class ImplicitEnvPatternSpec extends PeopleZioProxySpec {
       ZIO.scoped {
         ZIO.attempt(makeDataSource()).flatMap { ds =>
           for {
-            svc <- ZIO.attempt(MyService(ds))
+            svc    <- ZIO.attempt(MyService(ds))
             alexes <- svc.alexes
-            berts <- svc.berts
-            coras <- svc.coras
+            berts  <- svc.berts
+            coras  <- svc.coras
           } yield (alexes, berts, coras)
         }
       }.runSyncUnsafe()

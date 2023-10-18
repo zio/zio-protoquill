@@ -38,11 +38,12 @@ object OuterSelectWrap {
     import quotes.reflect._
     e match {
       case Expr(expr) => expr
-      case _ => report.throwError(
+      case _ =>
+        report.throwError(
           s"""
-        |Cannot unlift OuterSelectWrap from the value: ${Format.Expr(e)}.
-        |The OuterSelectWrap parameter needs to be used as a constant for example:
-        |run(query[Person].map(p => p.name), OuterSelectWrap.Never)
+             |Cannot unlift OuterSelectWrap from the value: ${Format.Expr(e)}.
+             |The OuterSelectWrap parameter needs to be used as a constant for example:
+             |run(query[Person].map(p => p.name), OuterSelectWrap.Never)
         """.stripMargin
         )
     }

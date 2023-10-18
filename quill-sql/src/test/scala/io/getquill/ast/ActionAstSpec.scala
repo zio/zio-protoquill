@@ -31,12 +31,12 @@ class ActionAstSpec extends Spec with Inside {
   "simple (assignment based apis)" - {
     "simple insert" in {}
     "simple update Step 1" in {
-      inline def q = quote { query[Person].update(_.name -> lift("Joe"), _.age -> 123) }
+      inline def q = quote(query[Person].update(_.name -> lift("Joe"), _.age -> 123))
       // println( io.getquill.util.Messages.qprint(q) )
       // println( ctx.run(q) )
     }
     "simple update Step 2" in {
-      inline def q = quote { query[Person].update(_.name -> lift("Joe"), _.age -> 123) }
+      inline def q = quote(query[Person].update(_.name -> lift("Joe"), _.age -> 123))
       // println( io.getquill.util.Messages.qprint(q) )
       q must matchPattern {
         case Quoted(

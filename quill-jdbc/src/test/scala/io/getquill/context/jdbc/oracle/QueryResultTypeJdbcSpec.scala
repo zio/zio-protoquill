@@ -1,7 +1,7 @@
 package io.getquill.context.jdbc.oracle
 
 import java.util.concurrent.ConcurrentLinkedQueue
-import io.getquill.context.sql.{ testContext => _, _ }
+import io.getquill.context.sql.{testContext => _, _}
 import scala.jdk.CollectionConverters._
 import io.getquill._
 
@@ -18,8 +18,8 @@ class QueryResultTypeJdbcSpec extends QueryResultTypeSpec {
   override def beforeAll() = {
     context.run(deleteAll)
     val ids = context.run(liftQuery(productEntries).foreach(p => productInsert(p)))
-    val inserted = (ids zip productEntries).map {
-      case (id, prod) => prod.copy(id = id)
+    val inserted = (ids zip productEntries).map { case (id, prod) =>
+      prod.copy(id = id)
     }
     insertedProducts.addAll(inserted.asJava)
     ()

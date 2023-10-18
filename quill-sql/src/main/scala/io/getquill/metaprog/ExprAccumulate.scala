@@ -6,7 +6,10 @@ import scala.collection.mutable.ArrayBuffer
 import io.getquill.util.Format
 import scala.util.Try
 
-/** Remove all instances of SerialHelper.fromSerialized from a tree (for printing purposes) */
+/**
+ * Remove all instances of SerialHelper.fromSerialized from a tree (for printing
+ * purposes)
+ */
 object DeserializeAstInstances {
   def apply[T: Type](input: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect.{Try => _, _}
@@ -60,7 +63,9 @@ object DeserializeAstInstances {
 } // end DeserializeAstInstances
 
 object ExprAccumulate {
-  def apply[T: Type, ExpectedType](input: Expr[Any], recurseWhenMatched: Boolean = true)(matcher: PartialFunction[Expr[Any], T])(using Quotes): List[T] = {
+  def apply[T: Type, ExpectedType](input: Expr[Any], recurseWhenMatched: Boolean = true)(
+    matcher: PartialFunction[Expr[Any], T]
+  )(using Quotes): List[T] = {
     import quotes.reflect._
 
     val buff: ArrayBuffer[T] = new ArrayBuffer[T]()
@@ -71,7 +76,7 @@ object ExprAccumulate {
       //   ============== Could not transform over expression ===========
       //   scala.tasty.reflect.ExprCastError: Expr: ["name" : String]
       //   did not conform to type: String*
-      override def transformChildren[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] = {
+      override def transformChildren[TF](expr: Expr[TF])(using Type[TF])(using Quotes): Expr[TF] =
         try {
           // If it is a Quat we immediately know it's not a Uprootable (i.e. we have gone too far down the chain)
           expr match {
@@ -97,7 +102,6 @@ object ExprAccumulate {
             //   s"\n===========")
             expr
         }
-      }
 
       def isQuat(expr: Expr[_]) =
         expr.asTerm.tpe <:< TypeRepr.of[io.getquill.quat.Quat]

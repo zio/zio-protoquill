@@ -12,7 +12,7 @@ import io.getquill.util.Format
 
 private[getquill] object ReflectivePathChainLookup {
   sealed trait LookupElement { def cls: Class[_]; def current: Object }
-  object LookupElement {
+  object LookupElement       {
     // For a module class the lookup-object is actualy a class. For example
     // for: object Foo { object Bar { ... } } you would do:
     //   val submod: Class[Bar] = Class[Foo].getDeclaredClasses.find(_.name endsWith "Bar$")
@@ -24,7 +24,7 @@ private[getquill] object ReflectivePathChainLookup {
   } // end LookupElement
 
   case class LookupPath(element: LookupElement, path: String) {
-    def cls = element.cls
+    def cls     = element.cls
     def current = element.current
   }
 
@@ -71,10 +71,12 @@ private[getquill] object ReflectivePathChainLookup {
         // Get Foo.MODULE$
         val submodOpt: Option[Object] = lookupModuleObject(lookup.current)(lookup.cls)
         // Get Foo.MODULE$.fields. The `Field` unapply can be recycled for this purpose
-        submodOpt.map(submod =>
-          // I.e. lookup MODULE$.field
-          lookupFirstMethod(lookup.path)(lookup.cls, submod)("$MODULE.field").map(LookupElement.Value(_))
-        ).flatten
+        submodOpt
+          .map(submod =>
+            // I.e. lookup MODULE$.field
+            lookupFirstMethod(lookup.path)(lookup.cls, submod)("$MODULE.field").map(LookupElement.Value(_))
+          )
+          .flatten
       }
     }
 
@@ -83,10 +85,12 @@ private[getquill] object ReflectivePathChainLookup {
         // Get Foo.MODULE$
         val submodOpt: Option[Object] = lookupModuleObject(lookup.current)(lookup.cls)
         // Get Foo.MODULE$.methods. The `Method` unapply can be recycled for this purpose
-        submodOpt.map(submod =>
-          // I.e. lookup MODULE$.method
-          lookupFirstMethod(lookup.path)(lookup.cls, submod)("$MODULE.method").map(LookupElement.Value(_))
-        ).flatten
+        submodOpt
+          .map(submod =>
+            // I.e. lookup MODULE$.method
+            lookupFirstMethod(lookup.path)(lookup.cls, submod)("$MODULE.method").map(LookupElement.Value(_))
+          )
+          .flatten
       }
     }
 
@@ -117,7 +121,9 @@ private[getquill] object ReflectivePathChainLookup {
       case _                               => None
     }
 
-  def chainLookup(element: LookupElement, paths: List[String])(pathsSeen: List[String] = List()): Either[String, LookupElement] = {
+  def chainLookup(element: LookupElement, paths: List[String])(
+    pathsSeen: List[String] = List()
+  ): Either[String, LookupElement] = {
     import StringOps._
     paths match {
       case Nil => Right(element)

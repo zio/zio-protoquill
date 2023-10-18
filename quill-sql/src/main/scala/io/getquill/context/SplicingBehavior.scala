@@ -5,9 +5,9 @@ import scala.quoted._
 sealed trait SplicingBehavior
 object SplicingBehavior {
   sealed trait FailOnDynamic extends SplicingBehavior
-  case object FailOnDynamic extends FailOnDynamic
-  sealed trait AllowDynamic extends SplicingBehavior
-  case object AllowDynamic extends AllowDynamic
+  case object FailOnDynamic  extends FailOnDynamic
+  sealed trait AllowDynamic  extends SplicingBehavior
+  case object AllowDynamic   extends AllowDynamic
 }
 
 trait SplicingBehaviorHint {

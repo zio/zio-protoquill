@@ -16,10 +16,13 @@ import io.getquill.generic.ElaborateStructure.{TermType, Leaf, Branch}
 import io.getquill.generic.ElaborateStructure.UdtBehavior
 
 object ColumnsFlicer {
-  inline def apply[T, PrepareRow, Session](inline entity: T, inline columns: List[String]): T = ${ applyImpl[T, PrepareRow, Session]('entity, 'columns) }
-  private def applyImpl[T: Type, PrepareRow: Type, Session: Type](entity: Expr[T], columns: Expr[List[String]])(using Quotes): Expr[T] = {
-    new ColumnsFlicerMacro().base[T, PrepareRow, Session](entity, columns)
+  inline def apply[T, PrepareRow, Session](inline entity: T, inline columns: List[String]): T = ${
+    applyImpl[T, PrepareRow, Session]('entity, 'columns)
   }
+  private def applyImpl[T: Type, PrepareRow: Type, Session: Type](entity: Expr[T], columns: Expr[List[String]])(using
+    Quotes
+  ): Expr[T] =
+    new ColumnsFlicerMacro().base[T, PrepareRow, Session](entity, columns)
 }
 
 class ColumnsFlicerMacro {
@@ -29,8 +32,10 @@ class ColumnsFlicerMacro {
   }
 
   private def recurse[T, PrepareRow, Session, Fields, Types](using
-      Quotes
-  )(id: quotes.reflect.Term, fieldsTup: Type[Fields], typesTup: Type[Types])(columns: Expr[List[String]])(using baseType: Type[T], pr: Type[PrepareRow], sess: Type[Session]): List[(Type[_], Expr[_])] = {
+    Quotes
+  )(id: quotes.reflect.Term, fieldsTup: Type[Fields], typesTup: Type[Types])(
+    columns: Expr[List[String]]
+  )(using baseType: Type[T], pr: Type[PrepareRow], sess: Type[Session]): List[(Type[_], Expr[_])] = {
     import quotes.reflect._
     (fieldsTup, typesTup) match {
       case ('[field *: fields], '[tpe *: types]) =>
@@ -44,13 +49,14 @@ class ColumnsFlicerMacro {
 
         if (Expr.summon[GenericDecoder[_, Session, tpe, DecodingType.Specific]].isDefined) then {
           // TODO Maybe use ==1 versus 'true' in this case. See how this plays out with VendorizeBooleans behavior
-          val liftClause = '{ $columns.contains(${ Expr(fieldString) }) }
-          val liftedCondition = LiftMacro.apply[Boolean, PrepareRow, Session](liftClause)
+          val liftClause              = '{ $columns.contains(${ Expr(fieldString) }) }
+          val liftedCondition         = LiftMacro.apply[Boolean, PrepareRow, Session](liftClause)
           val columnSplice: Expr[tpe] = '{ if ($liftedCondition) $childTTerm else null.asInstanceOf[tpe] }
           // construction of the comparison term:
           // if (lift(func(List[String].contains("firstName")))) person.firstName else null
           val expr = (Type.of[tpe], columnSplice)
-          val rec = recurse[T, PrepareRow, Session, fields, types](id, Type.of[fields], Type.of[types])(columns)(using baseType)
+          val rec =
+            recurse[T, PrepareRow, Session, fields, types](id, Type.of[fields], Type.of[types])(columns)(using baseType)
           expr +: rec
         }
         else {
@@ -58,8 +64,9 @@ class ColumnsFlicerMacro {
           // inner class construct e.g. case class Person(name: Name, age: Int),  case class Name(first: String, last: String)
           // so this property would be p.name in a query query[Person].map(p => Person(Name({p.name}.first, {p.name}.last), ...)
           val subMapping = base[tpe, PrepareRow, Session](childTTerm, columns)
-          val expr = (Type.of[tpe], subMapping)
-          val rec = recurse[T, PrepareRow, Session, fields, types](id, Type.of[fields], Type.of[types])(columns)(using baseType)
+          val expr       = (Type.of[tpe], subMapping)
+          val rec =
+            recurse[T, PrepareRow, Session, fields, types](id, Type.of[fields], Type.of[types])(columns)(using baseType)
           expr +: rec
         }
 
@@ -68,14 +75,26 @@ class ColumnsFlicerMacro {
     }
   }
 
-  def base[T, PrepareRow, Session](using Quotes)(expr: Expr[T], columns: Expr[List[String]])(using tpe: Type[T], pr: Type[PrepareRow], sess: Type[Session]): Expr[T] = {
+  def base[T, PrepareRow, Session](using Quotes)(expr: Expr[T], columns: Expr[List[String]])(using
+    tpe: Type[T],
+    pr: Type[PrepareRow],
+    sess: Type[Session]
+  ): Expr[T] = {
     import quotes.reflect._
     Expr.summon[Mirror.Of[T]] match {
       case Some(ev) => {
         // Otherwise, recursively summon fields
         ev match {
-          case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
-            val fields = recurse[T, PrepareRow, Session, elementLabels, elementTypes](expr.asTerm, Type.of[elementLabels], Type.of[elementTypes])(columns)(using tpe)
+          case '{
+                $m: Mirror.ProductOf[T] {
+                  type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes
+                }
+              } =>
+            val fields = recurse[T, PrepareRow, Session, elementLabels, elementTypes](
+              expr.asTerm,
+              Type.of[elementLabels],
+              Type.of[elementTypes]
+            )(columns)(using tpe)
             ConstructType[T](m, fields)
           case _ =>
             report.throwError(s"Mirror for ${Type.of[T]} is not a product")

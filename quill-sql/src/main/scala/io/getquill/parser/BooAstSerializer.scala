@@ -26,8 +26,8 @@ object AstPicklers {
     }
     override def unpickle(implicit state: UnpickleState): Ident = {
       // Need to do this here because can't put things into the class by value
-      val a = state.unpickle[String]
-      val b = state.unpickle[Quat]
+      val a   = state.unpickle[String]
+      val b   = state.unpickle[Quat]
       val vis = state.unpickle[Visibility](visibilityPickler)
       Ident.Opinionated(a, b, vis)
     }
@@ -38,7 +38,9 @@ object AstPicklers {
     override def pickle(value: Entity)(implicit state: PickleState): Unit = {
       state.pickle(value.name)
       state.pickle(value.properties)
-      state.pickle(value.quat) // need to access Quat.Product, the bestQuat member is just Quat because in some cases it can be Unknown
+      state.pickle(
+        value.quat
+      ) // need to access Quat.Product, the bestQuat member is just Quat because in some cases it can be Unknown
       state.pickle(value.renameable)
       ()
     }
@@ -134,7 +136,7 @@ object AstPicklers {
   }
 
   // ==== Function Picker ====
-  implicit val functionPickler: Pickler[Function] = generatePickler[Function]
+  implicit val functionPickler: Pickler[Function]           = generatePickler[Function]
   implicit val functionApplyPickler: Pickler[FunctionApply] = generatePickler[FunctionApply]
 
   // ==== ExternalIdent Picker ====
@@ -300,8 +302,8 @@ object AstPicklers {
       .addConcreteType[ListContains]
 
   // ==== Operation Pickers ====
-  implicit val ifPickler: Pickler[If] = generatePickler[If]
-  implicit val assignmentPickler: Pickler[Assignment] = generatePickler[Assignment]
+  implicit val ifPickler: Pickler[If]                         = generatePickler[If]
+  implicit val assignmentPickler: Pickler[Assignment]         = generatePickler[Assignment]
   implicit val assignmentDualPickler: Pickler[AssignmentDual] = generatePickler[AssignmentDual]
 
   given CompositePickler[PrefixUnaryOperator] =
@@ -363,15 +365,15 @@ object AstPicklers {
   // ==== Value Pickers ====
   sealed trait ConstantTypes { def v: Any }
   object ConstantTypes {
-    case class Int(v: scala.Int) extends ConstantTypes
-    case class Long(v: scala.Long) extends ConstantTypes
-    case class Short(v: scala.Short) extends ConstantTypes
-    case class Float(v: scala.Float) extends ConstantTypes
-    case class Double(v: scala.Double) extends ConstantTypes
-    case class Byte(v: scala.Byte) extends ConstantTypes
-    case class Boolean(v: scala.Boolean) extends ConstantTypes
+    case class Int(v: scala.Int)           extends ConstantTypes
+    case class Long(v: scala.Long)         extends ConstantTypes
+    case class Short(v: scala.Short)       extends ConstantTypes
+    case class Float(v: scala.Float)       extends ConstantTypes
+    case class Double(v: scala.Double)     extends ConstantTypes
+    case class Byte(v: scala.Byte)         extends ConstantTypes
+    case class Boolean(v: scala.Boolean)   extends ConstantTypes
     case class String(v: java.lang.String) extends ConstantTypes
-    case object Unit extends ConstantTypes { def v: Unit = () }
+    case object Unit                       extends ConstantTypes { def v: Unit = () }
     def from(constant: Constant): ConstantTypes =
       constant.v match {
         case v: scala.Int        => ConstantTypes.Int(v)
@@ -383,7 +385,8 @@ object AstPicklers {
         case v: scala.Boolean    => ConstantTypes.Boolean(v)
         case v: java.lang.String => ConstantTypes.String(v)
         case v: Unit             => ConstantTypes.Unit
-        case other               => throw new IllegalArgumentException(s"Serialization Failure: The type `${other}` is not a valid ast.Constant.")
+        case other =>
+          throw new IllegalArgumentException(s"Serialization Failure: The type `${other}` is not a valid ast.Constant.")
       }
   }
   implicit object constantPickler extends Pickler[Constant] {
@@ -419,7 +422,7 @@ object AstPicklers {
       ()
     }
     override def unpickle(implicit state: UnpickleState): CaseClass = {
-      val name = state.unpickle[String]
+      val name     = state.unpickle[String]
       val children = state.unpickle[LinkedHashMap[String, Ast]].toList
       new CaseClass(name, children)
     }
@@ -546,7 +549,7 @@ object BooSerializer {
 
   object Ast {
     def serialize(ast: QAst): String = {
-      val bytes = Pickle.intoBytes(ast)
+      val bytes            = Pickle.intoBytes(ast)
       val arr: Array[Byte] = new Array[Byte](bytes.remaining())
       bytes.get(arr)
       Base64.getEncoder.encodeToString(arr)
@@ -559,7 +562,7 @@ object BooSerializer {
 
   object Quat {
     def serialize(quat: QQuat): String = {
-      val bytes = Pickle.intoBytes(quat)
+      val bytes            = Pickle.intoBytes(quat)
       val arr: Array[Byte] = new Array[Byte](bytes.remaining())
       bytes.get(arr)
       Base64.getEncoder.encodeToString(arr)
@@ -572,7 +575,7 @@ object BooSerializer {
 
   object QuatProduct {
     def serialize(product: QQuat.Product): String = {
-      val bytes = Pickle.intoBytes(product)
+      val bytes            = Pickle.intoBytes(product)
       val arr: Array[Byte] = new Array[Byte](bytes.remaining())
       bytes.get(arr)
       Base64.getEncoder.encodeToString(arr)

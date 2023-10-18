@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ReturnAction}
+import io.getquill.ReturnAction
 import io.getquill.generic.EncodingDsl
 import io.getquill.Quoted
 import io.getquill.QueryMeta
@@ -51,12 +51,12 @@ object StaticTranslationMacro {
 
   // Process the AST during compile-time. Return `None` if that can't be done.
   private[getquill] def processAst(
-      astExpr: Expr[Ast],
-      topLevelQuat: Quat,
-      wrap: ElaborationBehavior,
-      idiom: Idiom,
-      naming: NamingStrategy,
-      foreachIdent: Option[Ident] // identifier of a batch query, if this is a batch query
+    astExpr: Expr[Ast],
+    topLevelQuat: Quat,
+    wrap: ElaborationBehavior,
+    idiom: Idiom,
+    naming: NamingStrategy,
+    foreachIdent: Option[Ident] // identifier of a batch query, if this is a batch query
   )(using Quotes): Option[(Unparticular.Query, List[External], Option[ReturnAction], Ast)] = {
     import io.getquill.ast.{CollectAst, QuotationTag}
 
@@ -66,12 +66,12 @@ object StaticTranslationMacro {
     val unliftedAst = VerifyFreeVariables(Unlifter(astExpr))
     val idiomContext = {
       val transpileConfig = SummonTranspileConfig()
-      val queryType = IdiomContext.QueryType.discoverFromAst(unliftedAst, foreachIdent.map(_.name))
+      val queryType       = IdiomContext.QueryType.discoverFromAst(unliftedAst, foreachIdent.map(_.name))
       IdiomContext(transpileConfig, queryType)
     }
 
     if (noRuntimeQuotations(unliftedAst)) {
-      val expandedAst = ElaborateTrivial(wrap)(unliftedAst)
+      val expandedAst    = ElaborateTrivial(wrap)(unliftedAst)
       val (ast, stmt, _) = idiom.translate(expandedAst, topLevelQuat, ExecutionType.Static, idiomContext)(using naming)
 
       val liftColumns =
@@ -97,25 +97,28 @@ object StaticTranslationMacro {
   } // end processAst
 
   /**
-   * There are some cases where we actually do not want to use all of the lifts in a Quoted.
-   * For example:
-   * {{ query[Person].insert(_.id -> lift(1), _.name -> lift("Joe")).returningGenerated(_.id)) }}
-   * becomes something like:
-   * {{ Quoted(query[Person].insert(_.id -> lift(A), _.name -> lift(B)).returningGenerated(_.id)), lifts: List(ScalarTag(A, 1), ScalarTag(B, "Joe"))) }}
-   * but since we are excluding the person.id column (this is done in the transformation phase NormalizeReturning which is in SqlNormalization in the quill-sql-portable module)
-   * actually we only want only the ScalarTag(B) so we need to get the list of lift tags (in tokens) once the Dialect has serialized the query
-   * which correctly order the list of lifts. A similar issue happens with insertMeta and updateMeta.
-   * Process compile-time lifts, return `None` if that can't be done.
-   * liftExprs = Lifts that were put into planters during the quotation. They are
-   * 're-planted' back into the PreparedStatement vars here.
-   * matchingExternals = the matching placeholders (i.e 'lift tags') in the AST
-   * that contains the UUIDs of lifted elements. We check against list to make
-   * sure that that only needed lifts are used and in the right order.
+   * There are some cases where we actually do not want to use all of the lifts
+   * in a Quoted. For example: {{ query[Person].insert(_.id -> lift(1), _.name
+   * -> lift("Joe")).returningGenerated(_.id)) }} becomes something like: {{
+   * Quoted(query[Person].insert(_.id -> lift(A), _.name ->
+   * lift(B)).returningGenerated(_.id)), lifts: List(ScalarTag(A, 1),
+   * ScalarTag(B, "Joe"))) }} but since we are excluding the person.id column
+   * (this is done in the transformation phase NormalizeReturning which is in
+   * SqlNormalization in the quill-sql-portable module) actually we only want
+   * only the ScalarTag(B) so we need to get the list of lift tags (in tokens)
+   * once the Dialect has serialized the query which correctly order the list of
+   * lifts. A similar issue happens with insertMeta and updateMeta. Process
+   * compile-time lifts, return `None` if that can't be done. liftExprs = Lifts
+   * that were put into planters during the quotation. They are 're-planted'
+   * back into the PreparedStatement vars here. matchingExternals = the matching
+   * placeholders (i.e 'lift tags') in the AST that contains the UUIDs of lifted
+   * elements. We check against list to make sure that that only needed lifts
+   * are used and in the right order.
    */
   private[getquill] def processLifts(
-      lifts: List[PlanterExpr[_, _, _]],
-      matchingExternals: List[External],
-      secondaryLifts: List[PlanterExpr[_, _, _]] = List()
+    lifts: List[PlanterExpr[_, _, _]],
+    matchingExternals: List[External],
+    secondaryLifts: List[PlanterExpr[_, _, _]] = List()
   )(using Quotes): Either[String, (List[PlanterExpr[_, _, _]], List[PlanterExpr[_, _, _]])] = {
     import quotes.reflect.report
 
@@ -126,8 +129,8 @@ object StaticTranslationMacro {
       secondaryLifts.map(e => (e.uid, e)).toMap
 
     val uidsOfScalarTags =
-      matchingExternals.collect {
-        case tag: ScalarTag => tag.uid
+      matchingExternals.collect { case tag: ScalarTag =>
+        tag.uid
       }
 
     enum UidStatus {
@@ -145,23 +148,22 @@ object StaticTranslationMacro {
     }
 
     val sortedEncodeables =
-      uidsOfScalarTags
-        .map { uid =>
-          encodeablesMap.get(uid) match {
-            case Some(element) => UidStatus.Primary(uid, element)
-            case None =>
-              secondaryEncodeablesMap.get(uid) match {
-                case Some(element) => UidStatus.Secondary(uid, element)
-                case None          => UidStatus.NotFound(uid)
-              }
-          }
+      uidsOfScalarTags.map { uid =>
+        encodeablesMap.get(uid) match {
+          case Some(element) => UidStatus.Primary(uid, element)
+          case None =>
+            secondaryEncodeablesMap.get(uid) match {
+              case Some(element) => UidStatus.Secondary(uid, element)
+              case None          => UidStatus.NotFound(uid)
+            }
         }
+      }
 
     object HasNotFoundUids {
       def unapply(statuses: List[UidStatus]) = {
         val collected =
-          statuses.collect {
-            case UidStatus.NotFound(uid) => uid
+          statuses.collect { case UidStatus.NotFound(uid) =>
+            uid
           }
         if (collected.nonEmpty) Some(collected) else None
       }
@@ -174,7 +176,7 @@ object StaticTranslationMacro {
             case UidStatus.Primary(_, _) => true
             case _                       => false
           }
-        val primariesFound = primaries.collect { case p: UidStatus.Primary => p }
+        val primariesFound   = primaries.collect { case p: UidStatus.Primary => p }
         val secondariesFound = secondaries.collect { case s: UidStatus.Secondary => s }
         val goodPartitioning =
           primariesFound.length == primaries.length && secondariesFound.length == secondaries.length
@@ -206,21 +208,25 @@ object StaticTranslationMacro {
     outputEncodeables
   } // end processLifts
 
-  def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using Quotes, Type[D], Type[N]): Try[(Idiom, NamingStrategy)] =
+  def idiomAndNamingStatic[D <: Idiom, N <: NamingStrategy](using
+    Quotes,
+    Type[D],
+    Type[N]
+  ): Try[(Idiom, NamingStrategy)] =
     for {
-      idiom <- Load.Module[D]
+      idiom          <- Load.Module[D]
       namingStrategy <- LoadNaming.static[N]
     } yield (idiom, namingStrategy)
 
   def apply[D <: Idiom, N <: NamingStrategy](
-      quotedRaw: Expr[Quoted[QAC[?, ?]]],
-      wrap: ElaborationBehavior,
-      topLevelQuat: Quat,
-      // Optional lifts that need to be passed in if they exist e.g. in the liftQuery(...).foreach(p => query[P].filter(pq => pq.id == lift(foo)).updateValue(p))
-      // the `lift(foo)` needs to be additionally passed in because it is not part of the original lifts
-      additionalLifts: List[PlanterExpr[?, ?, ?]] = List(),
-      // Identifier of the batch query, if this is a batch query
-      foreachIdent: Option[Ident] = None
+    quotedRaw: Expr[Quoted[QAC[?, ?]]],
+    wrap: ElaborationBehavior,
+    topLevelQuat: Quat,
+    // Optional lifts that need to be passed in if they exist e.g. in the liftQuery(...).foreach(p => query[P].filter(pq => pq.id == lift(foo)).updateValue(p))
+    // the `lift(foo)` needs to be additionally passed in because it is not part of the original lifts
+    additionalLifts: List[PlanterExpr[?, ?, ?]] = List(),
+    // Identifier of the batch query, if this is a batch query
+    foreachIdent: Option[Ident] = None
   )(using qctx: Quotes, dialectTpe: Type[D], namingType: Type[N]): Option[StaticState] = {
     import quotes.reflect.{Try => TTry, _}
 
@@ -271,12 +277,16 @@ object StaticTranslationMacro {
         // recognized by QuotedExpr.uprootableOpt for some reason
 
         (quotedExpr, lifts) <-
-          QuotedExpr.uprootableWithLiftsOpt(quoted).errPrint(
-            s"Could not uproot (i.e. compile-time extract) the quote: `${Format.Expr(quoted)}`. Make sure it is an `inline def`. If it already is, this may be a quill error."
-          )
+          QuotedExpr
+            .uprootableWithLiftsOpt(quoted)
+            .errPrint(
+              s"Could not uproot (i.e. compile-time extract) the quote: `${Format.Expr(quoted)}`. Make sure it is an `inline def`. If it already is, this may be a quill error."
+            )
 
         (query, externals, returnAction, ast) <-
-          processAst(quotedExpr.ast, topLevelQuat, wrap, idiom, naming, foreachIdent).errPrint(s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}")
+          processAst(quotedExpr.ast, topLevelQuat, wrap, idiom, naming, foreachIdent).errPrint(
+            s"Could not process the AST:\n${Format.Expr(quotedExpr.ast)}"
+          )
 
         (primaryLifts, secondaryLifts) <-
           processLifts(lifts, externals, additionalLifts).errPrintEither(
@@ -336,10 +346,9 @@ object StaticTranslationMacro {
 
     if (ProtoMessages.useStdOut) {
       val posValue = Position.ofMacroExpansion
-      val pos = s"\nat: ${posValue.sourceFile}:${posValue.startLine + 1}:${posValue.startColumn + 1}"
+      val pos      = s"\nat: ${posValue.sourceFile}:${posValue.startLine + 1}:${posValue.startColumn + 1}"
       println(msg + pos)
-    }
-    else
+    } else
       report.info(msg)
   } // end queryPrint
 

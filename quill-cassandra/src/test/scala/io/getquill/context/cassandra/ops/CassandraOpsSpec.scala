@@ -53,7 +53,7 @@ class CassandraOpsSpec extends Spec {
     "options" - {
       "timestamp" in {
         inline def q = quote {
-          query[TestEntity].usingTimestamp(99).updateValue(lift(TestEntity("s", 1, 2L, None, true))) //hello
+          query[TestEntity].usingTimestamp(99).updateValue(lift(TestEntity("s", 1, 2L, None, true))) // hello
         }
         mirrorContext.run(q).string mustEqual
           "UPDATE TestEntity USING TIMESTAMP 99 SET s = ?, i = ?, l = ?, o = ?, b = ?"

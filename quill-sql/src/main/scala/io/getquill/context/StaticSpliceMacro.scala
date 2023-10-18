@@ -23,7 +23,9 @@ object StaticSpliceMacro {
   import Extractors._
 
   private[getquill] object SelectPath {
-    def recurseInto(using Quotes)(term: quotes.reflect.Term, accum: List[String] = List()): Option[(quotes.reflect.Term, List[String])] = {
+    def recurseInto(using
+      Quotes
+    )(term: quotes.reflect.Term, accum: List[String] = List()): Option[(quotes.reflect.Term, List[String])] = {
       import quotes.reflect._
       term match {
         // Recurses through a series of selects do the core identifier e.g:
@@ -67,7 +69,9 @@ object StaticSpliceMacro {
   def isModule(using Quotes)(sym: quotes.reflect.Symbol) = {
     import quotes.reflect._
     val f = sym.flags
-    f.is(Flags.Module) && !f.is(Flags.Package) && !f.is(Flags.Param) && !f.is(Flags.ParamAccessor) && !f.is(Flags.Method)
+    f.is(Flags.Module) && !f.is(Flags.Package) && !f.is(Flags.Param) && !f.is(Flags.ParamAccessor) && !f.is(
+      Flags.Method
+    )
   }
 
   object TermIsModule {
@@ -116,7 +120,9 @@ object StaticSpliceMacro {
         case SelectPath(pathRoot, selectPath) => (pathRoot, selectPath)
         case other                            =>
           // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
-          report.throwError(s"Could not load a static value `${Format.Term(value)}` from ${Printer.TreeStructure.show(other)}")
+          report.throwError(
+            s"Could not load a static value `${Format.Term(value)}` from ${Printer.TreeStructure.show(other)}"
+          )
       }
 
     val (ownerTpe, path) =
@@ -127,13 +133,20 @@ object StaticSpliceMacro {
         case term @ DefTerm(TermOwnerIsModule(owner)) =>
           (owner, pathRoot.symbol.name +: selectPath)
         case _ =>
-          report.throwError(s"Cannot evaluate the static path ${Format.Term(value)}. Neither it's type ${Format.TypeRepr(pathRoot.tpe)} nor the owner of this type is a static module.")
+          report.throwError(
+            s"Cannot evaluate the static path ${Format.Term(value)}. Neither it's type ${Format.TypeRepr(pathRoot.tpe)} nor the owner of this type is a static module."
+          )
       }
 
-    val module = Load.Module.fromTypeRepr(ownerTpe).toEither.discardLeft(e =>
-      // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
-      report.throwError(s"Could not look up {${(ownerTpe)}}.${path.mkString(".")} from the object.\nStatic load failed due to: ${e.stackTraceToString}")
-    )
+    val module = Load.Module
+      .fromTypeRepr(ownerTpe)
+      .toEither
+      .discardLeft(e =>
+        // TODO Long explanatory message about how it has to some value inside object foo inside object bar... and it needs to be a thing compiled in a previous compilation unit
+        report.throwError(
+          s"Could not look up {${(ownerTpe)}}.${path.mkString(".")} from the object.\nStatic load failed due to: ${e.stackTraceToString}"
+        )
+      )
 
     val splicedValue =
       ReflectivePathChainLookup(module, path).discardLeft(msg =>
@@ -148,8 +161,8 @@ object StaticSpliceMacro {
     val spliceEither =
       for {
         castSplice <- Try(splicedValue.current.asInstanceOf[T]).toEither.mapLeft(e => errorMsg(e.getMessage))
-        splicer <- StringCodec.ToSql.summon[T].mapLeft(str => errorMsg(str))
-        splice <- Try(splicer.toSql(castSplice)).toEither.mapLeft(e => errorMsg(e.getMessage))
+        splicer    <- StringCodec.ToSql.summon[T].mapLeft(str => errorMsg(str))
+        splice     <- Try(splicer.toSql(castSplice)).toEither.mapLeft(e => errorMsg(e.getMessage))
       } yield splice
 
     val spliceStr =

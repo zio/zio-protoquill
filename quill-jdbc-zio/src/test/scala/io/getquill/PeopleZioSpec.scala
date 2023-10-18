@@ -10,7 +10,7 @@ trait PeopleZioSpec extends PeopleSpec with ZioSpec {
   import context._
 
   inline def `Ex 11 query` = quote(query[Person])
-  val `Ex 11 expected` = peopleEntries
+  val `Ex 11 expected`     = peopleEntries
 }
 
 trait PeopleZioProxySpec extends PeopleSpec with ZioProxySpec {
@@ -18,6 +18,6 @@ trait PeopleZioProxySpec extends PeopleSpec with ZioProxySpec {
   val context: ZioJdbcContext[_, _]
   import context._
 
-  val `Ex 11 query` = quote(query[Person])
+  val `Ex 11 query`    = quote(query[Person])
   val `Ex 11 expected` = peopleEntries
 }

@@ -15,8 +15,8 @@ class ArrayEncodingSpec extends Spec {
   object impl {
     implicit def encodeRaw[Col <: Seq[Raw]]: Encoder[Col] = encoder[Col]
     implicit def decodeRaw[Col <: Seq[Raw]]: Decoder[Col] = decoderUnsafe[Col]
-    implicit val encodeDecor: MappedEncoding[Decor, Raw] = MappedEncoding(_.raw)
-    implicit val decodeDecor: MappedEncoding[Raw, Decor] = MappedEncoding(Decor.apply)
+    implicit val encodeDecor: MappedEncoding[Decor, Raw]  = MappedEncoding(_.raw)
+    implicit val decodeDecor: MappedEncoding[Raw, Decor]  = MappedEncoding(Decor.apply)
   }
 
   "Provide array support with MappingEncoding" - {

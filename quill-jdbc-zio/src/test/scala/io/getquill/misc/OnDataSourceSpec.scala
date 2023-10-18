@@ -3,7 +3,7 @@ package io.getquill.misc
 import io.getquill.PeopleZioSpec
 
 import org.scalatest.matchers.should.Matchers._
-import zio.{ ZIO, ZLayer }
+import zio.{ZIO, ZLayer}
 import io.getquill.context.ZioJdbc._
 import io.getquill._
 
@@ -31,13 +31,12 @@ class OnDataSourceSpec extends PeopleZioProxySpec {
     "should work with additional dependency" in {
       // This is how you import the decoders of `underlying` context without importing things that will conflict
       // i.e. the quote and run methods
-      import testContext.underlying.{ run => _, _ }
+      import testContext.underlying.{run => _, _}
       val people =
         (for {
-          n <- ZIO.service[String]
+          n   <- ZIO.service[String]
           out <- testContext.underlying.run(query[Person].filter(p => p.name == lift(n)))
-        } yield out)
-          .onSomeDataSource
+        } yield out).onSomeDataSource
           .provideSomeLayer[DataSource](ZLayer.succeed("Alex"))
           .runSyncUnsafe()
 
@@ -46,12 +45,11 @@ class OnDataSourceSpec extends PeopleZioProxySpec {
     "should work" in {
       // This is how you import the encoders/decoders of `underlying` context without importing things that will conflict
       // i.e. the quote and run methods
-      import testContext.underlying.{ prepare => _, run => _, _ }
+      import testContext.underlying.{prepare => _, run => _, _}
       val people =
         (for {
           out <- testContext.underlying.run(query[Person].filter(p => p.name == "Alex"))
-        } yield out)
-          .onDataSource
+        } yield out).onDataSource
           .runSyncUnsafe()
 
       people mustEqual peopleEntries.filter(p => p.name == "Alex")
@@ -68,16 +66,15 @@ class OnDataSourceSpec extends PeopleZioProxySpec {
         implicit val dsi: Implicit[DataSource] = Implicit(ds)
         val people =
           (for {
-            n <- ZIO.service[String]
+            n   <- ZIO.service[String]
             out <- testContext.run(query[Person].filter(p => p.name == lift(n)))
-          } yield out)
-            .implicitSomeDS
+          } yield out).implicitSomeDS
             .provide(ZLayer.succeed("Alex"))
             .runSyncUnsafe()
       }
 
       (for {
-        ds <- ZIO.service[DataSource]
+        ds  <- ZIO.service[DataSource]
         svc <- ZIO.attempt(Service(ds))
       } yield (svc.people)).runSyncUnsafe() mustEqual peopleEntries.filter(p => p.name == "Alex")
     }
@@ -89,13 +86,12 @@ class OnDataSourceSpec extends PeopleZioProxySpec {
         val people =
           (for {
             out <- testContext.run(query[Person].filter(p => p.name == "Alex"))
-          } yield out)
-            .implicitDS
+          } yield out).implicitDS
             .runSyncUnsafe()
       }
 
       (for {
-        ds <- ZIO.service[DataSource]
+        ds  <- ZIO.service[DataSource]
         svc <- ZIO.attempt(Service(ds))
       } yield (svc.people)).runSyncUnsafe() mustEqual peopleEntries.filter(p => p.name == "Alex")
     }

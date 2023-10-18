@@ -23,11 +23,12 @@ object Lifters {
   trait Proxy {
     def default: Lifter
 
-    def apply(ast: Ast): Quotes ?=> Expr[Ast] = default.liftAst(ast) // can also do ast.lift but this makes some error messages simpler
-    def action(ast: Action): Quotes ?=> Expr[Action] = default.liftAction(ast)
+    def apply(ast: Ast): Quotes ?=> Expr[Ast] =
+      default.liftAst(ast) // can also do ast.lift but this makes some error messages simpler
+    def action(ast: Action): Quotes ?=> Expr[Action]             = default.liftAction(ast)
     def assignment(ast: Assignment): Quotes ?=> Expr[Assignment] = default.liftAssignment(ast)
-    def entity(ast: Entity): Quotes ?=> Expr[Entity] = default.liftEntity(ast)
-    def tuple(ast: Tuple): Quotes ?=> Expr[Tuple] = default.liftTuple(ast)
+    def entity(ast: Entity): Quotes ?=> Expr[Entity]             = default.liftEntity(ast)
+    def tuple(ast: Tuple): Quotes ?=> Expr[Tuple]                = default.liftTuple(ast)
     def caseClass(ast: CaseClass): Quotes ?=> Expr[CaseClass] =
       // Need to use lift directly since using liftCaseClass.apply serializes to Ast which can result
       // in: Expecting io.getquill.ast.CaseClass but got io.getquill.ast.Ast errors. It is hard to understand
@@ -35,11 +36,11 @@ object Lifters {
       // the caseClassAst variable before extracting it from the quotation.
       default.liftCaseClass.lift(ast)
 
-    def ident(ast: AIdent): Quotes ?=> Expr[AIdent] = default.liftIdent(ast)
-    def quat(quat: Quat): Quotes ?=> Expr[Quat] = default.liftQuat(quat)
+    def ident(ast: AIdent): Quotes ?=> Expr[AIdent]                             = default.liftIdent(ast)
+    def quat(quat: Quat): Quotes ?=> Expr[Quat]                                 = default.liftQuat(quat)
     def returnAction(returnAction: ReturnAction): Quotes ?=> Expr[ReturnAction] = default.liftReturnAction(returnAction)
 
-    def scalarTag(v: ScalarTag): Quotes ?=> Expr[ScalarTag] = default.liftScalarTag(v)
+    def scalarTag(v: ScalarTag): Quotes ?=> Expr[ScalarTag]          = default.liftScalarTag(v)
     def quotationTag(v: QuotationTag): Quotes ?=> Expr[QuotationTag] = default.liftQuotationTag(v)
   } // end Proxy
 
@@ -56,10 +57,10 @@ object Lifters {
     protected def orWarn(element: T, e: Throwable)(using Quotes): Unit = {
       val msg =
         s"""Could not unift-serialize the '${element.getClass}':
-          |${io.getquill.util.Messages.qprint(element)}.
-          |Performing a regular unlift instead. Due to exception:
-          |${e.stackTraceToString}
-          |""".stripMargin
+           |${io.getquill.util.Messages.qprint(element)}.
+           |Performing a regular unlift instead. Due to exception:
+           |${e.stackTraceToString}
+           |""".stripMargin
       println(s"WARNING: ${msg}")
       quotes.reflect.report.warning(msg)
     }
@@ -112,7 +113,7 @@ object Lifters {
           |${section(qprint(element).toString)}
           |"""".stripMargin
 
-    def unapply(element: T)(using Quotes) = Some(orFail(element))
+    def unapply(element: T)(using Quotes)        = Some(orFail(element))
     def apply(element: T)(using Quotes): Expr[T] = orFail(element)
   } // end Plain
 

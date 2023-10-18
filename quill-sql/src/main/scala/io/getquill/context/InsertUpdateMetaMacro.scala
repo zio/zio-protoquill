@@ -24,7 +24,7 @@ import io.getquill.norm.TranspileConfig
 
 object MetaMacro {
   def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): (Tuple, Expr[String]) = {
-    val parser = SummonParser().assemble
+    val parser            = SummonParser().assemble
     given TranspileConfig = SummonTranspileConfig()
 
     // Pull out individual args from the apply
@@ -43,15 +43,17 @@ object MetaMacro {
         case Function(List(param), prop @ Property(_, _)) =>
           BetaReduction(prop, param -> InsertUpdateMacro.VIdent)
         case other =>
-          quotes.reflect.report.throwError(s"Could not recognize insert exclusion AST: ${other} as a valid exclusion AST")
+          quotes.reflect.report.throwError(
+            s"Could not recognize insert exclusion AST: ${other} as a valid exclusion AST"
+          )
       }
 
     // Shove those into a tuple and return that
     val excludeTuple = Tuple(excludeAstProps.toList)
-    val uuid = Expr(java.util.UUID.randomUUID().toString)
+    val uuid         = Expr(java.util.UUID.randomUUID().toString)
     (excludeTuple, uuid)
   } // end apply
-} // end MetaMacro
+}   // end MetaMacro
 
 object InsertMetaMacro {
   def apply[T: Type](excludesRaw: Expr[Seq[(T => Any)]])(using Quotes): Expr[InsertMeta[T]] = {

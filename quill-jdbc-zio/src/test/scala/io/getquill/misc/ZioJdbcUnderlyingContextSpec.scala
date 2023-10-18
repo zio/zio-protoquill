@@ -2,7 +2,7 @@ package io.getquill.misc
 
 import io.getquill.context.ZioJdbc._
 import io.getquill.ZioSpec
-import zio.{ Task, ZIO, ZLayer }
+import zio.{Task, ZIO, ZLayer}
 import io.getquill._
 
 import javax.sql.DataSource
@@ -21,7 +21,7 @@ class ZioJdbcUnderlyingContextSpec extends ZioProxySpec {
     "success" in {
       (for {
         _ <- testContext.underlying.run(qr1.delete)
-        _ <- testContext.underlying.transaction { testContext.underlying.run(qr1.insert(_.i -> 33)) }
+        _ <- testContext.underlying.transaction(testContext.underlying.run(qr1.insert(_.i -> 33)))
         r <- testContext.underlying.run(qr1)
       } yield r).onDataSource.runSyncUnsafe().map(_.i) mustEqual List(33)
     }
@@ -29,11 +29,11 @@ class ZioJdbcUnderlyingContextSpec extends ZioProxySpec {
       (for {
         _ <- testContext.underlying.run(qr1.delete)
         _ <- testContext.underlying.transaction {
-          for {
-            env <- ZIO.service[Int]
-            qry <- testContext.underlying.run(qr1.insert(_.i -> lift(env)))
-          } yield qry
-        }
+               for {
+                 env <- ZIO.service[Int]
+                 qry <- testContext.underlying.run(qr1.insert(_.i -> lift(env)))
+               } yield qry
+             }
         r <- testContext.underlying.run(qr1)
       } yield r).onSomeDataSource.provideSomeLayer(ZLayer.succeed(33)).runSyncUnsafe().map(_.i) mustEqual List(33)
     }
@@ -41,11 +41,11 @@ class ZioJdbcUnderlyingContextSpec extends ZioProxySpec {
       (for {
         _ <- testContext.underlying.run(qr1.delete)
         seq <- testContext.underlying.transaction {
-          for {
-            _ <- testContext.underlying.run(qr1.insert(_.i -> 33))
-            s <- accumulate(testContext.underlying.stream(qr1))
-          } yield s
-        }
+                 for {
+                   _ <- testContext.underlying.run(qr1.insert(_.i -> 33))
+                   s <- accumulate(testContext.underlying.stream(qr1))
+                 } yield s
+               }
         r <- testContext.underlying.run(qr1)
       } yield (seq.map(_.i), r.map(_.i))).onDataSource.runSyncUnsafe() mustEqual ((List(33), List(33)))
     }
@@ -53,25 +53,29 @@ class ZioJdbcUnderlyingContextSpec extends ZioProxySpec {
       (for {
         _ <- testContext.underlying.run(qr1.delete)
         e <- testContext.underlying.transaction {
-          testContext.underlying.run(qr1.insert(_.i -> 36)) *>
-            testContext.underlying.transaction {
-              ZIO.collectAll(Seq(
-                testContext.underlying.run(qr1.insert(_.i -> 18)),
-                ZIO.attempt {
-                  throw new IllegalStateException
-                }
-              ))
-            }
-        }.catchSome {
-          case e: Exception => ZIO.attempt(e.getClass.getSimpleName)
-        }
+               testContext.underlying.run(qr1.insert(_.i -> 36)) *>
+                 testContext.underlying.transaction {
+                   ZIO.collectAll(
+                     Seq(
+                       testContext.underlying.run(qr1.insert(_.i -> 18)),
+                       ZIO.attempt {
+                         throw new IllegalStateException
+                       }
+                     )
+                   )
+                 }
+             }.catchSome { case e: Exception =>
+               ZIO.attempt(e.getClass.getSimpleName)
+             }
         r <- testContext.underlying.run(qr1)
       } yield (e, r.isEmpty)).onDataSource.runSyncUnsafe() mustEqual (("IllegalStateException", true))
     }
     "nested" in {
       (for {
         _ <- testContext.underlying.run(qr1.delete)
-        _ <- testContext.underlying.transaction { testContext.underlying.transaction { testContext.underlying.run(qr1.insert(_.i -> 33)) } }
+        _ <- testContext.underlying.transaction {
+               testContext.underlying.transaction(testContext.underlying.run(qr1.insert(_.i -> 33)))
+             }
         r <- testContext.underlying.run(qr1)
       } yield r).onDataSource.runSyncUnsafe().map(_.i) mustEqual List(33)
     }

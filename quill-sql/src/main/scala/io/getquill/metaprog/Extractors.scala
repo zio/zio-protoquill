@@ -19,7 +19,7 @@ object Extractors {
   inline def typeName[T]: String = ${ typeNameImpl[T] }
   def typeNameImpl[T: Type](using Quotes): Expr[String] = {
     import quotes.reflect._
-    val tpe = TypeRepr.of[T]
+    val tpe          = TypeRepr.of[T]
     val name: String = tpe.classSymbol.get.name
     Expr(name)
   }
@@ -53,7 +53,9 @@ object Extractors {
     }
 
     object Term {
-      def unapply(using Quotes)(term: quotes.reflect.Term): Option[(quotes.reflect.Term, String, List[quotes.reflect.Term])] = {
+      def unapply(using
+        Quotes
+      )(term: quotes.reflect.Term): Option[(quotes.reflect.Term, String, List[quotes.reflect.Term])] = {
         import quotes.reflect._
         term match {
           // case Apply(Select(body, method), args) => Some((body, method, args))
@@ -66,9 +68,9 @@ object Extractors {
   }
 
   /**
-   * Matches predicate(bar) or predicate[T](bar)
-   * where predicate can be a simple method or something selected from something else e.g:
-   * foo.method(bar) or foo.method[T](bar)
+   * Matches predicate(bar) or predicate[T](bar) where predicate can be a simple
+   * method or something selected from something else e.g: foo.method(bar) or
+   * foo.method[T](bar)
    */
   object Applys {
     def unapply(using Quotes)(term: quotes.reflect.Term) = {
@@ -138,13 +140,14 @@ object Extractors {
   }
 
   /**
-   * Ignore case where there happens to be an apply e.g. java functions where "str".length in scala
-   * will translate into "str".lenth() since for java methods () is automatically added in.
-   * Hence it's `Apply( Select(Literal(IntConstant("str")), "length") )`
-   * Not just `Select(Literal(IntConstant("str")), "length")`
+   * Ignore case where there happens to be an apply e.g. java functions where
+   * "str".length in scala will translate into "str".lenth() since for java
+   * methods () is automatically added in. Hence it's `Apply(
+   * Select(Literal(IntConstant("str")), "length") )` Not just
+   * `Select(Literal(IntConstant("str")), "length")`
    *
-   * Note maybe there's even a case where you want multiple empty-applies e.g. foo()() to be ignored
-   * hence this would be done recursively like `Untype`
+   * Note maybe there's even a case where you want multiple empty-applies e.g.
+   * foo()() to be ignored hence this would be done recursively like `Untype`
    */
   object IgnoreApplyNoargs {
     def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] = {
@@ -208,7 +211,8 @@ object Extractors {
       val cls = tpe.widen.typeSymbol
       if (!cls.flags.is(Flags.Case))
         report.throwError(
-          s"The class ${Format.TypeRepr(expr.asTerm.tpe)} (symbol: ${cls}) is not a case class in the expression: ${Format.Expr(expr)}\n" +
+          s"The class ${Format.TypeRepr(expr.asTerm.tpe)} (symbol: ${cls}) is not a case class in the expression: ${Format
+              .Expr(expr)}\n" +
             s"Therefore you cannot lookup the property `${property}` on it!"
         )
       else {
@@ -216,7 +220,10 @@ object Extractors {
           cls.caseFields
             .find(sym => sym.name == property)
             .getOrElse {
-              report.throwError(s"Cannot find property '${property}' of (${expr.show}:${cls.name}) fields are: ${cls.caseFields.map(_.name)}", expr)
+              report.throwError(
+                s"Cannot find property '${property}' of (${expr.show}:${cls.name}) fields are: ${cls.caseFields.map(_.name)}",
+                expr
+              )
             }
 
         '{ (${ Select(expr.asTerm, method).asExpr }) }
@@ -242,7 +249,9 @@ object Extractors {
 
     // TODO I like this pattern of doing 'Term' in a sub-object should do more of this in future
     object Term {
-      def unapply(using Quotes)(term: quotes.reflect.Term): Option[(String, quotes.reflect.TypeRepr, quotes.reflect.Term)] = {
+      def unapply(using
+        Quotes
+      )(term: quotes.reflect.Term): Option[(String, quotes.reflect.TypeRepr, quotes.reflect.Term)] = {
         import quotes.reflect._
         Untype(term) match {
           case Lambda(List(ValDef(ident, tpeTree, _)), methodBody) => Some((ident, tpeTree.tpe, methodBody))
@@ -254,29 +263,36 @@ object Extractors {
   }
 
   object Lambda2 {
-    def unapply(using Quotes)(expr: Expr[_]): Option[(String, quotes.reflect.TypeRepr, String, quotes.reflect.TypeRepr, quoted.Expr[_])] = {
+    def unapply(using
+      Quotes
+    )(expr: Expr[_]): Option[(String, quotes.reflect.TypeRepr, String, quotes.reflect.TypeRepr, quoted.Expr[_])] = {
       import quotes.reflect._
       unapplyTerm(expr.asTerm).map((str1, tpe1, str2, tpe2, expr) => (str1, tpe1, str2, tpe2, expr.asExpr))
     }
 
-    def unapplyTerm(using Quotes)(term: quotes.reflect.Term): Option[(String, quotes.reflect.TypeRepr, String, quotes.reflect.TypeRepr, quotes.reflect.Term)] = {
+    def unapplyTerm(using Quotes)(
+      term: quotes.reflect.Term
+    ): Option[(String, quotes.reflect.TypeRepr, String, quotes.reflect.TypeRepr, quotes.reflect.Term)] = {
       import quotes.reflect._
       Untype(term) match {
-        case Lambda(List(ValDef(ident1, tpe1, _), ValDef(ident2, tpe2, _)), methodBody) => Some((ident1, tpe1.tpe, ident2, tpe2.tpe, methodBody))
-        case Block(List(), expr)                                                        => unapplyTerm(expr)
-        case _                                                                          => None
+        case Lambda(List(ValDef(ident1, tpe1, _), ValDef(ident2, tpe2, _)), methodBody) =>
+          Some((ident1, tpe1.tpe, ident2, tpe2.tpe, methodBody))
+        case Block(List(), expr) => unapplyTerm(expr)
+        case _                   => None
       }
     }
   }
 
   object RawLambdaN {
-    def unapply(using Quotes)(term: quotes.reflect.Term): Option[(List[(String, quotes.reflect.TypeRepr)], quotes.reflect.Term)] = {
+    def unapply(using
+      Quotes
+    )(term: quotes.reflect.Term): Option[(List[(String, quotes.reflect.TypeRepr)], quotes.reflect.Term)] = {
       import quotes.reflect._
       Untype(term) match {
         case Lambda(valDefs, methodBody) =>
           val idents =
-            valDefs.map {
-              case ValDef(ident, typeTree, u) => (ident, typeTree.tpe)
+            valDefs.map { case ValDef(ident, typeTree, u) =>
+              (ident, typeTree.tpe)
             }
 
           Some((idents, methodBody))
@@ -378,13 +394,13 @@ object Extractors {
     }
 
     def unapply(using Quotes)(term: quotes.reflect.Tree): Option[quotes.reflect.Tree] = Some(recurse(term))
-    def apply(using Quotes)(term: quotes.reflect.Tree) = UntypeTree.unapply(term).get
+    def apply(using Quotes)(term: quotes.reflect.Tree)                                = UntypeTree.unapply(term).get
   }
 
   /** Summon a named method from the context Context[D, N] */
   def summonContextMethod(using Quotes)(name: String, ctx: Expr[_]) = {
     import quotes.reflect._
-    val ctxTerm = ctx.asTerm
+    val ctxTerm  = ctx.asTerm
     val ctxClass = ctxTerm.tpe.widen.classSymbol.get
     ctxClass.declaredMethods.filter(f => f.name == name).headOption.getOrElse {
       throw new IllegalArgumentException(s"Cannot find method '${name}' from context ${ctx.asTerm.tpe.widen}")
@@ -527,9 +543,8 @@ object Extractors {
   } // end Uncast
 
   /**
-   * Matches `case class Person(first: String, last: String)` creation of the forms:
-   *   Person("Joe","Bloggs")
-   *   new Person("Joe","Bloggs")
+   * Matches `case class Person(first: String, last: String)` creation of the
+   * forms: Person("Joe","Bloggs") new Person("Joe","Bloggs")
    */
   object CaseClassCreation {
     // For modules, the _ in Select coule be a couple of things (say the class is Person):
@@ -540,10 +555,12 @@ object Extractors {
       def unapply(using Quotes)(term: quotes.reflect.Term) = {
         import quotes.reflect._
         term match {
-          case Apply(Select(New(TypeIdent(moduleType)), "<init>"), list) if (list.length == 0) && moduleType.endsWith("$") => true
-          case Select(This(outerClass), name)                                                                              => true
-          case Ident(name)                                                                                                 => true
-          case _                                                                                                           => false
+          case Apply(Select(New(TypeIdent(moduleType)), "<init>"), list)
+              if (list.length == 0) && moduleType.endsWith("$") =>
+            true
+          case Select(This(outerClass), name) => true
+          case Ident(name)                    => true
+          case _                              => false
         }
       }
     }
@@ -579,7 +596,8 @@ object Extractors {
             Some((sym.name, sym.caseFields.map(_.name), args.map(_.asExpr)))
           case ClassSymbolAndUnseal(sym, Apply(Select(New(TypeIdent(_)), "<init>"), args)) if isType[Product](expr) =>
             Some((sym.name, sym.caseFields.map(_.name), args.map(_.asExpr)))
-          case ClassSymbolAndUnseal(sym, Apply(Select(ModuleCreation(), "apply"), args)) if isType[Product](expr) => // && sym.flags.is(Flags.Case)
+          case ClassSymbolAndUnseal(sym, Apply(Select(ModuleCreation(), "apply"), args))
+              if isType[Product](expr) => // && sym.flags.is(Flags.Case)
             Some((sym.name, sym.caseFields.map(_.name), args.map(_.asExpr)))
           case _ =>
             None
@@ -627,10 +645,11 @@ object Extractors {
     isNumeric(tpe) && isPrimitive(tpe)
 
   /**
-   * Check whether one numeric `from` can be primitively assigned to a variable of another `into`
-   * i.e. short can fit into a int, int can fit into a long. Same with float into a double.
-   * This is used to determine what can be assigned into what (e.g. in a insert(_.age -> 4.toShort) statement)
-   * and still be considered a valid transpilation.
+   * Check whether one numeric `from` can be primitively assigned to a variable
+   * of another `into` i.e. short can fit into a int, int can fit into a long.
+   * Same with float into a double. This is used to determine what can be
+   * assigned into what (e.g. in a insert(_.age -> 4.toShort) statement) and
+   * still be considered a valid transpilation.
    */
   def numericPrimitiveFitsInto(using Quotes)(into: quotes.reflect.TypeRepr, from: quotes.reflect.TypeRepr) = {
     import quotes.reflect._
@@ -678,8 +697,8 @@ object Extractors {
   }
 
   /**
-   * Uninline the term no matter what (TODO should reove the unapply case) that pattern always matches
-   * and is too confusing
+   * Uninline the term no matter what (TODO should reove the unapply case) that
+   * pattern always matches and is too confusing
    */
   object Uninline {
     def unapply[T: Type](using Quotes)(any: Expr[T]): Option[Expr[T]] = {
@@ -700,7 +719,9 @@ object Extractors {
           //
           case i @ Inlined(_, pv, v) =>
             if (SummonTranspileConfig.summonTraceTypes(true).contains(TraceType.Meta))
-              report.warning(s"Ran into an inline on a clause: ${Format(Printer.TreeStructure.show(i.underlyingArgument))}. Proxy variables will be discarded: ${pv}")
+              report.warning(
+                s"Ran into an inline on a clause: ${Format(Printer.TreeStructure.show(i.underlyingArgument))}. Proxy variables will be discarded: ${pv}"
+              )
             v.underlyingArgument
           case _ => any
         }
@@ -711,20 +732,22 @@ object Extractors {
   object ConstExpr {
 
     /**
-     * Matches expressions containing literal constant values and extracts the value.
+     * Matches expressions containing literal constant values and extracts the
+     * value.
      *
-     *  - Converts expression containg literal values to their values:
-     *    - `'{1}` -> `1`, `'{2}` -> `2`, ...
-     *    - For all primitive types and `String`
+     *   - Converts expression containg literal values to their values:
+     *     - `'{1}` -> `1`, `'{2}` -> `2`, ...
+     *     - For all primitive types and `String`
      *
-     *  Usage:
-     *  ```
-     *  case '{ ... ${expr @ ConstExpr(value)}: T ...} =>
-     *    // expr: Expr[T]
-     *    // value: T
-     *  ```
+     * Usage:
+     * ```
+     * case '{ ... ${expr @ ConstExpr(value)}: T ...} =>
+     *   // expr: Expr[T]
+     *   // value: T
+     * ```
      *
-     *  To directly unlift an expression `expr: Expr[T]` consider using `expr.unlift`/`expr.unliftOrError` insead.
+     * To directly unlift an expression `expr: Expr[T]` consider using
+     * `expr.unlift`/`expr.unliftOrError` insead.
      */
     def unapply[T](expr: Expr[T])(using Quotes): Option[T] = {
       import quotes.reflect._
@@ -745,27 +768,27 @@ object Extractors {
     }
   }
 
-  def nestInline(using Quotes)(call: Option[quotes.reflect.Tree], defs: List[quotes.reflect.Definition])(expr: Expr[_]): Expr[_] = {
+  def nestInline(using
+    Quotes
+  )(call: Option[quotes.reflect.Tree], defs: List[quotes.reflect.Definition])(expr: Expr[_]): Expr[_] = {
     import quotes.reflect._
     Inlined(call, defs, expr.asTerm).asExpr
   }
 
   /**
-   * Since things like the QueryParser slow are because Quoted matching is slow (or at least slower then I'd like them to be),
-   * a simple performance optimization is to check if there's a single-method being matched and if so, what is it's name.
-   * Since Scala matches unapply causes left-to-right (nested and recursively),  we can add a unapply clause
-   * that will grab the name of the method (if it is a single one being matched which in most cases of the
-   * QueryParser is exaclty what we're looking for) and then match it to a name that we expect it to have.
-   * For example, if we're trying to match this:
-   * {{
-   *   case '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } =>
-   * }}
-   * We can do the following:
-   * {{
-   *   case "map" -@> '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } =>
-   * }}
-   * This will check that there's a `Apply(TypeApply(Select(_, "map"), _), _)` being called
-   * and then only proceecd into the quoted-matcher if that is the case.
+   * Since things like the QueryParser slow are because Quoted matching is slow
+   * (or at least slower then I'd like them to be), a simple performance
+   * optimization is to check if there's a single-method being matched and if
+   * so, what is it's name. Since Scala matches unapply causes left-to-right
+   * (nested and recursively), we can add a unapply clause that will grab the
+   * name of the method (if it is a single one being matched which in most cases
+   * of the QueryParser is exaclty what we're looking for) and then match it to
+   * a name that we expect it to have. For example, if we're trying to match
+   * this: {{ case '{ ($o: Option[t]).map(${Lambda1(id, idType, body)}) } => }}
+   * We can do the following: {{ case "map" -@> '{ ($o:
+   * Option[t]).map(${Lambda1(id, idType, body)}) } => }} This will check that
+   * there's a `Apply(TypeApply(Select(_, "map"), _), _)` being called and then
+   * only proceecd into the quoted-matcher if that is the case.
    */
   object MatchingOptimizers {
     object --> {

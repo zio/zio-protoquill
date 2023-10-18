@@ -44,7 +44,7 @@ class OptionalProductEncodingSpec extends Spec {
   }
 
   "optional product with multiple nested optional embeds" in {
-    case class InnerName(title: Int, last: String) extends Embedded
+    case class InnerName(title: Int, last: String)          extends Embedded
     case class Name(first: String, last: Option[InnerName]) extends Embedded
     case class Address(owner: Int, street: String)
     case class Person(id: Int, name: Option[Name])

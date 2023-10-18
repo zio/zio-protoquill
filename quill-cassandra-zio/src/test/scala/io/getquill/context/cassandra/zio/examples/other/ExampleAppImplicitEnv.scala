@@ -18,16 +18,16 @@ object ExampleAppImplicitEnv extends ZIOAppDefault {
     import Ctx.*
     implicit val env: Implicit[CassandraZioSession] = Implicit(cs)
 
-    def joes = Ctx.run { query[Person].filter(p => p.name == "Joe") }.implicitly
-    def jills = Ctx.run { query[Person].filter(p => p.name == "Jill") }.implicitly
-    def alexes = Ctx.run { query[Person].filter(p => p.name == "Alex") }.implicitly
+    def joes   = Ctx.run(query[Person].filter(p => p.name == "Joe")).implicitly
+    def jills  = Ctx.run(query[Person].filter(p => p.name == "Jill")).implicitly
+    def alexes = Ctx.run(query[Person].filter(p => p.name == "Alex")).implicitly
   }
 
   override def run = {
     val result =
       for {
         csession <- ZIO.scoped(zioSessionLayer.build)
-        joes <- MyQueryService(csession.get).joes
+        joes     <- MyQueryService(csession.get).joes
       } yield joes
 
     result

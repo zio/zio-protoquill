@@ -71,7 +71,7 @@ trait QuatMaking extends QuatMakingBase {
   override def existsEncoderFor(using Quotes)(tpe: quotes.reflect.TypeRepr): Boolean = {
     import quotes.reflect._
     // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
-    def encoderComputation() = {
+    def encoderComputation() =
       tpe.asType match {
         // If an identifier in the Quill query is has a Encoder/Decoder pair, we treat it as a value i.e. Quat.Value is assigned as it's Quat.
         // however, what do we do if there is only one. Say for Name(value: String), Person(name: Name, age: Int) there is a Name-Decoder
@@ -110,7 +110,6 @@ trait QuatMaking extends QuatMakingBase {
         case _ =>
           false
       }
-    }
 
     val output = QuatMaking.lookupIsEncodeable(tpe.widen)(encoderComputation)
     output
@@ -139,7 +138,8 @@ trait QuatMakingBase {
 
     def nonGenericMethods(using Quotes)(tpe: quotes.reflect.TypeRepr) =
       tpe.classSymbol.get.memberFields
-        .filter(m => m.owner.name.toString != "Any" && m.owner.name.toString != "Object").map { param =>
+        .filter(m => m.owner.name.toString != "Any" && m.owner.name.toString != "Object")
+        .map { param =>
           (
             param.name.toString,
             tpe.memberType(param).simplified
@@ -147,7 +147,8 @@ trait QuatMakingBase {
             // Look up the parameter only if needed. This is typically an expensive operation
             // if (!param.isParameter) param.typeSignature else param.typeSignature.asSeenFrom(tpe, tpe.typeSymbol)
           )
-        }.toList
+        }
+        .toList
 
     def caseClassConstructorArgs(using Quotes)(tpe: quotes.reflect.TypeRepr) = {
       import io.getquill.util.Format
@@ -165,7 +166,9 @@ trait QuatMakingBase {
     }
 
     object ArbitraryBaseType {
-      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[(String, List[(String, quotes.reflect.TypeRepr)])] =
+      def unapply(using
+        Quotes
+      )(tpe: quotes.reflect.TypeRepr): Option[(String, List[(String, quotes.reflect.TypeRepr)])] =
         if (tpe.classSymbol.isDefined)
           Some((tpe.widen.typeSymbol.name.toString, nonGenericMethods(tpe.widen)))
         else
@@ -180,7 +183,9 @@ trait QuatMakingBase {
     }
 
     object CaseClassBaseType {
-      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[(String, List[(String, quotes.reflect.TypeRepr)])] =
+      def unapply(using
+        Quotes
+      )(tpe: quotes.reflect.TypeRepr): Option[(String, List[(String, quotes.reflect.TypeRepr)])] =
         if (tpe.classSymbol.isDefined && tpe.widen.typeSymbol.isCaseClass)
           Some((tpe.widen.typeSymbol.name.toString, caseClassConstructorArgs(tpe.widen)))
         else
@@ -289,7 +294,12 @@ trait QuatMakingBase {
         import quotes.reflect._
         tpe match {
           case CaseClassBaseType(name, fields) if !existsEncoderFor(tpe) || tpe <:< TypeRepr.of[Udt] =>
-            Some(Quat.Product(name, fields.map { case (fieldName, fieldType) => (fieldName, ParseType.parseType(fieldType)) }))
+            Some(
+              Quat.Product(
+                name,
+                fields.map { case (fieldName, fieldType) => (fieldName, ParseType.parseType(fieldType)) }
+              )
+            )
           case _ =>
             None
         }
@@ -315,7 +325,9 @@ trait QuatMakingBase {
           Some(tpe)
         else if (tpe <:< TypeRepr.of[Udt])
           None
-        else if (isType[AnyVal](tpe) && tpe.widen.typeSymbol.isCaseClass && anyValBehavior == AnyValBehavior.TreatAsValue)
+        else if (
+          isType[AnyVal](tpe) && tpe.widen.typeSymbol.isCaseClass && anyValBehavior == AnyValBehavior.TreatAsValue
+        )
           Some(tpe)
         else if (existsEncoderFor(tpe))
           Some(tpe)
@@ -410,9 +422,13 @@ trait QuatMakingBase {
         Expr.summon[Mirror.Of[T]] match {
           case Some(ev) =>
             ev match {
-              case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
+              case '{
+                    $m: Mirror.SumOf[T] {
+                      type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes
+                    }
+                  } =>
                 val coproductQuats = traverseCoproduct[elementTypes](TypeRepr.of[T])(Type.of[elementTypes])
-                val reduced = coproductQuats.reduce((q1, q2) => mergeQuats(q1, q2))
+                val reduced        = coproductQuats.reduce((q1, q2) => mergeQuats(q1, q2))
                 Some(reduced)
               case _ =>
                 None
@@ -477,7 +493,10 @@ trait QuatMakingBase {
                 case (key, Some(first), Some(second)) => (key, mergeQuats(first, second))
                 case (key, Some(first), None)         => (key, first)
                 case (key, None, Some(second))        => (key, second)
-                case (key, None, None)                => throw new IllegalArgumentException(s"Invalid state for Quat key ${key}, both values of merging quats were null")
+                case (key, None, None) =>
+                  throw new IllegalArgumentException(
+                    s"Invalid state for Quat key ${key}, both values of merging quats were null"
+                  )
               }
             Quat.Product(second.name, newFields)
 
@@ -485,7 +504,8 @@ trait QuatMakingBase {
             firstQuat.leastUpperType(secondQuat) match {
               case Some(value) => value
               // TODO Get field names for these quats if they are inside something else?
-              case None => throw new IllegalArgumentException(s"Could not create coproduct by merging quats ${q1} and ${q2}")
+              case None =>
+                throw new IllegalArgumentException(s"Could not create coproduct by merging quats ${q1} and ${q2}")
             }
         }
     } // end CoProduct
@@ -530,4 +550,4 @@ trait QuatMakingBase {
     }
 
   } // end InferQuat
-} // end QuatMakingBase
+}   // end QuatMakingBase

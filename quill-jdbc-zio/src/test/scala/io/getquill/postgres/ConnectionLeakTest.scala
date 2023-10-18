@@ -6,7 +6,7 @@ import io.getquill.context.sql.ProductSpec
 import io.getquill.util.LoadConfig
 import io.getquill.context.ZioJdbc._
 import io.getquill.context.qzio.ImplicitSyntax.Implicit
-import zio.{ Runtime, Unsafe }
+import zio.{Runtime, Unsafe}
 import io.getquill.jdbczio.Quill
 
 import scala.util.Random
@@ -15,7 +15,9 @@ import javax.sql.DataSource
 
 class ConnectionLeakTest extends ProductSpec with ZioSpec {
 
-  implicit val pool: Implicit[ZLayer[Any, Throwable, DataSource]] = Implicit(Quill.DataSource.fromPrefix("testPostgresLeakDB"))
+  implicit val pool: Implicit[ZLayer[Any, Throwable, DataSource]] = Implicit(
+    Quill.DataSource.fromPrefix("testPostgresLeakDB")
+  )
 
   // Only used for connection-amount checking
   val dataSource = JdbcContextConfig(LoadConfig("testPostgresLeakDB")).dataSource
@@ -32,24 +34,27 @@ class ConnectionLeakTest extends ProductSpec with ZioSpec {
   "insert and select without leaking" in {
     val result =
       Unsafe.unsafe { implicit unsafe =>
-        Runtime.default.unsafe.run(context.underlying.transaction {
-          import context.underlying._
-          for {
-            _ <- context.underlying.run {
-              quote {
-                query[Product].insertValue(
-                  lift(Product(1, UUID.randomUUID().toString, Random.nextLong()))
-                )
-              }
+        Runtime.default.unsafe
+          .run(
+            context.underlying.transaction {
+              import context.underlying._
+              for {
+                _ <- context.underlying.run {
+                       quote {
+                         query[Product].insertValue(
+                           lift(Product(1, UUID.randomUUID().toString, Random.nextLong()))
+                         )
+                       }
+                     }
+                result <- context.underlying.run {
+                            query[Product].filter(p => query[Product].map(_.id).max.exists(_ == p.id))
+                          }
+              } yield (result)
             }
-            result <- context.underlying.run {
-              query[Product].filter(p => query[Product].map(_.id).max.exists(_ == p.id))
-            }
-          } yield (result)
-        }
-          .map(_.headOption.map(_.id))
-          .onDataSource
-          .provide(pool.env))
+              .map(_.headOption.map(_.id))
+              .onDataSource
+              .provide(pool.env)
+          )
           .getOrThrow()
       }
 

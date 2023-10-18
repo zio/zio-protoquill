@@ -11,8 +11,8 @@ class StructuralTypeSpec extends Spec {
   import ctx._
 
   "quoted function" in {
-    inline def filterByName[T <: { def name: String }] = quote {
-      (q: Query[T]) => q.filter(p => p.name == "Joe")
+    inline def filterByName[T <: { def name: String }] = quote { (q: Query[T]) =>
+      q.filter(p => p.name == "Joe")
     }
 
     val mirror = ctx.run(filterByName(query[Person]))
@@ -40,8 +40,8 @@ class StructuralTypeSpec extends Spec {
   }
 
   "quoted function dynamic" in {
-    def filterByName[T <: { def name: String }] = quote {
-      (q: Query[T]) => q.filter(p => p.name == "Joe")
+    def filterByName[T <: { def name: String }] = quote { (q: Query[T]) =>
+      q.filter(p => p.name == "Joe")
     }
 
     val mirror = ctx.run(filterByName(query[Person]))

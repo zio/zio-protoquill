@@ -17,16 +17,18 @@ trait OptionalNestedSpec extends Spec with BeforeAndAfterEach {
     case class LastNameAge(lastName: String, age: Int)
     case class Contact(firstName: String, opt: Option[LastNameAge], addressFk: Int)
 
-    inline def data = quote { query[Contact] }
+    inline def data = quote(query[Contact])
 
     inline def `1.Ex1 - Not null inner product insert` = quote {
-      sql"insert into Contact (firstName, lastName, age, addressFk) values ('Joe', 'Bloggs', 123, 444)".as[Insert[Contact]]
+      sql"insert into Contact (firstName, lastName, age, addressFk) values ('Joe', 'Bloggs', 123, 444)"
+        .as[Insert[Contact]]
     }
     inline def `1.Ex1 - Not null inner product result` =
       Contact("Joe", Some(LastNameAge("Bloggs", 123)), 444)
 
     inline def `1.Ex2 - null inner product insert` = quote {
-      sql"insert into Contact (firstName, lastName, age, addressFk) values ('Joe', null, null, null)".as[Insert[Contact]]
+      sql"insert into Contact (firstName, lastName, age, addressFk) values ('Joe', null, null, null)"
+        .as[Insert[Contact]]
     }
     inline def `1.Ex2 - null inner product result` =
       Contact("Joe", None, 0)
@@ -37,10 +39,11 @@ trait OptionalNestedSpec extends Spec with BeforeAndAfterEach {
     case class LastNameAge(lastName: String, age: Age)
     case class Contact(firstName: String, opt: Option[LastNameAge], addressFk: Int)
 
-    inline def data = quote { query[Contact] }
+    inline def data = quote(query[Contact])
 
     inline def `2.Ex1 - not-null insert` = quote {
-      sql"insert into Contact (firstName, lastName, age, addressFk) values ('Joe', 'Bloggs', 123, 444)".as[Insert[Contact]]
+      sql"insert into Contact (firstName, lastName, age, addressFk) values ('Joe', 'Bloggs', 123, 444)"
+        .as[Insert[Contact]]
     }
     inline def `2.Ex1 - not-null result` =
       Contact("Joe", Some(LastNameAge("Bloggs", Age(Some(123)))), 444)
@@ -52,7 +55,8 @@ trait OptionalNestedSpec extends Spec with BeforeAndAfterEach {
       Contact("Joe", None, 444)
 
     inline def `2.Ex3 - Null inner leaf insert` = quote {
-      sql"insert into Contact (firstName, lastName, age, addressFk) values ('Joe', 'Bloggs', null, 444)".as[Insert[Contact]]
+      sql"insert into Contact (firstName, lastName, age, addressFk) values ('Joe', 'Bloggs', null, 444)"
+        .as[Insert[Contact]]
     }
     inline def `2.Ex3 - Null inner leaf result` =
       Contact("Joe", Some(LastNameAge("Bloggs", Age(None))), 444)
@@ -63,7 +67,7 @@ trait OptionalNestedSpec extends Spec with BeforeAndAfterEach {
     case class LastNameAge(lastName: String, age: Option[Age])
     case class Contact(firstName: String, opt: Option[LastNameAge], addressFk: Int)
 
-    inline def data = quote { query[Contact] }
+    inline def data = quote(query[Contact])
 
     inline def `3.Ex1 - Null inner product insert` = quote {
       sql"insert into Contact (firstName, lastName, age, addressFk) values ('Joe', null, null, 444)".as[Insert[Contact]]
@@ -72,7 +76,8 @@ trait OptionalNestedSpec extends Spec with BeforeAndAfterEach {
       Contact("Joe", None, 444)
 
     inline def `3.Ex2 - Null inner leaf insert` = quote {
-      sql"insert into Contact (firstName, lastName, age, addressFk) values ('Joe', 'Bloggs', null, 444)".as[Insert[Contact]]
+      sql"insert into Contact (firstName, lastName, age, addressFk) values ('Joe', 'Bloggs', null, 444)"
+        .as[Insert[Contact]]
     }
     inline def `3.Ex2 - Null inner leaf result` =
       Contact("Joe", Some(LastNameAge("Bloggs", None)), 444)

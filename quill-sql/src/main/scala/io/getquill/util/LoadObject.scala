@@ -19,14 +19,14 @@ object Load {
 
   private[Load] sealed trait SymbolLoadType { def path: String }
   private[Load] object SymbolLoadType {
-    case class Class(path: String) extends SymbolLoadType
+    case class Class(path: String)  extends SymbolLoadType
     case class Module(path: String) extends SymbolLoadType
   }
 
   object Module {
     def fromClassTag[T](implicit tag: ClassTag[T]): Try[T] =
       Try {
-        val cls = java.lang.Class.forName(`endWith$`(tag.runtimeClass.getName))
+        val cls   = java.lang.Class.forName(`endWith$`(tag.runtimeClass.getName))
         val field = cls.getField("MODULE$")
         field.get(cls).asInstanceOf[T]
       }
@@ -37,7 +37,7 @@ object Load {
         sym <- symbolType(loadClassType)
         objectLoad <-
           Try {
-            val className = sym.path
+            val className  = sym.path
             val clsFullRaw = `endWith$`(className)
 
             // TODO This is a hack! Need to actually use scala compile-time tpe.memberType(tpe.owner) over and over
@@ -45,7 +45,7 @@ object Load {
             // Replace io.getquill.Foo$.Bar$ with io.getquill.Foo$Bar which is the java convention for nested modules
             val clsFull = clsFullRaw.replace("$.", "$")
 
-            val cls = java.lang.Class.forName(clsFull)
+            val cls   = java.lang.Class.forName(clsFull)
             val field = cls.getField("MODULE$")
             field.get(cls)
           }
@@ -66,7 +66,11 @@ object Load {
         sym <-
           symLoad match {
             case SymbolLoadType.Module(path) =>
-              Failure(throw new IllegalArgumentException(s"${Format.TypeRepr(loadClassType)} must not be a class type because it has no class symbol."))
+              Failure(
+                throw new IllegalArgumentException(
+                  s"${Format.TypeRepr(loadClassType)} must not be a class type because it has no class symbol."
+                )
+              )
             case SymbolLoadType.Class(path) =>
               Success(path)
           }
@@ -77,18 +81,23 @@ object Load {
 
   private[Load] def symbolType(using Quotes)(loadClassType: quotes.reflect.TypeRepr): Try[SymbolLoadType] = {
     val traceConfig = SummonTranspileConfig().traceConfig
-    val interp = new Interpolator(TraceType.Warning, traceConfig, 1)
+    val interp      = new Interpolator(TraceType.Warning, traceConfig, 1)
     import interp._
     Try {
       loadClassType.classSymbol match {
         case Some(value) =>
           Success(SymbolLoadType.Class(value.fullName))
         case None =>
-          trace"${Format.TypeRepr(loadClassType)} must not be a class type because it has no class symbol. Attempting to load it as a module.".andLog()
+          trace"${Format.TypeRepr(loadClassType)} must not be a class type because it has no class symbol. Attempting to load it as a module."
+            .andLog()
           if (!loadClassType.termSymbol.moduleClass.isNoSymbol)
             Success(SymbolLoadType.Module(loadClassType.termSymbol.moduleClass.fullName))
           else
-            Failure(new IllegalArgumentException(s"The class ${Format.TypeRepr(loadClassType.widen)} cannot be loaded because it not a static module. Either it is a class or some other dynamic value."))
+            Failure(
+              new IllegalArgumentException(
+                s"The class ${Format.TypeRepr(loadClassType.widen)} cannot be loaded because it not a static module. Either it is a class or some other dynamic value."
+              )
+            )
       }
     }.flatten
   }

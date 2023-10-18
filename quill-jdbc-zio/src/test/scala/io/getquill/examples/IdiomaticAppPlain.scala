@@ -12,14 +12,16 @@ object IdiomaticAppPlain {
 
   def main(args: Array[String]): Unit = {
     Unsafe.unsafe { implicit unsafe =>
-      Runtime.default.unsafe.run(
-        (for {
-          joes <- Application.getPeopleByName("Joe")
-          _ <- printLine(joes)
-          allPeople <- Application.getAllPeople()
-          _ <- printLine(allPeople)
-        } yield ()).provide(applicationLive, dataServiceLive, dataSourceLive, postgresLive)
-      ).getOrThrow()
+      Runtime.default.unsafe
+        .run(
+          (for {
+            joes      <- Application.getPeopleByName("Joe")
+            _         <- printLine(joes)
+            allPeople <- Application.getAllPeople()
+            _         <- printLine(allPeople)
+          } yield ()).provide(applicationLive, dataServiceLive, dataSourceLive, postgresLive)
+        )
+        .getOrThrow()
     }
     ()
   }

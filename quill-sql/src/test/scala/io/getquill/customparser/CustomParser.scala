@@ -25,14 +25,13 @@ object CustomParser extends ParserLibrary {
 class CustomOperationsParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
   import quotes.reflect._
   import CustomOps._
-  def attempt = {
-    case '{ ($i: Int) ** ($j: Int) } =>
-      Infix(
-        List("power(", " ,", ")"),
-        List(rootParse(i), rootParse(j)),
-        true,
-        false,
-        Quat.Value
-      )
+  def attempt = { case '{ ($i: Int) ** ($j: Int) } =>
+    Infix(
+      List("power(", " ,", ")"),
+      List(rootParse(i), rootParse(j)),
+      true,
+      false,
+      Quat.Value
+    )
   }
 }

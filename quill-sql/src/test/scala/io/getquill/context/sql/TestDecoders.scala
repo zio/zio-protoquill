@@ -19,7 +19,8 @@ trait TestDecoders {
     MappedEncoding[String, EncodingTestType].apply(EncodingTestType.apply)
   implicit val nameDecoder: MappedEncoding[String, Number] =
     MappedEncoding[String, Number].apply(s =>
-      Number.withValidation(s)
+      Number
+        .withValidation(s)
         .getOrElse(throw new Exception(s"Illegal number $s"))
     )
 }

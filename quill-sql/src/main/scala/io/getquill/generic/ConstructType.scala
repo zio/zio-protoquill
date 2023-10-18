@@ -12,7 +12,7 @@ object ConstructType {
     val types = children.map(_._1)
     val terms = children.map(_._2)
     // Get the constructor
-    val tpe = TypeRepr.of[T]
+    val tpe         = TypeRepr.of[T]
     val constructor = TypeRepr.of[T].typeSymbol.primaryConstructor
 
     // println(s"tpe: ${tpe}, constructor: ${constructor}")
@@ -34,7 +34,9 @@ object ConstructType {
       // println(s"=========== Create from Tuple Constructor ${Format.Expr(construct.asExprOf[T])} ===========")
       construct.asExprOf[T]
       // If we are a case class with no generic parameters, we can easily construct it
-    } else if (tpe.classSymbol.exists(_.flags.is(Flags.Case)) && !constructor.paramSymss.exists(_.exists(_.isTypeParam))) {
+    } else if (
+      tpe.classSymbol.exists(_.flags.is(Flags.Case)) && !constructor.paramSymss.exists(_.exists(_.isTypeParam))
+    ) {
       val construct =
         Apply(
           Select(New(TypeTree.of[T]), constructor),
@@ -48,4 +50,4 @@ object ConstructType {
       '{ $m.fromProduct(${ Expr.ofTupleFromSeq(terms) }) }.asExprOf[T]
     }
   } // end apply
-} // end ConstructType
+}   // end ConstructType

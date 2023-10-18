@@ -24,16 +24,17 @@ trait ZioCassandraSpec extends Spec {
     ()
   }
 
-  override def afterAll(): Unit = {
+  override def afterAll(): Unit =
     pool.close()
-  }
 
   def accumulate[T](stream: ZStream[CassandraZioSession, Throwable, T]): ZIO[CassandraZioSession, Throwable, List[T]] =
     stream.run(ZSink.collectAll).map(_.toList)
 
   def result[T](stream: ZStream[CassandraZioSession, Throwable, T]): List[T] =
     Unsafe.unsafe { implicit unsafe =>
-      Runtime.default.unsafe.run(stream.run(ZSink.collectAll).map(_.toList).provideEnvironment(ZEnvironment(pool))).getOrThrow()
+      Runtime.default.unsafe
+        .run(stream.run(ZSink.collectAll).map(_.toList).provideEnvironment(ZEnvironment(pool)))
+        .getOrThrow()
     }
 
   def result[T](qzio: ZIO[CassandraZioSession, Throwable, T]): T =

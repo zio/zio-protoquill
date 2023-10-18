@@ -20,27 +20,39 @@ sealed trait Unquoteable
 
 trait EntityQuery[T] extends EntityQueryModel[T] with Unquoteable {
   override def withFilter(f: T => Boolean): EntityQuery[T] = NonQuotedException()
-  override def filter(f: T => Boolean): EntityQuery[T] = NonQuotedException()
-  override def map[R](f: T => R): EntityQuery[R] = NonQuotedException()
+  override def filter(f: T => Boolean): EntityQuery[T]     = NonQuotedException()
+  override def map[R](f: T => R): EntityQuery[R]           = NonQuotedException()
 }
 
-class Quoted[+T](val ast: io.getquill.ast.Ast, val lifts: List[Planter[_, _, _]], val runtimeQuotes: List[QuotationVase]) {
+class Quoted[+T](
+  val ast: io.getquill.ast.Ast,
+  val lifts: List[Planter[_, _, _]],
+  val runtimeQuotes: List[QuotationVase]
+) {
   // This is not a case-class because the dynamic API uses (quoted:Quoted[(foo, bar)])._1 etc... which would return quoted.ast
   // where instead we want unquote(quoted)._1 to happen instead but the implicit unquote would never happen if quoted
   // is a case class in the _1 property is available on the object.
-  protected lazy val id = Quoted.QuotedId(ast, lifts, runtimeQuotes)
-  override def toString = io.getquill.util.Messages.qprint(id).plainText
+  protected lazy val id        = Quoted.QuotedId(ast, lifts, runtimeQuotes)
+  override def toString        = io.getquill.util.Messages.qprint(id).plainText
   override def hashCode(): Int = id.hashCode
   override def equals(other: Any): Boolean =
     other match {
       case q: Quoted[_] => q.id == this.id
       case _            => false
     }
-  def copy(ast: io.getquill.ast.Ast = this.ast, lifts: List[Planter[_, _, _]] = this.lifts, runtimeQuotes: List[QuotationVase] = this.runtimeQuotes) =
+  def copy(
+    ast: io.getquill.ast.Ast = this.ast,
+    lifts: List[Planter[_, _, _]] = this.lifts,
+    runtimeQuotes: List[QuotationVase] = this.runtimeQuotes
+  ) =
     Quoted(ast, lifts, runtimeQuotes)
 }
 object Quoted {
-  case class QuotedId(val ast: io.getquill.ast.Ast, val lifts: List[Planter[_, _, _]], val runtimeQuotes: List[QuotationVase])
+  case class QuotedId(
+    val ast: io.getquill.ast.Ast,
+    val lifts: List[Planter[_, _, _]],
+    val runtimeQuotes: List[QuotationVase]
+  )
   def apply[T](ast: io.getquill.ast.Ast, lifts: List[Planter[_, _, _]], runtimeQuotes: List[QuotationVase]) =
     new Quoted[T](ast, lifts, runtimeQuotes)
   def unapply[T](quoted: Quoted[T]) =
@@ -81,20 +93,30 @@ object compat {
   }
 }
 
-case class InjectableEagerPlanter[T, PrepareRow, Session](inject: _ => T, encoder: GenericEncoder[T, PrepareRow, Session], uid: String) extends Planter[T, PrepareRow, Session] {
+case class InjectableEagerPlanter[T, PrepareRow, Session](
+  inject: _ => T,
+  encoder: GenericEncoder[T, PrepareRow, Session],
+  uid: String
+) extends Planter[T, PrepareRow, Session] {
   // This is the equivalent of InjectableEagerPlanterExpr's 'inject' method only for dynamic batch queries
   // TODO Try changing to Any => T and see if exceptions happen anywhere
-  def withInject(element: Any) = EagerPlanter[T, PrepareRow, Session](inject.asInstanceOf[Any => T](element), encoder, uid)
+  def withInject(element: Any) =
+    EagerPlanter[T, PrepareRow, Session](inject.asInstanceOf[Any => T](element), encoder, uid)
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
 
-case class EagerListPlanter[T, PrepareRow, Session](values: List[T], encoder: GenericEncoder[T, PrepareRow, Session], uid: String) extends Planter[Query[T], PrepareRow, Session] {
+case class EagerListPlanter[T, PrepareRow, Session](
+  values: List[T],
+  encoder: GenericEncoder[T, PrepareRow, Session],
+  uid: String
+) extends Planter[Query[T], PrepareRow, Session] {
   def unquote: Query[T] =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
 
-case class EagerPlanter[T, PrepareRow, Session](value: T, encoder: GenericEncoder[T, PrepareRow, Session], uid: String) extends Planter[T, PrepareRow, Session] {
+case class EagerPlanter[T, PrepareRow, Session](value: T, encoder: GenericEncoder[T, PrepareRow, Session], uid: String)
+    extends Planter[T, PrepareRow, Session] {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
@@ -105,7 +127,12 @@ case class LazyPlanter[T, PrepareRow, Session](value: T, uid: String) extends Pl
 }
 
 // Equivalent to CaseClassValueLift
-case class EagerEntitiesPlanter[T, PrepareRow, Session](value: Iterable[T], uid: String, fieldGetters: List[InjectableEagerPlanter[?, PrepareRow, Session]], fieldClass: ast.CaseClass) extends Planter[Query[T], PrepareRow, Session] {
+case class EagerEntitiesPlanter[T, PrepareRow, Session](
+  value: Iterable[T],
+  uid: String,
+  fieldGetters: List[InjectableEagerPlanter[?, PrepareRow, Session]],
+  fieldClass: ast.CaseClass
+) extends Planter[Query[T], PrepareRow, Session] {
   def unquote: Query[T] =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
 }
@@ -145,7 +172,8 @@ case class UpdateMeta[T](val entity: Quoted[T], uid: String) extends QuotationLo
 // Then ActionMacro will take a MT (i.e. MetaType) generic argument that will control what to summon and what kind of AST
 // element Ast.Insert or Ast.Update to return (also there should probably be 'Delete' meta type which does not summon a column-excluding meta)
 
-case class QueryMeta[T, R](val entity: Quoted[Query[T] => Query[R]], uid: String, extract: R => T) extends QuotationLot[Query[T] => Query[R]](uid)
+case class QueryMeta[T, R](val entity: Quoted[Query[T] => Query[R]], uid: String, extract: R => T)
+    extends QuotationLot[Query[T] => Query[R]](uid)
 
 // TODO Rename to EntityLift
 // Equivalent to CaseClassValueLift

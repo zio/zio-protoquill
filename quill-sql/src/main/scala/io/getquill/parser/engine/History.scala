@@ -11,8 +11,8 @@ sealed trait HistoryPart extends History {
 }
 
 object History {
-  case class Failed(expr: String, parent: History) extends History { val name = "Failed" }
+  case class Failed(expr: String, parent: History)                         extends History { val name = "Failed" }
   case class Matched(chain: ParserChain, parent: History)(expr: => String) extends HistoryPart
   case class Ignored(chain: ParserChain, parent: History)(expr: => String) extends HistoryPart
-  case object Root extends History { val name = "Root" }
+  case object Root                                                         extends History { val name = "Root"   }
 }

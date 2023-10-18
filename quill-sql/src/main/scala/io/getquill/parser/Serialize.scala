@@ -27,8 +27,11 @@ object SerializeQuat {
       import quotes.reflect._
       expr.asTerm.underlyingArgument.asExprOf[SerializeQuat] match {
         case Expr(serializeQuat) => serializeQuat
-        case other => report.throwError(
-            s"""|Found an implicit instrument to Serialize Quats but could not read it from expression: ${Format.Expr(other)}.
+        case other =>
+          report.throwError(
+            s"""|Found an implicit instrument to Serialize Quats but could not read it from expression: ${Format.Expr(
+                other
+              )}.
               |Make sure that the SerializeQuat implicit is defined as an inline-given (or implicit inline def) for example:
               |inline given SerializeQuat = SerializeQuat.All
               |val q = quote { myQuery } // will use the above given
@@ -70,8 +73,11 @@ object SerializeAst {
       import quotes.reflect._
       expr.asTerm.underlyingArgument.asExprOf[SerializeAst] match {
         case Expr(serializeAst) => serializeAst
-        case other => report.throwError(
-            s"""|Found an implicit instrument to Serialize Asts but could not read it from expression: ${Format.Expr(other)}.
+        case other =>
+          report.throwError(
+            s"""|Found an implicit instrument to Serialize Asts but could not read it from expression: ${Format.Expr(
+                other
+              )}.
               |Make sure that the SerializeAst implicit is defined as an inline-given (or implicit inline def) for example:
               |inline given SerializeAst = SerializeAst.All
               |val q = quote { myQuery } // will use the above given

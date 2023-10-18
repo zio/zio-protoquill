@@ -1,9 +1,8 @@
 package io.getquill.context.cassandra
 
-import java.time.{ Instant, LocalDate, ZoneId, ZonedDateTime }
+import java.time.{Instant, LocalDate, ZoneId, ZonedDateTime}
 import io.getquill.Query
 import io.getquill._
-
 
 class EncodingSpec extends EncodingSpecHelper {
 
@@ -21,8 +20,8 @@ class EncodingSpec extends EncodingSpecHelper {
       import scala.concurrent.ExecutionContext.Implicits.global
       await {
         for {
-          _ <- testAsyncDB.run(query[EncodingTestEntity].delete)
-          _ <- testAsyncDB.run(liftQuery(insertValues).foreach(e => query[EncodingTestEntity].insertValue(e)))
+          _      <- testAsyncDB.run(query[EncodingTestEntity].delete)
+          _      <- testAsyncDB.run(liftQuery(insertValues).foreach(e => query[EncodingTestEntity].insertValue(e)))
           result <- testAsyncDB.run(query[EncodingTestEntity])
         } yield {
           verify(result)
@@ -34,9 +33,8 @@ class EncodingSpec extends EncodingSpecHelper {
   "encodes collections" - {
     "sync" in {
       import testSyncDB._
-      inline def q = quote {
-        (list: Query[Int]) =>
-          query[EncodingTestEntity].filter(t => list.contains(t.id))
+      inline def q = quote { (list: Query[Int]) =>
+        query[EncodingTestEntity].filter(t => list.contains(t.id))
       }
       testSyncDB.run(query[EncodingTestEntity])
       testSyncDB.run(liftQuery(insertValues).foreach(e => query[EncodingTestEntity].insertValue(e)))
@@ -46,9 +44,8 @@ class EncodingSpec extends EncodingSpecHelper {
     "async" in {
       import testAsyncDB._
       import scala.concurrent.ExecutionContext.Implicits.global
-      inline def q = quote {
-        (list: Query[Int]) =>
-          query[EncodingTestEntity].filter(t => list.contains(t.id))
+      inline def q = quote { (list: Query[Int]) =>
+        query[EncodingTestEntity].filter(t => list.contains(t.id))
       }
       await {
         for {
@@ -90,15 +87,15 @@ class EncodingSpec extends EncodingSpecHelper {
       val ctx = testSyncDB
       import ctx._
 
-      val epoh = System.currentTimeMillis()
-      val epohDay = epoh / 86400000L
-      val instant = Instant.ofEpochMilli(epoh)
+      val epoh          = System.currentTimeMillis()
+      val epohDay       = epoh / 86400000L
+      val instant       = Instant.ofEpochMilli(epoh)
       val zonedDateTime = ZonedDateTime.ofInstant(instant, ZoneId.systemDefault)
 
       inline def jq = quote(querySchema[Java8Types]("EncodingTestEntity"))
-      val j = Java8Types(LocalDate.ofEpochDay(epohDay), instant, Some(zonedDateTime))
+      val j         = Java8Types(LocalDate.ofEpochDay(epohDay), instant, Some(zonedDateTime))
       inline def cq = quote(querySchema[CasTypes]("EncodingTestEntity"))
-      val c = CasTypes(LocalDate.ofEpochDay(epohDay), Instant.ofEpochMilli(epoh), Some(zonedDateTime))
+      val c         = CasTypes(LocalDate.ofEpochDay(epohDay), Instant.ofEpochMilli(epoh), Some(zonedDateTime))
 
       ctx.run(jq.delete)
       ctx.run(jq.insertValue(lift(j)))

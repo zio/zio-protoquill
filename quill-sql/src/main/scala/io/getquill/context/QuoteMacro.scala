@@ -50,12 +50,11 @@ object ExtractLifts {
   def extractRuntimeUnquotes(body: Expr[Any])(using Quotes) = {
     import quotes.reflect.report
     val unquotes = QuotationLotExpr.findUnquotes(body)
-    unquotes
-      .collect {
-        case expr: Pluckable => expr
-        case Pointable(expr) =>
-          report.throwError(s"Invalid runtime Quotation: ${expr.show}. Cannot extract a unique identifier.", expr)
-      }
+    unquotes.collect {
+      case expr: Pluckable => expr
+      case Pointable(expr) =>
+        report.throwError(s"Invalid runtime Quotation: ${expr.show}. Cannot extract a unique identifier.", expr)
+    }
       .distinctBy(_.uid)
       .map(_.pluck)
   }
@@ -101,21 +100,23 @@ object QuoteMacro {
       }
 
       val (newAst, transformer) = Transform(List())(ast)
-      val extracted = transformer.state.reverse
+      val extracted             = transformer.state.reverse
       val quotations =
-        extracted.map {
-          case Extractee(uid, Dynamic(value, quat)) =>
-            val quotation =
-              value match {
-                case expr: Expr[_] if (is[Quoted[_]](expr)) =>
-                  expr.asExprOf[Quoted[_]]
-                case expr: Expr[_] =>
-                  report.throwError(s"Dynamic value has invalid expression: ${Format.Expr(expr)} in the AST:\n${printAstWithCustom(newAst)(uid, "<INVALID-HERE>")}")
-                case other =>
-                  report.throwError(s"Dynamic value is not an expression: ${other} in the AST:\n${printAstWithCustom(newAst)(uid, "<INVALID-HERE>")}")
-              }
+        extracted.map { case Extractee(uid, Dynamic(value, quat)) =>
+          val quotation =
+            value match {
+              case expr: Expr[_] if (is[Quoted[_]](expr)) =>
+                expr.asExprOf[Quoted[_]]
+              case expr: Expr[_] =>
+                report.throwError(s"Dynamic value has invalid expression: ${Format
+                    .Expr(expr)} in the AST:\n${printAstWithCustom(newAst)(uid, "<INVALID-HERE>")}")
+              case other =>
+                report.throwError(
+                  s"Dynamic value is not an expression: ${other} in the AST:\n${printAstWithCustom(newAst)(uid, "<INVALID-HERE>")}"
+                )
+            }
 
-            '{ QuotationVase($quotation, ${ Expr(uid) }) }
+          '{ QuotationVase($quotation, ${ Expr(uid) }) }
         }
 
       (newAst, quotations)
@@ -128,16 +129,16 @@ object QuoteMacro {
     // NOTE Can disable underlyingArgument here if needed and make body = bodyRaw. See https://github.com/lampepfl/dotty/pull/8041 for detail
     val body = bodyRaw.asTerm.underlyingArgument.asExpr
 
-    val parser = SummonParser().assemble
+    val parser                         = SummonParser().assemble
     val (serializeQuats, serializeAst) = SummonSerializationBehaviors()
-    given TranspileConfig = SummonTranspileConfig()
+    given TranspileConfig              = SummonTranspileConfig()
 
-    val rawAst = parser(body)
+    val rawAst                         = parser(body)
     val (noDynamicsAst, dynamicQuotes) = DynamicsExtractor(rawAst)
-    val ast = SimplifyFilterTrue(BetaReduction(noDynamicsAst))
+    val ast                            = SimplifyFilterTrue(BetaReduction(noDynamicsAst))
 
     val reifiedAst = Lifter.WithBehavior(serializeQuats, serializeAst)(ast)
-    val u = Unlifter(reifiedAst)
+    val u          = Unlifter(reifiedAst)
 
     // Extract runtime quotes and lifts
     val (lifts, pluckedUnquotes) = ExtractLifts(bodyRaw)

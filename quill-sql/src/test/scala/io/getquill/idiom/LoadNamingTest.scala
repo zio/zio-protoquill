@@ -14,13 +14,11 @@ import io.getquill._
   LoadNaming.mac(comp)
 }
 
-@main def testLoadNaming() = {
+@main def testLoadNaming() =
   println(macLoadNamingStrategy[Literal](Literal))
-}
 
-@main def testLoadNamingInferred() = {
+@main def testLoadNamingInferred() =
   println(macLoadNamingStrategy(Literal))
-}
 
 @main def testLoadNamingMulti() = {
   val comp = NamingStrategy(SnakeCase, UpperCase)

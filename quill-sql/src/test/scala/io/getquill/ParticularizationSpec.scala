@@ -34,15 +34,29 @@ class ParticularizationSpec extends Spec {
       )
     }
     "works with list lift mixed" in {
-      inline def q = quote { query[Ent].filter(e => e.bar == lift("h") && liftQuery(List("a", "b")).contains(e.foo) && e.bar == lift("t")) }
+      inline def q = quote {
+        query[Ent].filter(e => e.bar == lift("h") && liftQuery(List("a", "b")).contains(e.foo) && e.bar == lift("t"))
+      }
       ctx.run(q).triple mustBe (
-        "SELECT e.foo, e.bar FROM Ent e WHERE e.bar = ? AND e.foo IN (?, ?) AND e.bar = ?", List("h", "a", "b", "t"), Static
+        "SELECT e.foo, e.bar FROM Ent e WHERE e.bar = ? AND e.foo IN (?, ?) AND e.bar = ?", List(
+          "h",
+          "a",
+          "b",
+          "t"
+        ), Static
       )
     }
     "works with list lift mixed - dynamic" in {
-      val q = quote { query[Ent].filter(e => e.bar == lift("h") && liftQuery(List("a", "b")).contains(e.foo) && e.bar == lift("t")) }
+      val q = quote {
+        query[Ent].filter(e => e.bar == lift("h") && liftQuery(List("a", "b")).contains(e.foo) && e.bar == lift("t"))
+      }
       ctx.run(q).triple mustBe (
-        "SELECT e.foo, e.bar FROM Ent e WHERE e.bar = ? AND e.foo IN (?, ?) AND e.bar = ?", List("h", "a", "b", "t"), Dynamic
+        "SELECT e.foo, e.bar FROM Ent e WHERE e.bar = ? AND e.foo IN (?, ?) AND e.bar = ?", List(
+          "h",
+          "a",
+          "b",
+          "t"
+        ), Dynamic
       )
     }
   }
@@ -85,27 +99,41 @@ class ParticularizationSpec extends Spec {
       )
     }
     "works with list lift" in {
-      inline def q = quote { query[Ent].filter(e => liftQuery(List("a", "b")).contains(e.foo)) }
+      inline def q = quote(query[Ent].filter(e => liftQuery(List("a", "b")).contains(e.foo)))
       ctx.run(q).triple mustBe (
         "SELECT e.foo, e.bar FROM Ent e WHERE e.foo IN ($1, $2)", List("a", "b"), Static
       )
     }
     "works with list lift - dynamic" in {
-      val q = quote { query[Ent].filter(e => liftQuery(List("a", "b")).contains(e.foo)) }
+      val q = quote(query[Ent].filter(e => liftQuery(List("a", "b")).contains(e.foo)))
       ctx.run(q).triple mustBe (
         "SELECT e.foo, e.bar FROM Ent e WHERE e.foo IN ($1, $2)", List("a", "b"), Dynamic
       )
     }
     "works with list lift mixed" in {
-      inline def q = quote { query[Ent].filter(e => e.bar == lift("h") && liftQuery(List("a", "b")).contains(e.foo) && e.bar == lift("t")) }
+      inline def q = quote {
+        query[Ent].filter(e => e.bar == lift("h") && liftQuery(List("a", "b")).contains(e.foo) && e.bar == lift("t"))
+      }
       ctx.run(q).triple mustBe (
-        "SELECT e.foo, e.bar FROM Ent e WHERE e.bar = $1 AND e.foo IN ($2, $3) AND e.bar = $4", List("h", "a", "b", "t"), Static
+        "SELECT e.foo, e.bar FROM Ent e WHERE e.bar = $1 AND e.foo IN ($2, $3) AND e.bar = $4", List(
+          "h",
+          "a",
+          "b",
+          "t"
+        ), Static
       )
     }
     "works with list lift mixed - dynamic" in {
-      val q = quote { query[Ent].filter(e => e.bar == lift("h") && liftQuery(List("a", "b")).contains(e.foo) && e.bar == lift("t")) }
+      val q = quote {
+        query[Ent].filter(e => e.bar == lift("h") && liftQuery(List("a", "b")).contains(e.foo) && e.bar == lift("t"))
+      }
       ctx.run(q).triple mustBe (
-        "SELECT e.foo, e.bar FROM Ent e WHERE e.bar = $1 AND e.foo IN ($2, $3) AND e.bar = $4", List("h", "a", "b", "t"), Dynamic
+        "SELECT e.foo, e.bar FROM Ent e WHERE e.bar = $1 AND e.foo IN ($2, $3) AND e.bar = $4", List(
+          "h",
+          "a",
+          "b",
+          "t"
+        ), Dynamic
       )
     }
   }

@@ -9,13 +9,15 @@ import io.getquill.norm.EnableTrace
 import io.getquill.context.ExecutionType.Static
 
 /**
- * Note that queries are a little different from Scala2-Quill BatchUpdateValuesMirrorSpec because
- * ProtoQuill is a bit smarter in recornizing which ScalarLift tags are the the same so it doesn't
- * need to copy as many `?` placeholders.
+ * Note that queries are a little different from Scala2-Quill
+ * BatchUpdateValuesMirrorSpec because ProtoQuill is a bit smarter in
+ * recornizing which ScalarLift tags are the the same so it doesn't need to copy
+ * as many `?` placeholders.
  */
 class BatchUpdateValuesMirrorSpec extends BatchUpdateValuesSpec {
 
-  val context: SqlMirrorContext[PostgresDialect, Literal] = new SqlMirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
+  val context: SqlMirrorContext[PostgresDialect, Literal] =
+    new SqlMirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
   import context._
 
   "Ex 1 - Simple Contact" in {
@@ -123,7 +125,10 @@ class BatchUpdateValuesMirrorSpec extends BatchUpdateValuesSpec {
     context.run(update, 2).tripleBatchMulti mustEqual List(
       (
         "UPDATE Contact AS p SET lastName = ps.lastName || ? FROM (VALUES (?, ?), (?, ?)) AS ps(firstName, lastName) WHERE p.firstName = ps.firstName AND (p.firstName = ? OR p.firstName = ?)",
-        List(List(" Jr.", "Joe", "BloggsU", "Jan", "RoggsU", "Joe", "Jan"), List(" Jr.", "James", "JonesU", "Dale", "DomesU", "Joe", "Jan")),
+        List(
+          List(" Jr.", "Joe", "BloggsU", "Jan", "RoggsU", "Joe", "Jan"),
+          List(" Jr.", "James", "JonesU", "Dale", "DomesU", "Joe", "Jan")
+        ),
         Static
       ),
       (

@@ -18,8 +18,10 @@ object ExampleApp extends ZIOAppDefault {
     inline def people = quote {
       query[Person]
     }
-    MyZioPostgresContext.run(people)
+    MyZioPostgresContext
+      .run(people)
       .tap(result => printLine(result.toString))
-      .provide(zioSessionLayer).exitCode
+      .provide(zioSessionLayer)
+      .exitCode
   }
 }

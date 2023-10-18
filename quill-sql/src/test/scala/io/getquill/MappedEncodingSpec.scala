@@ -13,7 +13,7 @@ class MirrorEncodingSpec extends Spec {
     implicit val encodeName: MappedEncoding[Name, String] = MappedEncoding[Name, String](_.value)
     implicit val decodeName: MappedEncoding[String, Name] = MappedEncoding[String, Name](str => Name(str))
 
-    val name = Name("Joe")
+    val name   = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
     mirror.triple mustEqual (
       (
@@ -30,7 +30,7 @@ class MirrorEncodingSpec extends Spec {
     implicit val encodeName: MappedEncoding[Name, String] = MappedEncoding[Name, String](_.value)
     implicit val decodeName: MappedEncoding[String, Name] = MappedEncoding[String, Name](str => Name(str))
 
-    val name = Name("Joe")
+    val name   = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
     mirror.triple mustEqual (
       (
@@ -67,7 +67,7 @@ class MirrorEncodingSpec extends Spec {
     case class Name(value: String)
     case class Person(name: Name, age: Int)
 
-    val name = Name("Joe")
+    val name   = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
     mirror.triple mustEqual (
       (

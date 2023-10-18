@@ -35,7 +35,9 @@ inline def schemaMeta[T](inline entity: String, inline columns: (T => (Any, Stri
 inline def queryMeta[T, R](inline expand: Quoted[Query[T] => Query[R]])(inline extract: R => T): QueryMeta[T, R] =
   ${ QueryMetaMacro.embed[T, R]('expand, 'extract) }
 
-/** Automatic implicit ordering DSL for: `query[Person].sortBy(_.field)(<here>)` */
+/**
+ * Automatic implicit ordering DSL for: `query[Person].sortBy(_.field)(<here>)`
+ */
 implicit def implicitOrd[T]: Ord[T] = Ord.ascNullsFirst
 
 extension (str: String) {
@@ -43,16 +45,16 @@ extension (str: String) {
 }
 
 inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
-inline def select[T]: Query[T] = ${ QueryMacro[T] }
+inline def select[T]: Query[T]      = ${ QueryMacro[T] }
 
-def max[A](a: A): A = NonQuotedException()
-def min[A](a: A): A = NonQuotedException()
-def count[A](a: A): A = NonQuotedException()
+def max[A](a: A): A                                  = NonQuotedException()
+def min[A](a: A): A                                  = NonQuotedException()
+def count[A](a: A): A                                = NonQuotedException()
 def avg[A](a: A)(implicit n: Numeric[A]): BigDecimal = NonQuotedException()
-def sum[A](a: A)(implicit n: Numeric[A]): A = NonQuotedException()
+def sum[A](a: A)(implicit n: Numeric[A]): A          = NonQuotedException()
 
 def avg[A](a: Option[A])(implicit n: Numeric[A]): Option[BigDecimal] = NonQuotedException()
-def sum[A](a: Option[A])(implicit n: Numeric[A]): Option[A] = NonQuotedException()
+def sum[A](a: Option[A])(implicit n: Numeric[A]): Option[A]          = NonQuotedException()
 
 extension [T](o: Option[T]) {
   def filterIfDefined(f: T => Boolean): Boolean = NonQuotedException()
@@ -107,6 +109,8 @@ inline implicit def autoQuote[T](inline body: T): Quoted[T] = ${ QuoteMacro[T]('
 // these functions on the quoted variant of the EntityQuery for the types to infer correctly.
 // see ActionSpec.scala action->insert->simple, using nested select, etc... tets for examples of this
 extension [T](inline quotedEntity: Quoted[EntityQuery[T]]) {
-  inline def insert(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Insert[T] = unquote[EntityQuery[T]](quotedEntity).insert(f, f2: _*)
-  inline def update(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Update[T] = unquote[EntityQuery[T]](quotedEntity).update(f, f2: _*)
+  inline def insert(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Insert[T] =
+    unquote[EntityQuery[T]](quotedEntity).insert(f, f2: _*)
+  inline def update(inline f: (T => (Any, Any)), inline f2: (T => (Any, Any))*): Update[T] =
+    unquote[EntityQuery[T]](quotedEntity).update(f, f2: _*)
 }

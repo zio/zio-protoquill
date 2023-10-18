@@ -16,9 +16,7 @@ object SimpleBatchWithInfix extends Spec {
     case class Person[T](name: String, age: Int)
     val names = List("Joe", "Jack")
     inline def q = quote {
-      query[Person[String]].filter(p =>
-        liftQuery(names).contains(p.name) && sql"fun(${p.name})".pure.as[Boolean]
-      )
+      query[Person[String]].filter(p => liftQuery(names).contains(p.name) && sql"fun(${p.name})".pure.as[Boolean])
     }
     ctx.run(q).triple mustEqual (
       "SELECT p.name, p.age FROM Person p WHERE p.name IN (?) AND fun(p.name)",

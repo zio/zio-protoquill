@@ -43,25 +43,19 @@ trait ArrayEncoding extends EncodingDsl {
   implicit def arrayLocalDateDecoder[Col <: Seq[LocalDate]](implicit bf: CBF[LocalDate, Col]): Decoder[Col]
   implicit def arrayUuidDecoder[Col <: Seq[UUID]](implicit bf: Factory[UUID, Col]): Decoder[Col]
 
-  implicit def arrayMappedEncoder[I, O, Col[X] <: Seq[X]](
-      implicit
-      mapped: MappedEncoding[I, O],
-      e: Encoder[Seq[O]]
-  ): Encoder[Col[I]] = {
+  implicit def arrayMappedEncoder[I, O, Col[X] <: Seq[X]](implicit
+    mapped: MappedEncoding[I, O],
+    e: Encoder[Seq[O]]
+  ): Encoder[Col[I]] =
     mappedEncoder[Col[I], Seq[O]](MappedEncoding((col: Col[I]) => col.map(mapped.f)), e)
-  }
 
-  implicit def arrayMappedDecoder[I, O, Col[X] <: Seq[X]](
-      implicit
-      mapped: MappedEncoding[I, O],
-      d: Decoder[Seq[I]],
-      bf: Factory[O, Col[O]]
-  ): Decoder[Col[O]] = {
+  implicit def arrayMappedDecoder[I, O, Col[X] <: Seq[X]](implicit
+    mapped: MappedEncoding[I, O],
+    d: Decoder[Seq[I]],
+    bf: Factory[O, Col[O]]
+  ): Decoder[Col[O]] =
     mappedDecoder[Seq[I], Col[O]](
-      MappedEncoding((col: Seq[I]) =>
-        col.foldLeft(bf.newBuilder)((b, x) => b += mapped.f(x)).result
-      ),
+      MappedEncoding((col: Seq[I]) => col.foldLeft(bf.newBuilder)((b, x) => b += mapped.f(x)).result),
       d
     )
-  }
 }

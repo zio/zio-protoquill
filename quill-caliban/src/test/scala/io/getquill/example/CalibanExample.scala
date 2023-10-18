@@ -11,7 +11,7 @@ import io.getquill.context.qzio.ImplicitSyntax._
 import io.getquill.context.ZioJdbc._
 import io.getquill.util.LoadConfig
 import zio.Console.printLine
-import zio.{ ZIOApp, ExitCode, URIO, Task }
+import zio.{ZIOApp, ExitCode, URIO, Task}
 import java.io.Closeable
 import javax.sql.DataSource
 
@@ -23,40 +23,41 @@ import io.getquill.util.ContextLogger
 import io.getquill
 import io.getquill.FlatSchema._
 
-
 object Dao {
   case class PersonAddressPlanQuery(plan: String, pa: List[PersonAddress])
   private val logger = ContextLogger(classOf[Dao.type])
 
   object Ctx extends PostgresZioJdbcContext(Literal)
   import Ctx._
-  lazy val ds = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
+  lazy val ds                = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
   given Implicit[DataSource] = Implicit(ds)
 
   inline def q(inline columns: List[String], inline filters: Map[String, String]) =
     quote {
-      query[PersonT].leftJoin(query[AddressT]).on((p, a) => p.id == a.ownerId)
+      query[PersonT]
+        .leftJoin(query[AddressT])
+        .on((p, a) => p.id == a.ownerId)
         .map((p, a) => PersonAddress(p.id, p.first, p.last, p.age, a.map(_.street)))
         .filterColumns(columns)
         .filterByKeys(filters)
         .take(10)
     }
   inline def plan(inline columns: List[String], inline filters: Map[String, String]) =
-    quote { sql"EXPLAIN ${q(columns, filters)}".pure.as[Query[String]] }
+    quote(sql"EXPLAIN ${q(columns, filters)}".pure.as[Query[String]])
 
   def personAddress(columns: List[String], filters: Map[String, String]) = {
     println(s"Getting columns: $columns")
-    run(q(columns, filters)).implicitDS.mapError(e => {
+    run(q(columns, filters)).implicitDS.mapError { e =>
       logger.underlying.error("personAddress query failed", e)
       e
-    })
+    }
   }
 
   def personAddressPlan(columns: List[String], filters: Map[String, String]) =
-    run(plan(columns, filters), OuterSelectWrap.Never).map(_.mkString("\n")).implicitDS.mapError(e => {
+    run(plan(columns, filters), OuterSelectWrap.Never).map(_.mkString("\n")).implicitDS.mapError { e =>
       logger.underlying.error("personAddressPlan query failed", e)
       e
-    })
+    }
 
   def resetDatabase() =
     (for {
@@ -69,39 +70,36 @@ object Dao {
 object CalibanExample extends zio.ZIOAppDefault {
 
   case class Queries(
-      personAddress: Field => (ProductArgs[PersonAddress] => Task[List[PersonAddress]]),
-      personAddressPlan: Field => (ProductArgs[PersonAddress] => Task[Dao.PersonAddressPlanQuery])
+    personAddress: Field => (ProductArgs[PersonAddress] => Task[List[PersonAddress]]),
+    personAddressPlan: Field => (ProductArgs[PersonAddress] => Task[Dao.PersonAddressPlanQuery])
   )
 
   val endpoints =
-     graphQL(
+    graphQL(
       RootResolver(
         Queries(
-          personAddress =>
-            (productArgs =>
-              Dao.personAddress(quillColumns(personAddress), productArgs.keyValues)
-            ),
+          personAddress => (productArgs => Dao.personAddress(quillColumns(personAddress), productArgs.keyValues)),
           personAddressPlan =>
             (productArgs => {
               val cols = quillColumns(personAddressPlan)
-              (Dao.personAddressPlan(cols, productArgs.keyValues) zip Dao.personAddress(cols, productArgs.keyValues)).map(
-                (pa, plan) => Dao.PersonAddressPlanQuery(pa, plan)
-              )
+              (Dao.personAddressPlan(cols, productArgs.keyValues) zip Dao.personAddress(cols, productArgs.keyValues))
+                .map((pa, plan) => Dao.PersonAddressPlanQuery(pa, plan))
             })
         )
       )
     ).interpreter
 
   val myApp = for {
-    _ <- Dao.resetDatabase()
+    _           <- Dao.resetDatabase()
     interpreter <- endpoints
-    _ <- Server.start(
-        port = 8088,
-        http = Http.collectHttp[Request] { case _ -> !! / "api" / "graphql" =>
-          ZHttpAdapter.makeHttpService(interpreter)
-        }
-      )
-      .forever
+    _ <- Server
+           .start(
+             port = 8088,
+             http = Http.collectHttp[Request] { case _ -> !! / "api" / "graphql" =>
+               ZHttpAdapter.makeHttpService(interpreter)
+             }
+           )
+           .forever
   } yield ()
 
   override def run =

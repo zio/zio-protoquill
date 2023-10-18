@@ -27,7 +27,7 @@ class FlicerMapTypesSpec extends Spec with Inside {
   )
   case class DateEncodingTestEntity(v1: LocalDate, v2: LocalDateTime)
   def makeEntity(i: Int) = {
-    val ld = LocalDate.of(2022, i, i)
+    val ld  = LocalDate.of(2022, i, i)
     val ldt = LocalDateTime.of(2022, i, i, i, i, i)
     DateEncodingTestEntity(ld, ldt)
   }
@@ -38,7 +38,7 @@ class FlicerMapTypesSpec extends Spec with Inside {
   )
 
   override def beforeAll(): Unit = {
-    val people = quote { query[Contact] }
+    val people = quote(query[Contact])
     ctx.run(people.delete)
     ctx.run(liftQuery(contacts).foreach(c => people.insertValue(c)))
     ctx.run(query[DateEncodingTestEntity].delete)
@@ -48,17 +48,23 @@ class FlicerMapTypesSpec extends Spec with Inside {
   "Should do correct query from map with" - {
     "simple datatypes" in {
       ctx.run(query[Contact].filterByKeys(Map("firstName" -> "Joe", "addressFk" -> 1))) mustEqual
-        List(Contact("Joe","Bloggs",123,1,"1"), Contact("Joe","Noggs",123,1,"1"))
+        List(Contact("Joe", "Bloggs", 123, 1, "1"), Contact("Joe", "Noggs", 123, 1, "1"))
     }
     "string datatypes" in {
       ctx.run(query[Contact].filterByKeys(Map("firstName" -> "Joe", "addressFk" -> "1"))) mustEqual
-        List(Contact("Joe","Bloggs",123,1,"1"), Contact("Joe","Noggs",123,1,"1"))
+        List(Contact("Joe", "Bloggs", 123, 1, "1"), Contact("Joe", "Noggs", 123, 1, "1"))
     }
     "date datatypes" in {
-      ctx.run(query[DateEncodingTestEntity].filterByKeys(Map("v1" -> makeEntity(1).v1, "v2" -> makeEntity(1).v2))) mustEqual List(makeEntity(1))
+      ctx.run(
+        query[DateEncodingTestEntity].filterByKeys(Map("v1" -> makeEntity(1).v1, "v2" -> makeEntity(1).v2))
+      ) mustEqual List(makeEntity(1))
     }
     "date-string datatypes" in {
-      ctx.run(query[DateEncodingTestEntity].filterByKeys(Map("v1" -> makeEntity(1).v1.toString, "v2" -> makeEntity(1).v2.toString))) mustEqual List(makeEntity(1))
+      ctx.run(
+        query[DateEncodingTestEntity].filterByKeys(
+          Map("v1" -> makeEntity(1).v1.toString, "v2" -> makeEntity(1).v2.toString)
+        )
+      ) mustEqual List(makeEntity(1))
     }
 
   }
@@ -83,6 +89,6 @@ class FlicerMapTypesSpec extends Spec with Inside {
 
     val map = Map[String, Any]("extraInfo" -> Info("1"))
     ctx.run(querySchema[ContactComplex]("Contact").filterByKeys(map)) mustEqual
-      List(ContactComplex("Joe","Bloggs",123,1,Info("1")), ContactComplex("Joe","Noggs",123,1,Info("1")))
+      List(ContactComplex("Joe", "Bloggs", 123, 1, Info("1")), ContactComplex("Joe", "Noggs", 123, 1, Info("1")))
   }
 }
