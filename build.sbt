@@ -41,16 +41,12 @@ lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-jdbc`, `quill-doobie`, `quill-zio`, `quill-jdbc-zio`, `quill-caliban`
 )
 
-lazy val jasyncModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-jasync`, `quill-jasync-postgres`
-)
-
 lazy val bigdataModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-cassandra`, `quill-cassandra-zio`
 )
 
 lazy val allModules =
-  baseModules ++ sqlTestModules ++ dbModules ++ jasyncModules ++ bigdataModules
+  baseModules ++ sqlTestModules ++ dbModules ++ bigdataModules
 
 lazy val communityBuildModules =
   Seq[sbt.ClasspathDep[sbt.ProjectReference]](
@@ -74,9 +70,6 @@ val filteredModules = {
     case Some("db") =>
       println("SBT =:> Compiling Database Modules")
       dbModules
-    case Some("async") =>
-      println("SBT =:> Compiling Async Database Modules")
-      jasyncModules
     case Some("bigdata") =>
       println("SBT =:> Compiling Big Data Modules")
       bigdataModules
@@ -170,28 +163,6 @@ lazy val `quill-doobie` =
       )
     )
     .dependsOn(`quill-jdbc` % "compile->compile;test->test")
-
-lazy val `quill-jasync` =
-  (project in file("quill-jasync"))
-    .settings(commonSettings: _*)
-    .settings(
-      Test / fork := true,
-      libraryDependencies ++= Seq(
-        "com.github.jasync-sql" % "jasync-common" % "2.2.4"
-      )
-    )
-    .dependsOn(`quill-sql` % "compile->compile;test->test")
-
-lazy val `quill-jasync-postgres` =
-  (project in file("quill-jasync-postgres"))
-    .settings(commonSettings: _*)
-    .settings(
-      Test / fork := true,
-      libraryDependencies ++= Seq(
-        "com.github.jasync-sql" % "jasync-postgresql" % "2.2.4"
-      )
-    )
-    .dependsOn(`quill-jasync` % "compile->compile;test->test")
 
 lazy val `quill-caliban` =
   (project in file("quill-caliban"))

@@ -10,7 +10,7 @@ Currently Supported:
  - Query.map/flatMap/concatMap/filter other [query constructs](https://getquill.io/#quotation-queries).
  - Insert, Update, Delete [Actions](https://getquill.io/#quotation-actions) (Compile-Time and Dynamic)
  - Batch Insert, Batch Update, and Batch Delete Actions, both Compile-Time and Runtime! (Scala2-Quill only supports Compile-Time batch queries)
- - ZIO, Synchronous JDBC, and Jasync Postgres contexts.
+ - ZIO and Synchronous JDBC contexts.
  - SQL OnConflict Clauses
  - Prepare Query (i.e. `context.prepare(query)`)
  - Translate Query (i.e. `context.translate(query)`)
@@ -45,7 +45,7 @@ For further information, watch:
 
 The simplest way to get started with ProtoQuill is with the standard JDBC contexts.
 These are sychronous so for a high-throughput system you will ultimately need to switch
-to either the ZIO-based contexts, Jasync, or the Monix ones (Monix contexts coming soon!)
+to either the ZIO-based contexts or the Monix ones (Monix contexts coming soon!)
 
 Add the following to your SBT file:
 ```scala
@@ -54,8 +54,6 @@ libraryDependencies ++= Seq(
   "io.getquill" %% "quill-jdbc" % "4.7.3",
   // Or ZIO Modules
   "io.getquill" %% "quill-jdbc-zio" % "4.7.3",
-  // Or Postgres Async
-  "io.getquill" %% "quill-jasync-postgres" % "4.7.3",
   // Or Cassandra
   "io.getquill" %% "quill-cassandra" % "4.7.3",
   // Or Cassandra + ZIO

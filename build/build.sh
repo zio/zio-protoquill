@@ -175,11 +175,6 @@ function db_build() {
     ./build/aware_run.sh "sbt -Dmodules=db $SBT_ARGS test"
 }
 
-function async_build() {
-    wait_for_mysql_postgres
-    sbt -Dmodules=async $SBT_ARGS test
-}
-
 function bigdata_build() {
     wait_for_bigdata
     sbt -Dmodules=bigdata $SBT_ARGS test
@@ -215,12 +210,6 @@ elif [[ $modules == "db" ]]; then
 elif [[ $modules == "sqltest" ]]; then
     echo "Build Script: Doing SQL Test Build"
     sqltest_build
-# elif [[ $modules == "js" ]]; then
-#     echo "Build Script: Doing JavaScript Build"
-#     js_build
-elif [[ $modules == "async" ]]; then
-    echo "Build Script: Doing Async Database Build"
-    async_build
 elif [[ $modules == "bigdata" ]]; then
     echo "Build Script: Doing BigData Build"
     bigdata_build
