@@ -1,72 +1,53 @@
 package io.getquill.context
 
-import scala.language.higherKinds
-import scala.language.experimental.macros
-import java.io.Closeable
-import scala.compiletime.summonFrom
-import scala.util.Try
-import io.getquill.ReturnAction
-import io.getquill.generic.EncodingDsl
-import io.getquill.Quoted
-import io.getquill.QueryMeta
-import io.getquill.generic._
-import io.getquill.context.mirror.MirrorDecoders
-import io.getquill.context.mirror.Row
-import io.getquill.generic.GenericDecoder
-import io.getquill.generic.GenericEncoder
-import io.getquill.Planter
-import io.getquill.EagerPlanter
-import io.getquill.InjectableEagerPlanter
-import io.getquill.LazyPlanter
+import com.typesafe.scalalogging.Logger
+import io.getquill.*
+import io.getquill.ast
 import io.getquill.ast.Ast
-import io.getquill.ast.Filter
 import io.getquill.ast.Entity
-import io.getquill.ast.ScalarTag
+import io.getquill.ast.Filter
+import io.getquill.ast.QuotationTag
 import io.getquill.ast.Returning
 import io.getquill.ast.ReturningGenerated
-import io.getquill.ast
-import scala.quoted._
-import io.getquill.ast.{Transform, QuotationTag}
-import io.getquill.QuotationLot
-import io.getquill.metaprog.QuotedExpr
-import io.getquill.metaprog.PlanterExpr
-import io.getquill.metaprog.EagerEntitiesPlanterExpr
-import io.getquill.Planter
-import io.getquill.idiom.ReifyStatement
-import io.getquill.Query
-import io.getquill.Action
-import io.getquill.idiom.Idiom
-import io.getquill.NamingStrategy
-import io.getquill.metaprog.Extractors._
-import io.getquill.BatchAction
-import io.getquill.metaprog.QuotationLotExpr
-import io.getquill.metaprog.QuotationLotExpr._
-import io.getquill.util.Format
-import io.getquill.context.LiftMacro
-import io.getquill.parser.Unlifter
-import io.getquill._
-import io.getquill.QAC
-import io.getquill.parser.Lifter
-import io.getquill.metaprog.InjectableEagerPlanterExpr
-import _root_.io.getquill.norm.BetaReduction
+import io.getquill.ast.ScalarTag
+import io.getquill.ast.Transform
 import io.getquill.context.Execution.ElaborationBehavior
-import io.getquill.quat.Quat
-import io.getquill.quat.QuatMaking
+import io.getquill.context.Execution.ExtractBehavior
+import io.getquill.context.LiftMacro
+import io.getquill.context.QueryExecutionBatchModel.BatchExtractBehavior
+import io.getquill.context.QueryExecutionBatchModel.BatchingBehavior
+import io.getquill.context.QueryExecutionBatchModel.SingleEntityLifts
+import io.getquill.context.mirror.MirrorDecoders
+import io.getquill.context.mirror.Row
+import io.getquill.generic.*
+import io.getquill.idiom.Idiom
+import io.getquill.idiom.ReifyStatement
+import io.getquill.idiom.Token
+import io.getquill.metaprog.EagerEntitiesPlanterExpr
 import io.getquill.metaprog.EagerListPlanterExpr
 import io.getquill.metaprog.EagerPlanterExpr
+import io.getquill.metaprog.Extractors.*
+import io.getquill.metaprog.InjectableEagerPlanterExpr
+import io.getquill.metaprog.PlanterExpr
+import io.getquill.metaprog.QuotationLotExpr
+import io.getquill.metaprog.QuotationLotExpr.*
+import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.SummonTranspileConfig
-import io.getquill.norm.TranspileConfig
 import io.getquill.metaprog.TranspileConfigLiftable
-import io.getquill.idiom.Token
-import io.getquill.context.QueryExecutionBatchModel.SingleEntityLifts
-import io.getquill.context.QueryExecutionBatchModel.BatchingBehavior
-import io.getquill.context.QueryExecutionBatchModel.BatchExtractBehavior
-import scala.util.Right
-import scala.util.Left
-import com.typesafe.scalalogging.Logger
+import io.getquill.norm.TranspileConfig
+import io.getquill.parser.Lifter
+import io.getquill.parser.Unlifter
+import io.getquill.quat.Quat
+import io.getquill.quat.QuatMaking
 import io.getquill.util.ContextLogger
-import io.getquill.context.Execution.ExtractBehavior
+import io.getquill.util.Format
 import io.getquill.util.TraceConfig
+
+import scala.compiletime.summonFrom
+import scala.language.experimental.macros
+import scala.language.higherKinds
+import scala.quoted.*
+import scala.util.{Left, Right, Try}
 
 object QueryExecutionBatchIteration {
 
@@ -321,13 +302,10 @@ object QueryExecutionBatchIteration {
         )
       val prepares =
         perRowLifts.map { liftsInThisGroup =>
-          val orderedLifts = liftsOrderer.orderLifts(List(liftsInThisGroup), otherLifts) {
-            (row: PrepareRow, session: Session) =>
-              LiftsExtractor.apply[PrepareRow, Session](orderedLifts, row, session)
-          }
+          val orderedLifts = liftsOrderer.orderLifts(List(liftsInThisGroup), otherLifts)
+          (row: PrepareRow, session: Session) => LiftsExtractor[PrepareRow, Session](orderedLifts, row, session)
         }
       List((allGroupsQuery, prepares))
     }
-
   }
 }
