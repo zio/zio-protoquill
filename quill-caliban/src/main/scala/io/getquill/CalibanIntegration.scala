@@ -1,7 +1,7 @@
 package io.getquill
 
 import caliban.CalibanError.ExecutionError
-import caliban.GraphQL.graphQL
+import caliban.graphQL
 import caliban.introspection.adt.{ __InputValue, __Type, __TypeKind }
 import caliban.schema.{ ArgBuilder, Schema, Step }
 import caliban.{ InputValue, RootResolver }
@@ -47,17 +47,18 @@ object CalibanIntegration {
           case __TypeKind.NON_NULL => fieldType.ofType.getOrElse(fieldType)
           case _                   => fieldType
         }
-        f.copy(`type` =
-          () => optionalFieldType.copy(inputFields = optionalFieldType.inputFields.map(_.map(makeOptionalRecurse)))
+        import io.getquill.autoQuote
+        f.copy(`type` = () =>
+           optionalFieldType.copy(inputFields =  args  => optionalFieldType.inputFields(args).map(_.map(makeOptionalRecurse)))
         )
       }
 
-      protected[this] def toType(isInput: Boolean, isSubscription: Boolean): __Type =
+      def toType(isInput: Boolean, isSubscription: Boolean): __Type =
         __Type(
           __TypeKind.INPUT_OBJECT,
-          inputFields = ev
+          inputFields =   args => ev
             .toType_(isInput, isSubscription)
-            .inputFields
+            .inputFields(args)
             .map(_.map(f => makeOptionalRecurse(f)))
         )
 
