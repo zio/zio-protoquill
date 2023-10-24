@@ -170,16 +170,16 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban" % "2.0.2",
-        "com.github.ghostdogpr" %% "caliban-zio-http" % "2.0.2",
+        "com.github.ghostdogpr" %% "caliban" % "2.4.1",
+        "com.github.ghostdogpr" %% "caliban-zio-http" % "2.4.1",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.4.11" % Test,
-        "io.d11" %% "zhttp" % "2.0.0-RC11" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
         "org.postgresql" % "postgresql" % "42.6.0" % Test,
+        "com.softwaremill.sttp.tapir"   %% "tapir-json-zio" % "1.7.3" % Test
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")

@@ -1,10 +1,10 @@
 package io.getquill
 
-import caliban.GraphQL.graphQL
+import caliban.graphQL
 import caliban.schema.Annotations.GQLDescription
 import caliban.{RootResolver, ZHttpAdapter}
-import zhttp.http._
-import zhttp.service.Server
+import zio.http._
+import zio.http.Server
 import zio.{ExitCode, ZIO}
 import io.getquill._
 import io.getquill.context.qzio.ImplicitSyntax._
@@ -22,7 +22,13 @@ import io.getquill.CalibanIntegration._
 import io.getquill.util.ContextLogger
 import io.getquill
 import io.getquill.FlatSchema._
-
+import caliban.interop.tapir.HttpInterpreter
+import caliban.schema.Schema.auto._
+import caliban.schema.ArgBuilder.auto._
+import sttp.tapir.json.zio.*
+import zio.json.JsonEncoder
+import zio.json.JsonDecoder
+import caliban._
 
 object Dao {
   case class PersonAddressPlanQuery(plan: String, pa: List[PersonAddress])
@@ -91,16 +97,18 @@ object CalibanExample extends zio.ZIOAppDefault {
         )
       )
     ).interpreter
+  
+  given JsonEncoder[GraphQLRequest] = GraphQLRequest.zioJsonEncoder
+
+  given JsonDecoder[GraphQLRequest] = GraphQLRequest.zioJsonDecoder
 
   val myApp = for {
     _ <- Dao.resetDatabase()
     interpreter <- endpoints
-    _ <- Server.start(
-        port = 8088,
-        http = Http.collectHttp[Request] { case _ -> !! / "api" / "graphql" =>
-          ZHttpAdapter.makeHttpService(interpreter)
+    _ <- Server.serve(Http.collectHttp[Request] { case _ -> Root / "api" / "graphql" =>
+          ZHttpAdapter.makeHttpService(HttpInterpreter(interpreter))
         }
-      )
+      ).provide(Server.defaultWithPort(8088))
       .forever
   } yield ()
 

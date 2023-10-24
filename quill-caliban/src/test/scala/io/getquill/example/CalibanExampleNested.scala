@@ -1,26 +1,34 @@
 package io.getquill
 
-import caliban.GraphQL.graphQL
+import caliban.graphQL
 import caliban.schema.Annotations.GQLDescription
 import caliban.{RootResolver, ZHttpAdapter}
-import zhttp.http._
-import zhttp.service.Server
+import zio.http.*
+import zio.http.Server
 import zio.{ExitCode, ZIO}
-import io.getquill._
-import io.getquill.context.qzio.ImplicitSyntax._
-import io.getquill.context.ZioJdbc._
+import io.getquill.*
+import io.getquill.context.qzio.ImplicitSyntax.*
+import io.getquill.context.ZioJdbc.*
 import io.getquill.util.LoadConfig
 import zio.Console.printLine
-import zio.{ ZIOApp, ExitCode, URIO, Task }
+import zio.{ExitCode, Task, URIO, ZIOApp}
+
 import java.io.Closeable
 import javax.sql.DataSource
-
 import scala.language.postfixOps
 import caliban.execution.Field
 import caliban.schema.ArgBuilder
-import io.getquill.CalibanIntegration._
+import io.getquill.CalibanIntegration.*
 import io.getquill.util.ContextLogger
-import io.getquill.NestedSchema._
+import io.getquill.NestedSchema.*
+import caliban.schema.Schema.auto.*
+import caliban.schema.ArgBuilder.auto.*
+import zio.http.Server
+import caliban.interop.tapir.HttpInterpreter
+import sttp.tapir.json.zio.*
+import zio.json.JsonEncoder
+import zio.json.JsonDecoder
+import caliban._
 
 
 object DaoNested {
@@ -96,12 +104,11 @@ object CalibanExampleNested extends zio.ZIOAppDefault {
   val myApp = for {
     _ <- DaoNested.resetDatabase()
     interpreter <- endpoints
-    _ <- Server.start(
-        port = 8088,
-        http = Http.collectHttp[Request] { case _ -> !! / "api" / "graphql" =>
-          ZHttpAdapter.makeHttpService(interpreter)
+    _ <- Server.serve(
+         Http.collectHttp[Request] { case _ -> Root / "api" / "graphql" =>
+             ZHttpAdapter.makeHttpService(HttpInterpreter(interpreter))
         }
-      )
+      ).provide(Server.defaultWithPort(8088))
       .forever
   } yield ()
 
