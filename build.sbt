@@ -179,7 +179,7 @@ lazy val `quill-caliban` =
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
         "org.postgresql" % "postgresql" % "42.6.0" % Test,
-        "com.softwaremill.sttp.tapir"   %% "tapir-json-zio" % "1.7.6" % Test
+        "com.softwaremill.sttp.tapir"   %% "tapir-json-zio" % "1.8.2" % Test
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
