@@ -34,6 +34,9 @@ import io.getquill.context.VerifyFreeVariables
 import io.getquill.norm.TranspileConfig
 import io.getquill.ast.External.Source
 import io.getquill.quat.VerifyNoBranches
+import java.util.Date
+import java.sql.Timestamp
+import java.time.*
 
 trait ParserFactory {
   def assemble(using Quotes): ParserLibrary.ReadyParser
@@ -869,11 +872,43 @@ class ExtrasParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends
       }
   }
 
+  private object ComparisonOpLabel {
+    def unapply(str: String): Option[BinaryOperator] =
+      str match {
+        case ">" => Some(NumericOperator.`>`)
+        case ">" => Some(NumericOperator.`>`)
+        case "<" => Some(NumericOperator.`<`)
+        case ">=" => Some(NumericOperator.`>=`)
+        case "<=" => Some(NumericOperator.`<=`)
+        case _ => None
+      }
+  }
+
+
   def attempt = {
     case ExtrasMethod(a, "===", b) =>
       equalityWithInnerTypechecksAnsi(a, b)(Equal)
     case ExtrasMethod(a, "=!=", b) =>
       equalityWithInnerTypechecksAnsi(a, b)(NotEqual)
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[Date](a) && is[Date](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[Timestamp](a) && is[Timestamp](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[Instant](a) && is[Instant](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[LocalDate](a) && is[LocalDate](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[LocalDateTime](a) && is[LocalDateTime](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[LocalTime](a) && is[LocalTime](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[OffsetDateTime](a) && is[OffsetDateTime](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[OffsetTime](a) && is[OffsetTime](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+    case ExtrasMethod(a, ComparisonOpLabel(op), b) if is[ZonedDateTime](a) && is[ZonedDateTime](b) =>
+      BinaryOperation(rootParse(a), op, rootParse(b))
+
   }
 }
 
