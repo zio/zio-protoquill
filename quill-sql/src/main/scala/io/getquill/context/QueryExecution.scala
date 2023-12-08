@@ -595,11 +595,12 @@ object PrepareDynamicExecution {
         case NotFound(uid)           => s"NotFoundPlanter($uid)"
       }
     }
-
     val sortedEncodeables =
       uidsOfScalarTags
         .map { uid =>
           encodeablesMap.get(uid) match {
+            case Some(head::Nil) =>
+              UidStatus.Primary(uid, head)
             case Some(head::tails) =>
               encodeablesMap += (uid, tails)
               UidStatus.Primary(uid, head)
