@@ -2,9 +2,7 @@ package io.getquill
 
 import caliban.graphQL
 import caliban.schema.Annotations.GQLDescription
-import caliban.{RootResolver, ZHttpAdapter}
-import zio.http.*
-import zio.http.Server
+import caliban.RootResolver
 import zio.{ExitCode, ZIO}
 import io.getquill.*
 import io.getquill.context.qzio.ImplicitSyntax.*
@@ -23,12 +21,10 @@ import io.getquill.util.ContextLogger
 import io.getquill.NestedSchema.*
 import caliban.schema.Schema.auto.*
 import caliban.schema.ArgBuilder.auto.*
-import zio.http.Server
-import caliban.interop.tapir.HttpInterpreter
-import sttp.tapir.json.zio.*
 import zio.json.JsonEncoder
 import zio.json.JsonDecoder
 import caliban._
+import caliban.quick._ 
 
 
 object DaoNested {
@@ -99,17 +95,15 @@ object CalibanExampleNested extends zio.ZIOAppDefault {
             })
         )
       )
-    ).interpreter
+    )
 
   val myApp = for {
     _ <- DaoNested.resetDatabase()
-    interpreter <- endpoints
-    _ <- Server.serve(
-         Http.collectHttp[Request] { case _ -> Root / "api" / "graphql" =>
-             ZHttpAdapter.makeHttpService(HttpInterpreter(interpreter))
-        }
-      ).provide(Server.defaultWithPort(8088))
-      .forever
+    _ <- endpoints.runServer(
+          port = 8088,
+          apiPath = "/api/graphql",
+          graphiqlPath = Some("/graphiql")
+      )
   } yield ()
 
   override def run =

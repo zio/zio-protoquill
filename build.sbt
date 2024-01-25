@@ -170,8 +170,7 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban" % "2.4.3",
-        "com.github.ghostdogpr" %% "caliban-zio-http" % "2.4.3",
+        "com.github.ghostdogpr" %% "caliban-quick"  % "2.5.1",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.4.11" % Test,
@@ -179,7 +178,6 @@ lazy val `quill-caliban` =
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
         "org.postgresql" % "postgresql" % "42.7.0" % Test,
-        "com.softwaremill.sttp.tapir"   %% "tapir-json-zio" % "1.8.3" % Test
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -190,8 +188,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "2.0.19",
-        "dev.zio" %% "zio-streams" % "2.0.19"
+        "dev.zio" %% "zio" % "2.0.21",
+        "dev.zio" %% "zio-streams" % "2.0.21"
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -241,8 +239,8 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.17.0",
-        "dev.zio" %% "zio" % "2.0.19",
-        "dev.zio" %% "zio-streams" % "2.0.19"
+        "dev.zio" %% "zio" % "2.0.21",
+        "dev.zio" %% "zio-streams" % "2.0.21"
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")

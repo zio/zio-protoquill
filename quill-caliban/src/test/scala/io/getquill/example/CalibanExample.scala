@@ -2,7 +2,8 @@ package io.getquill
 
 import caliban.graphQL
 import caliban.schema.Annotations.GQLDescription
-import caliban.{RootResolver, ZHttpAdapter}
+import caliban._
+import caliban.quick._ 
 import zio.http._
 import zio.http.Server
 import zio.{ExitCode, ZIO}
@@ -22,10 +23,8 @@ import io.getquill.CalibanIntegration._
 import io.getquill.util.ContextLogger
 import io.getquill
 import io.getquill.FlatSchema._
-import caliban.interop.tapir.HttpInterpreter
 import caliban.schema.Schema.auto._
 import caliban.schema.ArgBuilder.auto._
-import sttp.tapir.json.zio.*
 import zio.json.JsonEncoder
 import zio.json.JsonDecoder
 import caliban._
@@ -96,7 +95,7 @@ object CalibanExample extends zio.ZIOAppDefault {
             })
         )
       )
-    ).interpreter
+    )
   
   given JsonEncoder[GraphQLRequest] = GraphQLRequest.zioJsonEncoder
 
@@ -104,12 +103,11 @@ object CalibanExample extends zio.ZIOAppDefault {
 
   val myApp = for {
     _ <- Dao.resetDatabase()
-    interpreter <- endpoints
-    _ <- Server.serve(Http.collectHttp[Request] { case _ -> Root / "api" / "graphql" =>
-          ZHttpAdapter.makeHttpService(HttpInterpreter(interpreter))
-        }
-      ).provide(Server.defaultWithPort(8088))
-      .forever
+    - <- endpoints.runServer(
+            port = 8088,
+            apiPath = "/api/graphql",
+            graphiqlPath = Some("/graphiql")
+    )
   } yield ()
 
   override def run =
