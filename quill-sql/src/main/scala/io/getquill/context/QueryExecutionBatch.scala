@@ -85,8 +85,11 @@ private[getquill] enum BatchActionType {
  * Otherwise SQLServer will not let you insert the row because `IDENTITY_INSERT` will be off.
  */
 object PossiblyInfixAction {
-  private def isTailAction(actionAst: Ast) =
-    actionAst.isInstanceOf[ast.Insert] || actionAst.isInstanceOf[ast.Update] || actionAst.isInstanceOf[ast.Delete]
+  private def isTailAction(actionAst: Ast) = {
+    actionAst.isInstanceOf[ast.Insert] || actionAst.isInstanceOf[ast.Update] || actionAst.isInstanceOf[ast.Delete] ||
+    actionAst.isInstanceOf[ast.OnConflict]
+  }
+
   private def hasOneAction(params: List[Ast]) =
     params.filter(isTailAction(_)).length == 1
   def unapply(actionAst: ast.Ast): Option[Ast] =
@@ -104,6 +107,7 @@ private[getquill] object ActionEntity {
       case PossiblyInfixAction(ast.Insert(entity, _))           => Some(BatchActionType.Insert)
       case PossiblyInfixAction(ast.Update(entity, assignments)) => Some(BatchActionType.Update)
       case PossiblyInfixAction(ast.Delete(entity))              => Some(BatchActionType.Delete)
+      case PossiblyInfixAction(ast.OnConflict(_,_,_))           => Some(BatchActionType.Insert)
       case _                                                    => None
     }
 }
