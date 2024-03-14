@@ -19,6 +19,12 @@ class OnConflictJdbcSpec extends OnConflictSpec {
     ctx.run(testQuery3) mustEqual res3
   }
 
+  "BATCH ON CONFLICT DO NOTHING" in {
+    import `onConflictIgnore`._
+    ctx.run(batchInsert)
+    ctx.run(testQuery3) mustEqual res3
+  }
+
   "ON CONFLICT (i) DO NOTHING" in {
     import `onConflictIgnore(_.i)`._
     ctx.run(testQuery1) mustEqual res1

@@ -20,6 +20,14 @@ trait OnConflictSpec extends Spec {
       qr1.filter(_.i == 1)
     }
     val res3 = List(TestEntity("", 1, 0, None, true))
+
+    inline def batchInsert = quote {
+      liftQuery(List(
+        TestEntity("", 1, 0, None, true),
+        TestEntity("", 1, 0, None, true),
+        TestEntity("", 1, 0, None, true),
+      )).foreach( v => qr1.insertValue(v).onConflictIgnore)
+    }
   }
 
   object `onConflictIgnore(_.i)` {
