@@ -27,7 +27,7 @@ val isCommunityRemoteBuild =
   sys.props.getOrElse("communityRemote", "false").toBoolean
 
 lazy val scalatestVersion =
-  if (isCommunityRemoteBuild) "3.2.7" else "3.2.17"
+  if (isCommunityRemoteBuild) "3.2.7" else "3.2.18"
 
 lazy val baseModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-sql`
@@ -85,7 +85,8 @@ val filteredModules = {
   selectedModules
 }
 
-val zioQuillVersion = "4.8.0"
+val zioQuillVersion = "4.8.3"
+val zioVersion = "2.0.21"
 
 lazy val `quill` =
   (project in file("."))
@@ -118,7 +119,7 @@ lazy val `quill-sql` =
         "com.lihaoyi" %% "pprint" % "0.8.1",
         "ch.qos.logback" % "logback-classic" % "1.5.3" % Test,
         "io.getquill" %% "quill-engine" % zioQuillVersion,
-        "dev.zio" %% "zio" % "2.0.19",
+        "dev.zio" %% "zio" % zioVersion,
         ("io.getquill" %% "quill-util" % zioQuillVersion)
           .excludeAll({
             if (isCommunityBuild)
@@ -170,7 +171,7 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban-quick"  % "2.5.1",
+        "com.github.ghostdogpr" %% "caliban-quick" % "2.5.3",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.5.3" % Test,
@@ -188,8 +189,8 @@ lazy val `quill-zio` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % "2.0.21",
-        "dev.zio" %% "zio-streams" % "2.0.21"
+        "dev.zio" %% "zio" % zioVersion,
+        "dev.zio" %% "zio-streams" % zioVersion
       )
     )
     .dependsOn(`quill-sql` % "compile->compile;test->test")
@@ -239,8 +240,8 @@ lazy val `quill-cassandra-zio` =
       Test / fork := true,
       libraryDependencies ++= Seq(
         "com.datastax.oss" % "java-driver-core" % "4.17.0",
-        "dev.zio" %% "zio" % "2.0.21",
-        "dev.zio" %% "zio-streams" % "2.0.21"
+        "dev.zio" %% "zio" % zioVersion,
+        "dev.zio" %% "zio-streams" % zioVersion
       )
     )
     .dependsOn(`quill-cassandra` % "compile->compile;test->test")
@@ -265,11 +266,11 @@ lazy val jdbcTestingLibraries = Seq(
   libraryDependencies ++= Seq(
     "com.zaxxer" % "HikariCP" % "5.1.0" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
-    "com.mysql" % "mysql-connector-j" % "8.2.0" % Test,
+    "com.mysql" % "mysql-connector-j" % "8.3.0" % Test,
     "com.h2database" % "h2" % "2.2.224" % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
     "org.postgresql" % "postgresql" % "42.7.3" % Test,
-    "org.xerial" % "sqlite-jdbc" % "3.42.0.1" % Test,
+    "org.xerial" % "sqlite-jdbc" % "3.45.2.0" % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" % "mssql-jdbc" % "7.4.1.jre11" % Test,
     "com.oracle.ojdbc" % "ojdbc8" % "19.3.0.0" % Test,
@@ -289,7 +290,7 @@ lazy val basicSettings = Seq(
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
-  scalaVersion := "3.3.1",
+  scalaVersion := "3.3.3",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.
   // Test / testOptions ++= Seq(
