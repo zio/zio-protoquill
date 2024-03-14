@@ -18,6 +18,11 @@ class OnConflictJdbcSpec extends OnConflictSpec {
     ctx.run(testQuery2) mustEqual res2
     ctx.run(testQuery3) mustEqual res3
   }
+  "BATCH INSERT IGNORE" in {
+    import `onConflictIgnore`._
+    ctx.run(batchInsert)
+    ctx.run(testQuery3) mustEqual res3
+  }
 
   "ON DUPLICATE KEY UPDATE i=i " in {
     import `onConflictIgnore(_.i)`._
