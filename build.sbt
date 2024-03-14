@@ -116,7 +116,7 @@ lazy val `quill-sql` =
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.4.0",
         "com.lihaoyi" %% "pprint" % "0.8.1",
-        "ch.qos.logback" % "logback-classic" % "1.4.14" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.5.3" % Test,
         "io.getquill" %% "quill-engine" % zioQuillVersion,
         "dev.zio" %% "zio" % "2.0.19",
         ("io.getquill" %% "quill-util" % zioQuillVersion)
@@ -174,7 +174,7 @@ lazy val `quill-caliban` =
         "com.github.ghostdogpr" %% "caliban-zio-http" % "2.4.3",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
-        "ch.qos.logback" % "logback-classic" % "1.4.14" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.5.3" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
