@@ -116,7 +116,7 @@ lazy val `quill-sql` =
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.4.0",
         "com.lihaoyi" %% "pprint" % "0.8.1",
-        "ch.qos.logback" % "logback-classic" % "1.4.11" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.5.3" % Test,
         "io.getquill" %% "quill-engine" % zioQuillVersion,
         "dev.zio" %% "zio" % "2.0.19",
         ("io.getquill" %% "quill-util" % zioQuillVersion)
@@ -173,11 +173,11 @@ lazy val `quill-caliban` =
         "com.github.ghostdogpr" %% "caliban-quick"  % "2.5.1",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
-        "ch.qos.logback" % "logback-classic" % "1.4.11" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.5.3" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql" % "postgresql" % "42.7.0" % Test,
+        "org.postgresql" % "postgresql" % "42.7.2" % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -201,7 +201,7 @@ lazy val `quill-jdbc-zio` =
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
-        "org.postgresql" % "postgresql" % "42.7.0" % "provided",
+        "org.postgresql" % "postgresql" % "42.7.2" % "provided",
         "dev.zio" %% "zio-json" % "0.6.2"
       ),
       Test / runMain / fork := true,
@@ -268,7 +268,7 @@ lazy val jdbcTestingLibraries = Seq(
     "com.mysql" % "mysql-connector-j" % "8.2.0" % Test,
     "com.h2database" % "h2" % "2.2.224" % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
-    "org.postgresql" % "postgresql" % "42.7.0" % Test,
+    "org.postgresql" % "postgresql" % "42.7.2" % Test,
     "org.xerial" % "sqlite-jdbc" % "3.42.0.1" % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" % "mssql-jdbc" % "7.4.1.jre11" % Test,
