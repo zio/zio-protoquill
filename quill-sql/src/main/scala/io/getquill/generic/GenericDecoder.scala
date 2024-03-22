@@ -192,6 +192,11 @@ object GenericDecoder {
     TypeRepr.of[T] <:< TypeRepr.of[Option[Any]]
   }
 
+  private def isTuple[T: Type](using Quotes) = {
+    import quotes.reflect._
+    TypeRepr.of[T] <:< TypeRepr.of[Tuple]
+  }
+
   private def isBuiltInType[T: Type](using Quotes) = {
     import quotes.reflect._
     isOption[T] || (TypeRepr.of[T] <:< TypeRepr.of[Seq[_]])
@@ -206,6 +211,22 @@ object GenericDecoder {
       Type.of[T] match {
         case '[Option[tpe]] =>
           decodeOptional[tpe, ResultRow, Session](index, baseIndex, resultRow, session)
+      }
+    } else if (isTuple[T]) {
+      val decoderIndex = overriddenIndex.getOrElse(elementIndex)
+      Type.of[T] match {
+        case '[EmptyTuple] =>
+          FlattenData(Type.of[T], '{ EmptyTuple }, '{false}, index)
+        case '[h *: t] =>
+          val FlattenData(htpe, hvalue, hnullCheck, headIndex) = decode[h, ResultRow, Session](    index, baseIndex, resultRow, session, overriddenIndex)
+          val nextIndex = headIndex + 1
+          val FlattenData(ttpe, tvalue, tnullCheck, lastIndex) = decode[t, ResultRow, Session](nextIndex, baseIndex, resultRow, session, overriddenIndex)
+          val hhvalue = hvalue.asExprOf[h]
+          val ttvalue = tvalue.asExprOf[t]
+          // TODO speedup construction via ConstructDecoded
+          // val m = Expr.summon[Mirror.ProductOf[T]]
+          // ConstructDecoded(types, terms, m)
+          FlattenData(Type.of[h *: t], '{$hhvalue *: $ttvalue}, '{$hnullCheck || $tnullCheck}, lastIndex)
       }
     } else {
       // specifically if there is a decoder found, allow optional override of the index via a resolver
