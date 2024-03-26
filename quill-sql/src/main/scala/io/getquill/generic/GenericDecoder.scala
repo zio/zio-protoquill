@@ -125,6 +125,31 @@ object GenericDecoder {
     }
   } // end flatten
 
+  // similar to flatten but without labels
+  @tailrec
+  def values[ResultRow: Type, Session: Type, Types: Type](
+      index: Int,
+      baseIndex: Expr[Int],
+      resultRow: Expr[ResultRow],
+      session: Expr[Session]
+  )(accum: List[FlattenData] = List())(using Quotes): List[FlattenData] = {
+    import quotes.reflect.{Term => QTerm, _}
+
+    Type.of[Types] match {
+      case '[tpe *: types] if Expr.summon[GenericDecoder[ResultRow, Session, tpe, DecodingType.Specific]].isEmpty =>
+        val result = decode[tpe, ResultRow, Session](index, baseIndex, resultRow, session)
+        val nextIndex = result.index + 1
+        values[ResultRow, Session, types](nextIndex, baseIndex, resultRow, session)(result +: accum)
+      case  '[tpe *: types] =>
+        val result = decode[tpe, ResultRow, Session](index, baseIndex, resultRow, session, None)
+        val nextIndex = index + 1
+        values[ResultRow, Session, types](nextIndex, baseIndex, resultRow, session)(result +: accum)
+      case '[EmptyTuple] => accum
+
+      case typesTup => report.throwError("Cannot Derive Product during Values extraction:\n" + typesTup)
+    }
+  } // end values
+
   def decodeOptional[T: Type, ResultRow: Type, Session: Type](index: Int, baseIndex: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): FlattenData = {
     import quotes.reflect._
     // Try to summon a specific optional from the context, this may not exist since
@@ -162,10 +187,10 @@ object GenericDecoder {
     // they will be the constructor and/or any other field-decoders:
     // List((new Name(Decoder("Joe") || Decoder("Bloggs")), Decoder(123))
     // This is what needs to be fed into the constructor of the outer-entity i.e.
-    // new Person((new Name(Decoder("Joe") || Decoder("Bloggs")), Decoder(123))
-    val productElments = flattenData.map(_.decodedExpr)
+    // new Person((new Name(Decoder("Joe") || Decoder("Bloggs")), DecodConstructDecodeder(123))
+    val productElements = flattenData.map(_.decodedExpr)
     // actually doing the construction i.e. `new Person(...)`
-    val constructed = ConstructDecoded[T](types, productElments, m)
+    val constructed = ConstructDecoded[T](types, productElements, m)
 
     // E.g. for Person("Joe", 123) the List(q"!nullChecker(0,row)", q"!nullChecker(1,row)") columns
     // that eventually turn into List(!NullChecker("Joe"), !NullChecker(123)) columns.
@@ -213,21 +238,11 @@ object GenericDecoder {
           decodeOptional[tpe, ResultRow, Session](index, baseIndex, resultRow, session)
       }
     } else if (isTuple[T]) {
-      val decoderIndex = overriddenIndex.getOrElse(elementIndex)
-      Type.of[T] match {
-        case '[EmptyTuple] =>
-          FlattenData(Type.of[T], '{ EmptyTuple }, '{false}, index)
-        case '[h *: t] =>
-          val FlattenData(htpe, hvalue, hnullCheck, headIndex) = decode[h, ResultRow, Session](    index, baseIndex, resultRow, session, overriddenIndex)
-          val nextIndex = headIndex + 1
-          val FlattenData(ttpe, tvalue, tnullCheck, lastIndex) = decode[t, ResultRow, Session](nextIndex, baseIndex, resultRow, session, overriddenIndex)
-          val hhvalue = hvalue.asExprOf[h]
-          val ttvalue = tvalue.asExprOf[t]
-          // TODO speedup construction via ConstructDecoded
-          // val m = Expr.summon[Mirror.ProductOf[T]]
-          // ConstructDecoded(types, terms, m)
-          FlattenData(Type.of[h *: t], '{$hhvalue *: $ttvalue}, '{$hnullCheck || $tnullCheck}, lastIndex)
-      }
+      val flattenData = values[ResultRow, Session, T](index, baseIndex, resultRow, session)().reverse
+      val elementTerms = flattenData.map(_.decodedExpr) // expressions that represent values for tuple elements
+      val constructed = '{scala.runtime.Tuples.fromArray(${Varargs(elementTerms)}.toArray[Any](Predef.summon[ClassTag[Any]]).asInstanceOf[Array[Object]]).asInstanceOf[T]}
+      val nullChecks = flattenData.map(_._3).reduce((a, b) => '{ $a || $b })
+      FlattenData(Type.of[T], constructed, nullChecks, flattenData.last.index) 
     } else {
       // specifically if there is a decoder found, allow optional override of the index via a resolver
       val decoderIndex = overriddenIndex.getOrElse(elementIndex)
@@ -362,22 +377,49 @@ object ConstructDecoded {
     val tpe = TypeRepr.of[T]
     val constructor = TypeRepr.of[T].typeSymbol.primaryConstructor
     // If we are a tuple, we can easily construct it
-    if (tpe <:< TypeRepr.of[Tuple]) {
-      val construct =
-        Apply(
-          TypeApply(
-            Select(New(TypeTree.of[T]), constructor),
-            types.map { tpe =>
-              tpe match {
-                case '[tt] => TypeTree.of[tt]
-              }
-            }
-          ),
-          terms.map(_.asTerm)
-        )
-      // println(s"=========== Create from Tuple Constructor ${Format.Expr(construct.asExprOf[T])} ===========")
-      construct.asExprOf[T]
-      // If we are a case class with no generic parameters, we can easily construct it
+    if (tpe <:< TypeRepr.of[EmptyTuple]) {
+      '{EmptyTuple}
+    } else if (tpe <:< TypeRepr.of[Tuple]) {
+      '{scala.runtime.Tuples.fromIArray(IArray(${Varargs(terms)})).asInstanceOf[T]}
+      // val t = 
+      //   Varargs
+      // Type.of[T] match {
+      //   case '[h *: t] =>
+      //     val construct = Type.of[t] match {
+      //       case '[EmptyTuple] =>
+      //         println(" ConstructDecoded: t=et")
+      //         Apply(
+      //           TypeApply(
+      //             Select(New(TypeTree.of[Tuple1[h]]), constructor),
+      //             types.map { tpe =>
+      //               tpe match {
+      //                 case '[tt] => TypeTree.of[tt]
+      //               }
+      //             }
+      //           ),
+      //           terms.map(_.asTerm)
+      //         )
+      //       case _ =>
+      //         val typeTrees = types.map { tpe =>
+      //               tpe match {
+      //                 case '[tt] => TypeTree.of[tt]
+      //               }
+      //             }
+      //         val terms2 = terms.map(_.asTerm)
+      //         val ttt = TypeTree.of[T]
+              
+      //         println(s" ConstructDecoded: t=t; ttt = $ttt; typeTrees = $typeTrees; terms2 = $terms2")
+      //         Apply(
+      //           Select(New(TypeTree.of[IArray[Object]]), constructor),
+      //           // VarArgs
+      //           terms2
+      //         )
+      //     }
+      //     println(s"=========== Create from Tuple Constructor: Tree: $construct ===========")
+      //     println(s"=========== Create from Tuple Constructor ${Format.Expr(construct.asExprOf[T])} ===========")
+      //     construct.asExprOf[T]
+      //     // If we are a case class with no generic parameters, we can easily construct it
+      // }
     } else if (tpe.classSymbol.exists(_.flags.is(Flags.Case)) && !constructor.paramSymss.exists(_.exists(_.isTypeParam))) {
       val construct =
         Apply(
