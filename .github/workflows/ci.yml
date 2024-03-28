@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scala: [ 3.3.3 ]
+        scala: [ 3.4.1 ]
         module: [ sqltest, db, bigdata ]
 
     steps:
