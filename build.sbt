@@ -116,7 +116,7 @@ lazy val `quill-sql` =
         // Needs to be in-sync with both quill-engine and scalafmt-core or ClassNotFound
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.4.0",
-        "com.lihaoyi" %% "pprint" % "0.8.1",
+        "com.lihaoyi" %% "pprint" % "0.9.0",
         "ch.qos.logback" % "logback-classic" % "1.5.5" % Test,
         "io.getquill" %% "quill-engine" % zioQuillVersion,
         "dev.zio" %% "zio" % zioVersion,
