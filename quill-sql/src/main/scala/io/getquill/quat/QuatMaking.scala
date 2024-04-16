@@ -403,7 +403,6 @@ trait QuatMakingBase {
           case ArbitraryArityTupleType(tupleParts) =>
             Quat.Product("Tuple", tupleParts.zipWithIndex.map { case (fieldType, idx) => (s"_${idx + 1}", parseType(fieldType)) })
 
-            //Quat.Product
           // If we are already inside a bounded type, treat an arbitrary type as a interface list
           case ArbitraryBaseType(name, fields) if (boundedInterfaceType) =>
             Quat.Product(name, fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })

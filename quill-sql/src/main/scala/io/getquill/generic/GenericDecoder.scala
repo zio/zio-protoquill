@@ -187,7 +187,7 @@ object GenericDecoder {
     // they will be the constructor and/or any other field-decoders:
     // List((new Name(Decoder("Joe") || Decoder("Bloggs")), Decoder(123))
     // This is what needs to be fed into the constructor of the outer-entity i.e.
-    // new Person((new Name(Decoder("Joe") || Decoder("Bloggs")), DecodConstructDecodeder(123))
+    // new Person((new Name(Decoder("Joe") || Decoder("Bloggs")), Decoder(123))
     val productElements = flattenData.map(_.decodedExpr)
     // actually doing the construction i.e. `new Person(...)`
     val constructed = ConstructDecoded[T](types, productElements, m)
@@ -381,6 +381,7 @@ object ConstructDecoded {
       '{EmptyTuple}
     } else if (tpe <:< TypeRepr.of[Tuple]) {
       '{scala.runtime.Tuples.fromIArray(IArray(${Varargs(terms)})).asInstanceOf[T]}
+      // Alternative version:
       // val t = 
       //   Varargs
       // Type.of[T] match {
