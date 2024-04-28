@@ -33,4 +33,21 @@ class ArbitraryTupleSpec extends Spec {
       (123, "St")
   }
 
+  "get field of arbitrary long tuple" in {
+    inline def q = quote{
+      querySchema[MyRow2]("my_table", t => t._1 -> "int_field", t => t._2 -> "string_field")
+    }
+
+    inline def g = quote{
+      q.map{t => t match {
+          case h *: tail => h
+        }
+      }
+    }
+    val result = ctx.run(g)
+
+    result.extractor(Row(123, "St"), MirrorSession.default) mustEqual
+      (123)
+  }
+
 }
