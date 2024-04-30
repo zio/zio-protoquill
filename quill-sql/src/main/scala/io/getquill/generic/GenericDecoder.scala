@@ -238,11 +238,15 @@ object GenericDecoder {
           decodeOptional[tpe, ResultRow, Session](index, baseIndex, resultRow, session)
       }
     } else if (isTuple[T]) {
-      val flattenData = values[ResultRow, Session, T](index, baseIndex, resultRow, session)().reverse
-      val elementTerms = flattenData.map(_.decodedExpr) // expressions that represent values for tuple elements
-      val constructed = '{scala.runtime.Tuples.fromArray(${Varargs(elementTerms)}.toArray[Any](Predef.summon[ClassTag[Any]]).asInstanceOf[Array[Object]]).asInstanceOf[T]}
-      val nullChecks = flattenData.map(_._3).reduce((a, b) => '{ $a || $b })
-      FlattenData(Type.of[T], constructed, nullChecks, flattenData.last.index) 
+      if (TypeRepr.of[T] <:< TypeRepr.of[EmptyTuple]) {
+        FlattenData(Type.of[T], '{ EmptyTuple }, '{ false }, index)
+      } else {
+        val flattenData = values[ResultRow, Session, T](index, baseIndex, resultRow, session)().reverse
+        val elementTerms = flattenData.map(_.decodedExpr) // expressions that represent values for tuple elements
+        val constructed = '{ scala.runtime.Tuples.fromArray(${ Varargs(elementTerms) }.toArray[Any](Predef.summon[ClassTag[Any]]).asInstanceOf[Array[Object]]).asInstanceOf[T] }
+        val nullChecks = flattenData.map(_._3).reduce((a, b) => '{ $a || $b })
+        FlattenData(Type.of[T], constructed, nullChecks, flattenData.last.index)
+      }
     } else {
       // specifically if there is a decoder found, allow optional override of the index via a resolver
       val decoderIndex = overriddenIndex.getOrElse(elementIndex)
