@@ -385,46 +385,7 @@ object ConstructDecoded {
       '{EmptyTuple}
     } else if (tpe <:< TypeRepr.of[Tuple]) {
       '{scala.runtime.Tuples.fromIArray(IArray(${Varargs(terms)})).asInstanceOf[T]}
-      // Alternative version:
-      // val t = 
-      //   Varargs
-      // Type.of[T] match {
-      //   case '[h *: t] =>
-      //     val construct = Type.of[t] match {
-      //       case '[EmptyTuple] =>
-      //         println(" ConstructDecoded: t=et")
-      //         Apply(
-      //           TypeApply(
-      //             Select(New(TypeTree.of[Tuple1[h]]), constructor),
-      //             types.map { tpe =>
-      //               tpe match {
-      //                 case '[tt] => TypeTree.of[tt]
-      //               }
-      //             }
-      //           ),
-      //           terms.map(_.asTerm)
-      //         )
-      //       case _ =>
-      //         val typeTrees = types.map { tpe =>
-      //               tpe match {
-      //                 case '[tt] => TypeTree.of[tt]
-      //               }
-      //             }
-      //         val terms2 = terms.map(_.asTerm)
-      //         val ttt = TypeTree.of[T]
-              
-      //         println(s" ConstructDecoded: t=t; ttt = $ttt; typeTrees = $typeTrees; terms2 = $terms2")
-      //         Apply(
-      //           Select(New(TypeTree.of[IArray[Object]]), constructor),
-      //           // VarArgs
-      //           terms2
-      //         )
-      //     }
-      //     println(s"=========== Create from Tuple Constructor: Tree: $construct ===========")
-      //     println(s"=========== Create from Tuple Constructor ${Format.Expr(construct.asExprOf[T])} ===========")
-      //     construct.asExprOf[T]
-      //     // If we are a case class with no generic parameters, we can easily construct it
-      // }
+      // If we are a case class with no generic parameters, we can easily construct it
     } else if (tpe.classSymbol.exists(_.flags.is(Flags.Case)) && !constructor.paramSymss.exists(_.exists(_.isTypeParam))) {
       val construct =
         Apply(

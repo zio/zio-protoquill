@@ -199,21 +199,9 @@ object ArbitraryTupleConstructionInlined {
     t match {
       case
         Inlined(
-        //  Some(Apply(
-        //    TypeApply(
-        //      Select(
-        //        Inlined(_,_,
-        //          Typed(AsInstanceOf(TupleCons(a,b)), _)
-        //        ),
-        //        "*:"
-        //      ),
-        //      _
-        //    ),
-        //    _
-        //  )),
-        _,
-        List(ValDef("Tuple_this", _, Some(prevTuple))),
-        Typed(AsInstanceOf(TupleCons(head, TIdent("Tuple_this"))), _)
+          _,
+          List(ValDef("Tuple_this", _, Some(prevTuple))),
+          Typed(AsInstanceOf(TupleCons(head, TIdent("Tuple_this"))), _)
         ) =>
         Some((head, prevTuple))
       case _ => None
@@ -254,7 +242,6 @@ class ArbitraryTupleBlockParser(val rootParse: Parser)(using Quotes, TranspileCo
       val aAst = rootParse(a)
       ast.Tuple(List(aAst))
     case inlined@Unseal(ArbitraryTupleConstructionInlined(singleValue, prevTuple)) =>
-      //printExpr(inlined, "singleValue ArbitraryTupleConstructionInlined")
       val headAst = rootParse(singleValue.asExpr)
       val prevTupleAst = rootParse(prevTuple.asExpr)
       prevTupleAst match {
@@ -263,7 +250,6 @@ class ArbitraryTupleBlockParser(val rootParse: Parser)(using Quotes, TranspileCo
           throw IllegalArgumentException(s"Unexpected tuple ast ${prevTupleAst}")
       }
     case block@Unseal(TBlock(parts, ArbitraryTupleConstructionInlined(head,Typed(AsInstanceOf(TupleCons(head2,TIdent("Tuple_this"))), _)) )) if (parts.length > 0) =>
-      //println(s"Large block. parts.size=${parts.size}; parts:\n- ${parts.mkString("\n- ")}")
       val headAst = rootParse(head.asExpr)
       val head2Ast = rootParse(head2.asExpr)
       val partsAsts = headAst :: head2Ast :: parts.reverse.flatMap{
