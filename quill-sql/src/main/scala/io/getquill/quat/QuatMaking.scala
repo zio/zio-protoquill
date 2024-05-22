@@ -16,6 +16,7 @@ import io.getquill.generic.GenericDecoder
 import io.getquill.util.Format
 import io.getquill.generic.DecodingType
 import io.getquill.Quoted
+import io.getquill.util.ProtoMessages
 
 inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
 
@@ -72,7 +73,7 @@ trait QuatMaking extends QuatMakingBase {
     import quotes.reflect._
     // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
     def encoderComputation() = {
-      tpe.asType match {
+      tpe.widen.asType match {
         // If an identifier in the Quill query is has a Encoder/Decoder pair, we treat it as a value i.e. Quat.Value is assigned as it's Quat.
         // however, what do we do if there is only one. Say for Name(value: String), Person(name: Name, age: Int) there is a Name-Decoder
         // but no Name-encoder. It is difficult to know whether to treat p.name in `query[Person].map(p => p.name)` as a Quat Value or Product.
@@ -88,22 +89,24 @@ trait QuatMaking extends QuatMakingBase {
           (Expr.summon[GenericEncoder[t, _, _]], Expr.summon[GenericDecoder[_, _, t, DecodingType.Specific]]) match {
             case (Some(_), Some(_)) => true
             case (Some(enc), None) =>
-              report.warning(
-                s"A Encoder:\n" +
-                  s"${Format.Expr(enc)}\n" +
-                  s"was found for the type ${Format.TypeOf[t]} but not a decoder so this type will " +
-                  s"be treated as a value. To avoid potential problems it is preferable to define " +
-                  s"both an encoder and a decoder for all types used in Quill Queries."
-              )
+              if (ProtoMessages.aggressiveQuatChecking)
+                report.warning(
+                  s"A Encoder:\n" +
+                    s"${Format.Expr(enc)}\n" +
+                    s"was found for the type ${Format.TypeOf[t]} but not a decoder so this type will " +
+                    s"be treated as a value. To avoid potential problems it is preferable to define " +
+                    s"both an encoder and a decoder for all types used in Quill Queries."
+                )
               true
             case (None, Some(dec)) =>
-              report.warning(
-                s"A Decoder:\n" +
-                  s"${Format.Expr(dec)}\n " +
-                  s"was found for the type ${Format.TypeOf[t]} but not a encoder so this type will be " +
-                  s"treated as a value. To avoid potential problems it is preferable to define " +
-                  s"both an encoder and a decoder for all types used in Quill Queries."
-              )
+              if (ProtoMessages.aggressiveQuatChecking)
+                report.warning(
+                  s"A Decoder:\n" +
+                    s"${Format.Expr(dec)}\n " +
+                    s"was found for the type ${Format.TypeOf[t]} but not a encoder so this type will be " +
+                    s"treated as a value. To avoid potential problems it is preferable to define " +
+                    s"both an encoder and a decoder for all types used in Quill Queries."
+                )
               true
             case (None, None) => false
           }
