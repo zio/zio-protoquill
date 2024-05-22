@@ -190,6 +190,25 @@ trait QuatMakingBase {
           None
     }
 
+    object ArbitraryArityTupleType {
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[List[quotes.reflect.TypeRepr]] =
+        if (tpe.is[Tuple])
+          Some(tupleParts(tpe))
+        else
+          None
+
+      @tailrec
+      def tupleParts(using Quotes)(tpe: quotes.reflect.TypeRepr, accum: List[quotes.reflect.TypeRepr] = Nil): List[quotes.reflect.TypeRepr] =
+        tpe.asType match {
+            case '[h *: t] =>
+              val htpe = quotes.reflect.TypeRepr.of[h]
+              val ttpe = quotes.reflect.TypeRepr.of[t]
+              tupleParts(ttpe, htpe :: accum)
+            case '[EmptyTuple] =>
+              accum.reverse
+          }
+    }
+
     object OptionType {
       def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[quotes.reflect.TypeRepr] = {
         import quotes.reflect._
@@ -383,6 +402,9 @@ trait QuatMakingBase {
           // the exception to that is a cassandra UDT that we treat like an encodeable entity even if it has a parsed type
           case CaseClassBaseType(name, fields) if !existsEncoderFor(tpe) || tpe <:< TypeRepr.of[Udt] =>
             Quat.Product(name, fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
+
+          case ArbitraryArityTupleType(tupleParts) =>
+            Quat.Product("Tuple", tupleParts.zipWithIndex.map { case (fieldType, idx) => (s"_${idx + 1}", parseType(fieldType)) })
 
           // If we are already inside a bounded type, treat an arbitrary type as a interface list
           case ArbitraryBaseType(name, fields) if (boundedInterfaceType) =>

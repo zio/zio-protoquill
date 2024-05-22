@@ -53,6 +53,7 @@ trait ParserLibrary extends ParserFactory {
   protected def functionParser(using Quotes, TranspileConfig) = ParserChain.attempt(FunctionParser(_))
   protected def functionApplyParser(using Quotes, TranspileConfig) = ParserChain.attempt(FunctionApplyParser(_))
   protected def valParser(using Quotes, TranspileConfig) = ParserChain.attempt(ValParser(_))
+  protected def arbitraryTupleParser(using Quotes, TranspileConfig) = ParserChain.attempt(ArbitraryTupleBlockParser(_))
   protected def blockParser(using Quotes, TranspileConfig) = ParserChain.attempt(BlockParser(_))
   protected def extrasParser(using Quotes, TranspileConfig) = ParserChain.attempt(ExtrasParser(_))
   protected def operationsParser(using Quotes, TranspileConfig) = ParserChain.attempt(OperationsParser(_))
@@ -88,6 +89,7 @@ trait ParserLibrary extends ParserFactory {
         .orElse(functionParser) // decided to have it be it's own parser unlike Quill3
         .orElse(patMatchParser)
         .orElse(valParser)
+        .orElse(arbitraryTupleParser)
         .orElse(blockParser)
         .orElse(operationsParser)
         .orElse(extrasParser)
@@ -151,6 +153,112 @@ class ValParser(val rootParse: Parser)(using Quotes, TranspileConfig)
   import quotes.reflect._
   def attempt = {
     case Unseal(ValDefTerm(ast)) => ast
+  }
+}
+/**
+ * Matches `runtime.Tuples.cons(head,tail)`.
+ */
+object TupleCons {
+  def unapply(using Quotes)(t: quotes.reflect.Term): Option[(quotes.reflect.Term, quotes.reflect.Term)] = {
+    import quotes.reflect.*
+    t match {
+      case Apply(Select(Select(Ident("runtime"), "Tuples"), "cons"), List(head, tail)) =>
+        Some((head, tail))
+      case _ =>
+        None
+    }
+  }
+}
+
+/**
+ * Matches inner.asInstanceOf[T]: T
+ */
+object AsInstanceOf {
+  def unapply(using Quotes)(term: quotes.reflect.Term): Option[quotes.reflect.Term] = {
+    import quotes.reflect._
+    term match {
+      case TypeApply(Select(inner, "asInstanceOf"), _) => Some(inner)
+      case _ => None
+    }
+  }
+}
+
+/**
+ * Matches an inlined call to `Tuple.*:`:
+ * {{{
+ * {
+ *   val Tuple_this: scala.Tuple$package.EmptyTuple.type = scala.Tuple$package.EmptyTuple
+ *
+ *   (scala.runtime.Tuples.cons(i, Tuple_this).asInstanceOf[scala.*:[scala.Int, scala.Tuple$package.EmptyTuple.type]]: scala.*:[scala.Int, scala.Tuple$package.EmptyTuple])
+ * }
+ * }}}
+ */
+object ArbitraryTupleConstructionInlined {
+  def unapply(using Quotes)(t: quotes.reflect.Term): Option[(quotes.reflect.Term, quotes.reflect.Term)] = {
+    import quotes.reflect.{Ident => TIdent, *}
+    t match {
+      case
+        Inlined(
+          _,
+          List(ValDef("Tuple_this", _, Some(prevTuple))),
+          Typed(AsInstanceOf(TupleCons(head, TIdent("Tuple_this"))), _)
+        ) =>
+        Some((head, prevTuple))
+      case _ => None
+    }
+  }
+}
+
+/**
+ * Parses a few cases of arbitrary tuples.
+ *
+ * Scala 3 produces a few different trees for arbitrary tuples. Method `*:` is marked as inline.
+ * Under the hood it actually invokes `Tuples.cons` function:
+ * {{{
+ *     inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This =
+ *       runtime.Tuples.cons(x, this).asInstanceOf[H *: This]
+ * }}}
+ * So, at least we have to match Tuples.cons.
+ * However, it's not the only variation. Scala also produces a block with intermediate val `Tuple_this` definitions:
+ * {{{
+ *   {
+ *     val Tuple_this: scala.Tuple$package.EmptyTuple.type = scala.Tuple$package.EmptyTuple
+ *     val `Tuple_this₂`: scala.*:[java.lang.String, scala.Tuple$package.EmptyTuple] = (scala.runtime.Tuples.cons("", Tuple_this).asInstanceOf[scala.*:[java.lang.String, scala.Tuple$package.EmptyTuple.type]]: scala.*:[java.lang.String, scala.Tuple$package.EmptyTuple])
+ *
+ *     (scala.runtime.Tuples.cons(1, `Tuple_this₂`).asInstanceOf[scala.*:[scala.Int, scala.*:[java.lang.String, scala.Tuple$package.EmptyTuple]]]: scala.*:[scala.Int, scala.*:[java.lang.String, scala.Tuple$package.EmptyTuple]])
+ *   }
+ * }}}
+ */
+class ArbitraryTupleBlockParser(val rootParse: Parser)(using Quotes, TranspileConfig)
+  extends Parser(rootParse)
+    with PatternMatchingValues {
+
+  import quotes.reflect.{Block => TBlock, Ident => TIdent, _}
+
+  def attempt = {
+    case '{EmptyTuple} =>
+      ast.Tuple(List())
+    case '{$a *: EmptyTuple} =>
+      val aAst = rootParse(a)
+      ast.Tuple(List(aAst))
+    case inlined@Unseal(ArbitraryTupleConstructionInlined(singleValue, prevTuple)) =>
+      val headAst = rootParse(singleValue.asExpr)
+      val prevTupleAst = rootParse(prevTuple.asExpr)
+      prevTupleAst match {
+        case ast.Tuple(lst) => ast.Tuple(headAst :: lst)
+        case _ =>
+          throw IllegalArgumentException(s"Unexpected tuple ast ${prevTupleAst}")
+      }
+    case block@Unseal(TBlock(parts, ArbitraryTupleConstructionInlined(head,Typed(AsInstanceOf(TupleCons(head2,TIdent("Tuple_this"))), _)) )) if (parts.length > 0) =>
+      val headAst = rootParse(head.asExpr)
+      val head2Ast = rootParse(head2.asExpr)
+      val partsAsts = headAst :: head2Ast :: parts.reverse.flatMap{
+        case ValDef("Tuple_this", tpe, Some(TIdent("EmptyTuple"))) => List()
+        case ValDef("Tuple_this", tpe, Some(Typed(AsInstanceOf(TupleCons(next,TIdent("Tuple_this"))), _))) => List(rootParse(next.asExpr))
+        case ValDef("Tuple_this", tpe, Some(unknown)) =>
+          throw IllegalArgumentException(s"Unexpected Tuple_this = ${unknown.show}")
+      }
+      Tuple(partsAsts)
   }
 }
 
