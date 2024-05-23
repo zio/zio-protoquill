@@ -490,6 +490,12 @@ object ParserHelpers {
             binds.zipWithIndex.flatMap { case (bind, idx) =>
               tupleBindsPath(bind, path :+ s"_${idx + 1}")
             }
+          case Unapply(TypeApply(Select(TIdent("*:"), "unapply"), types), implicits, List(h, t)) =>
+            List(
+              tupleBindsPath(h, path :+ s"head"),
+              tupleBindsPath(h, path :+ s"tail")
+            )
+              .flatten
           // If it's a "case _ => ..." then that just translates into the body expression so we don't
           // need a clause to beta reduction over the entire partial-function
           case TIdent("_") =>

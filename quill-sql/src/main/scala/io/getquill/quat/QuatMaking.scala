@@ -16,6 +16,7 @@ import io.getquill.generic.GenericDecoder
 import io.getquill.util.Format
 import io.getquill.generic.DecodingType
 import io.getquill.Quoted
+import io.getquill.util.ProtoMessages
 
 inline def quatOf[T]: Quat = ${ QuatMaking.quatOfImpl[T] }
 
@@ -72,7 +73,7 @@ trait QuatMaking extends QuatMakingBase {
     import quotes.reflect._
     // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
     def encoderComputation() = {
-      tpe.asType match {
+      tpe.widen.asType match {
         // If an identifier in the Quill query is has a Encoder/Decoder pair, we treat it as a value i.e. Quat.Value is assigned as it's Quat.
         // however, what do we do if there is only one. Say for Name(value: String), Person(name: Name, age: Int) there is a Name-Decoder
         // but no Name-encoder. It is difficult to know whether to treat p.name in `query[Person].map(p => p.name)` as a Quat Value or Product.
@@ -88,22 +89,24 @@ trait QuatMaking extends QuatMakingBase {
           (Expr.summon[GenericEncoder[t, _, _]], Expr.summon[GenericDecoder[_, _, t, DecodingType.Specific]]) match {
             case (Some(_), Some(_)) => true
             case (Some(enc), None) =>
-              report.warning(
-                s"A Encoder:\n" +
-                  s"${Format.Expr(enc)}\n" +
-                  s"was found for the type ${Format.TypeOf[t]} but not a decoder so this type will " +
-                  s"be treated as a value. To avoid potential problems it is preferable to define " +
-                  s"both an encoder and a decoder for all types used in Quill Queries."
-              )
+              if (ProtoMessages.aggressiveQuatChecking)
+                report.warning(
+                  s"A Encoder:\n" +
+                    s"${Format.Expr(enc)}\n" +
+                    s"was found for the type ${Format.TypeOf[t]} but not a decoder so this type will " +
+                    s"be treated as a value. To avoid potential problems it is preferable to define " +
+                    s"both an encoder and a decoder for all types used in Quill Queries."
+                )
               true
             case (None, Some(dec)) =>
-              report.warning(
-                s"A Decoder:\n" +
-                  s"${Format.Expr(dec)}\n " +
-                  s"was found for the type ${Format.TypeOf[t]} but not a encoder so this type will be " +
-                  s"treated as a value. To avoid potential problems it is preferable to define " +
-                  s"both an encoder and a decoder for all types used in Quill Queries."
-              )
+              if (ProtoMessages.aggressiveQuatChecking)
+                report.warning(
+                  s"A Decoder:\n" +
+                    s"${Format.Expr(dec)}\n " +
+                    s"was found for the type ${Format.TypeOf[t]} but not a encoder so this type will be " +
+                    s"treated as a value. To avoid potential problems it is preferable to define " +
+                    s"both an encoder and a decoder for all types used in Quill Queries."
+                )
               true
             case (None, None) => false
           }
@@ -185,6 +188,25 @@ trait QuatMakingBase {
           Some((tpe.widen.typeSymbol.name.toString, caseClassConstructorArgs(tpe.widen)))
         else
           None
+    }
+
+    object ArbitraryArityTupleType {
+      def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[List[quotes.reflect.TypeRepr]] =
+        if (tpe.is[Tuple])
+          Some(tupleParts(tpe))
+        else
+          None
+
+      @tailrec
+      def tupleParts(using Quotes)(tpe: quotes.reflect.TypeRepr, accum: List[quotes.reflect.TypeRepr] = Nil): List[quotes.reflect.TypeRepr] =
+        tpe.asType match {
+            case '[h *: t] =>
+              val htpe = quotes.reflect.TypeRepr.of[h]
+              val ttpe = quotes.reflect.TypeRepr.of[t]
+              tupleParts(ttpe, htpe :: accum)
+            case '[EmptyTuple] =>
+              accum.reverse
+          }
     }
 
     object OptionType {
@@ -380,6 +402,9 @@ trait QuatMakingBase {
           // the exception to that is a cassandra UDT that we treat like an encodeable entity even if it has a parsed type
           case CaseClassBaseType(name, fields) if !existsEncoderFor(tpe) || tpe <:< TypeRepr.of[Udt] =>
             Quat.Product(name, fields.map { case (fieldName, fieldType) => (fieldName, parseType(fieldType)) })
+
+          case ArbitraryArityTupleType(tupleParts) =>
+            Quat.Product("Tuple", tupleParts.zipWithIndex.map { case (fieldType, idx) => (s"_${idx + 1}", parseType(fieldType)) })
 
           // If we are already inside a bounded type, treat an arbitrary type as a interface list
           case ArbitraryBaseType(name, fields) if (boundedInterfaceType) =>
