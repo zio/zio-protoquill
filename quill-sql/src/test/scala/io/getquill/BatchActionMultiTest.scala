@@ -1,11 +1,9 @@
 package io.getquill
 
 import io.getquill.ast.*
-import io.getquill.context.{Context, ExecutionType}
+import io.getquill.context.ExecutionType
 import io.getquill.context.ExecutionType.{Dynamic, Static}
-import io.getquill.quat.quatOf
-import io.getquill.{QuotationLot, QuotationVase, Quoted, query, quote}
-import io.getquill.util.debug.PrintMac
+import io.getquill.{query, quote}
 import org.scalatest.*
 
 import scala.language.implicitConversions
@@ -65,7 +63,18 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         )
 
       "static - mixed" in {
-        val static = ctx.run(liftQuery(people).foreach(p => query[Person].insert(_.id -> p.id, _.name -> (lift("foo") + p.name + "bar"), _.age -> p.age, _.sex -> p.sex)), 2)
+        inline def action = quote {
+          liftQuery(people).foreach(p =>
+            query[Person].insert(
+              _.id -> p.id,
+              _.name -> (lift("foo") + p.name + "bar"),
+              _.age -> p.age,
+              _.sex -> p.sex
+            )
+          )
+        }
+
+        val static = ctx.run(action, 2)
         static.tripleBatchMulti mustEqual expect2(ExecutionType.Static)
       }
       "dynamic - mixed" in {
