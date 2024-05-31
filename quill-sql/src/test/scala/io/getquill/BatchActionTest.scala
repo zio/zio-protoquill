@@ -30,7 +30,7 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
     case Male, Female
   }
 
-  case class Person(id: Int, name: String, age: Int, gender: Sex = Sex.Male)
+  case class Person(id: Int, name: String, age: Int, gender: Sex)
   inline def insertPeople = quote((p: Person) => query[Person].insertValue(p))
   val insertPeopleDynamic = quote((p: Person) => query[Person].insertValue(p))
 
