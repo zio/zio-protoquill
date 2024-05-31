@@ -31,12 +31,12 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         List(
           (
             "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?), (?, ?, ?, ?)",
-            List(List(1, "A", 111, Sex.Male, 2, "B", 222, Sex.Male), List(3, "C", 333, Sex.Male, 4, "D", 444, Sex.Female)),
+            List(List(1, "A", 111, "male", 2, "B", 222, "male"), List(3, "C", 333, "male", 4, "D", 444, "female")),
             executionType
           ),
           (
             "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)",
-            List(List(5, "E", 555, Sex.Female)),
+            List(List(5, "E", 555, "female")),
             executionType
           )
         )
@@ -54,12 +54,12 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         List(
           (
             "INSERT INTO Person (id,name,age,sex) VALUES (?, ((? || ?) || 'bar'), ?), (?, ((? || ?) || 'bar'), ?, ?)",
-            List(List(1, "foo", "A", 111, Sex.Male, 2, "foo", "B", 222, Sex.Male), List(3, "foo", "C", 333, Sex.Male, 4, "foo", "D", 444, Sex.Female)),
+            List(List(1, "foo", "A", 111, "male", 2, "foo", "B", 222, "male"), List(3, "foo", "C", 333, "male", 4, "foo", "D", 444, "female")),
             executionType
           ),
           (
             "INSERT INTO Person (id,name,age,sex) VALUES (?, ((? || ?) || 'bar'), ?, ?)",
-            List(List(5, "foo", "E", 555, Sex.Female)),
+            List(List(5, "foo", "E", 555, "female")),
             executionType
           )
         )
@@ -88,7 +88,7 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         List(
           (
             "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?), (?, ?, ?, ?)",
-            List(List(1, "A", 111, Sex.Male, 2, "B", 222, Sex.Male), List(3, "C", 333, Sex.Male, 4, "D", 444, Sex.Female)),
+            List(List(1, "A", 111, "male", 2, "B", 222, "male"), List(3, "C", 333, "male", 4, "D", 444, "female")),
             executionType
           )
         )
@@ -114,7 +114,7 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         List(
           (
             "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?), (?, ?, ?, ?)",
-            List(List(1, "A", 111, Sex.Male, 2, "B", 222, Sex.Male)),
+            List(List(1, "A", 111, "male", 2, "B", 222, "male")),
             executionType
           )
         )
@@ -137,7 +137,7 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         List(
           (
             "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)",
-            List(List(1, "A", 111, Sex.Male)),
+            List(List(1, "A", 111, "male")),
             executionType
           )
         )
@@ -169,11 +169,11 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
           (
             "UPDATE Person pt SET id = ?, name = ?, age = ?, sex = ? WHERE pt.id = ?",
             List(
-              List(1, "A", 111, Sex.Male, 1),
-              List(2, "B", 222, Sex.Male, 2),
-              List(3, "C", 333, Sex.Male, 3),
-              List(4, "D", 444, Sex.Female, 4),
-              List(5, "E", 555, Sex.Female, 5)
+              List(1, "A", 111, "male", 1),
+              List(2, "B", 222, "male", 2),
+              List(3, "C", 333, "male", 3),
+              List(4, "D", 444, "female", 4),
+              List(5, "E", 555, "female", 5)
             ),
             executionType
           )
@@ -203,12 +203,12 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         List(
           (
             "UPDATE Person AS pt SET id = p.id1, name = p.name, age = p.age, sex = p.sex FROM (VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)) AS p(id, id1, name, age, sex) WHERE pt.id = p.id",
-            List(List(1, 1, "A", 111, Sex.Male, 2, 2, "B", 222, Sex.Male), List(3, 3, "C", 333, Sex.Male, 4, 4, "D", 444, Sex.Female)),
+            List(List(1, 1, "A", 111, "male", 2, 2, "B", 222, "male"), List(3, 3, "C", 333, "male", 4, 4, "D", 444, "female")),
             executionType
           ),
           (
             "UPDATE Person AS pt SET id = p.id1, name = p.name, age = p.age, sex = p.sex FROM (VALUES (?, ?, ?, ?, ?)) AS p(id, id1, name, age, sex) WHERE pt.id = p.id",
-            List(List(5, 5, "E", 555, Sex.Female)),
+            List(List(5, 5, "E", 555, "female")),
             executionType
           )
         )
@@ -237,12 +237,12 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         List(
           (
             queryA,
-            List(List(1, "A", 111, Sex.Male, 2, "B", 222, Sex.Male), List(3, "C", 333, Sex.Male, 4, "D", 444, Sex.Female)),
+            List(List(1, "A", 111, "male", 2, "B", 222, "male"), List(3, "C", 333, "male", 4, "D", 444, "female")),
             executionType
           ),
           (
             queryB,
-            List(List(5, "E", 555, Sex.Female)),
+            List(List(5, "E", 555, "female")),
             executionType
           )
         )
@@ -316,11 +316,11 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
           (
             "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)",
             List(
-              List(1, "A", 111, Sex.Male),
-              List(2, "B", 222, Sex.Male),
-              List(3, "C", 333, Sex.Male),
-              List(4, "D", 444, Sex.Female),
-              List(5, "E", 555, Sex.Female)
+              List(1, "A", 111, "male"),
+              List(2, "B", 222, "male"),
+              List(3, "C", 333, "male"),
+              List(4, "D", 444, "female"),
+              List(5, "E", 555, "female")
             ),
             executionType
           )
