@@ -481,6 +481,7 @@ trait QuatMakingBase {
               TypeRepr.of[tpe] match {
                 case CaseClassType(quat) => quat
                 case ValueType(quat)     => quat
+                case CoProduct(quat)     => quat
                 case _ =>
                   report.throwError(
                     s"The Co-Product element ${TypeRepr.of[tpe].show} was not a Case Class or Value Type. Value-level " +
