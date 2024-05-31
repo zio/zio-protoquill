@@ -118,7 +118,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
 
     "insert - explicit mapping" in {
       val rawPeople = List((1, "Joe", 123, Sex.Male), (2, "Jill", 456, Sex.Female))
-      val mirror = ctx.run {
+      inline def action = quote {
         liftQuery(rawPeople).foreach { case (id, name, age, sex) =>
           query[Person].insert(
             _.id -> id,
@@ -128,6 +128,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
           )
         }
       }
+      val mirror = ctx.run(action)
       mirror.triple mustEqual("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", 123, "male"), List(2, "Jill", 456, "female")), Static)
     }
 
