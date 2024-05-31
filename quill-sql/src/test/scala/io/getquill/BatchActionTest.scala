@@ -1,11 +1,11 @@
 package io.getquill
 
 import io.getquill.ast.*
-import io.getquill.context.{Context, ExecutionType}
 import io.getquill.context.ExecutionType.{Dynamic, Static}
+import io.getquill.context.{Context, ExecutionType}
 import io.getquill.quat.quatOf
-import io.getquill.{QuotationLot, QuotationVase, Quoted, query, quote}
 import io.getquill.util.debug.PrintMac
+import io.getquill.{QuotationLot, QuotationVase, Quoted, query, quote}
 import org.scalatest.*
 
 import scala.language.implicitConversions
@@ -28,14 +28,14 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   object Sex {
     given encoder: MappedEncoding[Sex, String] =
       MappedEncoding[Sex, String] {
-        case Male => "male"
-        case Female => "female"
+        case Sex.Male => "male"
+        case Sex.Female => "female"
       }
 
     given decoder: MappedEncoding[String, Sex] =
       MappedEncoding[String, Sex] {
-        case "male" => Male
-        case "female" => Female
+        case "male" => Sex.Male
+        case "female" => Sex.Female
       }
   }
 
