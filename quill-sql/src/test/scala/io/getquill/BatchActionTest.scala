@@ -292,7 +292,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
       val mirror = ctx.run {
         liftQuery(people).foreach(p => insertPeopleDynamic(p))
       }
-      mirror.triple mustEqual("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", "male", 123), List(2, "Jill", "female", 456)), Dynamic)
+      mirror.triple mustEqual("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", 123, "male"), List(2, "Jill", 456, "female")), Dynamic)
     }
 
     "update" in {
