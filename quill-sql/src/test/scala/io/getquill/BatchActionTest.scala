@@ -44,19 +44,19 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
   val ctx: MirrorContext[MirrorSqlDialectWithReturnClause, Literal] = new MirrorContext[MirrorSqlDialectWithReturnClause, Literal](MirrorSqlDialectWithReturnClause, Literal)
   import ctx._
 
-  val people = List(Person(1, "Joe", 123), Person(2, "Jill", 456))
+  val people = List(Person(1, "Joe", 123, Sex.Male), Person(2, "Jill", 456, Sex.Female))
 
   "batch action with returning should work with" - {
     "insert - returning" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insertValue(p).returning(p => p.id)) }
-      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?) RETURNING id", List(List(1, "Joe", 123, Sex.Male), List(2, "Jill", 456, Sex.Female)), Static)
     }
     "insert - returningGenerated" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insertValue(p).returningGenerated(p => p.id)) }
       mirror.triple mustEqual (
-        "INSERT INTO Person (name,age) VALUES (?, ?) RETURNING id",
+        "INSERT INTO Person (name,age,sex) VALUES (?, ?, ?) RETURNING id",
         // The ids should be removed from the lifts list since their corresponding columns are removed (i.e. in the expanded insert assignments)
-        List(List( /*1,*/ "Joe", 123), List( /*2,*/ "Jill", 456)),
+        List(List( /*1,*/ "Joe", 123, Sex.Male), List( /*2,*/ "Jill", 456, Sex.Female)),
         Static
       )
     }
@@ -64,13 +64,13 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
     // update returning with filter, not very useful but good baseline
     "update - returning" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).updateValue(p).returning(p => p.id)) }
-      mirror.triple mustEqual ("UPDATE Person AS pf SET id = ?, name = ?, age = ? WHERE pf.id = ? RETURNING id", List(List(1, "Joe", 123, 1), List(2, "Jill", 456, 2)), Static)
+      mirror.triple mustEqual ("UPDATE Person AS pf SET id = ?, name = ?, age = ?, sex = ? WHERE pf.id = ? RETURNING id", List(List(1, "Joe", 123, Sex.Male, 1), List(2, "Jill", 456, Sex.Female, 2)), Static)
     }
 
     // TODO dsl does not support this yet but would be quite useful
     // "update - returningGenerated" in {
     //  val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).updateValue(p).returningGenerated(p => p.id)) }
-    //  //mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+    //  //mirror.triple mustEqual ("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?) RETURNING id", List(List(1, "Joe", 123, Sex.Male), List(2, "Jill", 456, Sex.Female)), Static)
     // }
   }
 
@@ -80,19 +80,19 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
         liftQuery(people).foreach(p => query[Person].insertValue(p))
       }
       val mirror = ctx.run(q)
-      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Dynamic)
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", 123, Sex.Male), List(2, "Jill", 456, Sex.Female)), Dynamic)
     }
 
     "insert" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].insertValue(p)) }
-      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", 123, Sex.Male), List(2, "Jill", 456, Sex.Female)), Static)
     }
 
-    case class Vip(vipId: Int, vipName: String, vipAge: Int, other: String)
+    case class Vip(vipId: Int, vipName: String, vipAge: Int, vipSex: Sex, other: String)
     "insert - different-objects" in {
-      val vips = List(Vip(1, "Joe", 123, "Something"), Vip(2, "Jill", 456, "Something"))
-      val mirror = ctx.run { liftQuery(vips).foreach(v => query[Person].insertValue(Person(v.vipId, v.vipName, v.vipAge))) }
-      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+      val vips = List(Vip(1, "Joe", 123, Sex.Male, "Something"), Vip(2, "Jill", 456, Sex.Female, "Something"))
+      val mirror = ctx.run { liftQuery(vips).foreach(v => query[Person].insertValue(Person(v.vipId, v.vipName, v.vipAge, v.vipSex))) }
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", 123, Sex.Male), List(2, "Jill", 456, Sex.Female)), Static)
     }
 
     "update - liftQuery scalars" in {
@@ -113,7 +113,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
       // val mirror = ctx.run { query[Person].filter(p => p.id == 123).insertValue(people(0)) }
       //
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(p => p.id == lift(36)).updateValue(p)) }
-      mirror.triple mustEqual ("UPDATE Person AS p SET id = ?, name = ?, age = ? WHERE p.id = ?", List(List(1, "Joe", 123, 36), List(2, "Jill", 456, 36)), Static)
+      mirror.triple mustEqual ("UPDATE Person AS p SET id = ?, name = ?, age = ?, sex = ? WHERE p.id = ?", List(List(1, "Joe", 123, Sex.Male, 36), List(2, "Jill", 456, Sex.Female, 36)), Static)
     }
 
     "update - extra lift + scalars" in {
@@ -222,12 +222,12 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
 
     "insert with function splice" in {
       val mirror = ctx.run { liftQuery(people).foreach(p => insertPeople(p)) }
-      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Static)
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", Sex.Male, 123), List(2, "Jill", Sex.Female, 456)), Static)
     }
 
     "insert with dynamic function splice" in { // I.e. splicing the insertPeopleDynamic segment should make the whole query dynamic... and it should still work
       val mirror = ctx.run { liftQuery(people).foreach(p => insertPeopleDynamic(p)) }
-      mirror.triple mustEqual ("INSERT INTO Person (id,name,age) VALUES (?, ?, ?)", List(List(1, "Joe", 123), List(2, "Jill", 456)), Dynamic)
+      mirror.triple mustEqual ("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", Sex.Male, 123), List(2, "Jill", Sex.Female, 456)), Dynamic)
     }
 
     "update" in {
@@ -239,8 +239,8 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
       inline given UpdateMeta[Person] = updateMeta(_.id)
       val mirror = ctx.run { liftQuery(people).foreach(p => query[Person].filter(pf => pf.id == p.id).updateValue(p)) }
       mirror.triple mustEqual (
-        "UPDATE Person AS pf SET name = ?, age = ? WHERE pf.id = ?",
-        List(List("Joe", 123, 1), List("Jill", 456, 2)),
+        "UPDATE Person AS pf SET name = ?, age = ?, sex = ? WHERE pf.id = ?",
+        List(List("Joe", 123, Sex.Male, 1), List("Jill", 456, Sex.Female, 2)),
         Static
       )
     }
