@@ -23,17 +23,17 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
 
   "Multi-row Batch Action Should work with" - {
     "inserts > batch-size - (2rows + 2rows) + (1row)" - {
-      val people = List(Person(1, "A", 111), Person(2, "B", 222), Person(3, "C", 333), Person(4, "D", 444), Person(5, "E", 555))
+      val people = List(Person(1, "A", 111, Sex.Male), Person(2, "B", 222, Sex.Male), Person(3, "C", 333, Sex.Male), Person(4, "D", 444, Sex.Female), Person(5, "E", 555, Sex.Female))
       def expect(executionType: ExecutionType) =
         List(
           (
-            "INSERT INTO Person (id,name,age) VALUES (?, ?, ?), (?, ?, ?)",
-            List(List(1, "A", 111, 2, "B", 222), List(3, "C", 333, 4, "D", 444)),
+            "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?), (?, ?, ?, ?)",
+            List(List(1, "A", 111, Sex.Male, 2, "B", 222, Sex.Male), List(3, "C", 333, Sex.Male, 4, "D", 444, Sex.Female)),
             executionType
           ),
           (
-            "INSERT INTO Person (id,name,age) VALUES (?, ?, ?)",
-            List(List(5, "E", 555)),
+            "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)",
+            List(List(5, "E", 555, Sex.Female)),
             executionType
           )
         )
