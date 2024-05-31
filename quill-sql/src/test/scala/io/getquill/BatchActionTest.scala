@@ -194,7 +194,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
       val mirror = ctx.run {
         liftQuery(people).foreach(p => updateDynamic(p))
       }
-      mirror.triple mustEqual("UPDATE Person AS p SET id = ?, name = ?, age = ? WHERE p.id = ?", List(List(1, "Joe", 123, 36), List(2, "Jill", 456, 36)), Dynamic)
+      mirror.triple mustEqual("UPDATE Person AS p SET id = ?, name = ?, age = ?, sex = ? WHERE p.id = ?", List(List(1, "Joe", 123, "male", 36), List(2, "Jill", 456, "female", 36)), Dynamic)
     }
 
     "update - extra lift - dynamic + scalars" in {
@@ -285,7 +285,7 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
       val mirror = ctx.run {
         liftQuery(people).foreach(p => insertPeople(p))
       }
-      mirror.triple mustEqual("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", "male", 123), List(2, "Jill", "female", 456)), Static)
+      mirror.triple mustEqual("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", 123, "male"), List(2, "Jill", 456, "female")), Static)
     }
 
     "insert with dynamic function splice" in { // I.e. splicing the insertPeopleDynamic segment should make the whole query dynamic... and it should still work
