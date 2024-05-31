@@ -51,7 +51,7 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
       def expect2(executionType: ExecutionType) =
         List(
           (
-            "INSERT INTO Person (id,name,age,sex) VALUES (?, ((? || ?) || 'bar'), ?), (?, ((? || ?) || 'bar'), ?, ?)",
+            "INSERT INTO Person (id,name,age,sex) VALUES (?, ((? || ?) || 'bar'), ?, ?), (?, ((? || ?) || 'bar'), ?, ?)",
             List(List(1, "foo", "A", 111, "male", 2, "foo", "B", 222, "male"), List(3, "foo", "C", 333, "male", 4, "foo", "D", 444, "female")),
             executionType
           ),
