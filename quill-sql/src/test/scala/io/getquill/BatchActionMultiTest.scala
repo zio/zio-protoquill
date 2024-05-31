@@ -53,13 +53,13 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
       def expect2(executionType: ExecutionType) =
         List(
           (
-            "INSERT INTO Person (id,name,age) VALUES (?, ((? || ?) || 'bar'), ?), (?, ((? || ?) || 'bar'), ?)",
-            List(List(1, "foo", "A", 111, 2, "foo", "B", 222), List(3, "foo", "C", 333, 4, "foo", "D", 444)),
+            "INSERT INTO Person (id,name,age,sex) VALUES (?, ((? || ?) || 'bar'), ?), (?, ((? || ?) || 'bar'), ?, ?)",
+            List(List(1, "foo", "A", 111, Sex.Male, 2, "foo", "B", 222, Sex.Male), List(3, "foo", "C", 333, Sex.Male, 4, "foo", "D", 444, Sex.Female)),
             executionType
           ),
           (
-            "INSERT INTO Person (id,name,age) VALUES (?, ((? || ?) || 'bar'), ?)",
-            List(List(5, "foo", "E", 555)),
+            "INSERT INTO Person (id,name,age,sex) VALUES (?, ((? || ?) || 'bar'), ?, ?)",
+            List(List(5, "foo", "E", 555, Sex.Female)),
             executionType
           )
         )
@@ -87,8 +87,8 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
       def expect(executionType: ExecutionType) =
         List(
           (
-            "INSERT INTO Person (id,name,age) VALUES (?, ?, ?), (?, ?, ?)",
-            List(List(1, "A", 111, 2, "B", 222), List(3, "C", 333, 4, "D", 444)),
+            "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?), (?, ?, ?, ?)",
+            List(List(1, "A", 111, Sex.Male, 2, "B", 222, Sex.Male), List(3, "C", 333, Sex.Male, 4, "D", 444, Sex.Female)),
             executionType
           )
         )
@@ -113,8 +113,8 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
       def expect(executionType: ExecutionType) =
         List(
           (
-            "INSERT INTO Person (id,name,age) VALUES (?, ?, ?), (?, ?, ?)",
-            List(List(1, "A", 111, 2, "B", 222)),
+            "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?), (?, ?, ?, ?)",
+            List(List(1, "A", 111, Sex.Male, 2, "B", 222, Sex.Male)),
             executionType
           )
         )
@@ -136,8 +136,8 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
       def expect(executionType: ExecutionType) =
         List(
           (
-            "INSERT INTO Person (id,name,age) VALUES (?, ?, ?)",
-            List(List(1, "A", 111)),
+            "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)",
+            List(List(1, "A", 111, Sex.Male)),
             executionType
           )
         )
@@ -167,8 +167,14 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
       def expect(executionType: ExecutionType) =
         List(
           (
-            "UPDATE Person pt SET id = ?, name = ?, age = ? WHERE pt.id = ?",
-            List(List(1, "A", 111, 1), List(2, "B", 222, 2), List(3, "C", 333, 3), List(4, "D", 444, 4), List(5, "E", 555, 5)),
+            "UPDATE Person pt SET id = ?, name = ?, age = ?, sex = ? WHERE pt.id = ?",
+            List(
+              List(1, "A", 111, Sex.Male, 1),
+              List(2, "B", 222, Sex.Male, 2),
+              List(3, "C", 333, Sex.Male, 3),
+              List(4, "D", 444, Sex.Female, 4),
+              List(5, "E", 555, Sex.Female, 5)
+            ),
             executionType
           )
         )
@@ -196,13 +202,13 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
       def expect(executionType: ExecutionType) =
         List(
           (
-            "UPDATE Person AS pt SET id = p.id1, name = p.name, age = p.age FROM (VALUES (?, ?, ?, ?), (?, ?, ?, ?)) AS p(id, id1, name, age) WHERE pt.id = p.id",
-            List(List(1, 1, "A", 111, 2, 2, "B", 222), List(3, 3, "C", 333, 4, 4, "D", 444)),
+            "UPDATE Person AS pt SET id = p.id1, name = p.name, age = p.age, sex = p.sex FROM (VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?)) AS p(id, id1, name, age, sex) WHERE pt.id = p.id",
+            List(List(1, 1, "A", 111, Sex.Male, 2, 2, "B", 222, Sex.Male), List(3, 3, "C", 333, Sex.Male, 4, 4, "D", 444, Sex.Female)),
             executionType
           ),
           (
-            "UPDATE Person AS pt SET id = p.id1, name = p.name, age = p.age FROM (VALUES (?, ?, ?, ?)) AS p(id, id1, name, age) WHERE pt.id = p.id",
-            List(List(5, 5, "E", 555)),
+            "UPDATE Person AS pt SET id = p.id1, name = p.name, age = p.age, sex = p.sex FROM (VALUES (?, ?, ?, ?, ?)) AS p(id, id1, name, age, sex) WHERE pt.id = p.id",
+            List(List(5, 5, "E", 555, Sex.Female)),
             executionType
           )
         )
@@ -231,38 +237,38 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         List(
           (
             queryA,
-            List(List(1, "A", 111, 2, "B", 222), List(3, "C", 333, 4, "D", 444)),
+            List(List(1, "A", 111, Sex.Male, 2, "B", 222, Sex.Male), List(3, "C", 333, Sex.Male, 4, "D", 444, Sex.Female)),
             executionType
           ),
           (
             queryB,
-            List(List(5, "E", 555)),
+            List(List(5, "E", 555, Sex.Female)),
             executionType
           )
         )
 
       def expect(executionType: ExecutionType) =
         makeRow(executionType)(
-          "INSERT INTO Person (id,name,age) VALUES (?, ?, ?), (?, ?, ?)",
-          "INSERT INTO Person (id,name,age) VALUES (?, ?, ?)"
+          "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?), (?, ?, ?, ?)",
+          "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)"
         )
 
       def expectH2(executionType: ExecutionType) =
         makeRow(executionType)(
-          "INSERT INTO Person (id,name,age) VALUES ($1, $2, $3), ($4, $5, $6)",
-          "INSERT INTO Person (id,name,age) VALUES ($1, $2, $3)"
+          "INSERT INTO Person (id,name,age,sex) VALUES ($1, $2, $3, $4), ($5, $6, $7, $8)",
+          "INSERT INTO Person (id,name,age,sex) VALUES ($1, $2, $3, $4)"
         )
 
       def expectPostgresReturning(executionType: ExecutionType) =
         makeRow(executionType)(
-          "INSERT INTO Person (id,name,age) VALUES (?, ?, ?), (?, ?, ?) RETURNING id",
-          "INSERT INTO Person (id,name,age) VALUES (?, ?, ?) RETURNING id"
+          "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?), (?, ?, ?, ?) RETURNING id",
+          "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?) RETURNING id"
         )
 
       def expectSqlServerReturning(executionType: ExecutionType) =
         makeRow(executionType)(
-          "INSERT INTO Person (id,name,age) OUTPUT INSERTED.id VALUES (?, ?, ?), (?, ?, ?)",
-          "INSERT INTO Person (id,name,age) OUTPUT INSERTED.id VALUES (?, ?, ?)"
+          "INSERT INTO Person (id,name,age,sex) OUTPUT INSERTED.id VALUES (?, ?, ?, ?), (?, ?, ?, ?)",
+          "INSERT INTO Person (id,name,age,sex) OUTPUT INSERTED.id VALUES (?, ?, ?, ?)"
         )
 
       "postgres - regular/returning" in {
@@ -308,8 +314,14 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
       def expect(executionType: ExecutionType) =
         List(
           (
-            "INSERT INTO Person (id,name,age) VALUES (?, ?, ?)",
-            List(List(1, "A", 111), List(2, "B", 222), List(3, "C", 333), List(4, "D", 444), List(5, "E", 555)),
+            "INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)",
+            List(
+              List(1, "A", 111, Sex.Male),
+              List(2, "B", 222, Sex.Male),
+              List(3, "C", 333, Sex.Male),
+              List(4, "D", 444, Sex.Female),
+              List(5, "E", 555, Sex.Female)
+            ),
             executionType
           )
         )
