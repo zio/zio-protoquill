@@ -3,9 +3,7 @@ package io.getquill
 import io.getquill.ast.*
 import io.getquill.context.ExecutionType.{Dynamic, Static}
 import io.getquill.context.{Context, ExecutionType}
-import io.getquill.quat.quatOf
-import io.getquill.util.debug.PrintMac
-import io.getquill.{QuotationLot, QuotationVase, Quoted, query, quote}
+import io.getquill.{query, quote}
 import org.scalatest.*
 
 import scala.language.implicitConversions
@@ -114,6 +112,21 @@ class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialec
       val vips = List(Vip(1, "Joe", 123, Sex.Male, "Something"), Vip(2, "Jill", 456, Sex.Female, "Something"))
       val mirror = ctx.run {
         liftQuery(vips).foreach(v => query[Person].insertValue(Person(v.vipId, v.vipName, v.vipAge, v.vipSex)))
+      }
+      mirror.triple mustEqual("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", 123, "male"), List(2, "Jill", 456, "female")), Static)
+    }
+
+    "insert - explicit mapping" in {
+      val rawPeople = List((1, "Joe", 123, Sex.Male), (2, "Jill", 456, Sex.Female))
+      val mirror = ctx.run {
+        liftQuery(rawPeople).foreach { case (id, name, age, sex) =>
+          query[Person].insert(
+            _.id -> id,
+            _.name -> name,
+            _.age -> age,
+            _.sex -> sex
+          )
+        }
       }
       mirror.triple mustEqual("INSERT INTO Person (id,name,age,sex) VALUES (?, ?, ?, ?)", List(List(1, "Joe", 123, "male"), List(2, "Jill", 456, "female")), Static)
     }
