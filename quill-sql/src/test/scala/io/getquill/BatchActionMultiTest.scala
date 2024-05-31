@@ -65,12 +65,12 @@ class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDi
         )
 
       "static - mixed" in {
-        val static = ctx.run(liftQuery(people).foreach(p => query[Person].insert(_.id -> p.id, _.name -> (lift("foo") + p.name + "bar"), _.age -> p.age)), 2)
+        val static = ctx.run(liftQuery(people).foreach(p => query[Person].insert(_.id -> p.id, _.name -> (lift("foo") + p.name + "bar"), _.age -> p.age, _.sex -> p.sex)), 2)
         static.tripleBatchMulti mustEqual expect2(ExecutionType.Static)
       }
       "dynamic - mixed" in {
         // TODO Why does it not print that a dynamic query is being run?
-        val q = quote(liftQuery(people).foreach(p => query[Person].insert(_.id -> p.id, _.name -> (lift("foo") + p.name + "bar"), _.age -> p.age)))
+        val q = quote(liftQuery(people).foreach(p => query[Person].insert(_.id -> p.id, _.name -> (lift("foo") + p.name + "bar"), _.age -> p.age, _.sex -> p.sex)))
         val static = ctx.run(q, 2)
         static.tripleBatchMulti mustEqual expect2(ExecutionType.Dynamic)
       }
