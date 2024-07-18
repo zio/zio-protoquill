@@ -86,7 +86,7 @@ val filteredModules = {
 }
 
 val zioQuillVersion = "4.8.4"
-val zioVersion = "2.1.5"
+val zioVersion = "2.1.6"
 
 lazy val `quill` =
   (project in file("."))
@@ -115,7 +115,7 @@ lazy val `quill-sql` =
       libraryDependencies ++= Seq(
         // Needs to be in-sync with both quill-engine and scalafmt-core or ClassNotFound
         // errors will happen. Even if the pprint classes are actually there
-        "io.suzaku" %% "boopickle" % "1.4.0",
+        "io.suzaku" %% "boopickle" % "1.5.0",
         "com.lihaoyi" %% "pprint" % "0.9.0",
         "ch.qos.logback" % "logback-classic" % "1.5.6" % Test,
         "io.getquill" %% "quill-engine" % zioQuillVersion,
@@ -266,8 +266,8 @@ lazy val jdbcTestingLibraries = Seq(
   libraryDependencies ++= Seq(
     "com.zaxxer" % "HikariCP" % "5.1.0" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
-    "com.mysql" % "mysql-connector-j" % "8.4.0" % Test,
-    "com.h2database" % "h2" % "2.2.224" % Test,
+    "com.mysql" % "mysql-connector-j" % "9.0.0" % Test,
+    "com.h2database" % "h2" % "2.3.230" % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
     "org.postgresql" % "postgresql" % "42.7.3" % Test,
     "org.xerial" % "sqlite-jdbc" % "3.46.0.0" % Test,
