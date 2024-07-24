@@ -570,8 +570,9 @@ object PrepareDynamicExecution {
       matchingExternals: List[External],
       secondaryLifts: List[Planter[_, _, _]] = List()
   ): Either[String, (List[Planter[_, _, _]], List[Planter[_, _, _]])] = {
-    val encodeablesMap =
-      lifts.map(e => (e.uid, e)).toMap
+
+    var encodeablesMap =
+      lifts.groupBy(_.uid)
 
     val secondaryEncodeablesMap =
       secondaryLifts.map(e => (e.uid, e)).toMap
@@ -594,13 +595,16 @@ object PrepareDynamicExecution {
         case NotFound(uid)           => s"NotFoundPlanter($uid)"
       }
     }
-
     val sortedEncodeables =
       uidsOfScalarTags
         .map { uid =>
           encodeablesMap.get(uid) match {
-            case Some(element) => UidStatus.Primary(uid, element)
-            case None =>
+            case Some(head::Nil) =>
+              UidStatus.Primary(uid, head)
+            case Some(head::tails) =>
+              encodeablesMap += (uid, tails)
+              UidStatus.Primary(uid, head)
+            case _ =>
               secondaryEncodeablesMap.get(uid) match {
                 case Some(element) => UidStatus.Secondary(uid, element)
                 case None          => UidStatus.NotFound(uid)
