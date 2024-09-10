@@ -129,7 +129,7 @@ function setup_sqlserver() {
 
 # Do a simple necat poll to make sure the oracle database is ready.
 # All internal database creation and schema setup scripts are handled
-# by the container and docker-compose steps.
+# by the container and docker compose steps.
 
 function setup_oracle() {
     while ! nc -z $1 1521; do
@@ -158,7 +158,7 @@ function setup_oracle() {
 
 function send_script() {
   echo "Send Script Args: 1: $1 - 2 $2 - 3: $3"
-  docker cp $2 "$(docker-compose ps -q $1)":/$3
+  docker cp $2 "$(docker compose ps -q $1)":/$3
 }
 
 export -f setup_sqlite
