@@ -22,13 +22,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scala: [ 3.3.3 ]
+        scala: [ 3.3.4 ]
         module: [ sqltest, db, bigdata ]
 
     steps:
       - uses: actions/checkout@v4.1.7
       - name: Setup Java and Scala
-        uses: actions/setup-java@v4.2.1
+        uses: actions/setup-java@v4.3.0
         with:
           distribution: temurin
           java-version: '17'
@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4.1.7
       - name: Setup Java and Scala
-        uses: actions/setup-java@v4.2.1
+        uses: actions/setup-java@v4.3.0
         with:
           distribution: temurin
           java-version: '17'
