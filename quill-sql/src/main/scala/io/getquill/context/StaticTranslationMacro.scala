@@ -296,7 +296,7 @@ object StaticTranslationMacro {
         StaticState(query, primaryLifts, returnAction, idiom, secondaryLifts)(ast)
       }
 
-    if (tryStatic.isEmpty) {
+    if (tryStatic.isEmpty && io.getquill.util.Messages.debugEnabled) {
       val timeTaken = System.currentTimeMillis() - startTimeMs
       queryPrint(PrintType.Message(s"Dynamic Query Detected (compiled in ${timeTaken}ms)"), None)
     }
