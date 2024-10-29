@@ -280,6 +280,7 @@ object QueryExecutionBatch {
       val extractionBehaviorExpr = Expr(extractionBehavior)
       val extractor = MakeExtractor[ResultRow, Session, T, T].dynamic(identityConverter, extractionBehavior)
       val transpileConfig = SummonTranspileConfig()
+      val spliceAsts = TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]
       '{
         QueryExecutionBatchDynamic.apply[I, T, A, ResultRow, PrepareRow, Session, D, N, Ctx, Res](
           $quotedRaw,
@@ -289,7 +290,8 @@ object QueryExecutionBatch {
           // / For the sake of viewing/debugging the quat macro code it is better not to serialize it here
           ${ Lifter.NotSerializing.quat(topLevelQuat) },
           ${ TranspileConfigLiftable(transpileConfig) },
-          $batchingBehavior
+          $batchingBehavior,
+          ${ Expr(spliceAsts) },
         )
       }
 
