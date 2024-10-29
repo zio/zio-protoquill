@@ -3,6 +3,7 @@ package io.getquill.dynamic
 import io.getquill.{Literal, MirrorContext, PostgresDialect, Query, Quoted, Spec, SuperContext, Update, *}
 import org.scalatest.Inside
 import io.getquill.ast.*
+import io.getquill.context.ExecutionType
 import io.getquill.util.Messages.qprint
 
 
@@ -124,6 +125,15 @@ class DynamicScenariosSpec extends Spec with Inside with SuperContext[PostgresDi
               else fail(s"The tags of the two entity clauses were the same in: ${qprint(mirror.info.ast)}")
       }
 
+    }
+
+    "dynamic with property and lift" in { //
+      val liftVar = "LIFT_VAR" //
+      val fun = "DYNAMIC_FUNC"
+      val q = quote { query[Person].map(p => sql"#$fun(${p.name}, ${lift(liftVar)})".as[String]) }
+      println("---- Original ----\n" + qprint(q))
+
+      println(qprint(ctx.run(q).info))
     }
   }
 
