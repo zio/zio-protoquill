@@ -124,16 +124,6 @@ class DynamicScenariosSpec extends Spec with Inside with SuperContext[PostgresDi
               if (nameA.uid != nameB.uid) succeed
               else fail(s"The tags of the two entity clauses were the same in: ${qprint(mirror.info.ast)}")
       }
-
-    }
-
-    "dynamic with property and lift" in { //
-      val liftVar = "LIFT_VAR" //
-      val fun = "DYNAMIC_FUNC"
-      val q = quote { query[Person].map(p => sql"#$fun(${p.name}, ${lift(liftVar)})".as[String]) }
-      println("---- Original ----\n" + qprint(q))
-
-      println(qprint(ctx.run(q).info))
     }
   }
 
