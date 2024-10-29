@@ -59,8 +59,8 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
   @targetName("runBatchActionReturningDefault")
   inline def run[I, T, A <: Action[I] & QAC[I, T]](inline quoted: Quoted[BatchAction[A]]): ZIO[Connection, SQLException, List[T]] = InternalApi.runBatchActionReturning(quoted, 1)
 
-  protected def annotate[R, E, A](zio: ZIO[R, E, A], sql: String, info: ExecutionInfo): ZIO[R, E, A] =
-    ZioQuillLog.withExecutionInfo(info)(ZIO.logAnnotate(ZioJdbc.SqlAnnotationKey, sql)(zio))
+  protected def annotate[R, E, A](zio: ZIO[R, E, A], sql: => String, info: => ExecutionInfo): ZIO[R, E, A] =
+    ZioQuillLog.withExecutionInfo(info)(ZioQuillLog.withSqlQuery(sql)(zio))
 
   // Need explicit return-type annotations due to scala/bug#8356. Otherwise macro system will not understand Result[Long]=Task[Long] etc...
   override def executeAction(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): QCIO[Long] =
@@ -74,19 +74,22 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
   override def executeActionReturningMany[O](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[O], returningBehavior: ReturnAction)(info: ExecutionInfo, dc: Runner): QCIO[List[O]] =
     annotate(super.executeActionReturningMany(sql, prepare, extractor, returningBehavior)(info, dc), sql, info)
   override def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): QCIO[List[Long]] =
-    annotate(super.executeBatchAction(groups)(info, dc), sql, info)
+    annotate(super.executeBatchAction(groups)(info, dc), concatQueries(groups), info)
   override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner): QCIO[List[T]] =
-    annotate(super.executeBatchActionReturning(groups, extractor)(info, dc), sql, info)
+    annotate(super.executeBatchActionReturning(groups, extractor)(info, dc), concatQueriesRet(groups), info)
   override def prepareQuery(sql: String, prepare: Prepare)(info: ExecutionInfo, dc: Runner): QCIO[PreparedStatement] =
     annotate(super.prepareQuery(sql, prepare)(info, dc), sql, info)
   override def prepareAction(sql: String, prepare: Prepare)(info: ExecutionInfo, dc: Runner): QCIO[PreparedStatement] =
     annotate(super.prepareAction(sql, prepare)(info, dc), sql, info)
   override def prepareBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): QCIO[List[PreparedStatement]] =
-    annotate(super.prepareBatchAction(groups)(info, dc), sql, info)
+    annotate(super.prepareBatchAction(groups)(info, dc), concatQueries(groups), info)
   override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(info: ExecutionInfo, dc: Runner): QCIO[String] =
-    annotate(super.translateQueryEndpoint(statement, prepare, extractor, prettyPrint)(info, dc), sql, info)
+    annotate(super.translateQueryEndpoint(statement, prepare, extractor, prettyPrint)(info, dc), statement, info)
   override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(info: ExecutionInfo, dc: Runner): QCIO[List[String]] =
-    annotate(super.translateBatchQueryEndpoint(groups, prettyPrint)(info, dc), sql, info)
+    annotate(super.translateBatchQueryEndpoint(groups, prettyPrint)(info, dc), concatQueries(groups), info)
+
+  protected def concatQueries(groups: List[BatchGroup]): String = groups.map(_.string).distinct.mkString(",")
+  protected def concatQueriesRet(groups: List[BatchGroupReturning]): String = groups.map(_.string).distinct.mkString(",")
 
   /** ZIO Contexts do not managed DB connections so this is a no-op */
   override def close(): Unit = ()

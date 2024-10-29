@@ -1,17 +1,34 @@
 package io.getquill.context
 
-import zio.FiberRef
+import zio.*
 
 object ZioQuillLog {
+  val latestExecutionInfo: FiberRef[Option[ExecutionInfo]] =
+    zio.Unsafe.unsafe {
+      FiberRef.unsafe.make[Option[ExecutionInfo]](None)
+    }
 
-  val currentExecutionInfo: FiberRef[Option[ExecutionInfo]] =
-    FiberRef.unsafe.make[Option[ExecutionInfo]](None)(Unsafe.unsafe)
-
-  final class ExecutionInfoInformed(val executionInfo: () => ExecutionInfo) { self =>
+  final class ExecutionInfoAware(val executionInfo: () => ExecutionInfo) { self =>
     def apply[R, E, A](zio: ZIO[R, E, A])(implicit trace: Trace): ZIO[R, E, A] =
-      currentExecutionInfo.locallyWith(_ => Some(executionInfo()))(zio)
+      latestExecutionInfo.set(Some(executionInfo())) *> zio
   }
 
-  def withExecutionInfo(info: => ExecutionInfo): ExecutionInfoInformed =
-    new ExecutionInfoInformed(() => info)
+  def withExecutionInfo(info: => ExecutionInfo): ExecutionInfoAware =
+    new ExecutionInfoAware(() => info)
+
+
+  val latestSqlQuery: FiberRef[Option[String]] =
+    zio.Unsafe.unsafe {
+      FiberRef.unsafe.make[Option[String]](None)
+    }
+
+  final class SqlQueryAware(val sqlQuery: () => String) {
+    self =>
+    def apply[R, E, A](zio: ZIO[R, E, A])(implicit trace: Trace): ZIO[R, E, A] =
+      latestSqlQuery.set(Some(sqlQuery())) *> zio
+  }
+
+  def withSqlQuery(sqlQuery: => String): SqlQueryAware =
+    new SqlQueryAware(() => sqlQuery)
 }
+
