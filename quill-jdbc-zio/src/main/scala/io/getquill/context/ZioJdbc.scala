@@ -15,6 +15,8 @@ import javax.sql.DataSource
 import zio.Scope
 
 object ZioJdbc {
+  val SqlAnnotationKey = "quill.sql.latest"
+
   type QIO[T] = ZIO[DataSource, SQLException, T]
   type QStream[T] = ZStream[DataSource, SQLException, T]
 
