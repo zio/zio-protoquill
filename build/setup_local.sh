@@ -5,7 +5,6 @@ set -e
 # import setup functions
 . /app/build/setup_db_scripts.sh
 
-
 time setup_mysql mysql
 time setup_postgres postgres
 time setup_cassandra cassandra $CASSANDRA_SCRIPT
