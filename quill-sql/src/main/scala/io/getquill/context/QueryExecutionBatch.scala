@@ -406,8 +406,15 @@ object QueryExecutionBatch {
                 )($traceConfigExpr)
               }
 
+              val spliceAsts = TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]
+              val executionInfo =
+                if (spliceAsts)
+                  '{ ExecutionInfo(ExecutionType.Static, ${ Lifter(state.ast) }, ${ Lifter.quat(topLevelQuat) }) }
+                else
+                  '{ ExecutionInfo(ExecutionType.Unknown, io.getquill.ast.NullValue, Quat.Unknown) }
+
               '{
-                $batchContextOperation.execute(ContextOperation.BatchArgument($batchGroups, $extractor, ExecutionInfo(ExecutionType.Static, ${ Lifter(state.ast) }, ${ Lifter.quat(topLevelQuat) }), None))
+                $batchContextOperation.execute(ContextOperation.BatchArgument($batchGroups, $extractor, $executionInfo, None))
               }
 
             case None =>
