@@ -6,6 +6,7 @@ import io.getquill.context.ExecutionType.Dynamic
 class ParticularizationSpec extends Spec {
 
   case class Ent(foo: String, bar: String)
+  given MirrorContext.GenericDecoder[Ent] = MirrorContext.deriveDecoder
 
   "question mark particularization" - {
     val ctx: SqlMirrorContext[PostgresDialect, Literal] = new SqlMirrorContext(PostgresDialect, Literal)

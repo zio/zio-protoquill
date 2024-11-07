@@ -37,6 +37,8 @@ class QueryMetaTest extends Spec with Inside {
     "static meta - new style - multi object" - {
       case class Person(name: String, age: Int, importance: String)
       case class Vip(name: String, age: Int)
+      given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+      given MirrorContext.GenericDecoder[Vip] = MirrorContext.deriveDecoder
 
       inline given QueryMeta[Vip, Person] =
         queryMeta(

@@ -1,23 +1,24 @@
 package io.getquill
 
+import io.getquill.MirrorContext.RowTyper
+
 import scala.language.implicitConversions
-
 import io.getquill.Quoted
-
-import io.getquill.ast._
+import io.getquill.ast.*
 import io.getquill.QuotationLot
 import io.getquill.QuotationVase
 import io.getquill.context.ExecutionType
-import org.scalatest._
+import org.scalatest.*
 import io.getquill.quat.quatOf
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
 import io.getquill.generic.GenericDecoder
 import io.getquill.generic.GenericRowTyper
 import io.getquill.generic.GenericColumnResolver
-import scala.quoted._
-import scala.deriving._
-import scala.compiletime.{erasedValue, constValue, summonFrom}
+
+import scala.quoted.*
+import scala.deriving.*
+import scala.compiletime.{constValue, erasedValue, summonFrom}
 import scala.collection.mutable.LinkedHashMap
 import scala.reflect.ClassTag
 import scala.reflect.classTag

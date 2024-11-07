@@ -57,7 +57,7 @@ trait ContextStandard[+Idiom <: io.getquill.idiom.Idiom, +Naming <: NamingStrate
     with ContextVerbPrepareLambda[Idiom, Naming]
 
 trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
-    extends ProtoContextSecundus[Dialect, Naming] with EncodingDsl with Closeable {
+    extends ProtoContextSecundus[Dialect, Naming] with DatabaseVerbs with Closeable {
   self =>
 
   /**
@@ -67,7 +67,9 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
   type RunnerBehavior <: RunnerSummoningBehavior
   protected def context: Runner = fail(s"Runner method not implemented for '${this.getClass.getName}' Context")
 
-  implicit inline def dec[T]: GenericDecoder[ResultRow, Session, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, ResultRow, Session] }
+  object auto {
+    implicit inline def dec[T]: GenericDecoder[ResultRow, Session, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, ResultRow, Session] }
+  }
 
   // def probe(statement: String): Try[_]
   // todo add 'prepare' i.e. encoders here

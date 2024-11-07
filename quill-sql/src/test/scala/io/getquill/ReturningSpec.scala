@@ -10,6 +10,7 @@ class ReturningSpec extends ProductSpec {
   import context._
 
   case class Foo(id: Long, description: String, sku: Long)
+  given MirrorContext.GenericDecoder[Foo] = MirrorContext.deriveDecoder
 
   "postgres style" - {
     "returning - single insert with inlined free variable" in {

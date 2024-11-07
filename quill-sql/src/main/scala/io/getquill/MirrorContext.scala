@@ -1,21 +1,45 @@
 package io.getquill
 
-import io.getquill.context.mirror._
-import io.getquill.context._
+import io.getquill.context.mirror.*
+import io.getquill.context.*
 import io.getquill.Quoted
 import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
+import io.getquill.context.sql.SqlEncoding
+import io.getquill.generic.{DecodingType, EncodingDsl, GenericDecoder}
+
 import scala.annotation.targetName
 
+object MirrorContext extends SqlEncoding with MirrorDecoders with MirrorEncoders {
+  override type Session = MirrorSession
+  override type PrepareRow = Row
+  override type ResultRow = Row
+  override type NullChecker = MirrorNullChecker
+  class MirrorNullChecker extends BaseNullChecker {
+    override def apply(index: Int, row: Row): Boolean = row.nullAt(index)
+  }
+  implicit val nullChecker: NullChecker = new MirrorNullChecker()
+
+  type GenericDecoder[T] = io.getquill.generic.GenericDecoder[Row, MirrorSession, T, DecodingType.Generic]
+  inline def deriveDecoder[T]: GenericDecoder[T] = ${ io.getquill.generic.GenericDecoder.summon[T, Row, MirrorSession] }
+}
+
 class MirrorContext[+Dialect <: Idiom, +Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
-    extends MirrorContextBase[Dialect, Naming] with AstSplicing
+    extends MirrorContextBase[Dialect, Naming] with AstSplicing {
+
+  export MirrorContext.{
+    PrepareRow => _,
+    ResultRow => _,
+    Session => _,
+    _
+  }
+}
 
 trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
     extends Context[Dialect, Naming]
     with ContextVerbPrepare[Dialect, Naming]
-    with ContextVerbTranslate[Dialect, Naming]
-    with MirrorDecoders
-    with MirrorEncoders { self =>
+    with ContextVerbTranslate[Dialect, Naming] { self =>
+
   override type Result[T] = T
   override type RunQueryResult[T] = QueryMirror[T]
   override type RunQuerySingleResult[T] = QueryMirror[T]
@@ -34,11 +58,7 @@ trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
   override def translateContext: Runner = ()
   def session: MirrorSession
 
-  override type NullChecker = MirrorNullChecker
-  class MirrorNullChecker extends BaseNullChecker {
-    override def apply(index: Int, row: Row): Boolean = row.nullAt(index)
-  }
-  implicit val nullChecker: NullChecker = new MirrorNullChecker()
+
 
   case class QueryMirror[T](string: String, prepareRow: PrepareRow, extractor: Extractor[T], info: ExecutionInfo) {
     def string(pretty: Boolean): String =

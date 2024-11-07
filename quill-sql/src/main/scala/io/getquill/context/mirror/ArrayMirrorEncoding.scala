@@ -10,7 +10,7 @@ import io.getquill.generic.ArrayEncoding
 import scala.collection.Factory
 
 trait ArrayMirrorEncoding extends ArrayEncoding {
-  this: SqlMirrorContext[_, _] =>
+  this: MirrorEncoders with MirrorDecoders =>
 
   implicit def arrayStringEncoder[Col <: Seq[String]]: Encoder[Col] = encoder[Col]
   implicit def arrayBigDecimalEncoder[Col <: Seq[BigDecimal]]: Encoder[Col] = encoder[Col]

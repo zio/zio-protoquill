@@ -38,6 +38,7 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   }
 
   case class Person(id: Int, name: String, age: Int, sex: Sex)
+  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
 
   inline def insertPeople = quote((p: Person) => query[Person].insertValue(p))
 

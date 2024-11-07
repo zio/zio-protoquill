@@ -1,10 +1,11 @@
 package io.getquill.generic
 
 import scala.reflect.ClassTag
-import scala.quoted._
-import scala.deriving._
+import scala.quoted.*
+import scala.deriving.*
 import scala.compiletime.{erasedValue, summonFrom}
 import io.getquill.MappedEncoding
+import io.getquill.context.mirror.MirrorSession
 import io.getquill.generic.DecodingType
 
 /**
@@ -54,10 +55,15 @@ trait GenericNullChecker[ResultRow, Session] {
   def apply(columnIndex: Int, resultRow: ResultRow): Boolean
 }
 
-trait EncodingDsl extends LowPriorityImplicits { self => // extends LowPriorityImplicits
+
+trait DatabaseVerbs {
   type PrepareRow
   type ResultRow
   type Session
+  type NullChecker
+}
+
+trait EncodingDsl extends DatabaseVerbs with LowPriorityImplicits { self => // extends LowPriorityImplicits
   // type Index = Int
 
   type EncoderMethod[T] = (Int, T, PrepareRow, Session) => PrepareRow

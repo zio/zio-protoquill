@@ -1,18 +1,25 @@
 package io.getquill.context.jdbc
 
 import java.io.Closeable
-import java.sql.{ Connection, PreparedStatement }
+import java.sql.{Connection, PreparedStatement}
 import javax.sql.DataSource
 import io.getquill.context.sql.idiom.SqlIdiom
-import io.getquill._
-import io.getquill.context.{ ExecutionInfo, ProtoContextSecundus, ContextVerbTranslate }
+import io.getquill.*
+import io.getquill.context.{ContextVerbTranslate, ExecutionInfo, ProtoContextSecundus}
 
-import scala.util.{ DynamicVariable, Try }
+import scala.util.{DynamicVariable, Try}
 import scala.util.control.NonFatal
 import io.getquill.Quoted
+
 import scala.annotation.targetName
 import io.getquill.context.ContextVerbTranslate
+import io.getquill.generic.DecodingType
 import io.getquill.util.ContextLogger
+
+object JdbcContext {
+  type GenericDecoder[T] = io.getquill.generic.GenericDecoder[java.sql.ResultSet, java.sql.Connection, T, DecodingType.Generic]
+  inline def deriveDecoder[T]: GenericDecoder[T] = ${ io.getquill.generic.GenericDecoder.summon[T, java.sql.ResultSet, java.sql.Connection] }
+}
 
 abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   extends JdbcContextBase[Dialect, Naming]

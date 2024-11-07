@@ -25,6 +25,9 @@ import org.scalatest._
 class QuotationTest extends Spec with Inside {
   case class Address(street: String, zip: Int) extends Embedded
   case class Person(name: String, age: Int, address: Address)
+  given MirrorContext.GenericDecoder[Address] = MirrorContext.deriveDecoder
+  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+  import MirrorContext._
   import ShortAst._
 
   object scalarTag {

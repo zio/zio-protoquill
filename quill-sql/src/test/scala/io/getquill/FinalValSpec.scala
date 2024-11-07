@@ -1,10 +1,13 @@
 package io.getquill
 
 class FinalValSpec extends Spec {
+  case class Person(name: String, age: Int)
+  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder[Person]
+
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
-  case class Person(name: String, age: Int)
+
   final val maxAge = 21
 
   "final val should translate to static constant" in {

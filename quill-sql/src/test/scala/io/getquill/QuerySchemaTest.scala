@@ -10,16 +10,20 @@ import io.getquill.QuotationVase
 import io.getquill.context.ExecutionType
 import org.scalatest._
 
-class QuerySchemaTest extends Spec with Inside { // hello
+class QuerySchemaTest extends Spec with Inside {
+  val ctx = new MirrorContext(MirrorIdiom, Literal)
+  import ctx._
 
   case class TestEntity(s: String, i: Int, l: Long, o: Option[Int])
   case class TestEntity2(s: String, i: Int, l: Long, o: Option[Int])
   case class TestEntity3(s: String, i: Int, l: Long, o: Option[Int])
   case class TestEntity4(i: Long)
   case class TestEntity5(s: String, i: Long)
-
-  val ctx = new MirrorContext(MirrorIdiom, Literal)
-  import ctx._
+  given MirrorContext.GenericDecoder[TestEntity] = MirrorContext.deriveDecoder
+  given MirrorContext.GenericDecoder[TestEntity2] = MirrorContext.deriveDecoder
+  given MirrorContext.GenericDecoder[TestEntity3] = MirrorContext.deriveDecoder
+  given MirrorContext.GenericDecoder[TestEntity4] = MirrorContext.deriveDecoder
+  given MirrorContext.GenericDecoder[TestEntity5] = MirrorContext.deriveDecoder
 
   // inline def verifyQuoteAndRun[T](implicit inline meta: SchemaMeta[T]) = {
   //   inline val q = quote(query[T])

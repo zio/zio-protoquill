@@ -12,6 +12,9 @@ class InsertLiftedSpec extends Spec {
       case class First(value: String)
       case class Name(first: First, last: String)
       case class Person(name: Name, age: Int)
+      given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+      given MirrorContext.GenericDecoder[Name] = MirrorContext.deriveDecoder
+      given MirrorContext.GenericDecoder[First] = MirrorContext.deriveDecoder
 
       inline def q = quote { query[Person].insertValue(lift(Person(Name(First("Joe"), "Bloggs"), 123))) }
       ctx.run(q).triple mustEqual (

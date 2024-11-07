@@ -117,7 +117,12 @@ object Execution {
     Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Specific]] match {
       case Some(decoder) => decoder
       case None =>
-        GenericDecoder.summon[DecoderT, ResultRow, Session]
+        // Summon a decoder from a given as opposed to from a macro
+        Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]] match {
+          case Some(decoder) => decoder
+          case None          => report.throwError(s"Decoder could not be summoned for type: ${Type.show[DecoderT]} (row-type: ${Format.TypeOf[ResultRow]}, session-type: ${Format.TypeOf[Session]})")
+        }
+        //GenericDecoder.summon[DecoderT, ResultRow, Session]
     }
   }
 
