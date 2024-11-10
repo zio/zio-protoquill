@@ -117,12 +117,32 @@ object Execution {
     Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Specific]] match {
       case Some(decoder) => decoder
       case None =>
-        // Summon a decoder from a given as opposed to from a macro
-        Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]] match {
-          case Some(decoder) => decoder
-          case None          => report.throwError(s"Decoder could not be summoned for type: ${Type.show[DecoderT]} (row-type: ${Format.TypeOf[ResultRow]}, session-type: ${Format.TypeOf[Session]})")
+        val tpe = TypeRepr.of[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]]
+        quotes.reflect.Implicits.search(tpe) match {
+          case res: quotes.reflect.ImplicitSearchSuccess => res.tree.asExprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]]
+          case fail: quotes.reflect.ImplicitSearchFailure =>
+            report.throwError(
+              s"Decoder lookup failure for: ${Type.show[DecoderT]} (row-type: ${Format.TypeOf[ResultRow]}, session-type: ${Format.TypeOf[Session]}).\n"
+              + "=============== Reason ===============\n" + fail.explanation
+            )
         }
+
+        //val implicitlyTerm =
+        //  quotes.reflect.Apply(
+        //  quotes.reflect.TypeApply(
+        //    Ref.term(quotes.reflect.Symbol.requiredModule("scala.Predef.implicitly").termRef),
+        //    List(TypeTree.of[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]])
+        //  ), //.etaExpand(Symbol.requiredModule("scala.Predef"))
+        //  List())
+        //implicitlyTerm.asExprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]]
+
+
+        // Summon a decoder from a given as opposed to from a macro
         //GenericDecoder.summon[DecoderT, ResultRow, Session]
+        //Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]] match {
+        //  case Some(decoder) => decoder
+        //  case None          => report.throwError(s"Decoder could not be summoned for type: ${Type.show[DecoderT]} (row-type: ${Format.TypeOf[ResultRow]}, session-type: ${Format.TypeOf[Session]})")
+        //}
     }
   }
 

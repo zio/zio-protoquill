@@ -1,9 +1,11 @@
 package io.getquill
 
-import com.datastax.oss.driver.api.core.{ CqlSession, CqlSessionBuilder }
+import com.datastax.oss.driver.api.core.cql.Row
+import com.datastax.oss.driver.api.core.{CqlSession, CqlSessionBuilder}
 import com.typesafe.config.Config
 import io.getquill.context.ExecutionInfo
-import io.getquill.context.cassandra.util.FutureConversions._
+import io.getquill.context.cassandra.{CassandraCodecsBase, CqlIdiom}
+import io.getquill.context.cassandra.util.FutureConversions.*
 //import io.getquill.monad.ScalaFutureIOMonad
 import io.getquill.util.{ ContextLogger, LoadConfig }
 import io.getquill.context.RunnerSummoningBehavior
@@ -14,13 +16,21 @@ import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.annotation.targetName
 
+object CassandraAsyncContext extends CassandraCodecsBase[CqlSession]
+
 class CassandraAsyncContext[+N <: NamingStrategy](
   naming:                     N,
   session:                    CqlSession,
   preparedStatementCacheSize: Long
-)
-  extends CassandraCqlSessionContext[N](naming, session, preparedStatementCacheSize)
-  /*with ScalaFutureIOMonad*/ {
+) extends CassandraCqlSessionContext[N](naming, session, preparedStatementCacheSize) {
+  val idiom = CqlIdiom
+
+  export MirrorContext.{
+    PrepareRow => _,
+    ResultRow => _,
+    Session => _,
+    _
+  }
 
   // The ProtoQuill way of doing `implicit ec: ExceutionContext`.
   // This will cause the Context.scala `run` functions etc... summon an implicit

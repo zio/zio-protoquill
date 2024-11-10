@@ -1,7 +1,5 @@
 package io.getquill
 
-import io.getquill.MirrorContext.RowTyper
-
 import scala.language.implicitConversions
 import io.getquill.Quoted
 import io.getquill.ast.*
@@ -12,7 +10,6 @@ import org.scalatest.*
 import io.getquill.quat.quatOf
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
-import io.getquill.generic.GenericDecoder
 import io.getquill.generic.GenericRowTyper
 import io.getquill.generic.GenericColumnResolver
 
@@ -80,5 +77,8 @@ object StaticEnumExample {
   enum Shape(val id: Int) {
     case Square(override val id: Int, width: Int, height: Int) extends Shape(id)
     case Circle(override val id: Int, radius: Int) extends Shape(id)
+  }
+  object Shape {
+    given MirrorContext.GenericDecoder[Shape] = MirrorContext.deriveDecoder
   }
 }

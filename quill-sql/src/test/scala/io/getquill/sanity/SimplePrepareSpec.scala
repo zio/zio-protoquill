@@ -1,7 +1,7 @@
 package io.getquill.sanity
 
-import io.getquill._
-import io.getquill.ast._
+import io.getquill.*
+import io.getquill.ast.*
 import io.getquill.Quoted
 import io.getquill.context.SplicingBehaviorHint
 import io.getquill.context.SplicingBehavior
@@ -16,6 +16,7 @@ class SimplePrepareSpec extends Spec {
 
   "prepare should work for" - {
     case class Person(name: String, age: Int)
+    given GenericDecoder[Person] = SqlMirrorContext.deriveDecoder
 
     "query" in {
       inline def q = quote { query[Person] }

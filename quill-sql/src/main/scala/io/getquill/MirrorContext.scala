@@ -10,7 +10,7 @@ import io.getquill.generic.{DecodingType, EncodingDsl, GenericDecoder}
 
 import scala.annotation.targetName
 
-object MirrorContext extends SqlEncoding with MirrorDecoders with MirrorEncoders {
+object MirrorContext extends ProductDecoders[Row, MirrorSession] with SqlEncoding with MirrorDecoders with MirrorEncoders {
   override type Session = MirrorSession
   override type PrepareRow = Row
   override type ResultRow = Row
@@ -20,9 +20,20 @@ object MirrorContext extends SqlEncoding with MirrorDecoders with MirrorEncoders
   }
   implicit val nullChecker: NullChecker = new MirrorNullChecker()
 
-  type GenericDecoder[T] = io.getquill.generic.GenericDecoder[Row, MirrorSession, T, DecodingType.Generic]
-  inline def deriveDecoder[T]: GenericDecoder[T] = ${ io.getquill.generic.GenericDecoder.summon[T, Row, MirrorSession] }
+
+//  type GenericDecoder[T] = io.getquill.generic.GenericDecoder[Row, MirrorSession, T, DecodingType.Generic]
+//  inline def deriveDecoder[T]: GenericDecoder[T] = ${ io.getquill.generic.GenericDecoder.summon[T, Row, MirrorSession] }
+//
+//  private type SomeDec[T] = io.getquill.generic.GenericDecoder[Row, MirrorSession, T, _]
+//
+//  implicit inline def emptyTupleDecoder: GenericDecoder[EmptyTuple] = deriveDecoder
+//  implicit inline def tuple1Decoder[T1: SomeDec]: GenericDecoder[Tuple1[T1]] = deriveDecoder
+//  implicit inline def tuple2Decoder[T1: SomeDec, T2: SomeDec]: GenericDecoder[(T1, T2)] = deriveDecoder
+//  implicit inline def tuple3Decoder[T1: SomeDec, T2: SomeDec, T3: SomeDec]: GenericDecoder[(T1, T2, T3)] = deriveDecoder
+//  implicit inline def tuple4Decoder[T1: SomeDec, T2: SomeDec, T3: SomeDec, T4: SomeDec]: GenericDecoder[(T1, T2, T3, T4)] = deriveDecoder
 }
+
+
 
 class MirrorContext[+Dialect <: Idiom, +Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
     extends MirrorContextBase[Dialect, Naming] with AstSplicing {

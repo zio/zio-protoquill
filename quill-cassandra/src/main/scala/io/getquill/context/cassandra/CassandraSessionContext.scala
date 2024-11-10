@@ -57,10 +57,7 @@ trait CassandraBaseContext[+N <: NamingStrategy] extends CassandraStandardContex
 trait CassandraStandardContext[+N <: NamingStrategy]
   extends CassandraRowContext
   with CassandraContext[N]
-  with Context[CqlIdiom, N]
-  with Encoders
-  with Decoders
-  with CassandraTypes {
+  with Context[CqlIdiom, N] {
   /*with UdtEncoding*/
 
   // Overriding them as defined in ProtoContextSecundus
@@ -78,19 +75,7 @@ trait CassandraStandardContext[+N <: NamingStrategy]
 }
 
 trait CassandraRowContext extends RowContext {
-
-  val idiom = CqlIdiom
-
   override type PrepareRow = BoundStatement
   override type ResultRow = Row
-
-  type BaseNullChecker = GenericNullChecker[ResultRow, Session]
-  type NullChecker = CassandraNullChecker
-  class CassandraNullChecker extends BaseNullChecker {
-    override def apply(index: Int, row: Row): Boolean = row.isNull(index)
-  }
-  implicit val nullChecker: NullChecker = new CassandraNullChecker()
-
-  // Usually this is io.getquill.context.CassandraSession so you can use udtValueOf but not always e.g. for Lagom it is different
   type Session <: UdtValueLookup
 }

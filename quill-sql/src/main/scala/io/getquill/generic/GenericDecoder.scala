@@ -229,6 +229,7 @@ object GenericDecoder {
 
   def decode[T: Type, ResultRow: Type, Session: Type](index: Int, baseIndex: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session], overriddenIndex: Option[Expr[Int]] = None)(using Quotes): FlattenData = {
     import quotes.reflect._
+    //scala.tools.nsc.io.File("my_log.txt").appendAll("Decoding " + Format.TypeOf[T] + "\n")
     // index of a possible decoder element if we need one
     lazy val elementIndex = '{ $baseIndex + ${ Expr(index) } }
     // If the type is optional give it totally separate handling
@@ -267,6 +268,9 @@ object GenericDecoder {
 
                 case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
                   val children = flatten(index, baseIndex, resultRow, session)(Type.of[elementLabels], Type.of[elementTypes]).reverse
+
+                  //val str = s"Decoding ${Format.TypeOf[T]} as a product"
+                  //scala.tools.nsc.io.File("my_log.txt").appendAll(str + "\n")
                   decodeProduct[T](children, m)
 
                 case _ => report.throwError(s"Decoder for ${Format.TypeOf[T]} could not be summoned. It has no decoder and is not a recognized Product or Sum type.")
@@ -280,6 +284,7 @@ object GenericDecoder {
 
   def summon[T: Type, ResultRow: Type, Session: Type](using quotes: Quotes): Expr[GenericDecoder[ResultRow, Session, T, DecodingType.Generic]] = {
     import quotes.reflect._
+    scala.tools.nsc.io.File("my_log.txt").appendAll("Summoning Start\n")
     '{
       new GenericDecoder[ResultRow, Session, T, DecodingType.Generic] {
         def apply(baseIndex: Int, resultRow: ResultRow, session: Session) = ${ GenericDecoder.decode[T, ResultRow, Session](0, 'baseIndex, 'resultRow, 'session).decodedExpr }.asInstanceOf[T]

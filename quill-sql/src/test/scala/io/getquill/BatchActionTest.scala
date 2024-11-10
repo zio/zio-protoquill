@@ -15,7 +15,7 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   // load the base-object `Idiom` because that is the minimal thing that the Dialect parameter needs
   // (and it seems LoadModule in QueryExecutionBatch does not yet know what the values of the _, _ in Context[_, _]
   // are supposed to be)
-  val ctx: Context[D, N] //
+  val ctx: MirrorContext[D, N] //
 
   import ctx.*
 

@@ -1,22 +1,62 @@
 package io.getquill
 
 import java.util.Date
-import io.getquill.context.cassandra.encoding.{ CassandraMapper, CassandraType, MapperSide }
-import io.getquill.context.cassandra.{ CassandraContext, CqlIdiom }
+import com.datastax.oss.driver.api.core.CqlSession
+import io.getquill.context.AstSplicing
+import io.getquill.context.cassandra.encoding.{CassandraMapper, CassandraType, MapperSide}
+import io.getquill.context.cassandra.{CassandraCodecsBase, CassandraContext, CqlIdiom}
+import io.getquill.context.mirror.{MirrorDecoders, MirrorEncoders, MirrorSession, Row}
+import io.getquill.context.sql.SqlEncoding
 
-import java.time.{ Instant, LocalDate }
+import java.time.{Instant, LocalDate}
 import scala.reflect.ClassTag
 
 class CassandraMirrorContextWithQueryProbing extends CassandraMirrorContext(Literal) with QueryProbing
 
-class CassandraMirrorContext[+Naming <: NamingStrategy](naming: Naming)
-  extends MirrorContext[CqlIdiom, Naming](CqlIdiom, naming)
-  with CassandraContext[Naming] {
+/*
+trait CassandraCodecsBase[ResultRow, Session]
+  extends ProductDecoders[ResultRow, Session]
+  with Encoders
+  with Decoders
+  with CassandraTypes {
+
+  // TODO some kind of global-configuration of timezone? Implicits? System property?
+  protected val zoneId = ZoneId.systemDefault
 
   implicit val timestampDecoder: Decoder[Instant] = decoder[Instant]
   implicit val timestampEncoder: Encoder[Instant] = encoder[Instant]
   implicit val cassandraLocalDateDecoder: Decoder[LocalDate] = decoder[LocalDate]
   implicit val cassandraLocalDateEncoder: Encoder[LocalDate] = encoder[LocalDate]
+
+  //implicit val encodeJava8ZonedDateTime: MappedEncoding[ZonedDateTime, Instant] = MappedEncoding(zdt => zdt.toInstant)
+  //implicit val decodeJava8ZonedDateTime: MappedEncoding[Instant, ZonedDateTime] = MappedEncoding(d => ZonedDateTime.ofInstant(d, zoneId))
+
+  val idiom = CqlIdiom
+  type BaseNullChecker = GenericNullChecker[ResultRow, Session]
+  type NullChecker = CassandraNullChecker
+  class CassandraNullChecker extends BaseNullChecker {
+    override def apply(index: Int, row: Row): Boolean = row.isNull(index)
+  }
+  implicit val nullChecker: NullChecker = new CassandraNullChecker()
+}
+ */
+
+object CassandraMirrorContext extends ProductDecoders[Row, MirrorSession] with SqlEncoding with MirrorDecoders with MirrorEncoders {
+  override type Session = MirrorSession
+  override type PrepareRow = Row
+  override type ResultRow = Row
+  override type NullChecker = MirrorNullChecker
+
+  implicit val timestampDecoder: Decoder[Instant] = decoder[Instant]
+  implicit val timestampEncoder: Encoder[Instant] = encoder[Instant]
+  implicit val cassandraLocalDateDecoder: Decoder[LocalDate] = decoder[LocalDate]
+  implicit val cassandraLocalDateEncoder: Encoder[LocalDate] = encoder[LocalDate]
+
+  class MirrorNullChecker extends BaseNullChecker {
+    override def apply(index: Int, row: Row): Boolean = row.nullAt(index)
+  }
+
+  implicit val nullChecker: NullChecker = new MirrorNullChecker()
 
   implicit def listDecoder[T, Cas](implicit mapper: CassandraMapper[Cas, T, MapperSide.Decode], ct: ClassTag[Cas]): Decoder[List[T]] = decoderUnsafe[List[T]]
   implicit def setDecoder[T, Cas](implicit mapper: CassandraMapper[Cas, T, MapperSide.Decode], ct: ClassTag[Cas]): Decoder[Set[T]] = decoderUnsafe[Set[T]]
@@ -41,4 +81,20 @@ class CassandraMirrorContext[+Naming <: NamingStrategy](naming: Naming)
   implicit def udtCassandraType[T <: Udt]: CassandraType[T] = CassandraType.of[T]
   implicit def udtDecoder[T <: Udt: ClassTag]: Decoder[T] = decoder[T]
   implicit def udtEncoder[T <: Udt]: Encoder[T] = encoder[T]
+}
+
+class CassandraMirrorContext[+Naming <: NamingStrategy](val naming: Naming)
+  extends MirrorContextBase[CqlIdiom, Naming]
+  with CassandraContext[Naming]
+  with AstSplicing {
+
+  val idiom = CqlIdiom
+  val session: MirrorSession = MirrorSession("DefaultMirrorContextSession")
+
+  export CassandraMirrorContext.{
+    PrepareRow => _,
+    ResultRow => _,
+    Session => _,
+    _
+  }
 }

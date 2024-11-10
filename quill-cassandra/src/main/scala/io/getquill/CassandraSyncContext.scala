@@ -1,21 +1,30 @@
 package io.getquill
 
 import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.cql.Row
 import com.typesafe.config.Config
 import io.getquill.context.ExecutionInfo
-//import io.getquill.monad.SyncIOMonad
-import io.getquill.util.{ ContextLogger, LoadConfig }
+import io.getquill.context.cassandra.{CassandraCodecsBase, CqlIdiom}
+import io.getquill.util.{ContextLogger, LoadConfig}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.annotation.targetName
+
+object CassandraSyncContext extends CassandraCodecsBase[CqlSession]
 
 class CassandraSyncContext[+N <: NamingStrategy](
   naming:                     N,
   session:                    CqlSession,
   preparedStatementCacheSize: Long
-)
-  extends CassandraCqlSessionContext[N](naming, session, preparedStatementCacheSize)
-  /*with SyncIOMonad*/ {
+) extends CassandraCqlSessionContext[N](naming, session, preparedStatementCacheSize) {
+  val idiom = CqlIdiom
+
+  export CassandraSyncContext.{
+    PrepareRow => _,
+    ResultRow => _,
+    Session => _,
+    _
+  }
 
   def this(naming: N, config: CassandraContextConfig) = this(naming, config.session, config.preparedStatementCacheSize)
   def this(naming: N, config: Config) = this(naming, CassandraContextConfig(config))

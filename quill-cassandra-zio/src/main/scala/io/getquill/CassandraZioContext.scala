@@ -53,6 +53,7 @@ class CassandraZioContext[+N <: NamingStrategy](val naming: N)
   with ZioContext[CqlIdiom, N]
   with Context[CqlIdiom, N] {
 
+  val idiom = CqlIdiom
   private val logger = ContextLogger(classOf[CassandraZioContext[_]])
 
   override type Error = Throwable

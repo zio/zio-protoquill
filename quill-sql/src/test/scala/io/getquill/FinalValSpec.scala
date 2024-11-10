@@ -1,5 +1,7 @@
 package io.getquill
 
+import io.getquill.MirrorContext.*
+
 class FinalValSpec extends Spec {
   case class Person(name: String, age: Int)
   given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder[Person]
