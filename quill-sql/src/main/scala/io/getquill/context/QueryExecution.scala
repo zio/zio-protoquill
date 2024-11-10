@@ -117,15 +117,8 @@ object Execution {
     Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Specific]] match {
       case Some(decoder) => decoder
       case None =>
-        val tpe = TypeRepr.of[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]]
-        quotes.reflect.Implicits.search(tpe) match {
-          case res: quotes.reflect.ImplicitSearchSuccess => res.tree.asExprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]]
-          case fail: quotes.reflect.ImplicitSearchFailure =>
-            report.throwError(
-              s"Decoder lookup failure for: ${Type.show[DecoderT]} (row-type: ${Format.TypeOf[ResultRow]}, session-type: ${Format.TypeOf[Session]}).\n"
-              + "=============== Reason ===============\n" + fail.explanation
-            )
-        }
+        lazy val failMsg = s"Decoder lookup failure for: ${Type.show[DecoderT]} (row-type: ${Format.TypeOf[ResultRow]}, session-type: ${Format.TypeOf[Session]}).\n"
+        SummonOrFail.exprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]](failMsg)
 
         //val implicitlyTerm =
         //  quotes.reflect.Apply(

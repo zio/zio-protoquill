@@ -299,7 +299,10 @@ trait QuatMakingBase {
         tpe match {
           case AnyType(tpe)                        => Some(Quat.Generic)
           case BooleanType(tpe)                    => Some(Quat.BooleanValue)
-          case OptionType(BooleanType(innerParam)) => Some(Quat.BooleanValue)
+          //case OptionType(BooleanType(innerParam)) => Some(Quat.BooleanValue)
+
+          // if it's an Option(x) then get the value for x. The OptionType should be skipped for the sake of Quats
+          case OptionType(innerParam)              => ValueType.unapply(innerParam)
           case DefiniteValue(tpe)                  => Some(Quat.Value)
           case _                                   => None
         }

@@ -34,7 +34,7 @@ trait MirrorDecoders extends EncodingDsl {
   implicit def mappedDecoder[I, O](implicit mapped: MappedEncoding[I, O], d: Decoder[I]): Decoder[O] =
     MirrorDecoder((index: Int, row: ResultRow, session: Session) => mapped.f(d.apply(index, row, session)))
 
-  implicit def optionDecoder[T](implicit d: Decoder[T]): Decoder[Option[T]] =
+  implicit def optionDecoder[T](implicit d: BaseDecoderAny[T]): Decoder[Option[T]] =
     MirrorDecoder((index: Int, row: ResultRow, session: Session) =>
       if (row.nullAt(index))
         None

@@ -80,6 +80,9 @@ trait EncodingDsl extends DatabaseVerbs with LowPriorityImplicits { self => // e
   // respective Encoder[T]/Decoder[T] implementations e.g. JdbcEncoder[T](...) extends BaseEncoder[T]
   type BaseEncoder[T] = GenericEncoder[T, PrepareRow, Session]
   type BaseDecoder[T] = GenericDecoder[ResultRow, Session, T, DecodingType.Specific]
+  // Since sometimes you need a decoder to depend on another that could ge DecodingType.Specific or Generic (e.g. optionDecoder)
+  // need to have a class that covers both options
+  type BaseDecoderAny[T] = GenericDecoder[ResultRow, Session, T, _]
   type BaseNullChecker = GenericNullChecker[ResultRow, Session]
 
   type ColumnResolver = GenericColumnResolver[ResultRow]

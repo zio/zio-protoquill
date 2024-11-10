@@ -2,6 +2,7 @@ package io.getquill
 
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
+import MirrorContext.*
 
 class ParticularizationSpec extends Spec {
 

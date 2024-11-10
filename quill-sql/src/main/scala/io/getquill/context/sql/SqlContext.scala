@@ -16,7 +16,7 @@ trait SqlContext[+Idiom <: BaseIdiom, +Naming <: NamingStrategy]
 }
 
 trait SqlEncoding extends EncodingDsl {
-  implicit def optionDecoder[T](implicit d: Decoder[T]): Decoder[Option[T]]
+  implicit def optionDecoder[T](implicit d: BaseDecoderAny[T]): Decoder[Option[T]]
   implicit def optionEncoder[T](implicit d: Encoder[T]): Encoder[Option[T]]
 
   implicit val stringDecoder: Decoder[String]

@@ -31,6 +31,7 @@ class GenericDecoderTest extends Spec {
   import ctx.{given, _}
 
   case class Person(name: String, age: Int)
+  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
 
   "domain-model product using row-typer" - {
     given RowTyper[Shape] with {

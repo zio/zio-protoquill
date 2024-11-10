@@ -1,12 +1,15 @@
 package io.getquill.generic
 
+import io.getquill.context.SummonOrFail
+
 import scala.reflect.ClassTag
 import scala.reflect.classTag
-import scala.quoted._
-import scala.deriving._
-import scala.compiletime.{erasedValue, constValue, summonFrom, summonInline}
-import io.getquill.metaprog.TypeExtensions._
+import scala.quoted.*
+import scala.deriving.*
+import scala.compiletime.{constValue, erasedValue, summonFrom, summonInline}
+import io.getquill.metaprog.TypeExtensions.*
 import io.getquill.util.Format
+
 import scala.annotation.tailrec
 import io.getquill.generic.GenericDecoder.FlattenData
 
@@ -257,26 +260,31 @@ object GenericDecoder {
           FlattenData(Type.of[T], decoder, '{ !${ nullChecker } }, index)
 
         case None =>
-          Expr.summon[Mirror.Of[T]] match {
-            case Some(ev) =>
-              // Otherwise, recursively summon fields
-              ev match {
-                case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } if (!isBuiltInType[T]) =>
-                  // do not treat optional objects as coproduts, a Specific (i.e. EncodingType.Specific) Option-decoder
-                  // is defined in the EncodingDsl
-                  DecodeSum[T, ResultRow, Session, elementTypes](index, baseIndex, resultRow, session)
+          //Expr.summon[Mirror.Of[T]] match {
+          lazy val msg =
+            s"""No Decoder found for ${Format.TypeOf[T]} and it is not a class representing a group of columns.
+               |Have you imported a Decoder[${Format.TypeOf[T]}]? You an do this by either importing .* from your context:
+               |val ctx = new SqlMirrorContext[PostgresDialect, Literal]
+               |import ctx.*
+               |Or you can import the decoder from the context's companion object for example:
+               |import SqlMirrorContext.*
+               |""".stripMargin
+          val ev = SummonOrFail.exprOf[Mirror.Of[T]](msg)
+          // Otherwise, recursively summon fields
+          ev match {
+            case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } if (!isBuiltInType[T]) =>
+              // do not treat optional objects as coproduts, a Specific (i.e. EncodingType.Specific) Option-decoder
+              // is defined in the EncodingDsl
+              DecodeSum[T, ResultRow, Session, elementTypes](index, baseIndex, resultRow, session)
 
-                case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
-                  val children = flatten(index, baseIndex, resultRow, session)(Type.of[elementLabels], Type.of[elementTypes]).reverse
+            case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
+              val children = flatten(index, baseIndex, resultRow, session)(Type.of[elementLabels], Type.of[elementTypes]).reverse
 
-                  //val str = s"Decoding ${Format.TypeOf[T]} as a product"
-                  //scala.tools.nsc.io.File("my_log.txt").appendAll(str + "\n")
-                  decodeProduct[T](children, m)
+              //val str = s"Decoding ${Format.TypeOf[T]} as a product"
+              //scala.tools.nsc.io.File("my_log.txt").appendAll(str + "\n")
+              decodeProduct[T](children, m)
 
-                case _ => report.throwError(s"Decoder for ${Format.TypeOf[T]} could not be summoned. It has no decoder and is not a recognized Product or Sum type.")
-              } // end match
-            case _ =>
-              report.throwError(s"No Decoder found for ${Format.TypeOf[T]} and it is not a class representing a group of columns")
+            case _ => report.throwError(s"Decoder for ${Format.TypeOf[T]} could not be summoned. It has no decoder and is not a recognized Product or Sum type.")
           } // end match
       } // end match
     }

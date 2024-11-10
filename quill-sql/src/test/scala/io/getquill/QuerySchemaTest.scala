@@ -72,6 +72,7 @@ class QuerySchemaTest extends Spec with Inside {
     }
     "custom with embedded" in {
       case class Entity(emb: EmbValue)
+      given MirrorContext.GenericDecoder[Entity] = MirrorContext.deriveDecoder
       implicit inline def meta: SchemaMeta[Entity] = schemaMeta[Entity]("test_entity", _.emb.i -> "ii")
       inline def q = quote(query[Entity])
       q.ast.toString mustEqual """`querySchema`("test_entity", _.emb.i -> "ii")"""
@@ -79,6 +80,7 @@ class QuerySchemaTest extends Spec with Inside {
     }
     "custom with optional embedded" in {
       case class Entity(emb: Option[EmbValue])
+      given MirrorContext.GenericDecoder[Entity] = MirrorContext.deriveDecoder
       implicit inline def meta: SchemaMeta[Entity] = schemaMeta[Entity]("test_entity", _.emb.map(_.i) -> "ii")
       inline def q = quote(query[Entity])
       q.ast.toString mustEqual """`querySchema`("test_entity", _.emb.i -> "ii")"""

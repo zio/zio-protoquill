@@ -19,6 +19,7 @@ import io.getquill.quat.Quat
 import io.getquill.quote
 import io.getquill.query
 import io.getquill.context.mirror.MirrorSession
+import MirrorContext.*
 
 import org.scalatest._
 
@@ -95,6 +96,7 @@ class QuotationTest extends Spec with Inside {
     }
     "run lazy lift" in {
       case class Person(name: String)
+      given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
       inline def q = quote { query[Person].filter(p => p.name == lazyLift("Joe")) }
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
       import ctx._

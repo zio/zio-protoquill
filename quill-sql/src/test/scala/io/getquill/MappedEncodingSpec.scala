@@ -5,7 +5,6 @@ import io.getquill.context.ExecutionType
 class MirrorEncodingSpec extends Spec {
   class Name(val value: String)
   case class Person(name: Name, age: Int)
-  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
@@ -13,6 +12,8 @@ class MirrorEncodingSpec extends Spec {
   "simple encoder/decoder - class" in {
     implicit val encodeName: MappedEncoding[Name, String] = MappedEncoding[Name, String](_.value)
     implicit val decodeName: MappedEncoding[String, Name] = MappedEncoding[String, Name](str => Name(str))
+    given MirrorContext.GenericDecoder[Name] = MirrorContext.deriveDecoder
+    given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
 
     val name = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
@@ -30,6 +31,7 @@ class MirrorEncodingSpec extends Spec {
     case class Person(name: Name, age: Int)
     implicit val encodeName: MappedEncoding[Name, String] = MappedEncoding[Name, String](_.value)
     implicit val decodeName: MappedEncoding[String, Name] = MappedEncoding[String, Name](str => Name(str))
+    given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
 
     val name = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
