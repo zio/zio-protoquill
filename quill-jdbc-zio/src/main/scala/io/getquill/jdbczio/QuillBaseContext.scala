@@ -14,7 +14,7 @@ import scala.util.Try
 import scala.annotation.targetName
 
 trait QuillBaseContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
-  with JdbcContextTypes[Dialect, Naming]
+  with JdbcContextTypes
   with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
   with ZioTranslateContext[Dialect, Naming] {

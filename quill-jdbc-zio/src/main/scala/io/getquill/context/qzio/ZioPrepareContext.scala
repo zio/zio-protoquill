@@ -1,25 +1,24 @@
 package io.getquill.context.qzio
 
 import io.getquill.NamingStrategy
-import io.getquill.context.{ ExecutionInfo, ContextVerbPrepare }
-import io.getquill.context.ZioJdbc._
+import io.getquill.context.{ContextVerbPrepare, ExecutionInfo}
+import io.getquill.context.ZioJdbc.*
+import io.getquill.context.jdbc.JdbcContextTypes
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.util.ContextLogger
-import zio.{ Task, ZIO }
+import zio.{Task, ZIO}
 
-import java.sql.{ Connection, PreparedStatement, ResultSet, SQLException }
+import java.sql.{Connection, PreparedStatement, ResultSet, SQLException}
 
 trait ZioPrepareContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
-  with ContextVerbPrepare[Dialect, Naming] {
+  with ContextVerbPrepare[Dialect, Naming]
+  with JdbcContextTypes {
 
   private[getquill] val logger = ContextLogger(classOf[ZioPrepareContext[_, _]])
 
-  override type PrepareRow = PreparedStatement
-  override type ResultRow = ResultSet
   override type PrepareQueryResult = QCIO[PrepareRow]
   override type PrepareActionResult = QCIO[PrepareRow]
   override type PrepareBatchActionResult = QCIO[List[PrepareRow]]
-  override type Session = Connection
 
   def prepareQuery(sql: String, prepare: Prepare = identityPrepare)(info: ExecutionInfo, dc: Runner): PrepareQueryResult =
     prepareSingle(sql, prepare)(info, dc)

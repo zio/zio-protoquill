@@ -46,7 +46,6 @@ import zio.ZIO.blocking
  * is only held open while it's host-connection exists.
  */
 abstract class ZioJdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends ZioContext[Dialect, Naming]
-  with JdbcContextTypes[Dialect, Naming]
   with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]

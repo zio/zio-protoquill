@@ -13,6 +13,8 @@ trait PrepareJdbcSpecBase extends ProductSpec {
   val context: JdbcContext[_, _]
   import context._
 
+  given JdbcContext.GenericDecoder[Product] = JdbcContext.deriveDecoder
+
   implicit val productEq: Equality[Product] = new Equality[Product] {
     override def areEqual(a: Product, b: Any): Boolean = b match {
       case Product(_, desc, sku) => desc == a.description && sku == a.sku

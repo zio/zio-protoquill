@@ -1,9 +1,10 @@
 package io.getquill.context.jdbc
 
-import java.time.{ LocalDate, LocalDateTime }
-import java.util
-import java.util.{ Calendar, TimeZone }
+import io.getquill.generic.EncodingDsl
 
+import java.time.{LocalDate, LocalDateTime}
+import java.util
+import java.util.{Calendar, TimeZone}
 import scala.math.BigDecimal.javaBigDecimal2bigDecimal
 
 // Needed as an import in Protoquill but not in Scala2 Quill. Not sure why
@@ -15,8 +16,8 @@ import java.time.Instant
 import java.time.OffsetTime
 import java.time.ZoneOffset
 
-trait Decoders {
-  this: JdbcContextTypes[_, _] =>
+trait Decoders extends EncodingDsl {
+  this: JdbcContextTypes =>
 
   // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
   // type Index = Int (Defined in JdbcRunContext)
@@ -39,7 +40,7 @@ trait Decoders {
   implicit def mappedDecoder[I, O](implicit mapped: MappedEncoding[I, O], d: Decoder[I]): Decoder[O] =
     JdbcDecoder(mappedBaseDecoder(mapped, d.decoder))
 
-  implicit def optionDecoder[T](implicit d: Decoder[T]): Decoder[Option[T]] =
+  implicit def optionDecoder[T](implicit d: BaseDecoderAny[T]): Decoder[Option[T]] =
     JdbcDecoder(
       (index, row, session) => {
         try {
@@ -48,7 +49,7 @@ trait Decoders {
           if (row.wasNull()) {
             None
           } else {
-            Some(d.decoder(index, row, session))
+            Some(d(index, row, session))
           }
         } catch {
           case _: NullPointerException if row.wasNull() => None
@@ -77,7 +78,7 @@ trait Decoders {
 }
 
 trait BasicTimeDecoders extends Decoders {
-  this: JdbcContextTypes[_, _] =>
+  this: JdbcContextTypes =>
 
   implicit val localDateDecoder: Decoder[LocalDate] =
     decoder((index, row, session) =>
@@ -107,7 +108,7 @@ trait BasicTimeDecoders extends Decoders {
 }
 
 trait ObjectGenericTimeDecoders extends Decoders {
-  this: JdbcContextTypes[_, _] =>
+  this: JdbcContextTypes =>
 
   implicit val localDateDecoder: Decoder[LocalDate] =
     decoder((index, row, session) =>

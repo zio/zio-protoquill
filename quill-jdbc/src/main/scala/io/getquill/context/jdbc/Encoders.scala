@@ -21,7 +21,7 @@ import java.time.ZoneOffset
 import java.time.OffsetDateTime
 
 trait Encoders extends EncodingDsl {
-  this: JdbcContextTypes[_, _] =>
+  this: JdbcContextTypes =>
 
   // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
   // type Index = Int (Defined in JdbcRunContext)
@@ -85,7 +85,7 @@ trait Encoders extends EncodingDsl {
 }
 
 trait BasicTimeEncoders extends Encoders {
-  this: JdbcContextTypes[_, _] =>
+  this: JdbcContextTypes =>
 
   implicit val localDateEncoder: Encoder[LocalDate] =
     encoder(Types.DATE, (index, value, row) =>
@@ -114,7 +114,7 @@ trait BasicTimeEncoders extends Encoders {
 
 /** Encoders for reasonably implemented JDBC contexts that meet the 4.2 specification */
 trait ObjectGenericTimeEncoders extends Encoders {
-  this: JdbcContextTypes[_, _] =>
+  this: JdbcContextTypes =>
 
   protected def jdbcTypeOfLocalDate = Types.DATE
   protected def jdbcTypeOfLocalTime = Types.TIME

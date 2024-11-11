@@ -4,6 +4,8 @@ import io.getquill.context.sql.PeopleSpec
 import io.getquill._
 
 class PeopleJdbcSpec extends PeopleSpec {
+  override type SpecSession = java.sql.Connection
+  override type SpecPrepareRow = java.sql.PreparedStatement
 
   val context = testContext
   import testContext._

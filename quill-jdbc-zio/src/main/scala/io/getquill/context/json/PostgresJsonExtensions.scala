@@ -9,7 +9,7 @@ import scala.reflect.{ ClassTag, classTag }
 import io.getquill.{ JsonValue, JsonbValue }
 
 trait PostgresJsonExtensions extends Encoders with Decoders {
-  this: JdbcContextTypes[_, _] =>
+  this: JdbcContextTypes =>
 
   implicit def jsonEntityEncoder[T](implicit jsonEncoder: JsonEncoder[T]): Encoder[JsonValue[T]] =
     entityEncoder[T, JsonValue[T]](_.value)("json", jsonEncoder)

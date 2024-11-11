@@ -1,16 +1,17 @@
 package io.getquill.context.jdbc
 
-import io.getquill._
+import io.getquill.*
 import io.getquill.context.sql.idiom.SqlIdiom
-import io.getquill.context.{ ExecutionInfo, ContextVerbPrepare, ContextVerbPrepareLambda }
+import io.getquill.context.{Context, ContextVerbPrepare, ContextVerbPrepareLambda, ExecutionInfo}
 
-import java.sql._
+import java.sql.*
 import io.getquill.util.ContextLogger
 
 
 trait JdbcContextVerbPrepare[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   extends ContextVerbPrepare[Dialect, Naming]
-  with JdbcContextTypes[Dialect, Naming] {
+  with  Context[Dialect, Naming]
+  with JdbcContextTypes  {
 
   override type PrepareQueryResult = Connection => Result[PreparedStatement]
   override type PrepareActionResult = Connection => Result[PreparedStatement]

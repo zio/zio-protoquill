@@ -10,7 +10,7 @@ import io.getquill.util.ContextLogger
 import java.sql.{ Connection, JDBCType, PreparedStatement, ResultSet, Statement }
 import java.util.TimeZone
 
-trait JdbcContextVerbExecute[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends JdbcContextTypes[Dialect, Naming] {
+trait JdbcContextVerbExecute[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends Context[Dialect, Naming] with JdbcContextTypes {
 
   // These type overrides are not required for JdbcRunContext in Scala2-Quill but it's a typing error. It only works
   // because executeQuery is not actually defined in Context.scala therefore typing doesn't have

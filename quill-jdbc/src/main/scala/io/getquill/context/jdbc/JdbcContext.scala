@@ -1,7 +1,7 @@
 package io.getquill.context.jdbc
 
 import java.io.Closeable
-import java.sql.{Connection, PreparedStatement}
+import java.sql.{Connection, JDBCType, PreparedStatement, ResultSet}
 import javax.sql.DataSource
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.*
@@ -16,16 +16,24 @@ import io.getquill.context.ContextVerbTranslate
 import io.getquill.generic.DecodingType
 import io.getquill.util.ContextLogger
 
-object JdbcContext {
-  type GenericDecoder[T] = io.getquill.generic.GenericDecoder[java.sql.ResultSet, java.sql.Connection, T, DecodingType.Generic]
-  inline def deriveDecoder[T]: GenericDecoder[T] = ${ io.getquill.generic.GenericDecoder.summon[T, java.sql.ResultSet, java.sql.Connection] }
+import java.util.TimeZone
+
+trait JdbcContextEncoding extends ProductDecoders[ResultSet, Connection] with JdbcContextTypes with Encoders with Decoders {
+  override type NullChecker = JdbcNullChecker
+  class JdbcNullChecker extends BaseNullChecker {
+    override def apply(index: Int, row: ResultSet): Boolean = {
+      // Note that JDBC-rows are 1-indexed
+      row.getObject(index + 1) == null
+    }
+  }
+
+  implicit val nullChecker: JdbcNullChecker = new JdbcNullChecker()
 }
 
 abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   extends JdbcContextBase[Dialect, Naming]
   with ProtoContextSecundus[Dialect, Naming]
-  with ContextVerbTranslate[Dialect, Naming]
-  {
+  with ContextVerbTranslate[Dialect, Naming] {
 
   private val logger = ContextLogger(classOf[JdbcContext[_, _]])
 

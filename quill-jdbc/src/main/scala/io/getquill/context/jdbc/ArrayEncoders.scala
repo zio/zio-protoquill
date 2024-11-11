@@ -10,7 +10,7 @@ import io.getquill.generic.ArrayEncoding
 import scala.collection.compat._
 
 trait ArrayEncoders extends ArrayEncoding {
-  self: JdbcContextTypes[_, _] =>
+  self: JdbcContextTypes with Encoders =>
 
   implicit def arrayStringEncoder[Col <: Seq[String]]: Encoder[Col] = arrayRawEncoder[String, Col](VARCHAR)
   implicit def arrayBigDecimalEncoder[Col <: Seq[BigDecimal]]: Encoder[Col] = arrayEncoder[BigDecimal, Col](parseJdbcType(NUMERIC), _.bigDecimal)
