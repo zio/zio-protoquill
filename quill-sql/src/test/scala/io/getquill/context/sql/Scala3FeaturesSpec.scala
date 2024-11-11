@@ -9,6 +9,7 @@ class Scala3FeaturesSpec extends Spec {
 
   "Scala 3 features should work with query expansion" - {
     case class Person(name: String, age: Int)
+    given MirrorContext.GenericDecoder[Person] = deriveDecoder[Person]
 
     "inline if" in {
       inline def filterPerson(inline q: Query[Person], inline doFilter: Boolean) =

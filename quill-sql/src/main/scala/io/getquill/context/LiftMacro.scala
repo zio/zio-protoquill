@@ -182,10 +182,8 @@ object LiftMacro {
 
   private[getquill] def summonEncoderOrFail[T: Type, PrepareRow: Type, Session: Type](loggingEntity: Expr[_])(using Quotes) = {
     import quotes.reflect._
-    Expr.summon[GenericEncoder[T, PrepareRow, Session]] match {
-      case Some(enc) => enc
-      case None      => report.throwError(s"Cannot Find a '${Printer.TypeReprCode.show(TypeRepr.of[T])}' Encoder of ${Printer.TreeShortCode.show(loggingEntity.asTerm)}", loggingEntity)
-    }
+    lazy val msg = s"Cannot Find a '${Printer.TypeReprCode.show(TypeRepr.of[T])}' Encoder of ${Printer.TreeShortCode.show(loggingEntity.asTerm)}"
+    Summon.OrFail.exprOf[GenericEncoder[T, PrepareRow, Session]](msg, loggingEntity)
   }
 
   private[getquill] def liftValue[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
@@ -222,14 +220,10 @@ object LiftMacro {
 
   private[getquill] def injectableLiftValue[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[_ => T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
     import quotes.reflect._
-    val encoder =
-      Expr.summon[GenericEncoder[T, PrepareRow, Session]] match {
-        case Some(enc) => enc
-        case None => report.throwError(
-            s"Cannot inject the value: ${io.getquill.util.Format.Expr(valueEntity)}.Cannot Find a '${Printer.TypeReprCode.show(TypeRepr.of[T])}' Encoder of ${Printer.TreeShortCode.show(valueEntity.asTerm)}",
-            valueEntity
-          )
-      }
+    val encoder = {
+      lazy val msg = s"Cannot inject the value: ${io.getquill.util.Format.Expr(valueEntity)}.Cannot Find a '${Printer.TypeReprCode.show(TypeRepr.of[T])}' Encoder of ${Printer.TreeShortCode.show(valueEntity.asTerm)}"
+      Summon.OrFail.exprOf[GenericEncoder[T, PrepareRow, Session]](msg, valueEntity)
+    }
 
     '{ InjectableEagerPlanter($valueEntity, $encoder, ${ Expr(uuid) }) } // [T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }

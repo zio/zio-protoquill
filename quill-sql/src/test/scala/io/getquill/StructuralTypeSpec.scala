@@ -2,6 +2,7 @@ package io.getquill
 
 import io.getquill.context.ExecutionType
 import reflect.Selectable.reflectiveSelectable
+import MirrorContext.*
 
 class StructuralTypeSpec extends Spec {
 

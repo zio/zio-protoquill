@@ -117,8 +117,15 @@ object Execution {
     Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Specific]] match {
       case Some(decoder) => decoder
       case None =>
-        lazy val failMsg = s"Decoder lookup failure for: ${Type.show[DecoderT]} (row-type: ${Format.TypeOf[ResultRow]}, session-type: ${Format.TypeOf[Session]}).\n"
-        SummonOrFail.exprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]](failMsg)
+        lazy val failMsg =
+          s"""Decoder lookup failure for: ${Type.show[DecoderT]} (row-type: ${Format.TypeOf[ResultRow]}, session-type: ${Format.TypeOf[Session]}).
+             |Have you imported a Decoder[${Format.TypeOf[DecoderT]}]? You an do this by either importing .* from your context e.g:
+             |val ctx = new SqlMirrorContext[PostgresDialect, Literal]
+             |import ctx.*
+             |Or you can import the decoder from the context's companion object for example:
+             |import SqlMirrorContext.*
+             |""".stripMargin
+        Summon.OrFail.exprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]](failMsg)
 
         //val implicitlyTerm =
         //  quotes.reflect.Apply(

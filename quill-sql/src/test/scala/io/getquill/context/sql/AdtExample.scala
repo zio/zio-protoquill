@@ -8,6 +8,7 @@ object StaticDateExample {
   import ctx._
 
   case class Person(name: String, birthDate: LocalDate)
+  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
 
   inline def staticDate = sql"'19820101'".as[LocalDate]
   // Makes Sense: inline def staticDate = LocalDate(1982,01,01)

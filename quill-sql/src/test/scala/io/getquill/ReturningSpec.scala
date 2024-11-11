@@ -8,6 +8,7 @@ class ReturningSpec extends ProductSpec {
 
   val context: SqlMirrorContext[PostgresDialect, Literal] = new SqlMirrorContext(PostgresDialect, Literal)
   import context._
+  given MirrorContext.GenericDecoder[Product] = MirrorContext.deriveDecoder
 
   case class Foo(id: Long, description: String, sku: Long)
   given MirrorContext.GenericDecoder[Foo] = MirrorContext.deriveDecoder

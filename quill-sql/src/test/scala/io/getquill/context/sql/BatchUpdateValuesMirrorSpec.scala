@@ -17,6 +17,7 @@ class BatchUpdateValuesMirrorSpec extends BatchUpdateValuesSpec {
 
   val context: SqlMirrorContext[PostgresDialect, Literal] = new SqlMirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
   import context._
+  import context.auto._
 
   "Ex 1 - Simple Contact" in {
     import `Ex 1 - Simple Contact`._

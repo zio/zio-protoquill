@@ -14,6 +14,7 @@ class SimpleQuerySchemaTest extends Spec {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
   case class Person(name: String, age: Int)
+  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
 
   "query schema shuold" - {
     "produce an sql query with a renamed table" in {

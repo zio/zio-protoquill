@@ -3,12 +3,13 @@ package io.getquill.context.sql.base
 import io.getquill.Spec
 import io.getquill.context.sql.SqlContext
 import org.scalatest.BeforeAndAfterEach
-import io.getquill._
+import io.getquill.*
+import io.getquill.generic.{DecodingType, GenericDecoder, GenericEncoder}
 
 trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
-
   val context: SqlContext[_, _]
   import context._
+  import context.auto._
 
   case class ContactBase(firstName: String, lastName: String, age: Int)
   val dataBase: List[ContactBase] = List(
@@ -117,6 +118,7 @@ trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
   object `Ex 2 - Optional Embedded with Renames` extends Adaptable {
     case class Name(first: String, last: String)
     case class ContactTable(name: Option[Name], age: Int)
+
     type Row = ContactTable
     override def makeData(c: ContactBase): ContactTable = ContactTable(Some(Name(c.firstName, c.lastName)), c.age)
 

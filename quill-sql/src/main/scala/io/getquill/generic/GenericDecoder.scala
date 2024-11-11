@@ -1,6 +1,6 @@
 package io.getquill.generic
 
-import io.getquill.context.SummonOrFail
+import io.getquill.context.Summon
 
 import scala.reflect.ClassTag
 import scala.reflect.classTag
@@ -31,7 +31,7 @@ trait GenericRowTyper[ResultRow, Co] {
   def apply(rr: ResultRow): ClassTag[_]
 }
 
-object Summon {
+object SummonDomain {
   def nullChecker[ResultRow: Type, Session: Type](index: Expr[Int], resultRow: Expr[ResultRow])(using Quotes): Expr[Boolean] = {
     import quotes.reflect._
     Expr.summon[GenericNullChecker[ResultRow, Session]] match {
@@ -42,24 +42,29 @@ object Summon {
     }
   }
 
-  def decoder[ResultRow: Type, Session: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): Option[Expr[T]] = {
+  def decoder[ResultRow: Type, Session: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): Either[String, Expr[T]] = {
     import quotes.reflect.{Term => QTerm, _}
     // Try to summon a specific decoder, if it's not there, summon a generic one
-    Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Specific]] match {
-      case Some(decoder) =>
-        Some('{ $decoder($index, $resultRow, $session) })
-      case None =>
-        None
+    Summon.OrLeft.exprOf[GenericDecoder[ResultRow, Session, T, DecodingType.Specific]] match {
+      case Right(decoder) =>
+        Right('{ $decoder($index, $resultRow, $session) })
+      case Left(value) =>
+        Left(value)
     }
   }
 
   def decoderOrFail[ResultRow: Type, Session: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): Expr[T] = {
     import quotes.reflect._
     decoder[ResultRow, Session, T](index, resultRow, session) match {
-      case Some(value) => value
-      case None =>
+      case Right(value) => value
+      case Left(reason) =>
         println(s"WARNING Could not summon a decoder for the type: ${io.getquill.util.Format.TypeOf[T]}")
-        report.throwError(s"Cannot find decoder for the type: ${Format.TypeOf[T]}")
+        report.throwError(
+          s"""Cannot find decoder for the type: ${Format.TypeOf[T]}
+             |=============== Reason: ===============
+             |$reason
+             |""".stripMargin
+        )
     }
   }
 } // end Summon
@@ -162,8 +167,8 @@ object GenericDecoder {
 
       // In the case that this is a leaf node
       case Some(_) =>
-        val decoder = Summon.decoderOrFail[ResultRow, Session, Option[T]]('{ $baseIndex + ${ Expr(index) } }, resultRow, session)
-        val nullChecker = Summon.nullChecker[ResultRow, Session]('{ $baseIndex + ${ Expr(index) } }, resultRow)
+        val decoder = SummonDomain.decoderOrFail[ResultRow, Session, Option[T]]('{ $baseIndex + ${ Expr(index) } }, resultRow, session)
+        val nullChecker = SummonDomain.nullChecker[ResultRow, Session]('{ $baseIndex + ${ Expr(index) } }, resultRow)
         FlattenData(Type.of[Option[T]], decoder, '{ !${ nullChecker } }, index)
 
       // This is the cases where we have a optional-product element. It could either be a top level
@@ -254,13 +259,12 @@ object GenericDecoder {
     } else {
       // specifically if there is a decoder found, allow optional override of the index via a resolver
       val decoderIndex = overriddenIndex.getOrElse(elementIndex)
-      Summon.decoder[ResultRow, Session, T](decoderIndex, resultRow, session) match {
-        case Some(decoder) =>
-          val nullChecker = Summon.nullChecker[ResultRow, Session](decoderIndex, resultRow)
+      SummonDomain.decoder[ResultRow, Session, T](decoderIndex, resultRow, session) match {
+        case Right(decoder) =>
+          val nullChecker = SummonDomain.nullChecker[ResultRow, Session](decoderIndex, resultRow)
           FlattenData(Type.of[T], decoder, '{ !${ nullChecker } }, index)
 
-        case None =>
-          //Expr.summon[Mirror.Of[T]] match {
+        case Left(leafFailMsg) =>
           lazy val msg =
             s"""No Decoder found for ${Format.TypeOf[T]} and it is not a class representing a group of columns.
                |Have you imported a Decoder[${Format.TypeOf[T]}]? You an do this by either importing .* from your context:
@@ -268,8 +272,10 @@ object GenericDecoder {
                |import ctx.*
                |Or you can import the decoder from the context's companion object for example:
                |import SqlMirrorContext.*
+               |=============== Cannot Summon Decoder[${Format.TypeOf[T]}] because: ===============
+               |$leafFailMsg
                |""".stripMargin
-          val ev = SummonOrFail.exprOf[Mirror.Of[T]](msg)
+          val ev = Summon.OrFail.exprOf[Mirror.Of[T]](msg)
           // Otherwise, recursively summon fields
           ev match {
             case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } if (!isBuiltInType[T]) =>
@@ -357,7 +363,7 @@ object DecodeSum {
         // In that case `tpe` here will be Square/Circle
         val thisElementDecoder = GenericDecoder.decode[tpe, ResultRow, Session](index, rawIndex, resultRow, session).decodedExpr
 
-        val thisElementNullChecker = '{ !${ Summon.nullChecker[ResultRow, Session](rawIndex, resultRow) } }
+        val thisElementNullChecker = '{ !${ SummonDomain.nullChecker[ResultRow, Session](rawIndex, resultRow) } }
         // make the recursive call
         val nextData = selectMatchingElementAndDecode[types, ResultRow, Session, T](index + 1, rawIndex, resultRow, session, rowTypeClassTag)(Type.of[types])
 

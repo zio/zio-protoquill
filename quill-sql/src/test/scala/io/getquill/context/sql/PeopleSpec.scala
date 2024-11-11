@@ -1,13 +1,21 @@
 package io.getquill.context.sql
 
 import io.getquill.context.Context
-import io.getquill._
+import io.getquill.*
+import io.getquill.generic.GenericEncoder
 
 trait PeopleSpec extends Spec {
+  type SpecSession
+  type SpecPrepareRow
 
-  val context: Context[_, _]
-
+  val context: Context[_, _] {
+    type Session = SpecSession
+    type PrepareRow = SpecPrepareRow
+  }
   import context._
+
+  given intEncoder: GenericEncoder[Int, SpecPrepareRow, SpecSession]
+  given stringEncoder: GenericEncoder[String, SpecPrepareRow, SpecSession]
 
   case class Person(name: String, age: Int)
   case class Couple(her: String, him: String)
