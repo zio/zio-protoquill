@@ -380,6 +380,34 @@ The way that this works is that in each `?` slot, the corresponding column is lo
 //   true
 ```
 
+## Getting SQL of the Last Executed Query (ZIO Only)
+
+In ZIO contexts, you can get the SQL of the last executed query by using the `getLastExecutedQuery()` method.
+
+```scala
+val people =
+   for {
+     people <- ctx.run(quote { query[Person] })
+     sql <- ctx.getLastExecutedQuery()
+     _ <- ZIO.log(s"Last Executed Query: ${sql}")
+   } yield people
+```
+
+For advanced debugging use-cases, you can even get the syntax tree of the last executed query by using the `getLastExecutedQueryTree()` method.
+Since this may incur additional performance overhead, make sure that your context extends `AstSplicing` in order to enable this behavior.
+
+```scala
+val people =
+   for {
+     // First create a quill-zio context. Be sure that it extends AstSplicing
+     ctx <- Quill.Postgres(Literal, connectionPool) with AstSplicing
+     // Then run a query and invoke getLastExecutionInfo 
+     people <- ctx.run(quote { query[Person] })
+     info <- ctx.getLastExecutionInfo()
+     _ <- ZIO.log(s"Last Executed Ast: ${info.ast}")
+   } yield people
+```
+
 ## Co-Product Rows
 
 Co-Product are supported using Enums and sealed traits. Keep in mind that for now, only static-global enums are supported and any sealed traits that are used must be sealed in a *separate object* in order to work. Otherwise a sum-type mirror of them will not be found. In ORM-terms, Quill uses a "Table Per Class-Hierarchy" model of co-product polymorhism in which data for all co-products must be encodeable within a simple row.
