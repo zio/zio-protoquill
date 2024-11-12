@@ -10,11 +10,18 @@ import java.time.OffsetTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import io.getquill.generic.{DecodingType, GenericDecoder}
 
 trait EncodingSpec extends Spec {
+  type SpecSession
+  type SpecPrepareRow
+  type SpecResultRow
 
-  val context: SqlContext[_, _] // with TestEncoders with TestDecoders
-
+  val context: SqlContext[_, _] {
+    type Session = SpecSession
+    type PrepareRow = SpecPrepareRow
+    type ResultRow = SpecResultRow
+  }
   import context._
 
   case class TimeEntity(
@@ -45,6 +52,7 @@ trait EncodingSpec extends Spec {
         case _ => false
       }
   }
+  given timeEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, TimeEntity, DecodingType.Generic]
 
   object TimeEntity {
     def make(zoneIdRaw: ZoneId) = {
@@ -101,6 +109,7 @@ trait EncodingSpec extends Spec {
       o14: Option[UUID],
       o15: Option[Number]
   )
+  given encodingTestEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, EncodingTestEntity, DecodingType.Generic]
 
   inline def delete = quote {
     query[EncodingTestEntity].delete
@@ -216,6 +225,7 @@ trait EncodingSpec extends Spec {
   }
 
   case class BarCode(description: String, uuid: Option[UUID] = None)
+  given barCodeDecoder: GenericDecoder[SpecResultRow, SpecSession, BarCode, DecodingType.Generic]
 
   val insertBarCode = quote((b: BarCode) => query[BarCode].insertValue(b).returningGenerated(_.uuid))
   val barCodeEntry = BarCode("returning UUID")

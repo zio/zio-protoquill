@@ -3,11 +3,12 @@ package io.getquill.context.jdbc.postgres
 import java.time.LocalDateTime
 import io.getquill.context.sql.EncodingSpec
 import io.getquill.*
+import io.getquill.context.jdbc.JdbcContextSpec
 
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
-class JdbcEncodingSpec extends EncodingSpec {
+class JdbcEncodingSpec extends JdbcContextSpec with EncodingSpec {
 
   val context: testContext.type = testContext
   import testContext._

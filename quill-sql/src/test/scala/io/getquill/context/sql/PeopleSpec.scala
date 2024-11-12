@@ -3,14 +3,17 @@ package io.getquill.context.sql
 import io.getquill.context.Context
 import io.getquill.*
 import io.getquill.generic.GenericEncoder
+import io.getquill.generic.{DecodingType, GenericDecoder}
 
 trait PeopleSpec extends Spec {
   type SpecSession
   type SpecPrepareRow
+  type SpecResultRow
 
   val context: Context[_, _] {
     type Session = SpecSession
     type PrepareRow = SpecPrepareRow
+    type ResultRow = SpecResultRow
   }
   import context._
 
@@ -19,6 +22,8 @@ trait PeopleSpec extends Spec {
 
   case class Person(name: String, age: Int)
   case class Couple(her: String, him: String)
+  given personDecoder: GenericDecoder[SpecResultRow, SpecSession, Person, DecodingType.Generic]
+  given coupleDecoder: GenericDecoder[SpecResultRow, SpecSession, Couple, DecodingType.Generic]
 
   inline def peopleInsert =
     quote((p: Person) => query[Person].insertValue(p))

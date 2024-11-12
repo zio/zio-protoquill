@@ -1,19 +1,30 @@
 package io.getquill.context.jdbc
-import java.sql.{ Connection, PreparedStatement, ResultSet }
 
+import java.sql.{Connection, PreparedStatement, ResultSet}
 import io.getquill.context.sql.ProductSpec
 import io.getquill.util.Using.Manager
 import org.scalactic.Equality
-import scala.util.{ Success, Failure }
-import io.getquill.generic.GenericDecoder
+
+import scala.util.{Failure, Success}
+import io.getquill.generic.{DecodingType, GenericDecoder}
 import io.getquill.generic.DecodingType.Generic
 
-trait PrepareJdbcSpecBase extends ProductSpec {
+trait JdbcContextSpec {
+  given nullChecker: JdbcNullChecker = new JdbcNullChecker()
+  given longDecoder: GenericDecoder[ResultSet, Connection, Long, DecodingType.Specific]
+  given intDecoder: GenericDecoder[ResultSet, Connection, Int, DecodingType.Specific]
+  given stringDecoder: GenericDecoder[ResultSet, Connection, String, DecodingType.Specific]
+  given booleanDecoder: GenericDecoder[ResultSet, Connection, Boolean, DecodingType.Specific]
+}
+
+trait JdbcProductSpec extends JdbcContextSpec {
+  given JdbcContext.GenericDecoder[Product] = JdbcContext.deriveDecoder
+}
+
+trait PrepareJdbcSpecBase extends JdbcContextSpec {
 
   val context: JdbcContext[_, _]
   import context._
-
-  given JdbcContext.GenericDecoder[Product] = JdbcContext.deriveDecoder
 
   implicit val productEq: Equality[Product] = new Equality[Product] {
     override def areEqual(a: Product, b: Any): Boolean = b match {

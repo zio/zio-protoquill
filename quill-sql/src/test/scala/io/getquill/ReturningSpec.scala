@@ -1,14 +1,16 @@
 package io.getquill
 
 import io.getquill.context.sql.ProductSpec
-import io.getquill._
+import io.getquill.*
+import io.getquill.context.mirror.MirrorSession
+import io.getquill.context.mirror.Row
 
 /** Some Quick tests to make sure action.returning works correctly */
-class ReturningSpec extends ProductSpec {
+class ReturningSpec extends MirrorSpec with ProductSpec {
 
   val context: SqlMirrorContext[PostgresDialect, Literal] = new SqlMirrorContext(PostgresDialect, Literal)
   import context._
-  given MirrorContext.GenericDecoder[Product] = MirrorContext.deriveDecoder
+  given productDecoder: MirrorContext.GenericDecoder[Product] = MirrorContext.deriveDecoder
 
   case class Foo(id: Long, description: String, sku: Long)
   given MirrorContext.GenericDecoder[Foo] = MirrorContext.deriveDecoder

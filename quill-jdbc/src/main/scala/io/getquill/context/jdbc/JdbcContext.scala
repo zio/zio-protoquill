@@ -6,6 +6,7 @@ import javax.sql.DataSource
 import io.getquill.context.sql.idiom.SqlIdiom
 import io.getquill.*
 import io.getquill.context.{ContextVerbTranslate, ExecutionInfo, ProtoContextSecundus}
+import io.getquill.context.sql.SqlContext
 
 import scala.util.{DynamicVariable, Try}
 import scala.util.control.NonFatal
@@ -13,25 +14,28 @@ import io.getquill.Quoted
 
 import scala.annotation.targetName
 import io.getquill.context.ContextVerbTranslate
-import io.getquill.generic.DecodingType
+import io.getquill.generic.{DecodingType, GenericNullChecker}
 import io.getquill.util.ContextLogger
 
 import java.util.TimeZone
 
+class JdbcNullChecker extends GenericNullChecker[ResultSet, Connection] {
+  override def apply(index: Int, row: ResultSet): Boolean = {
+    // Note that JDBC-rows are 1-indexed
+    row.getObject(index + 1) == null
+  }
+}
+
 trait JdbcContextEncoding extends ProductDecoders[ResultSet, Connection] with JdbcContextTypes with Encoders with Decoders {
   override type NullChecker = JdbcNullChecker
-  class JdbcNullChecker extends BaseNullChecker {
-    override def apply(index: Int, row: ResultSet): Boolean = {
-      // Note that JDBC-rows are 1-indexed
-      row.getObject(index + 1) == null
-    }
-  }
-
   implicit val nullChecker: JdbcNullChecker = new JdbcNullChecker()
 }
 
+object JdbcContext extends ProductDecoders[ResultSet, Connection]
+
 abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
-  extends JdbcContextBase[Dialect, Naming]
+  extends SqlContext[Dialect, Naming]
+  with JdbcContextBase[Dialect, Naming]
   with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbTranslate[Dialect, Naming] {
 

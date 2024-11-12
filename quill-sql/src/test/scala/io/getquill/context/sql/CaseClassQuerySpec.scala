@@ -2,10 +2,18 @@ package io.getquill.context.sql
 
 import io.getquill.Spec
 import io.getquill._
+import io.getquill.generic.{DecodingType, GenericDecoder}
 
 trait CaseClassQuerySpec extends Spec {
+  type SpecSession
+  type SpecPrepareRow
+  type SpecResultRow
 
-  val context: SqlContext[_, _]
+  val context: SqlContext[_, _] {
+    type Session = SpecSession
+    type PrepareRow = SpecPrepareRow
+    type ResultRow = SpecResultRow
+  }
 
   import context._
 
@@ -13,6 +21,10 @@ trait CaseClassQuerySpec extends Spec {
   case class Address(id: Int, street: String, zip: Int, otherExtraInfo: String)
   case class Nickname(nickname: String)
   case class NicknameSameField(firstName: String)
+  given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Generic]
+  given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Generic]
+  given nicknameDecoder: GenericDecoder[SpecResultRow, SpecSession, Nickname, DecodingType.Generic]
+  given nicknameSameFieldDecoder: GenericDecoder[SpecResultRow, SpecSession, NicknameSameField, DecodingType.Generic]
 
   inline def peopleInsert =
     quote((p: Contact) => query[Contact].insertValue(p))

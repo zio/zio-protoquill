@@ -1,14 +1,23 @@
 package io.getquill.context.sql
 
-import io.getquill._
+import io.getquill.*
 import org.scalatest.BeforeAndAfterEach
+import io.getquill.generic.{DecodingType, GenericDecoder}
 
 trait BatchValuesSpec extends Spec with BeforeAndAfterEach {
+  type SpecSession
+  type SpecPrepareRow
+  type SpecResultRow
 
-  val context: SqlContext[_, _]
+  val context: SqlContext[_, _] {
+    type Session = SpecSession
+    type PrepareRow = SpecPrepareRow
+    type ResultRow = SpecResultRow
+  }
   import context._
 
   case class Product(id: Int, description: String, sku: Long)
+  given productDecoder: GenericDecoder[SpecResultRow, SpecSession, Product, DecodingType.Generic]
 
   inline def insertProduct =
     quote((p: Product) => query[Product].insertValue(p))

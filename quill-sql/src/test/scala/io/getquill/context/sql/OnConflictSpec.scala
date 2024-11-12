@@ -1,10 +1,20 @@
 package io.getquill.context.sql
 
 import io.getquill._
+import io.getquill.generic.{DecodingType, GenericDecoder}
 
 trait OnConflictSpec extends Spec {
-  val ctx: SqlContext[_, _] with TestEntities
+  type SpecSession
+  type SpecPrepareRow
+  type SpecResultRow
+
+  val ctx: SqlContext[_, _] with TestEntities {
+    type Session = SpecSession
+    type PrepareRow = SpecPrepareRow
+    type ResultRow = SpecResultRow
+  }
   import ctx._
+  given testEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity, DecodingType.Generic]
 
   object `onConflictIgnore` {
     inline def testQuery1 = quote {

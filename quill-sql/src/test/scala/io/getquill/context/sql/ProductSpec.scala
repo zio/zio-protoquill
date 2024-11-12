@@ -4,15 +4,24 @@ import io.getquill.Spec
 import io.getquill.Query
 import io.getquill.context.Context
 import io.getquill._
+import io.getquill.generic.{DecodingType, GenericDecoder}
 
 case class Id(value: Long) extends AnyVal
 
 trait ProductSpec extends Spec {
+  type SpecSession
+  type SpecPrepareRow
+  type SpecResultRow
 
-  val context: Context[_, _]
+  val context: Context[_, _] {
+    type Session = SpecSession
+    type PrepareRow = SpecPrepareRow
+    type ResultRow = SpecResultRow
+  }
   import context._
 
   case class Product(id: Long, description: String, sku: Long)
+  given productDecoder: GenericDecoder[SpecResultRow, SpecSession, Product, DecodingType.Generic]
 
   inline def product = quote {
     query[Product]

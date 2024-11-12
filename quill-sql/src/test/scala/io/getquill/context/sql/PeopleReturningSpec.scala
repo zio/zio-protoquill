@@ -2,14 +2,24 @@ package io.getquill.context.sql
 
 import io.getquill._
 import org.scalatest.BeforeAndAfterEach
+import io.getquill.generic.{DecodingType, GenericDecoder}
 
 trait PeopleReturningSpec extends Spec with BeforeAndAfterEach {
+  type SpecSession
+  type SpecPrepareRow
+  type SpecResultRow
 
-  val context: SqlContext[_, _]
+  val context: SqlContext[_, _] {
+    type Session = SpecSession
+    type PrepareRow = SpecPrepareRow
+    type ResultRow = SpecResultRow
+  }
   import context._
 
   case class Contact(firstName: String, lastName: String, age: Int, addressFk: Int = 0, extraInfo: Option[String] = None)
   case class Product(id: Long, description: String, sku: Int)
+  given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Generic]
+  given productDecoder: GenericDecoder[SpecResultRow, SpecSession, Product, DecodingType.Generic]
 
   inline def peopleInsert =
     quote((p: Contact) => query[Contact].insertValue(p))

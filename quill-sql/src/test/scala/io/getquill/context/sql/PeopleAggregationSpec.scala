@@ -1,15 +1,25 @@
 package io.getquill.context.sql
 
 import io.getquill._
+import io.getquill.generic.{DecodingType, GenericDecoder}
 
 case class Name(first: String, last: String, age: Int)
 trait PeopleAggregationSpec extends Spec {
+  type SpecSession
+  type SpecPrepareRow
+  type SpecResultRow
 
-  val context: SqlContext[_, _]
+  val context: SqlContext[_, _] {
+    type Session = SpecSession
+    type PrepareRow = SpecPrepareRow
+    type ResultRow = SpecResultRow
+  }
   import context._
 
   case class Contact(firstName: String, lastName: String, age: Int, addressFk: Int, extraInfo: Option[String] = None)
   case class Address(id: Int, street: String, zip: Int = 0, otherExtraInfo: Option[String] = None)
+  given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Generic]
+  given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Generic]
 
   val people = List(
     Contact("Joe", "A", 20, 1),

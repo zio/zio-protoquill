@@ -1,15 +1,24 @@
 package io.getquill.context.sql
 
 import io.getquill._
+import io.getquill.generic.{DecodingType, GenericDecoder}
 
 trait DistinctSpec extends Spec {
+  type SpecSession
+  type SpecPrepareRow
+  type SpecResultRow
 
-  val context: SqlContext[_, _]
-
+  val context: SqlContext[_, _] {
+    type Session = SpecSession
+    type PrepareRow = SpecPrepareRow
+    type ResultRow = SpecResultRow
+  }
   import context._
 
   case class Person(name: String, age: Int)
   case class Couple(him: String, her: String)
+  given personDecoder: GenericDecoder[SpecResultRow, SpecSession, Person, DecodingType.Generic]
+  given coupleDecoder: GenericDecoder[SpecResultRow, SpecSession, Couple, DecodingType.Generic]
 
   inline def peopleInsert =
     quote((p: Person) => query[Person].insertValue(p))
