@@ -8,6 +8,13 @@ class OptionalProductEncodingJdbcSpec extends OptionalNestedSpec {
   val context: testContext.type = testContext
   import testContext._
 
+  given setupContactDecoder: PostgresJdbcContext.GenericDecoder[Setup.Contact] = PostgresJdbcContext.deriveDecoder
+  given ex1LastNameAgeDecoder: PostgresJdbcContext.GenericDecoder[`1.Optional Inner Product`.LastNameAge] = PostgresJdbcContext.deriveDecoder
+  given ex1ContactDecoder: PostgresJdbcContext.GenericDecoder[`1.Optional Inner Product`.Contact] = PostgresJdbcContext.deriveDecoder
+  given ex2AgeDecoder: PostgresJdbcContext.GenericDecoder[`2.Optional Inner Product with Optional Leaf`.Age] = PostgresJdbcContext.deriveDecoder
+  given ex2LastNameAgeDecoder: PostgresJdbcContext.GenericDecoder[`2.Optional Inner Product with Optional Leaf`.LastNameAge] = PostgresJdbcContext.deriveDecoder
+  given ex2ContactDecoder: PostgresJdbcContext.GenericDecoder[`2.Optional Inner Product with Optional Leaf`.Contact] = PostgresJdbcContext.deriveDecoder
+
   override protected def beforeEach() = {
     import Setup._
     testContext.run(query[Contact].delete)

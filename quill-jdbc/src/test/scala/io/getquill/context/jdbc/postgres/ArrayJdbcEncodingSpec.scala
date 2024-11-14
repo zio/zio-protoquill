@@ -13,6 +13,7 @@ class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec {
 
   inline def q = quote(query[ArraysTestEntity])
   val corrected = e.copy(timestamps = e.timestamps.map(d => new Timestamp(d.getTime)))
+  given PostgresJdbcContext.GenericDecoder[ArraysTestEntity] = PostgresJdbcContext.deriveDecoder
 
   "Support all sql base types and `Seq` implementers" in { //
     ctx.run(q.insertValue(lift(corrected)))
@@ -29,6 +30,7 @@ class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec {
 
   "Timestamps" in {
     case class Timestamps(timestamps: List[Timestamp])
+    given PostgresJdbcContext.GenericDecoder[Timestamps] = PostgresJdbcContext.deriveDecoder
     val tE = Timestamps(List(new Timestamp(System.currentTimeMillis())))
     val tQ = quote(querySchema[Timestamps]("ArraysTestEntity"))
     ctx.run(tQ.insertValue(lift(tE)))
@@ -45,6 +47,7 @@ class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec {
 
   "empty array on found null" in {
     case class ArraysTestEntity(texts: Option[List[String]])
+    given PostgresJdbcContext.GenericDecoder[ArraysTestEntity] = PostgresJdbcContext.deriveDecoder
     ctx.run(query[ArraysTestEntity].insertValue(lift(ArraysTestEntity(None))))
 
     case class E(texts: List[String])

@@ -2,6 +2,7 @@ package io.getquill.context.jdbc.postgres
 
 import io.getquill._
 import org.scalatest.Inside
+import io.getquill.context.jdbc.JdbcContext
 
 class FlicerCombinationSpec extends Spec with Inside {
   val ctx = testContext
@@ -11,6 +12,10 @@ class FlicerCombinationSpec extends Spec with Inside {
   case class AddressT(ownerId: Int, street: String)
   case class Combo(name: String, street: Option[String])
   case class PersonAddress(first: String, last: String, street: Option[String])
+  given PostgresJdbcContext.GenericDecoder[PersonT] = JdbcContext.deriveDecoder
+  given PostgresJdbcContext.GenericDecoder[AddressT] = JdbcContext.deriveDecoder
+  given PostgresJdbcContext.GenericDecoder[Combo] = JdbcContext.deriveDecoder
+  given PostgresJdbcContext.GenericDecoder[PersonAddress] = JdbcContext.deriveDecoder
 
   override def beforeAll(): Unit = {
     ctx.run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])

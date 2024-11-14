@@ -20,12 +20,16 @@ class FlicerMapTypesSpec extends Spec with Inside {
   import ctx._
 
   case class Contact(firstName: String, lastName: String, age: Int, addressFk: Int, extraInfo: String)
+  given PostgresJdbcContext.GenericDecoder[Contact] = PostgresJdbcContext.deriveDecoder
+
   val contacts = List(
     Contact("Joe", "Bloggs", 123, 1, "1"),
     Contact("Joe", "Noggs", 123, 1, "1"),
     Contact("Jim", "Roogs", 111, 2, "2")
   )
   case class DateEncodingTestEntity(v1: LocalDate, v2: LocalDateTime)
+  given PostgresJdbcContext.GenericDecoder[DateEncodingTestEntity] = PostgresJdbcContext.deriveDecoder
+
   def makeEntity(i: Int) = {
     val ld = LocalDate.of(2022, i, i)
     val ldt = LocalDateTime.of(2022, i, i, i, i, i)
@@ -69,6 +73,8 @@ class FlicerMapTypesSpec extends Spec with Inside {
     implicit val decodeStrWrap: MappedEncoding[String, Info] = MappedEncoding[String, Info](Info.apply)
 
     case class ContactComplex(firstName: String, lastName: String, age: Int, addressFk: Int, extraInfo: Info)
+    given PostgresJdbcContext.GenericDecoder[ContactComplex] = PostgresJdbcContext.deriveDecoder
+
     val converted = contacts.map(c => ContactComplex(c.firstName, c.lastName, c.age, c.addressFk, Info(c.extraInfo)))
 
     val map = Map[String, Any]("extraInfo" -> "1")

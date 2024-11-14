@@ -3,7 +3,7 @@ package io.getquill.context.sql
 import io.getquill.MappedEncoding
 
 case class EncodingTestType(value: String)
-case class Number(value: String) extends AnyVal
+case class Number(value: String)
 
 object Number {
   def withValidation(value: String): Option[Number] =

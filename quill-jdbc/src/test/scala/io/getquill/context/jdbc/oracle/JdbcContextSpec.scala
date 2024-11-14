@@ -1,9 +1,10 @@
 package io.getquill.context.jdbc.oracle
 
 import io.getquill.Spec
-import io.getquill._
+import io.getquill.*
+import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class JdbcContextSpec extends Spec with TestEntities {
+class JdbcContextSpec extends Spec with JdbcSpecEncoders {
 
   import testContext._
 
@@ -58,6 +59,9 @@ class JdbcContextSpec extends Spec with TestEntities {
     // }
   }
 
+  case class Return(id: Int, str: String, opt: Option[Int])
+  given OracleJdbcContext.GenericDecoder[Return] = OracleJdbcContext.deriveDecoder
+
   "insert returning" - {
     "with single column table" in {
       val inserted = testContext.run {
@@ -75,7 +79,6 @@ class JdbcContextSpec extends Spec with TestEntities {
     }
 
     "with multiple columns - case class" in {
-      case class Return(id: Int, str: String, opt: Option[Int])
       testContext.run(qr1.delete)
       val inserted = testContext.run {
         qr1.insertValue(lift(TestEntity("foo", 1, 18L, Some(123), true))).returning(r => Return(r.i, r.s, r.o))
@@ -108,7 +111,6 @@ class JdbcContextSpec extends Spec with TestEntities {
     }
 
     "with multiple columns - case class" in {
-      case class Return(id: Int, str: String, opt: Option[Int])
       testContext.run(qr1.delete)
       testContext.run(qr1.insertValue(lift(TestEntity("baz", 6, 42L, Some(456), true))))
 

@@ -1,9 +1,10 @@
 package io.getquill.context.jdbc.sqlserver
 
-import io.getquill.{ Literal, Spec, SqlServerJdbcContext }
-import io.getquill._
+import io.getquill.{Literal, Spec, SqlServerJdbcContext}
+import io.getquill.*
+import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class JdbcContextSpec extends Spec with TestEntities {
+class JdbcContextSpec extends Spec with JdbcSpecEncoders {
 
   val ctx = testContext
   import ctx._

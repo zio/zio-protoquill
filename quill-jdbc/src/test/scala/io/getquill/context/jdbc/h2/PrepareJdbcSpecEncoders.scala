@@ -11,11 +11,6 @@ class PrepareJdbcSpecEncoders extends PrepareJdbcSpecEncodersBase with BeforeAnd
   val context: testContext.type = testContext
   import testContext._
 
-//  given longDecoder = H2JdbcContext.longDecoder
-//  given intDecoder = H2JdbcContext.intDecoder
-//  given stringDecoder = H2JdbcContext.stringDecoder
-//  given booleanDecoder = H2JdbcContext.booleanDecoder
-
   before {
     testContext.run(query[Product].delete)
   }

@@ -2,8 +2,9 @@ package io.getquill.context.jdbc.sqlite
 
 import io.getquill.Spec
 import io.getquill._
+import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class JdbcContextSpec extends Spec with TestEntities {
+class JdbcContextSpec extends Spec with JdbcSpecEncoders {
 
   import testContext._
 

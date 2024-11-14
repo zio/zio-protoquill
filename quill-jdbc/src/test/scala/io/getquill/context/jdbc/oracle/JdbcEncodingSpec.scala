@@ -1,11 +1,13 @@
 package io.getquill.context.jdbc.oracle
 
-import io.getquill.context.sql.{ EncodingSpec, EncodingTestType }
+import io.getquill.context.sql.{EncodingSpec, EncodingTestType}
 import io.getquill.Query
-import io.getquill._
+import io.getquill.*
+import io.getquill.context.jdbc.JdbcSpecEncoders
+
 import java.time.ZoneId
 
-class JdbcEncodingSpec extends EncodingSpec {
+class JdbcEncodingSpec extends EncodingSpec with JdbcSpecEncoders {
 
   val context: testContext.type = testContext
   import testContext._

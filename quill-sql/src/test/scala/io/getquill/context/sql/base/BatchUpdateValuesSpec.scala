@@ -44,8 +44,15 @@ trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
     lazy val data = dataBase.adapt
   }
 
+  case class Contact(firstName: String, lastName: String, age: Int)
+  case class Name(first: String, last: String)
+  case class ContactTable(name: Option[Name], age: Int)
+  case class FirstName(firstName: Option[String]) extends Embedded
+  case class LastName(lastName: Option[String]) extends Embedded
+  case class NameEmb(first: FirstName, last: LastName) extends Embedded
+  case class DeepContact(name: Option[NameEmb], age: Int)
+
   object `Ex 1 - Simple Contact` extends Adaptable {
-    case class Contact(firstName: String, lastName: String, age: Int)
     type Row = Contact
     override def makeData(c: ContactBase): Contact = Contact(c.firstName, c.lastName, c.age)
 
@@ -61,7 +68,6 @@ trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
   }
 
   object `Ex 1.1 - Simple Contact With Lift` extends Adaptable {
-    case class Contact(firstName: String, lastName: String, age: Int)
     type Row = Contact
     override def makeData(c: ContactBase): Contact = Contact(c.firstName, c.lastName, c.age)
 
@@ -78,7 +84,6 @@ trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
   }
 
   object `Ex 1.2 - Simple Contact Mixed Lifts` extends Adaptable {
-    case class Contact(firstName: String, lastName: String, age: Int)
     type Row = Contact
     override def makeData(c: ContactBase): Contact = Contact(c.firstName, c.lastName, c.age)
 
@@ -97,7 +102,6 @@ trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
   }
 
   object `Ex 1.3 - Simple Contact with Multi-Lift-Kinds` extends Adaptable {
-    case class Contact(firstName: String, lastName: String, age: Int)
     type Row = Contact
     override def makeData(c: ContactBase): Contact = Contact(c.firstName, c.lastName, c.age)
 
@@ -116,9 +120,6 @@ trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
   }
 
   object `Ex 2 - Optional Embedded with Renames` extends Adaptable {
-    case class Name(first: String, last: String)
-    case class ContactTable(name: Option[Name], age: Int)
-
     type Row = ContactTable
     override def makeData(c: ContactBase): ContactTable = ContactTable(Some(Name(c.firstName, c.lastName)), c.age)
 
@@ -141,28 +142,23 @@ trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
   }
 
   object `Ex 3 - Deep Embedded Optional` extends Adaptable {
-    case class FirstName(firstName: Option[String]) extends Embedded
-    case class LastName(lastName: Option[String]) extends Embedded
-    case class Name(first: FirstName, last: LastName) extends Embedded
-    case class Contact(name: Option[Name], age: Int)
-    type Row = Contact
-    override def makeData(c: ContactBase): Contact = Contact(Some(Name(FirstName(Option(c.firstName)), LastName(Option(c.lastName)))), c.age)
+    type Row = DeepContact
+    override def makeData(c: ContactBase): DeepContact = DeepContact(Some(NameEmb(FirstName(Option(c.firstName)), LastName(Option(c.lastName)))), c.age)
 
     inline def insert = quote {
-      liftQuery(data: List[Contact]).foreach(ps => query[Contact].insertValue(ps))
+      liftQuery(data: List[DeepContact]).foreach(ps => query[DeepContact].insertValue(ps))
     }
     inline def update = quote {
-      liftQuery(updateData: List[Contact]).foreach(ps =>
-        query[Contact]
+      liftQuery(updateData: List[DeepContact]).foreach(ps =>
+        query[DeepContact]
           .filter(p => p.name.map(_.first.firstName) == ps.name.map(_.first.firstName))
           .update(_.name.map(_.last.lastName) -> ps.name.map(_.last.lastName))
       )
     }
-    inline def get = quote(query[Contact])
+    inline def get = quote(query[DeepContact])
   }
 
   object `Ex 4 - Returning` extends Adaptable {
-    case class Contact(firstName: String, lastName: String, age: Int)
     type Row = Contact
     override def makeData(c: ContactBase): Contact = Contact(c.firstName, c.lastName, c.age)
 
@@ -179,7 +175,6 @@ trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
   }
 
   object `Ex 4 - Returning Multiple` extends Adaptable {
-    case class Contact(firstName: String, lastName: String, age: Int)
     type Row = Contact
     override def makeData(c: ContactBase): Contact = Contact(c.firstName, c.lastName, c.age)
 
@@ -196,7 +191,6 @@ trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
   }
 
   object `Ex 5 - Append Data` extends Adaptable {
-    case class Contact(firstName: String, lastName: String, age: Int)
     type Row = Contact
     override def makeData(c: ContactBase): Contact = Contact(c.firstName, c.lastName, c.age)
     inline def insert = quote {
@@ -227,7 +221,6 @@ trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
   }
 
   object `Ex 6 - Append Data No Condition` extends Adaptable {
-    case class Contact(firstName: String, lastName: String, age: Int)
     type Row = Contact
     override def makeData(c: ContactBase): Contact = Contact(c.firstName, c.lastName, c.age)
     inline def insert = quote {

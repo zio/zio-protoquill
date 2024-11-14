@@ -1,11 +1,13 @@
 package io.getquill.context.jdbc.oracle
 
 import java.util.concurrent.ConcurrentLinkedQueue
-import io.getquill.context.sql.{ testContext => _, _ }
-import scala.jdk.CollectionConverters._
-import io.getquill._
+import io.getquill.context.sql.{QueryResultTypeSpec, testContext as _, *}
 
-class QueryResultTypeJdbcSpec extends QueryResultTypeSpec {
+import scala.jdk.CollectionConverters.*
+import io.getquill.*
+import io.getquill.context.jdbc.JdbcProductSpecEncoders
+
+class QueryResultTypeJdbcSpec extends QueryResultTypeSpec with JdbcProductSpecEncoders {
 
   // Needed for the 'ids' variable to have the right type so we can call .zip on it
   override val context: testContext.type = testContext

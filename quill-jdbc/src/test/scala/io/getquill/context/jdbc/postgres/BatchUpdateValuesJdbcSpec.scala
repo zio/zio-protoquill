@@ -1,11 +1,11 @@
 package io.getquill.context.jdbc.postgres
 
-import io.getquill.context.sql.base.BatchUpdateValuesSpec
+import io.getquill.context.jdbc.BatchUpdateValuesJdbcSpecBase
 import io.getquill.norm.EnableTrace
 import io.getquill.util.Messages.TraceType
 import io.getquill._
 
-class BatchUpdateValuesJdbcSpec extends BatchUpdateValuesSpec {
+class BatchUpdateValuesJdbcSpec extends BatchUpdateValuesJdbcSpecBase {
 
   val context: testContext.type = testContext
   import testContext._
@@ -18,6 +18,7 @@ class BatchUpdateValuesJdbcSpec extends BatchUpdateValuesSpec {
 
   "Ex 1 - Simple Contact" in {
     import `Ex 1 - Simple Contact`._
+    given PostgresJdbcContext.GenericDecoder[Contact] = PostgresJdbcContext.deriveDecoder
     context.run(insert)
     context.run(update, 2)
     context.run(get).toSet mustEqual (expect.toSet)

@@ -62,6 +62,7 @@ class ProductJdbcSpecEncoders extends ProductSpec with OracleJdbcSpecEncoders {
     "supports casts from string to number" - {
       "toInt" in {
         case class Product(id: Long, description: String, sku: Int)
+        given OracleJdbcContext.GenericDecoder[Product] = OracleJdbcContext.deriveDecoder
         val queried = testContext.run {
           query[Product].filter(_.sku == lift("1004").toInt)
         }.head

@@ -39,24 +39,26 @@ class JdbcEncodingSpecEncoders extends JdbcSpecEncoders with EncodingSpec {
 
   // IO Monad not working yet so need to do regular queries
   "LocalDateTime" in {
-    case class EncodingTestEntity(v11: Option[LocalDateTime])
+    case class EncodingTestOpt(v11: Option[LocalDateTime])
+    given decoder: GenericDecoder[EncodingTestOpt] = deriveDecoder
+
     val now = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS)
-    val e1 = EncodingTestEntity(Some(now))
-    val e2 = EncodingTestEntity(None)
-    val res: (List[EncodingTestEntity], List[EncodingTestEntity]) = {
+    val e1 = EncodingTestOpt(Some(now))
+    val e2 = EncodingTestOpt(None)
+    val res: (List[EncodingTestOpt], List[EncodingTestOpt]) = {
       val steps = {
-        testContext.run(query[EncodingTestEntity].delete)
-        testContext.run(query[EncodingTestEntity].insertValue(lift(e1)))
-        val withoutNull = testContext.run(query[EncodingTestEntity])
-        testContext.run(query[EncodingTestEntity].delete)
-        testContext.run(query[EncodingTestEntity].insertValue(lift(e2)))
-        val withNull = testContext.run(query[EncodingTestEntity])
+        testContext.run(query[EncodingTestOpt].delete)
+        testContext.run(query[EncodingTestOpt].insertValue(lift(e1)))
+        val withoutNull = testContext.run(query[EncodingTestOpt])
+        testContext.run(query[EncodingTestOpt].delete)
+        testContext.run(query[EncodingTestOpt].insertValue(lift(e2)))
+        val withNull = testContext.run(query[EncodingTestOpt])
         (withoutNull, withNull)
       }
       steps
     }
-    res._1 must contain theSameElementsAs List(EncodingTestEntity(Some(now)))
-    res._2 must contain theSameElementsAs List(EncodingTestEntity(None))
+    res._1 must contain theSameElementsAs List(EncodingTestOpt(Some(now)))
+    res._2 must contain theSameElementsAs List(EncodingTestOpt(None))
   }
 
   "Encode/Decode Other Time Types" in {

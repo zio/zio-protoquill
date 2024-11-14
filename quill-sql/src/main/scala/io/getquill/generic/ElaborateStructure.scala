@@ -18,6 +18,7 @@ import scala.annotation.tailrec
 import io.getquill.ast.External.Source
 import zio.Chunk
 import io.getquill.metaprog.Extractors
+import io.getquill.context.Summon
 
 /**
  * Elaboration can be different whether we are encoding or decoding because we could have
@@ -371,7 +372,7 @@ object ElaborateStructure {
         case ElaborationSide.Decoding => "decodeable"
       }
 
-    val isAutomaticLeaf =
+    val (isAutomaticLeaf, leafError) =
       side match {
         // Not sure why the UDT part is needed since it shuold always have a GenericEncoder/Decoder anyway
         case _ if (TypeRepr.of[T] <:< TypeRepr.of[io.getquill.Udt]) =>
@@ -380,17 +381,28 @@ object ElaborateStructure {
           // even if an encoder exists for the UDT. Otherwise, automatically treat the UDT as a Leaf entity
           // (since an encoder for it should have been derived by the macro that used UdtBehavior.Derive)
           udtBehavior match {
-            case UdtBehavior.Leaf   => true
-            case UdtBehavior.Derive => false
+            case UdtBehavior.Leaf   => (true, None)
+            case UdtBehavior.Derive => (false, None)
           }
         case ElaborationSide.Encoding =>
           // println(s"------- ALREDY EXISTS Encoder for ${Format.TypeOf[T]}")
-          Expr.summon[GenericEncoder[T, _, _]].isDefined
+          Summon.OrLeft.exprOf[GenericEncoder[T, _, _]] match {
+            case Left(msg) => (false, Some(msg))
+            case Right(_) => (true, None)
+          }
+
         case ElaborationSide.Decoding =>
-          // println(s"------- ALREDY EXISTS Decoder for ${Format.TypeOf[T]}")
-          Expr.summon[GenericDecoder[_, _, T, DecodingType.Specific]].isDefined
+          Summon.OrLeft.exprOf[GenericDecoder[_, _, T, DecodingType.Specific]] match {
+            case Left(msg) => (false, Some(msg))
+            case Right(_) => (true, None)
+          }
       }
 
+    lazy val sideStr =
+      side match {
+        case ElaborationSide.Encoding => "Encoder"
+        case ElaborationSide.Decoding => "Decoder"
+      }
     // TODO Back here. Should have a input arg that asks whether elaboration is
     //      on the encoding or on the decoding side.
     // Expr.summon[GenericDecoder[_, T, DecodingType.Generic]] match
@@ -404,7 +416,13 @@ object ElaborateStructure {
     // Otherwise, summon the mirror and wrap the value
     else {
       // if there is a decoder for the term, just return the term
-      lazy val msg = s"A mirror of the type ${Format.TypeOf[T]} cannot be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator."
+      lazy val msg = {
+        val base = s"${side} derivation problem. Cannot elaborate the structure of ${Format.TypeOf[T]}. Does not seem to be a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator."
+        base + (leafError match {
+          case Some(msg) => s"\n=============== Cannot Summon ${sideStr}[${Format.TypeOf[T]}] because: ===============\n" + msg
+          case None      => ""
+        })
+      }
       val ev = io.getquill.context.Summon.OrFail.exprOf[Mirror.Of[T]](msg)
       // Otherwise, recursively summon fields
       ev match {
@@ -421,7 +439,7 @@ object ElaborateStructure {
           alternatives.reduce((termA, termB) => termA.merge[T](termB))
         case _ =>
           report.throwError(
-            s"Althought a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator. Its mirror is ${Format.Expr(ev)}"
+            s"${side} derivation problem. Cannot elaborate the structure of ${Format.TypeOf[T]} can be summoned. Althought a mirror could be summoned, it does not seem to be a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator. Its mirror is ${Format.Expr(ev)}"
           )
       }
     }

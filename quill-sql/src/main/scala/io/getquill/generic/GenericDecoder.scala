@@ -290,7 +290,10 @@ object GenericDecoder {
               //scala.tools.nsc.io.File("my_log.txt").appendAll(str + "\n")
               decodeProduct[T](children, m)
 
-            case _ => report.throwError(s"Decoder for ${Format.TypeOf[T]} could not be summoned. It has no decoder and is not a recognized Product or Sum type.")
+            case _ => report.throwError(
+              s"Decoder for ${Format.TypeOf[T]} could not be summoned. It has a mirror but the mirror was not recognized as a sum or product." +
+                s"\n============= Instead it was: =============\n${Format.Expr(ev)}"
+            )
           } // end match
       } // end match
     }

@@ -1,9 +1,10 @@
 package io.getquill.context.jdbc.postgres
 
 import io.getquill.Spec
-import io.getquill._
+import io.getquill.*
+import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class JdbcContextSpec extends Spec with TestEntities {
+class JdbcContextSpec extends JdbcSpecEncoders with Spec {
 
   val ctx = testContext
   import ctx._

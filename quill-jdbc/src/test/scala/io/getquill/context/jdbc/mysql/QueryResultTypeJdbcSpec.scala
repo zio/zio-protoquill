@@ -1,11 +1,13 @@
 package io.getquill.context.jdbc.mysql
 
 import io.getquill.context.sql.QueryResultTypeSpec
-import java.util.concurrent.ConcurrentLinkedQueue
-import scala.jdk.CollectionConverters._
-import io.getquill._
 
-class QueryResultTypeJdbcSpec extends QueryResultTypeSpec {
+import java.util.concurrent.ConcurrentLinkedQueue
+import scala.jdk.CollectionConverters.*
+import io.getquill.*
+import io.getquill.context.jdbc.JdbcProductSpecEncoders
+
+class QueryResultTypeJdbcSpec extends QueryResultTypeSpec with JdbcProductSpecEncoders {
 
   // Needed for the 'ids' variable to have the right type so we can call .zip on it
   override val context: testContext.type = testContext
