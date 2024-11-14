@@ -1,0 +1,82 @@
+package io.getquill.context.jdbc.mysql
+
+import io.getquill.context.sql.ProductSpec
+import io.getquill.*
+import io.getquill.context.jdbc.{JdbcSpecEncoders, MysqlJdbcSpecEncoders}
+
+class ProductJdbcSpecEncoders extends ProductSpec with MysqlJdbcSpecEncoders {
+
+  val context = testContext
+  import testContext._
+
+  override def beforeAll() = {
+    testContext.run(quote(query[Product].delete))
+    ()
+  }
+
+  "Product" - {
+    "Insert multiple products" in {
+      val inserted = testContext.run(liftQuery(productEntries).foreach(p => productInsert(p)))
+      val product = testContext.run(productById(lift(inserted(2)))).head
+      product.description mustEqual productEntries(2).description
+      product.id mustEqual inserted(2)
+    }
+    "Single insert product" in {
+      val inserted = testContext.run(productSingleInsert)
+      val product = testContext.run(productById(lift(inserted))).head
+      product.description mustEqual "Window"
+      product.id mustEqual inserted
+    }
+    "Single insert with inlined free variable" in {
+      val prd = Product(0L, "test1", 1L)
+      // NOTE: if you make this an inline def the 2nd call and 1st call will run simultaneously
+      // since the value will be inlined into the mustBe ___ call. That means both calls will
+      // be run simultaneosly. This will cause mysql to block.
+      val inserted = testContext.run {
+        product.insert(_.sku -> lift(prd.sku), _.description -> lift(prd.description)).returningGenerated(_.id)
+      }
+      val returnedProduct = testContext.run(productById(lift(inserted))).head
+      returnedProduct.description mustEqual "test1"
+      returnedProduct.sku mustEqual 1L
+      returnedProduct.id mustEqual inserted
+    }
+
+    "Single insert with free variable and explicit quotation" in {
+      val prd = Product(0L, "test2", 2L)
+      inline def q1 = quote {
+        product.insert(_.sku -> lift(prd.sku), _.description -> lift(prd.description)).returningGenerated(_.id)
+      }
+      val inserted = testContext.run(q1)
+      val returnedProduct = testContext.run(productById(lift(inserted))).head
+      returnedProduct.description mustEqual "test2"
+      returnedProduct.sku mustEqual 2L
+      returnedProduct.id mustEqual inserted
+    }
+
+    "Single product insert with a method quotation" in {
+      val prd = Product(0L, "test3", 3L)
+      val inserted = testContext.run(productInsert(lift(prd)))
+      val returnedProduct = testContext.run(productById(lift(inserted))).head
+      returnedProduct.description mustEqual "test3"
+      returnedProduct.sku mustEqual 3L
+      returnedProduct.id mustEqual inserted
+    }
+
+    "supports casts from string to number" - {
+      "toInt" in {
+        case class Product(id: Long, description: String, sku: Int)
+        val queried = testContext.run {
+          query[Product].filter(_.sku == lift("1004").toInt)
+        }.head
+        queried.sku mustEqual 1004L
+      }
+      "toLong" in {
+        val queried = testContext.run {
+          query[Product].filter(_.sku == lift("1004").toLong)
+        }.head
+        queried.sku mustEqual 1004L
+      }
+    }
+  }
+
+}

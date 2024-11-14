@@ -15,8 +15,8 @@ trait AnyValDecoderContext[Decoder[_], Mapped] {
 }
 
 object MappedDecoderMaker {
-  inline def apply[Decoder[_], Mapped <: AnyVal]: AnyValDecoderContext[Decoder, Mapped] => Decoder[Mapped] = ${ applyImpl[Decoder, Mapped] }
-  def applyImpl[Decoder[_]: Type, Mapped <: AnyVal: Type](using qctx: Quotes): Expr[AnyValDecoderContext[Decoder, Mapped] => Decoder[Mapped]] = {
+  inline def apply[Decoder[_], Mapped](implicit ev: Mapped <:< AnyVal): AnyValDecoderContext[Decoder, Mapped] => Decoder[Mapped] = ${ applyImpl[Decoder, Mapped] }
+  def applyImpl[Decoder[_]: Type, Mapped: Type](using qctx: Quotes): Expr[AnyValDecoderContext[Decoder, Mapped] => Decoder[Mapped]] = {
     import qctx.reflect._
     // try to summon a normal encoder first and see if that works
     def isAnyValDecoder(term: Term) =
@@ -68,8 +68,8 @@ object MappedDecoderMaker {
 }
 
 object MappedEncoderMaker {
-  inline def apply[Encoder[_], Mapped <: AnyVal]: AnyValEncoderContext[Encoder, Mapped] => Encoder[Mapped] = ${ applyImpl[Encoder, Mapped] }
-  def applyImpl[Encoder[_]: Type, Mapped <: AnyVal: Type](using qctx: Quotes): Expr[AnyValEncoderContext[Encoder, Mapped] => Encoder[Mapped]] = {
+  inline def apply[Encoder[_], Mapped](implicit ev: Mapped <:< AnyVal): AnyValEncoderContext[Encoder, Mapped] => Encoder[Mapped] = ${ applyImpl[Encoder, Mapped] }
+  def applyImpl[Encoder[_]: Type, Mapped: Type](using qctx: Quotes): Expr[AnyValEncoderContext[Encoder, Mapped] => Encoder[Mapped]] = {
     import qctx.reflect._
 
     def isAnyValEncoder(term: Term) =

@@ -16,8 +16,7 @@ import java.time.Instant
 import java.time.OffsetTime
 import java.time.ZoneOffset
 
-trait Decoders extends EncodingDsl {
-  this: JdbcContextTypes =>
+trait Decoders extends EncodingDsl with JdbcContextTypes {
 
   // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
   // type Index = Int (Defined in JdbcRunContext)

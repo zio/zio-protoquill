@@ -46,6 +46,8 @@ trait CaseClassQuerySpec extends Spec {
 
   case class ContactSimplified(firstName: String, lastName: String, age: Int)
   case class AddressableContact(firstName: String, lastName: String, age: Int, street: String, zip: Int)
+  given contactSimplifiedDecoder: GenericDecoder[SpecResultRow, SpecSession, ContactSimplified, DecodingType.Generic]
+  given addressableContactDecoder: GenericDecoder[SpecResultRow, SpecSession, AddressableContact, DecodingType.Generic]
 
   inline def `Ex 1 CaseClass Record Output` = quote {
     query[Contact].map(p => new ContactSimplified(p.firstName, p.lastName, p.age))

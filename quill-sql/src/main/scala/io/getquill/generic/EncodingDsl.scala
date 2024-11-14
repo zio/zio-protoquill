@@ -32,7 +32,12 @@ import io.getquill.generic.DecodingType
  */
 trait LowPriorityImplicits { self: EncodingDsl =>
 
-  implicit inline def anyValEncoder[Cls <: AnyVal]: Encoder[Cls] =
+  // The `implicit ev...` clauses here are better for implicits resolution errors than type boundries
+  // because you get a "no implicit values were found MappedEncoding[MyClass]" error
+  // instead of a "could not summon anyValEncoder for MyClass because it was not instances of AnyVal" error
+  // in most cases the latter is big red herrig because AnyVal is not frequently used in Scala 3
+  // due to the presence of opaque types and other constructs.
+  implicit inline def anyValEncoder[Cls](implicit ev: Cls <:< AnyVal): Encoder[Cls] =
     MappedEncoderMaker[Encoder, Cls].apply(
       new AnyValEncoderContext[Encoder, Cls] {
         override def makeMappedEncoder[Base](mapped: MappedEncoding[Cls, Base], encoder: Encoder[Base]): Encoder[Cls] =
@@ -40,7 +45,7 @@ trait LowPriorityImplicits { self: EncodingDsl =>
       }
     )
 
-  implicit inline def anyValDecoder[Cls <: AnyVal]: Decoder[Cls] =
+  implicit inline def anyValDecoder[Cls](implicit ev: Cls <:< AnyVal): Decoder[Cls] =
     MappedDecoderMaker[Decoder, Cls].apply(
       new AnyValDecoderContext[Decoder, Cls] {
         override def makeMappedDecoder[Base](mapped: MappedEncoding[Base, Cls], decoder: Decoder[Base]): Decoder[Cls] =

@@ -6,7 +6,7 @@ import io.getquill.Ord
 import io.getquill._
 import org.scalatest._
 
-class ComplexQuerySpec extends Spec with BeforeAndAfter {
+class ComplexQuerySpec extends Spec with TestEntities with BeforeAndAfter {
 
   val context = testContext
   import testContext._

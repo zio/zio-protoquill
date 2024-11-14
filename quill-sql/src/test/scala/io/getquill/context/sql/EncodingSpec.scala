@@ -3,16 +3,17 @@ package io.getquill.context.sql
 import java.time.LocalDate
 import java.util.{Date, UUID}
 import io.getquill.context.Context
-import io.getquill._
+import io.getquill.*
+
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.OffsetTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
-import io.getquill.generic.{DecodingType, GenericDecoder}
+import io.getquill.generic.{DecodingType, GenericDecoder, GenericEncoder}
 
-trait EncodingSpec extends Spec {
+trait EncodingSpec extends SpecEncoders with TestEncoders with TestDecoders with Spec {
   type SpecSession
   type SpecPrepareRow
   type SpecResultRow
@@ -53,6 +54,12 @@ trait EncodingSpec extends Spec {
       }
   }
   given timeEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, TimeEntity, DecodingType.Generic]
+  //given numberEncoder = Mapped Decoding from TestEncoders Used
+  //given encodingTestTypeDecoder = Mapped Decoding from TestEncoders Used
+
+  //given timeEntityEncoder: GenericEncoder[TimeEntity, SpecPrepareRow, SpecSession]
+  //given numberEncoder = Mapped Encoding from TestEncoders Used
+  //given encodingTestTypeDecoder = Mapped Encoding from TestDecoders Used
 
   object TimeEntity {
     def make(zoneIdRaw: ZoneId) = {
@@ -110,6 +117,7 @@ trait EncodingSpec extends Spec {
       o15: Option[Number]
   )
   given encodingTestEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, EncodingTestEntity, DecodingType.Generic]
+  //given encodingTestEntityEncoder: GenericEncoder[EncodingTestEntity, SpecPrepareRow, SpecSession]
 
   inline def delete = quote {
     query[EncodingTestEntity].delete
@@ -226,6 +234,7 @@ trait EncodingSpec extends Spec {
 
   case class BarCode(description: String, uuid: Option[UUID] = None)
   given barCodeDecoder: GenericDecoder[SpecResultRow, SpecSession, BarCode, DecodingType.Generic]
+  //given barCodeEncoder: GenericEncoder[BarCode, SpecPrepareRow, SpecSession]
 
   val insertBarCode = quote((b: BarCode) => query[BarCode].insertValue(b).returningGenerated(_.uuid))
   val barCodeEntry = BarCode("returning UUID")

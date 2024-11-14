@@ -386,19 +386,19 @@ class ContextMacroSpec extends Spec {
 
   "supports composite naming strategies" - {
     "two" in {
-      object ctx extends MirrorContext(MirrorIdiom, NamingStrategy(Literal, Escape)) with TestEntities
+      object ctx extends MirrorContext(MirrorIdiom, NamingStrategy(Literal, Escape))
       import ctx._
       ctx.run(query[TestEntity]).string mustEqual """querySchema("TestEntity")"""
       ctx.translate(query[TestEntity]) mustEqual """querySchema("TestEntity")"""
     }
     "three" in {
-      object ctx extends MirrorContext(MirrorIdiom, NamingStrategy(Literal, Escape, UpperCase)) with TestEntities
+      object ctx extends MirrorContext(MirrorIdiom, NamingStrategy(Literal, Escape, UpperCase))
       import ctx._
       ctx.run(query[TestEntity]).string mustEqual """querySchema("TestEntity")"""
       ctx.translate(query[TestEntity]) mustEqual """querySchema("TestEntity")"""
     }
     "four" in {
-      object ctx extends MirrorContext(MirrorIdiom, NamingStrategy(Literal, Escape, UpperCase, SnakeCase)) with TestEntities
+      object ctx extends MirrorContext(MirrorIdiom, NamingStrategy(Literal, Escape, UpperCase, SnakeCase))
       import ctx._
       ctx.run(query[TestEntity]).string mustEqual """querySchema("TestEntity")"""
       ctx.translate(query[TestEntity]) mustEqual """querySchema("TestEntity")"""

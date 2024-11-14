@@ -3,7 +3,7 @@ package io.getquill.context.jdbc.sqlserver
 import io.getquill.{ Literal, Spec, SqlServerJdbcContext }
 import io.getquill._
 
-class JdbcContextSpec extends Spec {
+class JdbcContextSpec extends Spec with TestEntities {
 
   val ctx = testContext
   import ctx._

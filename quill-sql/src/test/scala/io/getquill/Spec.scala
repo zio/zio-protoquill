@@ -15,7 +15,7 @@ import io.getquill.idiom.Idiom
 import io.getquill.Query
 import io.getquill.context.mirror.Row
 
-abstract class Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
+trait Spec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   val QV = Quat.Value
   def QEP(name: String) = Quat.Product.empty(name)
   def QP(name: String, fields: String*) = Quat.LeafProduct(name, fields: _*)

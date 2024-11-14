@@ -402,31 +402,29 @@ object ElaborateStructure {
     if (isAutomaticLeaf)
       term.asLeaf
     // Otherwise, summon the mirror and wrap the value
-    else
+    else {
       // if there is a decoder for the term, just return the term
-      Expr.summon[Mirror.Of[T]] match {
-        case Some(ev) =>
-          // Otherwise, recursively summon fields
-          ev match {
-            case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
-              val children = flatten(term, Type.of[elementLabels], Type.of[elementTypes], side)
-              term.withChildren(children)
-            // TODO Make sure you can summon a ColumnResolver if there is a SumMirror, otherwise this kind of decoding should be impossible
-            case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
-              // Find field infos (i.e. Term objects) for all potential types that this coproduct could be
-              val alternatives = collectFields(term, Type.of[elementLabels], Type.of[elementTypes], side)
-              // Then merge them together to get one term representing all of their fields types.
-              // Say you have a coproduct Shape -> (Square(width), Rectangle(width,height), Circle(radius))
-              // You would get Term(width, height, radius)
-              alternatives.reduce((termA, termB) => termA.merge[T](termB))
-            case _ =>
-              report.throwError(
-                s"Althought a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator. Its mirror is ${Format.Expr(ev)}"
-              )
-          }
-        case None =>
-          report.throwError(s"A mirror of the type ${Format.TypeOf[T]} cannot be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator.")
+      lazy val msg = s"A mirror of the type ${Format.TypeOf[T]} cannot be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator."
+      val ev = io.getquill.context.Summon.OrFail.exprOf[Mirror.Of[T]](msg)
+      // Otherwise, recursively summon fields
+      ev match {
+        case '{ $m: Mirror.ProductOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
+          val children = flatten(term, Type.of[elementLabels], Type.of[elementTypes], side)
+          term.withChildren(children)
+        // TODO Make sure you can summon a ColumnResolver if there is a SumMirror, otherwise this kind of decoding should be impossible
+        case '{ $m: Mirror.SumOf[T] { type MirroredElemLabels = elementLabels; type MirroredElemTypes = elementTypes } } =>
+          // Find field infos (i.e. Term objects) for all potential types that this coproduct could be
+          val alternatives = collectFields(term, Type.of[elementLabels], Type.of[elementTypes], side)
+          // Then merge them together to get one term representing all of their fields types.
+          // Say you have a coproduct Shape -> (Square(width), Rectangle(width,height), Circle(radius))
+          // You would get Term(width, height, radius)
+          alternatives.reduce((termA, termB) => termA.merge[T](termB))
+        case _ =>
+          report.throwError(
+            s"Althought a mirror of the type ${Format.TypeOf[T]} can be summoned. It is not a sum-type, a product-type, or a ${encDecText} entity so its fields cannot be understood in the structure-elaborator. Its mirror is ${Format.Expr(ev)}"
+          )
       }
+    }
   }
 
   private def productized[T: Type](side: ElaborationSide, baseName: String = "x")(using Quotes): Ast = {

@@ -1,11 +1,13 @@
 package io.getquill
 
 import io.getquill.context.Context
+import io.getquill.generic.{DecodingType, GenericDecoder}
 import io.getquill.quat.Quat
 
 trait TestEntities {
-  // Has a context self type in Scala2-Quill however, for Protoquill
-  // Dialect, Naming type requirements are stricter so trying to avoid the use of Context[_, _] self type
+  type SpecSession
+  type SpecPrepareRow
+  type SpecResultRow
 
   case class TestEntity(s: String, i: Int, l: Long, o: Option[Int], b: Boolean)
   case class Emb(s: String, i: Int) extends Embedded
@@ -17,6 +19,16 @@ trait TestEntities {
   case class EmbSingle(i: Long) extends Embedded
   case class TestEntity4Emb(emb: EmbSingle)
   case class TestEntityRegular(s: String, i: Long)
+  given testEntityEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity, DecodingType.Generic]
+  given embEncoder: GenericDecoder[SpecResultRow, SpecSession, Emb, DecodingType.Generic]
+  given testEntityEmbEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntityEmb, DecodingType.Generic]
+  given testEntity2Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity2, DecodingType.Generic]
+  given testEntity3Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity3, DecodingType.Generic]
+  given testEntity4Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity4, DecodingType.Generic]
+  given testEntity5Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity5, DecodingType.Generic]
+  given embSingleEncoder: GenericDecoder[SpecResultRow, SpecSession, EmbSingle, DecodingType.Generic]
+  given testEntity4EmbEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity4Emb, DecodingType.Generic]
+  given testEntityRegularEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntityRegular, DecodingType.Generic]
 
   private val QV = Quat.Value
   private val QBV = Quat.BooleanValue

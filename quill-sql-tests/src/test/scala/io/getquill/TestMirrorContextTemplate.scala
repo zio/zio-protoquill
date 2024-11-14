@@ -8,7 +8,7 @@ import io.getquill.context.sql.TestEncoders
 import io.getquill.context.sql.TestDecoders
 
 class TestMirrorContextTemplate[+Dialect <: Idiom, +Naming <: NamingStrategy](dialect: Dialect, naming: Naming)
-  extends MirrorContext[Dialect, Naming](dialect, naming) with TestEntities {
+  extends MirrorContext[Dialect, Naming](dialect, naming) {
 
   def withDialect[I <: Idiom](dialect: I)(f: TestMirrorContextTemplate[I, Naming] => Any): Unit = {
     val ctx = new TestMirrorContextTemplate[I, Naming](dialect, naming)

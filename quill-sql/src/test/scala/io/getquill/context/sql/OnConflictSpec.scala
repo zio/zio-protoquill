@@ -3,12 +3,12 @@ package io.getquill.context.sql
 import io.getquill._
 import io.getquill.generic.{DecodingType, GenericDecoder}
 
-trait OnConflictSpec extends Spec {
+trait OnConflictSpec extends Spec with TestEntities {
   type SpecSession
   type SpecPrepareRow
   type SpecResultRow
 
-  val ctx: SqlContext[_, _] with TestEntities {
+  val ctx: SqlContext[_, _] {
     type Session = SpecSession
     type PrepareRow = SpecPrepareRow
     type ResultRow = SpecResultRow

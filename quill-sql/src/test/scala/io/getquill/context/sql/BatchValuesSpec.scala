@@ -4,6 +4,8 @@ import io.getquill.*
 import org.scalatest.BeforeAndAfterEach
 import io.getquill.generic.{DecodingType, GenericDecoder}
 
+
+
 trait BatchValuesSpec extends Spec with BeforeAndAfterEach {
   type SpecSession
   type SpecPrepareRow

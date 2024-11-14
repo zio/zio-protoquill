@@ -7,6 +7,6 @@ import io.getquill.jdbczio.Quill
 
 package object postgres {
   val pool = runLayerUnsafe(Quill.DataSource.fromPrefix("testPostgresDB"))
-  object testContext extends Quill.Postgres(Literal, pool) with TestEntities
-  object testContextSplicing extends Quill.Postgres(Literal, pool) with TestEntities with AstSplicing
+  object testContext extends Quill.Postgres(Literal, pool)
+  object testContextSplicing extends Quill.Postgres(Literal, pool) with AstSplicing
 }

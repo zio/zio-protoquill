@@ -135,6 +135,8 @@ trait DistinctSpec extends Spec {
     )
 
   case class TwoField(one: String, two: String)
+  given twoFieldDecoder: GenericDecoder[SpecResultRow, SpecSession, TwoField, DecodingType.Generic]
+
   inline def `Ex 7 Distinct Subquery with Map Multi Field Tuple` = quote {
     query[Person]
       .join(

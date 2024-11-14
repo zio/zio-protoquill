@@ -6,5 +6,5 @@ import io.getquill.jdbczio.Quill
 
 package object oracle {
   val pool = runLayerUnsafe(Quill.DataSource.fromPrefix("testOracleDB"))
-  object testContext extends Quill.Oracle(Literal, pool) with TestEntities
+  object testContext extends Quill.Oracle(Literal, pool)
 }

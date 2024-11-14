@@ -9,7 +9,7 @@ class DynamicQuerySpec extends Spec { // //
 
   // NOTE :QueryMeta and :SchemaMeta are not needed
 
-  object testContext extends MirrorContext(MirrorIdiom, Literal) with TestEntities
+  object testContext extends MirrorContext(MirrorIdiom, Literal)
   import testContext._
 
   "implicit classes" - {

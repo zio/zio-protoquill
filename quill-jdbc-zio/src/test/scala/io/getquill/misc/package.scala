@@ -5,5 +5,5 @@ import javax.sql.DataSource
 
 package object misc {
   implicit val pool: Implicit[DataSource] = Implicit(io.getquill.postgres.pool)
-  object testContext extends PostgresZioJdbcContext(Literal) with TestEntities
+  object testContext extends PostgresZioJdbcContext(Literal)
 }
