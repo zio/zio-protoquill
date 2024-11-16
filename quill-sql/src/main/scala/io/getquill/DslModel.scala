@@ -1,14 +1,19 @@
 package io.getquill
 
-import io.getquill.parser._
-import scala.quoted._
+import io.getquill.parser.*
+
+import scala.quoted.*
 import scala.annotation.StaticAnnotation
-import scala.deriving._
+import scala.deriving.*
 import io.getquill.generic.GenericEncoder
 import io.getquill.quotation.NonQuotedException
+
 import scala.annotation.compileTimeOnly
 import io.getquill.Query
 import io.getquill.EntityQuery
+import io.getquill.ast.{Ast, QuotationTag, ScalarTag, Transform}
+
+import java.util.UUID
 
 object EntityQuery {
   def apply[T] = new EntityQuery[T]() {}
@@ -38,6 +43,46 @@ class Quoted[+T](val ast: io.getquill.ast.Ast, val lifts: List[Planter[_, _, _]]
     }
   def copy(ast: io.getquill.ast.Ast = this.ast, lifts: List[Planter[_, _, _]] = this.lifts, runtimeQuotes: List[QuotationVase] = this.runtimeQuotes) =
     Quoted(ast, lifts, runtimeQuotes)
+
+  def dedupeRuntimeBinds: Quoted[T] = {
+    def rekeyLeafBindsUsing(ast: Ast, bindMap: Map[String, String]) =
+      Transform(ast) {
+        case tag: ScalarTag if (bindMap.contains(tag.uid)) => tag.copy(uid = bindMap(tag.uid))
+      }
+
+    def rekeyVasesUsing(ast: Ast, bindMap: Map[String, String]) =
+      Transform(ast) {
+        case tag: QuotationTag if (bindMap.contains(tag.uid)) => tag.copy(uid = bindMap(tag.uid))
+      }
+
+    def rekeyLeafBinds(quoted: Quoted[_]) = {
+      val (liftIdMap, newPlanters) = quoted.lifts.map { lift =>
+        val newId = UUID.randomUUID().toString
+        val newLift = lift.rekey(newId)
+        ((lift.uid, newId), newLift)
+      }.unzip
+      val newAst = rekeyLeafBindsUsing(quoted.ast, liftIdMap.toMap)
+      Quoted(newAst, newPlanters, quoted.runtimeQuotes)
+    }
+    // need to rekey depth-first, otherwise the same uid might be rekeyed multiple times which is not the correct behavior
+    // innermost binds need to be rekeyed first
+    def rekeyRecurse(quoted: Quoted[_]): Quoted[_] = {
+      // rekey leaf binds of the children, for inner most children runtimeQuotes shuold be empty
+      val (vaseIdMap, newVases) = quoted.runtimeQuotes.map { vase =>
+        val newVaseId = UUID.randomUUID().toString
+        // recursively call to rekey the vase (if there are any inner dynamic quotes)
+        val newQuotation = rekeyRecurse(vase.quoted)
+        ((vase.uid, newVaseId), QuotationVase(newQuotation, newVaseId))
+      }.unzip
+      // Then go through the vases themselves (that are on this level and rekey them)
+      val newAst = rekeyVasesUsing(quoted.ast, vaseIdMap.toMap)
+      // finally rekey the leaf-binds of the quotation itself (this should happen on the innermost quotation first
+      // since depth-first recursion is happening here)
+      rekeyLeafBinds(Quoted(newAst, quoted.lifts, newVases))
+    }
+
+    rekeyRecurse(this).asInstanceOf[Quoted[T]]
+  }
 }
 object Quoted {
   case class QuotedId(val ast: io.getquill.ast.Ast, val lifts: List[Planter[_, _, _]], val runtimeQuotes: List[QuotationVase])
@@ -54,6 +99,7 @@ object Quoted {
 sealed trait Planter[T, PrepareRow, Session] extends Unquoteable {
   def unquote: T
   def uid: String
+  def rekey(newUid: String): Planter[T, PrepareRow, Session]
 }
 
 private[getquill] trait InfixValue {
@@ -87,27 +133,32 @@ case class InjectableEagerPlanter[T, PrepareRow, Session](inject: _ => T, encode
   def withInject(element: Any) = EagerPlanter[T, PrepareRow, Session](inject.asInstanceOf[Any => T](element), encoder, uid)
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
+  def rekey(newUid: String): InjectableEagerPlanter[T, PrepareRow, Session] = InjectableEagerPlanter(inject, encoder, newUid)
 }
 
 case class EagerListPlanter[T, PrepareRow, Session](values: List[T], encoder: GenericEncoder[T, PrepareRow, Session], uid: String) extends Planter[Query[T], PrepareRow, Session] {
   def unquote: Query[T] =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
+  def rekey(newUid: String): EagerListPlanter[T, PrepareRow, Session] = EagerListPlanter(values, encoder, newUid)
 }
 
 case class EagerPlanter[T, PrepareRow, Session](value: T, encoder: GenericEncoder[T, PrepareRow, Session], uid: String) extends Planter[T, PrepareRow, Session] {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
+  def rekey(newUid: String): EagerPlanter[T, PrepareRow, Session] = EagerPlanter(value, encoder, newUid)
 }
 
 case class LazyPlanter[T, PrepareRow, Session](value: T, uid: String) extends Planter[T, PrepareRow, Session] {
   def unquote: T =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
+  def rekey(newUid: String): LazyPlanter[T, PrepareRow, Session] = LazyPlanter(value, newUid)
 }
 
 // Equivalent to CaseClassValueLift
 case class EagerEntitiesPlanter[T, PrepareRow, Session](value: Iterable[T], uid: String, fieldGetters: List[InjectableEagerPlanter[?, PrepareRow, Session]], fieldClass: ast.CaseClass) extends Planter[Query[T], PrepareRow, Session] {
   def unquote: Query[T] =
     throw new RuntimeException("Unquotation can only be done from a quoted block.")
+  def rekey(newUid: String): EagerEntitiesPlanter[T, PrepareRow, Session] = EagerEntitiesPlanter(value, newUid, fieldGetters, fieldClass)
 }
 
 // Stores runtime quotation tree. This is holder for quotations that are not inline thus can never be re-inserted into

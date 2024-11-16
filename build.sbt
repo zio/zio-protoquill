@@ -86,7 +86,7 @@ val filteredModules = {
 }
 
 val zioQuillVersion = "4.8.4"
-val zioVersion = "2.1.6"
+val zioVersion = "2.1.12"
 
 lazy val `quill` =
   (project in file("."))
@@ -307,3 +307,6 @@ lazy val basicSettings = Seq(
   ),
   javacOptions := Seq("-source", "11", "-target", "11"),
 )
+
+// force redraft
+// force redraft
