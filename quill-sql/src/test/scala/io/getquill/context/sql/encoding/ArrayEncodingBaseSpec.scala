@@ -1,13 +1,18 @@
 package io.getquill.context.sql.encoding
 
+import io.getquill.context.sql.SqlContext
+
 import java.time.LocalDate
 import java.util.Date
 import java.util.UUID
-
 import io.getquill.{MappedEncoding, Spec}
 import org.scalatest.{Assertion, BeforeAndAfterEach}
+import io.getquill.context.Context
+import io.getquill.generic.GenericDecoder
 
 trait ArrayEncodingBaseSpec extends Spec with BeforeAndAfterEach {
+  //val ctx: Context[_, _]
+  //import ctx._
 
   // Support all sql base types and `Seq` implementers
   case class ArraysTestEntity(
@@ -58,8 +63,9 @@ trait ArrayEncodingBaseSpec extends Spec with BeforeAndAfterEach {
 
   // Support Seq encoding basing on MappedEncoding
   case class StrWrap(str: String)
-  implicit val strWrapEncode: MappedEncoding[StrWrap, String] = MappedEncoding(_.str)
-  implicit val strWrapDecode: MappedEncoding[String, StrWrap] = MappedEncoding(StrWrap.apply)
+  // TODO which ones of these actually causes the implicit conflict?
+  //implicit val strWrapEncode: MappedEncoding[StrWrap, String] = MappedEncoding(_.str)
+  //implicit val strWrapDecode: MappedEncoding[String, StrWrap] = MappedEncoding(StrWrap.apply)
   case class WrapEntity(texts: Seq[StrWrap])
   val wrapE = WrapEntity(List("hey", "ho").map(StrWrap.apply))
 }

@@ -23,8 +23,13 @@ object DecodingType {
   sealed trait Specific extends DecodingType
 }
 
-trait GenericDecoder[ResultRow, Session, T, +DecType <: DecodingType] extends ((Int, ResultRow, Session) => T) {
+trait GenericDecoder[ResultRow, Session, T, +DecType <: DecodingType] extends ((Int, ResultRow, Session) => T) { self =>
   def apply(i: Int, rr: ResultRow, s: Session): T
+  def map[R](f: T => R) =
+    new GenericDecoder[ResultRow, Session, R, DecType] {
+      def apply(i: Int, rr: ResultRow, s: Session): R =
+        f(self(i, rr, s))
+    }
 }
 
 trait GenericRowTyper[ResultRow, Co] {
@@ -267,7 +272,7 @@ object GenericDecoder {
         case Left(leafFailMsg) =>
           lazy val msg =
             s"""No Decoder found for ${Format.TypeOf[T]} and it is not a class representing a group of columns.
-               |Have you imported a Decoder[${Format.TypeOf[T]}]? You an do this by either importing .* from your context:
+               |Have you imported a Decoder[${Format.TypeOf[T]}]? You an do this by either importing .* from your context? E.g.
                |val ctx = new SqlMirrorContext[PostgresDialect, Literal]
                |import ctx.*
                |Or you can import the decoder from the context's companion object for example:
@@ -291,8 +296,8 @@ object GenericDecoder {
               decodeProduct[T](children, m)
 
             case _ => report.throwError(
-              s"Decoder for ${Format.TypeOf[T]} could not be summoned. It has a mirror but the mirror was not recognized as a sum or product." +
-                s"\n============= Instead it was: =============\n${Format.Expr(ev)}"
+              msg +
+                s"\n============= ${Format.TypeOf[T]} also had a mirror but it was not a Sum/Product: =============\n${Format.Expr(ev)}"
             )
           } // end match
       } // end match

@@ -6,16 +6,27 @@ import java.util.UUID
 
 import io.getquill.context.sql.encoding.ArrayEncodingBaseSpec
 import io.getquill._
+import io.getquill.PostgresJdbcContext.*
 
 class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec {
   val ctx = testContext
   import ctx._
 
+  ///home/alexi/git/protoquill/quill-jdbc/src/test/scala/io/getquill/context/jdbc/postgres/ArrayJdbcEncodingSpec.scala:15:60
+  //No given instance of type io.getquill.MappedEncoding[String, String] was found for parameter x of method summon in object Predef
+  //val encodeStrStr = summon[MappedEncoding[String, String]]
+  //def encodeStrStr[O] = summon[MappedEncoding[O, String]]
+  //def foo[O] = SummonLog[String]
+
   inline def q = quote(query[ArraysTestEntity])
   val corrected = e.copy(timestamps = e.timestamps.map(d => new Timestamp(d.getTime)))
+
+  // If we re-enable the StrWrap mapped-encoding/decoding then this will blow up with a conflict for Decoder[Seq[I]]
+  // is it trying to derive something for Seq[I] because it thinks Seq is a product or sum type???
+  // Or maybe StrWrap is being derived as something???
   given PostgresJdbcContext.GenericDecoder[ArraysTestEntity] = PostgresJdbcContext.deriveDecoder
 
-  "Support all sql base types and `Seq` implementers" in { //
+  "Support all sql base types and `Seq` implementers" in {
     ctx.run(q.insertValue(lift(corrected)))
     val actual = ctx.run(q).head
     actual mustEqual corrected

@@ -7,8 +7,13 @@ import io.getquill.StringCodec
 import io.getquill.FromString
 
 // Note: Not using abstract Index parameter in ProtoQuill since it would bleed into most planters
-trait GenericEncoder[T, PrepareRow, Session] extends ((Int, T, PrepareRow, Session) => PrepareRow) {
+trait GenericEncoder[T, PrepareRow, Session] extends ((Int, T, PrepareRow, Session) => PrepareRow) { self =>
   def apply(i: Int, t: T, row: PrepareRow, session: Session): PrepareRow
+  def contramap[R](f: R => T): GenericEncoder[R, PrepareRow, Session] =
+    new GenericEncoder[R, PrepareRow, Session] {
+      def apply(i: Int, t: R, row: PrepareRow, session: Session) =
+        self.apply(i, f(t), row, session)
+    }
 }
 
 case class GenericEncoderWithStringFallback[T, PrepareRow, Session](

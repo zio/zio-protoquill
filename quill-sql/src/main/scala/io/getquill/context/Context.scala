@@ -74,6 +74,13 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
     implicit inline def dec[T]: GenericDecoder[ResultRow, Session, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, ResultRow, Session] }
   }
 
+  // TODO use the same BuildFrom pattern as ZIO.foreach and copy it verbatim
+  //      that shuold significantly uncrease understandability
+  //      The "output type" should be the abstract Collection[Element] type
+  // extension [From, To](mapped: MappedEncoding[From, To])
+  //   def toArrayEncoder[Col <: Seq[_]](given GenericEncoder[]): GenericEncoder[]
+
+
   // def probe(statement: String): Try[_]
   // todo add 'prepare' i.e. encoders here
   // def executeAction(cql: String, prepare: Prepare = identityPrepare)(implicit executionContext: ExecutionContext): Result[RunActionResult]

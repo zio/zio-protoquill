@@ -3,27 +3,33 @@ package io.getquill.context.mirror
 import java.time.LocalDate
 import java.util.Date
 import java.util.UUID
-
 import io.getquill.SqlMirrorContext
 import io.getquill.generic.ArrayEncoding
+import io.getquill.generic.ArrayCoreEncoder
 
 import scala.collection.Factory
+import scala.reflect.ClassTag
 
 trait ArrayMirrorEncoding extends ArrayEncoding {
   this: MirrorEncoders with MirrorDecoders =>
 
-  implicit def arrayStringEncoder[Col <: Seq[String]]: Encoder[Col] = encoder[Col]
-  implicit def arrayBigDecimalEncoder[Col <: Seq[BigDecimal]]: Encoder[Col] = encoder[Col]
-  implicit def arrayBooleanEncoder[Col <: Seq[Boolean]]: Encoder[Col] = encoder[Col]
-  implicit def arrayByteEncoder[Col <: Seq[Byte]]: Encoder[Col] = encoder[Col]
-  implicit def arrayShortEncoder[Col <: Seq[Short]]: Encoder[Col] = encoder[Col]
-  implicit def arrayIntEncoder[Col <: Seq[Int]]: Encoder[Col] = encoder[Col]
-  implicit def arrayLongEncoder[Col <: Seq[Long]]: Encoder[Col] = encoder[Col]
-  implicit def arrayFloatEncoder[Col <: Seq[Float]]: Encoder[Col] = encoder[Col]
-  implicit def arrayDoubleEncoder[Col <: Seq[Double]]: Encoder[Col] = encoder[Col]
-  implicit def arrayDateEncoder[Col <: Seq[Date]]: Encoder[Col] = encoder[Col]
-  implicit def arrayLocalDateEncoder[Col <: Seq[LocalDate]]: Encoder[Col] = encoder[Col]
-  implicit def arrayUuidEncoder[Col <: Seq[UUID]]: Encoder[Col] = encoder[Col]
+  implicit def arrayEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[Array[T]] =  makeArrayEncoder[T, Array[T]](core)
+  implicit def seqEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[Seq[T]] = makeArrayEncoder[T, Seq[T]](core)
+  implicit def listEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[List[T]] = makeArrayEncoder[T, List[T]](core)
+  implicit def setEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[Set[T]] = makeArrayEncoder[T, Set[T]](core)
+
+  implicit def stringArrayCoreEncoder: ArrayCoreEncoder[String, Row] = arrayCore[String]
+  implicit def bigDecimalArrayCoreEncoder: ArrayCoreEncoder[BigDecimal, Row] = arrayCore[BigDecimal]
+  implicit def booleanArrayCoreEncoder: ArrayCoreEncoder[Boolean, Row] = arrayCore[Boolean]
+  implicit def byteArrayCoreEncoder: ArrayCoreEncoder[Byte, Row] = arrayCore[Byte]
+  implicit def shortArrayCoreEncoder: ArrayCoreEncoder[Short, Row] = arrayCore[Short]
+  implicit def intArrayCoreEncoder: ArrayCoreEncoder[Int, Row] = arrayCore[Int]
+  implicit def longArrayCoreEncoder: ArrayCoreEncoder[Long, Row] = arrayCore[Long]
+  implicit def floatArrayCoreEncoder: ArrayCoreEncoder[Float, Row] = arrayCore[Float]
+  implicit def doubleArrayCoreEncoder: ArrayCoreEncoder[Double, Row] = arrayCore[Double]
+  implicit def dateArrayCoreEncoder: ArrayCoreEncoder[Date, Row] = arrayCore[Date]
+  implicit def localDateArrayCoreEncoder: ArrayCoreEncoder[LocalDate, Row] = arrayCore[LocalDate]
+  implicit def uuidArrayCoreEncoder: ArrayCoreEncoder[UUID, Row] = arrayCore[UUID]
 
   implicit def arrayStringDecoder[Col <: Seq[String]](implicit bf: CBF[String, Col]): Decoder[Col] = decoderUnsafe[Col]
   implicit def arrayBigDecimalDecoder[Col <: Seq[BigDecimal]](implicit bf: CBF[BigDecimal, Col]): Decoder[Col] = decoderUnsafe[Col]

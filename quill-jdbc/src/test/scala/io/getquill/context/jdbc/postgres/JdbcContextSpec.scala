@@ -13,6 +13,9 @@ class JdbcContextSpec extends JdbcSpecEncoders with Spec {
     val p = ctx.probe("DELETE FROM TestEntity")
   }
 
+  case class Return(id: Int, str: String, opt: Option[Int])
+  given PostgresJdbcContext.GenericDecoder[Return] = PostgresJdbcContext.deriveDecoder
+
   "run non-batched action" in {
     testContext.run(qr1.delete)
     inline def insert = quote {
@@ -144,7 +147,7 @@ class JdbcContextSpec extends JdbcSpecEncoders with Spec {
     }
 
     "with multiple columns - case class" in {
-      case class Return(id: Int, str: String, opt: Option[Int])
+
       ctx.run(qr1.delete)
       val inserted = ctx.run {
         qr1.insertValue(lift(TestEntity("foo", 1, 18L, Some(123), true))).returning(r => Return(r.i, r.s, r.o))
@@ -225,7 +228,6 @@ class JdbcContextSpec extends JdbcSpecEncoders with Spec {
     }
 
     "with multiple columns - case class" in {
-      case class Return(id: Int, str: String, opt: Option[Int])
       ctx.run(qr1.delete)
       ctx.run(qr1.insertValue(lift(TestEntity("one", 1, 18L, Some(1), true))))
 
@@ -308,7 +310,6 @@ class JdbcContextSpec extends JdbcSpecEncoders with Spec {
     }
 
     "with multiple columns - case class" in {
-      case class Return(id: Int, str: String, opt: Option[Int])
       ctx.run(qr1.delete)
       ctx.run(qr1.insertValue(lift(TestEntity("one", 1, 18L, Some(123), true))))
 

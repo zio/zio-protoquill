@@ -85,6 +85,8 @@ class FlicerMapTypesSpec extends Spec with Inside {
 
   "Should succeed with AnyValue" in {
     import FlicerMapTypesSpec.`Should succeed with AnyValue`._
+    given PostgresJdbcContext.GenericDecoder[ContactComplex] = PostgresJdbcContext.deriveDecoder
+
     val converted = contacts.map(c => ContactComplex(c.firstName, c.lastName, c.age, c.addressFk, Info(c.extraInfo)))
 
     val map = Map[String, Any]("extraInfo" -> Info("1"))

@@ -11,14 +11,26 @@ import io.getquill.MappedEncoding
 trait MirrorEncoders extends EncodingDsl {
   override type PrepareRow = Row
   override type ResultRow = Row
-  type Encoder[T] = MirrorEncoder[T]
+  type Encoder[T] = GenericEncoder[T, PrepareRow, Session]
+
+  case class MirrorArrayCoreEncoder[T](f: (index: Int, value: T, row: PrepareRow, session: Session) => PrepareRow) extends BaseEncoder[T] {
+    override def apply(index: Int, value: T, row: PrepareRow, session: Session) =
+      f(index, value, row, session)
+  }
 
   case class MirrorEncoder[T](encoder: EncoderMethod[T]) extends BaseEncoder[T] {
     override def apply(index: Int, value: T, row: PrepareRow, session: Session) =
       encoder(index, value, row, session)
   }
 
+  case class MirrorArrayEncoder[T, Col <: Seq[T]](core: MirrorArrayCoreEncoder[T]) extends BaseEncoder[Col] {
+    override def apply(index: Int, value: T, row: PrepareRow, session: Session) =
+      core(index, value, row, session)
+  }
+
   def encoder[T]: MirrorEncoder[T] = MirrorEncoder((index: Int, value: T, row: PrepareRow, session: Session) => row.add(value))
+  def makeArrayEncoder[T, Col <: Seq[T]](core: ArrayCoreEncoder[T, PrepareRow]): MirrorArrayEncoder[T, Col] = MirrorArrayEncoder[T, Col](core)
+  def arrayCore[T]: ArrayCoreEncoder[T, Row] = MirrorArrayCoreEncoder((index, value, row, session) => row.add(value))
 
   implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], e: Encoder[O]): Encoder[I] =
     MirrorEncoder((index: Int, value: I, row: PrepareRow, session: Session) => e(index, mapped.f(value), row, session))

@@ -3,6 +3,7 @@ package io.getquill.generic
 import java.time.LocalDate
 import java.util.Date
 import java.util.UUID
+import scala.reflect.ClassTag
 
 //import io.getquill.context.sql.SqlContext
 
@@ -12,23 +13,36 @@ import scala.language.higherKinds
 // Different package in Scala2-Quill so need to do an import here
 import io.getquill.MappedEncoding
 
+trait ArrayCoreEncoder[T, PrepareRow] {
+  def encode(arr: Array[T], idx: Int, row: PrepareRow): PrepareRow
+}
+
+trait ArrayCoreDecoder[ResultRow, T] {
+  def decode(idx: Int, row: ResultRow): Array[T]
+}
+
 trait ArrayEncoding extends EncodingDsl {
   // self: SqlContext[_, _] =>
 
   type CBF[T, Col] = Factory[T, Col]
 
-  implicit def arrayStringEncoder[Col <: Seq[String]]: Encoder[Col]
-  implicit def arrayBigDecimalEncoder[Col <: Seq[BigDecimal]]: Encoder[Col]
-  implicit def arrayBooleanEncoder[Col <: Seq[Boolean]]: Encoder[Col]
-  implicit def arrayByteEncoder[Col <: Seq[Byte]]: Encoder[Col]
-  implicit def arrayShortEncoder[Col <: Seq[Short]]: Encoder[Col]
-  implicit def arrayIntEncoder[Col <: Seq[Int]]: Encoder[Col]
-  implicit def arrayLongEncoder[Col <: Seq[Long]]: Encoder[Col]
-  implicit def arrayFloatEncoder[Col <: Seq[Float]]: Encoder[Col]
-  implicit def arrayDoubleEncoder[Col <: Seq[Double]]: Encoder[Col]
-  implicit def arrayDateEncoder[Col <: Seq[Date]]: Encoder[Col]
-  implicit def arrayLocalDateEncoder[Col <: Seq[LocalDate]]: Encoder[Col]
-  implicit def arrayUuidEncoder[Col <: Seq[UUID]]: Encoder[Col]
+  implicit def arrayEncoder[T](implicit core: ArrayCoreEncoder[T, PrepareRow], ct: ClassTag[T]): Encoder[Array[T]]
+  implicit def seqEncoder[T](implicit core: ArrayCoreEncoder[T, PrepareRow], ct: ClassTag[T]): Encoder[Seq[T]]
+  implicit def listEncoder[T](implicit core: ArrayCoreEncoder[T, PrepareRow], ct: ClassTag[T]): Encoder[List[T]]
+  implicit def setEncoder[T](implicit core: ArrayCoreEncoder[T, PrepareRow], ct: ClassTag[T]): Encoder[Set[T]]
+
+  implicit def stringArrayCoreEncoder: ArrayCoreEncoder[String, PrepareRow]
+  implicit def bigDecimalArrayCoreEncoder: ArrayCoreEncoder[BigDecimal, PrepareRow]
+  implicit def booleanArrayCoreEncoder: ArrayCoreEncoder[Boolean, PrepareRow]
+  implicit def byteArrayCoreEncoder: ArrayCoreEncoder[Byte, PrepareRow]
+  implicit def shortArrayCoreEncoder: ArrayCoreEncoder[Short, PrepareRow]
+  implicit def intArrayCoreEncoder: ArrayCoreEncoder[Int, PrepareRow]
+  implicit def longArrayCoreEncoder: ArrayCoreEncoder[Long, PrepareRow]
+  implicit def floatArrayCoreEncoder: ArrayCoreEncoder[Float, PrepareRow]
+  implicit def doubleArrayCoreEncoder: ArrayCoreEncoder[Double, PrepareRow]
+  implicit def dateArrayCoreEncoder: ArrayCoreEncoder[Date, PrepareRow]
+  implicit def localDateArrayCoreEncoder: ArrayCoreEncoder[LocalDate, PrepareRow]
+  implicit def uuidArrayCoreEncoder: ArrayCoreEncoder[UUID, PrepareRow]
 
   implicit def arrayStringDecoder[Col <: Seq[String]](implicit bf: CBF[String, Col]): Decoder[Col]
   implicit def arrayBigDecimalDecoder[Col <: Seq[BigDecimal]](implicit bf: CBF[BigDecimal, Col]): Decoder[Col]
@@ -42,26 +56,4 @@ trait ArrayEncoding extends EncodingDsl {
   implicit def arrayDateDecoder[Col <: Seq[Date]](implicit bf: CBF[Date, Col]): Decoder[Col]
   implicit def arrayLocalDateDecoder[Col <: Seq[LocalDate]](implicit bf: CBF[LocalDate, Col]): Decoder[Col]
   implicit def arrayUuidDecoder[Col <: Seq[UUID]](implicit bf: Factory[UUID, Col]): Decoder[Col]
-
-  implicit def arrayMappedEncoder[I, O, Col[X] <: Seq[X]](
-      implicit
-      mapped: MappedEncoding[I, O],
-      e: Encoder[Seq[O]]
-  ): Encoder[Col[I]] = {
-    mappedEncoder[Col[I], Seq[O]](MappedEncoding((col: Col[I]) => col.map(mapped.f)), e)
-  }
-
-  implicit def arrayMappedDecoder[I, O, Col[X] <: Seq[X]](
-      implicit
-      mapped: MappedEncoding[I, O],
-      d: Decoder[Seq[I]],
-      bf: Factory[O, Col[O]]
-  ): Decoder[Col[O]] = {
-    mappedDecoder[Seq[I], Col[O]](
-      MappedEncoding((col: Seq[I]) =>
-        col.foldLeft(bf.newBuilder)((b, x) => b += mapped.f(x)).result
-      ),
-      d
-    )
-  }
 }

@@ -79,6 +79,10 @@ class OptionalProductEncodingJdbcSpec extends OptionalNestedSpec {
 
   "3.Optional Nested Inner Product" - {
     import `3.Optional Nested Inner Product`._
+    given ex3AgeDecoder: PostgresJdbcContext.GenericDecoder[`3.Optional Nested Inner Product`.Age] = PostgresJdbcContext.deriveDecoder
+    given ex3LastNameAgeDecoder: PostgresJdbcContext.GenericDecoder[`3.Optional Nested Inner Product`.LastNameAge] = PostgresJdbcContext.deriveDecoder
+    given ex3ContactDecoder: PostgresJdbcContext.GenericDecoder[`3.Optional Nested Inner Product`.Contact] = PostgresJdbcContext.deriveDecoder
+
     "3.Ex1 - Null inner product insert" in {
       context.run(`3.Ex1 - Null inner product insert`)
       context.run(data) mustEqual List(`3.Ex1 - Null inner product result`)
