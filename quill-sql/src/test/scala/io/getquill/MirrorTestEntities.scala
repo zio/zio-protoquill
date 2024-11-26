@@ -10,15 +10,15 @@ trait MirrorTestEntities extends TestEntities {
   type SpecPrepareRow = Row
   type SpecResultRow = Row
 
-  override given testEntityEncoder: MirrorContext.GenericDecoder[TestEntity] = MirrorContext.deriveDecoder
-  override given embEncoder: MirrorContext.GenericDecoder[Emb] = MirrorContext.deriveDecoder
-  override given testEntityEmbEncoder: MirrorContext.GenericDecoder[TestEntityEmb] = MirrorContext.deriveDecoder
-  override given testEntity2Encoder: MirrorContext.GenericDecoder[TestEntity2] = MirrorContext.deriveDecoder
-  override given testEntity3Encoder: MirrorContext.GenericDecoder[TestEntity3] = MirrorContext.deriveDecoder
-  override given testEntity4Encoder: MirrorContext.GenericDecoder[TestEntity4] = MirrorContext.deriveDecoder
-  override given testEntity5Encoder: MirrorContext.GenericDecoder[TestEntity5] = MirrorContext.deriveDecoder
-  override given embSingleEncoder: MirrorContext.GenericDecoder[EmbSingle] = MirrorContext.deriveDecoder
-  override given testEntity4EmbEncoder: MirrorContext.GenericDecoder[TestEntity4Emb] = MirrorContext.deriveDecoder
-  override given testEntityRegularEncoder: MirrorContext.GenericDecoder[TestEntityRegular] = MirrorContext.deriveDecoder
+  override given testEntityEncoder: MirrorContext.CompositeDecoder[TestEntity] = MirrorContext.deriveComposite
+  override given embEncoder: MirrorContext.CompositeDecoder[Emb] = MirrorContext.deriveComposite
+  override given testEntityEmbEncoder: MirrorContext.CompositeDecoder[TestEntityEmb] = MirrorContext.deriveComposite
+  override given testEntity2Encoder: MirrorContext.CompositeDecoder[TestEntity2] = MirrorContext.deriveComposite
+  override given testEntity3Encoder: MirrorContext.CompositeDecoder[TestEntity3] = MirrorContext.deriveComposite
+  override given testEntity4Encoder: MirrorContext.CompositeDecoder[TestEntity4] = MirrorContext.deriveComposite
+  override given testEntity5Encoder: MirrorContext.CompositeDecoder[TestEntity5] = MirrorContext.deriveComposite
+  override given embSingleEncoder: MirrorContext.CompositeDecoder[EmbSingle] = MirrorContext.deriveComposite
+  override given testEntity4EmbEncoder: MirrorContext.CompositeDecoder[TestEntity4Emb] = MirrorContext.deriveComposite
+  override given testEntityRegularEncoder: MirrorContext.CompositeDecoder[TestEntityRegular] = MirrorContext.deriveComposite
 }
 

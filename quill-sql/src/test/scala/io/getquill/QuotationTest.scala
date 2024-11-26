@@ -26,8 +26,8 @@ import org.scalatest._
 class QuotationTest extends Spec with Inside {
   case class Address(street: String, zip: Int) extends Embedded
   case class Person(name: String, age: Int, address: Address)
-  given MirrorContext.GenericDecoder[Address] = MirrorContext.deriveDecoder
-  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+  given MirrorContext.CompositeDecoder[Address] = MirrorContext.deriveComposite
+  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
   import MirrorContext._
   import ShortAst._
 
@@ -96,7 +96,7 @@ class QuotationTest extends Spec with Inside {
     }
     "run lazy lift" in {
       case class Person(name: String)
-      given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+      given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
       inline def q = quote { query[Person].filter(p => p.name == lazyLift("Joe")) }
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
       import ctx._

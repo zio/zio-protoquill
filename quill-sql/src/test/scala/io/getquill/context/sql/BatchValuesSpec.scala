@@ -19,7 +19,7 @@ trait BatchValuesSpec extends Spec with BeforeAndAfterEach {
   import context._
 
   case class Product(id: Int, description: String, sku: Long)
-  given productDecoder: GenericDecoder[SpecResultRow, SpecSession, Product, DecodingType.Generic]
+  given productDecoder: GenericDecoder[SpecResultRow, SpecSession, Product, DecodingType.Composite]
 
   inline def insertProduct =
     quote((p: Product) => query[Product].insertValue(p))

@@ -20,7 +20,7 @@ class FlicerMapTypesSpec extends Spec with Inside {
   import ctx._
 
   case class Contact(firstName: String, lastName: String, age: Int, addressFk: Int, extraInfo: String)
-  given PostgresJdbcContext.GenericDecoder[Contact] = PostgresJdbcContext.deriveDecoder
+  given PostgresJdbcContext.CompositeDecoder[Contact] = PostgresJdbcContext.deriveComposite
 
   val contacts = List(
     Contact("Joe", "Bloggs", 123, 1, "1"),
@@ -28,7 +28,7 @@ class FlicerMapTypesSpec extends Spec with Inside {
     Contact("Jim", "Roogs", 111, 2, "2")
   )
   case class DateEncodingTestEntity(v1: LocalDate, v2: LocalDateTime)
-  given PostgresJdbcContext.GenericDecoder[DateEncodingTestEntity] = PostgresJdbcContext.deriveDecoder
+  given PostgresJdbcContext.CompositeDecoder[DateEncodingTestEntity] = PostgresJdbcContext.deriveComposite
 
   def makeEntity(i: Int) = {
     val ld = LocalDate.of(2022, i, i)
@@ -73,7 +73,7 @@ class FlicerMapTypesSpec extends Spec with Inside {
     implicit val decodeStrWrap: MappedEncoding[String, Info] = MappedEncoding[String, Info](Info.apply)
 
     case class ContactComplex(firstName: String, lastName: String, age: Int, addressFk: Int, extraInfo: Info)
-    given PostgresJdbcContext.GenericDecoder[ContactComplex] = PostgresJdbcContext.deriveDecoder
+    given PostgresJdbcContext.CompositeDecoder[ContactComplex] = PostgresJdbcContext.deriveComposite
 
     val converted = contacts.map(c => ContactComplex(c.firstName, c.lastName, c.age, c.addressFk, Info(c.extraInfo)))
 
@@ -85,7 +85,7 @@ class FlicerMapTypesSpec extends Spec with Inside {
 
   "Should succeed with AnyValue" in {
     import FlicerMapTypesSpec.`Should succeed with AnyValue`._
-    given PostgresJdbcContext.GenericDecoder[ContactComplex] = PostgresJdbcContext.deriveDecoder
+    given PostgresJdbcContext.CompositeDecoder[ContactComplex] = PostgresJdbcContext.deriveComposite
 
     val converted = contacts.map(c => ContactComplex(c.firstName, c.lastName, c.age, c.addressFk, Info(c.extraInfo)))
 

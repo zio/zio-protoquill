@@ -21,10 +21,10 @@ trait OptionQuerySpec extends Spec {
   case class HasAddressContact(firstName: String, lastName: String, age: Int, addressFk: Int)
   case class Contact(firstName: String, lastName: String, age: Int, addressFk: Option[Int], extraInfo: String)
   case class Address(id: Int, street: String, zip: Int, otherExtraInfo: Option[String])
-  given noAddressContactDecoder: GenericDecoder[SpecResultRow, SpecSession, NoAddressContact, DecodingType.Generic]
-  given hasAddressContactDecoder: GenericDecoder[SpecResultRow, SpecSession, HasAddressContact, DecodingType.Generic]
-  given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Generic]
-  given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Generic]
+  given noAddressContactDecoder: GenericDecoder[SpecResultRow, SpecSession, NoAddressContact, DecodingType.Composite]
+  given hasAddressContactDecoder: GenericDecoder[SpecResultRow, SpecSession, HasAddressContact, DecodingType.Composite]
+  given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Composite]
+  given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Composite]
 
   inline def peopleInsert =
     quote((p: Contact) => query[Contact].insertValue(p))

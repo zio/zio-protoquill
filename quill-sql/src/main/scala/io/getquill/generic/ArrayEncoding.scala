@@ -26,10 +26,16 @@ trait ArrayEncoding extends EncodingDsl {
 
   type CBF[T, Col] = Factory[T, Col]
 
+  // TODO Try to make something collection-generic like this? What about performance implications?
+  //implicit def collectionEncoder[T, Col <: Iterable[T]](implicit core: ArrayCoreEncoder[T, PrepareRow], ct: ClassTag[T], bf: CBF[T, Col]): Encoder[Col]
+
+
   implicit def arrayEncoder[T](implicit core: ArrayCoreEncoder[T, PrepareRow], ct: ClassTag[T]): Encoder[Array[T]]
   implicit def seqEncoder[T](implicit core: ArrayCoreEncoder[T, PrepareRow], ct: ClassTag[T]): Encoder[Seq[T]]
+  implicit def indexedSeqEncoder[T](implicit core: ArrayCoreEncoder[T, PrepareRow], ct: ClassTag[T]): Encoder[IndexedSeq[T]]
   implicit def listEncoder[T](implicit core: ArrayCoreEncoder[T, PrepareRow], ct: ClassTag[T]): Encoder[List[T]]
   implicit def setEncoder[T](implicit core: ArrayCoreEncoder[T, PrepareRow], ct: ClassTag[T]): Encoder[Set[T]]
+  implicit def vectorEncoder[T](implicit core: ArrayCoreEncoder[T, PrepareRow], ct: ClassTag[T]): Encoder[Vector[T]]
 
   implicit def stringArrayCoreEncoder: ArrayCoreEncoder[String, PrepareRow]
   implicit def bigDecimalArrayCoreEncoder: ArrayCoreEncoder[BigDecimal, PrepareRow]

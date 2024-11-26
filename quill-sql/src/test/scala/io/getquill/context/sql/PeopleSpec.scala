@@ -22,8 +22,8 @@ trait PeopleSpec extends Spec {
 
   case class Person(name: String, age: Int)
   case class Couple(her: String, him: String)
-  given personDecoder: GenericDecoder[SpecResultRow, SpecSession, Person, DecodingType.Generic]
-  given coupleDecoder: GenericDecoder[SpecResultRow, SpecSession, Couple, DecodingType.Generic]
+  given personDecoder: GenericDecoder[SpecResultRow, SpecSession, Person, DecodingType.Composite]
+  given coupleDecoder: GenericDecoder[SpecResultRow, SpecSession, Couple, DecodingType.Composite]
 
   inline def peopleInsert =
     quote((p: Person) => query[Person].insertValue(p))

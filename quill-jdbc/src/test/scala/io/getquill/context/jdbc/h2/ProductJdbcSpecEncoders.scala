@@ -69,7 +69,7 @@ class ProductJdbcSpecEncoders extends ProductSpec with H2JdbcSpecEncoders {
     "supports casts from string to number" - {
       "toInt" in {
         case class Product(id: Long, description: String, sku: Int)
-        given JdbcContext.GenericDecoder[Product] = deriveDecoder
+        given JdbcContext.CompositeDecoder[Product] = deriveComposite
         val queried = testContext.run {
           query[Product].filter(_.sku == lift("1004").toInt)
         }.head

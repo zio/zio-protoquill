@@ -1,6 +1,6 @@
 package io.getquill.context.jdbc
 
-import io.getquill.generic.EncodingDsl
+import io.getquill.generic.{DecodingType, EncodingDsl, GenericDecoder}
 
 import java.time.{LocalDate, LocalDateTime}
 import java.util
@@ -18,13 +18,12 @@ import java.time.ZoneOffset
 
 trait Decoders extends EncodingDsl with JdbcContextTypes {
 
-  // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
-  // type Index = Int (Defined in JdbcRunContext)
-  type Decoder[T] = JdbcDecoder[T]
-
-  case class JdbcDecoder[T](decoder: DecoderMethod[T]) extends BaseDecoder[T] {
+  case class JdbcDecoder[T](decoder: DecoderMethod[T]) extends BaseDecoder[T] { self =>
     def apply(index: Index, row: ResultRow, session: Session) =
       decoder(index + 1, row, session)
+
+    override def map[R](f: T => R): Decoder[R] =
+      JdbcDecoder((index: Index, row: ResultRow, session: Session) => f(self.apply(index, row, session)))
   }
 
   // If it's d: DecoderMethod then it thinks in decoder( {(index, row) => f(row)(index)} )
@@ -35,9 +34,6 @@ trait Decoders extends EncodingDsl with JdbcContextTypes {
 
   def decoder[T](f: ResultRow => Index => T): Decoder[T] =
     decoder((index, row, session) => f(row)(index))
-
-  implicit def mappedDecoder[I, O](implicit mapped: MappedEncoding[I, O], d: Decoder[I]): Decoder[O] =
-    JdbcDecoder(mappedBaseDecoder(mapped, d.decoder))
 
   implicit def optionDecoder[T](implicit d: BaseDecoderAny[T]): Decoder[Option[T]] =
     JdbcDecoder(

@@ -1,31 +1,26 @@
 package io.getquill
 
 import scala.language.implicitConversions
-
 import io.getquill.Quoted
-
-import io.getquill.ast._
+import io.getquill.ast.*
 import io.getquill.QuotationLot
 import io.getquill.QuotationVase
 import io.getquill.context.ExecutionType
-import org.scalatest._
+import org.scalatest.*
 import io.getquill.quat.quatOf
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
-import io.getquill.generic.GenericDecoder
-import io.getquill.generic.GenericRowTyper
-import io.getquill.generic.GenericColumnResolver
-import scala.quoted._
-import scala.deriving._
-import scala.compiletime.{erasedValue, constValue, summonFrom}
+import io.getquill.generic.{DecodingType, GenericColumnResolver, GenericDecoder, GenericEncoder, GenericNullChecker, GenericRowTyper}
+
+import scala.quoted.*
+import scala.deriving.*
+import scala.compiletime.{constValue, erasedValue, summonFrom}
 import scala.collection.mutable.LinkedHashMap
 import scala.reflect.ClassTag
 import scala.reflect.classTag
-import io.getquill.generic.DecodingType
-import io.getquill.generic.GenericNullChecker
 
 object GenericDecoderCoproductTestAdditional {
-  implicit inline def autoDecoder[T]: GenericDecoder[MyResult, MySession, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, MyResult, MySession] }
+  implicit inline def autoDecoder[T]: GenericDecoder[MyResult, MySession, T, DecodingType.Composite] = ${ GenericDecoder.summon[T, MyResult, MySession] }
 
   sealed trait MySession {
     type BaseNullChecker = GenericNullChecker[MyResult, MySession]
@@ -45,11 +40,11 @@ object GenericDecoderCoproductTestAdditional {
     def resolve(key: String): Int = list.keysIterator.toList.indexOf(key)
   }
 
-  given GenericDecoder[MyResult, MySession, String, DecodingType.Specific] with {
+  given GenericDecoder[MyResult, MySession, String, DecodingType.Leaf] = new GenericDecoder.WithMap[MyResult, MySession, String] {
     def apply(index: Int, row: MyResult, session: MySession): String = row.get(index).toString
   }
 
-  given GenericDecoder[MyResult, MySession, Int, DecodingType.Specific] with {
+  given GenericDecoder[MyResult, MySession, Int, DecodingType.Leaf] = new GenericDecoder.WithMap[MyResult, MySession, Int] {
     def apply(index: Int, row: MyResult, session: MySession): Int = row.get(index).toString.toInt
   }
 

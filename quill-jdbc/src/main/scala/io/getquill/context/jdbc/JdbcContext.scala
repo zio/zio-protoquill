@@ -27,8 +27,7 @@ class JdbcNullChecker extends GenericNullChecker[ResultSet, Connection] {
 }
 
 trait JdbcContextEncoding extends ProductDecoders[ResultSet, Connection] with JdbcContextTypes with Encoders with Decoders {
-  override type NullChecker = JdbcNullChecker
-  implicit val nullChecker: JdbcNullChecker = new JdbcNullChecker()
+  implicit val nullChecker: NullChecker = new JdbcNullChecker()
 }
 
 object JdbcContext extends ProductDecoders[ResultSet, Connection]

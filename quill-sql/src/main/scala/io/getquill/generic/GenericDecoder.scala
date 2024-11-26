@@ -19,16 +19,21 @@ trait GenericColumnResolver[ResultRow] {
 
 sealed trait DecodingType
 object DecodingType {
-  sealed trait Generic extends DecodingType
-  sealed trait Specific extends DecodingType
+  // Product and sum types have this decoding (mostly Products).
+  sealed trait Composite extends DecodingType
+  sealed trait Leaf extends DecodingType
 }
 
+// TODO Get rid of DecodingType!!!
 trait GenericDecoder[ResultRow, Session, T, +DecType <: DecodingType] extends ((Int, ResultRow, Session) => T) { self =>
   def apply(i: Int, rr: ResultRow, s: Session): T
-  def map[R](f: T => R) =
-    new GenericDecoder[ResultRow, Session, R, DecType] {
-      def apply(i: Int, rr: ResultRow, s: Session): R =
-        f(self(i, rr, s))
+
+  // Implementors need to override this and specialize the output type so I am not providing
+  // an implementation here despite the fact that it is very simple.
+  // TODO shoot! Needed for arbitrary tuple decoder for some reason
+  def map[R](f: T => R): GenericDecoder[ResultRow, Session, R, DecodingType.Leaf] =
+    new GenericDecoder[ResultRow, Session, R, DecodingType.Leaf] {
+      def apply(i: Int, rr: ResultRow, s: Session) = f(self.apply(i, rr, s))
     }
 }
 
@@ -50,7 +55,7 @@ object SummonDomain {
   def decoder[ResultRow: Type, Session: Type, T: Type](index: Expr[Int], resultRow: Expr[ResultRow], session: Expr[Session])(using Quotes): Either[String, Expr[T]] = {
     import quotes.reflect.{Term => QTerm, _}
     // Try to summon a specific decoder, if it's not there, summon a generic one
-    Summon.OrLeft.exprOf[GenericDecoder[ResultRow, Session, T, DecodingType.Specific]] match {
+    Summon.OrLeft.exprOf[GenericDecoder[ResultRow, Session, T, DecodingType.Leaf]] match {
       case Right(decoder) =>
         Right('{ $decoder($index, $resultRow, $session) })
       case Left(value) =>
@@ -75,6 +80,13 @@ object SummonDomain {
 } // end Summon
 
 object GenericDecoder {
+
+  trait WithMap[ResultRow, Session, T] extends GenericDecoder[ResultRow, Session, T, DecodingType.Leaf] {
+    override def map[R](f: T => R): GenericDecoder[ResultRow, Session, R, DecodingType.Leaf] =
+      new WithMap[ResultRow, Session, R] {
+          def apply(i: Int, rr: ResultRow, s: Session) = f(WithMap.this.apply(i, rr, s))
+      }
+  }
 
   def tryResolveIndex[ResultRow: Type](originalIndex: Expr[Int], resultRow: Expr[ResultRow], fieldName: String)(using Quotes) = {
     import quotes.reflect._
@@ -104,7 +116,7 @@ object GenericDecoder {
       // or if it is an embedded entity e.g. Person(name: Name, age: Int) where Name is `case class Name(first: String, last: String)`.
       // TODO summoning `GenericDecoder[ResultRow, T, Session, DecodingType.Specific]` here twice, once in the if statement,
       // then later in summonAndDecode. This can potentially be improved i.e. it can be summoned just once and reused.
-      case ('[field *: fields], '[tpe *: types]) if Expr.summon[GenericDecoder[ResultRow, Session, tpe, DecodingType.Specific]].isEmpty =>
+      case ('[field *: fields], '[tpe *: types]) if Expr.summon[GenericDecoder[ResultRow, Session, tpe, DecodingType.Leaf]].isEmpty =>
         // Get the field class as an actual string, on the mirror itself it's stored as a type
         val fieldValue = Type.of[field].constValue
         val result = decode[tpe, ResultRow, Session](index, baseIndex, resultRow, session)
@@ -149,7 +161,7 @@ object GenericDecoder {
     import quotes.reflect.{Term => QTerm, _}
 
     Type.of[Types] match {
-      case '[tpe *: types] if Expr.summon[GenericDecoder[ResultRow, Session, tpe, DecodingType.Specific]].isEmpty =>
+      case '[tpe *: types] if Expr.summon[GenericDecoder[ResultRow, Session, tpe, DecodingType.Leaf]].isEmpty =>
         val result = decode[tpe, ResultRow, Session](index, baseIndex, resultRow, session)
         val nextIndex = result.index + 1
         values[ResultRow, Session, types](nextIndex, baseIndex, resultRow, session)(result +: accum)
@@ -168,7 +180,7 @@ object GenericDecoder {
     // Try to summon a specific optional from the context, this may not exist since
     // some optionDecoder implementations themselves rely on the context-speicific Decoder[T] which is actually
     // GenericDecoder[ResultRow, T, Session, DecodingType.Specific] since they are Specific, they cannot surround Product types.
-    Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Specific]] match {
+    Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Leaf]] match {
 
       // In the case that this is a leaf node
       case Some(_) =>
@@ -304,11 +316,11 @@ object GenericDecoder {
     }
   } // end decode
 
-  def summon[T: Type, ResultRow: Type, Session: Type](using quotes: Quotes): Expr[GenericDecoder[ResultRow, Session, T, DecodingType.Generic]] = {
+  def summon[T: Type, ResultRow: Type, Session: Type](using quotes: Quotes): Expr[GenericDecoder[ResultRow, Session, T, DecodingType.Composite]] = {
     import quotes.reflect._
     scala.tools.nsc.io.File("my_log.txt").appendAll("Summoning Start\n")
     '{
-      new GenericDecoder[ResultRow, Session, T, DecodingType.Generic] {
+      new GenericDecoder[ResultRow, Session, T, DecodingType.Composite] {
         def apply(baseIndex: Int, resultRow: ResultRow, session: Session) = ${ GenericDecoder.decode[T, ResultRow, Session](0, 'baseIndex, 'resultRow, 'session).decodedExpr }.asInstanceOf[T]
       }
     }

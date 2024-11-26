@@ -21,7 +21,7 @@ trait ProductSpec extends Spec {
   import context._
 
   case class Product(id: Long, description: String, sku: Long)
-  given productDecoder: GenericDecoder[SpecResultRow, SpecSession, Product, DecodingType.Generic]
+  given productDecoder: GenericDecoder[SpecResultRow, SpecSession, Product, DecodingType.Composite]
 
   inline def product = quote {
     query[Product]

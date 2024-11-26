@@ -7,7 +7,7 @@ import io.getquill.generic.TupleMember
 
 class ArbitraryTupleSpec extends Spec {
 
-  val ctx = new MirrorContext(PostgresDialect, Literal)
+  val ctx: MirrorContext[PostgresDialect, Literal] = new MirrorContext(PostgresDialect, Literal)
   import ctx._
 
   // Need to derive encoder for one of these but not both!!!
@@ -40,7 +40,7 @@ class ArbitraryTupleSpec extends Spec {
       }
     }
 
-    given MirrorContext.GenericDecoder[(String, Int)] = MirrorContext.deriveDecoder
+    given MirrorContext.CompositeDecoder[(String, Int)] = MirrorContext.deriveComposite
     val result = ctx.run(swapped)
 
     result.string mustEqual "SELECT x$1.string_field AS _1, x$1.int_field AS _2 FROM my_table x$1"

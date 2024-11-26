@@ -8,7 +8,7 @@ class StaticSpliceSpec extends Spec {
   import ctx._
 
   case class Person(name: String, age: Int)
-  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
 
   "simple string splice should work" in {
     ctx.run { query[Person].filter(p => p.name == static(Mod.modVal)) }.string mustEqual

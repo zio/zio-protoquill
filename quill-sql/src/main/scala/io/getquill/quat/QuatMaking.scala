@@ -86,7 +86,7 @@ trait QuatMaking extends QuatMakingBase {
         // Question: Should we pass in PrepareRow as well in order to have things be possibly products
         // in one dialect and values in another???
         case '[t] =>
-          (Expr.summon[GenericEncoder[t, _, _]], Expr.summon[GenericDecoder[_, _, t, DecodingType.Specific]]) match {
+          (Expr.summon[GenericEncoder[t, _, _]], Expr.summon[GenericDecoder[_, _, t, DecodingType.Leaf]]) match {
             case (Some(_), Some(_)) => true
             case (Some(enc), None) =>
               if (ProtoMessages.aggressiveQuatChecking)

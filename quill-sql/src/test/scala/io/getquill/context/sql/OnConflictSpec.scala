@@ -14,7 +14,7 @@ trait OnConflictSpec extends Spec with TestEntities {
     type ResultRow = SpecResultRow
   }
   import ctx._
-  given testEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity, DecodingType.Generic]
+  given testEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity, DecodingType.Composite]
 
   object `onConflictIgnore` {
     inline def testQuery1 = quote {

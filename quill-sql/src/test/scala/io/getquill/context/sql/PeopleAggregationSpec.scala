@@ -18,8 +18,8 @@ trait PeopleAggregationSpec extends Spec {
 
   case class Contact(firstName: String, lastName: String, age: Int, addressFk: Int, extraInfo: Option[String] = None)
   case class Address(id: Int, street: String, zip: Int = 0, otherExtraInfo: Option[String] = None)
-  given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Generic]
-  given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Generic]
+  given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Composite]
+  given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Composite]
 
   val people = List(
     Contact("Joe", "A", 20, 1),

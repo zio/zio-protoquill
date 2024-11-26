@@ -16,7 +16,7 @@ class SimplePrepareSpec extends Spec {
 
   "prepare should work for" - {
     case class Person(name: String, age: Int)
-    given GenericDecoder[Person] = SqlMirrorContext.deriveDecoder
+    given CompositeDecoder[Person] = SqlMirrorContext.deriveComposite
 
     "query" in {
       inline def q = quote { query[Person] }

@@ -53,7 +53,7 @@ trait EncodingSpec extends SpecEncoders with TestEncoders with TestDecoders with
         case _ => false
       }
   }
-  given timeEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, TimeEntity, DecodingType.Generic]
+  given timeEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, TimeEntity, DecodingType.Composite]
   //given numberEncoder = Mapped Decoding from TestEncoders Used
   //given encodingTestTypeDecoder = Mapped Decoding from TestEncoders Used
 
@@ -116,7 +116,7 @@ trait EncodingSpec extends SpecEncoders with TestEncoders with TestDecoders with
       o14: Option[UUID],
       o15: Option[Number]
   )
-  given encodingTestEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, EncodingTestEntity, DecodingType.Generic]
+  given encodingTestEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, EncodingTestEntity, DecodingType.Composite]
   //given encodingTestEntityEncoder: GenericEncoder[EncodingTestEntity, SpecPrepareRow, SpecSession]
 
   inline def delete = quote {
@@ -233,7 +233,7 @@ trait EncodingSpec extends SpecEncoders with TestEncoders with TestDecoders with
   }
 
   case class BarCode(description: String, uuid: Option[UUID] = None)
-  given barCodeDecoder: GenericDecoder[SpecResultRow, SpecSession, BarCode, DecodingType.Generic]
+  given barCodeDecoder: GenericDecoder[SpecResultRow, SpecSession, BarCode, DecodingType.Composite]
   //given barCodeEncoder: GenericEncoder[BarCode, SpecPrepareRow, SpecSession]
 
   val insertBarCode = quote((b: BarCode) => query[BarCode].insertValue(b).returningGenerated(_.uuid))

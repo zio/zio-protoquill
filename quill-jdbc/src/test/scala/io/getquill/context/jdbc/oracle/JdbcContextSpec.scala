@@ -60,7 +60,7 @@ class JdbcContextSpec extends Spec with JdbcSpecEncoders {
   }
 
   case class Return(id: Int, str: String, opt: Option[Int])
-  given OracleJdbcContext.GenericDecoder[Return] = OracleJdbcContext.deriveDecoder
+  given OracleJdbcContext.CompositeDecoder[Return] = OracleJdbcContext.deriveComposite
 
   "insert returning" - {
     "with single column table" in {

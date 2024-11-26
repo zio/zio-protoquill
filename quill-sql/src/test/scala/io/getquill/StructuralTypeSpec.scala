@@ -7,7 +7,7 @@ import MirrorContext.*
 class StructuralTypeSpec extends Spec {
 
   case class Person(name: String, age: Int)
-  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._

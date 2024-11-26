@@ -1,6 +1,6 @@
 package io.getquill.parser.engine
 
-import scala.quoted._
+import scala.quoted.*
 import io.getquill.util.Format
 
 object failParse {
@@ -30,9 +30,9 @@ object failParse {
     report.throwError(
       s"""|
       |s"==== ${message} ====
-      |  ${Format(Printer.TreeShortCode.show(term)) /* Or Maybe just expr? */}
+      |  ${Format(Format.Term(term)) /* Or Maybe just expr? */}
       |==== Extractors ===
-      |  ${Format(Printer.TreeStructure.show(term))}
+      |  ${Format(Format.TermRaw(term))}
       |==== Stacktrace ===
       |${traces}""".stripMargin,
       expr

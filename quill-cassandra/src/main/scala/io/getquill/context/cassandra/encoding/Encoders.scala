@@ -60,9 +60,6 @@ with UdtEncoding {
       }
     }
 
-  implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], encoder: Encoder[O]): Encoder[I] =
-    CassandraEncoder(mappedBaseEncoder(mapped, encoder.encoder))
-
   implicit val stringEncoder: Encoder[String] = encoder(_.setString)
   implicit val bigDecimalEncoder: Encoder[BigDecimal] =
     encoder((index, value, row, _) => row.setBigDecimal(index, value.bigDecimal))

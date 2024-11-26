@@ -114,7 +114,7 @@ object Execution {
     // Note that we could do Expr.summon[GenericDecoder[..., DecodingType.Generic]] to summon it
     // but if we do that an error is thrown via report.throwError during summoning then it would just be not summoned and the
     // and no error would be returned to the user. Therefore it is better to just invoke the method here.
-    Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Specific]] match {
+    Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Leaf]] match {
       case Some(decoder) => decoder
       case None =>
         lazy val failMsg =
@@ -125,7 +125,7 @@ object Execution {
              |Or you can import the decoder from the context's companion object for example:
              |import SqlMirrorContext.*
              |""".stripMargin
-        Summon.OrFail.exprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Generic]](failMsg)
+        Summon.OrFail.exprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Composite]](failMsg)
 
         //val implicitlyTerm =
         //  quotes.reflect.Apply(

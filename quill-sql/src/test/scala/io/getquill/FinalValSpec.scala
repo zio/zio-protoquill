@@ -4,7 +4,7 @@ import io.getquill.MirrorContext.*
 
 class FinalValSpec extends Spec {
   case class Person(name: String, age: Int)
-  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder[Person]
+  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite[Person]
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._

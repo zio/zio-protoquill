@@ -8,12 +8,12 @@ class OptionalProductEncodingJdbcSpec extends OptionalNestedSpec {
   val context: testContext.type = testContext
   import testContext._
 
-  given setupContactDecoder: PostgresJdbcContext.GenericDecoder[Setup.Contact] = PostgresJdbcContext.deriveDecoder
-  given ex1LastNameAgeDecoder: PostgresJdbcContext.GenericDecoder[`1.Optional Inner Product`.LastNameAge] = PostgresJdbcContext.deriveDecoder
-  given ex1ContactDecoder: PostgresJdbcContext.GenericDecoder[`1.Optional Inner Product`.Contact] = PostgresJdbcContext.deriveDecoder
-  given ex2AgeDecoder: PostgresJdbcContext.GenericDecoder[`2.Optional Inner Product with Optional Leaf`.Age] = PostgresJdbcContext.deriveDecoder
-  given ex2LastNameAgeDecoder: PostgresJdbcContext.GenericDecoder[`2.Optional Inner Product with Optional Leaf`.LastNameAge] = PostgresJdbcContext.deriveDecoder
-  given ex2ContactDecoder: PostgresJdbcContext.GenericDecoder[`2.Optional Inner Product with Optional Leaf`.Contact] = PostgresJdbcContext.deriveDecoder
+  given setupContactDecoder: PostgresJdbcContext.CompositeDecoder[Setup.Contact] = PostgresJdbcContext.deriveComposite
+  given ex1LastNameAgeDecoder: PostgresJdbcContext.CompositeDecoder[`1.Optional Inner Product`.LastNameAge] = PostgresJdbcContext.deriveComposite
+  given ex1ContactDecoder: PostgresJdbcContext.CompositeDecoder[`1.Optional Inner Product`.Contact] = PostgresJdbcContext.deriveComposite
+  given ex2AgeDecoder: PostgresJdbcContext.CompositeDecoder[`2.Optional Inner Product with Optional Leaf`.Age] = PostgresJdbcContext.deriveComposite
+  given ex2LastNameAgeDecoder: PostgresJdbcContext.CompositeDecoder[`2.Optional Inner Product with Optional Leaf`.LastNameAge] = PostgresJdbcContext.deriveComposite
+  given ex2ContactDecoder: PostgresJdbcContext.CompositeDecoder[`2.Optional Inner Product with Optional Leaf`.Contact] = PostgresJdbcContext.deriveComposite
 
   override protected def beforeEach() = {
     import Setup._
@@ -79,9 +79,9 @@ class OptionalProductEncodingJdbcSpec extends OptionalNestedSpec {
 
   "3.Optional Nested Inner Product" - {
     import `3.Optional Nested Inner Product`._
-    given ex3AgeDecoder: PostgresJdbcContext.GenericDecoder[`3.Optional Nested Inner Product`.Age] = PostgresJdbcContext.deriveDecoder
-    given ex3LastNameAgeDecoder: PostgresJdbcContext.GenericDecoder[`3.Optional Nested Inner Product`.LastNameAge] = PostgresJdbcContext.deriveDecoder
-    given ex3ContactDecoder: PostgresJdbcContext.GenericDecoder[`3.Optional Nested Inner Product`.Contact] = PostgresJdbcContext.deriveDecoder
+    given ex3AgeDecoder: PostgresJdbcContext.CompositeDecoder[`3.Optional Nested Inner Product`.Age] = PostgresJdbcContext.deriveComposite
+    given ex3LastNameAgeDecoder: PostgresJdbcContext.CompositeDecoder[`3.Optional Nested Inner Product`.LastNameAge] = PostgresJdbcContext.deriveComposite
+    given ex3ContactDecoder: PostgresJdbcContext.CompositeDecoder[`3.Optional Nested Inner Product`.Contact] = PostgresJdbcContext.deriveComposite
 
     "3.Ex1 - Null inner product insert" in {
       context.run(`3.Ex1 - Null inner product insert`)

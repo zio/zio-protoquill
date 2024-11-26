@@ -277,7 +277,7 @@ class BlockParser(val rootParse: Parser)(using Quotes, TranspileConfig)
             // TODO Better site-description in error (does other.show work?)
             report.throwError(s"Illegal statement ${other.show} in block ${block.show}")
         }
-      val lastPartAst = rootParse(lastPart.asExpr)
+      val lastPartAst = rootParse.apply(lastPart.asExpr)
       Block((partsAsts :+ lastPartAst))
   }
 }
@@ -347,12 +347,27 @@ class QuotationParser(rootParse: Parser)(using Quotes, TranspileConfig) extends 
 
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
-        case Uprootable(uid, astTree, _) => Unlifter(astTree)
-        case Pluckable(uid, astTree, _)  => QuotationTag(uid)
+        case Uprootable(uid, astTree, lifts) =>
+          //summon[Lifts].writePluckableUnquote(lifts)  
+          Unlifter(astTree)
+        case Pluckable(uid, astTree, _)  =>
+          QuotationTag(uid)
+          //summon[Lifts].writePluckableUnquote(astTree)
         case Pointable(quote)            => report.throwError(s"Quotation is invalid for compile-time or processing: ${quote.show}", quote)
       }
 
+      // val q: Quoted[Query[Person]] = quote { query[Person] }
+      // inline def q2 = quote { q.filter(p => p.name == lift(name)) }
+      // inline def q2 = quote { unquoted(q).filter(p => p.name == lift(name)) }
+
     case PlanterExpr.UprootableUnquote(expr) =>
+
+      // val name: String = "Joe"
+      // inline def q = quote { query[Person].filter(p => p.name == lift(name)) }
+      // inline def q = quote { query[Person].insertValue(lift(person)) }
+      // inline def q = quote { query[Person].filter(p => p.name == unquoted(quotedString) }
+
+      //summon[Lifts].writeLift(expr)
       ScalarTag(expr.uid, Source.Parser)
 
     // A inline quotation can be parsed if it is directly inline. If it is not inline, a error
@@ -362,7 +377,8 @@ class QuotationParser(rootParse: Parser)(using Quotes, TranspileConfig) extends 
     // NOTE: Technically we only need to uproot the AST here, not the lifts, but using UprootableWithLifts
     // since that's the only construct in QuotedExpr that checks if there is an Inline block at the front.
     // If needed for performance reasons, a Inlined checking extractor can be made in QuotedExpr that ignores lifts
-    case QuotedExpr.UprootableWithLifts(quotedExpr, _) =>
+    case QuotedExpr.UprootableWithLifts(quotedExpr, lifts) =>
+      //summon[Lifts].writePluckableUnquote(lifts)
       Unlifter(quotedExpr.ast)
   }
 }

@@ -17,20 +17,20 @@ class FlicersSpec extends Spec {
 
   case class PersonFlat(firstName: String, lastName: String, age: Int)
   case class PersonFlatOpt(firstName: Option[String], lastName: String, age: Int)
-  given MirrorContext.GenericDecoder[PersonFlat] = MirrorContext.deriveDecoder
-  given MirrorContext.GenericDecoder[PersonFlatOpt] = MirrorContext.deriveDecoder
+  given MirrorContext.CompositeDecoder[PersonFlat] = MirrorContext.deriveComposite
+  given MirrorContext.CompositeDecoder[PersonFlatOpt] = MirrorContext.deriveComposite
 
   case class Name(first: String, last: String)
   case class PersonNest(name: Name, age: Int)
   case class PersonNestOpt(name: Option[Name], age: Int)
-  given MirrorContext.GenericDecoder[Name] = MirrorContext.deriveDecoder
-  given MirrorContext.GenericDecoder[PersonNest] = MirrorContext.deriveDecoder
-  given MirrorContext.GenericDecoder[PersonNestOpt] = MirrorContext.deriveDecoder
+  given MirrorContext.CompositeDecoder[Name] = MirrorContext.deriveComposite
+  given MirrorContext.CompositeDecoder[PersonNest] = MirrorContext.deriveComposite
+  given MirrorContext.CompositeDecoder[PersonNestOpt] = MirrorContext.deriveComposite
 
   case class NameOpt(first: Option[String], last: String)
   case class PersonNestOptField(name: Option[NameOpt], age: Int)
-  given MirrorContext.GenericDecoder[PersonNestOptField] = MirrorContext.deriveDecoder
-  given MirrorContext.GenericDecoder[NameOpt] = MirrorContext.deriveDecoder
+  given MirrorContext.CompositeDecoder[PersonNestOptField] = MirrorContext.deriveComposite
+  given MirrorContext.CompositeDecoder[NameOpt] = MirrorContext.deriveComposite
 
   val s = MirrorSession.default
 
@@ -54,7 +54,7 @@ class FlicersSpec extends Spec {
       }
 
       case class ManyTypes(s: String, so: Option[String], i: Int, io: Option[Int], ld: LocalDate, ldo: Option[LocalDate])
-      given MirrorContext.GenericDecoder[ManyTypes] = MirrorContext.deriveDecoder
+      given MirrorContext.CompositeDecoder[ManyTypes] = MirrorContext.deriveComposite
       "Splice on an object multiple encoding types" in {
         val keys = Map[String, Any]("s" -> "Joe", "so" -> "Joe", "i" -> 123, "io" -> 123, "ld" -> now, "ldo" -> now)
         val r = ctx.run(q(keys))

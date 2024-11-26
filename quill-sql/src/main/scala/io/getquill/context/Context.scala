@@ -68,10 +68,10 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
   protected def context: Runner = fail(s"Runner method not implemented for '${this.getClass.getName}' Context")
 
   object manual {
-    inline def deriveDecoder[T]: GenericDecoder[ResultRow, Session, T, ?] = ${ io.getquill.generic.GenericDecoder.summon[T, ResultRow, Session] }
+    inline def deriveComposite[T]: GenericDecoder[ResultRow, Session, T, DecodingType.Composite] = ${ io.getquill.generic.GenericDecoder.summon[T, ResultRow, Session] }
   }
   object auto {
-    implicit inline def dec[T]: GenericDecoder[ResultRow, Session, T, DecodingType.Generic] = ${ GenericDecoder.summon[T, ResultRow, Session] }
+    implicit inline def dec[T]: GenericDecoder[ResultRow, Session, T, DecodingType.Composite] = ${ GenericDecoder.summon[T, ResultRow, Session] }
   }
 
   // TODO use the same BuildFrom pattern as ZIO.foreach and copy it verbatim

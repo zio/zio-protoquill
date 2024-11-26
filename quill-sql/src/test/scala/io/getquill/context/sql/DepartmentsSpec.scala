@@ -22,9 +22,9 @@ trait DepartmentsSpec extends Spec {
   case class Department(dpt: String)
   case class Employee(emp: String, dpt: String)
   case class Task(emp: String, tsk: String)
-  given departmentDecoder: GenericDecoder[SpecResultRow, SpecSession, Department, DecodingType.Generic]
-  given employeeDecoder: GenericDecoder[SpecResultRow, SpecSession, Employee, DecodingType.Generic]
-  given taskDecoder: GenericDecoder[SpecResultRow, SpecSession, Task, DecodingType.Generic]
+  given departmentDecoder: GenericDecoder[SpecResultRow, SpecSession, Department, DecodingType.Composite]
+  given employeeDecoder: GenericDecoder[SpecResultRow, SpecSession, Employee, DecodingType.Composite]
+  given taskDecoder: GenericDecoder[SpecResultRow, SpecSession, Task, DecodingType.Composite]
 
   inline def departmentInsert =
     quote {

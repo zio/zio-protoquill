@@ -1,9 +1,9 @@
 package io.getquill.context.jdbc
 
-import java.sql.{ Date, Timestamp, Types }
-import java.time.{ LocalDate, LocalDateTime }
-import java.util.{ Calendar, TimeZone }
-import java.{ sql, util }
+import java.sql.{Connection, Date, Timestamp, Types}
+import java.time.{LocalDate, LocalDateTime}
+import java.util.{Calendar, TimeZone}
+import java.{sql, util}
 
 // Needed as an import in Protoquill but not in Scala2 Quill. Not sure why
 import io.getquill.MappedEncoding
@@ -24,9 +24,8 @@ trait Encoders extends EncodingDsl with JdbcContextTypes {
 
   // In Protoquill assuming indexes are Ints. Eventually need to generalize but not yet.
   // type Index = Int (Defined in JdbcRunContext)
-  type Encoder[T] = JdbcEncoder[T]
 
-  case class JdbcEncoder[T](sqlType: Int, encoder: EncoderMethod[T]) extends BaseEncoder[T] {
+  case class JdbcEncoder[T](sqlType: Int, encoder: EncoderMethod[T]) extends BaseEncoder[T] { self =>
     override def apply(index: Index, value: T, row: PrepareRow, session: Session) =
       encoder(index + 1, value, row, session)
   }
@@ -40,9 +39,6 @@ trait Encoders extends EncodingDsl with JdbcContextTypes {
   def encoder[T](sqlType: Int, f: PrepareRow => (Index, T) => Unit): Encoder[T] =
     encoder(sqlType, (index: Index, value: T, row: PrepareRow) => f(row)(index, value))
 
-  override implicit def mappedEncoder[I, O](implicit mapped: MappedEncoding[I, O], e: Encoder[O]): Encoder[I] =
-    JdbcEncoder(e.sqlType, mappedBaseEncoder(mapped, e.encoder))
-
   private[this] val integerBasedNullEncoder: Encoder[Int] = encoder(Types.INTEGER, _.setNull)
 
   implicit def optionEncoder[T](implicit d: Encoder[T]): Encoder[Option[T]] =
@@ -50,7 +46,7 @@ trait Encoders extends EncodingDsl with JdbcContextTypes {
       d.sqlType,
       (index, value, row, session) =>
         value match {
-          case Some(v) => d.encoder(index, v, row, session)
+          case Some(v) => d.apply(index, v, row, session)
           case None    => encoder(d.sqlType, (i, v, r) => r.setNull(index, d.sqlType))(index, 0, row, session)
         }
     )

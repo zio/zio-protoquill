@@ -6,13 +6,14 @@ import io.getquill.util.debug.PrintMac.apply
 
 class PeopleDynamicComboSpec extends Spec {
   val context: testContext.type = testContext
+  import testContext._
 
   case class Contact(firstName: String, lastName: String, age: Int, addressFk: Int)
   case class Address(id: Int, street: String, zip: Int = 0)
-  given PostgresJdbcContext.GenericDecoder[Contact] = PostgresJdbcContext.deriveDecoder
-  given PostgresJdbcContext.GenericDecoder[Address] = PostgresJdbcContext.deriveDecoder
+  given PostgresJdbcContext.CompositeDecoder[Contact] = PostgresJdbcContext.deriveComposite
+  given PostgresJdbcContext.CompositeDecoder[Address] = PostgresJdbcContext.deriveComposite
 
-  import testContext._
+
 
   val testPeople = List(
     Contact("Joe", "A", 20, 1),
@@ -43,8 +44,8 @@ class PeopleDynamicComboSpec extends Spec {
     case class FirstName(value: String) extends Filter { val fieldName = "firstName" }
     case class LastName(value: String) extends Filter { val fieldName = "lastName" }
   }
-  given PostgresJdbcContext.GenericDecoder[Filter.FirstName] = PostgresJdbcContext.deriveDecoder
-  given PostgresJdbcContext.GenericDecoder[Filter.LastName] = PostgresJdbcContext.deriveDecoder
+  given PostgresJdbcContext.CompositeDecoder[Filter.FirstName] = PostgresJdbcContext.deriveComposite
+  given PostgresJdbcContext.CompositeDecoder[Filter.LastName] = PostgresJdbcContext.deriveComposite
 
   "filter by multiple case should work" in {
     val criteria = List(Filter.FirstName("Joe"), Filter.LastName("A"))

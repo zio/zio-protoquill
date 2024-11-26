@@ -21,10 +21,10 @@ trait CaseClassQuerySpec extends Spec {
   case class Address(id: Int, street: String, zip: Int, otherExtraInfo: String)
   case class Nickname(nickname: String)
   case class NicknameSameField(firstName: String)
-  given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Generic]
-  given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Generic]
-  given nicknameDecoder: GenericDecoder[SpecResultRow, SpecSession, Nickname, DecodingType.Generic]
-  given nicknameSameFieldDecoder: GenericDecoder[SpecResultRow, SpecSession, NicknameSameField, DecodingType.Generic]
+  given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Composite]
+  given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Composite]
+  given nicknameDecoder: GenericDecoder[SpecResultRow, SpecSession, Nickname, DecodingType.Composite]
+  given nicknameSameFieldDecoder: GenericDecoder[SpecResultRow, SpecSession, NicknameSameField, DecodingType.Composite]
 
   inline def peopleInsert =
     quote((p: Contact) => query[Contact].insertValue(p))
@@ -46,8 +46,8 @@ trait CaseClassQuerySpec extends Spec {
 
   case class ContactSimplified(firstName: String, lastName: String, age: Int)
   case class AddressableContact(firstName: String, lastName: String, age: Int, street: String, zip: Int)
-  given contactSimplifiedDecoder: GenericDecoder[SpecResultRow, SpecSession, ContactSimplified, DecodingType.Generic]
-  given addressableContactDecoder: GenericDecoder[SpecResultRow, SpecSession, AddressableContact, DecodingType.Generic]
+  given contactSimplifiedDecoder: GenericDecoder[SpecResultRow, SpecSession, ContactSimplified, DecodingType.Composite]
+  given addressableContactDecoder: GenericDecoder[SpecResultRow, SpecSession, AddressableContact, DecodingType.Composite]
 
   inline def `Ex 1 CaseClass Record Output` = quote {
     query[Contact].map(p => new ContactSimplified(p.firstName, p.lastName, p.age))

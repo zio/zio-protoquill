@@ -4,11 +4,17 @@ import io.getquill.context.sql.CaseClassQuerySpec
 import org.scalatest.matchers.should.Matchers.*
 import io.getquill.*
 import io.getquill.context.jdbc.{H2JdbcSpecEncoders, JdbcSpecEncoders}
+import io.getquill.generic.{DecodingType, GenericDecoder}
 
 class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with H2JdbcSpecEncoders {
 
   val context = testContext
   import testContext._
+
+  override given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Composite] = H2JdbcContext.deriveComposite
+  override given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Composite] = H2JdbcContext.deriveComposite
+  override given nicknameDecoder: GenericDecoder[SpecResultRow, SpecSession, Nickname, DecodingType.Composite] = H2JdbcContext.deriveComposite
+  override given nicknameSameFieldDecoder: GenericDecoder[SpecResultRow, SpecSession, NicknameSameField, DecodingType.Composite] = H2JdbcContext.deriveComposite
 
   override def beforeAll() = {
     testContext.transaction {

@@ -12,11 +12,11 @@ trait BatchUpdateValuesJdbcSpecBase extends BatchUpdateValuesSpec with JdbcSpecE
   //case class NameEmb(first: FirstName, last: LastName) extends Embedded
   //case class DeepContact(name: Option[NameEmb], age: Int)
 
-  given JdbcContext.GenericDecoder[Contact] = JdbcContext.deriveDecoder
-  given JdbcContext.GenericDecoder[Name] = JdbcContext.deriveDecoder
-  given JdbcContext.GenericDecoder[ContactTable] = JdbcContext.deriveDecoder
-  given JdbcContext.GenericDecoder[FirstName] = JdbcContext.deriveDecoder
-  given JdbcContext.GenericDecoder[LastName] = JdbcContext.deriveDecoder
-  given JdbcContext.GenericDecoder[NameEmb] = JdbcContext.deriveDecoder
-  given JdbcContext.GenericDecoder[DeepContact] = JdbcContext.deriveDecoder
+  given JdbcContext.CompositeDecoder[Contact] = JdbcContext.deriveComposite
+  given JdbcContext.CompositeDecoder[Name] = JdbcContext.deriveComposite
+  given JdbcContext.CompositeDecoder[ContactTable] = JdbcContext.deriveComposite
+  given JdbcContext.CompositeDecoder[FirstName] = JdbcContext.deriveComposite
+  given JdbcContext.CompositeDecoder[LastName] = JdbcContext.deriveComposite
+  given JdbcContext.CompositeDecoder[NameEmb] = JdbcContext.deriveComposite
+  given JdbcContext.CompositeDecoder[DeepContact] = JdbcContext.deriveComposite
 }

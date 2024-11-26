@@ -24,21 +24,21 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   }
 
   object Sex {
-    given encoder: MappedEncoding[Sex, String] =
+    given encoder: Encoder[Sex] =
       MappedEncoding[Sex, String] {
         case Sex.Male => "male"
         case Sex.Female => "female"
-      }
+      }.toEncoder
 
-    given decoder: MappedEncoding[String, Sex] =
+    given decoder: Decoder[Sex] =
       MappedEncoding[String, Sex] {
         case "male" => Sex.Male
         case "female" => Sex.Female
-      }
+      }.toDecoder
   }
 
   case class Person(id: Int, name: String, age: Int, sex: Sex)
-  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
 
   inline def insertPeople = quote((p: Person) => query[Person].insertValue(p))
 

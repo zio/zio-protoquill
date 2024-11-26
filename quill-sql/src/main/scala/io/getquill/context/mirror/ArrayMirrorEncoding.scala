@@ -7,16 +7,18 @@ import io.getquill.SqlMirrorContext
 import io.getquill.generic.ArrayEncoding
 import io.getquill.generic.ArrayCoreEncoder
 
-import scala.collection.Factory
+import scala.collection.{Factory, mutable}
 import scala.reflect.ClassTag
 
 trait ArrayMirrorEncoding extends ArrayEncoding {
   this: MirrorEncoders with MirrorDecoders =>
 
-  implicit def arrayEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[Array[T]] =  makeArrayEncoder[T, Array[T]](core)
-  implicit def seqEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[Seq[T]] = makeArrayEncoder[T, Seq[T]](core)
-  implicit def listEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[List[T]] = makeArrayEncoder[T, List[T]](core)
-  implicit def setEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[Set[T]] = makeArrayEncoder[T, Set[T]](core)
+  implicit def arrayEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[Array[T]] = MirrorEncoder.ofArray[T](core).contramap { (arr: Array[T]) => arr }
+  implicit def seqEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[Seq[T]] = MirrorEncoder.ofArray[T](core).contramap { (arr: Seq[T]) => arr.toArray }
+  implicit def indexedSeqEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[IndexedSeq[T]] = MirrorEncoder.ofArray[T](core).contramap { (arr: IndexedSeq[T]) => arr.toArray }
+  implicit def listEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[List[T]] = MirrorEncoder.ofArray[T](core).contramap { (arr: List[T]) => arr.toArray }
+  implicit def setEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[Set[T]] = MirrorEncoder.ofArray[T](core).contramap { (arr: Set[T]) => arr.toArray }
+  implicit def vectorEncoder[T](implicit core: ArrayCoreEncoder[T, Row], ct: ClassTag[T]): Encoder[Vector[T]] = MirrorEncoder.ofArray[T](core).contramap { (arr: Vector[T]) => arr.toArray }
 
   implicit def stringArrayCoreEncoder: ArrayCoreEncoder[String, Row] = arrayCore[String]
   implicit def bigDecimalArrayCoreEncoder: ArrayCoreEncoder[BigDecimal, Row] = arrayCore[BigDecimal]

@@ -40,7 +40,7 @@ class JdbcEncodingSpecEncoders extends JdbcSpecEncoders with EncodingSpec {
   // IO Monad not working yet so need to do regular queries
   "LocalDateTime" in {
     case class EncodingTestOpt(v11: Option[LocalDateTime])
-    given decoder: GenericDecoder[EncodingTestOpt] = deriveDecoder
+    given decoder: CompositeDecoder[EncodingTestOpt] = deriveComposite
 
     val now = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS)
     val e1 = EncodingTestOpt(Some(now))

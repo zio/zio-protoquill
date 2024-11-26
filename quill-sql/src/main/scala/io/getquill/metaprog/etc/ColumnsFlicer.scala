@@ -42,7 +42,7 @@ class ColumnsFlicerMacro {
         // 'invocation' of the found method e.g. p.name
         val childTTerm = '{ (${ Select(id, fieldMethod).asExprOf[tpe] }) }
 
-        if (Expr.summon[GenericDecoder[_, Session, tpe, DecodingType.Specific]].isDefined) then {
+        if (Expr.summon[GenericDecoder[_, Session, tpe, DecodingType.Leaf]].isDefined) then {
           // TODO Maybe use ==1 versus 'true' in this case. See how this plays out with VendorizeBooleans behavior
           val liftClause = '{ $columns.contains(${ Expr(fieldString) }) }
           val liftedCondition = LiftMacro.apply[Boolean, PrepareRow, Session](liftClause)

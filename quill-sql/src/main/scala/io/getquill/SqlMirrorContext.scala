@@ -4,14 +4,12 @@ import io.getquill.idiom.Idiom as BaseIdiom
 import io.getquill.context.sql.SqlContext
 import io.getquill.context.mirror.{ArrayMirrorEncoding, MirrorDecoders, MirrorEncoders, MirrorSession, Row}
 import io.getquill.context.AstSplicing
-import io.getquill.generic.DecodingType
 
 object SqlMirrorContext extends ProductDecoders[Row, MirrorSession] with MirrorDecoders with MirrorEncoders with ArrayMirrorEncoding {
   override type Session = MirrorSession
   override type PrepareRow = Row
   override type ResultRow = Row
-  override type NullChecker = MirrorNullChecker
-  class MirrorNullChecker extends BaseNullChecker {
+  class MirrorNullChecker extends NullChecker {
     override def apply(index: Int, row: Row): Boolean = row.nullAt(index)
   }
   implicit val nullChecker: NullChecker = new MirrorNullChecker()

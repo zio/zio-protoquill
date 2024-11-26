@@ -1,7 +1,5 @@
 package io.getquill.context.sql
 
-import io.getquill.MirrorContext.BaseNullChecker
-
 import java.time.LocalDate
 import io.getquill.idiom.Idiom as BaseIdiom
 
@@ -15,6 +13,10 @@ trait SqlContext[+Idiom <: BaseIdiom, +Naming <: NamingStrategy]
     with DatabaseVerbs {
 }
 
+// Cannot make SqlContext extend this anymore because context do not directly have encoders/decoders
+// defined on them, the encoders/decoders are now static. The only exception to this is leaf-level encoders
+// which have exported symbols for backward compability. (This itself shuold eventually be removed or
+// relegated to "auto")
 trait SqlEncoding extends EncodingDsl {
   implicit def optionDecoder[T](implicit d: BaseDecoderAny[T]): Decoder[Option[T]]
   implicit def optionEncoder[T](implicit d: Encoder[T]): Encoder[Option[T]]

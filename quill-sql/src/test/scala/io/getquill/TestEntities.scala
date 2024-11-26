@@ -19,16 +19,16 @@ trait TestEntities {
   case class EmbSingle(i: Long) extends Embedded
   case class TestEntity4Emb(emb: EmbSingle)
   case class TestEntityRegular(s: String, i: Long)
-  given testEntityEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity, DecodingType.Generic]
-  given embEncoder: GenericDecoder[SpecResultRow, SpecSession, Emb, DecodingType.Generic]
-  given testEntityEmbEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntityEmb, DecodingType.Generic]
-  given testEntity2Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity2, DecodingType.Generic]
-  given testEntity3Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity3, DecodingType.Generic]
-  given testEntity4Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity4, DecodingType.Generic]
-  given testEntity5Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity5, DecodingType.Generic]
-  given embSingleEncoder: GenericDecoder[SpecResultRow, SpecSession, EmbSingle, DecodingType.Generic]
-  given testEntity4EmbEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity4Emb, DecodingType.Generic]
-  given testEntityRegularEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntityRegular, DecodingType.Generic]
+  given testEntityEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity, DecodingType.Composite]
+  given embEncoder: GenericDecoder[SpecResultRow, SpecSession, Emb, DecodingType.Composite]
+  given testEntityEmbEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntityEmb, DecodingType.Composite]
+  given testEntity2Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity2, DecodingType.Composite]
+  given testEntity3Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity3, DecodingType.Composite]
+  given testEntity4Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity4, DecodingType.Composite]
+  given testEntity5Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity5, DecodingType.Composite]
+  given embSingleEncoder: GenericDecoder[SpecResultRow, SpecSession, EmbSingle, DecodingType.Composite]
+  given testEntity4EmbEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity4Emb, DecodingType.Composite]
+  given testEntityRegularEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntityRegular, DecodingType.Composite]
 
   private val QV = Quat.Value
   private val QBV = Quat.BooleanValue

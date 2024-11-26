@@ -7,7 +7,7 @@ import MirrorContext.*
 class ParticularizationSpec extends Spec {
 
   case class Ent(foo: String, bar: String)
-  given MirrorContext.GenericDecoder[Ent] = MirrorContext.deriveDecoder
+  given MirrorContext.CompositeDecoder[Ent] = MirrorContext.deriveComposite
 
   "question mark particularization" - {
     val ctx: SqlMirrorContext[PostgresDialect, Literal] = new SqlMirrorContext(PostgresDialect, Literal)

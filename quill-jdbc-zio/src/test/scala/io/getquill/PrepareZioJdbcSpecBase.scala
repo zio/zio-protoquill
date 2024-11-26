@@ -7,7 +7,7 @@ import io.getquill.context.qzio.ZioJdbcContext
 import org.scalactic.Equality
 import zio.{ Runtime, Task, ZEnvironment, ZIO }
 import io.getquill.generic.GenericDecoder
-import io.getquill.generic.DecodingType.Generic
+import io.getquill.generic.DecodingType.Composite
 
 import java.sql.{ Connection, PreparedStatement, ResultSet }
 import io.getquill.context.qzio.ImplicitSyntax.Implicit
@@ -25,7 +25,7 @@ trait PrepareZioJdbcSpecBase extends ProductSpec with ZioProxySpec {
     }
   }
 
-  def productExtractor = (rs: ResultSet, session: Session) => summon[GenericDecoder[context.ResultRow, context.Session, Product, Generic]](0, rs, session)
+  def productExtractor = (rs: ResultSet, session: Session) => summon[GenericDecoder[context.ResultRow, context.Session, Product, Composite]](0, rs, session)
 
   def withOrderedIds(products: List[Product]) =
     products.zipWithIndex.map { case (product, id) => product.copy(id = id.toLong + 1) }

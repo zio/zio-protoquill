@@ -306,7 +306,12 @@ object InsertUpdateMacro {
                 report.throwError(s"The lifted insertion element needs to be parsed as a Ast CaseClass but it is: ${ast}")
               ast.asInstanceOf[CaseClass]
             case _ =>
-              report.throwError(s"Cannot uproot lifted element. A lifted Insert element e.g. query[T].insertValue(lift(element)) must be lifted directly inside the lift clause. The elment was:\n${insertee.show}")
+              report.throwError(
+                s"""Cannot uproot lifted element. A lifted Insert element e.g. query[T].insertValue(lift(element)) must be lifted directly inside the lift clause. The elment was:\n${Format.Expr(insertee)}
+                   |
+                   |Frequently this error is caused by some other compile error that has happened before, most likely a failure to find an encoder somewhere.
+                   |Check the Compile logs for any "Cannot Find a '___' Encoder" errors that happened before this one.
+                   |""".stripMargin)
           }
         // Otherwise the inserted element (i.e. the insertee) is static and should be parsed as an ordinary case class
         // i.e. the case query[Person]insertValue(Person("Joe", "Bloggs")) (or the batch case)

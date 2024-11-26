@@ -7,7 +7,7 @@ import org.scalactic.Equality
 
 import scala.util.{Failure, Success}
 import io.getquill.generic.{DecodingType, GenericDecoder}
-import io.getquill.generic.DecodingType.Generic
+import io.getquill.generic.DecodingType.Composite
 
 trait PrepareJdbcSpecEncodersBase extends JdbcProductSpecEncoders with JdbcSpecEncoders {
   val context: JdbcContext[_, _] {
@@ -26,7 +26,7 @@ trait PrepareJdbcSpecEncodersBase extends JdbcProductSpecEncoders with JdbcSpecE
 
   def productExtractor =
     (rs: ResultSet, s: Connection) =>
-      summon[GenericDecoder[ResultSet, Connection, Product, Generic]](0, rs, s)
+      summon[GenericDecoder[ResultSet, Connection, Product, Composite]](0, rs, s)
 
   def withOrderedIds(products: List[Product]) =
     products.zipWithIndex.map { case (product, id) => product.copy(id = id.toLong + 1) }

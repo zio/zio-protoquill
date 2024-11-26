@@ -31,7 +31,7 @@ class GenericDecoderTest extends Spec {
   import ctx.{given, _}
 
   case class Person(name: String, age: Int)
-  given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
 
   "domain-model product using row-typer" - {
     given RowTyper[Shape] with {
@@ -80,6 +80,6 @@ object StaticEnumExample {
     case Circle(override val id: Int, radius: Int) extends Shape(id)
   }
   object Shape {
-    given MirrorContext.GenericDecoder[Shape] = MirrorContext.deriveDecoder
+    given MirrorContext.CompositeDecoder[Shape] = MirrorContext.deriveComposite
   }
 }

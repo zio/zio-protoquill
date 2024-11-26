@@ -34,10 +34,10 @@ object SummonDecoderMacro {
 
   def apply[T: Type, ResultRow: Type, Session: Type](using Quotes): Expr[GenericDecoder[ResultRow, Session, T, DecodingType]] = {
     import quotes.reflect._
-    Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Specific]] match {
+    Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Leaf]] match {
       case Some(decoder) => decoder
       case None =>
-        Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Generic]] match {
+        Expr.summon[GenericDecoder[ResultRow, Session, T, DecodingType.Composite]] match {
           case Some(decoder) => decoder
           case None          => report.throwError(s"Cannot Find decoder for ${Type.show[T]}")
         }

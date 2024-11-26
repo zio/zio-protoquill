@@ -11,11 +11,12 @@ trait MirrorDecoders extends EncodingDsl {
 
   override type PrepareRow = Row
   override type ResultRow = Row
-  type Decoder[T] = MirrorDecoder[T]
 
   case class MirrorDecoder[T](decoder: DecoderMethod[T]) extends BaseDecoder[T] {
     override def apply(index: Int, row: ResultRow, session: Session) =
       decoder(index, row, session)
+    override def map[R](f: T => R): MirrorDecoder[R] =
+      MirrorDecoder((index: Int, row: ResultRow, session: Session) => f(row.data(index).asInstanceOf[T]))
   }
 
   def decoder[T: ClassTag]: Decoder[T] =
@@ -30,9 +31,6 @@ trait MirrorDecoders extends EncodingDsl {
     })
 
   def decoderUnsafe[T]: Decoder[T] = MirrorDecoder((index: Int, row: ResultRow, session: Session) => row.data(index).asInstanceOf[T])
-
-  implicit def mappedDecoder[I, O](implicit mapped: MappedEncoding[I, O], d: Decoder[I]): Decoder[O] =
-    MirrorDecoder((index: Int, row: ResultRow, session: Session) => mapped.f(d.apply(index, row, session)))
 
   implicit def optionDecoder[T](implicit d: BaseDecoderAny[T]): Decoder[Option[T]] =
     MirrorDecoder((index: Int, row: ResultRow, session: Session) =>

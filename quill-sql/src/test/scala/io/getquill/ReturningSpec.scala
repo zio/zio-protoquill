@@ -10,10 +10,10 @@ class ReturningSpec extends MirrorSpec with ProductSpec {
 
   val context: SqlMirrorContext[PostgresDialect, Literal] = new SqlMirrorContext(PostgresDialect, Literal)
   import context._
-  given productDecoder: MirrorContext.GenericDecoder[Product] = MirrorContext.deriveDecoder
+  given productDecoder: MirrorContext.CompositeDecoder[Product] = MirrorContext.deriveComposite
 
   case class Foo(id: Long, description: String, sku: Long)
-  given MirrorContext.GenericDecoder[Foo] = MirrorContext.deriveDecoder
+  given MirrorContext.CompositeDecoder[Foo] = MirrorContext.deriveComposite
 
   "postgres style" - {
     "returning - single insert with inlined free variable" in {

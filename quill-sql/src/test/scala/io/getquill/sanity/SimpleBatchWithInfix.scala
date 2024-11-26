@@ -14,7 +14,7 @@ object SimpleBatchWithInfix extends Spec {
 
   "batch must work with simple sql" in {
     case class Person[T](name: String, age: Int)
-    given [T](using BaseDecoderAny[T]):MirrorContext.GenericDecoder[Person[T]] = MirrorContext.deriveDecoder
+    given [T](using BaseDecoderAny[T]):MirrorContext.CompositeDecoder[Person[T]] = MirrorContext.deriveComposite
     val names = List("Joe", "Jack")
     inline def q = quote {
       query[Person[String]].filter(p =>

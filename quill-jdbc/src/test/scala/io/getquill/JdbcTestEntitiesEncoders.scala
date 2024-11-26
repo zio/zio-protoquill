@@ -17,14 +17,14 @@ trait JdbcTestEntitiesEncoders extends JdbcSpecEncoders with TestEntities {
     type ResultRow = SpecResultRow
   }
 
-  override given testEntityEncoder: JdbcContext.GenericDecoder[TestEntity] = JdbcContext.deriveDecoder
-  override given embEncoder: JdbcContext.GenericDecoder[Emb] = JdbcContext.deriveDecoder
-  override given testEntityEmbEncoder: JdbcContext.GenericDecoder[TestEntityEmb] = JdbcContext.deriveDecoder
-  override given testEntity2Encoder: JdbcContext.GenericDecoder[TestEntity2] = JdbcContext.deriveDecoder
-  override given testEntity3Encoder: JdbcContext.GenericDecoder[TestEntity3] = JdbcContext.deriveDecoder
-  override given testEntity4Encoder: JdbcContext.GenericDecoder[TestEntity4] = JdbcContext.deriveDecoder
-  override given testEntity5Encoder: JdbcContext.GenericDecoder[TestEntity5] = JdbcContext.deriveDecoder
-  override given embSingleEncoder: JdbcContext.GenericDecoder[EmbSingle] = JdbcContext.deriveDecoder
-  override given testEntity4EmbEncoder: JdbcContext.GenericDecoder[TestEntity4Emb] = JdbcContext.deriveDecoder
-  override given testEntityRegularEncoder: JdbcContext.GenericDecoder[TestEntityRegular] = JdbcContext.deriveDecoder
+  override given testEntityEncoder: JdbcContext.CompositeDecoder[TestEntity] = JdbcContext.deriveComposite
+  override given embEncoder: JdbcContext.CompositeDecoder[Emb] = JdbcContext.deriveComposite
+  override given testEntityEmbEncoder: JdbcContext.CompositeDecoder[TestEntityEmb] = JdbcContext.deriveComposite
+  override given testEntity2Encoder: JdbcContext.CompositeDecoder[TestEntity2] = JdbcContext.deriveComposite
+  override given testEntity3Encoder: JdbcContext.CompositeDecoder[TestEntity3] = JdbcContext.deriveComposite
+  override given testEntity4Encoder: JdbcContext.CompositeDecoder[TestEntity4] = JdbcContext.deriveComposite
+  override given testEntity5Encoder: JdbcContext.CompositeDecoder[TestEntity5] = JdbcContext.deriveComposite
+  override given embSingleEncoder: JdbcContext.CompositeDecoder[EmbSingle] = JdbcContext.deriveComposite
+  override given testEntity4EmbEncoder: JdbcContext.CompositeDecoder[TestEntity4Emb] = JdbcContext.deriveComposite
+  override given testEntityRegularEncoder: JdbcContext.CompositeDecoder[TestEntityRegular] = JdbcContext.deriveComposite
 }

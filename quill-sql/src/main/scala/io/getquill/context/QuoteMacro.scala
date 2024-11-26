@@ -64,6 +64,10 @@ object ExtractLifts {
     (extractLifts(body), extractRuntimeUnquotes(body))
 }
 
+/**
+ * val x = quote { stuff }
+ */
+
 object QuoteMacro {
 
   object DynamicsExtractor {

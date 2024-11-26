@@ -11,9 +11,9 @@ class OptionalProductEncodingSpec extends Spec {
     case class Name(first: String, last: Int) extends Embedded
     case class Person(id: Int, name: Option[Name], age: Int)
     case class Address(owner: Int, street: String)
-    given MirrorContext.GenericDecoder[Name] = MirrorContext.deriveDecoder
-    given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
-    given MirrorContext.GenericDecoder[Address] = MirrorContext.deriveDecoder
+    given MirrorContext.CompositeDecoder[Name] = MirrorContext.deriveComposite
+    given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
+    given MirrorContext.CompositeDecoder[Address] = MirrorContext.deriveComposite
 
     val result =
       ctx.run {
@@ -51,10 +51,10 @@ class OptionalProductEncodingSpec extends Spec {
     case class Name(first: String, last: Option[InnerName]) extends Embedded
     case class Address(owner: Int, street: String)
     case class Person(id: Int, name: Option[Name])
-    given MirrorContext.GenericDecoder[InnerName] = MirrorContext.deriveDecoder
-    given MirrorContext.GenericDecoder[Name] = MirrorContext.deriveDecoder
-    given MirrorContext.GenericDecoder[Address] = MirrorContext.deriveDecoder
-    given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+    given MirrorContext.CompositeDecoder[InnerName] = MirrorContext.deriveComposite
+    given MirrorContext.CompositeDecoder[Name] = MirrorContext.deriveComposite
+    given MirrorContext.CompositeDecoder[Address] = MirrorContext.deriveComposite
+    given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
 
     val result =
       ctx.run {
@@ -78,9 +78,9 @@ class OptionalProductEncodingSpec extends Spec {
     case class Name(first: String, last: Option[Int]) extends Embedded
     case class Address(owner: Int, street: String)
     case class Person(id: Int, name: Option[Name], age: Int)
-    given MirrorContext.GenericDecoder[Name] = MirrorContext.deriveDecoder
-    given MirrorContext.GenericDecoder[Address] = MirrorContext.deriveDecoder
-    given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+    given MirrorContext.CompositeDecoder[Name] = MirrorContext.deriveComposite
+    given MirrorContext.CompositeDecoder[Address] = MirrorContext.deriveComposite
+    given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
 
     val result =
       ctx.run {

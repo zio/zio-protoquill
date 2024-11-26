@@ -10,10 +10,10 @@ class MirrorEncodingSpec extends Spec {
   import ctx._
 
   "simple encoder/decoder - class" in {
-    implicit val encodeName: MappedEncoding[Name, String] = MappedEncoding[Name, String](_.value)
-    implicit val decodeName: MappedEncoding[String, Name] = MappedEncoding[String, Name](str => Name(str))
-    given MirrorContext.GenericDecoder[Name] = MirrorContext.deriveDecoder
-    given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+    implicit val encodeName: Encoder[Name] = MappedEncoding[Name, String](_.value).toEncoder
+    implicit val decodeName: Decoder[Name] = MappedEncoding[String, Name](str => Name(str)).toDecoder
+    given MirrorContext.CompositeDecoder[Name] = MirrorContext.deriveComposite
+    given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
 
     val name = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
@@ -29,9 +29,9 @@ class MirrorEncodingSpec extends Spec {
   "simple encoder/decoder - case class" in {
     case class Name(value: String)
     case class Person(name: Name, age: Int)
-    implicit val encodeName: MappedEncoding[Name, String] = MappedEncoding[Name, String](_.value)
-    implicit val decodeName: MappedEncoding[String, Name] = MappedEncoding[String, Name](str => Name(str))
-    given MirrorContext.GenericDecoder[Person] = MirrorContext.deriveDecoder
+    implicit val encodeName: Encoder[Name] = MappedEncoding[Name, String](_.value).toEncoder
+    implicit val decodeName: Decoder[Name] = MappedEncoding[String, Name](str => Name(str)).toDecoder
+    given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
 
     val name = Name("Joe")
     val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))

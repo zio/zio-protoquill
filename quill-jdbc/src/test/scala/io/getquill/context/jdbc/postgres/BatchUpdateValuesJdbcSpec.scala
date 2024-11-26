@@ -18,7 +18,7 @@ class BatchUpdateValuesJdbcSpec extends BatchUpdateValuesJdbcSpecBase {
 
   "Ex 1 - Simple Contact" in {
     import `Ex 1 - Simple Contact`._
-    given PostgresJdbcContext.GenericDecoder[Contact] = PostgresJdbcContext.deriveDecoder
+    given PostgresJdbcContext.CompositeDecoder[Contact] = PostgresJdbcContext.deriveComposite
     context.run(insert)
     context.run(update, 2)
     context.run(get).toSet mustEqual (expect.toSet)

@@ -14,8 +14,7 @@ object MirrorContext extends ProductDecoders[Row, MirrorSession] with SqlEncodin
   override type Session = MirrorSession
   override type PrepareRow = Row
   override type ResultRow = Row
-  override type NullChecker = MirrorNullChecker
-  class MirrorNullChecker extends BaseNullChecker {
+  class MirrorNullChecker extends NullChecker {
     override def apply(index: Int, row: Row): Boolean = row.nullAt(index)
   }
   implicit val nullChecker: NullChecker = new MirrorNullChecker()

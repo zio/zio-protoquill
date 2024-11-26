@@ -7,6 +7,8 @@ import scala.compiletime.{erasedValue, summonFrom}
 import io.getquill.MappedEncoding
 import io.getquill.context.mirror.MirrorSession
 import io.getquill.generic.DecodingType
+import io.getquill.toEncoder
+import io.getquill.toDecoder
 
 /**
  * Note that much of the implementation of anyValEncoder/anyValDecoder is a workaround for:
@@ -40,16 +42,18 @@ trait LowPriorityImplicits { self: EncodingDsl =>
   implicit inline def anyValEncoder[Cls](implicit ev: Cls <:< AnyVal): Encoder[Cls] =
     MappedEncoderMaker[Encoder, Cls].apply(
       new AnyValEncoderContext[Encoder, Cls] {
-        override def makeMappedEncoder[Base](mapped: MappedEncoding[Cls, Base], encoder: Encoder[Base]): Encoder[Cls] =
-          self.mappedEncoder(mapped, encoder)
+        override def makeMappedEncoder[Base](mapped: MappedEncoding[Cls, Base], encoder: Encoder[Base]): Encoder[Cls] = {
+          mapped.toEncoder[PrepareRow, Session](encoder)
+        }
       }
     )
 
   implicit inline def anyValDecoder[Cls](implicit ev: Cls <:< AnyVal): Decoder[Cls] =
     MappedDecoderMaker[Decoder, Cls].apply(
       new AnyValDecoderContext[Decoder, Cls] {
-        override def makeMappedDecoder[Base](mapped: MappedEncoding[Base, Cls], decoder: Decoder[Base]): Decoder[Cls] =
-          self.mappedDecoder(mapped, decoder)
+        override def makeMappedDecoder[Base](mapped: MappedEncoding[Base, Cls], decoder: Decoder[Base]): Decoder[Cls] = {
+          mapped.toDecoder[ResultRow, Session](decoder)
+        }
       }
     )
 }
@@ -77,34 +81,21 @@ trait EncodingDsl extends DatabaseVerbs with LowPriorityImplicits { self => // e
   // Final Encoder/Decoder classes that Context implementations will use for their actual signatures
   // need to by subtypes GenericEncoder for encoder summoning to work from SqlContext where Encoders/Decoders
   // are defined only abstractly.
-  type Encoder[T] <: GenericEncoder[T, PrepareRow, Session]
-  type Decoder[T] <: GenericDecoder[ResultRow, Session, T, DecodingType.Specific]
-  type NullChecker <: GenericNullChecker[ResultRow, Session]
+  type Encoder[T] = GenericEncoder[T, PrepareRow, Session]
+  type Decoder[T] = GenericDecoder[ResultRow, Session, T, DecodingType.Leaf]
+  type NullChecker = GenericNullChecker[ResultRow, Session]
 
   // Initial Encoder/Decoder classes that Context implementations will subclass for their
   // respective Encoder[T]/Decoder[T] implementations e.g. JdbcEncoder[T](...) extends BaseEncoder[T]
+  // TODO Don't need this anymore, Encoder is enough
   type BaseEncoder[T] = GenericEncoder[T, PrepareRow, Session]
-  type BaseDecoder[T] = GenericDecoder[ResultRow, Session, T, DecodingType.Specific]
+  type BaseDecoder[T] = GenericDecoder[ResultRow, Session, T, DecodingType.Leaf]
   // Since sometimes you need a decoder to depend on another that could ge DecodingType.Specific or Generic (e.g. optionDecoder)
   // need to have a class that covers both options
   type BaseDecoderAny[T] = GenericDecoder[ResultRow, Session, T, _]
-  type BaseNullChecker = GenericNullChecker[ResultRow, Session]
 
   type ColumnResolver = GenericColumnResolver[ResultRow]
   type RowTyper[T] = GenericRowTyper[ResultRow, T]
-
-  // For: Mapped := Foo(value: String), Base := String
-  // Encoding follows: (MappedEncoding(Foo) => String) <=(contramap)= Encoder(Foo)
-  implicit def mappedEncoder[Mapped, Base](implicit mapped: MappedEncoding[Mapped, Base], encoder: Encoder[Base]): Encoder[Mapped]
-
-  // For: Base := String, Mapped := Foo(value: String)
-  // Decoding follows: (MappedEncoding(String) => Foo) =(map)=> Decoder(Foo)
-  implicit def mappedDecoder[Base, Mapped](implicit mapped: MappedEncoding[Base, Mapped], decoder: Decoder[Base]): Decoder[Mapped]
-
-  protected def mappedBaseEncoder[Mapped, Base](mapped: MappedEncoding[Mapped, Base], encoder: EncoderMethod[Base]): EncoderMethod[Mapped] =
-    (index, value, row, session) => encoder(index, mapped.f(value), row, session)
-  protected def mappedBaseDecoder[Base, Mapped](mapped: MappedEncoding[Base, Mapped], decoder: DecoderMethod[Base]): DecoderMethod[Mapped] =
-    (index, row, session) => mapped.f(decoder(index, row, session))
 
   // Define some standard encoders that all contexts should have
   implicit def stringEncoder: Encoder[String]
@@ -117,3 +108,30 @@ trait EncodingDsl extends DatabaseVerbs with LowPriorityImplicits { self => // e
   implicit def doubleEncoder: Encoder[Double]
   // implicit def nullEncoder: Encoder[Null]
 }
+
+
+/*
+
+case class Name(value: String)
+case class Person(name: Name)
+
+given Encoder[Name] = ???
+
+val ctx = new MirrorContext(PostgresDialect, Literal)
+// implicit stringEncoder: Encoder[String]
+// implicit mappedEnc(implicit mappedEnc: MappedEncoding[Name, String]): Encoder[Name] = ???
+// implicit mappedDec(implicit mappedDec: MappedEncoding[String, Name]): Decoder[Name] = ???
+
+improt ctx._
+implicit mappedEnc: MappedEncoding[Name, String] = MappedEncoding(_.value)
+implicit mappedDec: MappedEncoding[String, Name] = MappedEncoding(Name(_))
+
+implicit mappedEnc: Encoder[Name] = MappedEncoding(_.value).toEncoder
+implicit mappedDec: Decoder[Name] = MappedEncoding(Name(_)).toDecoder
+
+
+import val nameEncoder = stringEncoder.contramap { str: String => Name(str) }
+import val nameDecoder = stringDecoder.map { name: Name => name.value }
+
+
+ */

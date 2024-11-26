@@ -14,7 +14,7 @@ class JdbcContextSpec extends JdbcSpecEncoders with Spec {
   }
 
   case class Return(id: Int, str: String, opt: Option[Int])
-  given PostgresJdbcContext.GenericDecoder[Return] = PostgresJdbcContext.deriveDecoder
+  given PostgresJdbcContext.CompositeDecoder[Return] = PostgresJdbcContext.deriveComposite
 
   "run non-batched action" in {
     testContext.run(qr1.delete)

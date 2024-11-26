@@ -30,21 +30,33 @@ object Format {
   object Term {
     def apply(term: Quotes#reflectModule#Term)(using qctx: Quotes) = {
       import qctx.reflect._
-      Printer.TreeShortCode.show(term.asInstanceOf[qctx.reflect.Term])
+      try {
+        Printer.TreeShortCode.show(term.asInstanceOf[qctx.reflect.Term])
+      } catch {
+        case e: Throwable => "<Cannot show element>"
+      }
     }
   }
 
   object TermRaw {
     def apply(term: Quotes#reflectModule#Term)(using qctx: Quotes) = {
       import qctx.reflect._
-      Printer.TreeStructure.show(term.asInstanceOf[qctx.reflect.Term])
+      try {
+        Printer.TreeStructure.show(term.asInstanceOf[qctx.reflect.Term])
+      } catch {
+        case e: Throwable => "<Cannot show-raw element>"
+      }
     }
   }
 
   object Tree {
     def apply(tree: Quotes#reflectModule#Tree)(using qctx: Quotes) = {
       import qctx.reflect._
-      Printer.TreeShortCode.show(tree.asInstanceOf[qctx.reflect.Tree])
+      try {
+        Printer.TreeShortCode.show(tree.asInstanceOf[qctx.reflect.Tree])
+      } catch {
+        case e: Throwable => "<Cannot show element>"
+      }
     }
   }
 
@@ -89,71 +101,106 @@ object Format {
     def apply(expr: Expr[_], showErrorTrace: Boolean = false)(using Quotes) = {
       import quotes.reflect._
       val deserExpr = DeserializeAstInstances(expr)
-      Format(Printer.TreeShortCode.show(deserExpr.asTerm), showErrorTrace)
+      val show =
+        try {
+          Printer.TreeShortCode.show(deserExpr.asTerm)
+          } catch {
+          case e: Throwable => "<Cannot show element>"
+        }
+      Format(show, showErrorTrace)
     }
 
     def Detail(expr: Expr[_])(using Quotes) = {
       import quotes.reflect._
       val term = expr.asTerm
       if (ProtoMessages.errorDetail) {
+        val show =
+          try {
+            Printer.TreeShortCode.show(term)
+            } catch {
+            case e: Throwable => "<Cannot show element>"
+          }
+        val showRaw =
+          try {
+              Printer.TreeStructure.show(term)
+          } catch {
+              case e: Throwable => "<Cannot show-raw element>"
+          }
         s"""|
             |s"==== Expression ====
-            |  ${Format(Printer.TreeShortCode.show(term))}
+            |  ${Format(show)}
             |==== Extractors ===
-            |  ${Format(Printer.TreeStructure.show(term))}
+            |  ${Format(showRaw)}
             |""".stripMargin
       } else {
-        Format(Printer.TreeShortCode.show(term))
+        val show =
+          try {
+            Printer.TreeShortCode.show(term)
+          } catch {
+            case e: Throwable => "<Cannot show element>"
+          }
+        Format(show)
       }
     }
   }
 
-  def apply(code: String, showErrorTrace: Boolean = false) = {
-    val encosedCode =
-      s"""|object DummyEnclosure {
-            |  ${code}
+  def apply(code: => String, showErrorTrace: Boolean = false) = {
+    def encloseAndPrint(codePrint: String) = {
+      val encosedCode =
+        s"""|object DummyEnclosure {
+            |  ${codePrint}
             |}""".stripMargin
 
-    // NOTE: Very ineffifient way to get rid of DummyEnclosure on large blocks of code
-    //       use only for debugging purposes!
-    def unEnclose(enclosedCode: String) = {
-      val lines =
-        enclosedCode
-          .replaceFirst("^object DummyEnclosure \\{", "")
-          .reverse
-          .replaceFirst("\\}", "")
-          .reverse
-          .split("\n")
-      val linesTrimmedFirst = if (lines.head == "") lines.drop(1) else lines
-      // if there was a \n} on the last line, remove the }
-      val linesTrimmedLast = if (linesTrimmedFirst.last == "") linesTrimmedFirst.dropRight(1) else linesTrimmedFirst
-      // then if all lines had at least one indent i.e. "  " remove that
-      if (linesTrimmedLast.forall(line => line.startsWith("  ")))
-        linesTrimmedLast.map(line => line.replaceFirst("  ", "")).mkString("\n")
-      else
-        linesTrimmedLast.mkString("\n")
-    }
-
-    val formatted =
-      Try {
-        // val formatCls = classOf[ScalafmtFormat.type]
-        // val result = formatCls.getMethod("apply").invoke(null, encosedCode)
-        // println("============ GOT HERE ===========")
-        // val resultStr = s"${result}"
-        // resultStr
-        ScalafmtFormat(
-          // Various other cleanup needed to make the formatter happy
-          encosedCode
-            .replace("_*", "_")
-            .replace("_==", "==")
-            .replace("_!=", "!="),
-          showErrorTrace
-        )
-      }.getOrElse {
-        println("====== WARNING: Scalafmt Not Detected ====")
-        encosedCode
+      // NOTE: Very ineffifient way to get rid of DummyEnclosure on large blocks of code
+      //       use only for debugging purposes!
+      def unEnclose(enclosedCode: String) = {
+        val lines =
+          enclosedCode
+            .replaceFirst("^object DummyEnclosure \\{", "")
+            .reverse
+            .replaceFirst("\\}", "")
+            .reverse
+            .split("\n")
+        val linesTrimmedFirst = if (lines.head == "") lines.drop(1) else lines
+        // if there was a \n} on the last line, remove the }
+        val linesTrimmedLast = if (linesTrimmedFirst.last == "") linesTrimmedFirst.dropRight(1) else linesTrimmedFirst
+        // then if all lines had at least one indent i.e. "  " remove that
+        if (linesTrimmedLast.forall(line => line.startsWith("  ")))
+          linesTrimmedLast.map(line => line.replaceFirst("  ", "")).mkString("\n")
+        else
+          linesTrimmedLast.mkString("\n")
       }
 
-    unEnclose(formatted)
+      val formatted =
+        Try {
+          // val formatCls = classOf[ScalafmtFormat.type]
+          // val result = formatCls.getMethod("apply").invoke(null, encosedCode)
+          // println("============ GOT HERE ===========")
+          // val resultStr = s"${result}"
+          // resultStr
+          ScalafmtFormat(
+            // Various other cleanup needed to make the formatter happy
+            encosedCode
+              .replace("_*", "_")
+              .replace("_==", "==")
+              .replace("_!=", "!="),
+            showErrorTrace
+          )
+        }.getOrElse {
+          println("====== WARNING: Scalafmt Not Detected ====")
+          encosedCode
+        }
+
+      unEnclose(formatted)
+    }
+
+    try {
+      // execute whaterver command is going in
+      val codePrint = code
+      // then format it and print if possible
+      encloseAndPrint(codePrint)
+    } catch {
+      case e: Throwable => "<Cannot show code>"
+    }
   }
 }

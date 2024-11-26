@@ -392,7 +392,7 @@ object ElaborateStructure {
           }
 
         case ElaborationSide.Decoding =>
-          Summon.OrLeft.exprOf[GenericDecoder[_, _, T, DecodingType.Specific]] match {
+          Summon.OrLeft.exprOf[GenericDecoder[_, _, T, DecodingType.Leaf]] match {
             case Left(msg) => (false, Some(msg))
             case Right(_) => (true, None)
           }

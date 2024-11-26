@@ -8,18 +8,37 @@ import io.getquill.FromString
 
 // Note: Not using abstract Index parameter in ProtoQuill since it would bleed into most planters
 trait GenericEncoder[T, PrepareRow, Session] extends ((Int, T, PrepareRow, Session) => PrepareRow) { self =>
+  // TODO this type should be refactored to be a parameter of GenericEncoder
+  def sqlType: Int
+
   def apply(i: Int, t: T, row: PrepareRow, session: Session): PrepareRow
+
   def contramap[R](f: R => T): GenericEncoder[R, PrepareRow, Session] =
-    new GenericEncoder[R, PrepareRow, Session] {
+    new GenericEncoder.WithContramap[R, PrepareRow, Session] {
+      override val sqlType = self.sqlType
       def apply(i: Int, t: R, row: PrepareRow, session: Session) =
         self.apply(i, f(t), row, session)
     }
 }
 
+object GenericEncoder {
+  // TODO get rid of this, don't need it anymore since GenericEncoder has contramap
+  // Internally used encoder class (only in GenericEncoderWithStringFallback) that has a basic contramap
+  private[getquill] trait WithContramap[T, PrepareRow, Session] extends GenericEncoder[T, PrepareRow, Session] { self =>
+    override val sqlType = self.sqlType
+    override def contramap[R](f: R => T): GenericEncoder[R, PrepareRow, Session] = {
+      new GenericEncoder.WithContramap[R, PrepareRow, Session] {
+        def apply(i: Int, t: R, row: PrepareRow, session: Session) =
+          self.apply(i, f(t), row, session)
+      }
+    }
+  }
+}
+
 case class GenericEncoderWithStringFallback[T, PrepareRow, Session](
     nullableEncoder: GenericEncoder[Option[T], PrepareRow, Session],
     stringConverter: Either[String, FromString[T]]
-)(classTagExpected: ClassTag[T]) extends GenericEncoder[Any, PrepareRow, Session] {
+)(classTagExpected: ClassTag[T]) extends GenericEncoder.WithContramap[Any, PrepareRow, Session] { self =>
 
   private def classTagFromInstance(t: Any) =
     // if the value is just null, use the original encoder, since value conversion shouldn't mater
