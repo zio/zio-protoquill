@@ -46,6 +46,6 @@ class PeopleJdbcAggregationSpec extends PeopleAggregationSpec {
 
   "Ex 6 flatMap.groupByMap.map" in {
     import `Ex 6 flatMap.groupByMap.map`._
-    context.run(get).toSet mustEqual expect.toSet
+    context.run(get).toSet mustEqual expect.toSet //
   }
 }

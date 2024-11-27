@@ -62,6 +62,7 @@ class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec with PostgresJdbcSpecE
     ctx.run(query[ArraysTestEntity].insertValue(lift(ArraysTestEntity(None))))
 
     case class E(texts: List[String])
+    given PostgresJdbcContext.CompositeDecoder[E] = PostgresJdbcContext.deriveComposite //
     ctx.run(querySchema[E]("ArraysTestEntity")).headOption.map(_.texts) mustBe Some(Nil)
   }
 

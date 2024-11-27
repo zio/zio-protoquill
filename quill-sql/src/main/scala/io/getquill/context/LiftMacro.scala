@@ -39,13 +39,22 @@ import io.getquill.util.Format
 import io.getquill.metaprog.etc.StringOrNull
 import scala.reflect.ClassTag
 
-object LiftQueryMacro {
-  private[getquill] def newUuid = java.util.UUID.randomUUID().toString
+// I have a theory that the scala compiler attempts to invoke macros and see if the result has changed. If it sees
+// that there is no change it does not continue to recompile dependent macros. Therefore we want to cache
+// ids of lifted expressions so they do not need to continually be recompiled even when they have not changed.
+// This way, we keep a cache of ids we have created for each expression so that we can reuse them and
+// recompile is not always necessary.
+object IdCache {
+  private val cache: LRUCache[Expr[_], String] = new LRUCache(10000)
+  def get(expr: Expr[_]): String = cache.getOrDefault(expr, java.util.UUID.randomUUID.toString)
+}
 
+object LiftQueryMacro {
   def apply[T: Type, U[_] <: Iterable[_]: Type, PrepareRow: Type, Session: Type](entity: Expr[U[T]])(using Quotes): Expr[Query[T]] = {
     import quotes.reflect._
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
     val quat = QuatMaking.ofType[T]
+    val newUuid = IdCache.get(entity)
     quat match {
       case _: Quat.Product =>
         // Not sure why cast back to iterable is needed here but U param is not needed once it is inside of the planter
@@ -65,7 +74,6 @@ object LiftQueryMacro {
 }
 
 object LiftMacro {
-  private[getquill] def newUuid = java.util.UUID.randomUUID().toString
   private[getquill] val VIdent = AIdent("v", Quat.Generic)
 
   def apply[T: Type, PrepareRow: Type, Session: Type](entity: Expr[T])(using Quotes): Expr[T] = {
@@ -186,13 +194,20 @@ object LiftMacro {
     Summon.OrFail.exprOf[GenericEncoder[T, PrepareRow, Session]](msg, loggingEntity)
   }
 
-  private[getquill] def liftValue[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
+  private[getquill] def liftValue[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[T], uuid: String)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
     import quotes.reflect._
     val encoder = summonEncoderOrFail[T, PrepareRow, Session](valueEntity)
     '{ EagerPlanter($valueEntity, $encoder, ${ Expr(uuid) }) } // [T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 
-  def valueOrString[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[Any], uuid: String = newUuid)(using Quotes) = {
+  private[getquill] def liftValue[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[T])(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
+    import quotes.reflect._
+    val encoder = summonEncoderOrFail[T, PrepareRow, Session](valueEntity)
+    val newUuid = IdCache.get(valueEntity)
+    '{ EagerPlanter($valueEntity, $encoder, ${ Expr(newUuid) }) } // [T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
+  }
+
+  def valueOrString[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[Any])(using Quotes) = {
     import quotes.reflect._
     // i.e. the actual thing being passed to the encoder e.g. for lift(foo.bar) this will be "foo.bar"
     val fieldName = Format.Expr(valueEntity)
@@ -209,16 +224,17 @@ object LiftMacro {
         case Right(value) => '{ Right($value) }
         case Left(msg)    => '{ Left(${ Expr(msg) }) }
       }
+    val newUuid = IdCache.get(valueEntity)
     '{
       EagerPlanter[Any, PrepareRow, Session](
         $valueEntity,
         GenericEncoderWithStringFallback($nullableEncoder, $converterExpr)($expectedClassTag),
-        ${ Expr(uuid) }
+        ${ Expr(newUuid) }
       ).unquote
     }
   }
 
-  private[getquill] def injectableLiftValue[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[_ => T], uuid: String = newUuid)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
+  private[getquill] def injectableLiftValue[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[_ => T], uuid: String)(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
     import quotes.reflect._
     val encoder = {
       lazy val msg = s"Cannot inject the value: ${io.getquill.util.Format.Expr(valueEntity)}.Cannot Find a '${Printer.TypeReprCode.show(TypeRepr.of[T])}' Encoder of ${Printer.TreeShortCode.show(valueEntity.asTerm)}"

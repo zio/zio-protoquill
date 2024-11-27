@@ -43,12 +43,13 @@ trait ArrayEncoders extends ArrayEncoding {
   implicit def doubleArrayCoreEncoder: ArrayCoreEncoder[Double, PreparedStatement] = encodeRaw(DOUBLE)
   implicit def dateArrayCoreEncoder: ArrayCoreEncoder[Date, PreparedStatement] = encodeRaw(TIMESTAMP)
   implicit def uuidArrayCoreEncoder: ArrayCoreEncoder[UUID, PreparedStatement] = encodeRaw("uuid")
+  implicit def timestampArrayCoreEncoder: ArrayCoreEncoder[Timestamp, PreparedStatement] = encodeRaw(TIMESTAMP)
   implicit def localDateArrayCoreEncoder: ArrayCoreEncoder[LocalDate, PreparedStatement] =
     encodeMapped(parseJdbcType(DATE), { (ld: LocalDate) => SqlDate.valueOf(ld) })
-  implicit def bigDecimalArrayCoreEncoder: ArrayCoreEncoder[BigDecimal, PreparedStatement] = {
-    // i.e. need to convert to a java big-decimal before passing it to the JDBC Array's AnyRef type
+
+  // i.e. need to convert to a java big-decimal before passing it to the JDBC Array's AnyRef type
+  implicit def bigDecimalArrayCoreEncoder: ArrayCoreEncoder[BigDecimal, PreparedStatement] =
     encodeMapped(parseJdbcType(NUMERIC), _.bigDecimal)
-  }
 
   def encodeRaw[T](sqlType: String): ArrayCoreEncoder[T, PreparedStatement] =
     new ArrayCoreEncoder {
