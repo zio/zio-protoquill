@@ -85,8 +85,8 @@ val filteredModules = {
   selectedModules
 }
 
-val zioQuillVersion = "4.8.4"
-val zioVersion = "2.1.6"
+val zioQuillVersion = "4.8.5"
+val zioVersion = "2.1.13"
 
 lazy val `quill` =
   (project in file("."))
@@ -117,7 +117,7 @@ lazy val `quill-sql` =
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.5.0",
         "com.lihaoyi" %% "pprint" % "0.9.0",
-        "ch.qos.logback" % "logback-classic" % "1.5.6" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.5.12" % Test,
         "io.getquill" %% "quill-engine" % zioQuillVersion,
         "dev.zio" %% "zio" % zioVersion,
         ("io.getquill" %% "quill-util" % zioQuillVersion)
@@ -174,7 +174,7 @@ lazy val `quill-caliban` =
         "com.github.ghostdogpr" %% "caliban-quick" % "2.7.2",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
-        "ch.qos.logback" % "logback-classic" % "1.5.6" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.5.12" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
@@ -264,7 +264,7 @@ lazy val commonSettings =
 lazy val jdbcTestingLibraries = Seq(
   // JDBC Libraries for testing of quill-jdbc___ contexts
   libraryDependencies ++= Seq(
-    "com.zaxxer" % "HikariCP" % "5.1.0" exclude("org.slf4j", "*"),
+    "com.zaxxer" % "HikariCP" % "6.2.1" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
     "com.mysql" % "mysql-connector-j" % "9.0.0" % Test,
     "com.h2database" % "h2" % "2.3.230" % Test,
@@ -307,3 +307,6 @@ lazy val basicSettings = Seq(
   ),
   javacOptions := Seq("-source", "11", "-target", "11"),
 )
+
+// force redraft
+// force redraft
