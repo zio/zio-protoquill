@@ -5,6 +5,8 @@ import scala.quoted._
 import scala.collection.mutable.ArrayBuffer
 import io.getquill.util.Format
 import scala.util.Try
+import io.getquill.metaprog.Extractors._
+import io.getquill.InfixValue
 
 /** Remove all instances of SerialHelper.fromSerialized from a tree (for printing purposes) */
 object DeserializeAstInstances {
@@ -75,6 +77,23 @@ object ExprAccumulate {
         try {
           // If it is a Quat we immediately know it's not a Uprootable (i.e. we have gone too far down the chain)
           expr match {
+            // Skip any dynamic infixes, we will extract uprootables from their parts separately
+            // in particular see PrepareDynamicInfix where we go through the parts of an infix
+            // and extract their contents. If we don't do this than in a situation where you have a dynamic
+            // infix e.g: quote { query[Person].map(p => sql"#$fun(${p.name}, ${lift(liftVar)})".as[String]) }
+            // the liftVar will go on the parent infix and not the child infix and the tree will look something like this:
+            // Quoted(
+            //   Map(person, p, QuotationTag(456))
+            //   lifts = List(EagerPlanter(liftVar)),
+            //   runtimeLifts = Quoted(Infix(..., p.name, ScalarTag(123)), lifts = List())
+            // )
+            // Instead of what it should look like which is this:
+            // Quoted(
+            //   Map(person, p, QuotationTag(456)), lifts = List()
+            //   runtimeLifts = Quoted(Infix(..., p.name, ScalarTag(123)), lifts = List(EagerPlanter(liftVar)))
+            // )
+            case Is[InfixValue](InfixComponents(parts, _)) if (parts.exists(_.endsWith("#"))) => expr
+
             case _ if isQuat(expr) => expr
             // Not sure why but transformChildren causes a varargs case to fail with
             // "Expr cast exception Seq[TF] could not be cast to type _*"

@@ -54,6 +54,8 @@ INSERT INTO city VALUES (3798, 'Phoenix', 'USA', 'Arizona', 1321045);
 INSERT INTO city VALUES (1450, 'Jerusalem', 'ISR', 'Jerusalem', 633700);
 INSERT INTO city VALUES (1451, 'Tel Aviv-Jaffa', 'ISR', 'Tel Aviv', 348100);
 INSERT INTO city VALUES (1454, 'Beerseba', 'ISR', 'Ha Darom', 163700);
+INSERT INTO city VALUES (3813, 'Washington', 'USA', 'District of Columbia', 572059);
+INSERT INTO city VALUES (211, 'Brasília', 'BRA', 'Distrito Federal', 1969868);
 
 
 --

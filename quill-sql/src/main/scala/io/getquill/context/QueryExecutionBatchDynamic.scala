@@ -84,11 +84,14 @@ object QueryExecutionBatchDynamic {
       rawExtractor: Extraction[ResultRow, Session, T],
       topLevelQuat: Quat,
       transpileConfig: TranspileConfig,
-      batchingBehavior: BatchingBehavior
+      batchingBehavior: BatchingBehavior,
+      spliceAst: Boolean
   ) = {
+    val quotedDeduped = quotedRaw.dedupeRuntimeBinds
+
     // since real quotation could possibly be nested, need to get all splice all quotes and get all lifts in all runtimeQuote sections first
-    val ast = spliceQuotations(quotedRaw)
-    val lifts = gatherLifts(quotedRaw)
+    val ast = spliceQuotations(quotedDeduped)
+    val lifts = gatherLifts(quotedDeduped)
     val idiom = batchContextOperation.idiom
     val naming = batchContextOperation.naming
 
@@ -173,7 +176,6 @@ object QueryExecutionBatchDynamic {
         extractionBehavior
       )(transpileConfig.traceConfig)
 
-    val spliceAst = false
     val executionAst = if (spliceAst) outputAst else io.getquill.ast.NullValue
     batchContextOperation.execute(ContextOperation.BatchArgument(batchGroups, extractor, ExecutionInfo(ExecutionType.Dynamic, executionAst, topLevelQuat), None))
   }
