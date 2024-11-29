@@ -26,7 +26,7 @@ jobs:
         module: [ sqltest, db, bigdata ]
 
     steps:
-      - uses: actions/checkout@v4.2.0
+      - uses: actions/checkout@v4.2.2
       - name: Setup Java and Scala
         uses: actions/setup-java@v4.4.0
         with:
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - uses: actions/checkout@v4.2.0
+      - uses: actions/checkout@v4.2.2
       - name: Setup Java and Scala
         uses: actions/setup-java@v4.4.0
         with:
@@ -57,5 +57,5 @@ jobs:
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
-          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          SONATYPE_PASSWORD: ${{ secrets.GETQUILL_SONATYPE_TOKEN_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.GETQUILL_SONATYPE_TOKEN_USER }}

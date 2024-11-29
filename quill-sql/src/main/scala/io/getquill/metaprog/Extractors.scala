@@ -1,9 +1,14 @@
 package io.getquill.metaprog
 
-import scala.quoted._
+import io.getquill.InfixInterpolator
+import io.getquill.SqlInfixInterpolator
+import io.getquill.compat.QsqlInfixInterpolator
+
+import scala.quoted.*
 import scala.quoted.Varargs
 import io.getquill.util.Format
 import io.getquill.util.Messages.TraceType
+import io.getquill.parser.engine.failParse
 
 class Is[T: Type] {
   def unapply(expr: Expr[Any])(using Quotes) = {
@@ -16,6 +21,73 @@ class Is[T: Type] {
 }
 
 object Extractors {
+  object InfixComponentsOrFail {
+    def unapply(using Quotes)(expr: Expr[_]) =
+      expr match {
+        case InfixComponents(parts, params) => Some((parts, params))
+        case _                             => failParse(expr, "Invalid Infix Clause")
+      }
+  }
+
+  object InfixComponents {
+    object InterpolatorClause {
+      def unapply(using Quotes)(expr: Expr[_]) = {
+        import quotes.reflect._
+        expr match {
+          case '{ InfixInterpolator($partsExpr).infix(${ Varargs(params) }: _*) } => Some((partsExpr, params))
+          case '{ SqlInfixInterpolator($partsExpr).sql(${ Varargs(params) }: _*) } => Some((partsExpr, params))
+          case '{ QsqlInfixInterpolator($partsExpr).qsql(${ Varargs(params) }: _*) } => Some((partsExpr, params))
+          case _ => None
+        }
+      }
+    }
+
+    def unapply(using Quotes)(expr: Expr[_]): Option[(Seq[String], Seq[Expr[Any]])] = {
+      import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
+      expr match {
+        // Discovered from cassandra context that nested infix clauses can have an odd form with the method infix$generic$i2 e.g:
+        // inline$generic$i2(InfixInterpolator(_root_.scala.StringContext.apply(List.apply[Any]("", " ALLOW FILTERING").asInstanceOf[_*])).infix(List.apply[Any]((Unquote.apply[EntityQuery[ListFrozen]]
+        // maybe need to add this to the general parser?
+        case Unseal(TApply(InlineGenericIdent(), List(value))) =>
+          unapply(value.asExpr)
+        case InterpolatorClause(partsExpr, params) =>
+          val parts = StringContextExpr.unapply(partsExpr).getOrElse {
+            failParse(partsExpr, "Cannot parse a valid StringContext")
+          }
+          Some((parts, params))
+        case _ =>
+          None
+      }
+    }
+  } // end InfixComponents
+
+  object InlineGenericIdent {
+    def unapply(using Quotes)(term: quotes.reflect.Term): Boolean = {
+      import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
+      term match {
+        case TIdent(name) if (name.matches("inline\\$generic\\$i[0-9]")) => true
+        case _ => false
+      }
+    }
+  }
+
+  object StringContextExpr {
+    def staticOrFail(expr: Expr[String])(using Quotes) =
+      expr match {
+        case Expr(str: String) => str
+        case _ => failParse(expr, "All String-parts of a 'infix' statement must be static strings")
+      }
+
+    def unapply(using Quotes)(expr: Expr[_]) = {
+      import quotes.reflect._
+      expr match {
+        case '{ StringContext.apply(${ Varargs(parts) }: _*) } =>
+          Some(parts.map(staticOrFail(_)))
+        case _ => None
+      }
+    }
+  }
+
   inline def typeName[T]: String = ${ typeNameImpl[T] }
   def typeNameImpl[T: Type](using Quotes): Expr[String] = {
     import quotes.reflect._
