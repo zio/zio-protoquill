@@ -85,8 +85,8 @@ val filteredModules = {
   selectedModules
 }
 
-val zioQuillVersion = "4.8.4"
-val zioVersion = "2.1.6"
+val zioQuillVersion = "4.8.5"
+val zioVersion = "2.1.13"
 
 lazy val `quill` =
   (project in file("."))
@@ -264,7 +264,7 @@ lazy val commonSettings =
 lazy val jdbcTestingLibraries = Seq(
   // JDBC Libraries for testing of quill-jdbc___ contexts
   libraryDependencies ++= Seq(
-    "com.zaxxer" % "HikariCP" % "5.1.0" exclude("org.slf4j", "*"),
+    "com.zaxxer" % "HikariCP" % "6.2.1" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
     "com.mysql" % "mysql-connector-j" % "9.0.0" % Test,
     "com.h2database" % "h2" % "2.3.230" % Test,
@@ -307,3 +307,6 @@ lazy val basicSettings = Seq(
   ),
   javacOptions := Seq("-source", "11", "-target", "11"),
 )
+
+// force redraft
+// force redraft

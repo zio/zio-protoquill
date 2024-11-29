@@ -1,19 +1,20 @@
 package io.getquill.parser
 
-import io.getquill.ast.{Ident => AIdent, Query => AQuery, Action => AAction, Insert => AInsert, Update => AUpdate, Delete => ADelete, _}
+import io.getquill.ast.{Action as AAction, Delete as ADelete, Ident as AIdent, Insert as AInsert, Query as AQuery, Update as AUpdate, *}
 import io.getquill.ast
 import io.getquill.metaprog.PlanterExpr
 import io.getquill.metaprog.QuotedExpr
-import scala.quoted._
+
+import scala.quoted.*
 import scala.annotation.StaticAnnotation
-import scala.deriving._
+import scala.deriving.*
 import io.getquill.Embedable
 
 import scala.reflect.ClassTag
 import io.getquill.norm.capture.AvoidAliasConflict
 import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.util.Format
-import io.getquill.parser.ParserHelpers._
+import io.getquill.parser.ParserHelpers.*
 import io.getquill.quat.QuatMaking
 import io.getquill.quat.QuatMakingBase
 import io.getquill.quat.Quat
@@ -21,16 +22,15 @@ import io.getquill.metaprog.QuotationLotExpr
 import io.getquill.metaprog.Uprootable
 import io.getquill.metaprog.Pluckable
 import io.getquill.metaprog.Pointable
-import io.getquill.metaprog.Extractors._
+import io.getquill.metaprog.Extractors.*
 import io.getquill.metaprog.SummonTranspileConfig
-import io.getquill._
-
+import io.getquill.*
 import io.getquill.Ord
 import io.getquill.Embedded
 import io.getquill.metaprog.Is
 import io.getquill.generic.ElaborationSide
-import io.getquill.parser.engine._
-import io.getquill.context.VerifyFreeVariables
+import io.getquill.parser.engine.*
+import io.getquill.context.{ExtractLifts, VerifyFreeVariables}
 import io.getquill.norm.TranspileConfig
 import io.getquill.ast.External.Source
 import io.getquill.quat.VerifyNoBranches
@@ -803,7 +803,7 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
   }
 
   def genericInfix(i: Expr[_])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History) = {
-    val (parts, paramsExprs) = InfixComponents.unapply(i).getOrElse { failParse(i, classOf[Infix]) }
+    val (parts, paramsExprs) = InfixComponentsOrFail.unapply(i).getOrElse { failParse(i, classOf[Infix]) }
     if (parts.exists(_.endsWith("#"))) {
       PrepareDynamicInfix(parts.toList, paramsExprs.toList)(isPure, isTransparent, quat)
     } else {
@@ -811,55 +811,6 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
       Quat.improveInfixQuat(infixAst)
     }
   }
-
-  object StringContextExpr {
-    def staticOrFail(expr: Expr[String]) =
-      expr match {
-        case Expr(str: String) => str
-        case _                 => failParse(expr, "All String-parts of a 'infix' statement must be static strings")
-      }
-    def unapply(expr: Expr[_]) =
-      expr match {
-        case '{ StringContext.apply(${ Varargs(parts) }: _*) } =>
-          Some(parts.map(staticOrFail(_)))
-        case _ => None
-      }
-  }
-
-  private object InlineGenericIdent {
-    def unapply(term: quotes.reflect.Term): Boolean =
-      term match {
-        case TIdent(name) if (name.matches("inline\\$generic\\$i[0-9]")) => true
-        case _                                                           => false
-      }
-  }
-
-  private object InfixComponents {
-    object InterpolatorClause {
-      def unapply(expr: Expr[_]) =
-        expr match {
-          case '{ InfixInterpolator($partsExpr).infix(${ Varargs(params) }: _*) }           => Some((partsExpr, params))
-          case '{ SqlInfixInterpolator($partsExpr).sql(${ Varargs(params) }: _*) }          => Some((partsExpr, params))
-          case '{ compat.QsqlInfixInterpolator($partsExpr).qsql(${ Varargs(params) }: _*) } => Some((partsExpr, params))
-          case _ =>
-            failParse(expr, "Invalid Infix Clause")
-        }
-    }
-
-    def unapply(expr: Expr[_]): Option[(Seq[String], Seq[Expr[Any]])] =
-      expr match {
-        // Discovered from cassandra context that nested infix clauses can have an odd form with the method infix$generic$i2 e.g:
-        // inline$generic$i2(InfixInterpolator(_root_.scala.StringContext.apply(List.apply[Any]("", " ALLOW FILTERING").asInstanceOf[_*])).infix(List.apply[Any]((Unquote.apply[EntityQuery[ListFrozen]]
-        // maybe need to add this to the general parser?
-        case Unseal(TApply(InlineGenericIdent(), List(value))) =>
-          unapply(value.asExpr)
-        case InterpolatorClause(partsExpr, params) =>
-          val parts = StringContextExpr.unapply(partsExpr).getOrElse { failParse(partsExpr, "Cannot parse a valid StringContext") }
-          Some((parts, params))
-        case _ =>
-          None
-      }
-  } // end InfixComponents
 
   private object PrepareDynamicInfix {
     def apply(parts: List[String], params: List[Expr[Any]])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History): Dynamic = {
@@ -935,11 +886,17 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
           case Param(v) => Lifter(rootParse(v))
         }
 
+      val (lifts, pluckedUnquotes) = params.map(param => ExtractLifts(param)).unzip match { case (l, pu) => (l.flatten, pu.flatten) }
+
       // If there is a lift that one of the static parts has, the lift should be extracted anyway
       // from the outer quote. Have a look at the "with lift" test in InfixText.scala for more detail
       Dynamic(
         '{
-          Quoted(Infix(${ Expr.ofList(newParts) }, ${ Expr.ofList(newParams) }, ${ Expr(isPure) }, ${ Expr(isTransparent) }, ${ Lifter.quat(quat) }), Nil, Nil)
+          Quoted(
+            Infix(${ Expr.ofList(newParts) }, ${ Expr.ofList(newParams) }, ${ Expr(isPure) }, ${ Expr(isTransparent) }, ${ Lifter.quat(quat) }),
+            ${ Expr.ofList(lifts) },
+            ${ Expr.ofList(pluckedUnquotes) }
+          )
         },
         quat
       )
