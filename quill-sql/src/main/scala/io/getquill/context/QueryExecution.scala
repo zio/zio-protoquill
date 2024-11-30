@@ -440,7 +440,7 @@ object PrepareDynamicExecution {
       ResultRow,
       Session
   ](
-      quoted: Quoted[QAC[I, RawT]],
+      quotedRaw: Quoted[QAC[I, RawT]],
       rawExtractor: Extraction[ResultRow, Session, T],
       idiom: D,
       naming: N,
@@ -453,6 +453,18 @@ object PrepareDynamicExecution {
       additionalLifts: List[Planter[?, ?, ?]] = List(),
       batchAlias: Option[String] = None
   ) = {
+    // First thing we need to do is dedupe any runtime binds. We need to do this while the whole AST is still hierarchically
+    // organized i.e. before flattening. This happens because in dynamic situations that collect and then combine multiple queries e.g:
+    // List("a", "b").map(a => quote { query[Person].filter(p => p.name == lift(a)) }).reduce(_ ++ _)
+    // since the lift(a) UID is determined at compile-time the trees of both "a", and "b" variants will have the same value for it
+    // resulting in a tree that looks like this (before being flattened into a single filter which happens during query compilation):
+    // UnionAll(
+    //   Filter(Entity("Person"), BinaryOperation(p.name, ==, ScalarTag("SOME_UUID"))
+    //   Filter(Entity("Person"), BinaryOperation(p.name, ==, ScalarTag("SOME_UUID"))
+    // )
+    // This will result in incorrect queries. Therefore we need to dedupe the runtime the "SOME_UUID" binds here.
+    val quoted = quotedRaw.dedupeRuntimeBinds
+
     // Splice all quotation values back into the AST recursively, by this point these quotations are dynamic
     // which means that the compiler has not done the splicing for us. We need to do this ourselves.
     // So we need to go through all the QuotationTags in the AST and splice in the corresponding QuotationVase into it's place.

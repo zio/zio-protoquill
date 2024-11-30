@@ -1,21 +1,21 @@
 package io.getquill.ported.quotationspec
 
-import scala.language.implicitConversions
-import io.getquill.QuotationLot
-import io.getquill.ast.{Query => AQuery, _}
-import io.getquill.Quoted
-import io.getquill.Planter
-import io.getquill.QuotationVase
-import io.getquill.QuotationLot
-import org.scalatest._
-import io.getquill.quat.Quat
-import io.getquill.ast.Implicits._
-import io.getquill.norm.NormalizeStringConcat
-import io.getquill._
-import io.getquill.PicklingHelper._
+import io.getquill.PicklingHelper.*
+import io.getquill.ast.Implicits.*
 import io.getquill.context.ExecutionType
+import io.getquill.norm.NormalizeStringConcat
+import io.getquill.quat.Quat
+import io.getquill.{Literal, MirrorContext, MirrorSqlDialect, Planter, QuotationLot, QuotationVase, Quoted}
+import org.scalatest.*
+import io.getquill.ast.*
+import io.getquill.*
+
+import scala.language.implicitConversions
 
 class InfixTest extends Spec with Inside {
+  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+  import ctx._
+
   extension (ast: Ast) {
     def body: Ast = ast match {
       case f: Function => f.body
@@ -140,7 +140,6 @@ class InfixTest extends Spec with Inside {
         }
       }
       "with lift" in {
-        import testContext._
         val a = "dyn1"
         val q = quote {
           sql"#$a || ${lift("foo")}".as[String]
@@ -149,8 +148,13 @@ class InfixTest extends Spec with Inside {
         q must matchPattern {
           case Quoted(
             QuotationTag(idA),
-            List(EagerPlanter("foo", _, idB)),
-            List(Vase(Infix(List("dyn1 || ", ""), List(ScalarTag(idB1, _)), false, false, QV), idA1))
+            List(),
+            List(
+              QuotationVase(
+                Quoted(Infix(List("dyn1 || ", ""), List(ScalarTag(idB1, _)), false, false, QV), List(EagerPlanter("foo", _, idB)), Nil),
+                idA1
+              )
+            )
           ) if (idA == idA1 && idB == idB1) =>
         }
       }
@@ -197,7 +201,7 @@ class InfixTest extends Spec with Inside {
 
     "in a context" - {
       val ctx = new SqlMirrorContext(PostgresDialect, Literal)
-      import ctx._
+      import ctx.*
       case class Person(name: String, age: Int)
       "dynamic with property" in {
         val fun = "DYNAMIC_FUNC"
