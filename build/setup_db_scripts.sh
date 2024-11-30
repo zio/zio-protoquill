@@ -105,6 +105,8 @@ function setup_postgres() {
      host=$(get_host $1)
      echo "Waiting for Cassandra"
      until cqlsh $1 -e "describe cluster" &> /dev/null; do
+         echo "Tapping Cassandra Connection, this may show an error: $1 (host: ${host})"
+         cqlsh $1 -e "describe cluster" || true
          sleep 5;
      done
      echo "Connected to Cassandra"
@@ -116,6 +118,8 @@ function setup_sqlserver() {
     host=$(get_host $1)
     echo "Waiting for SqlServer"
     until /opt/mssql-tools/bin/sqlcmd -S $1 -U SA -P "QuillRocks!" -Q "select 1" &> /dev/null; do
+        echo "Tapping SqlServer Connection, this may show an error: $1 (host: ${host})"
+        /opt/mssql-tools/bin/sqlcmd -S $1 -U SA -P "QuillRocks!" -Q "select 1" || true
         sleep 5;
     done
     echo "Connected to SqlServer"
@@ -129,7 +133,7 @@ function setup_sqlserver() {
 
 # Do a simple necat poll to make sure the oracle database is ready.
 # All internal database creation and schema setup scripts are handled
-# by the container and docker-compose steps.
+# by the container and docker compose steps.
 
 function setup_oracle() {
     while ! nc -z $1 1521; do
@@ -158,7 +162,7 @@ function setup_oracle() {
 
 function send_script() {
   echo "Send Script Args: 1: $1 - 2 $2 - 3: $3"
-  docker cp $2 "$(docker-compose ps -q $1)":/$3
+  docker cp $2 "$(docker compose ps -q $1)":/$3
 }
 
 export -f setup_sqlite
