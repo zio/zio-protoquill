@@ -280,6 +280,7 @@ object QueryExecutionBatch {
       val extractionBehaviorExpr = Expr(extractionBehavior)
       val extractor = MakeExtractor[ResultRow, Session, T, T].dynamic(identityConverter, extractionBehavior)
       val transpileConfig = SummonTranspileConfig()
+      val spliceAsts = TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]
       '{
         QueryExecutionBatchDynamic.apply[I, T, A, ResultRow, PrepareRow, Session, D, N, Ctx, Res](
           $quotedRaw,
@@ -289,7 +290,8 @@ object QueryExecutionBatch {
           // / For the sake of viewing/debugging the quat macro code it is better not to serialize it here
           ${ Lifter.NotSerializing.quat(topLevelQuat) },
           ${ TranspileConfigLiftable(transpileConfig) },
-          $batchingBehavior
+          $batchingBehavior,
+          ${ Expr(spliceAsts) },
         )
       }
 
@@ -404,8 +406,15 @@ object QueryExecutionBatch {
                 )($traceConfigExpr)
               }
 
+              val spliceAsts = TypeRepr.of[Ctx] <:< TypeRepr.of[AstSplicing]
+              val executionInfo =
+                if (spliceAsts)
+                  '{ ExecutionInfo(ExecutionType.Static, ${ Lifter(state.ast) }, ${ Lifter.quat(topLevelQuat) }) }
+                else
+                  '{ ExecutionInfo(ExecutionType.Unknown, io.getquill.ast.NullValue, Quat.Unknown) }
+
               '{
-                $batchContextOperation.execute(ContextOperation.BatchArgument($batchGroups, $extractor, ExecutionInfo(ExecutionType.Static, ${ Lifter(state.ast) }, ${ Lifter.quat(topLevelQuat) }), None))
+                $batchContextOperation.execute(ContextOperation.BatchArgument($batchGroups, $extractor, $executionInfo, None))
               }
 
             case None =>
