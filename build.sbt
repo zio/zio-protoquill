@@ -85,8 +85,8 @@ val filteredModules = {
   selectedModules
 }
 
-val zioQuillVersion = "4.8.4"
-val zioVersion = "2.1.12"
+val zioQuillVersion = "4.8.5"
+val zioVersion = "2.1.13"
 
 lazy val `quill` =
   (project in file("."))
@@ -117,7 +117,7 @@ lazy val `quill-sql` =
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.5.0",
         "com.lihaoyi" %% "pprint" % "0.9.0",
-        "ch.qos.logback" % "logback-classic" % "1.5.6" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.5.12" % Test,
         "io.getquill" %% "quill-engine" % zioQuillVersion,
         "dev.zio" %% "zio" % zioVersion,
         ("io.getquill" %% "quill-util" % zioQuillVersion)
@@ -174,11 +174,11 @@ lazy val `quill-caliban` =
         "com.github.ghostdogpr" %% "caliban-quick" % "2.7.2",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
-        "ch.qos.logback" % "logback-classic" % "1.5.6" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.5.12" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql" % "postgresql" % "42.7.3" % Test,
+        "org.postgresql" % "postgresql" % "42.7.4" % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -202,8 +202,8 @@ lazy val `quill-jdbc-zio` =
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
-        "org.postgresql" % "postgresql" % "42.7.3" % "provided",
-        "dev.zio" %% "zio-json" % "0.7.1"
+        "org.postgresql" % "postgresql" % "42.7.4" % "provided",
+        "dev.zio" %% "zio-json" % "0.7.3"
       ),
       Test / runMain / fork := true,
       Test / fork := true,
@@ -264,13 +264,13 @@ lazy val commonSettings =
 lazy val jdbcTestingLibraries = Seq(
   // JDBC Libraries for testing of quill-jdbc___ contexts
   libraryDependencies ++= Seq(
-    "com.zaxxer" % "HikariCP" % "5.1.0" exclude("org.slf4j", "*"),
+    "com.zaxxer" % "HikariCP" % "6.2.1" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
-    "com.mysql" % "mysql-connector-j" % "9.0.0" % Test,
-    "com.h2database" % "h2" % "2.3.230" % Test,
+    "com.mysql" % "mysql-connector-j" % "9.1.0" % Test,
+    "com.h2database" % "h2" % "2.3.232" % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
-    "org.postgresql" % "postgresql" % "42.7.3" % Test,
-    "org.xerial" % "sqlite-jdbc" % "3.46.0.0" % Test,
+    "org.postgresql" % "postgresql" % "42.7.4" % Test,
+    "org.xerial" % "sqlite-jdbc" % "3.46.0.1" % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" % "mssql-jdbc" % "7.4.1.jre11" % Test,
     "com.oracle.ojdbc" % "ojdbc8" % "19.3.0.0" % Test,
