@@ -178,7 +178,7 @@ lazy val `quill-caliban` =
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql" % "postgresql" % "42.7.3" % Test,
+        "org.postgresql" % "postgresql" % "42.7.4" % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -202,8 +202,8 @@ lazy val `quill-jdbc-zio` =
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
-        "org.postgresql" % "postgresql" % "42.7.3" % "provided",
-        "dev.zio" %% "zio-json" % "0.7.1"
+        "org.postgresql" % "postgresql" % "42.7.4" % "provided",
+        "dev.zio" %% "zio-json" % "0.7.3"
       ),
       Test / runMain / fork := true,
       Test / fork := true,
@@ -266,11 +266,11 @@ lazy val jdbcTestingLibraries = Seq(
   libraryDependencies ++= Seq(
     "com.zaxxer" % "HikariCP" % "6.2.1" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
-    "com.mysql" % "mysql-connector-j" % "9.0.0" % Test,
-    "com.h2database" % "h2" % "2.3.230" % Test,
+    "com.mysql" % "mysql-connector-j" % "9.1.0" % Test,
+    "com.h2database" % "h2" % "2.3.232" % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
-    "org.postgresql" % "postgresql" % "42.7.3" % Test,
-    "org.xerial" % "sqlite-jdbc" % "3.46.0.0" % Test,
+    "org.postgresql" % "postgresql" % "42.7.4" % Test,
+    "org.xerial" % "sqlite-jdbc" % "3.46.1.3" % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" % "mssql-jdbc" % "7.4.1.jre11" % Test,
     "com.oracle.ojdbc" % "ojdbc8" % "19.3.0.0" % Test,
