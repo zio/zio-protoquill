@@ -2,9 +2,10 @@ package io.getquill.context.jdbc.postgres
 
 import io.getquill.context.sql.PeopleSpec
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
+import io.getquill.context.jdbc.JdbcVerbs
 
-class PeopleJdbcSpecEncoders extends PeopleSpec with JdbcSpecEncoders {
+
+class PeopleJdbcSpecEncoders extends PeopleSpec with JdbcVerbs {
 
   val context = testContext
   import testContext._

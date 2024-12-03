@@ -13,15 +13,11 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 import io.getquill.generic.{DecodingType, GenericDecoder, GenericEncoder}
 
-trait EncodingSpec extends SpecEncoders with TestEncoders with TestDecoders with Spec {
-  type SpecSession
-  type SpecPrepareRow
-  type SpecResultRow
-
+trait EncodingSpec extends ExtraEncoders with Spec { self =>
   val context: SqlContext[_, _] {
-    type Session = SpecSession
-    type PrepareRow = SpecPrepareRow
-    type ResultRow = SpecResultRow
+    type Session = self.Session
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
   }
   import context._
 
@@ -53,11 +49,11 @@ trait EncodingSpec extends SpecEncoders with TestEncoders with TestDecoders with
         case _ => false
       }
   }
-  given timeEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, TimeEntity, DecodingType.Composite]
+  given timeEntityDecoder: GenericDecoder[ResultRow, Session, TimeEntity, DecodingType.Composite]
   //given numberEncoder = Mapped Decoding from TestEncoders Used
   //given encodingTestTypeDecoder = Mapped Decoding from TestEncoders Used
 
-  //given timeEntityEncoder: GenericEncoder[TimeEntity, SpecPrepareRow, SpecSession]
+  //given timeEntityEncoder: GenericEncoder[TimeEntity, PrepareRow, Session]
   //given numberEncoder = Mapped Encoding from TestEncoders Used
   //given encodingTestTypeDecoder = Mapped Encoding from TestDecoders Used
 
@@ -116,8 +112,8 @@ trait EncodingSpec extends SpecEncoders with TestEncoders with TestDecoders with
       o14: Option[UUID],
       o15: Option[Number]
   )
-  given encodingTestEntityDecoder: GenericDecoder[SpecResultRow, SpecSession, EncodingTestEntity, DecodingType.Composite]
-  //given encodingTestEntityEncoder: GenericEncoder[EncodingTestEntity, SpecPrepareRow, SpecSession]
+  given encodingTestEntityDecoder: GenericDecoder[ResultRow, Session, EncodingTestEntity, DecodingType.Composite]
+  //given encodingTestEntityEncoder: GenericEncoder[EncodingTestEntity, PrepareRow, Session]
 
   inline def delete = quote {
     query[EncodingTestEntity].delete
@@ -233,8 +229,8 @@ trait EncodingSpec extends SpecEncoders with TestEncoders with TestDecoders with
   }
 
   case class BarCode(description: String, uuid: Option[UUID] = None)
-  given barCodeDecoder: GenericDecoder[SpecResultRow, SpecSession, BarCode, DecodingType.Composite]
-  //given barCodeEncoder: GenericEncoder[BarCode, SpecPrepareRow, SpecSession]
+  given barCodeDecoder: GenericDecoder[ResultRow, Session, BarCode, DecodingType.Composite]
+  //given barCodeEncoder: GenericEncoder[BarCode, PrepareRow, Session]
 
   val insertBarCode = quote((b: BarCode) => query[BarCode].insertValue(b).returningGenerated(_.uuid))
   val barCodeEntry = BarCode("returning UUID")

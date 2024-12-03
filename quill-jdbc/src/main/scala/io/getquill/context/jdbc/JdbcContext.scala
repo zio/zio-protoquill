@@ -26,11 +26,9 @@ class JdbcNullChecker extends GenericNullChecker[ResultSet, Connection] {
   }
 }
 
-trait JdbcContextEncoding extends ProductDecoders[ResultSet, Connection] with JdbcContextTypes with Encoders with Decoders {
+trait JdbcContextEncoding extends ProductDecoders with JdbcContextTypes with Encoders with Decoders {
   implicit val nullChecker: NullChecker = new JdbcNullChecker()
 }
-
-object JdbcContext extends ProductDecoders[ResultSet, Connection]
 
 abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   extends SqlContext[Dialect, Naming]

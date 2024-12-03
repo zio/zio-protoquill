@@ -6,13 +6,15 @@ import com.typesafe.config.Config
 import io.getquill.context.jdbc.{BasicTimeDecoders, BasicTimeEncoders, BooleanObjectEncoding, JdbcContext, JdbcContextEncoding, SqliteJdbcContextBase, UUIDObjectEncoding}
 import io.getquill.util.LoadConfig
 
-trait SqliteJdbcContextModule extends JdbcContextEncoding
-  with BasicTimeEncoders
-  with BasicTimeDecoders
-  with BooleanObjectEncoding
-  with UUIDObjectEncoding
+object SqliteJdbcContext {
+  trait Codec extends JdbcContextEncoding
+    with BasicTimeEncoders
+    with BasicTimeDecoders
+    with BooleanObjectEncoding
+    with UUIDObjectEncoding
 
-object SqliteJdbcContext extends SqliteJdbcContextModule
+  object Codec extends Codec
+}
 
 class SqliteJdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: DataSource)
   extends JdbcContext[SqliteDialect, N]

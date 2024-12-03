@@ -3,9 +3,9 @@ package io.getquill.context.jdbc.h2
 import io.getquill.context.sql.EncodingSpec
 import io.getquill._
 import java.time.ZoneId
-import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class JdbcEncodingSpec extends JdbcSpecEncoders with EncodingSpec {
+
+class JdbcEncodingSpec extends EncodingSpec {
 
   val context: testContext.type = testContext
   import testContext._

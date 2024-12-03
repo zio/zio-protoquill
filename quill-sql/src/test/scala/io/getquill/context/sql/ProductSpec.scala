@@ -8,20 +8,18 @@ import io.getquill.generic.{DecodingType, GenericDecoder}
 
 case class Id(value: Long) extends AnyVal
 
-trait ProductSpec extends Spec {
-  type SpecSession
-  type SpecPrepareRow
-  type SpecResultRow
-
+trait ProductSpec extends Spec { self =>
   val context: Context[_, _] {
-    type Session = SpecSession
-    type PrepareRow = SpecPrepareRow
-    type ResultRow = SpecResultRow
+    type Session = self.Session
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
   }
   import context._
 
   case class Product(id: Long, description: String, sku: Long)
-  given productDecoder: GenericDecoder[SpecResultRow, SpecSession, Product, DecodingType.Composite]
+  case class ProductInt(id: Long, description: String, sku: Int)
+  given productDecoder: GenericDecoder[ResultRow, Session, Product, DecodingType.Composite] = deriveComposite
+  given productIntDecoder: GenericDecoder[ResultRow, Session, ProductInt, DecodingType.Composite] = deriveComposite
 
   inline def product = quote {
     query[Product]

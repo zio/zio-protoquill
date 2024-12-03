@@ -2,8 +2,9 @@ package io.getquill
 
 import io.getquill.context.mirror.Row
 import io.getquill.context.ExecutionType
+import io.getquill.MirrorContext.Codec.*
 
-class InsertLiftedSpec extends Spec {
+class InsertLiftedSpec extends MirrorSpec {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal) // //
   import ctx._
 
@@ -12,9 +13,9 @@ class InsertLiftedSpec extends Spec {
       case class First(value: String)
       case class Name(first: First, last: String)
       case class Person(name: Name, age: Int)
-      given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
-      given MirrorContext.CompositeDecoder[Name] = MirrorContext.deriveComposite
-      given MirrorContext.CompositeDecoder[First] = MirrorContext.deriveComposite
+      given CompositeDecoder[Person] = deriveComposite
+      given CompositeDecoder[Name] = deriveComposite
+      given CompositeDecoder[First] = deriveComposite
 
       inline def q = quote { query[Person].insertValue(lift(Person(Name(First("Joe"), "Bloggs"), 123))) }
       ctx.run(q).triple mustEqual (

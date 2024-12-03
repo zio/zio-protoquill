@@ -30,7 +30,7 @@ object StaticSealedTraitExample {
   }
 }
 
-class GenericDecoderCoproductTest extends Spec {
+class GenericDecoderCoproductTest extends MirrorSpec {
   import GenericDecoderCoproductTestAdditional._
 
   // // Can't find a needed reference to Type[Shape.Circle] and Type[Shape.Square] if you

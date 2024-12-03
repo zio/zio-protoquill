@@ -2,9 +2,10 @@ package io.getquill.context.jdbc.sqlite
 
 import io.getquill.context.sql.DepartmentsSpec
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
+import io.getquill.context.jdbc.JdbcVerbs
 
-class DepartmentsJdbcSpecEncoders extends DepartmentsSpec with JdbcSpecEncoders {
+
+class DepartmentsJdbcSpecEncoders extends DepartmentsSpec with JdbcVerbs {
 
   val context = testContext
   import testContext._

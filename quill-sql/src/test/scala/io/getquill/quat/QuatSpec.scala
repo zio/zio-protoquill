@@ -22,7 +22,7 @@ object TestEnum {
 
 class QuatSpec extends AnyFreeSpec {
 
-  val ctx = new SqlMirrorContext(PostgresDialect, Literal)
+  val ctx = new MirrorContext(PostgresDialect, Literal)
   import ctx._
 
   "enum" - {

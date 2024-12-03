@@ -5,8 +5,8 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ReturnAction}
-import io.getquill.generic.EncodingDsl
+import io.getquill.ReturnAction
+import io.getquill.generic.StandardCodec
 import io.getquill.Quoted
 import io.getquill.QueryMeta
 import io.getquill.generic._

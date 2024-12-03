@@ -2,11 +2,11 @@ package io.getquill.context.jdbc.mysql
 
 import io.getquill.context.sql.PeopleSpec
 import io.getquill.*
-import io.getquill.context.jdbc.{JdbcSpecEncoders, MysqlJdbcSpecEncoders}
 
-class PeopleJdbcSpecEncoders extends PeopleSpec with MysqlJdbcSpecEncoders {
-  override type SpecSession = java.sql.Connection
-  override type SpecPrepareRow = java.sql.PreparedStatement
+
+class PeopleJdbcSpecEncoders extends PeopleSpec with MysqlJdbcContext.Codec {
+  override type Session = java.sql.Connection
+  override type PrepareRow = java.sql.PreparedStatement
 
   val context = testContext
   import testContext._

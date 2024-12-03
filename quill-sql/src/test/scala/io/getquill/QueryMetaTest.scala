@@ -10,10 +10,11 @@ import io.getquill.QuotationVase
 import io.getquill.QuotationLot
 import org.scalatest._
 import io.getquill.context.ExecutionType
+import io.getquill.MirrorContext.Codec.*
 
 case class PersonName(name: String)
 
-class QueryMetaTest extends Spec with Inside {
+class QueryMetaTest extends MirrorSpec with Inside {
   val ctx = new MirrorContext(MirrorIdiom, Literal)
   import ctx._
 
@@ -37,8 +38,8 @@ class QueryMetaTest extends Spec with Inside {
     "static meta - new style - multi object" - {
       case class Person(name: String, age: Int, importance: String)
       case class Vip(name: String, age: Int)
-      given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
-      given MirrorContext.CompositeDecoder[Vip] = MirrorContext.deriveComposite
+      given CompositeDecoder[Person] = deriveComposite
+      given CompositeDecoder[Vip] = deriveComposite
 
       inline given QueryMeta[Vip, Person] =
         queryMeta(

@@ -2,9 +2,10 @@ package io.getquill.context.jdbc.sqlite
 
 import io.getquill.context.sql.PeopleReturningSpec
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
+import io.getquill.context.jdbc.JdbcVerbs
 
-class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with JdbcSpecEncoders {
+
+class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with JdbcVerbs {
 
   val context = testContext
   import testContext._

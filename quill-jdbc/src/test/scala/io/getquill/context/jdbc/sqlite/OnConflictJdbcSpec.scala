@@ -2,9 +2,9 @@ package io.getquill.context.jdbc.sqlite
 
 import io.getquill.context.sql.OnConflictSpec
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class OnConflictJdbcSpec extends OnConflictSpec with JdbcSpecEncoders {
+
+class OnConflictJdbcSpec extends OnConflictSpec {
   val ctx: testContext.type = testContext
   import ctx._
 

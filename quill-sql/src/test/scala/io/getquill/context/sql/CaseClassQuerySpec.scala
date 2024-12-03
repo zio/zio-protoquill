@@ -4,15 +4,11 @@ import io.getquill.Spec
 import io.getquill._
 import io.getquill.generic.{DecodingType, GenericDecoder}
 
-trait CaseClassQuerySpec extends Spec {
-  type SpecSession
-  type SpecPrepareRow
-  type SpecResultRow
-
+trait CaseClassQuerySpec extends Spec { self =>
   val context: SqlContext[_, _] {
-    type Session = SpecSession
-    type PrepareRow = SpecPrepareRow
-    type ResultRow = SpecResultRow
+    type Session = self.Session
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
   }
 
   import context._
@@ -21,10 +17,10 @@ trait CaseClassQuerySpec extends Spec {
   case class Address(id: Int, street: String, zip: Int, otherExtraInfo: String)
   case class Nickname(nickname: String)
   case class NicknameSameField(firstName: String)
-  given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Composite]
-  given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Composite]
-  given nicknameDecoder: GenericDecoder[SpecResultRow, SpecSession, Nickname, DecodingType.Composite]
-  given nicknameSameFieldDecoder: GenericDecoder[SpecResultRow, SpecSession, NicknameSameField, DecodingType.Composite]
+  given contactDecoder: GenericDecoder[ResultRow, Session, Contact, DecodingType.Composite]
+  given addressDecoder: GenericDecoder[ResultRow, Session, Address, DecodingType.Composite]
+  given nicknameDecoder: GenericDecoder[ResultRow, Session, Nickname, DecodingType.Composite]
+  given nicknameSameFieldDecoder: GenericDecoder[ResultRow, Session, NicknameSameField, DecodingType.Composite]
 
   inline def peopleInsert =
     quote((p: Contact) => query[Contact].insertValue(p))
@@ -46,8 +42,8 @@ trait CaseClassQuerySpec extends Spec {
 
   case class ContactSimplified(firstName: String, lastName: String, age: Int)
   case class AddressableContact(firstName: String, lastName: String, age: Int, street: String, zip: Int)
-  given contactSimplifiedDecoder: GenericDecoder[SpecResultRow, SpecSession, ContactSimplified, DecodingType.Composite]
-  given addressableContactDecoder: GenericDecoder[SpecResultRow, SpecSession, AddressableContact, DecodingType.Composite]
+  given contactSimplifiedDecoder: GenericDecoder[ResultRow, Session, ContactSimplified, DecodingType.Composite]
+  given addressableContactDecoder: GenericDecoder[ResultRow, Session, AddressableContact, DecodingType.Composite]
 
   inline def `Ex 1 CaseClass Record Output` = quote {
     query[Contact].map(p => new ContactSimplified(p.firstName, p.lastName, p.age))

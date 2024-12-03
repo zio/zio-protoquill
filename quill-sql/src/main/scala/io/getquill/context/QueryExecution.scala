@@ -8,8 +8,8 @@ import scala.language.experimental.macros
 import java.io.Closeable
 import scala.compiletime.summonFrom
 import scala.util.Try
-import io.getquill.{ReturnAction}
-import io.getquill.generic.EncodingDsl
+import io.getquill.ReturnAction
+import io.getquill.generic.StandardCodec
 import io.getquill.Quoted
 import io.getquill.QueryMeta
 import io.getquill.generic._
@@ -120,10 +120,10 @@ object Execution {
         lazy val failMsg =
           s"""Decoder lookup failure for: ${Type.show[DecoderT]} (row-type: ${Format.TypeOf[ResultRow]}, session-type: ${Format.TypeOf[Session]}).
              |Have you imported a Decoder[${Format.TypeOf[DecoderT]}]? You an do this by either importing .* from your context? E.g:
-             |val ctx = new SqlMirrorContext[PostgresDialect, Literal]
+             |val ctx = new MirrorContext[PostgresDialect, Literal]
              |import ctx.*
              |Or you can import the decoder from the context's companion object for example:
-             |import SqlMirrorContext.*
+             |import MirrorContext.*
              |""".stripMargin
         Summon.OrFail.exprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Composite]](failMsg)
 

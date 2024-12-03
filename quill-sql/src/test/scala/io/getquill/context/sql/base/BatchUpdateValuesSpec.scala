@@ -6,10 +6,13 @@ import org.scalatest.BeforeAndAfterEach
 import io.getquill.*
 import io.getquill.generic.{DecodingType, GenericDecoder, GenericEncoder}
 
-trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
-  val context: SqlContext[_, _]
+trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach { self =>
+  val context: SqlContext[_, _] {
+    type Session = self.Session
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
+  }
   import context._
-  import context.auto._
 
   case class ContactBase(firstName: String, lastName: String, age: Int)
   val dataBase: List[ContactBase] = List(
@@ -51,6 +54,13 @@ trait BatchUpdateValuesSpec extends Spec with BeforeAndAfterEach {
   case class LastName(lastName: Option[String]) extends Embedded
   case class NameEmb(first: FirstName, last: LastName) extends Embedded
   case class DeepContact(name: Option[NameEmb], age: Int)
+  given CompositeDecoder[Contact] = deriveComposite
+  given CompositeDecoder[Name] = deriveComposite
+  given CompositeDecoder[ContactTable] = deriveComposite
+  given CompositeDecoder[FirstName] = deriveComposite
+  given CompositeDecoder[LastName] = deriveComposite
+  given CompositeDecoder[NameEmb] = deriveComposite
+  given CompositeDecoder[DeepContact] = deriveComposite
 
   object `Ex 1 - Simple Contact` extends Adaptable {
     type Row = Contact

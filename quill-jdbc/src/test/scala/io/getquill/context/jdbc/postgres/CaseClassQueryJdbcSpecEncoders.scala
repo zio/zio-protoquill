@@ -3,10 +3,13 @@ package io.getquill.context.jdbc.postgres
 import io.getquill.context.sql.CaseClassQuerySpec
 import org.scalatest.matchers.should.Matchers.*
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
+
 import org.scalatest.* // needed for scalatest shim
 
-class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with JdbcSpecEncoders {
+class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec {
+  type Session = java.sql.Connection
+  type ResultRow = java.sql.ResultSet
+  type PrepareRow = java.sql.PreparedStatement
 
   val context = testContext
   import testContext._

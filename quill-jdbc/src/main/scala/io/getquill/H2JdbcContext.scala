@@ -6,13 +6,17 @@ import com.typesafe.config.Config
 import io.getquill.context.jdbc.{BooleanObjectEncoding, H2JdbcContextBase, JdbcContext, JdbcContextEncoding, ObjectGenericTimeDecoders, ObjectGenericTimeEncoders, UUIDObjectEncoding}
 import io.getquill.util.LoadConfig
 
-trait H2JdbcContextModule extends JdbcContextEncoding
-  with ObjectGenericTimeEncoders
-  with ObjectGenericTimeDecoders
-  with BooleanObjectEncoding
-  with UUIDObjectEncoding
 
-object H2JdbcContext extends H2JdbcContextModule
+
+object H2JdbcContext {
+  trait Codec extends JdbcContextEncoding
+    with ObjectGenericTimeEncoders
+    with ObjectGenericTimeDecoders
+    with BooleanObjectEncoding
+    with UUIDObjectEncoding
+
+  object Codec extends Codec
+}
 
 class H2JdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: DataSource)
   extends JdbcContext[H2Dialect, N]
@@ -22,7 +26,7 @@ class H2JdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: DataSou
   def this(naming: N, config: Config) = this(naming, JdbcContextConfig(config))
   def this(naming: N, configPrefix: String) = this(naming, LoadConfig(configPrefix))
 
-  export H2JdbcContext.{
+  export H2JdbcContext.Codec.{
     Index => _,
     PrepareRow => _,
     ResultRow => _,

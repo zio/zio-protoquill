@@ -4,9 +4,9 @@ import io.getquill.context.sql.CaseClassQuerySpec
 import org.scalatest.matchers.should.Matchers.*
 import io.getquill.Update
 import io.getquill.*
-import io.getquill.context.jdbc.{JdbcSpecEncoders, OracleJdbcSpecEncoders}
 
-class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with OracleJdbcSpecEncoders {
+
+class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with OracleJdbcContext.Codec {
 
   val context = testContext
   import testContext._

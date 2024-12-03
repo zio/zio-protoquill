@@ -285,10 +285,10 @@ object GenericDecoder {
           lazy val msg =
             s"""No Decoder found for ${Format.TypeOf[T]} and it is not a class representing a group of columns.
                |Have you imported a Decoder[${Format.TypeOf[T]}]? You an do this by either importing .* from your context? E.g.
-               |val ctx = new SqlMirrorContext[PostgresDialect, Literal]
+               |val ctx = new MirrorContext[PostgresDialect, Literal]
                |import ctx.*
                |Or you can import the decoder from the context's companion object for example:
-               |import SqlMirrorContext.*
+               |import MirrorContext.*
                |=============== Cannot Summon Decoder[${Format.TypeOf[T]}] because: ===============
                |$leafFailMsg
                |""".stripMargin

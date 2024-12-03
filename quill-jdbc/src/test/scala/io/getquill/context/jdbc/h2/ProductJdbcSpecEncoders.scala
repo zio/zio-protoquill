@@ -2,10 +2,10 @@ package io.getquill.context.jdbc.h2
 
 import io.getquill.context.sql.ProductSpec
 import io.getquill.*
-import io.getquill.context.jdbc.{H2JdbcSpecEncoders, JdbcSpecEncoders}
+
 import io.getquill.context.jdbc.JdbcContext
 
-class ProductJdbcSpecEncoders extends ProductSpec with H2JdbcSpecEncoders {
+class ProductJdbcSpecEncoders extends ProductSpec with H2JdbcContext.Codec {
 
   val context = testContext
   import testContext._
@@ -69,7 +69,7 @@ class ProductJdbcSpecEncoders extends ProductSpec with H2JdbcSpecEncoders {
     "supports casts from string to number" - {
       "toInt" in {
         case class Product(id: Long, description: String, sku: Int)
-        given JdbcContext.CompositeDecoder[Product] = deriveComposite
+        given CompositeDecoder[Product] = deriveComposite
         val queried = testContext.run {
           query[Product].filter(_.sku == lift("1004").toInt)
         }.head

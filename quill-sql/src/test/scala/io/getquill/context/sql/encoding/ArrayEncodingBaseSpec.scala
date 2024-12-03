@@ -5,33 +5,20 @@ import io.getquill.context.sql.SqlContext
 import java.time.LocalDate
 import java.util.Date
 import java.util.UUID
-import io.getquill.{MappedEncoding, Spec}
+import io.getquill.{MappedEncoding, ProductDecoders, Spec, toDecoder, toEncoder, toSeqDecoder, toSeqEncoder}
 import org.scalatest.{Assertion, BeforeAndAfterEach}
 import io.getquill.context.Context
 import io.getquill.generic.{DecodingType, GenericDecoder, GenericEncoder, GenericNullChecker}
-import io.getquill.toEncoder
-import io.getquill.toDecoder
-import io.getquill.toSeqEncoder
-import io.getquill.toSeqDecoder
 
 // TODO create a standard SpecEncoders trait that can be mixed in to all tests so we don't need to declared base encoders
-trait ArrayEncodingBaseSpec extends Spec with BeforeAndAfterEach {
-  type SpecSession
-  type SpecPrepareRow
-  type SpecResultRow
-
+trait ArrayEncodingBaseSpec extends Spec with BeforeAndAfterEach { self =>
   val context: SqlContext[_, _] {
-    type Session = SpecSession
-    type PrepareRow = SpecPrepareRow
-    type ResultRow = SpecResultRow
+    type Session = self.Session
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
   }
 
   import context._
-
-  given intEncoder: GenericEncoder[Int, SpecPrepareRow, SpecSession]
-  given stringEncoder: GenericEncoder[String, SpecPrepareRow, SpecSession]
-  given intDecoder: GenericDecoder[SpecSession, SpecResultRow, Int, DecodingType.Leaf]
-  given stringDecoder: GenericDecoder[SpecSession, SpecResultRow, String, DecodingType.Leaf]
 
   // Support all sql base types and `Seq` implementers
   case class ArraysTestEntity(
@@ -87,15 +74,14 @@ trait ArrayEncodingBaseSpec extends Spec with BeforeAndAfterEach {
   // This is why Encoder on base-level needs to be defined as GenericEncoder
   val wrapString = MappedEncoding { (str: String) => StrWrap(str) }
   val unwrapString = MappedEncoding { (wrap: StrWrap) => wrap.str }
-  given strWrapEncode: GenericEncoder[StrWrap, SpecPrepareRow, SpecSession] = unwrapString.toEncoder
-  given strWrapDecode: GenericDecoder[SpecSession, SpecResultRow, StrWrap, DecodingType.Leaf] = wrapString.toDecoder
-  given strWrapSeqEncoder(using GenericEncoder[Seq[String], SpecPrepareRow, SpecSession]): GenericEncoder[Seq[StrWrap], SpecPrepareRow, SpecSession] = unwrapString.toSeqEncoder
-  given strWrapSeqDecoder(using GenericDecoder[SpecResultRow, SpecSession, Seq[String], DecodingType.Leaf]): GenericDecoder[SpecResultRow, SpecSession, Seq[StrWrap], DecodingType.Leaf] = wrapString.toSeqDecoder
+  given strWrapEncode: GenericEncoder[StrWrap, PrepareRow, Session] = unwrapString.toEncoder
+  given strWrapDecode: GenericDecoder[ResultRow, Session, StrWrap, DecodingType.Leaf] = wrapString.toDecoder
+  given strWrapSeqEncoder(using GenericEncoder[Seq[String], PrepareRow, Session]): GenericEncoder[Seq[StrWrap], PrepareRow, Session] = unwrapString.toSeqEncoder
+  given strWrapSeqDecoder(using GenericDecoder[ResultRow, Session, Seq[String], DecodingType.Leaf]): GenericDecoder[ResultRow, Session, Seq[StrWrap], DecodingType.Leaf] = wrapString.toSeqDecoder
 
   case class WrapEntity(texts: Seq[StrWrap])
-  given wrapEntityDecoder(
-    using GenericDecoder[SpecResultRow, SpecSession, Seq[String], DecodingType.Leaf],
-      GenericNullChecker[SpecResultRow, SpecSession]
-  ): GenericDecoder[SpecResultRow, SpecSession, WrapEntity, DecodingType.Composite] = context.manual.deriveComposite
+  given wrapEntityDecoder: GenericDecoder[ResultRow, Session, WrapEntity, DecodingType.Composite]
   val wrapE = WrapEntity(List("hey", "ho").map(StrWrap.apply))
+
+  // TODO maybe doing the context-base `context.manual.deriveComposite` is what's making the tests slow
 }

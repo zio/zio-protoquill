@@ -4,15 +4,11 @@ import io.getquill.Spec
 import io.getquill._
 import io.getquill.generic.{DecodingType, GenericDecoder}
 
-trait OptionQuerySpec extends Spec {
-  type SpecSession
-  type SpecPrepareRow
-  type SpecResultRow
-
+trait OptionQuerySpec extends Spec { self =>
   val context: SqlContext[_, _] {
-    type Session = SpecSession
-    type PrepareRow = SpecPrepareRow
-    type ResultRow = SpecResultRow
+    type Session = self.Session
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
   }
 
   import context._
@@ -21,10 +17,10 @@ trait OptionQuerySpec extends Spec {
   case class HasAddressContact(firstName: String, lastName: String, age: Int, addressFk: Int)
   case class Contact(firstName: String, lastName: String, age: Int, addressFk: Option[Int], extraInfo: String)
   case class Address(id: Int, street: String, zip: Int, otherExtraInfo: Option[String])
-  given noAddressContactDecoder: GenericDecoder[SpecResultRow, SpecSession, NoAddressContact, DecodingType.Composite]
-  given hasAddressContactDecoder: GenericDecoder[SpecResultRow, SpecSession, HasAddressContact, DecodingType.Composite]
-  given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Composite]
-  given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Composite]
+  given noAddressContactDecoder: GenericDecoder[ResultRow, Session, NoAddressContact, DecodingType.Composite]
+  given hasAddressContactDecoder: GenericDecoder[ResultRow, Session, HasAddressContact, DecodingType.Composite]
+  given contactDecoder: GenericDecoder[ResultRow, Session, Contact, DecodingType.Composite]
+  given addressDecoder: GenericDecoder[ResultRow, Session, Address, DecodingType.Composite]
 
   inline def peopleInsert =
     quote((p: Contact) => query[Contact].insertValue(p))

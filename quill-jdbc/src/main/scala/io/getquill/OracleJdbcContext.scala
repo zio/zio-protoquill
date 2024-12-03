@@ -8,18 +8,20 @@ import io.getquill.util.LoadConfig
 import java.sql.Types
 import javax.sql.DataSource
 
-trait OracleJdbcContextModule extends JdbcContextEncoding
-  with ObjectGenericTimeEncoders
-  with ObjectGenericTimeDecoders
-  with BooleanIntEncoding
-  with UUIDStringEncoding {
+object OracleJdbcContext {
+  trait Codec extends JdbcContextEncoding
+    with ObjectGenericTimeEncoders
+    with ObjectGenericTimeDecoders
+    with BooleanIntEncoding
+    with UUIDStringEncoding {
 
-  // Normally it is Types.TIME by in that case Oracle truncates the milliseconds
-  protected override def jdbcTypeOfLocalTime = Types.TIMESTAMP
-  protected override def jdbcTypeOfOffsetTime = Types.TIME
+    // Normally it is Types.TIME by in that case Oracle truncates the milliseconds
+    protected override def jdbcTypeOfLocalTime = Types.TIMESTAMP
+    protected override def jdbcTypeOfOffsetTime = Types.TIME
+  }
+
+  object Codec extends Codec
 }
-
-object OracleJdbcContext extends OracleJdbcContextModule
 
 class OracleJdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: DataSource)
   extends JdbcContext[OracleDialect, N]
@@ -29,7 +31,7 @@ class OracleJdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: Dat
   def this(naming: N, config: Config) = this(naming, JdbcContextConfig(config))
   def this(naming: N, configPrefix: String) = this(naming, LoadConfig(configPrefix))
 
-  export OracleJdbcContext.{
+  export OracleJdbcContext.Codec.{
     Index => _,
     PrepareRow => _,
     ResultRow => _,

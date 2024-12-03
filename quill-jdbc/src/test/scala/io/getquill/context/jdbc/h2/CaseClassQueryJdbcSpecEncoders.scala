@@ -3,18 +3,18 @@ package io.getquill.context.jdbc.h2
 import io.getquill.context.sql.CaseClassQuerySpec
 import org.scalatest.matchers.should.Matchers.*
 import io.getquill.*
-import io.getquill.context.jdbc.{H2JdbcSpecEncoders, JdbcSpecEncoders}
+
 import io.getquill.generic.{DecodingType, GenericDecoder}
 
-class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with H2JdbcSpecEncoders {
+class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with H2JdbcContext.Codec {
 
   val context = testContext
   import testContext._
 
-  override given contactDecoder: GenericDecoder[SpecResultRow, SpecSession, Contact, DecodingType.Composite] = H2JdbcContext.deriveComposite
-  override given addressDecoder: GenericDecoder[SpecResultRow, SpecSession, Address, DecodingType.Composite] = H2JdbcContext.deriveComposite
-  override given nicknameDecoder: GenericDecoder[SpecResultRow, SpecSession, Nickname, DecodingType.Composite] = H2JdbcContext.deriveComposite
-  override given nicknameSameFieldDecoder: GenericDecoder[SpecResultRow, SpecSession, NicknameSameField, DecodingType.Composite] = H2JdbcContext.deriveComposite
+  override given contactDecoder: GenericDecoder[ResultRow, Session, Contact, DecodingType.Composite] = deriveComposite
+  override given addressDecoder: GenericDecoder[ResultRow, Session, Address, DecodingType.Composite] = deriveComposite
+  override given nicknameDecoder: GenericDecoder[ResultRow, Session, Nickname, DecodingType.Composite] = deriveComposite
+  override given nicknameSameFieldDecoder: GenericDecoder[ResultRow, Session, NicknameSameField, DecodingType.Composite] = deriveComposite
 
   override def beforeAll() = {
     testContext.transaction {

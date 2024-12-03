@@ -2,9 +2,9 @@ package io.getquill.context.jdbc.mysql
 
 import io.getquill.context.sql.DepartmentsSpec
 import io.getquill.*
-import io.getquill.context.jdbc.{JdbcSpecEncoders, MysqlJdbcSpecEncoders}
 
-class DepartmentsJdbcSpecEncoders extends DepartmentsSpec with MysqlJdbcSpecEncoders {
+
+class DepartmentsJdbcSpecEncoders extends DepartmentsSpec with MysqlJdbcContext.Codec {
 
   val context = testContext
   import testContext._

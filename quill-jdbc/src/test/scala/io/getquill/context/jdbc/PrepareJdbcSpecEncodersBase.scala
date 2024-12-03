@@ -9,12 +9,14 @@ import scala.util.{Failure, Success}
 import io.getquill.generic.{DecodingType, GenericDecoder}
 import io.getquill.generic.DecodingType.Composite
 
-trait PrepareJdbcSpecEncodersBase extends JdbcProductSpecEncoders with JdbcSpecEncoders {
-  val context: JdbcContext[_, _] {
-    type Session = Connection
-    type PrepareRow = PreparedStatement
-    type ResultRow = ResultSet
-  }
+trait PrepareJdbcSpecEncodersBase extends ProductSpec {
+  // These should be the same as the ones in the context and they should
+  // be injected via the self-types.
+  type Session = Connection
+  type PrepareRow = Connection
+  type ResultRow = ResultSet
+
+  val context: JdbcContext[_, _]
   import context._
 
   implicit val productEq: Equality[Product] = new Equality[Product] {

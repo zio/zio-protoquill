@@ -10,27 +10,28 @@ import java.time.ZonedDateTime
 import java.time.ZoneId
 import java.util.TimeZone
 import java.time.LocalDate
+import io.getquill.MirrorContext.Codec.*
 
-class FlicersSpec extends Spec {
+class FlicersSpec extends MirrorSpec {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
   case class PersonFlat(firstName: String, lastName: String, age: Int)
   case class PersonFlatOpt(firstName: Option[String], lastName: String, age: Int)
-  given MirrorContext.CompositeDecoder[PersonFlat] = MirrorContext.deriveComposite
-  given MirrorContext.CompositeDecoder[PersonFlatOpt] = MirrorContext.deriveComposite
+  given CompositeDecoder[PersonFlat] = deriveComposite
+  given CompositeDecoder[PersonFlatOpt] = deriveComposite
 
   case class Name(first: String, last: String)
   case class PersonNest(name: Name, age: Int)
   case class PersonNestOpt(name: Option[Name], age: Int)
-  given MirrorContext.CompositeDecoder[Name] = MirrorContext.deriveComposite
-  given MirrorContext.CompositeDecoder[PersonNest] = MirrorContext.deriveComposite
-  given MirrorContext.CompositeDecoder[PersonNestOpt] = MirrorContext.deriveComposite
+  given CompositeDecoder[Name] = deriveComposite
+  given CompositeDecoder[PersonNest] = deriveComposite
+  given CompositeDecoder[PersonNestOpt] = deriveComposite
 
   case class NameOpt(first: Option[String], last: String)
   case class PersonNestOptField(name: Option[NameOpt], age: Int)
-  given MirrorContext.CompositeDecoder[PersonNestOptField] = MirrorContext.deriveComposite
-  given MirrorContext.CompositeDecoder[NameOpt] = MirrorContext.deriveComposite
+  given CompositeDecoder[PersonNestOptField] = deriveComposite
+  given CompositeDecoder[NameOpt] = deriveComposite
 
   val s = MirrorSession.default
 
@@ -54,7 +55,7 @@ class FlicersSpec extends Spec {
       }
 
       case class ManyTypes(s: String, so: Option[String], i: Int, io: Option[Int], ld: LocalDate, ldo: Option[LocalDate])
-      given MirrorContext.CompositeDecoder[ManyTypes] = MirrorContext.deriveComposite
+      given CompositeDecoder[ManyTypes] = deriveComposite
       "Splice on an object multiple encoding types" in {
         val keys = Map[String, Any]("s" -> "Joe", "so" -> "Joe", "i" -> 123, "io" -> 123, "ld" -> now, "ldo" -> now)
         val r = ctx.run(q(keys))

@@ -6,13 +6,15 @@ import com.typesafe.config.Config
 import io.getquill.context.jdbc.{BooleanObjectEncoding, JdbcContext, JdbcContextEncoding, ObjectGenericTimeDecoders, ObjectGenericTimeEncoders, SqlServerJdbcContextBase, UUIDStringEncoding}
 import io.getquill.util.LoadConfig
 
-trait SqlServerJdbcContextModule extends JdbcContextEncoding
-  with ObjectGenericTimeEncoders
-  with ObjectGenericTimeDecoders
-  with BooleanObjectEncoding
-  with UUIDStringEncoding
+object SqlServerJdbcContext {
+  trait Codec extends JdbcContextEncoding
+    with ObjectGenericTimeEncoders
+    with ObjectGenericTimeDecoders
+    with BooleanObjectEncoding
+    with UUIDStringEncoding
 
-object SqlServerJdbcContext extends SqlServerJdbcContextModule
+  object Codec extends Codec
+}
 
 class SqlServerJdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: DataSource)
   extends JdbcContext[SQLServerDialect, N]

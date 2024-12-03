@@ -3,11 +3,11 @@ package io.getquill.context.jdbc.oracle
 import io.getquill.context.sql.PeopleSpec
 import io.getquill.Update
 import io.getquill.*
-import io.getquill.context.jdbc.{JdbcSpecEncoders, OracleJdbcSpecEncoders}
 
-class PeopleJdbcSpecEncoders extends PeopleSpec with OracleJdbcSpecEncoders {
-  override type SpecSession = java.sql.Connection
-  override type SpecPrepareRow = java.sql.PreparedStatement
+
+class PeopleJdbcSpecEncoders extends PeopleSpec with OracleJdbcContext.Codec {
+  override type Session = java.sql.Connection
+  override type PrepareRow = java.sql.PreparedStatement
 
   val context = testContext
   import testContext._

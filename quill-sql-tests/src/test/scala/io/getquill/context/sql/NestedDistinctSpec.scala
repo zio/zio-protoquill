@@ -1,6 +1,6 @@
 package io.getquill.context.sql
 
-import io.getquill.{ Literal, MirrorSqlDialect, Spec, SqlMirrorContext }
+import io.getquill.{ Literal, MirrorSqlDialect, Spec, MirrorContext }
 import io.getquill.util.StringOps._
 import io.getquill._
 import io.getquill.context.SplicingBehaviorHint
@@ -17,7 +17,7 @@ class NestedDistinctSpec extends Spec {
 
   "nested distinct clauses should" - {
 
-    val ctx = new SqlMirrorContext(MirrorSqlDialect, Literal)
+    val ctx = new MirrorContext(MirrorSqlDialect, Literal)
     import ctx._
 
     "first operation" - {

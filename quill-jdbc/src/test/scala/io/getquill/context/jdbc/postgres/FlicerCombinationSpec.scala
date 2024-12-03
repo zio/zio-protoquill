@@ -12,10 +12,10 @@ class FlicerCombinationSpec extends Spec with Inside {
   case class AddressT(ownerId: Int, street: String)
   case class Combo(name: String, street: Option[String])
   case class PersonAddress(first: String, last: String, street: Option[String])
-  given PostgresJdbcContext.CompositeDecoder[PersonT] = JdbcContext.deriveComposite
-  given PostgresJdbcContext.CompositeDecoder[AddressT] = JdbcContext.deriveComposite
-  given PostgresJdbcContext.CompositeDecoder[Combo] = JdbcContext.deriveComposite
-  given PostgresJdbcContext.CompositeDecoder[PersonAddress] = JdbcContext.deriveComposite
+  given CompositeDecoder[PersonT] = deriveComposite
+  given CompositeDecoder[AddressT] = deriveComposite
+  given CompositeDecoder[Combo] = deriveComposite
+  given CompositeDecoder[PersonAddress] = deriveComposite
 
   override def beforeAll(): Unit = {
     ctx.run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])

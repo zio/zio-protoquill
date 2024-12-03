@@ -5,9 +5,8 @@ import io.getquill.context.sql.{QueryResultTypeSpec, testContext as _, *}
 
 import scala.jdk.CollectionConverters.*
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcProductSpecEncoders
 
-class QueryResultTypeJdbcSpec extends QueryResultTypeSpec with JdbcProductSpecEncoders {
+class QueryResultTypeJdbcSpec extends QueryResultTypeSpec with ProductSpec {
 
   // Needed for the 'ids' variable to have the right type so we can call .zip on it
   override val context: testContext.type = testContext

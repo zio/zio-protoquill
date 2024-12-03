@@ -1,13 +1,10 @@
 package io.getquill
 
 import io.getquill.context.Context
-import io.getquill.generic.{DecodingType, GenericDecoder}
+import io.getquill.generic.{DatabaseVerbs, DecodingType, GenericDecoder}
 import io.getquill.quat.Quat
 
-trait TestEntities {
-  type SpecSession
-  type SpecPrepareRow
-  type SpecResultRow
+trait TestEntities extends DatabaseVerbs { self: Spec =>
 
   case class TestEntity(s: String, i: Int, l: Long, o: Option[Int], b: Boolean)
   case class Emb(s: String, i: Int) extends Embedded
@@ -19,16 +16,16 @@ trait TestEntities {
   case class EmbSingle(i: Long) extends Embedded
   case class TestEntity4Emb(emb: EmbSingle)
   case class TestEntityRegular(s: String, i: Long)
-  given testEntityEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity, DecodingType.Composite]
-  given embEncoder: GenericDecoder[SpecResultRow, SpecSession, Emb, DecodingType.Composite]
-  given testEntityEmbEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntityEmb, DecodingType.Composite]
-  given testEntity2Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity2, DecodingType.Composite]
-  given testEntity3Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity3, DecodingType.Composite]
-  given testEntity4Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity4, DecodingType.Composite]
-  given testEntity5Encoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity5, DecodingType.Composite]
-  given embSingleEncoder: GenericDecoder[SpecResultRow, SpecSession, EmbSingle, DecodingType.Composite]
-  given testEntity4EmbEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntity4Emb, DecodingType.Composite]
-  given testEntityRegularEncoder: GenericDecoder[SpecResultRow, SpecSession, TestEntityRegular, DecodingType.Composite]
+  given testEntityEncoder: GenericDecoder[ResultRow, Session, TestEntity, DecodingType.Composite] = deriveComposite
+  given embEncoder: GenericDecoder[ResultRow, Session, Emb, DecodingType.Composite] = deriveComposite
+  given testEntityEmbEncoder: GenericDecoder[ResultRow, Session, TestEntityEmb, DecodingType.Composite] = deriveComposite
+  given testEntity2Encoder: GenericDecoder[ResultRow, Session, TestEntity2, DecodingType.Composite] = deriveComposite
+  given testEntity3Encoder: GenericDecoder[ResultRow, Session, TestEntity3, DecodingType.Composite] = deriveComposite
+  given testEntity4Encoder: GenericDecoder[ResultRow, Session, TestEntity4, DecodingType.Composite] = deriveComposite
+  given testEntity5Encoder: GenericDecoder[ResultRow, Session, TestEntity5, DecodingType.Composite] = deriveComposite
+  given embSingleEncoder: GenericDecoder[ResultRow, Session, EmbSingle, DecodingType.Composite] = deriveComposite
+  given testEntity4EmbEncoder: GenericDecoder[ResultRow, Session, TestEntity4Emb, DecodingType.Composite] = deriveComposite
+  given testEntityRegularEncoder: GenericDecoder[ResultRow, Session, TestEntityRegular, DecodingType.Composite] = deriveComposite
 
   private val QV = Quat.Value
   private val QBV = Quat.BooleanValue

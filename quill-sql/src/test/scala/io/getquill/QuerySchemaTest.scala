@@ -9,21 +9,11 @@ import io.getquill.QuotationLot
 import io.getquill.QuotationVase
 import io.getquill.context.ExecutionType
 import org.scalatest._
+import io.getquill.MirrorContext.Codec.*
 
-class QuerySchemaTest extends Spec with Inside {
+class QuerySchemaTest extends MirrorSpec with Inside {
   val ctx = new MirrorContext(MirrorIdiom, Literal)
   import ctx._
-
-  case class TestEntity(s: String, i: Int, l: Long, o: Option[Int])
-  case class TestEntity2(s: String, i: Int, l: Long, o: Option[Int])
-  case class TestEntity3(s: String, i: Int, l: Long, o: Option[Int])
-  case class TestEntity4(i: Long)
-  case class TestEntity5(s: String, i: Long)
-  given MirrorContext.CompositeDecoder[TestEntity] = MirrorContext.deriveComposite
-  given MirrorContext.CompositeDecoder[TestEntity2] = MirrorContext.deriveComposite
-  given MirrorContext.CompositeDecoder[TestEntity3] = MirrorContext.deriveComposite
-  given MirrorContext.CompositeDecoder[TestEntity4] = MirrorContext.deriveComposite
-  given MirrorContext.CompositeDecoder[TestEntity5] = MirrorContext.deriveComposite
 
   // inline def verifyQuoteAndRun[T](implicit inline meta: SchemaMeta[T]) = {
   //   inline val q = quote(query[T])
@@ -72,7 +62,7 @@ class QuerySchemaTest extends Spec with Inside {
     }
     "custom with embedded" in {
       case class Entity(emb: EmbValue)
-      given MirrorContext.CompositeDecoder[Entity] = MirrorContext.deriveComposite
+      given CompositeDecoder[Entity] = deriveComposite
       implicit inline def meta: SchemaMeta[Entity] = schemaMeta[Entity]("test_entity", _.emb.i -> "ii")
       inline def q = quote(query[Entity])
       q.ast.toString mustEqual """`querySchema`("test_entity", _.emb.i -> "ii")"""
@@ -80,7 +70,7 @@ class QuerySchemaTest extends Spec with Inside {
     }
     "custom with optional embedded" in {
       case class Entity(emb: Option[EmbValue])
-      given MirrorContext.CompositeDecoder[Entity] = MirrorContext.deriveComposite
+      given CompositeDecoder[Entity] = deriveComposite
       implicit inline def meta: SchemaMeta[Entity] = schemaMeta[Entity]("test_entity", _.emb.map(_.i) -> "ii")
       inline def q = quote(query[Entity])
       q.ast.toString mustEqual """`querySchema`("test_entity", _.emb.i -> "ii")"""

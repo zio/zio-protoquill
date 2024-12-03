@@ -4,11 +4,12 @@ import scala.reflect.ClassTag
 import scala.quoted.*
 import scala.deriving.*
 import scala.compiletime.{erasedValue, summonFrom}
-import io.getquill.MappedEncoding
+import io.getquill.{MappedEncoding, ProductDecoders, toDecoder, toEncoder}
 import io.getquill.context.mirror.MirrorSession
 import io.getquill.generic.DecodingType
-import io.getquill.toEncoder
-import io.getquill.toDecoder
+
+import java.time.LocalDate
+import java.util.{Date, UUID}
 
 /**
  * Note that much of the implementation of anyValEncoder/anyValDecoder is a workaround for:
@@ -32,7 +33,7 @@ import io.getquill.toDecoder
  * encoding/decoding work into. Hopefully when Dotty#12179 is resolved all of this convoluted logic
  * can be removed and we can go back to the simpler implementation.
  */
-trait LowPriorityImplicits { self: EncodingDsl =>
+trait LowPriorityImplicits { self: StandardCodec =>
 
   // The `implicit ev...` clauses here are better for implicits resolution errors than type boundries
   // because you get a "no implicit values were found MappedEncoding[MyClass]" error
@@ -72,7 +73,7 @@ trait DatabaseVerbs {
   type NullChecker
 }
 
-trait EncodingDsl extends DatabaseVerbs with LowPriorityImplicits { self => // extends LowPriorityImplicits
+trait StandardCodec extends ProductDecoders with DatabaseVerbs with LowPriorityImplicits { self => // extends LowPriorityImplicits
   // type Index = Int
 
   type EncoderMethod[T] = (Int, T, PrepareRow, Session) => PrepareRow
@@ -97,41 +98,36 @@ trait EncodingDsl extends DatabaseVerbs with LowPriorityImplicits { self => // e
   type ColumnResolver = GenericColumnResolver[ResultRow]
   type RowTyper[T] = GenericRowTyper[ResultRow, T]
 
-  // Define some standard encoders that all contexts should have
-  implicit def stringEncoder: Encoder[String]
-  implicit def bigDecimalEncoder: Encoder[BigDecimal]
-  implicit def booleanEncoder: Encoder[Boolean]
-  implicit def byteEncoder: Encoder[Byte]
-  implicit def shortEncoder: Encoder[Short]
-  implicit def intEncoder: Encoder[Int]
-  implicit def longEncoder: Encoder[Long]
-  implicit def doubleEncoder: Encoder[Double]
-  // implicit def nullEncoder: Encoder[Null]
+  implicit val nullChecker: NullChecker
+
+  implicit def optionDecoder[T](implicit d: BaseDecoderAny[T]): Decoder[Option[T]]
+  implicit def optionEncoder[T](implicit d: Encoder[T]): Encoder[Option[T]]
+
+  implicit val stringDecoder: Decoder[String]
+  implicit val bigDecimalDecoder: Decoder[BigDecimal]
+  implicit val booleanDecoder: Decoder[Boolean]
+  implicit val byteDecoder: Decoder[Byte]
+  implicit val shortDecoder: Decoder[Short]
+  implicit val intDecoder: Decoder[Int]
+  implicit val longDecoder: Decoder[Long]
+  implicit val floatDecoder: Decoder[Float]
+  implicit val doubleDecoder: Decoder[Double]
+  implicit val byteArrayDecoder: Decoder[Array[Byte]]
+  implicit val dateDecoder: Decoder[Date]
+  implicit val localDateDecoder: Decoder[LocalDate]
+  implicit val uuidDecoder: Decoder[UUID]
+
+  implicit val stringEncoder: Encoder[String]
+  implicit val bigDecimalEncoder: Encoder[BigDecimal]
+  implicit val booleanEncoder: Encoder[Boolean]
+  implicit val byteEncoder: Encoder[Byte]
+  implicit val shortEncoder: Encoder[Short]
+  implicit val intEncoder: Encoder[Int]
+  implicit val longEncoder: Encoder[Long]
+  implicit val floatEncoder: Encoder[Float]
+  implicit val doubleEncoder: Encoder[Double]
+  implicit val byteArrayEncoder: Encoder[Array[Byte]]
+  implicit val dateEncoder: Encoder[Date]
+  implicit val localDateEncoder: Encoder[LocalDate]
+  implicit val uuidEncoder: Encoder[UUID]
 }
-
-
-/*
-
-case class Name(value: String)
-case class Person(name: Name)
-
-given Encoder[Name] = ???
-
-val ctx = new MirrorContext(PostgresDialect, Literal)
-// implicit stringEncoder: Encoder[String]
-// implicit mappedEnc(implicit mappedEnc: MappedEncoding[Name, String]): Encoder[Name] = ???
-// implicit mappedDec(implicit mappedDec: MappedEncoding[String, Name]): Decoder[Name] = ???
-
-improt ctx._
-implicit mappedEnc: MappedEncoding[Name, String] = MappedEncoding(_.value)
-implicit mappedDec: MappedEncoding[String, Name] = MappedEncoding(Name(_))
-
-implicit mappedEnc: Encoder[Name] = MappedEncoding(_.value).toEncoder
-implicit mappedDec: Decoder[Name] = MappedEncoding(Name(_)).toDecoder
-
-
-import val nameEncoder = stringEncoder.contramap { str: String => Name(str) }
-import val nameDecoder = stringDecoder.map { name: Name => name.value }
-
-
- */

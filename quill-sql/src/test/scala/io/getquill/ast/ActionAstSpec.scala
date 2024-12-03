@@ -1,26 +1,15 @@
 package io.getquill.ast
 
 import scala.language.implicitConversions
-
-import io.getquill.Quoted
-import io.getquill.ast._
-import io.getquill.QuotationLot
-import io.getquill.QuotationVase
+import io.getquill.{EagerPlanter, Literal, MirrorContext, MirrorSpec, MirrorSqlDialect, QuotationLot, QuotationVase, Quoted, Spec, defaultParser, query, quote}
+import io.getquill.ast.*
 import io.getquill.context.ExecutionType
-import org.scalatest._
+import org.scalatest.*
 import io.getquill.quat.quatOf
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
-import io.getquill.Spec
-import io.getquill.MirrorContext
-import io.getquill.MirrorSqlDialect
-import io.getquill.Literal
-import io.getquill.quote
-import io.getquill.query
-import io.getquill.EagerPlanter
-import io.getquill.defaultParser
 
-class ActionAstSpec extends Spec with Inside {
+class ActionAstSpec extends MirrorSpec with Inside {
   import ShortAst._
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)

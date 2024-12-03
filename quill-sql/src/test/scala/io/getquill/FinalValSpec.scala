@@ -1,10 +1,11 @@
 package io.getquill
 
 import io.getquill.MirrorContext.*
+import io.getquill.MirrorContext.Codec.*
 
-class FinalValSpec extends Spec {
+class FinalValSpec extends MirrorSpec {
   case class Person(name: String, age: Int)
-  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite[Person]
+  given CompositeDecoder[Person] = deriveComposite[Person]
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._

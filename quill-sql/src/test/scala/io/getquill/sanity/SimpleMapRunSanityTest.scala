@@ -14,7 +14,7 @@ import io.getquill.query
 import io.getquill.context.SplicingBehaviorHint
 import io.getquill.context.SplicingBehavior
 
-class SimpleMapRunSanityTest extends Spec {
+class SimpleMapRunSanityTest extends MirrorSpec {
   case class SanePerson(name: String, age: Int)
 
   given SplicingBehaviorHint with {

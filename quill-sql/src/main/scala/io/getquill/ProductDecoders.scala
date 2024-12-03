@@ -2,7 +2,10 @@ package io.getquill
 
 import io.getquill.generic.DecodingType
 
-trait ProductDecoders[ResultRow, Session] {
+trait ProductDecoders {
+  type ResultRow
+  type Session
+
   // TODO make private and use Decoder (i.e. a GenericDecoder instance from the EncodingDsl)
   type CompositeDecoder[T] = io.getquill.generic.GenericDecoder[ResultRow, Session, T, DecodingType.Composite]
   inline def deriveComposite[T]: CompositeDecoder[T] = ${ io.getquill.generic.GenericDecoder.summon[T, ResultRow, Session] }

@@ -12,7 +12,7 @@ import io.getquill.*
 
 import scala.language.implicitConversions
 
-class InfixTest extends Spec with Inside {
+class InfixTest extends MirrorSpec with Inside {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
@@ -200,7 +200,7 @@ class InfixTest extends Spec with Inside {
     }
 
     "in a context" - {
-      val ctx = new SqlMirrorContext(PostgresDialect, Literal)
+      val ctx = new MirrorContext(PostgresDialect, Literal)
       import ctx.*
       case class Person(name: String, age: Int)
       "dynamic with property" in {

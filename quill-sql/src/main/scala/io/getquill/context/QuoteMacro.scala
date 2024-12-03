@@ -136,7 +136,10 @@ object QuoteMacro {
     val (serializeQuats, serializeAst) = SummonSerializationBehaviors()
     given TranspileConfig = SummonTranspileConfig()
 
+
     val rawAst = parser(body)
+    // val (rawAst, parserLifts) = parser(body)
+
     val (noDynamicsAst, dynamicQuotes) = DynamicsExtractor(rawAst)
     val ast = SimplifyFilterTrue(BetaReduction(noDynamicsAst))
 
@@ -144,7 +147,15 @@ object QuoteMacro {
     val u = Unlifter(reifiedAst)
 
     // Extract runtime quotes and lifts
-    val (lifts, pluckedUnquotes) = ExtractLifts(bodyRaw)
+    val (lifts, pluckedUnquotes) = ExtractLifts(bodyRaw) // <- Want to get rid of this!
+    // val (lift, pluckedUnquotes) = (parserLifts.lifts, parserLifts.pluckedUnquotes)
+
+    //'{ Quoted[T](${ reifiedAst }, ${ Expr.ofList(lifts) }, ${ Expr.ofList(pluckedUnquotes ++ dynamicQuotes) }) }
     '{ Quoted[T](${ reifiedAst }, ${ Expr.ofList(lifts) }, ${ Expr.ofList(pluckedUnquotes ++ dynamicQuotes) }) }
   }
 }
+
+//object ParserResultCache {
+//  private val cache: LRUCache[Expr[_], Ast] = new LRUCache(10000)
+//  def getOrDefault(key: Expr[_], default: => Ast) = cache.getOrDefault(key, default)
+//}

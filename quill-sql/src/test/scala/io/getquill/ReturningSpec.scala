@@ -4,16 +4,16 @@ import io.getquill.context.sql.ProductSpec
 import io.getquill.*
 import io.getquill.context.mirror.MirrorSession
 import io.getquill.context.mirror.Row
+import io.getquill.MirrorContext.Codec.*
 
 /** Some Quick tests to make sure action.returning works correctly */
 class ReturningSpec extends MirrorSpec with ProductSpec {
 
-  val context: SqlMirrorContext[PostgresDialect, Literal] = new SqlMirrorContext(PostgresDialect, Literal)
+  val context: MirrorContext[PostgresDialect, Literal] = new MirrorContext(PostgresDialect, Literal)
   import context._
-  given productDecoder: MirrorContext.CompositeDecoder[Product] = MirrorContext.deriveComposite
 
   case class Foo(id: Long, description: String, sku: Long)
-  given MirrorContext.CompositeDecoder[Foo] = MirrorContext.deriveComposite
+  given CompositeDecoder[Foo] = deriveComposite
 
   "postgres style" - {
     "returning - single insert with inlined free variable" in {
@@ -27,7 +27,7 @@ class ReturningSpec extends MirrorSpec with ProductSpec {
 
   "sql server style" - {
     "returning - single insert with inlined free variable" - {
-      val context: SqlMirrorContext[SQLServerDialect, Literal] = new SqlMirrorContext(SQLServerDialect, Literal)
+      val context: MirrorContext[SQLServerDialect, Literal] = new MirrorContext(SQLServerDialect, Literal)
       import context._
       val prd = Product(0L, "test1", 1L)
       val inserted = context.run {

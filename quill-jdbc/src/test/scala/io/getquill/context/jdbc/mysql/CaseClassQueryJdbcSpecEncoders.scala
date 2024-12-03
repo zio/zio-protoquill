@@ -3,9 +3,9 @@ package io.getquill.context.jdbc.mysql
 import io.getquill.context.sql.CaseClassQuerySpec
 import org.scalatest.matchers.should.Matchers.*
 import io.getquill.*
-import io.getquill.context.jdbc.{JdbcSpecEncoders, MysqlJdbcSpecEncoders}
 
-class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with MysqlJdbcSpecEncoders {
+
+class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with MysqlJdbcContext.Codec {
 
   val context = testContext
   import testContext._

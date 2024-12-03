@@ -10,8 +10,8 @@ class PeopleDynamicComboSpec extends Spec {
 
   case class Contact(firstName: String, lastName: String, age: Int, addressFk: Int)
   case class Address(id: Int, street: String, zip: Int = 0)
-  given PostgresJdbcContext.CompositeDecoder[Contact] = PostgresJdbcContext.deriveComposite
-  given PostgresJdbcContext.CompositeDecoder[Address] = PostgresJdbcContext.deriveComposite
+  given PostgresJdbcContext.Codec.CompositeDecoder[Contact] = PostgresJdbcContext.Codec.deriveComposite
+  given PostgresJdbcContext.Codec.CompositeDecoder[Address] = PostgresJdbcContext.Codec.deriveComposite
 
 
 
@@ -44,8 +44,8 @@ class PeopleDynamicComboSpec extends Spec {
     case class FirstName(value: String) extends Filter { val fieldName = "firstName" }
     case class LastName(value: String) extends Filter { val fieldName = "lastName" }
   }
-  given PostgresJdbcContext.CompositeDecoder[Filter.FirstName] = PostgresJdbcContext.deriveComposite
-  given PostgresJdbcContext.CompositeDecoder[Filter.LastName] = PostgresJdbcContext.deriveComposite
+  given PostgresJdbcContext.Codec.CompositeDecoder[Filter.FirstName] = PostgresJdbcContext.Codec.deriveComposite
+  given PostgresJdbcContext.Codec.CompositeDecoder[Filter.LastName] = PostgresJdbcContext.Codec.deriveComposite
 
   "filter by multiple case should work" in {
     val criteria = List(Filter.FirstName("Joe"), Filter.LastName("A"))

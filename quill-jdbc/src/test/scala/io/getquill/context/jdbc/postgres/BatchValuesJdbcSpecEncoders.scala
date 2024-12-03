@@ -2,9 +2,12 @@ package io.getquill.context.jdbc.postgres
 
 import io.getquill.context.sql.BatchValuesSpec
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with JdbcSpecEncoders {
+
+class BatchValuesJdbcSpecEncoders extends BatchValuesSpec {
+  type Session = java.sql.Connection
+  type ResultRow = java.sql.ResultSet
+  type PrepareRow = java.sql.PreparedStatement
 
   val context = testContext
   import testContext._

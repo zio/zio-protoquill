@@ -2,9 +2,9 @@ package io.getquill.context.jdbc.oracle
 
 import io.getquill.context.sql.PeopleReturningSpec
 import io.getquill.*
-import io.getquill.context.jdbc.{JdbcSpecEncoders, OracleJdbcSpecEncoders}
 
-class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with OracleJdbcSpecEncoders {
+
+class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with OracleJdbcContext.Codec {
 
   val context = testContext
   import testContext._

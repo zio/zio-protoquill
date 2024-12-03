@@ -6,9 +6,9 @@ import java.util.UUID
 import io.getquill.context.sql.encoding.ArrayEncodingBaseSpec
 import io.getquill.*
 import io.getquill.PostgresJdbcContext.*
-import io.getquill.context.jdbc.PostgresJdbcSpecEncoders
 
-class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec with PostgresJdbcSpecEncoders {
+
+class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec with PostgresJdbcContext.Codec {
   val ctx = testContext
   import ctx._
 
@@ -24,7 +24,7 @@ class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec with PostgresJdbcSpecE
   // If we re-enable the StrWrap mapped-encoding/decoding then this will blow up with a conflict for Decoder[Seq[I]]
   // is it trying to derive something for Seq[I] because it thinks Seq is a product or sum type???
   // Or maybe StrWrap is being derived as something???
-  given PostgresJdbcContext.CompositeDecoder[ArraysTestEntity] = PostgresJdbcContext.deriveComposite
+  given PostgresJdbcContext.Codec.CompositeDecoder[ArraysTestEntity] = PostgresJdbcContext.Codec.deriveComposite
 
   "Support all sql base types and `Seq` implementers" in {
     ctx.run(q.insertValue(lift(corrected)))
@@ -41,7 +41,7 @@ class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec with PostgresJdbcSpecE
 
   "Timestamps" in {
     case class Timestamps(timestamps: List[Timestamp])
-    given PostgresJdbcContext.CompositeDecoder[Timestamps] = PostgresJdbcContext.deriveComposite
+    given PostgresJdbcContext.Codec.CompositeDecoder[Timestamps] = PostgresJdbcContext.Codec.deriveComposite
     val tE = Timestamps(List(new Timestamp(System.currentTimeMillis())))
     val tQ = quote(querySchema[Timestamps]("ArraysTestEntity"))
     ctx.run(tQ.insertValue(lift(tE)))
@@ -58,11 +58,11 @@ class ArrayJdbcEncodingSpec extends ArrayEncodingBaseSpec with PostgresJdbcSpecE
 
   "empty array on found null" in {
     case class ArraysTestEntity(texts: Option[List[String]])
-    given PostgresJdbcContext.CompositeDecoder[ArraysTestEntity] = PostgresJdbcContext.deriveComposite
+    given PostgresJdbcContext.Codec.CompositeDecoder[ArraysTestEntity] = PostgresJdbcContext.Codec.deriveComposite
     ctx.run(query[ArraysTestEntity].insertValue(lift(ArraysTestEntity(None))))
 
     case class E(texts: List[String])
-    given PostgresJdbcContext.CompositeDecoder[E] = PostgresJdbcContext.deriveComposite //
+    given PostgresJdbcContext.Codec.CompositeDecoder[E] = PostgresJdbcContext.Codec.deriveComposite //
     ctx.run(querySchema[E]("ArraysTestEntity")).headOption.map(_.texts) mustBe Some(Nil)
   }
 

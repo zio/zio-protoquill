@@ -4,8 +4,9 @@ import io.getquill._
 import io.getquill.generic._
 import io.getquill.context.SplicingBehaviorHint
 import io.getquill.context.SplicingBehavior
+import io.getquill.MirrorContext.Codec.*
 
-class SimpleQuerySchemaTest extends Spec {
+class SimpleQuerySchemaTest extends MirrorSpec {
 
   given SplicingBehaviorHint with {
     override type BehaviorType = SplicingBehavior.FailOnDynamic
@@ -14,7 +15,7 @@ class SimpleQuerySchemaTest extends Spec {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
   case class Person(name: String, age: Int)
-  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
+  given CompositeDecoder[Person] = deriveComposite
 
   "query schema shuold" - {
     "produce an sql query with a renamed table" in {

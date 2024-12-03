@@ -2,9 +2,9 @@ package io.getquill.context.jdbc.h2
 
 import io.getquill.context.sql.PeopleReturningSpec
 import io.getquill.*
-import io.getquill.context.jdbc.{H2JdbcSpecEncoders, JdbcSpecEncoders}
 
-class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with H2JdbcSpecEncoders {
+
+class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with H2JdbcContext.Codec {
 
   val context = testContext
   import testContext._

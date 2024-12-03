@@ -2,9 +2,9 @@ package io.getquill.context.jdbc.sqlserver
 
 import io.getquill.{Literal, Spec, SqlServerJdbcContext}
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class JdbcContextSpec extends Spec with JdbcSpecEncoders {
+
+class JdbcContextSpec extends Spec {
 
   val ctx = testContext
   import ctx._
@@ -99,6 +99,7 @@ class JdbcContextSpec extends Spec with JdbcSpecEncoders {
 
     "with multiple columns - case class" in {
       case class Return(id: Int, str: String, opt: Option[Int])
+      given SqlServerJdbcContext.Codec.CompositeDecoder[Return] = SqlServerJdbcContext.Codec.deriveComposite
       ctx.run(qr1.delete)
       val inserted = ctx.run {
         qr1.insertValue(lift(TestEntity("foo", 1, 18L, Some(123), true))).returning(r => Return(r.i, r.s, r.o))
@@ -140,6 +141,7 @@ class JdbcContextSpec extends Spec with JdbcSpecEncoders {
 
     "with multiple columns - case class" in {
       case class Return(id: Int, str: String, opt: Option[Int])
+      given SqlServerJdbcContext.Codec.CompositeDecoder[Return] = SqlServerJdbcContext.Codec.deriveComposite
       ctx.run(qr1.delete)
       ctx.run(qr1.insertValue(lift(TestEntity("baz", 6, 42L, Some(456), true))))
 
@@ -183,6 +185,7 @@ class JdbcContextSpec extends Spec with JdbcSpecEncoders {
 
     "with multiple columns - case class" in {
       case class Return(id: Int, str: String, opt: Option[Int])
+      given SqlServerJdbcContext.Codec.CompositeDecoder[Return] = SqlServerJdbcContext.Codec.deriveComposite
       ctx.run(qr1.delete)
       ctx.run(qr1.insertValue(lift(TestEntity("foo", 2, 42L, Some(222), true))))
 

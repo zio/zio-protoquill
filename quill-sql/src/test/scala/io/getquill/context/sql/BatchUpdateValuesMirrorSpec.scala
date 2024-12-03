@@ -2,7 +2,7 @@ package io.getquill.context.sql
 
 import io.getquill.context.ExecutionType.Unknown
 import io.getquill.context.sql.base.BatchUpdateValuesSpec
-import io.getquill.{Literal, PostgresDialect, SqlMirrorContext}
+import io.getquill.{Literal, PostgresDialect, MirrorContext}
 import io.getquill.util.StringOps._
 import io.getquill._
 import io.getquill.norm.EnableTrace
@@ -13,9 +13,9 @@ import io.getquill.context.ExecutionType.Static
  * ProtoQuill is a bit smarter in recornizing which ScalarLift tags are the the same so it doesn't
  * need to copy as many `?` placeholders.
  */
-class BatchUpdateValuesMirrorSpec extends BatchUpdateValuesSpec {
+class BatchUpdateValuesMirrorSpec extends MirrorSpec with BatchUpdateValuesSpec {
 
-  val context: SqlMirrorContext[PostgresDialect, Literal] = new SqlMirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
+  val context: MirrorContext[PostgresDialect, Literal] = new MirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
   import context._
   import context.auto._
 
@@ -43,7 +43,7 @@ class BatchUpdateValuesMirrorSpec extends BatchUpdateValuesSpec {
   // Need to make sure that values inside ps._ parts part are not changed by the naming convention
   // otherwise they wont correspond to their definition in the `AS ps(...)` part.
   "Ex 1 - Simple Contact (with Snake Case)" in {
-    val context = new SqlMirrorContext(PostgresDialect, SnakeCase)
+    val context = new MirrorContext(PostgresDialect, SnakeCase)
     import context._
 
     import `Ex 1 - Simple Contact`._
@@ -67,7 +67,7 @@ class BatchUpdateValuesMirrorSpec extends BatchUpdateValuesSpec {
   }
 
   "Ex 1 - Simple Contact (with Snake Case and renames)" in {
-    val context = new SqlMirrorContext(PostgresDialect, SnakeCase)
+    val context = new MirrorContext(PostgresDialect, SnakeCase)
     import context._
 
     import `Ex 1 - Simple Contact`._

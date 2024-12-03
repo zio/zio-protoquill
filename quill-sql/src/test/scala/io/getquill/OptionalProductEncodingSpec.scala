@@ -1,8 +1,9 @@
 package io.getquill
 
 import io.getquill.context.mirror.{MirrorSession, Row}
+import io.getquill.MirrorContext.Codec.*
 
-class OptionalProductEncodingSpec extends Spec {
+class OptionalProductEncodingSpec extends MirrorSpec {
 
   val ctx = new MirrorContext(PostgresDialect, Literal)
   import ctx._
@@ -11,9 +12,9 @@ class OptionalProductEncodingSpec extends Spec {
     case class Name(first: String, last: Int) extends Embedded
     case class Person(id: Int, name: Option[Name], age: Int)
     case class Address(owner: Int, street: String)
-    given MirrorContext.CompositeDecoder[Name] = MirrorContext.deriveComposite
-    given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
-    given MirrorContext.CompositeDecoder[Address] = MirrorContext.deriveComposite
+    given CompositeDecoder[Name] = deriveComposite
+    given CompositeDecoder[Person] = deriveComposite
+    given CompositeDecoder[Address] = deriveComposite
 
     val result =
       ctx.run {
@@ -51,10 +52,10 @@ class OptionalProductEncodingSpec extends Spec {
     case class Name(first: String, last: Option[InnerName]) extends Embedded
     case class Address(owner: Int, street: String)
     case class Person(id: Int, name: Option[Name])
-    given MirrorContext.CompositeDecoder[InnerName] = MirrorContext.deriveComposite
-    given MirrorContext.CompositeDecoder[Name] = MirrorContext.deriveComposite
-    given MirrorContext.CompositeDecoder[Address] = MirrorContext.deriveComposite
-    given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
+    given CompositeDecoder[InnerName] = deriveComposite
+    given CompositeDecoder[Name] = deriveComposite
+    given CompositeDecoder[Address] = deriveComposite
+    given CompositeDecoder[Person] = deriveComposite
 
     val result =
       ctx.run {
@@ -78,9 +79,9 @@ class OptionalProductEncodingSpec extends Spec {
     case class Name(first: String, last: Option[Int]) extends Embedded
     case class Address(owner: Int, street: String)
     case class Person(id: Int, name: Option[Name], age: Int)
-    given MirrorContext.CompositeDecoder[Name] = MirrorContext.deriveComposite
-    given MirrorContext.CompositeDecoder[Address] = MirrorContext.deriveComposite
-    given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
+    given CompositeDecoder[Name] = deriveComposite
+    given CompositeDecoder[Address] = deriveComposite
+    given CompositeDecoder[Person] = deriveComposite
 
     val result =
       ctx.run {

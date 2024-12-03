@@ -3,9 +3,12 @@ package io.getquill.context.jdbc.postgres
 import io.getquill.context.sql.DistinctSpec
 import org.scalatest.matchers.should.Matchers.*
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class DistinctJdbcSpecEncoders extends DistinctSpec with JdbcSpecEncoders {
+
+class DistinctJdbcSpecEncoders extends DistinctSpec {
+  type Session = java.sql.Connection
+  type ResultRow = java.sql.ResultSet
+  type PrepareRow = java.sql.PreparedStatement
 
   val context = testContext
   import testContext._

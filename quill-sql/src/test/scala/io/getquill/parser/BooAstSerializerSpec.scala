@@ -1,13 +1,12 @@
 package io.getquill.parser
 
 import io.getquill.quat.Quat
-import io.getquill.ast._
-import io.getquill.Ord
+import io.getquill.ast.*
+import io.getquill.{Ord, ProtoSpec, Spec}
 import io.getquill.ast.PropertyOrdering
-import io.getquill.PicklingHelper._
-import io.getquill.Spec
+import io.getquill.PicklingHelper.*
 
-class BooSerializerSpec extends Spec {
+class BooSerializerSpec extends ProtoSpec {
 
   "caseClass" in {
     val v = CaseClass("Prod", List("foo" -> Ident("one", Quat.Value), "bar" -> Ident("two", Quat.Value)))

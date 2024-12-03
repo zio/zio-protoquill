@@ -25,6 +25,7 @@ object CustomParser extends ParserLibrary {
 class CustomOperationsParser(rootParse: Parser)(using Quotes) extends Parser(rootParse) {
   import quotes.reflect._
   import CustomOps._
+  val name = "CustomOperationsParser"
   def attempt = {
     case '{ ($i: Int) ** ($j: Int) } =>
       Infix(

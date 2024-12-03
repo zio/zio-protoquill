@@ -4,9 +4,13 @@ import io.getquill._
 import org.scalatest.BeforeAndAfterEach
 import io.getquill.context.Context
 
-trait OptionalNestedSpec extends Spec with BeforeAndAfterEach {
+trait OptionalNestedSpec extends Spec with BeforeAndAfterEach { self =>
 
-  val context: Context[_, _]
+  val context: Context[_, _] {
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
+    type Session = self.Session
+  }
   import context._
 
   object Setup {

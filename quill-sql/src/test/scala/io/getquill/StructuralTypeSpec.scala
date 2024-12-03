@@ -3,11 +3,12 @@ package io.getquill
 import io.getquill.context.ExecutionType
 import reflect.Selectable.reflectiveSelectable
 import MirrorContext.*
+import io.getquill.MirrorContext.Codec.*
 
-class StructuralTypeSpec extends Spec {
+class StructuralTypeSpec extends MirrorSpec {
 
   case class Person(name: String, age: Int)
-  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
+  given CompositeDecoder[Person] = deriveComposite
 
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._

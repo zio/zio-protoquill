@@ -3,22 +3,18 @@ package io.getquill.context.sql
 import io.getquill._
 import io.getquill.generic.{DecodingType, GenericDecoder}
 
-trait DistinctSpec extends Spec {
-  type SpecSession
-  type SpecPrepareRow
-  type SpecResultRow
-
+trait DistinctSpec extends Spec { self =>
   val context: SqlContext[_, _] {
-    type Session = SpecSession
-    type PrepareRow = SpecPrepareRow
-    type ResultRow = SpecResultRow
+    type Session = self.Session
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
   }
   import context._
 
   case class Person(name: String, age: Int)
   case class Couple(him: String, her: String)
-  given personDecoder: GenericDecoder[SpecResultRow, SpecSession, Person, DecodingType.Composite]
-  given coupleDecoder: GenericDecoder[SpecResultRow, SpecSession, Couple, DecodingType.Composite]
+  given personDecoder: GenericDecoder[ResultRow, Session, Person, DecodingType.Composite]
+  given coupleDecoder: GenericDecoder[ResultRow, Session, Couple, DecodingType.Composite]
 
   inline def peopleInsert =
     quote((p: Person) => query[Person].insertValue(p))
@@ -135,7 +131,7 @@ trait DistinctSpec extends Spec {
     )
 
   case class TwoField(one: String, two: String)
-  given twoFieldDecoder: GenericDecoder[SpecResultRow, SpecSession, TwoField, DecodingType.Composite]
+  given twoFieldDecoder: GenericDecoder[ResultRow, Session, TwoField, DecodingType.Composite]
 
   inline def `Ex 7 Distinct Subquery with Map Multi Field Tuple` = quote {
     query[Person]

@@ -2,9 +2,12 @@ package io.getquill.context.jdbc.postgres
 
 import io.getquill.context.sql.DepartmentsSpec
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class DepartmentsJdbcSpecEncoders extends DepartmentsSpec with JdbcSpecEncoders {
+
+class DepartmentsJdbcSpecEncoders extends DepartmentsSpec {
+  type Session = java.sql.Connection
+  type ResultRow = java.sql.ResultSet
+  type PrepareRow = java.sql.PreparedStatement
 
   val context = testContext
   import testContext._

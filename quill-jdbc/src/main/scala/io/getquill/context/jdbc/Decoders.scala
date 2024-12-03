@@ -1,6 +1,6 @@
 package io.getquill.context.jdbc
 
-import io.getquill.generic.{DecodingType, EncodingDsl, GenericDecoder}
+import io.getquill.generic.{DecodingType, StandardCodec, GenericDecoder}
 
 import java.time.{LocalDate, LocalDateTime}
 import java.util
@@ -16,7 +16,7 @@ import java.time.Instant
 import java.time.OffsetTime
 import java.time.ZoneOffset
 
-trait Decoders extends EncodingDsl with JdbcContextTypes {
+trait Decoders extends StandardCodec with JdbcContextTypes {
 
   case class JdbcDecoder[T](decoder: DecoderMethod[T]) extends BaseDecoder[T] { self =>
     def apply(index: Index, row: ResultRow, session: Session) =

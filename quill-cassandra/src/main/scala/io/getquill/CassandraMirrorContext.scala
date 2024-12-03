@@ -15,7 +15,7 @@ class CassandraMirrorContextWithQueryProbing extends CassandraMirrorContext(Lite
 
 /*
 trait CassandraCodecsBase[ResultRow, Session]
-  extends ProductDecoders[ResultRow, Session]
+  extends ProductDecoders
   with Encoders
   with Decoders
   with CassandraTypes {
@@ -41,7 +41,7 @@ trait CassandraCodecsBase[ResultRow, Session]
 }
  */
 
-object CassandraMirrorContext extends ProductDecoders[Row, MirrorSession] with SqlEncoding with MirrorDecoders with MirrorEncoders {
+object CassandraMirrorContext extends ProductDecoders with SqlEncoding with MirrorDecoders with MirrorEncoders {
   override type Session = MirrorSession
   override type PrepareRow = Row
   override type ResultRow = Row

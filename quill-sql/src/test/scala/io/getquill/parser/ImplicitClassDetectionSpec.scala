@@ -3,7 +3,7 @@ package io.getquill.parser
 import io.getquill.parser.ParserHelpers.ImplicitClassExtensionPattern
 import io.getquill._
 
-class ImplicitClassDetectionSpec extends Spec {
+class ImplicitClassDetectionSpec extends MirrorSpec {
   case class Person(name: String, age: Int)
   implicit class LimitQuery[T](q: Query[T]) {
     inline def limitQuery = quote(sql"$q LIMIT 1".as[Query[T]])

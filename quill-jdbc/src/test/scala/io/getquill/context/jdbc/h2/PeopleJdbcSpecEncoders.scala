@@ -2,11 +2,11 @@ package io.getquill.context.jdbc.h2
 
 import io.getquill.context.sql.PeopleSpec
 import io.getquill.*
-import io.getquill.context.jdbc.{H2JdbcSpecEncoders, JdbcSpecEncoders}
 
-class PeopleJdbcSpecEncoders extends PeopleSpec with H2JdbcSpecEncoders {
-  override type SpecSession = java.sql.Connection
-  override type SpecPrepareRow = java.sql.PreparedStatement
+
+class PeopleJdbcSpecEncoders extends PeopleSpec with H2JdbcContext.Codec {
+  override type Session = java.sql.Connection
+  override type PrepareRow = java.sql.PreparedStatement
 
   val context = testContext
   import testContext._

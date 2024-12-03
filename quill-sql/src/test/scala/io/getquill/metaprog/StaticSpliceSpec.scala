@@ -2,13 +2,14 @@ package io.getquill.metaprog
 
 import io.getquill.{given, _}
 import io.getquill.util.prep.Mod
+import io.getquill.MirrorContext.Codec.*
 
-class StaticSpliceSpec extends Spec {
+class StaticSpliceSpec extends MirrorSpec {
   val ctx = new MirrorContext(PostgresDialect, Literal)
   import ctx._
 
   case class Person(name: String, age: Int)
-  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
+  given CompositeDecoder[Person] = deriveComposite
 
   "simple string splice should work" in {
     ctx.run { query[Person].filter(p => p.name == static(Mod.modVal)) }.string mustEqual

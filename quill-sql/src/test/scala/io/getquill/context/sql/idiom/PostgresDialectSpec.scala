@@ -2,10 +2,10 @@ package io.getquill.context.sql.idiom
 
 import io.getquill._
 
-class PostgresDialectSpec extends OnConflictSpec with MirrorTestEntities {
+class PostgresDialectSpec extends MirrorSpec with OnConflictSpec {
 
-  val ctx: SqlMirrorContext[PostgresDialect, Literal] =
-    new SqlMirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
+  val ctx: MirrorContext[PostgresDialect, Literal] =
+    new MirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)
   import ctx._
 
   // "applies explicit casts" - {

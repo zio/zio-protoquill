@@ -3,8 +3,12 @@ package io.getquill.context.sql.idiom
 import io.getquill._
 import io.getquill.context.sql.SqlContext
 
-trait OnConflictSpec extends Spec with TestEntities {
-  val ctx: SqlContext[_, _]
+trait OnConflictSpec extends Spec { self =>
+  val ctx: SqlContext[_, _] {
+    type Session = self.Session
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
+  }
   import ctx._
 
   lazy val e = TestEntity("s1", 1, 1, None, true)

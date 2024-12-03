@@ -3,9 +3,9 @@ package io.getquill.context.jdbc.h2
 import io.getquill.context.sql.DistinctSpec
 import org.scalatest.matchers.should.Matchers.*
 import io.getquill.*
-import io.getquill.context.jdbc.{H2JdbcSpecEncoders, JdbcSpecEncoders}
 
-class DistinctJdbcSpecEncoders extends DistinctSpec with H2JdbcSpecEncoders {
+
+class DistinctJdbcSpecEncoders extends DistinctSpec with H2JdbcContext.Codec {
 
   val context = testContext
   import testContext._

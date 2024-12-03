@@ -3,7 +3,6 @@ package io.getquill.context.mirror
 import java.time.LocalDate
 import java.util.Date
 import java.util.UUID
-import io.getquill.SqlMirrorContext
 import io.getquill.generic.ArrayEncoding
 import io.getquill.generic.ArrayCoreEncoder
 

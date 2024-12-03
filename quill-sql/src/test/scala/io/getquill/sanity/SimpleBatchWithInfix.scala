@@ -3,8 +3,9 @@ package io.getquill.sanity
 import io.getquill._
 import io.getquill.context.SplicingBehaviorHint
 import io.getquill.context.SplicingBehavior
+import io.getquill.MirrorContext.Codec.*
 
-object SimpleBatchWithInfix extends Spec {
+object SimpleBatchWithInfix extends MirrorSpec {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
@@ -14,7 +15,7 @@ object SimpleBatchWithInfix extends Spec {
 
   "batch must work with simple sql" in {
     case class Person[T](name: String, age: Int)
-    given [T](using BaseDecoderAny[T]):MirrorContext.CompositeDecoder[Person[T]] = MirrorContext.deriveComposite
+    given [T](using BaseDecoderAny[T]):CompositeDecoder[Person[T]] = deriveComposite
     val names = List("Joe", "Jack")
     inline def q = quote {
       query[Person[String]].filter(p =>

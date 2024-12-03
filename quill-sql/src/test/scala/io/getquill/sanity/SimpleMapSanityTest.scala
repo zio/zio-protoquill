@@ -9,7 +9,7 @@ import io.getquill.quat.quatOf
 import io.getquill.context.SplicingBehaviorHint
 import io.getquill.context.SplicingBehavior
 
-class SimpleMapSanityTest extends Spec {
+class SimpleMapSanityTest extends MirrorSpec {
   case class SanePerson(name: String, age: Int)
 
   given SplicingBehaviorHint with {

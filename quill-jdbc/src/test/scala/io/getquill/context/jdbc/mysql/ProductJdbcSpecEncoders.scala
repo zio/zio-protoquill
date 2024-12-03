@@ -2,9 +2,9 @@ package io.getquill.context.jdbc.mysql
 
 import io.getquill.context.sql.ProductSpec
 import io.getquill.*
-import io.getquill.context.jdbc.{JdbcSpecEncoders, MysqlJdbcSpecEncoders}
 
-class ProductJdbcSpecEncoders extends ProductSpec with MysqlJdbcSpecEncoders {
+
+class ProductJdbcSpecEncoders extends ProductSpec with MysqlJdbcContext.Codec {
 
   val context = testContext
   import testContext._
@@ -65,7 +65,7 @@ class ProductJdbcSpecEncoders extends ProductSpec with MysqlJdbcSpecEncoders {
     "supports casts from string to number" - {
       "toInt" in {
         case class Product(id: Long, description: String, sku: Int)
-        given MysqlJdbcContext.CompositeDecoder[Product] = MysqlJdbcContext.deriveComposite
+        given MysqlJdbcContext.Codec.CompositeDecoder[Product] = MysqlJdbcContext.Codec.deriveComposite
         val queried = testContext.run {
           query[Product].filter(_.sku == lift("1004").toInt)
         }.head

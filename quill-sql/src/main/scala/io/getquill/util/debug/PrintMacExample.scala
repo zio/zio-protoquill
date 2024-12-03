@@ -9,7 +9,7 @@
 //   // While it can remain in the main codebase for convenience reasons, it has to be commented
 //   // in case files like Parsing.scala need to be recompiled
 //   def main(args: Array[String]): Unit = {
-//     val ctx = new SqlMirrorContext(PostgresDialect, Literal)
+//     val ctx = new MirrorContext(PostgresDialect, Literal)
 //     import ctx._
 //     inline def q = quote {
 //       query[Person]

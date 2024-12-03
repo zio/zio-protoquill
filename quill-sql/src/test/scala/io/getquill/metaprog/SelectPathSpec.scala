@@ -1,12 +1,12 @@
 package io.getquill.metaprog
 
-import org.scalatest._
-import io.getquill.Spec
+import org.scalatest.*
+import io.getquill.{ProtoSpec, Spec}
 import io.getquill.context.ReflectivePathChainLookup
 import io.getquill.context.ReflectivePathChainLookup.LookupElement
 import io.getquill.util.prep.Mod
 
-class SelectPath extends Spec {
+class SelectPath extends ProtoSpec {
   "Basic ReflectiveLookup should select correct path from" - {
     "Mod.modVal" in {
       ReflectivePathChainLookup.apply(Mod, List("modVal")) mustEqual

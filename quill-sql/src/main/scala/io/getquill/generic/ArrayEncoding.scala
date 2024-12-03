@@ -21,7 +21,7 @@ trait ArrayCoreDecoder[ResultRow, T] {
   def decode(idx: Int, row: ResultRow): Array[T]
 }
 
-trait ArrayEncoding extends EncodingDsl {
+trait ArrayEncoding extends StandardCodec {
   // self: SqlContext[_, _] =>
 
   type CBF[T, Col] = Factory[T, Col]

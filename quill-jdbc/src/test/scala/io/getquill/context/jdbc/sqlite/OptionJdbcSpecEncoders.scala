@@ -3,9 +3,10 @@ package io.getquill.context.jdbc.sqlite
 import io.getquill.context.sql.OptionQuerySpec
 import org.scalatest.matchers.should.Matchers.*
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
+import io.getquill.context.jdbc.JdbcVerbs
 
-class OptionJdbcSpecEncoders extends OptionQuerySpec with JdbcSpecEncoders {
+
+class OptionJdbcSpecEncoders extends OptionQuerySpec with JdbcVerbs {
 
   val context = testContext
   import testContext._

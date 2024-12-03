@@ -6,15 +6,11 @@ import io.getquill.context.Context
 import io.getquill._
 import io.getquill.generic.{DecodingType, GenericDecoder}
 
-trait DepartmentsSpec extends Spec {
-  type SpecSession
-  type SpecPrepareRow
-  type SpecResultRow
-
+trait DepartmentsSpec extends Spec { self =>
   val context: Context[_, _] {
-    type Session = SpecSession
-    type PrepareRow = SpecPrepareRow
-    type ResultRow = SpecResultRow
+    type Session = self.Session
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
   }
 
   import context._
@@ -22,9 +18,9 @@ trait DepartmentsSpec extends Spec {
   case class Department(dpt: String)
   case class Employee(emp: String, dpt: String)
   case class Task(emp: String, tsk: String)
-  given departmentDecoder: GenericDecoder[SpecResultRow, SpecSession, Department, DecodingType.Composite]
-  given employeeDecoder: GenericDecoder[SpecResultRow, SpecSession, Employee, DecodingType.Composite]
-  given taskDecoder: GenericDecoder[SpecResultRow, SpecSession, Task, DecodingType.Composite]
+  given departmentDecoder: GenericDecoder[ResultRow, Session, Department, DecodingType.Composite]
+  given employeeDecoder: GenericDecoder[ResultRow, Session, Employee, DecodingType.Composite]
+  given taskDecoder: GenericDecoder[ResultRow, Session, Task, DecodingType.Composite]
 
   inline def departmentInsert =
     quote {

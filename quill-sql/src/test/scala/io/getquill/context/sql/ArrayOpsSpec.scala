@@ -4,9 +4,13 @@ import io.getquill.Spec
 import io.getquill.generic.ArrayEncoding
 import io.getquill._
 
-trait ArrayOpsSpec extends Spec {
+trait ArrayOpsSpec extends Spec { self =>
 
-  val ctx: SqlContext[_, _] with ArrayEncoding
+  val ctx: SqlContext[_, _] with ArrayEncoding {
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
+    type Session = self.Session
+  }
 
   import ctx._
 

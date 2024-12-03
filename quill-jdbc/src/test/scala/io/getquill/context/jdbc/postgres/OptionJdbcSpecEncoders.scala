@@ -3,9 +3,9 @@ package io.getquill.context.jdbc.postgres
 import io.getquill.context.sql.OptionQuerySpec
 import org.scalatest.matchers.should.Matchers.*
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class OptionJdbcSpecEncoders extends OptionQuerySpec with JdbcSpecEncoders {
+
+class OptionJdbcSpecEncoders extends OptionQuerySpec with PostgresJdbcContext.Codec {
 
   val context = testContext
   import testContext._

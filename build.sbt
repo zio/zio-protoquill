@@ -38,19 +38,19 @@ lazy val sqlTestModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
 )
 
 lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-jdbc`, `quill-doobie`, `quill-zio`, `quill-jdbc-zio`, `quill-caliban`
+  `quill-jdbc`/*, `quill-doobie`*/, `quill-zio`, `quill-jdbc-zio`, `quill-caliban`
 )
 
-lazy val bigdataModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-cassandra`, `quill-cassandra-zio`
-)
+//lazy val bigdataModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
+//  `quill-cassandra`, `quill-cassandra-zio`
+//)
 
 lazy val allModules =
-  baseModules ++ sqlTestModules ++ dbModules ++ bigdataModules
+  baseModules ++ sqlTestModules ++ dbModules //++ bigdataModules
 
 lazy val communityBuildModules =
   Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-    `quill-sql`, `quill-sql-tests`, `quill-cassandra`
+    `quill-sql`, `quill-sql-tests` //, `quill-cassandra`
   )
 
 val filteredModules = {
@@ -70,9 +70,9 @@ val filteredModules = {
     case Some("db") =>
       println("SBT =:> Compiling Database Modules")
       dbModules
-    case Some("bigdata") =>
-      println("SBT =:> Compiling Big Data Modules")
-      bigdataModules
+//    case Some("bigdata") =>
+//      println("SBT =:> Compiling Big Data Modules")
+//      bigdataModules
     case Some("none") =>
       println("SBT =:> Invoking Aggregate Project")
       Seq[sbt.ClasspathDep[sbt.ProjectReference]]()
@@ -153,17 +153,17 @@ lazy val `quill-jdbc` =
     .dependsOn(`quill-sql` % "compile->compile;test->test")
 
 ThisBuild / libraryDependencySchemes += "org.typelevel" %% "cats-effect" % "always"
-lazy val `quill-doobie` =
-  (project in file("quill-doobie"))
-    .settings(commonSettings: _*)
-    .settings(jdbcTestingSettings: _*)
-    .settings(
-      libraryDependencies ++= Seq(
-        "org.tpolecat" %% "doobie-core" % "1.0.0-RC5",
-        "org.tpolecat" %% "doobie-postgres" % "1.0.0-RC5" % Test
-      )
-    )
-    .dependsOn(`quill-jdbc` % "compile->compile;test->test")
+//lazy val `quill-doobie` =
+//  (project in file("quill-doobie"))
+//    .settings(commonSettings: _*)
+//    .settings(jdbcTestingSettings: _*)
+//    .settings(
+//      libraryDependencies ++= Seq(
+//        "org.tpolecat" %% "doobie-core" % "1.0.0-RC5",
+//        "org.tpolecat" %% "doobie-postgres" % "1.0.0-RC5" % Test
+//      )
+//    )
+//    .dependsOn(`quill-jdbc` % "compile->compile;test->test")
 
 lazy val `quill-caliban` =
   (project in file("quill-caliban"))
@@ -222,30 +222,30 @@ lazy val `quill-jdbc-zio` =
     .dependsOn(`quill-sql` % "compile->compile;test->test")
     .dependsOn(`quill-jdbc` % "compile->compile;test->test")
 
-lazy val `quill-cassandra` =
-  (project in file("quill-cassandra"))
-    .settings(commonSettings: _*)
-    .settings(
-      Test / fork := false,
-      libraryDependencies ++= Seq(
-        "com.datastax.oss" % "java-driver-core" % "4.17.0"
-      )
-    )
-    .dependsOn(`quill-sql` % "compile->compile;test->test")
-
-lazy val `quill-cassandra-zio` =
-  (project in file("quill-cassandra-zio"))
-    .settings(commonSettings: _*)
-    .settings(
-      Test / fork := true,
-      libraryDependencies ++= Seq(
-        "com.datastax.oss" % "java-driver-core" % "4.17.0",
-        "dev.zio" %% "zio" % zioVersion,
-        "dev.zio" %% "zio-streams" % zioVersion
-      )
-    )
-    .dependsOn(`quill-cassandra` % "compile->compile;test->test")
-    .dependsOn(`quill-zio` % "compile->compile;test->test")
+//lazy val `quill-cassandra` =
+//  (project in file("quill-cassandra"))
+//    .settings(commonSettings: _*)
+//    .settings(
+//      Test / fork := false,
+//      libraryDependencies ++= Seq(
+//        "com.datastax.oss" % "java-driver-core" % "4.17.0"
+//      )
+//    )
+//    .dependsOn(`quill-sql` % "compile->compile;test->test")
+//
+//lazy val `quill-cassandra-zio` =
+//  (project in file("quill-cassandra-zio"))
+//    .settings(commonSettings: _*)
+//    .settings(
+//      Test / fork := true,
+//      libraryDependencies ++= Seq(
+//        "com.datastax.oss" % "java-driver-core" % "4.17.0",
+//        "dev.zio" %% "zio" % zioVersion,
+//        "dev.zio" %% "zio-streams" % zioVersion
+//      )
+//    )
+//    .dependsOn(`quill-cassandra` % "compile->compile;test->test")
+//    .dependsOn(`quill-zio` % "compile->compile;test->test")
 
 // Include scalafmt formatter for pretty printing failed queries
 val includeFormatter =

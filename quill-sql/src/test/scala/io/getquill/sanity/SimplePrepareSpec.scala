@@ -6,8 +6,8 @@ import io.getquill.Quoted
 import io.getquill.context.SplicingBehaviorHint
 import io.getquill.context.SplicingBehavior
 
-class SimplePrepareSpec extends Spec {
-  val ctx = SqlMirrorContext(PostgresDialect, Literal)
+class SimplePrepareSpec extends MirrorSpec {
+  val ctx = MirrorContext(PostgresDialect, Literal)
   import ctx._
 
   given SplicingBehaviorHint with {
@@ -16,7 +16,7 @@ class SimplePrepareSpec extends Spec {
 
   "prepare should work for" - {
     case class Person(name: String, age: Int)
-    given CompositeDecoder[Person] = SqlMirrorContext.deriveComposite
+    given CompositeDecoder[Person] = deriveComposite
 
     "query" in {
       inline def q = quote { query[Person] }

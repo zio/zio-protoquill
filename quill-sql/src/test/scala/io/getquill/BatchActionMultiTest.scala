@@ -8,7 +8,7 @@ import org.scalatest.*
 
 import scala.language.implicitConversions
 
-class BatchActionMultiTest extends Spec with Inside with SuperContext[PostgresDialect, Literal] {
+class BatchActionMultiTest extends MirrorSpec with Inside with SuperContext[PostgresDialect, Literal] {
   // Need to fully type this otherwise scala compiler thinks it's still just 'Context' from the super-class
   // and the extensions (m: MirrorContext[_, _]#BatchActionMirror) etc... classes in Spec don't match their types correctly
   val ctx: MirrorContext[PostgresDialect, Literal] = new MirrorContext[PostgresDialect, Literal](PostgresDialect, Literal)

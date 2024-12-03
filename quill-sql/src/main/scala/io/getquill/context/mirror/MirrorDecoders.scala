@@ -7,7 +7,7 @@ import java.time.LocalDate
 import java.util.UUID
 import io.getquill.MappedEncoding
 
-trait MirrorDecoders extends EncodingDsl {
+trait MirrorDecoders extends StandardCodec {
 
   override type PrepareRow = Row
   override type ResultRow = Row

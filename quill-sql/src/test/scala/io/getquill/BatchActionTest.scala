@@ -5,6 +5,7 @@ import io.getquill.context.ExecutionType.{Dynamic, Static}
 import io.getquill.context.{Context, ExecutionType}
 import io.getquill.{query, quote}
 import org.scalatest.*
+import io.getquill.MirrorContext.Codec.*
 
 import scala.language.implicitConversions
 
@@ -38,7 +39,7 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   }
 
   case class Person(id: Int, name: String, age: Int, sex: Sex)
-  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
+  given CompositeDecoder[Person] = deriveComposite
 
   inline def insertPeople = quote((p: Person) => query[Person].insertValue(p))
 
@@ -49,7 +50,7 @@ trait SuperContext[D <: io.getquill.idiom.Idiom, N <: NamingStrategy] {
   val updatePeopleByIdDynamic = quote((p: Person) => query[Person].filter(pt => pt.id == p.id).updateValue(p))
 }
 
-class BatchActionTest extends Spec with Inside with SuperContext[MirrorSqlDialectWithReturnClause, Literal] {
+class BatchActionTest extends MirrorSpec with Inside with SuperContext[MirrorSqlDialectWithReturnClause, Literal] {
   // Need to fully type this otherwise scala compiler thinks it's still just 'Context' from the super-class
   // and the extensions (m: MirrorContext[_, _]#BatchActionMirror) etc... classes in Spec don't match their types correctly
   val ctx: MirrorContext[MirrorSqlDialectWithReturnClause, Literal] = new MirrorContext[MirrorSqlDialectWithReturnClause, Literal](MirrorSqlDialectWithReturnClause, Literal)

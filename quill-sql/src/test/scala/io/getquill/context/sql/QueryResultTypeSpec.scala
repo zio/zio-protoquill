@@ -3,7 +3,7 @@ package io.getquill.context.sql
 import io.getquill.Ord
 import io.getquill.*
 
-trait QueryResultTypeSpec extends ProductSpec {
+trait QueryResultTypeSpec extends ProductSpec { self =>
 
   import context._
 

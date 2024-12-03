@@ -2,9 +2,9 @@ package io.getquill.context.jdbc.oracle
 
 import io.getquill.Spec
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class JdbcContextSpec extends Spec with JdbcSpecEncoders {
+
+class JdbcContextSpec extends Spec {
 
   import testContext._
 
@@ -60,7 +60,7 @@ class JdbcContextSpec extends Spec with JdbcSpecEncoders {
   }
 
   case class Return(id: Int, str: String, opt: Option[Int])
-  given OracleJdbcContext.CompositeDecoder[Return] = OracleJdbcContext.deriveComposite
+  given OracleJdbcContext.Codec.CompositeDecoder[Return] = OracleJdbcContext.Codec.deriveComposite
 
   "insert returning" - {
     "with single column table" in {

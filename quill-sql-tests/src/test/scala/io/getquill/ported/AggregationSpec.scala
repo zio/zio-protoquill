@@ -12,7 +12,7 @@ class AggregationSpec extends Spec { //
   // remove the === matcher from scalatest so that we can test === in Context.extra
   override def convertToEqualizer[T](left: T): Equalizer[T] = new Equalizer(left)
 
-  val ctx = new SqlMirrorContext(MirrorSqlDialect, Literal)
+  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
   // an issue heavily related to the ability to use an aggregator and then a .nested after which

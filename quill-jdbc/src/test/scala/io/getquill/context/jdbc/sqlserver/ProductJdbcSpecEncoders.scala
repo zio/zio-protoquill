@@ -2,9 +2,10 @@ package io.getquill.context.jdbc.sqlserver
 
 import io.getquill.context.sql.ProductSpec
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class ProductJdbcSpecEncoders extends ProductSpec with JdbcSpecEncoders {
+
+class ProductJdbcSpecEncoders extends ProductSpec with SqlServerJdbcContext.Codec {
+  // Note the ___JdbcContext.Codec has the right Session/PrepareRow/ResultRow defs for the types to unify
 
   val context = testContext
   import testContext._
@@ -64,9 +65,8 @@ class ProductJdbcSpecEncoders extends ProductSpec with JdbcSpecEncoders {
 
     "supports casts from string to number" - {
       "toInt" in {
-        case class Product(id: Long, description: String, sku: Int)
         val queried = testContext.run {
-          query[Product].filter(_.sku == lift("1004").toInt)
+          query[ProductInt].filter(_.sku == lift("1004").toInt)
         }.head
         queried.sku mustEqual 1004L
       }

@@ -3,14 +3,15 @@ package io.getquill
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
 import MirrorContext.*
+import io.getquill.MirrorContext.Codec.*
 
-class ParticularizationSpec extends Spec {
+class ParticularizationSpec extends MirrorSpec {
 
   case class Ent(foo: String, bar: String)
-  given MirrorContext.CompositeDecoder[Ent] = MirrorContext.deriveComposite
+  given CompositeDecoder[Ent] = deriveComposite
 
   "question mark particularization" - {
-    val ctx: SqlMirrorContext[PostgresDialect, Literal] = new SqlMirrorContext(PostgresDialect, Literal)
+    val ctx: MirrorContext[PostgresDialect, Literal] = new MirrorContext(PostgresDialect, Literal)
     import ctx._
 
     "works with query + one lift" in {
@@ -50,7 +51,7 @@ class ParticularizationSpec extends Spec {
   }
 
   "numbered mark particularization" - {
-    val ctx: SqlMirrorContext[H2Dialect, Literal] = new SqlMirrorContext(H2Dialect, Literal)
+    val ctx: MirrorContext[H2Dialect, Literal] = new MirrorContext(H2Dialect, Literal)
     import ctx._
 
     "works with query + one lift" in {

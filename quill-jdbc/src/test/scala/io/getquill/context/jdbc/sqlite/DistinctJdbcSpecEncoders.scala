@@ -3,9 +3,10 @@ package io.getquill.context.jdbc.sqlite
 import io.getquill.context.sql.DistinctSpec
 import org.scalatest.matchers.should.Matchers.*
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
+import io.getquill.context.jdbc.JdbcVerbs
 
-class DistinctJdbcSpecEncoders extends DistinctSpec with JdbcSpecEncoders {
+
+class DistinctJdbcSpecEncoders extends DistinctSpec with JdbcVerbs {
 
   val context = testContext
   import testContext._

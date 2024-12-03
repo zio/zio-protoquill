@@ -2,9 +2,9 @@ package io.getquill.context.jdbc.postgres
 
 import io.getquill.Spec
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class JdbcContextSpec extends JdbcSpecEncoders with Spec {
+
+class JdbcContextSpec extends ExtraEncoders with Spec {
 
   val ctx = testContext
   import ctx._
@@ -14,7 +14,7 @@ class JdbcContextSpec extends JdbcSpecEncoders with Spec {
   }
 
   case class Return(id: Int, str: String, opt: Option[Int])
-  given PostgresJdbcContext.CompositeDecoder[Return] = PostgresJdbcContext.deriveComposite
+  given PostgresJdbcContext.Codec.CompositeDecoder[Return] = PostgresJdbcContext.Codec.deriveComposite
 
   "run non-batched action" in {
     testContext.run(qr1.delete)

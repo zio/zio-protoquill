@@ -1,10 +1,10 @@
 package io.getquill.context.jdbc.h2
 
 import io.getquill.context.sql.BatchValuesSpec
-import io.getquill.context.jdbc.{H2JdbcSpecEncoders, JdbcSpecEncoders}
+
 import io.getquill.*
 
-class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with H2JdbcSpecEncoders {
+class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with H2JdbcContext.Codec {
 
   val context = testContext
   import testContext._

@@ -8,7 +8,7 @@ import java.util.UUID
 import io.getquill.MappedEncoding
 
 // TODO convert int back to index
-trait MirrorEncoders extends EncodingDsl {
+trait MirrorEncoders extends StandardCodec {
   override type PrepareRow = Row
   override type ResultRow = Row
 

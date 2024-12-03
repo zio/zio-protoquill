@@ -2,9 +2,9 @@ package io.getquill.context.jdbc.oracle
 
 import io.getquill.context.sql.BatchValuesSpec
 import io.getquill.*
-import io.getquill.context.jdbc.{JdbcSpecEncoders, OracleJdbcSpecEncoders}
 
-class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with OracleJdbcSpecEncoders {
+
+class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with OracleJdbcContext.Codec {
 
   val context = testContext
   import testContext._

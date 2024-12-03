@@ -2,9 +2,10 @@ package io.getquill.context.jdbc.sqlserver
 
 import io.getquill.context.sql.PeopleReturningSpec
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
 
-class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with JdbcSpecEncoders {
+
+class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with SqlServerJdbcContext.Codec {
+  // Note the ___JdbcContext.Codec has the right Session/PrepareRow/ResultRow defs for the types to unify
 
   val context = testContext
   import testContext._

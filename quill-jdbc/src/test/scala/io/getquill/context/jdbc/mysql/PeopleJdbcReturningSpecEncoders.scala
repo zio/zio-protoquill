@@ -2,9 +2,9 @@ package io.getquill.context.jdbc.mysql
 
 import io.getquill.context.sql.PeopleReturningSpec
 import io.getquill.*
-import io.getquill.context.jdbc.{JdbcSpecEncoders, MysqlJdbcSpecEncoders}
 
-class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with MysqlJdbcSpecEncoders {
+
+class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with MysqlJdbcContext.Codec {
 
   val context = testContext
   import testContext._

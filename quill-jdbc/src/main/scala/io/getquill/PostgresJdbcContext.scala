@@ -8,27 +8,27 @@ import io.getquill.util.LoadConfig
 
 import java.sql.Types
 
-// TODO turn this into a trait because need to have a similar thing for the ZIO context
-//     (same with all of the other context objects)
-trait PostgresJdbcContextModule extends JdbcContextEncoding
-  with ObjectGenericTimeEncoders
-  with ObjectGenericTimeDecoders
-  with BooleanObjectEncoding
-  with UUIDObjectEncoding
-  with ArrayDecoders
-  with ArrayEncoders {
-  // Postgres does not support Types.TIME_WITH_TIMEZONE as a JDBC type but does have a `TIME WITH TIMEZONE` datatype this is puzzling.
-  protected override def jdbcTypeOfOffsetTime = Types.TIME
+object PostgresJdbcContext {
+  trait Codec extends JdbcContextEncoding
+    with ObjectGenericTimeEncoders
+    with ObjectGenericTimeDecoders
+    with BooleanObjectEncoding
+    with UUIDObjectEncoding
+    with ArrayDecoders
+    with ArrayEncoders {
+    // Postgres does not support Types.TIME_WITH_TIMEZONE as a JDBC type but does have a `TIME WITH TIMEZONE` datatype this is puzzling.
+    protected override def jdbcTypeOfOffsetTime = Types.TIME
 
-  override def parseJdbcType(intType: Int): String = intType match {
-    case Types.TINYINT => parseJdbcType(Types.SMALLINT)
-    case Types.VARCHAR => "text"
-    case Types.DOUBLE => "float8"
-    case _ => parseJdbcType(intType)
+    override def parseJdbcType(intType: Int): String = intType match {
+      case Types.TINYINT => parseJdbcType(Types.SMALLINT)
+      case Types.VARCHAR => "text"
+      case Types.DOUBLE => "float8"
+      case _ => parseJdbcType(intType)
+    }
   }
-}
 
-object PostgresJdbcContext extends PostgresJdbcContextModule
+  object Codec extends Codec
+}
 
 class PostgresJdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: DataSource)
   extends JdbcContext[PostgresDialect, N]

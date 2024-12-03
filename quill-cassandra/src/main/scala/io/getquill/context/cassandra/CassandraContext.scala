@@ -17,7 +17,7 @@ override type PrepareRow = BoundStatement
  */
 
 trait CassandraCodecsBase[Session]
-  extends ProductDecoders[Row, Session]
+  extends ProductDecoders
   with Encoders
   with Decoders
   with CassandraTypes {

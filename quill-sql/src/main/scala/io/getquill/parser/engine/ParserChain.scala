@@ -12,9 +12,9 @@ sealed trait ParserChain(using Quotes, TranspileConfig) {
   protected def build(rootParse: Parser): Parser
   def orElse(that: ParserChain): ParserChain = ParserChain.OrElse(self, that)
   lazy val complete: Parser =
-    new Parser(Parser.Nil) {
-      built =>
-      def attempt = build(built).attemptProper
+    new Parser(Parser.Nil) { built =>
+      val name = "complete-parser"
+      def attempt = build(built).attemptProper.unlift
     }
 }
 
@@ -28,10 +28,11 @@ object ParserChain {
     protected def build(rootParse: Parser) = rootInjector(rootParse)
   }
 
-  private final case class OrElse(left: ParserChain, right: ParserChain)(using Quotes, TranspileConfig) extends ParserChain {
-    def name = s"${left.name}_or_${right.name}"
+  private final case class OrElse(left: ParserChain, right: ParserChain)(using Quotes, TranspileConfig) extends ParserChain { self =>
+    val name = s"${left.name}_or_${right.name}"
     protected def build(rootParse: Parser): Parser =
       new Parser(rootParse) {
+        val name = self.name
         def attempt = {
           val leftOrRightMatch: PartialFunction[Expr[_], Option[Ast]] =
             PartialFunction.fromFunction[Expr[_], Option[Ast]](expr => {
@@ -41,8 +42,8 @@ object ParserChain {
               val leftHistory = History.Matched(left, history)(Format.Expr(expr))
               // if the left side parser did not match, that means that it was ignored so add that info to the history
               val rightHistory = History.Matched(right, History.Ignored(left, history)(Format.Expr(expr)))(Format.Expr(expr))
-              val leftLift: Expr[_] => Option[Ast] = leftParser.attemptProper(using leftHistory).lift
-              val rightLift: Expr[_] => Option[Ast] = rightParser.attemptProper(using rightHistory).lift
+              val leftLift: Expr[_] => Option[Ast] = leftParser.attemptProper(using leftHistory)
+              val rightLift: Expr[_] => Option[Ast] = rightParser.attemptProper(using rightHistory)
               leftLift(expr).orElse(rightLift(expr))
             })
           leftOrRightMatch.unlift

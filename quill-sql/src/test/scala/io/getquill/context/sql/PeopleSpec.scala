@@ -5,25 +5,18 @@ import io.getquill.*
 import io.getquill.generic.GenericEncoder
 import io.getquill.generic.{DecodingType, GenericDecoder}
 
-trait PeopleSpec extends Spec {
-  type SpecSession
-  type SpecPrepareRow
-  type SpecResultRow
-
+trait PeopleSpec extends Spec { self =>
   val context: Context[_, _] {
-    type Session = SpecSession
-    type PrepareRow = SpecPrepareRow
-    type ResultRow = SpecResultRow
+    type Session = self.Session
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
   }
   import context._
 
-  given intEncoder: GenericEncoder[Int, SpecPrepareRow, SpecSession]
-  given stringEncoder: GenericEncoder[String, SpecPrepareRow, SpecSession]
-
   case class Person(name: String, age: Int)
   case class Couple(her: String, him: String)
-  given personDecoder: GenericDecoder[SpecResultRow, SpecSession, Person, DecodingType.Composite]
-  given coupleDecoder: GenericDecoder[SpecResultRow, SpecSession, Couple, DecodingType.Composite]
+  given personDecoder: GenericDecoder[ResultRow, Session, Person, DecodingType.Composite]
+  given coupleDecoder: GenericDecoder[ResultRow, Session, Couple, DecodingType.Composite]
 
   inline def peopleInsert =
     quote((p: Person) => query[Person].insertValue(p))

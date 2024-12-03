@@ -1,14 +1,15 @@
 package io.getquill.context.sql
 
 import java.time.LocalDate
-import io.getquill._ //
+import io.getquill._
+import io.getquill.MirrorContext.Codec.*
 
 object StaticDateExample {
-  val ctx = new SqlMirrorContext(PostgresDialect, Literal)
+  val ctx = new MirrorContext(PostgresDialect, Literal)
   import ctx._
 
   case class Person(name: String, birthDate: LocalDate)
-  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
+  given CompositeDecoder[Person] = deriveComposite
 
   inline def staticDate = sql"'19820101'".as[LocalDate]
   // Makes Sense: inline def staticDate = LocalDate(1982,01,01)

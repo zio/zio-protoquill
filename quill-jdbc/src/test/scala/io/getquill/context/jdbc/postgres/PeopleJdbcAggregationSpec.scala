@@ -1,13 +1,17 @@
 package io.getquill.context.jdbc.postgres
 
 import io.getquill.context.sql.PeopleAggregationSpec
-import io.getquill._
+import io.getquill.*
+import io.getquill.generic.{DecodingType, GenericDecoder}
 import io.getquill.util.debug.PrintMac.apply
 
 class PeopleJdbcAggregationSpec extends PeopleAggregationSpec {
 
   val context: testContext.type = testContext
   import testContext._
+
+  given contactDecoder: PostgresJdbcContext.Codec.CompositeDecoder[Contact] = PostgresJdbcContext.Codec.deriveComposite
+  given addressDecoder: PostgresJdbcContext.Codec.CompositeDecoder[Address] = PostgresJdbcContext.Codec.deriveComposite
 
   override def beforeAll() = {
     testContext.transaction {
@@ -46,6 +50,6 @@ class PeopleJdbcAggregationSpec extends PeopleAggregationSpec {
 
   "Ex 6 flatMap.groupByMap.map" in {
     import `Ex 6 flatMap.groupByMap.map`._
-    context.run(get).toSet mustEqual expect.toSet //
+    context.run(get).toSet mustEqual expect.toSet //hello ooo ooo ooo ooo
   }
 }

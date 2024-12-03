@@ -6,20 +6,16 @@ import io.getquill.generic.{DecodingType, GenericDecoder}
 
 
 
-trait BatchValuesSpec extends Spec with BeforeAndAfterEach {
-  type SpecSession
-  type SpecPrepareRow
-  type SpecResultRow
-
+trait BatchValuesSpec extends Spec with BeforeAndAfterEach { self =>
   val context: SqlContext[_, _] {
-    type Session = SpecSession
-    type PrepareRow = SpecPrepareRow
-    type ResultRow = SpecResultRow
+    type Session = self.Session
+    type PrepareRow = self.PrepareRow
+    type ResultRow = self.ResultRow
   }
   import context._
 
   case class Product(id: Int, description: String, sku: Long)
-  given productDecoder: GenericDecoder[SpecResultRow, SpecSession, Product, DecodingType.Composite]
+  given productDecoder: GenericDecoder[ResultRow, Session, Product, DecodingType.Composite]
 
   inline def insertProduct =
     quote((p: Product) => query[Product].insertValue(p))

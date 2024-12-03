@@ -2,9 +2,10 @@ package io.getquill.context.jdbc.sqlite
 
 import io.getquill.context.sql.BatchValuesSpec
 import io.getquill.*
-import io.getquill.context.jdbc.JdbcSpecEncoders
+import io.getquill.context.jdbc.JdbcVerbs
 
-class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with JdbcSpecEncoders {
+
+class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with JdbcVerbs {
 
   val context = testContext
   import testContext._

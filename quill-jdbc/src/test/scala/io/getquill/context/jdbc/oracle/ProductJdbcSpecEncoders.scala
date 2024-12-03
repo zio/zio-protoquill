@@ -2,9 +2,9 @@ package io.getquill.context.jdbc.oracle
 
 import io.getquill.context.sql.ProductSpec
 import io.getquill.*
-import io.getquill.context.jdbc.{JdbcSpecEncoders, OracleJdbcSpecEncoders}
 
-class ProductJdbcSpecEncoders extends ProductSpec with OracleJdbcSpecEncoders {
+
+class ProductJdbcSpecEncoders extends ProductSpec with OracleJdbcContext.Codec {
 
   val context = testContext
   import testContext._
@@ -62,7 +62,7 @@ class ProductJdbcSpecEncoders extends ProductSpec with OracleJdbcSpecEncoders {
     "supports casts from string to number" - {
       "toInt" in {
         case class Product(id: Long, description: String, sku: Int)
-        given OracleJdbcContext.CompositeDecoder[Product] = OracleJdbcContext.deriveComposite
+        given OracleJdbcContext.Codec.CompositeDecoder[Product] = OracleJdbcContext.Codec.deriveComposite
         val queried = testContext.run {
           query[Product].filter(_.sku == lift("1004").toInt)
         }.head

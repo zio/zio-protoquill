@@ -4,9 +4,9 @@ import io.getquill.context.sql.DepartmentsSpec
 import org.scalatest.matchers.should.Matchers.*
 import io.getquill.Update
 import io.getquill.*
-import io.getquill.context.jdbc.{JdbcSpecEncoders, OracleJdbcSpecEncoders}
 
-class DepartmentsJdbcSpecEncoders extends DepartmentsSpec with OracleJdbcSpecEncoders {
+
+class DepartmentsJdbcSpecEncoders extends DepartmentsSpec with OracleJdbcContext.Codec {
 
   val context = testContext
   import testContext._

@@ -10,9 +10,9 @@ class FlicerVariableColumnsSpec extends Spec with Inside {
   case class PersonT(id: Int, first: String, last: String, age: Int)
   case class AddressT(ownerId: Int, street: String)
   case class Combo(name: String, street: Option[String])
-  given PostgresJdbcContext.CompositeDecoder[PersonT] = PostgresJdbcContext.deriveComposite
-  given PostgresJdbcContext.CompositeDecoder[AddressT] = PostgresJdbcContext.deriveComposite
-  given PostgresJdbcContext.CompositeDecoder[Combo] = PostgresJdbcContext.deriveComposite
+  given PostgresJdbcContext.Codec.CompositeDecoder[PersonT] = PostgresJdbcContext.Codec.deriveComposite
+  given PostgresJdbcContext.Codec.CompositeDecoder[AddressT] = PostgresJdbcContext.Codec.deriveComposite
+  given PostgresJdbcContext.Codec.CompositeDecoder[Combo] = PostgresJdbcContext.Codec.deriveComposite
 
   override def beforeAll(): Unit = {
     ctx.run(sql"TRUNCATE TABLE AddressT, PersonT RESTART IDENTITY".as[Delete[PersonT]])

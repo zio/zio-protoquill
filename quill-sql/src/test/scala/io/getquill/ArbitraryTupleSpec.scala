@@ -3,9 +3,10 @@ package io.getquill
 import io.getquill.context.ExecutionType.Static
 import io.getquill.context.mirror.{MirrorSession, Row}
 import io.getquill.generic.TupleMember
-//import MirrorContext._
+import io.getquill.MirrorContext.Codec.*
 
-class ArbitraryTupleSpec extends Spec {
+
+class ArbitraryTupleSpec extends MirrorSpec {
 
   val ctx: MirrorContext[PostgresDialect, Literal] = new MirrorContext(PostgresDialect, Literal)
   import ctx._
@@ -40,7 +41,7 @@ class ArbitraryTupleSpec extends Spec {
       }
     }
 
-    given MirrorContext.CompositeDecoder[(String, Int)] = MirrorContext.deriveComposite
+    given CompositeDecoder[(String, Int)] = deriveComposite
     val result = ctx.run(swapped)
 
     result.string mustEqual "SELECT x$1.string_field AS _1, x$1.int_field AS _2 FROM my_table x$1"

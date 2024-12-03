@@ -2,7 +2,7 @@ package io.getquill.sanity
 
 import io.getquill._
 
-class TranslateSanityTest extends Spec {
+class TranslateSanityTest extends MirrorSpec {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
   case class Person(name: String, age: Int)

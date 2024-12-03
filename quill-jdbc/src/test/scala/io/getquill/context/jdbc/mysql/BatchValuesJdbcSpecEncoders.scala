@@ -1,10 +1,10 @@
 package io.getquill.context.jdbc.mysql
 
 import io.getquill.context.sql.BatchValuesSpec
-import io.getquill.context.jdbc.{JdbcSpecEncoders, MysqlJdbcSpecEncoders}
+
 import io.getquill.*
 
-class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with MysqlJdbcSpecEncoders {
+class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with MysqlJdbcContext.Codec {
 
   val context = testContext
   import testContext._

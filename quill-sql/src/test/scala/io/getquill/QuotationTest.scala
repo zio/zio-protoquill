@@ -20,14 +20,15 @@ import io.getquill.quote
 import io.getquill.query
 import io.getquill.context.mirror.MirrorSession
 import MirrorContext.*
+import io.getquill.MirrorContext.Codec.*
 
 import org.scalatest._
 
-class QuotationTest extends Spec with Inside {
+class QuotationTest extends MirrorSpec with Inside {
   case class Address(street: String, zip: Int) extends Embedded
   case class Person(name: String, age: Int, address: Address)
-  given MirrorContext.CompositeDecoder[Address] = MirrorContext.deriveComposite
-  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
+  given CompositeDecoder[Address] = deriveComposite
+  given CompositeDecoder[Person] = deriveComposite
   import MirrorContext._
   import ShortAst._
 
@@ -96,7 +97,7 @@ class QuotationTest extends Spec with Inside {
     }
     "run lazy lift" in {
       case class Person(name: String)
-      given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
+      given CompositeDecoder[Person] = deriveComposite
       inline def q = quote { query[Person].filter(p => p.name == lazyLift("Joe")) }
       val ctx = new MirrorContext(MirrorSqlDialect, Literal)
       import ctx._

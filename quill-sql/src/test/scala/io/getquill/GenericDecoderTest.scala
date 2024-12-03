@@ -23,15 +23,16 @@ import io.getquill.context.mirror.Row
 import io.getquill.quote
 import io.getquill.query
 import io.getquill.context.mirror.MirrorSession
+import io.getquill.MirrorContext.Codec.*
 
-class GenericDecoderTest extends Spec {
+class GenericDecoderTest extends MirrorSpec {
   import StaticEnumExample._
 
   val ctx = new MirrorContext[MirrorSqlDialect, Literal](MirrorSqlDialect, Literal) with MirrorColumnResolving[MirrorSqlDialect, Literal]
   import ctx.{given, _}
 
   case class Person(name: String, age: Int)
-  given MirrorContext.CompositeDecoder[Person] = MirrorContext.deriveComposite
+  given CompositeDecoder[Person] = deriveComposite
 
   "domain-model product using row-typer" - {
     given RowTyper[Shape] with {
@@ -80,6 +81,6 @@ object StaticEnumExample {
     case Circle(override val id: Int, radius: Int) extends Shape(id)
   }
   object Shape {
-    given MirrorContext.CompositeDecoder[Shape] = MirrorContext.deriveComposite
+    given CompositeDecoder[Shape] = deriveComposite
   }
 }

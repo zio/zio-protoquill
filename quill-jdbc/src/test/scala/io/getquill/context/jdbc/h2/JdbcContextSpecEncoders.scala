@@ -3,8 +3,7 @@ package io.getquill.context.jdbc.h2
 import io.getquill.Spec
 import io.getquill._
 
-class JdbcContextSpecEncoders extends Spec with JdbcTestEntitiesEncoders {
-
+class JdbcContextSpecEncoders extends Spec with ExtraEncoders {
   import testContext._
 
   val badEntity = quote {

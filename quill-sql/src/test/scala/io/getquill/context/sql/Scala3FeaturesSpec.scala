@@ -2,14 +2,15 @@ package io.getquill.context
 
 import io.getquill.Spec
 import io.getquill._
+import io.getquill.MirrorContext.Codec.*
 
-class Scala3FeaturesSpec extends Spec {
-  val ctx = new SqlMirrorContext(PostgresDialect, Literal)
+class Scala3FeaturesSpec extends MirrorSpec {
+  val ctx = new MirrorContext(PostgresDialect, Literal)
   import ctx._
 
   "Scala 3 features should work with query expansion" - {
     case class Person(name: String, age: Int)
-    given MirrorContext.CompositeDecoder[Person] = deriveComposite[Person]
+    given CompositeDecoder[Person] = deriveComposite[Person]
 
     "inline if" in {
       inline def filterPerson(inline q: Query[Person], inline doFilter: Boolean) =

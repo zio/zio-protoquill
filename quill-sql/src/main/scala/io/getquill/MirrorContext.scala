@@ -5,31 +5,24 @@ import io.getquill.context.*
 import io.getquill.Quoted
 import io.getquill.idiom.Idiom
 import io.getquill.NamingStrategy
-import io.getquill.context.sql.SqlEncoding
-import io.getquill.generic.{DecodingType, EncodingDsl, GenericDecoder}
+import io.getquill.context.sql.SqlContext
+import io.getquill.generic.{DecodingType, GenericDecoder, GenericNullChecker, StandardCodec}
 
 import scala.annotation.targetName
 
-object MirrorContext extends ProductDecoders[Row, MirrorSession] with SqlEncoding with MirrorDecoders with MirrorEncoders {
-  override type Session = MirrorSession
-  override type PrepareRow = Row
-  override type ResultRow = Row
-  class MirrorNullChecker extends NullChecker {
-    override def apply(index: Int, row: Row): Boolean = row.nullAt(index)
+class MirrorNullChecker extends GenericNullChecker[Row, MirrorSession] {
+  override def apply(index: Int, row: Row): Boolean = row.nullAt(index)
+}
+
+object MirrorContext {
+  trait Codec extends ProductDecoders with MirrorDecoders with MirrorEncoders {
+    override type Session = MirrorSession
+    override type PrepareRow = Row
+    override type ResultRow = Row
+    implicit val nullChecker: NullChecker = new MirrorNullChecker()
   }
-  implicit val nullChecker: NullChecker = new MirrorNullChecker()
 
-
-//  type GenericDecoder[T] = io.getquill.generic.GenericDecoder[Row, MirrorSession, T, DecodingType.Generic]
-//  inline def deriveDecoder[T]: GenericDecoder[T] = ${ io.getquill.generic.GenericDecoder.summon[T, Row, MirrorSession] }
-//
-//  private type SomeDec[T] = io.getquill.generic.GenericDecoder[Row, MirrorSession, T, _]
-//
-//  implicit inline def emptyTupleDecoder: GenericDecoder[EmptyTuple] = deriveDecoder
-//  implicit inline def tuple1Decoder[T1: SomeDec]: GenericDecoder[Tuple1[T1]] = deriveDecoder
-//  implicit inline def tuple2Decoder[T1: SomeDec, T2: SomeDec]: GenericDecoder[(T1, T2)] = deriveDecoder
-//  implicit inline def tuple3Decoder[T1: SomeDec, T2: SomeDec, T3: SomeDec]: GenericDecoder[(T1, T2, T3)] = deriveDecoder
-//  implicit inline def tuple4Decoder[T1: SomeDec, T2: SomeDec, T3: SomeDec, T4: SomeDec]: GenericDecoder[(T1, T2, T3, T4)] = deriveDecoder
+  object Codec extends Codec
 }
 
 
@@ -37,7 +30,7 @@ object MirrorContext extends ProductDecoders[Row, MirrorSession] with SqlEncodin
 class MirrorContext[+Dialect <: Idiom, +Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
     extends MirrorContextBase[Dialect, Naming] with AstSplicing {
 
-  export MirrorContext.{
+  export MirrorContext.Codec.{
     PrepareRow => _,
     ResultRow => _,
     Session => _,
@@ -46,7 +39,7 @@ class MirrorContext[+Dialect <: Idiom, +Naming <: NamingStrategy](val idiom: Dia
 }
 
 trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
-    extends Context[Dialect, Naming]
+    extends SqlContext[Dialect, Naming]
     with ContextVerbPrepare[Dialect, Naming]
     with ContextVerbTranslate[Dialect, Naming] { self =>
 
@@ -167,4 +160,6 @@ trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
     val prepData = prepare(Row(), session)._2.data.map(_._2)
     prepData.map(prepareParam)
   }
+
+  override def close: Unit = {}
 }

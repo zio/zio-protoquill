@@ -113,6 +113,7 @@ object ParserLibrary extends ParserLibrary {
 class FunctionApplyParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) {
   import quotes.reflect._
   import io.getquill.norm.capture.AvoidAliasConflict
+  val name = "FunctionApplyParser"
 
   // case q"new { def apply[..t1](...$params) = $body }" =>
   //  c.fail("Anonymous classes aren't supported for function declaration anymore. Use a method with a type parameter instead. " +
@@ -128,6 +129,7 @@ class FunctionParser(rootParse: Parser)(using Quotes, TranspileConfig) extends P
   import quotes.reflect._
 
   import io.getquill.norm.capture.AvoidAliasConflict
+  val name = "FunctionParser"
 
   // case q"new { def apply[..t1](...$params) = $body }" =>
   //  c.fail("Anonymous classes aren't supported for function declaration anymore. Use a method with a type parameter instead. " +
@@ -151,6 +153,7 @@ class ValParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with PatternMatchingValues {
   import quotes.reflect._
+  val name = "ValParser"
   def attempt = {
     case Unseal(ValDefTerm(ast)) => ast
   }
@@ -230,8 +233,8 @@ object ArbitraryTupleConstructionInlined {
  * }}}
  */
 class ArbitraryTupleBlockParser(val rootParse: Parser)(using Quotes, TranspileConfig)
-  extends Parser(rootParse)
-    with PatternMatchingValues {
+  extends Parser(rootParse) with PatternMatchingValues {
+  val name = "ArbitraryTupleBlockParser"
 
   import quotes.reflect.{Block => TBlock, Ident => TIdent, _}
 
@@ -266,6 +269,7 @@ class BlockParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with PatternMatchingValues {
   import quotes.reflect.{Block => TBlock, _}
+  val name = "BlockParser"
 
   def attempt = {
     case block @ Unseal(TBlock(parts, lastPart)) if (parts.length > 0) =>
@@ -284,6 +288,7 @@ class BlockParser(val rootParse: Parser)(using Quotes, TranspileConfig)
 
 class CasePatMatchParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with PatternMatchingValues {
   import quotes.reflect.{Constant => TConstant, _}
+  val name = "CasePatMatchParser"
 
   def attempt = {
     case Unseal(PatMatchTerm(patMatch)) =>
@@ -308,6 +313,8 @@ class TraversableOperationParser(val rootParse: Parser)(using Quotes, TranspileC
     with Parser.PrefilterType[Boolean]
     with PatternMatchingValues {
   import quotes.reflect._
+  val name = "TraversableOperationParser"
+
   def attempt = {
     case '{ ($col: collection.Map[k, v]).contains($body) } =>
       MapContains(rootParse(col), rootParse(body))
@@ -320,6 +327,7 @@ class TraversableOperationParser(val rootParse: Parser)(using Quotes, TranspileC
 
 class OrderingParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with PatternMatchingValues {
   import quotes.reflect._
+  val name = "OrderingParser"
 
   def attempt: History ?=> PartialFunction[Expr[_], Ordering] = {
     case '{ implicitOrd } => AscNullsFirst
@@ -342,13 +350,14 @@ class OrderingParser(val rootParse: Parser)(using Quotes, TranspileConfig) exten
 // TODO Pluggable-in unlifter via implicit? Quotation generic should have it in the root?
 class QuotationParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) {
   import quotes.reflect.{Ident => TIdent, Apply => TApply, _}
+  val name = "QuotationParser"
 
   def attempt = {
 
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
         case Uprootable(uid, astTree, lifts) =>
-          //summon[Lifts].writePluckableUnquote(lifts)  
+          //summon[Lifts].writePluckableUnquote(lifts)
           Unlifter(astTree)
         case Pluckable(uid, astTree, _)  =>
           QuotationTag(uid)
@@ -391,6 +400,7 @@ class ActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     with Assignments
     with PropertyParser {
   import quotes.reflect.{Constant => TConstant, _}
+  val name = "ActionParser"
 
   def combineAndCheckAndParse[T: Type, A <: Ast](first: Expr[T], others: Seq[Expr[T]])(checkClause: Expr[_] => Unit)(parseClause: Expr[_] => A): Seq[A] = {
     val assignments = (first.asTerm +: others.map(_.asTerm).filterNot(isNil(_)))
@@ -551,6 +561,7 @@ class BatchActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     with Parser.PrefilterType[BatchAction[_]]
     with Assignments {
   import quotes.reflect.{Constant => TConstant, _}
+  val name = "BatchActionParser"
 
   def attempt = {
     case '{ type a <: Action[_] with QAC[_, _]; ($q: Query[t]).foreach[`a`, b](${ Lambda1(ident, tpe, body) })($unq) } =>
@@ -560,6 +571,7 @@ class BatchActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
 }
 
 class IfElseParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) {
+  val name = "IfElseParser"
   import quotes.reflect.{Constant => TConstant, _}
 
   def attempt = {
@@ -575,6 +587,7 @@ class IfElseParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Par
 // are not necessarily an Option[_] e.g. Option[t].isEmpty needs to match on a clause whose type is Boolean
 // That's why we need to use the 'Is' object and optimize it that way here
 class OptionParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with Helpers {
+  val name = "OptionParser"
   import quotes.reflect.{Constant => TConstant, _}
 
   import MatchingOptimizers._
@@ -650,6 +663,7 @@ class QueryParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     with Parser.PrefilterType[Query[_]]
     with PropertyAliases
     with Helpers {
+  val name = "QueryParser"
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
   import MatchingOptimizers._
 
@@ -766,6 +780,8 @@ class SetOperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     with Parser.PrefilterType[Boolean]
     with PropertyAliases {
 
+  val name = "SetOperationsParser"
+
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
 
   def attempt = {
@@ -785,6 +801,7 @@ class SetOperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig)
  */
 class QueryScalarsParser(val rootParse: Parser)(using Quotes) extends Parser(rootParse) with PropertyAliases {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
+  val name = "QueryScalarsParser"
 
   def attempt = {
     case '{ type t; type u >: `t`; ($q: Query[`t`]).value[`u`] }   => rootParse(q)
@@ -807,6 +824,7 @@ class QueryScalarsParser(val rootParse: Parser)(using Quotes) extends Parser(roo
 
 class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with Assignments {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
+  val name = "InfixParser"
 
   def attempt = {
     case '{ ($i: InfixValue).pure.asCondition }       => genericInfix(i)(true, false, Quat.BooleanExpression)
@@ -928,6 +946,7 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
 
 class ExtrasParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with ComparisonTechniques {
   import quotes.reflect._
+  val name = "ExtrasParser"
 
   private object ExtrasModule {
     def unapply(term: Term) =
@@ -961,6 +980,7 @@ class ExtrasParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends
 class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with ComparisonTechniques with QuatMaking {
   import quotes.reflect._
   import io.getquill.ast.Infix
+  val name = "OperationsParser"
   // Note that if we import Dsl._ here then the "like" construct
   // will be parsed from the Dsl.extensions as opposed to the exported ones?
   // need to look into potential differences in these imports.
@@ -1106,6 +1126,7 @@ class ValueParser(rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
     with QuatMaking {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
+  val name = "ValueParser"
 
   def attempt = {
     // Parse Null values
@@ -1129,6 +1150,7 @@ class ComplexValueParser(rootParse: Parser)(using Quotes, TranspileConfig)
     with QuatMaking
     with Helpers {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, _}
+  val name = "ComplexValueParser"
 
   def attempt = {
     case ArrowFunction(prop, value) =>
@@ -1152,6 +1174,7 @@ class ComplexValueParser(rootParse: Parser)(using Quotes, TranspileConfig)
 class GenericExpressionsParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with PropertyParser {
   import quotes.reflect.{Constant => TConstant, Ident => TIdent, Apply => TApply, _}
   import reflect.Selectable.reflectiveSelectable
+  val name = "GenericExpressionsParser"
 
   def attempt = {
     case expr @ ImplicitClassExtensionPattern(cls, constructorArg) =>
