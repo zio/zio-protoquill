@@ -18,10 +18,11 @@ import javax.sql.DataSource
  *
  * As a default, this test will run as part of the suite without blowing up.
  */
-class StreamResultsOrBlowUpSpec extends ZioProxySpec {
+class StreamResultsOrBlowUpSpec extends ZioProxySpec with PostgresJdbcContext.Codec {
   implicit val pool: Implicit[DataSource] = Implicit(io.getquill.postgres.pool)
 
   case class Person(name: String, age: Int)
+  given CompositeDecoder[Person] = deriveComposite
 
   // set to true in order to create a ResultSet type (i.e. a rewindable one)
   // that will force jdbc to load the entire ResultSet into memory and crash this test.

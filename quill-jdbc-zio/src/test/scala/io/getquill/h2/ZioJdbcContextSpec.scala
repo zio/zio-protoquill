@@ -4,7 +4,7 @@ import io.getquill.ZioSpec
 import zio.{ Task, ZIO }
 import io.getquill._
 
-class ZioJdbcContextSpec extends ZioSpec {
+class ZioJdbcContextSpec extends ZioSpec with H2JdbcContext.Codec {
 
   val context = testContext
   import testContext._

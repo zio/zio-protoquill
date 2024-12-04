@@ -11,6 +11,7 @@ import io.getquill.CalibanIntegration._
 import caliban.schema._
 import caliban.schema.Schema.auto._
 import caliban.schema.ArgBuilder.auto._
+import io.getquill.jdbczio.Quill.Postgres.Codec.*
 
 class CalibanIntegrationNestedSpec extends CalibanSpec {
   import Ctx._

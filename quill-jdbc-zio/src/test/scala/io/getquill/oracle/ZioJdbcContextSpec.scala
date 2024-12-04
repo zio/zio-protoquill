@@ -6,7 +6,7 @@ import javax.sql.DataSource
 import io.getquill._
 import zio.ZLayer
 
-class ZioJdbcContextSpec extends ZioSpec {
+class ZioJdbcContextSpec extends ZioSpec with OracleJdbcContext.Codec {
 
   val context = testContext
   import testContext._

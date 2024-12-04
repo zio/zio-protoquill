@@ -7,6 +7,7 @@ import zio.{ZIO, Task}
 import caliban.GraphQL
 import io.getquill.jdbczio.Quill
 import io.getquill.util.ContextLogger
+import io.getquill.jdbczio.Quill.Postgres.Codec.*
 
 trait CalibanSpec extends AnyFreeSpec with Matchers with BeforeAndAfterAll {
   object Ctx extends PostgresZioJdbcContext(Literal)

@@ -4,13 +4,13 @@ import io.getquill._
 import io.getquill.util.LoadConfig
 import zio.Console.printLine
 import zio.{ ZEnvironment, ZIOAppDefault }
+import PostgresJdbcContext.Codec.*
+import io.getquill.examples.Data.{*, given}
 
 object ZioAppDataSource extends ZIOAppDefault {
 
   object MyPostgresContext extends PostgresZioJdbcContext(Literal)
   import MyPostgresContext._
-
-  case class Person(name: String, age: Int)
 
   def dataSource = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
 

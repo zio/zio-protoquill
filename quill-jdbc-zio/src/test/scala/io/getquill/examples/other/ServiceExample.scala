@@ -8,9 +8,10 @@ import io.getquill._
 
 import java.sql.SQLException
 import javax.sql.DataSource
+import PostgresJdbcContext.Codec.*
+import io.getquill.examples.Data.{*, given}
 
 object ServiceExample extends ZIOAppDefault {
-  import DBModel._
 
   override def run = {
     runApp.provideLayer(DBManager.live).exitCode
@@ -25,13 +26,7 @@ object ServiceExample extends ZIOAppDefault {
     } yield ()
 }
 
-object DBModel {
-  case class Person(name: String, age: Int)
-}
-
 object DBManager {
-  import DBModel._
-
   val ctx = new PostgresZioJdbcContext(Literal)
   import ctx._
   val zioDS: ZLayer[Any, Throwable, DataSource] = Quill.DataSource.fromPrefix("testPostgresDB")

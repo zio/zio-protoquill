@@ -4,15 +4,16 @@ import io.getquill._
 import io.getquill.util.LoadConfig
 import zio.{ ZIOAppDefault, ZLayer }
 import zio.Console.printLine
+import PostgresJdbcContext.Codec.*
 
 import javax.sql.DataSource
+import io.getquill.examples.Data.{*, given}
 
 object ZioAppManual extends ZIOAppDefault {
 
   object MyPostgresContext extends PostgresZioJdbcContext(Literal)
   import MyPostgresContext._
 
-  case class Person(name: String, age: Int)
   lazy val ds: DataSource = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
 
   override def run = {

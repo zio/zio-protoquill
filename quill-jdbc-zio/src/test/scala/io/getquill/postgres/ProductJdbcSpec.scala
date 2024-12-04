@@ -4,7 +4,7 @@ import io.getquill.ZioSpec
 import io.getquill.context.sql.ProductSpec
 import io.getquill._
 
-class ProductJdbcSpec extends ProductSpec with ZioSpec {
+class ProductJdbcSpec extends ProductSpec with ZioSpec with PostgresJdbcContext.Codec {
 
   val context = testContext
   import testContext._

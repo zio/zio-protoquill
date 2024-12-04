@@ -5,19 +5,26 @@ import org.scalatest.BeforeAndAfterEach
 import zio.Chunk
 import zio.json.ast.Json
 import zio.json.{DeriveJsonDecoder, DeriveJsonEncoder, JsonDecoder, JsonEncoder}
+import io.getquill.jdbczio.Quill
 
-class PostgresJsonSpec extends ZioSpec with BeforeAndAfterEach {
+class PostgresJsonSpec extends ZioSpec with Quill.Postgres.Codec with  BeforeAndAfterEach {
   val context = testContext
   import testContext._
 
   case class PersonJson(name: String, age: Int)
   case class PersonJsonb(name: String, age: Int)
+  given CompositeDecoder[PersonJson] = deriveComposite
+  given CompositeDecoder[PersonJsonb] = deriveComposite
 
   case class JsonEntity(name: String, value: JsonValue[PersonJson])
   case class JsonbEntity(name: String, value: JsonbValue[PersonJsonb])
+  given CompositeDecoder[JsonEntity] = deriveComposite
+  given CompositeDecoder[JsonbEntity] = deriveComposite
 
   case class JsonOptEntity(name: String, value: Option[JsonValue[PersonJson]])
   case class JsonbOptEntity(name: String, value: Option[JsonbValue[PersonJsonb]])
+  given CompositeDecoder[JsonOptEntity] = deriveComposite
+  given CompositeDecoder[JsonbOptEntity] = deriveComposite
 
   val jsonJoe    = JsonValue(PersonJson("Joe", 123))
   val jsonValue  = JsonEntity("JoeEntity", jsonJoe)
@@ -26,9 +33,13 @@ class PostgresJsonSpec extends ZioSpec with BeforeAndAfterEach {
 
   case class JsonAstEntity(name: String, value: JsonValue[Json])
   case class JsonbAstEntity(name: String, value: JsonbValue[Json])
+  given CompositeDecoder[JsonAstEntity] = deriveComposite
+  given CompositeDecoder[JsonbAstEntity] = deriveComposite
 
   case class JsonAstOptEntity(name: String, value: Option[JsonValue[Json]])
   case class JsonbAstOptEntity(name: String, value: Option[JsonbValue[Json]])
+  given CompositeDecoder[JsonAstOptEntity] = deriveComposite
+  given CompositeDecoder[JsonbAstOptEntity] = deriveComposite
 
   implicit val personJsonEncoder: JsonEncoder[PersonJson] = DeriveJsonEncoder.gen[PersonJson]
   implicit val personJsonDecoder: JsonDecoder[PersonJson] = DeriveJsonDecoder.gen[PersonJson]

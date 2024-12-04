@@ -13,7 +13,7 @@ import scala.util.Random
 import zio.ZLayer
 import javax.sql.DataSource
 
-class ConnectionLeakTest extends ProductSpec with ZioSpec {
+class ConnectionLeakTest extends ProductSpec with ZioSpec with PostgresJdbcContext.Codec {
 
   implicit val pool: Implicit[ZLayer[Any, Throwable, DataSource]] = Implicit(Quill.DataSource.fromPrefix("testPostgresLeakDB"))
 

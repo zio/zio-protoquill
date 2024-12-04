@@ -1,9 +1,10 @@
 package io.getquill.sqlite
 
-import io.getquill.context.sql.PeopleReturningSpec
-import io.getquill._
 
-class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec {
+import io.getquill.context.sql.PeopleReturningSpec
+import io.getquill.*
+
+class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec with SqliteJdbcContext.Codec {
 
 
   val context: testContext.type = testContext

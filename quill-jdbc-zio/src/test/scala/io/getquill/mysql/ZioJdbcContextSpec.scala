@@ -7,7 +7,7 @@ import io.getquill.context.ZioJdbc._
 import javax.sql.DataSource
 import io.getquill._
 
-class ZioJdbcContextSpec extends ZioSpec {
+class ZioJdbcContextSpec extends ZioSpec with MysqlJdbcContext.Codec {
 
   val context = testContext
   import testContext._

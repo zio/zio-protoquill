@@ -3,7 +3,7 @@ package io.getquill
 import caliban.graphQL
 import caliban.schema.Annotations.GQLDescription
 import caliban._
-import caliban.quick._ 
+import caliban.quick._
 import zio.http._
 import zio.http.Server
 import zio.{ExitCode, ZIO}
@@ -28,6 +28,7 @@ import caliban.schema.ArgBuilder.auto._
 import zio.json.JsonEncoder
 import zio.json.JsonDecoder
 import caliban._
+import io.getquill.jdbczio.Quill.Postgres.Codec.*
 
 object Dao {
   case class PersonAddressPlanQuery(plan: String, pa: List[PersonAddress])
@@ -96,7 +97,7 @@ object CalibanExample extends zio.ZIOAppDefault {
         )
       )
     )
-  
+
   given JsonEncoder[GraphQLRequest] = GraphQLRequest.zioJsonEncoder
 
   given JsonDecoder[GraphQLRequest] = GraphQLRequest.zioJsonDecoder

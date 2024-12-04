@@ -7,15 +7,10 @@ import io.getquill._
 
 import javax.sql.DataSource
 
-class ZioJdbcUnderlyingContextSpec extends ZioProxySpec {
+class ZioJdbcUnderlyingContextSpec extends ZioProxySpec with PostgresJdbcContext.Codec {
 
   val context = testContext.underlying
   import testContext.underlying._
-
-  case class TestEntity(s: String, i: Int, l: Long, o: Option[Int], b: Boolean)
-  inline def qr1 = quote {
-    query[TestEntity]
-  }
 
   "provides transaction support" - {
     "success" in {

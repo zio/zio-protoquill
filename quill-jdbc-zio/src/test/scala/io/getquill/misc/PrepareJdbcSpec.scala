@@ -6,7 +6,7 @@ import io.getquill._
 
 import java.sql.{ Connection, ResultSet }
 
-class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioProxySpec with BeforeAndAfter {
+class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with ZioProxySpec with BeforeAndAfter with PostgresJdbcContext.Codec {
 
   val context: testContext.type = testContext
   import testContext._

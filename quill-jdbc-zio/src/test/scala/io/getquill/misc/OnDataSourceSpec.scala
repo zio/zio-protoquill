@@ -9,7 +9,7 @@ import io.getquill._
 
 import javax.sql.DataSource
 
-class OnDataSourceSpec extends PeopleZioProxySpec {
+class OnDataSourceSpec extends PeopleZioProxySpec with PostgresJdbcContext.Codec {
 
   val context = testContext
 

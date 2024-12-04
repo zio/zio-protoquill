@@ -10,6 +10,7 @@ import caliban.RootResolver
 import io.getquill.CalibanIntegration._
 import caliban.schema.Schema.auto._
 import caliban.schema.ArgBuilder.auto._
+import io.getquill.jdbczio.Quill.Postgres.Codec.*
 
 class CalibanIntegrationSpec extends CalibanSpec {
   import Ctx._

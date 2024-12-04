@@ -4,7 +4,7 @@ import io.getquill.PeopleZioSpec
 import org.scalatest.matchers.should.Matchers._
 import io.getquill._
 
-class PeopleZioJdbcSpec extends PeopleZioSpec {
+class PeopleZioJdbcSpec extends PeopleZioSpec with MysqlJdbcContext.Codec {
 
   val context = testContext
   import testContext._

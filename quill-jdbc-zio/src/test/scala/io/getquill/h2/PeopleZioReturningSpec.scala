@@ -3,7 +3,7 @@ package io.getquill.h2
 import io.getquill.context.sql.PeopleReturningSpec
 import io.getquill._
 
-class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec {
+class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec with H2JdbcContext.Codec {
 
 
   val context: testContext.type = testContext

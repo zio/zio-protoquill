@@ -9,7 +9,7 @@ import io.getquill.util.LoadConfig
 import zio.ZIO
 import io.getquill._
 
-class ImplicitEnvPatternSpec extends PeopleZioProxySpec {
+class ImplicitEnvPatternSpec extends PeopleZioProxySpec with PostgresJdbcContext.Codec {
 
   // Need to specify prefix to use for the setup
 

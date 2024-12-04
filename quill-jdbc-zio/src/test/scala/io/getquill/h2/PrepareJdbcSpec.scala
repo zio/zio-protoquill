@@ -8,7 +8,7 @@ import io.getquill.PrepareZioJdbcSpecBase
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 
-class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter {
+class PrepareJdbcSpec extends PrepareZioJdbcSpecBase with BeforeAndAfter with H2JdbcContext.Codec {
 
   implicit val ds: Implicit[DataSource] = Implicit(pool)
   val context: testContext.underlying.type = testContext.underlying

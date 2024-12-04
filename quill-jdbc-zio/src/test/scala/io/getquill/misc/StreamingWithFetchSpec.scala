@@ -7,12 +7,13 @@ import io.getquill._
 import zio.Unsafe
 import zio.ZEnvironment
 
-class StreamingWithFetchSpec extends ZioProxySpec with BeforeAndAfter {
+class StreamingWithFetchSpec extends ZioProxySpec with BeforeAndAfter with PostgresJdbcContext.Codec {
 
   val context = testContext
   import testContext._
 
   case class Person(name: String, age: Int)
+  given CompositeDecoder[Person] = deriveComposite
 
   inline def selectAll = quote(query[Person])
   inline def insert = quote { (p: Person) => query[Person].insertValue(p) }

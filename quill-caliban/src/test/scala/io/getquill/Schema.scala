@@ -1,9 +1,15 @@
 package io.getquill
 
+import io.getquill.jdbczio.Quill.Postgres.Codec.*
+
 object FlatSchema {
   case class PersonT(id: Int, first: String, last: String, age: Int)
   case class AddressT(ownerId: Int, street: String)
   case class PersonAddress(id: Int, first: String, last: String, age: Int, street: Option[String])
+  given CompositeDecoder[PersonT] = deriveComposite
+  given CompositeDecoder[AddressT] = deriveComposite
+  given CompositeDecoder[PersonAddress] = deriveComposite
+
   object ExampleData {
     val people =
       List(
@@ -31,6 +37,12 @@ object NestedSchema {
   case class AddressT(ownerId: Int, street: String)
   // Needs to be named differently from Flat.PersonAddress___ since Caliban infers from this class & name must be different
   case class PersonAddressNested(id: Int, name: Name, age: Int, street: Option[String])
+  given CompositeDecoder[Name] = deriveComposite
+  given CompositeDecoder[PersonT] = deriveComposite
+  given CompositeDecoder[AddressT] = deriveComposite
+  given CompositeDecoder[PersonAddressNested] = deriveComposite
+
+
   object ExampleData {
     val people =
       List(

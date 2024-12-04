@@ -14,8 +14,9 @@ object MultiLevelServiceSpec {
   case class Person(name: String, age: Int)
 }
 
-class MultiLevelServiceSpec extends AnyFreeSpec with BeforeAndAfterAll with Matchers {
+class MultiLevelServiceSpec extends AnyFreeSpec with BeforeAndAfterAll with Matchers with PostgresJdbcContext.Codec {
   import MultiLevelServiceSpec._
+  given CompositeDecoder[Person] = deriveComposite
 
   val entries = List(Person("Joe", 1), Person("Jack", 2))
 

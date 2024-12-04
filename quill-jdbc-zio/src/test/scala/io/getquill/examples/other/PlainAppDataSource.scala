@@ -8,13 +8,13 @@ import zio.Console.printLine
 import zio.Runtime
 import io.getquill._
 import zio.Unsafe
+import PostgresJdbcContext.Codec.*
+import io.getquill.examples.Data.{*, given}
 
 object PlainAppDataSource {
 
   object MyPostgresContext extends PostgresZioJdbcContext(Literal)
   import MyPostgresContext._
-
-  case class Person(name: String, age: Int)
 
   def config = JdbcContextConfig(LoadConfig("testPostgresDB")).dataSource
 

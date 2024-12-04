@@ -1,11 +1,12 @@
 package io.getquill.context.qzio
 
 import io.getquill.NamingStrategy
-import io.getquill.context.{ Context, ExecutionInfo, ContextVerbStream }
+import io.getquill.context.sql.SqlContext
+import io.getquill.context.{Context, ContextVerbStream, ExecutionInfo}
 import zio.ZIO
 import zio.stream.ZStream
 
-trait ZioContext[+Idiom <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy] extends Context[Idiom, Naming]
+trait ZioContext[+Idiom <: io.getquill.idiom.Idiom, +Naming <: NamingStrategy] extends SqlContext[Idiom, Naming]
   with ContextVerbStream[Idiom, Naming] {
 
   type Error

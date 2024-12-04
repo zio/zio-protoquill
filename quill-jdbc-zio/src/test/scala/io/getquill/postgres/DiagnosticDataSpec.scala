@@ -5,7 +5,7 @@ import io.getquill.ast.{Filter, ReturningGenerated}
 import io.getquill.context.AstSplicing
 import io.getquill.context.sql.ProductSpec
 
-class DiagnosticDataSpec extends ProductSpec with ZioSpec {
+class DiagnosticDataSpec extends ProductSpec with ZioSpec with PostgresJdbcContext.Codec {
 
   val context = testContextSplicing
   import testContextSplicing.*

@@ -4,9 +4,10 @@ import io.getquill.jdbczio.Quill
 import io.getquill._
 import zio._
 import java.sql.SQLException
+import Quill.Postgres.Codec.*
+import io.getquill.examples.Data.{*, given}
 
 object IdiomaticAppData {
-  case class Person(name: String, age: Int)
 
   case class DataService(quill: Quill.Postgres[Literal]) {
     import quill._

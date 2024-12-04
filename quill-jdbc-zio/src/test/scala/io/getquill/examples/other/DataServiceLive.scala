@@ -5,6 +5,8 @@ import io.getquill.jdbczio.Quill
 import io.getquill.context.ZioJdbc._
 import zio._
 import javax.sql.DataSource
+import Quill.Postgres.Codec.*
+import io.getquill.examples.Data.{*, given}
 
 /**
  * Not sure why but if you put this into the same class as the caller (e.g. ZioAppExample)

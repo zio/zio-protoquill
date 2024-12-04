@@ -1,16 +1,17 @@
 package io.getquill
 
-import io.getquill.context.ZioJdbc._
-import io.getquill.context.jdbc.ResultSetExtractor
+import io.getquill.context.ZioJdbc.*
+import io.getquill.context.jdbc.{JdbcVerbs, ResultSetExtractor}
 import io.getquill.context.sql.ProductSpec
 import io.getquill.context.qzio.ZioJdbcContext
 import org.scalactic.Equality
-import zio.{ Runtime, Task, ZEnvironment, ZIO }
+import zio.{Runtime, Task, ZEnvironment, ZIO}
 import io.getquill.generic.GenericDecoder
 import io.getquill.generic.DecodingType.Composite
 
-import java.sql.{ Connection, PreparedStatement, ResultSet }
+import java.sql.{Connection, PreparedStatement, ResultSet}
 import io.getquill.context.qzio.ImplicitSyntax.Implicit
+
 import javax.sql.DataSource
 
 trait PrepareZioJdbcSpecBase extends ProductSpec with ZioProxySpec {

@@ -24,7 +24,8 @@ import caliban.schema.ArgBuilder.auto.*
 import zio.json.JsonEncoder
 import zio.json.JsonDecoder
 import caliban._
-import caliban.quick._ 
+import caliban.quick._
+import io.getquill.jdbczio.Quill.Postgres.Codec.*
 
 
 object DaoNested {

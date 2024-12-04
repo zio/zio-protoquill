@@ -8,7 +8,7 @@ import javax.sql.DataSource
 import java.sql.SQLException
 import io.getquill._
 
-class ZioJdbcContextSpec extends ZioSpec {
+class ZioJdbcContextSpec extends ZioSpec with PostgresJdbcContext.Codec {
 
   val context = testContext
   import testContext._

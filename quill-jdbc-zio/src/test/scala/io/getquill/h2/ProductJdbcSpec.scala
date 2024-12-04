@@ -1,13 +1,13 @@
 package io.getquill.h2
 
 import io.getquill.ZioSpec
-
 import io.getquill.context.sql.ProductSpec
-import io.getquill._
+import io.getquill.*
+import io.getquill.context.jdbc.JdbcVerbs
 
-class ProductJdbcSpec extends ProductSpec with ZioSpec {
+class ProductJdbcSpec extends ProductSpec with ZioSpec with H2JdbcContext.Codec {
 
-  val context = testContext
+  val context: testContext.type = testContext
   import testContext._
 
   override def beforeAll() = {

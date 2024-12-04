@@ -3,7 +3,7 @@ package io.getquill.postgres
 import io.getquill._
 import io.getquill.context.sql.PeopleReturningSpec
 
-class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec {
+class PeopleZioReturningSpec extends PeopleReturningSpec with ZioSpec with PostgresJdbcContext.Codec {
 
   val context: testContext.type = testContext
   import testContext._

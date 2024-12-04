@@ -33,7 +33,8 @@ object Quill {
     def fromNamingStrategy[N <: NamingStrategy: Tag](naming: N): ZLayer[javax.sql.DataSource, Nothing, Postgres[N]] =
       ZLayer.fromFunction((ds: javax.sql.DataSource) => new Postgres[N](naming, ds))
 
-    object Codec extends PostgresJdbcContext.Codec with PostgresJsonExtensions
+    trait Codec extends PostgresJdbcContext.Codec with PostgresJsonExtensions
+    object Codec extends Codec
   }
 
   class SqlServer[+N <: NamingStrategy](val naming: N, override val ds: DataSource)
@@ -46,7 +47,8 @@ object Quill {
     def fromNamingStrategy[N <: NamingStrategy: Tag](naming: N): ZLayer[javax.sql.DataSource, Nothing, SqlServer[N]] =
       ZLayer.fromFunction((ds: javax.sql.DataSource) => new SqlServer[N](naming, ds))
 
-    object Codec extends SqlServerJdbcContext.Codec
+    type Codec = SqlServerJdbcContext.Codec
+    object Codec extends Codec
   }
 
   class H2[+N <: NamingStrategy](val naming: N, override val ds: DataSource)
@@ -59,7 +61,8 @@ object Quill {
     def fromNamingStrategy[N <: NamingStrategy: Tag](naming: N): ZLayer[javax.sql.DataSource, Nothing, H2[N]] =
       ZLayer.fromFunction((ds: javax.sql.DataSource) => new H2[N](naming, ds))
 
-    object Codec extends H2JdbcContext.Codec
+    type Codec = H2JdbcContext.Codec
+    object Codec extends Codec
   }
 
   class Mysql[+N <: NamingStrategy](val naming: N, override val ds: DataSource)
@@ -72,7 +75,8 @@ object Quill {
     def fromNamingStrategy[N <: NamingStrategy: Tag](naming: N): ZLayer[javax.sql.DataSource, Nothing, Mysql[N]] =
       ZLayer.fromFunction((ds: javax.sql.DataSource) => new Mysql[N](naming, ds))
 
-    object Codec extends MysqlJdbcContext.Codec
+    type Codec = MysqlJdbcContext.Codec
+    object Codec extends Codec
   }
 
   class Sqlite[+N <: NamingStrategy](val naming: N, override val ds: DataSource)
@@ -85,7 +89,8 @@ object Quill {
     def fromNamingStrategy[N <: NamingStrategy: Tag](naming: N): ZLayer[javax.sql.DataSource, Nothing, Sqlite[N]] =
       ZLayer.fromFunction((ds: javax.sql.DataSource) => new Sqlite[N](naming, ds))
 
-    object Codec extends SqliteJdbcContext.Codec
+    type Codec = SqliteJdbcContext.Codec
+    object Codec extends Codec
   }
 
   class Oracle[+N <: NamingStrategy](val naming: N, override val ds: DataSource)
@@ -98,7 +103,8 @@ object Quill {
     def fromNamingStrategy[N <: NamingStrategy: Tag](naming: N): ZLayer[javax.sql.DataSource, Nothing, Oracle[N]] =
       ZLayer.fromFunction((ds: javax.sql.DataSource) => new Oracle[N](naming, ds))
 
-    object Codec extends OracleJdbcContext.Codec
+    type Codec = OracleJdbcContext.Codec
+    object Codec extends Codec
   }
 
   object Connection {

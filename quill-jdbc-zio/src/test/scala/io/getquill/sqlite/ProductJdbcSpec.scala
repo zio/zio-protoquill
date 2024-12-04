@@ -6,7 +6,7 @@ import io.getquill.context.sql.ProductSpec
 import zio.ZIO
 import io.getquill._
 
-class ProductJdbcSpec extends ProductSpec with ZioSpec {
+class ProductJdbcSpec extends ProductSpec with ZioSpec with SqliteJdbcContext.Codec {
 
   val context = testContext
   import testContext._

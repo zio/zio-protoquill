@@ -1,9 +1,10 @@
 package io.getquill
 
-import io.getquill.context.qzio.ImplicitSyntax._
+import io.getquill.context.jdbc.JdbcVerbs
+import io.getquill.context.qzio.ImplicitSyntax.*
 import org.scalatest.BeforeAndAfterAll
-import zio.stream.{ ZSink, ZStream }
-import zio.{ Runtime, Tag, Unsafe, ZEnvironment, ZIO, ZLayer }
+import zio.stream.{ZSink, ZStream}
+import zio.{Runtime, Tag, Unsafe, ZEnvironment, ZIO, ZLayer}
 
 import java.sql.Connection
 import javax.sql.DataSource
@@ -15,7 +16,7 @@ object ZioSpec {
     }.get
 }
 
-trait ZioSpec extends Spec with BeforeAndAfterAll {
+trait ZioSpec extends Spec with BeforeAndAfterAll with JdbcVerbs {
 
   def accumulate[T](stream: ZStream[Any, Throwable, T]): ZIO[Any, Throwable, List[T]] =
     stream.run(ZSink.collectAll).map(_.toList)
@@ -39,7 +40,7 @@ trait ZioSpec extends Spec with BeforeAndAfterAll {
   }
 }
 
-trait ZioProxySpec extends Spec with BeforeAndAfterAll {
+trait ZioProxySpec extends Spec with BeforeAndAfterAll with JdbcVerbs {
 
   def accumulateDS[T](stream: ZStream[DataSource, Throwable, T]): ZIO[DataSource, Throwable, List[T]] =
     stream.run(ZSink.collectAll).map(_.toList)
