@@ -3,7 +3,7 @@ package io.getquill.examples
 import scala.language.implicitConversions
 import io.getquill._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
-
+import MirrorContext.Codec.*
 import java.sql.Connection
 
 object MiniExample_LiftByKeys {
@@ -13,6 +13,7 @@ object MiniExample_LiftByKeys {
   import io.getquill.metaprog.etc.MapFlicer
 
   case class Person(firstName: String, lastName: String, age: Int)
+  given CompositeDecoder[Person] = deriveComposite
 
   val values: Map[String, String] = Map("firstName" -> "Joe", "age" -> "22")
 

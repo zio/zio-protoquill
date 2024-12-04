@@ -6,13 +6,13 @@ import io.getquill._
 
 trait ArrayOpsSpec extends Spec { self =>
 
-  val ctx: SqlContext[_, _] with ArrayEncoding {
+  val context: SqlContext[_, _] {
     type PrepareRow = self.PrepareRow
     type ResultRow = self.ResultRow
     type Session = self.Session
   }
 
-  import ctx._
+  import context._
 
   case class ArrayOps(id: Int, numbers: Seq[Int])
 

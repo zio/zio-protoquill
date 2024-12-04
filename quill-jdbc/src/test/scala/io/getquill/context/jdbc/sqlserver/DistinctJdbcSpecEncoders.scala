@@ -6,7 +6,7 @@ import io.getquill.*
 import io.getquill.context.jdbc.JdbcVerbs
 
 
-class DistinctJdbcSpecEncoders extends DistinctSpec with JdbcVerbs {
+class DistinctJdbcSpecEncoders extends DistinctSpec with JdbcVerbs with SqlServerJdbcContext.Codec {
 
   val context = testContext
   import testContext._

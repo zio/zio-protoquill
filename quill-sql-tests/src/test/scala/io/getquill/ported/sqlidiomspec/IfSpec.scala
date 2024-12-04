@@ -8,7 +8,7 @@ import io.getquill.context.sql.testContext
 import io.getquill.context.sql.testContext._
 import io.getquill._
 
-class IfSpec extends Spec {
+class IfSpec extends MirrorSpec {
   "if" - {
     "simple" in {
       inline def q = quote {

@@ -15,7 +15,7 @@ object FlicerMapTypesSpec {
   }
 }
 
-class FlicerMapTypesSpec extends Spec with Inside {
+class FlicerMapTypesSpec extends Spec with Inside with PostgresJdbcContext.Codec {
   val ctx = testContext
   import ctx._
 

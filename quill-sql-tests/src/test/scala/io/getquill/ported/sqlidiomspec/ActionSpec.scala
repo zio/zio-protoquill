@@ -11,7 +11,7 @@ import io.getquill.context.ExecutionType.Static
 import io.getquill.context.ExecutionType.Dynamic
 import io.getquill.context.ExecutionType
 
-class ActionSpec extends Spec {
+class ActionSpec extends MirrorSpec {
   "action" - {
     "insert" - {
       "not affected by variable name" - {

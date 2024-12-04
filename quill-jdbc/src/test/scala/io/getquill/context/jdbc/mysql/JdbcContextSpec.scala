@@ -4,7 +4,7 @@ import io.getquill.Spec
 import io.getquill._
 
 
-class JdbcContextSpec extends Spec {
+class JdbcContextSpec extends Spec with MysqlJdbcContext.Codec {
 
   val context = testContext
   import testContext._

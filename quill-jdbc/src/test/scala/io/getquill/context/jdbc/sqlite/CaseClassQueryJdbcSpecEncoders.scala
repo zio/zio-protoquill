@@ -6,7 +6,7 @@ import io.getquill.*
 import io.getquill.context.jdbc.JdbcVerbs
 
 
-class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with JdbcVerbs {
+class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with SqliteJdbcContext.Codec {
 
   val context = testContext
   import testContext._

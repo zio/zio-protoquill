@@ -5,7 +5,7 @@ import io.getquill.*
 import io.getquill.generic.{DecodingType, GenericDecoder}
 import io.getquill.util.debug.PrintMac.apply
 
-class PeopleJdbcAggregationSpec extends PeopleAggregationSpec {
+class PeopleJdbcAggregationSpec extends PeopleAggregationSpec with PostgresJdbcContext.Codec {
 
   val context: testContext.type = testContext
   import testContext._

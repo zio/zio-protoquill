@@ -5,7 +5,7 @@ import io.getquill.extras._
 import io.getquill.ast.Entity
 import io.getquill.quat.Quat
 
-class DynamicQuerySpec extends Spec { // //
+class DynamicQuerySpec extends MirrorSpec { // //
 
   // NOTE :QueryMeta and :SchemaMeta are not needed
 
@@ -69,6 +69,9 @@ class DynamicQuerySpec extends Spec { // //
   case class S(v: String)
   case class E(s: S)
   case class Person2(firstName: String, lastName: String)
+  given CompositeDecoder[S] = deriveComposite
+  given CompositeDecoder[E] = deriveComposite
+  given CompositeDecoder[Person2] = deriveComposite
 
   "query" - {
 

@@ -9,7 +9,7 @@ import io.getquill.{ defaultParser => _, _ }
 
 import org.scalatest._
 
-class CustomParseTest extends Spec with Inside {
+class CustomParseTest extends MirrorSpec with Inside {
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._ //
 

@@ -6,7 +6,7 @@ import io.getquill.*
 import io.getquill.context.jdbc.JdbcVerbs
 
 
-class OptionJdbcSpecEncoders extends OptionQuerySpec with JdbcVerbs {
+class OptionJdbcSpecEncoders extends OptionQuerySpec with SqliteJdbcContext.Codec {
 
   val context = testContext
   import testContext._

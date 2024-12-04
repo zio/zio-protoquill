@@ -24,12 +24,14 @@ class SqlServerJdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: 
   def this(naming: N, config: Config) = this(naming, JdbcContextConfig(config))
   def this(naming: N, configPrefix: String) = this(naming, LoadConfig(configPrefix))
 
-  export SqlServerJdbcContext.{
-    Index => _,
-    PrepareRow => _,
-    ResultRow => _,
-    Session => _,
-    Runner => _,
-    _
+  object codec {
+    export SqlServerJdbcContext.{
+      Index => _,
+      PrepareRow => _,
+      ResultRow => _,
+      Session => _,
+      Runner => _,
+      _
+    }
   }
 }

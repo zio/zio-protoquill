@@ -5,9 +5,9 @@ import io.getquill.*
 import io.getquill.context.jdbc.JdbcVerbs
 
 
-class ProductJdbcSpecEncoders extends ProductSpec with JdbcVerbs {
+class ProductJdbcSpecEncoders extends ProductSpec with PostgresJdbcContext.Codec {
 
-  val context = testContext
+  val context: testContext.type = testContext
   import testContext._
 
   override def beforeAll() = {

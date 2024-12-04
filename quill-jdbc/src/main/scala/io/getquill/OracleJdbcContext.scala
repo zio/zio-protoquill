@@ -31,12 +31,14 @@ class OracleJdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: Dat
   def this(naming: N, config: Config) = this(naming, JdbcContextConfig(config))
   def this(naming: N, configPrefix: String) = this(naming, LoadConfig(configPrefix))
 
-  export OracleJdbcContext.Codec.{
-    Index => _,
-    PrepareRow => _,
-    ResultRow => _,
-    Session => _,
-    Runner => _,
-    _
+  object codec {
+    export OracleJdbcContext.Codec.{
+      Index => _,
+      PrepareRow => _,
+      ResultRow => _,
+      Session => _,
+      Runner => _,
+      _
+    }
   }
 }

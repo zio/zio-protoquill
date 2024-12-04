@@ -5,7 +5,7 @@ import io.getquill._
 import java.time.ZoneId
 
 
-class JdbcEncodingSpec extends EncodingSpec {
+class JdbcEncodingSpec extends EncodingSpec with H2JdbcContext.Codec {
 
   val context: testContext.type = testContext
   import testContext._

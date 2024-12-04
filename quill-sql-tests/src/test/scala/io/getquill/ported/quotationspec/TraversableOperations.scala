@@ -14,7 +14,7 @@ import io.getquill.norm.NormalizeStringConcat
 import io.getquill._
 import io.getquill.PicklingHelper._
 
-class TraversableOperations extends Spec with TestEntities with Inside {
+class TraversableOperations extends MirrorSpec with TestEntities with Inside {
 
   extension (ast: Ast) {
     def body: Ast = ast match {

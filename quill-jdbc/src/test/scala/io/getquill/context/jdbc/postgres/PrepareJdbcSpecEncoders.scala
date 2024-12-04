@@ -6,7 +6,7 @@ import io.getquill.context.jdbc.PrepareJdbcSpecEncodersBase
 import org.scalatest.BeforeAndAfter
 import io.getquill._
 
-class PrepareJdbcSpecEncoders extends PrepareJdbcSpecEncodersBase with BeforeAndAfter {
+class PrepareJdbcSpecEncoders extends PrepareJdbcSpecEncodersBase with PostgresJdbcContext.Codec with BeforeAndAfter {
 
   val context: testContext.type = testContext
   import testContext._

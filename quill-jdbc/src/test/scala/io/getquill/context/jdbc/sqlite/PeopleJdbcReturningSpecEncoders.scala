@@ -5,7 +5,7 @@ import io.getquill.*
 import io.getquill.context.jdbc.JdbcVerbs
 
 
-class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with JdbcVerbs {
+class PeopleJdbcReturningSpecEncoders extends PeopleReturningSpec with SqliteJdbcContext.Codec {
 
   val context = testContext
   import testContext._

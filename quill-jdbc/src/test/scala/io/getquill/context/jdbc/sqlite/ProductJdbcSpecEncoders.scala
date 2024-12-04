@@ -5,7 +5,7 @@ import io.getquill.*
 import io.getquill.context.jdbc.JdbcVerbs
 
 
-class ProductJdbcSpecEncoders extends ProductSpec with JdbcVerbs {
+class ProductJdbcSpecEncoders extends ProductSpec with SqliteJdbcContext.Codec with JdbcVerbs {
 
   val context = testContext
   import testContext._

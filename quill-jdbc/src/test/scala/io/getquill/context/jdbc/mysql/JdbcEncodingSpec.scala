@@ -7,7 +7,7 @@ import io.getquill.*
 
 import java.time.ZoneId
 
-class JdbcEncodingSpec extends EncodingSpec {
+class JdbcEncodingSpec extends EncodingSpec with MysqlJdbcContext.Codec {
 
   val context: testContext.type = testContext
   import testContext._

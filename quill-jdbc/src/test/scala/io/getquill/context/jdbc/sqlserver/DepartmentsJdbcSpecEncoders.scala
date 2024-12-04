@@ -5,7 +5,7 @@ import io.getquill.*
 import io.getquill.context.jdbc.JdbcVerbs
 
 
-class DepartmentsJdbcSpecEncoders extends DepartmentsSpec with JdbcVerbs {
+class DepartmentsJdbcSpecEncoders extends DepartmentsSpec with SqlServerJdbcContext.Codec {
 
   val context = testContext
   import testContext._

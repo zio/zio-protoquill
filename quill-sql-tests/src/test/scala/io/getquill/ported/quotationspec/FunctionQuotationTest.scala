@@ -9,7 +9,7 @@ import io.getquill.quat.Quat
 import io.getquill._
 import io.getquill.PicklingHelper._
 
-class FunctionQuotationTest extends Spec with Inside {
+class FunctionQuotationTest extends MirrorSpec with Inside {
   case class Person(name: String, age: Int)
 
   "function" - {

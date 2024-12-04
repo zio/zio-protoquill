@@ -20,6 +20,28 @@ trait EncodingSpec extends ExtraEncoders with Spec { self =>
     type ResultRow = self.ResultRow
   }
   import context._
+  // TODO change these to `override given` when Quill codecs are changed to Givens
+  // Need some extra codecs for dates used in the decoders/encoders here
+  // These will be overridden by the ___.Codec extentions of the individual tests
+  // e.g. for Postgres they will be overridden by PostgresJdbcContext.Codec
+  implicit val sqlDateEncoder: GenericEncoder[java.sql.Date, PrepareRow, Session]
+  implicit val sqlTimeEncoder: GenericEncoder[java.sql.Time, PrepareRow, Session]
+  implicit val sqlTimestampEncoder: GenericEncoder[java.sql.Timestamp, PrepareRow, Session]
+  implicit val localTimeEncoder: GenericEncoder[java.time.LocalTime, PrepareRow, Session]
+  implicit val localDateTimeEncoder: GenericEncoder[java.time.LocalDateTime, PrepareRow, Session]
+  implicit val zonedDateTimeEncoder: GenericEncoder[java.time.ZonedDateTime, PrepareRow, Session]
+  implicit val instantEncoder: GenericEncoder[java.time.Instant, PrepareRow, Session]
+  implicit val offsetTimeEncoder: GenericEncoder[java.time.OffsetTime, PrepareRow, Session]
+  implicit val offsetDateTimeEncoder: GenericEncoder[java.time.OffsetDateTime, PrepareRow, Session]
+  implicit val sqlDateDecoder: GenericDecoder[ResultRow, Session, java.sql.Date, DecodingType.Leaf]
+  implicit val sqlTimeDecoder: GenericDecoder[ResultRow, Session, java.sql.Time, DecodingType.Leaf]
+  implicit val sqlTimestampDecoder: GenericDecoder[ResultRow, Session, java.sql.Timestamp, DecodingType.Leaf]
+  implicit val localTimeDecoder: GenericDecoder[ResultRow, Session, java.time.LocalTime, DecodingType.Leaf]
+  implicit val localDateTimeDecoder: GenericDecoder[ResultRow, Session, java.time.LocalDateTime, DecodingType.Leaf]
+  implicit val zonedDateTimeDecoder: GenericDecoder[ResultRow, Session, java.time.ZonedDateTime, DecodingType.Leaf]
+  implicit val instantDecoder: GenericDecoder[ResultRow, Session, java.time.Instant, DecodingType.Leaf]
+  implicit val offsetTimeDecoder: GenericDecoder[ResultRow, Session, java.time.OffsetTime, DecodingType.Leaf]
+  implicit val offsetDateTimeDecoder: GenericDecoder[ResultRow, Session, java.time.OffsetDateTime, DecodingType.Leaf]
 
   case class TimeEntity(
       sqlDate: java.sql.Date, // DATE
@@ -49,7 +71,7 @@ trait EncodingSpec extends ExtraEncoders with Spec { self =>
         case _ => false
       }
   }
-  given timeEntityDecoder: GenericDecoder[ResultRow, Session, TimeEntity, DecodingType.Composite]
+  given timeEntityDecoder: GenericDecoder[ResultRow, Session, TimeEntity, DecodingType.Composite] = deriveComposite
   //given numberEncoder = Mapped Decoding from TestEncoders Used
   //given encodingTestTypeDecoder = Mapped Decoding from TestEncoders Used
 
@@ -112,8 +134,7 @@ trait EncodingSpec extends ExtraEncoders with Spec { self =>
       o14: Option[UUID],
       o15: Option[Number]
   )
-  given encodingTestEntityDecoder: GenericDecoder[ResultRow, Session, EncodingTestEntity, DecodingType.Composite]
-  //given encodingTestEntityEncoder: GenericEncoder[EncodingTestEntity, PrepareRow, Session]
+  given encodingTestEntityDecoder: GenericDecoder[ResultRow, Session, EncodingTestEntity, DecodingType.Composite] = deriveComposite
 
   inline def delete = quote {
     query[EncodingTestEntity].delete
@@ -229,7 +250,7 @@ trait EncodingSpec extends ExtraEncoders with Spec { self =>
   }
 
   case class BarCode(description: String, uuid: Option[UUID] = None)
-  given barCodeDecoder: GenericDecoder[ResultRow, Session, BarCode, DecodingType.Composite]
+  given barCodeDecoder: GenericDecoder[ResultRow, Session, BarCode, DecodingType.Composite] = deriveComposite
   //given barCodeEncoder: GenericEncoder[BarCode, PrepareRow, Session]
 
   val insertBarCode = quote((b: BarCode) => query[BarCode].insertValue(b).returningGenerated(_.uuid))

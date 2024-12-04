@@ -11,11 +11,6 @@ class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with H2JdbcConte
   val context = testContext
   import testContext._
 
-  override given contactDecoder: GenericDecoder[ResultRow, Session, Contact, DecodingType.Composite] = deriveComposite
-  override given addressDecoder: GenericDecoder[ResultRow, Session, Address, DecodingType.Composite] = deriveComposite
-  override given nicknameDecoder: GenericDecoder[ResultRow, Session, Nickname, DecodingType.Composite] = deriveComposite
-  override given nicknameSameFieldDecoder: GenericDecoder[ResultRow, Session, NicknameSameField, DecodingType.Composite] = deriveComposite
-
   override def beforeAll() = {
     testContext.transaction {
       testContext.run(query[Contact].delete)

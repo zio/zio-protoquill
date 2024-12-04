@@ -6,7 +6,7 @@ import io.getquill.Ord
 import io.getquill._
 import org.scalatest._
 
-class ComplexQuerySpec extends Spec with TestEntities with BeforeAndAfter {
+class ComplexQuerySpec extends Spec with TestEntities with BeforeAndAfter with PostgresJdbcContext.Codec {
 
   val context = testContext
   import testContext._

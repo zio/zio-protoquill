@@ -10,7 +10,7 @@ import io.getquill._
 import org.scalatest.Inside
 import io.getquill.PicklingHelper._
 
-class ActionTest extends Spec with TestEntities with Inside {
+class ActionTest extends MirrorSpec with Inside {
   case class ActionTestEntity(id: Int)
 
   extension (ast: Ast) {

@@ -4,7 +4,7 @@ import io.getquill.Spec
 import io.getquill.*
 
 
-class JdbcContextSpec extends Spec {
+class JdbcContextSpec extends Spec with OracleJdbcContext.Codec {
 
   import testContext._
 

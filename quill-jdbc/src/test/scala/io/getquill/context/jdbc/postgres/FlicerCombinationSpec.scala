@@ -4,7 +4,7 @@ import io.getquill._
 import org.scalatest.Inside
 import io.getquill.context.jdbc.JdbcContext
 
-class FlicerCombinationSpec extends Spec with Inside {
+class FlicerCombinationSpec extends Spec with Inside with PostgresJdbcContext.Codec {
   val ctx = testContext
   import ctx._
 

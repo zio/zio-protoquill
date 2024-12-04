@@ -5,7 +5,7 @@ import io.getquill.util.Messages.TraceType
 import io.getquill.context.sql.base.BatchUpdateValuesSpec
 import io.getquill._
 
-class BatchUpdateValuesJdbcSpec extends BatchUpdateValuesSpec {
+class BatchUpdateValuesJdbcSpec extends BatchUpdateValuesSpec with PostgresJdbcContext.Codec {
 
   val context: testContext.type = testContext
   import testContext._

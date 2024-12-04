@@ -67,9 +67,6 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
   type RunnerBehavior <: RunnerSummoningBehavior
   protected def context: Runner = fail(s"Runner method not implemented for '${this.getClass.getName}' Context")
 
-  object manual {
-    inline def deriveComposite[T]: GenericDecoder[ResultRow, Session, T, DecodingType.Composite] = ${ io.getquill.generic.GenericDecoder.summon[T, ResultRow, Session] }
-  }
   object auto {
     implicit inline def dec[T]: GenericDecoder[ResultRow, Session, T, DecodingType.Composite] = ${ GenericDecoder.summon[T, ResultRow, Session] }
   }

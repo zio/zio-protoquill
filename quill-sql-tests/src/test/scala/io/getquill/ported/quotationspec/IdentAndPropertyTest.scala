@@ -8,7 +8,7 @@ import io.getquill.quat.Quat
 import io.getquill._
 import io.getquill.PicklingHelper._
 
-class IdentAndPropertyTest extends Spec with TestEntities {
+class IdentAndPropertyTest extends MirrorSpec with TestEntities {
   extension (ast: Ast) {
     def body: Ast = ast match {
       case f: Function => f.body

@@ -8,7 +8,7 @@ import io.getquill.context.sql.testContext
 import io.getquill.context.sql.testContext._
 import io.getquill._
 
-class QuerySpec extends Spec {
+class QuerySpec extends MirrorSpec {
   "query" - {
     "without filter" in {
       testContext.run(qr1).string mustEqual
@@ -123,6 +123,8 @@ class QuerySpec extends Spec {
       // A little different from Scala2-Quill Since in ProtoQuill Elaborates to a ast.CaseClass not a ast.Tuple
       "caseclass constructor" in {
         case class IntLong(i: Int, l: Long)
+        given CompositeDecoder[IntLong] = deriveComposite
+
         inline def q = quote {
           qr1.map(i => new IntLong(i.i, i.l)).distinct
         }
@@ -133,6 +135,8 @@ class QuerySpec extends Spec {
       // A little different from Scala2-Quill Since in ProtoQuill Elaborates to a ast.CaseClass not a ast.Tuple
       "caseclass companion constructor" in {
         case class IntLong(i: Int, l: Long)
+        given CompositeDecoder[IntLong] = deriveComposite
+
         inline def q = quote {
           qr1.map(i => IntLong(i.i, i.l)).distinct
         }
@@ -210,6 +214,8 @@ class QuerySpec extends Spec {
       "joined" in {
         case class Person(id: Int, name: String, age: Int)
         case class Address(fk: Int, street: String)
+        given CompositeDecoder[Address] = deriveComposite
+        given CompositeDecoder[Person] = deriveComposite
 
         inline def q = quote {
           (for {

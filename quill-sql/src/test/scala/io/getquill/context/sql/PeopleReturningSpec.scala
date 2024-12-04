@@ -14,8 +14,8 @@ trait PeopleReturningSpec extends Spec with BeforeAndAfterEach { self =>
 
   case class Contact(firstName: String, lastName: String, age: Int, addressFk: Int = 0, extraInfo: Option[String] = None)
   case class Product(id: Long, description: String, sku: Int)
-  given contactDecoder: GenericDecoder[ResultRow, Session, Contact, DecodingType.Composite]
-  given productDecoder: GenericDecoder[ResultRow, Session, Product, DecodingType.Composite]
+  given contactDecoder: GenericDecoder[ResultRow, Session, Contact, DecodingType.Composite] = deriveComposite
+  given productDecoder: GenericDecoder[ResultRow, Session, Product, DecodingType.Composite] = deriveComposite
 
   inline def peopleInsert =
     quote((p: Contact) => query[Contact].insertValue(p))

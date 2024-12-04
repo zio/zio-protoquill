@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters.*
 import io.getquill.*
 
-class QueryResultTypeJdbcSpec extends QueryResultTypeSpec with ProductSpec {
+class QueryResultTypeJdbcSpec extends QueryResultTypeSpec with ProductSpec with MysqlJdbcContext.Codec {
 
   // Needed for the 'ids' variable to have the right type so we can call .zip on it
   override val context: testContext.type = testContext

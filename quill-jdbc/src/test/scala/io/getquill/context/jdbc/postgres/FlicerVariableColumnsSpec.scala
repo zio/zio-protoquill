@@ -3,7 +3,7 @@ package io.getquill.context.jdbc.postgres
 import io.getquill._
 import org.scalatest.Inside
 
-class FlicerVariableColumnsSpec extends Spec with Inside {
+class FlicerVariableColumnsSpec extends Spec with Inside with PostgresJdbcContext.Codec {
   val ctx = testContext
   import ctx._
 

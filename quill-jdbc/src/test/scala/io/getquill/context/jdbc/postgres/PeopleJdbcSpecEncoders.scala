@@ -5,7 +5,7 @@ import io.getquill.*
 import io.getquill.context.jdbc.JdbcVerbs
 
 
-class PeopleJdbcSpecEncoders extends PeopleSpec with JdbcVerbs {
+class PeopleJdbcSpecEncoders extends PeopleSpec with PostgresJdbcContext.Codec {
 
   val context = testContext
   import testContext._

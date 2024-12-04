@@ -5,7 +5,7 @@ import io.getquill.*
 import io.getquill.context.jdbc.JdbcVerbs
 
 
-class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with JdbcVerbs {
+class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with SqlServerJdbcContext.Codec {
 
   val context = testContext
   import testContext._

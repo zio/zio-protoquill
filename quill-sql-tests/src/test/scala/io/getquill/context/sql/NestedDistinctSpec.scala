@@ -6,7 +6,7 @@ import io.getquill._
 import io.getquill.context.SplicingBehaviorHint
 import io.getquill.context.SplicingBehavior
 
-class NestedDistinctSpec extends Spec {
+class NestedDistinctSpec extends MirrorSpec {
 
   // Make sure that all queries in this file are static, fail the compile if any are dynamic
   given SplicingBehaviorHint with {
@@ -23,6 +23,9 @@ class NestedDistinctSpec extends Spec {
     "first operation" - {
       case class MyEmb(name: String) extends Embedded
       case class MyParent(myEmb: MyEmb)
+      // Don't need a composite decoder for an Embedded?
+      // TODO double check what happens if you have one anyway
+      given CompositeDecoder[MyParent] = deriveComposite
 
       "first operation nesting with filter" in {
         inline def q = quote {
@@ -133,6 +136,8 @@ class NestedDistinctSpec extends Spec {
     "works with querySchema" in {
       case class SimpleEnt(a: Int, b: String)
       case class SimpleEnt2(aa: Int, bb: String)
+      given CompositeDecoder[SimpleEnt] = deriveComposite
+      given CompositeDecoder[SimpleEnt2] = deriveComposite
 
       inline def qschem = quote {
         querySchema[SimpleEnt]("CustomEnt", _.a -> "field_a")
@@ -189,6 +194,8 @@ class NestedDistinctSpec extends Spec {
       case class Emb(id: Int, name: String) extends Embedded
       case class Parent(idP: Int, emb: Emb)
       inline given parentMeta: SchemaMeta[Parent] = schemaMeta[Parent]("Parent", _.emb.name -> "theName")
+      given CompositeDecoder[Parent] = deriveComposite
+      given CompositeDecoder[Emb] = deriveComposite
 
       "embedded can be propagated across distinct inside tuple with naming intact" in {
         inline def q = quote {
@@ -277,6 +284,9 @@ class NestedDistinctSpec extends Spec {
       case class Parent(id: Int, name: String, emb: Emb) extends Embedded
       case class GrandParent(id: Int, par: Parent)
       inline given parentMeta: SchemaMeta[GrandParent] = schemaMeta[GrandParent]("GrandParent", _.par.emb.name -> "theName", _.par.name -> "theParentName")
+      given CompositeDecoder[GrandParent] = deriveComposite
+      given CompositeDecoder[Parent] = deriveComposite
+      given CompositeDecoder[Emb] = deriveComposite
 
       "fully unwrapped name propagates" in {
         inline def q = quote {
@@ -632,6 +642,9 @@ class NestedDistinctSpec extends Spec {
         case class Emb(name: String, id: Int) extends Embedded
         case class Parent(name: String, emb1: Emb, emb2: Emb)
         case class GrandParent(name: String, par: Parent)
+        given CompositeDecoder[Emb] = deriveComposite
+        given CompositeDecoder[Parent] = deriveComposite
+        given CompositeDecoder[GrandParent] = deriveComposite
 
         inline def norm = quote(query[Emb])
         inline def mod = quote(querySchema[Emb]("CustomEmb", _.name -> "theName"))
@@ -659,6 +672,9 @@ class NestedDistinctSpec extends Spec {
         case class Ent(name: String)
         case class Foo(fame: String)
         case class Bar(bame: String)
+        given CompositeDecoder[Ent] = deriveComposite
+        given CompositeDecoder[Foo] = deriveComposite
+        given CompositeDecoder[Bar] = deriveComposite
 
         inline given entSchema: SchemaMeta[Ent] = schemaMeta[Ent]("TheEnt", _.name -> "theName") //hellooo
 
@@ -707,6 +723,9 @@ class NestedDistinctSpec extends Spec {
         case class Ent(name: String)
         case class WrongEnt(name: String)
         case class Bar(bame: String)
+        given CompositeDecoder[Ent] = deriveComposite
+        given CompositeDecoder[WrongEnt] = deriveComposite
+        given CompositeDecoder[Bar] = deriveComposite
 
         inline given entSchema: SchemaMeta[Ent] = schemaMeta[Ent]("TheEnt", _.name -> "theName") // helloooooooooo
 
@@ -759,6 +778,9 @@ class NestedDistinctSpec extends Spec {
       case class Emb(a: Int, b: Int) extends Embedded
       case class Parent(id: Int, emb1: Emb)
       case class Parent2(emb1: Emb, id: Int)
+      given CompositeDecoder[Emb] = deriveComposite
+      given CompositeDecoder[Parent] = deriveComposite
+      given CompositeDecoder[Parent2] = deriveComposite
 
       "should not use override from parent schema level - single" in {
         inline given parentSchema: SchemaMeta[Parent] = schemaMeta[Parent]("ParentTable", _.emb1.a -> "field_a")
@@ -815,10 +837,16 @@ class NestedDistinctSpec extends Spec {
       case class Emb(name: String, id: Int) extends Embedded
       case class Parent(name: String, emb1: Emb, emb2: Emb)
       case class GrandParent(name: String, par: Parent)
+      given CompositeDecoder[GrandParent] = deriveComposite
+      given CompositeDecoder[Parent] = deriveComposite
+      given CompositeDecoder[Emb] = deriveComposite
 
       case class One(name: String, id: Int) extends Embedded
       case class Two(name: String, id: Int) extends Embedded
       case class Dual(one: One, two: Two)
+      given CompositeDecoder[Dual] = deriveComposite
+      given CompositeDecoder[Two] = deriveComposite
+      given CompositeDecoder[One] = deriveComposite
 
       // Try parent and embedded children with same name, schema on parent
       "schema on parent should not override children" in {

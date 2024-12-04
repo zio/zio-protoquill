@@ -13,7 +13,7 @@ trait PrepareJdbcSpecEncodersBase extends ProductSpec {
   // These should be the same as the ones in the context and they should
   // be injected via the self-types.
   type Session = Connection
-  type PrepareRow = Connection
+  type PrepareRow = PreparedStatement
   type ResultRow = ResultSet
 
   val context: JdbcContext[_, _]

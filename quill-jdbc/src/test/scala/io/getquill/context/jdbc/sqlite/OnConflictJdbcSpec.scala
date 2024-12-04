@@ -4,7 +4,7 @@ import io.getquill.context.sql.OnConflictSpec
 import io.getquill.*
 
 
-class OnConflictJdbcSpec extends OnConflictSpec {
+class OnConflictJdbcSpec extends OnConflictSpec with SqliteJdbcContext.Codec {
   val ctx: testContext.type = testContext
   import ctx._
 

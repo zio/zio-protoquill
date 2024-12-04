@@ -6,7 +6,7 @@ import io.getquill.*
 
 import org.scalatest.* // needed for scalatest shim
 
-class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec {
+class CaseClassQueryJdbcSpecEncoders extends CaseClassQuerySpec with PostgresJdbcContext.Codec {
   type Session = java.sql.Connection
   type ResultRow = java.sql.ResultSet
   type PrepareRow = java.sql.PreparedStatement

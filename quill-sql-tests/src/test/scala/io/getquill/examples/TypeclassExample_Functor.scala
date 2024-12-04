@@ -4,13 +4,15 @@ package io.getquill.examples
 import scala.language.implicitConversions
 import io.getquill._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
+import MirrorContext.Codec.*
 
 object TypeclassExample_Functor {
-  
+
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
   case class Person(id: Int, name: String, age: Int)
+  given CompositeDecoder[Person] = deriveComposite
 
   trait Functor[F[_]] {
     extension [A, B](inline x: F[A]) {
@@ -23,7 +25,7 @@ object TypeclassExample_Functor {
       inline def map(inline f: A => B): List[B] = xs.map(f)
     }
   }
-    
+
 
   inline given Functor[Query] with {
     extension [A, B](inline xs: Query[A]) {

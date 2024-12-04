@@ -18,9 +18,9 @@ trait DepartmentsSpec extends Spec { self =>
   case class Department(dpt: String)
   case class Employee(emp: String, dpt: String)
   case class Task(emp: String, tsk: String)
-  given departmentDecoder: GenericDecoder[ResultRow, Session, Department, DecodingType.Composite]
-  given employeeDecoder: GenericDecoder[ResultRow, Session, Employee, DecodingType.Composite]
-  given taskDecoder: GenericDecoder[ResultRow, Session, Task, DecodingType.Composite]
+  given departmentDecoder: GenericDecoder[ResultRow, Session, Department, DecodingType.Composite] = deriveComposite
+  given employeeDecoder: GenericDecoder[ResultRow, Session, Employee, DecodingType.Composite] = deriveComposite
+  given taskDecoder: GenericDecoder[ResultRow, Session, Task, DecodingType.Composite] = deriveComposite
 
   inline def departmentInsert =
     quote {

@@ -15,7 +15,7 @@ import io.getquill._
 import io.getquill.ast
 import io.getquill.PicklingHelper._
 
-class OptionOperationTest extends Spec with Inside {
+class OptionOperationTest extends MirrorSpec with Inside {
   "option operation" - {
     import io.getquill.ast.Implicits._
 

@@ -14,7 +14,7 @@ import io.getquill.norm.NormalizeStringConcat
 import io.getquill._
 import io.getquill.PicklingHelper._
 
-class OperationTest extends Spec with TestEntities with Inside {
+class OperationTest extends MirrorSpec with TestEntities with Inside {
   // remove the === matcher from scalatest so that we can test === in Context.extra
   override def convertToEqualizer[T](left: T): Equalizer[T] = new Equalizer(left)
 

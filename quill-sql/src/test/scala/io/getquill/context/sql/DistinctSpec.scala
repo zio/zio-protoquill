@@ -13,8 +13,8 @@ trait DistinctSpec extends Spec { self =>
 
   case class Person(name: String, age: Int)
   case class Couple(him: String, her: String)
-  given personDecoder: GenericDecoder[ResultRow, Session, Person, DecodingType.Composite]
-  given coupleDecoder: GenericDecoder[ResultRow, Session, Couple, DecodingType.Composite]
+  given personDecoder: GenericDecoder[ResultRow, Session, Person, DecodingType.Composite] = deriveComposite
+  given coupleDecoder: GenericDecoder[ResultRow, Session, Couple, DecodingType.Composite] = deriveComposite
 
   inline def peopleInsert =
     quote((p: Person) => query[Person].insertValue(p))
@@ -131,7 +131,7 @@ trait DistinctSpec extends Spec { self =>
     )
 
   case class TwoField(one: String, two: String)
-  given twoFieldDecoder: GenericDecoder[ResultRow, Session, TwoField, DecodingType.Composite]
+  given twoFieldDecoder: GenericDecoder[ResultRow, Session, TwoField, DecodingType.Composite] = deriveComposite
 
   inline def `Ex 7 Distinct Subquery with Map Multi Field Tuple` = quote {
     query[Person]

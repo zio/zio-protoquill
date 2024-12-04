@@ -8,7 +8,7 @@ import io.getquill.quat.Quat
 import io.getquill._
 import io.getquill.PicklingHelper._
 
-class ValueTest extends Spec with TestEntities {
+class ValueTest extends MirrorSpec   with TestEntities {
   "value" - { //helloo
     "null" in {
       inline def s = quote ("s")

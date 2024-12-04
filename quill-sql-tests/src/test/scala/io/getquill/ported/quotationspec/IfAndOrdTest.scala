@@ -5,7 +5,7 @@ import io.getquill._
 import io.getquill.ast._
 import io.getquill.PicklingHelper._
 
-class IfAndOrdTest extends Spec with TestEntities with Inside {
+class IfAndOrdTest extends MirrorSpec with TestEntities with Inside {
 
   extension (ast: Ast) {
     def ordering: Ast = ast match {

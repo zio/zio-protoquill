@@ -2,7 +2,7 @@ package io.getquill.context.sql.idiom
 
 import io.getquill._
 
-class SqlIdiomOptionCompareSpec extends Spec {
+class SqlIdiomOptionCompareSpec extends MirrorSpec {
 
   case class TwoIntsClassScope(one: Int, two: Int)
 
@@ -140,6 +140,8 @@ class SqlIdiomOptionCompareSpec extends Spec {
     "embedded" - {
       case class TestEntity(optionalEmbedded: Option[EmbeddedEntity])
       case class EmbeddedEntity(value: Int) extends Embedded
+      given CompositeDecoder[EmbeddedEntity] = deriveComposite
+      given CompositeDecoder[TestEntity] = deriveComposite
 
       "exists" in {
         inline def q = quote {
@@ -160,6 +162,8 @@ class SqlIdiomOptionCompareSpec extends Spec {
     "nested" - {
       case class TestEntity(optionalEmbedded: Option[EmbeddedEntity])
       case class EmbeddedEntity(optionalValue: Option[Int]) extends Embedded
+      given CompositeDecoder[EmbeddedEntity] = deriveComposite
+      given CompositeDecoder[TestEntity] = deriveComposite
 
       "contains" in {
         inline def q = quote {
@@ -351,6 +355,8 @@ class SqlIdiomOptionCompareSpec extends Spec {
     "embedded" - {
       case class TestEntity(optionalEmbedded: Option[EmbeddedEntity])
       case class EmbeddedEntity(value: Int) extends Embedded
+      given CompositeDecoder[EmbeddedEntity] = deriveComposite
+      given CompositeDecoder[TestEntity] = deriveComposite
 
       "exists" in {
         inline def q = quote {
@@ -371,6 +377,8 @@ class SqlIdiomOptionCompareSpec extends Spec {
     "nested" - {
       case class TestEntity(optionalEmbedded: Option[EmbeddedEntity])
       case class EmbeddedEntity(optionalValue: Option[Int]) extends Embedded
+      given CompositeDecoder[EmbeddedEntity] = deriveComposite
+      given CompositeDecoder[TestEntity] = deriveComposite
 
       "contains" in {
         inline def q = quote {

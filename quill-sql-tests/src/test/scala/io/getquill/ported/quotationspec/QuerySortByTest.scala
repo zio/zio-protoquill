@@ -9,7 +9,7 @@ import io.getquill.quat.Quat
 import io.getquill.Spec
 import io.getquill.PicklingHelper._
 
-class QuerySortByTest extends Spec with Inside with TestEntities {
+class QuerySortByTest extends MirrorSpec with Inside with TestEntities {
   // val ctx = new MirrorContext(MirrorIdiom, Literal)
   // import ctx._
 

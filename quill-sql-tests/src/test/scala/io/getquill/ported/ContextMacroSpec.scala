@@ -11,7 +11,7 @@ import io.getquill.context.ExecutionType
 case class ValueClass(value: Int) extends AnyVal
 case class GenericValueClass[T](value: T) extends AnyVal
 
-class ContextMacroSpec extends Spec {
+class ContextMacroSpec extends MirrorSpec {
   case class Person(name: String, age: Int)
 
   "runs actions" - {
@@ -216,6 +216,8 @@ class ContextMacroSpec extends Spec {
 
       "value class" in {
         case class Entity(x: ValueClass)
+        given CompositeDecoder[Entity] = deriveComposite
+
         inline def q = quote {
           query[Entity].filter(t => t.x == lift(ValueClass(1)))
         }
@@ -312,6 +314,8 @@ class ContextMacroSpec extends Spec {
 
       "value class" in {
         case class Entity(x: ValueClass)
+        given CompositeDecoder[Entity] = deriveComposite
+
         inline def q = quote {
           query[Entity].filter(t => t.x == lift(ValueClass(1)))
         }

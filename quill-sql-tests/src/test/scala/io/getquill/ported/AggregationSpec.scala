@@ -5,9 +5,11 @@ import io.getquill._
 import io.getquill.norm.ConfigList._
 
 
-class AggregationSpec extends Spec { //
+class AggregationSpec extends MirrorSpec {
   case class Person(id: Int, name: String, age: Int)
   case class PersonOpt(name: Option[String], age: Int)
+  given CompositeDecoder[Person] = deriveComposite
+  given CompositeDecoder[PersonOpt] = deriveComposite
 
   // remove the === matcher from scalatest so that we can test === in Context.extra
   override def convertToEqualizer[T](left: T): Equalizer[T] = new Equalizer(left)
@@ -151,6 +153,10 @@ class AggregationSpec extends Spec { //
       case class Address(id: Int, owner: Int, street: String)
       case class Furniture(owner: Int, location: Int)
       case class PersonInfo(id: Int, maxAge: Int)
+      given CompositeDecoder[Address] = deriveComposite
+      given CompositeDecoder[Furniture] = deriveComposite
+      given CompositeDecoder[PersonInfo] = deriveComposite
+
       import extras._
 
       ctx.run {

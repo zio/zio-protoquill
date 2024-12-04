@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers.*
 import io.getquill.*
 
 
-class DistinctJdbcSpecEncoders extends DistinctSpec {
+class DistinctJdbcSpecEncoders extends DistinctSpec with PostgresJdbcContext.Codec {
   type Session = java.sql.Connection
   type ResultRow = java.sql.ResultSet
   type PrepareRow = java.sql.PreparedStatement

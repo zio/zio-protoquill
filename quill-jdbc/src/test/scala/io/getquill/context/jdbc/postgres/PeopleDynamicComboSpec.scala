@@ -4,7 +4,7 @@ import io.getquill.context.sql.PeopleAggregationSpec
 import io.getquill._
 import io.getquill.util.debug.PrintMac.apply
 
-class PeopleDynamicComboSpec extends Spec {
+class PeopleDynamicComboSpec extends Spec with PostgresJdbcContext.Codec {
   val context: testContext.type = testContext
   import testContext._
 

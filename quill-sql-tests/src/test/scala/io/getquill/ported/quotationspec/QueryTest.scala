@@ -16,7 +16,7 @@ import scala.math.BigDecimal.{ double2bigDecimal, int2bigDecimal, javaBigDecimal
 case class CustomAnyValue(i: Int) extends AnyVal
 case class EmbeddedValue(s: String, i: Int) extends Embedded
 
-class QueryTest extends Spec with TestEntities {
+class QueryTest extends MirrorSpec with TestEntities {
 
   // Needs to be defined outside of method otherwise Scala Bug "No TypeTag available for TestEnt" manifests.
   // See https://stackoverflow.com/a/16990806/1000455

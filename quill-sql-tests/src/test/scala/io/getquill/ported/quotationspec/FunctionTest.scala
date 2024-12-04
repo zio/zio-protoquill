@@ -8,7 +8,7 @@ import io.getquill.quat.Quat
 import io.getquill._
 import io.getquill.PicklingHelper._
 
-class FunctionTest extends Spec with TestEntities {
+class FunctionTest extends MirrorSpec with TestEntities {
   object IsDynamic {
     def apply(a: Ast) =
       CollectAst(a) { case d: Dynamic => d }.nonEmpty

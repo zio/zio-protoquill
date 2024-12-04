@@ -4,7 +4,7 @@ import io.getquill.{Literal, Spec, SqlServerJdbcContext}
 import io.getquill.*
 
 
-class JdbcContextSpec extends Spec {
+class JdbcContextSpec extends Spec with SqlServerJdbcContext.Codec {
 
   val ctx = testContext
   import ctx._
@@ -197,7 +197,7 @@ class JdbcContextSpec extends Spec {
   }
 }
 
-class PendingUntilFixed extends Spec {
+class PendingUntilFixed extends Spec with SqlServerJdbcContext.Codec {
   "remove this once sqlserver build established" in {
     new SqlServerJdbcContext(Literal, "testPostgresDB").close()
   }

@@ -4,13 +4,16 @@ package io.getquill.examples
 import scala.language.implicitConversions
 import io.getquill._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
+import MirrorContext.Codec.*
 
 object TypeclassExample_FunctorOldStyle {
-  
+
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
   case class Person(name: String, age: Int)
+  given CompositeDecoder[Person] = deriveComposite
+
 
 
   // This works!
@@ -23,7 +26,7 @@ object TypeclassExample_FunctorOldStyle {
   //  inline def map[A, B](inline xs: List[A], inline f: A => B): List[B] = xs.map(f)
   // If you want to use = you have to define "class ListFunctor extends Functor[List]" first and then do:
   // inline given ListFunctor = new ListFunctor
-  
+
   inline given Functor[List] with {
     inline def map[A, B](inline xs: List[A], inline f: A => B): List[B] = xs.map(f)
   }

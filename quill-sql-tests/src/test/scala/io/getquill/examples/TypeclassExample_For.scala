@@ -4,15 +4,19 @@ package io.getquill.examples
 import scala.language.implicitConversions
 import io.getquill._
 import scala.compiletime.{erasedValue, summonFrom, constValue}
+import MirrorContext.Codec.*
 
 object TypeclassExample_For {
-  
+
   case class Address(fk: Int, street: String, zip: Int) extends Embedded
+  given CompositeDecoder[Address] = deriveComposite
+
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
   import ctx._
 
 
   case class Person(id: Int, name: String, age: Int)
+  given CompositeDecoder[Person] = deriveComposite
 
   trait Functor[F[_]] {
     extension [A, B](inline x: F[A]) {
@@ -27,7 +31,7 @@ object TypeclassExample_For {
       inline def flatMap(inline f: A => F[B]): F[B]
     }
   }
-      
+
   trait For[F[_]] { //extends Monad[F]:
     extension [A, B](inline x: F[A]) {
       inline def map(inline f: A => B): F[B]
@@ -56,7 +60,7 @@ object TypeclassExample_For {
       inline def withFilter(inline f: A => Boolean): List[A] = xs.filter(f)
     }
   }
-   
+
   class QueryFunctor extends Functor[Query] {
     extension [A, B](inline xs: Query[A]) {
       inline def map(inline f: A => B): Query[B] = xs.map(f)
@@ -95,7 +99,7 @@ object TypeclassExample_For {
     inline def mapM(inline f: A => B) = from.map(f)
     inline def flatMapM(inline f: A => F[B]) = from.flatMap(f)
   }
-  
+
   object UseCase {
     extension [F[_]](inline people: F[Person])(using inline fun: For[F]) {
       inline def joesAddresses(inline addresses: F[Address]) =

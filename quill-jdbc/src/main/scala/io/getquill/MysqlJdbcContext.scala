@@ -32,12 +32,14 @@ class MysqlJdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: Data
   def this(naming: N, config: Config) = this(naming, JdbcContextConfig(config))
   def this(naming: N, configPrefix: String) = this(naming, LoadConfig(configPrefix))
 
-  export MysqlJdbcContext.Codec.{
-    Index => _,
-    PrepareRow => _,
-    ResultRow => _,
-    Session => _,
-    Runner => _,
-    _
+  object codec {
+    export MysqlJdbcContext.Codec.{
+      Index => _,
+      PrepareRow => _,
+      ResultRow => _,
+      Session => _,
+      Runner => _,
+      _
+    }
   }
 }

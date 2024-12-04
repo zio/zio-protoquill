@@ -2,11 +2,10 @@ package io.getquill.examples
 
 import scala.language.implicitConversions
 import io.getquill._
-
+import MirrorContext.Codec.*
+import MiniExampleEntities.*
 
 object MiniExample3_InlineFilter {
-
-  case class Person(name: String, age: Int)
 
   def main(args: Array[String]): Unit = {
 

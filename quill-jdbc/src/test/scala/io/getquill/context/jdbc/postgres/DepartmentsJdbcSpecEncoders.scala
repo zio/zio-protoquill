@@ -4,7 +4,7 @@ import io.getquill.context.sql.DepartmentsSpec
 import io.getquill.*
 
 
-class DepartmentsJdbcSpecEncoders extends DepartmentsSpec {
+class DepartmentsJdbcSpecEncoders extends DepartmentsSpec with PostgresJdbcContext.Codec {
   type Session = java.sql.Connection
   type ResultRow = java.sql.ResultSet
   type PrepareRow = java.sql.PreparedStatement

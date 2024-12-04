@@ -4,7 +4,7 @@ import io.getquill.context.sql.BatchValuesSpec
 import io.getquill.*
 
 
-class BatchValuesJdbcSpecEncoders extends BatchValuesSpec {
+class BatchValuesJdbcSpecEncoders extends BatchValuesSpec with PostgresJdbcContext.Codec {
   type Session = java.sql.Connection
   type ResultRow = java.sql.ResultSet
   type PrepareRow = java.sql.PreparedStatement

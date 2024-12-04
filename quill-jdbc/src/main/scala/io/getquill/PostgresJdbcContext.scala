@@ -38,12 +38,14 @@ class PostgresJdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: D
   def this(naming: N, config: Config) = this(naming, JdbcContextConfig(config))
   def this(naming: N, configPrefix: String) = this(naming, LoadConfig(configPrefix))
 
-  export PostgresJdbcContext.{
-    Index => _,
-    PrepareRow => _,
-    ResultRow => _,
-    Session => _,
-    Runner => _,
-    _
+  object codec {
+    export PostgresJdbcContext.{
+      Index => _,
+      PrepareRow => _,
+      ResultRow => _,
+      Session => _,
+      Runner => _,
+      _
+    }
   }
 }

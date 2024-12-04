@@ -8,10 +8,10 @@ import java.util.UUID
 import io.getquill.{MappedEncoding, ProductDecoders, Spec, toDecoder, toEncoder, toSeqDecoder, toSeqEncoder}
 import org.scalatest.{Assertion, BeforeAndAfterEach}
 import io.getquill.context.Context
-import io.getquill.generic.{DecodingType, GenericDecoder, GenericEncoder, GenericNullChecker}
+import io.getquill.generic.{DecodingType, GenericDecoder, GenericEncoder, GenericNullChecker, ArrayEncoding}
 
 // TODO create a standard SpecEncoders trait that can be mixed in to all tests so we don't need to declared base encoders
-trait ArrayEncodingBaseSpec extends Spec with BeforeAndAfterEach { self =>
+trait ArrayEncodingBaseSpec extends Spec with BeforeAndAfterEach with ArrayEncoding { self =>
   val context: SqlContext[_, _] {
     type Session = self.Session
     type PrepareRow = self.PrepareRow
@@ -80,7 +80,7 @@ trait ArrayEncodingBaseSpec extends Spec with BeforeAndAfterEach { self =>
   given strWrapSeqDecoder(using GenericDecoder[ResultRow, Session, Seq[String], DecodingType.Leaf]): GenericDecoder[ResultRow, Session, Seq[StrWrap], DecodingType.Leaf] = wrapString.toSeqDecoder
 
   case class WrapEntity(texts: Seq[StrWrap])
-  given wrapEntityDecoder: GenericDecoder[ResultRow, Session, WrapEntity, DecodingType.Composite]
+  given wrapEntityDecoder: GenericDecoder[ResultRow, Session, WrapEntity, DecodingType.Composite] = deriveComposite
   val wrapE = WrapEntity(List("hey", "ho").map(StrWrap.apply))
 
   // TODO maybe doing the context-base `context.manual.deriveComposite` is what's making the tests slow

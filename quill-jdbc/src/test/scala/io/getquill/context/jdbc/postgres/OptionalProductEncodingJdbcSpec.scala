@@ -3,7 +3,7 @@ package io.getquill.context.jdbc.postgres
 import io.getquill.context.encoding.OptionalNestedSpec
 import io.getquill._
 
-class OptionalProductEncodingJdbcSpec extends OptionalNestedSpec {
+class OptionalProductEncodingJdbcSpec extends OptionalNestedSpec with PostgresJdbcContext.Codec {
 
   val context: testContext.type = testContext
   import testContext._

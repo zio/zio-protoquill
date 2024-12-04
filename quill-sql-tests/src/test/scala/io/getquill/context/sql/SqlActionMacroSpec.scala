@@ -4,9 +4,12 @@ import io.getquill.ReturnAction.{ ReturnColumns, ReturnRecord }
 import io.getquill._
 import io.getquill.context.mirror.Row
 
-class SqlActionMacroSpec extends Spec {
+class SqlActionMacroSpec extends MirrorSpec {
 
   val testContext = io.getquill.context.sql.testContext
+
+  case class Dummy(i: Int)
+  given CompositeDecoder[Dummy] = deriveComposite
 
   "runs actions" - {
     import testContext._
@@ -170,8 +173,6 @@ class SqlActionMacroSpec extends Spec {
         mirror.returningBehavior mustEqual ReturnRecord
       }
       "returning clause - embedded" - {
-        case class Dummy(i: Int)
-
         "embedded property" in testContext.withDialect(MirrorSqlDialectWithReturnClause) { ctx =>
           import ctx._
           inline def q = quote {
@@ -201,9 +202,10 @@ class SqlActionMacroSpec extends Spec {
         }
       }
       "with returning clause - query" - {
-        case class Dummy(i: Int)
         case class DummyS(s: String)
         case class Dummy2(i: Int, s: String)
+        given CompositeDecoder[DummyS] = deriveComposite
+        given CompositeDecoder[Dummy2] = deriveComposite
 
         "simple not using id - id not excluded" in testContext.withDialect(MirrorSqlDialectWithReturnClause) { ctx =>
           import ctx._
@@ -461,8 +463,6 @@ class SqlActionMacroSpec extends Spec {
         mirror.returningBehavior mustEqual ReturnRecord
       }
       "output clause - embedded" - {
-        case class Dummy(i: Int)
-
         "embedded property" in testContext.withDialect(MirrorSqlDialectWithOutputClause) { ctx =>
           import ctx._
           inline def q = quote {
@@ -544,8 +544,6 @@ class SqlActionMacroSpec extends Spec {
         mirror.returningBehavior mustEqual ReturnRecord
       }
       "returning clause - embedded" - {
-        case class Dummy(i: Int)
-
         "embedded property" in testContext.withDialect(MirrorSqlDialectWithReturnClause) { ctx =>
           import ctx._
           inline def q = quote {
@@ -575,8 +573,6 @@ class SqlActionMacroSpec extends Spec {
         }
       }
       "with returning clause - query" - {
-        case class Dummy(i: Int)
-
         "simple not using id - id not excluded" in testContext.withDialect(MirrorSqlDialectWithReturnClause) { ctx =>
           import ctx._
           inline def q = quote {
@@ -781,8 +777,6 @@ class SqlActionMacroSpec extends Spec {
         mirror.returningBehavior mustEqual ReturnRecord
       }
       "returning clause - embedded" - {
-        case class Dummy(i: Int)
-
         "embedded property" in testContext.withDialect(MirrorSqlDialectWithReturnClause) { ctx =>
           import ctx._
           inline def q = quote {
@@ -812,8 +806,6 @@ class SqlActionMacroSpec extends Spec {
         }
       }
       "with returning clause - query" - {
-        case class Dummy(i: Int)
-
         "simple not using id - id not excluded" in testContext.withDialect(MirrorSqlDialectWithReturnClause) { ctx =>
           import ctx._
           inline def q = quote {
@@ -1008,8 +1000,6 @@ class SqlActionMacroSpec extends Spec {
         mirror.returningBehavior mustEqual ReturnRecord
       }
       "returning clause - embedded" - {
-        case class Dummy(i: Int)
-
         "embedded property" in testContext.withDialect(MirrorSqlDialectWithReturnClause) { ctx =>
           import ctx._
           inline def q = quote {
@@ -1039,8 +1029,6 @@ class SqlActionMacroSpec extends Spec {
         }
       }
       "with returning clause - query" - {
-        case class Dummy(i: Int)
-
         "simple not using id - id not excluded" in testContext.withDialect(MirrorSqlDialectWithReturnClause) { ctx =>
           import ctx._
           inline def q = quote {

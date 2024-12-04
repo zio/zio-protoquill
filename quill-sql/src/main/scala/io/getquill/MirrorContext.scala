@@ -30,11 +30,13 @@ object MirrorContext {
 class MirrorContext[+Dialect <: Idiom, +Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
     extends MirrorContextBase[Dialect, Naming] with AstSplicing {
 
-  export MirrorContext.Codec.{
-    PrepareRow => _,
-    ResultRow => _,
-    Session => _,
-    _
+  object codec {
+    export MirrorContext.Codec.{
+      PrepareRow => _,
+      ResultRow => _,
+      Session => _,
+      _
+    }
   }
 }
 

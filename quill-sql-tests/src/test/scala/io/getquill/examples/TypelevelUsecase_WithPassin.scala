@@ -2,10 +2,11 @@ package io.getquill.examples
 
 import scala.language.implicitConversions
 import io.getquill._
+import MirrorContext.Codec.*
 
 object TypelevelUsecase_WithPassin {
 
-  
+
   case class Address(street: String, zip: Int, fk: Int) extends Embedded //helloooo
   case class Person(id: Int, name: String, age: Int, addr: Address, middleName: String, lastName: String)
   val ctx = new MirrorContext(MirrorSqlDialect, Literal)
@@ -16,12 +17,17 @@ object TypelevelUsecase_WithPassin {
   case class Role(id: Int, name: String)
   case class RoleToPermission(roleId: Int, permissionId: Int)
   case class Permission(id: Int, name: Int)
+  given CompositeDecoder[User] = deriveComposite
+  given CompositeDecoder[UserToRole] = deriveComposite
+  given CompositeDecoder[Role] = deriveComposite
+  given CompositeDecoder[RoleToPermission] = deriveComposite
+  given CompositeDecoder[Permission] = deriveComposite
 
   trait Path[From, To] {
     type Out
     inline def get(inline from: From): Out
   }
-  
+
   inline given Path[User, Role] with {
     type Out = Query[(User, Role)]
     inline def get(inline s: User): Query[(User, Role)] =
@@ -30,7 +36,7 @@ object TypelevelUsecase_WithPassin {
         r <- query[Role].join(r => r.id == sr.roleId)
       } yield (s, r)
   }
-  
+
   inline given Path[User, Permission] with {
     type Out = Query[(User, Role, Permission)]
     inline def get(inline s: User): Query[(User, Role, Permission)] =
@@ -43,17 +49,17 @@ object TypelevelUsecase_WithPassin {
   }
 
   inline def path[F, T](inline from: F)(using path: Path[F, T]): path.Out = path.get(from)
-  
+
   inline def joes = query[User].filter(u => u.name == "Joe")
   // Change to 'symbol' and odd set of explosions happen
   inline def q1 = quote { joes.flatMap(j => path[User, Role](j)).filter(so => so._2.name == "Drinker") }
-  
+
 
   //inline def q1 = quote { path[User, Permission].filter(urp => urp._2.name == "GuiUser" && urp._1.name == "Drinker") }
   //inline def q1 = quote { path[User, Permission].filter { case (u,r,p) => u.name == "GuiUser" && r.name == "Drinker" } }
 
   // inline def q2 = quote { joes.flatMap(j => path[User, Permission](j)).filter((u,r,p) => u.name == "GuiUser" && r.name == "Drinker") }
-  
+
   def main(args: Array[String]): Unit = {
     // Need to have queries printing in 'main' or some method that actually gets invoked
     // otherwise compiler seems to not initialize them somehow
