@@ -15,6 +15,8 @@ object ProtoMessages {
   private def cache[T](name: String, value: => T): T =
     cacheMap.getOrElseUpdate(name, value).asInstanceOf[T]
 
+  private[getquill] def cacheParser = cache("quill.cache.parser", variable("quill.cache.parser", "quill_cache_parser", "300000").toInt)
+  private[getquill] def cacheIds = cache("quill.cache.ids", variable("quill.cache.ids", "quill_cache_ids", "300000").toInt)
   private[getquill] def useStdOut = cache("quill.macro.stdout", variable("quill.macro.stdout", "quill_macro_stdout", "false").toBoolean)
   private[getquill] def serializeAst = cache("quill.ast.serialize", variable("quill.ast.serialize", "quill_ast_serialize", "true").toBoolean)
   private[getquill] def maxQuatFields = cache("quill.quat.tooManyFields", variable("quill.quat.tooManyFields", "quill_quat_tooManyFields", "4").toInt)

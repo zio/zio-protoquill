@@ -4,10 +4,10 @@ import scala.quoted.*
 import io.getquill.ast.Ast
 import io.getquill.context.LRUCache
 import io.getquill.parser.ParserHelpers
-import io.getquill.util.Format
+import io.getquill.util.{Format, ProtoMessages}
 
 object ParserNodeCache {
-  val cache: LRUCache[(String, Expr[_]), Option[Ast]] = new LRUCache(100000)
+  val cache: LRUCache[(String, Expr[_]), Option[Ast]] = new LRUCache(ProtoMessages.cacheParser + 1) // add one since capacity 0 will crash creation
   def getOrDefault(key: (String, Expr[_]), default: => Option[Ast]) = cache.getOrDefault(key, default)
 }
 
@@ -21,8 +21,10 @@ trait Parser(rootParse: Parser | Parser.Nil)(using Quotes) {
   // but in some cases we might want early-exist functionality.
   private[engine] def attemptProper: History ?=> Function[Expr[_], Option[Ast]] = { (expr: Expr[_]) =>
     // First fix up all test errors then attempt to use this cache
-    attempt.lift(expr)
-    //ParserNodeCache.getOrDefault((name, expr), attempt.lift(expr))
+    if (ProtoMessages.cacheParser > 0)
+      ParserNodeCache.getOrDefault((name, expr), attempt.lift(expr))
+    else
+      attempt.lift(expr)
   }
 
 

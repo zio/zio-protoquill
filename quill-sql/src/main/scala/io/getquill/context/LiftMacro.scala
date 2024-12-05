@@ -9,15 +9,15 @@ import io.getquill.ReturnAction
 import io.getquill.generic.StandardCodec
 import io.getquill.Quoted
 import io.getquill.QueryMeta
-import io.getquill.generic._
+import io.getquill.generic.*
 import io.getquill.context.mirror.MirrorDecoders
 import io.getquill.context.mirror.Row
 import io.getquill.generic.GenericDecoder
 import io.getquill.Planter
-import io.getquill.ast.{Ast, Ident => AIdent}
+import io.getquill.ast.{Ast, Ident as AIdent}
 import io.getquill.ast.ScalarTag
 import io.getquill.idiom.Idiom
-import io.getquill.ast.{Transform, QuotationTag}
+import io.getquill.ast.{QuotationTag, Transform}
 import io.getquill.QuotationLot
 import io.getquill.metaprog.QuotedExpr
 import io.getquill.metaprog.PlanterExpr
@@ -27,16 +27,18 @@ import io.getquill.LazyPlanter
 import io.getquill.generic.GenericEncoder
 import io.getquill.generic.ElaborateStructure
 import io.getquill.quat.Quat
-import scala.quoted._
-import io.getquill._
+
+import scala.quoted.*
+import io.getquill.*
 import io.getquill.quat.QuatMaking
 import io.getquill.generic.ElaborateStructure.TaggedLiftedCaseClass
 import io.getquill.parser.Lifter
 import io.getquill.CaseClassLift
 import io.getquill.ast.CaseClass
 import io.getquill.InjectableEagerPlanter
-import io.getquill.util.Format
+import io.getquill.util.{Format, ProtoMessages}
 import io.getquill.metaprog.etc.StringOrNull
+
 import scala.reflect.ClassTag
 
 // I have a theory that the scala compiler attempts to invoke macros and see if the result has changed. If it sees
@@ -44,17 +46,23 @@ import scala.reflect.ClassTag
 // ids of lifted expressions so they do not need to continually be recompiled even when they have not changed.
 // This way, we keep a cache of ids we have created for each expression so that we can reuse them and
 // recompile is not always necessary.
-//object IdCache {
-//  private val cache: LRUCache[Expr[_], String] = new LRUCache(10000)
-//  def get(expr: Expr[_]): String = cache.getOrDefault(expr, java.util.UUID.randomUUID.toString)
-//}
+object IdCache {
+  private val cache: LRUCache[(String, Expr[_]), String] = new LRUCache(ProtoMessages.cacheIds + 1) // add one since capacity 0 will crash creation
+  def get(liftType: String, expr: Expr[_]): String = {
+    if (ProtoMessages.cacheParser > 0)
+      cache.getOrDefault((liftType, expr), java.util.UUID.randomUUID.toString)
+    else
+      java.util.UUID.randomUUID.toString
+  }
+}
 
 object LiftQueryMacro {
   def apply[T: Type, U[_] <: Iterable[_]: Type, PrepareRow: Type, Session: Type](entity: Expr[U[T]])(using Quotes): Expr[Query[T]] = {
     import quotes.reflect._
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
     val quat = QuatMaking.ofType[T]
-    val newUuid = java.util.UUID.randomUUID.toString //IdCache.get(entity)
+    //val newUuid = java.util.UUID.randomUUID.toString
+    val newUuid = IdCache.get("lift", entity)
     quat match {
       case _: Quat.Product =>
         // Not sure why cast back to iterable is needed here but U param is not needed once it is inside of the planter
@@ -203,7 +211,8 @@ object LiftMacro {
   private[getquill] def liftValue[T: Type, PrepareRow: Type, Session: Type](valueEntity: Expr[T])(using Quotes) /*: Expr[EagerPlanter[T, PrepareRow]]*/ = {
     import quotes.reflect._
     val encoder = summonEncoderOrFail[T, PrepareRow, Session](valueEntity)
-    val newUuid = java.util.UUID.randomUUID().toString //IdCache.get(valueEntity)
+    //val newUuid = java.util.UUID.randomUUID().toString
+    val newUuid = IdCache.get("liftValue", valueEntity)
     '{ EagerPlanter($valueEntity, $encoder, ${ Expr(newUuid) }) } // [T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 
@@ -224,7 +233,8 @@ object LiftMacro {
         case Right(value) => '{ Right($value) }
         case Left(msg)    => '{ Left(${ Expr(msg) }) }
       }
-    val newUuid = java.util.UUID.randomUUID().toString //IdCache.get(valueEntity)
+    //val newUuid = java.util.UUID.randomUUID().toString
+    val newUuid = IdCache.get("valueOrString", valueEntity)
     '{
       EagerPlanter[Any, PrepareRow, Session](
         $valueEntity,
@@ -246,7 +256,8 @@ object LiftMacro {
 
   def applyLazy[T, PrepareRow](valueEntity: Expr[T])(using Quotes, Type[T], Type[PrepareRow]): Expr[T] = {
     import quotes.reflect._
-    val uuid = java.util.UUID.randomUUID().toString
+    //val uuid = java.util.UUID.randomUUID().toString
+    val uuid = IdCache.get("lazy", valueEntity)
     '{ LazyPlanter($valueEntity, ${ Expr(uuid) }).unquote } // [T, PrepareRow] // adding these causes assertion failed: unresolved symbols: value Context_this
   }
 }
