@@ -88,7 +88,7 @@ trait ContextVerbPrepare[+Dialect <: Idiom, +Naming <: NamingStrategy] {
   @targetName("runPrepareBatchAction")
   inline def prepare[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]]): PrepareBatchActionResult = {
     val ca = make.batch[I, Nothing, A, PrepareBatchActionResult] { arg =>
-      val groups = arg.groups.map((sql, prepare) => BatchGroup(sql, prepare))
+      val groups = arg.groups.map((sql, prepare) => BatchGroup(sql, prepare, List()))
       self.prepareBatchAction(groups.toList)(arg.executionInfo, _summonPrepareRunner())
     }
     QueryExecutionBatch.apply(ca, 1)(quoted)

@@ -128,7 +128,7 @@ trait ContextTranslateMacro[+Dialect <: Idiom, +Naming <: NamingStrategy]
   inline def translate[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]], inline prettyPrint: Boolean): TranslateResult[List[String]] = {
     val ca = make.batch[I, Nothing, A, TranslateResult[List[String]]] { arg =>
       // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-      val groups = arg.groups.map((sql, prepare) => BatchGroup(sql, prepare))
+      val groups = arg.groups.map((sql, prepare) => BatchGroup(sql, prepare, List()))
       self.translateBatchQueryEndpoint(groups.toList, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
     QueryExecutionBatch.apply(ca, 1)(quoted)
@@ -141,7 +141,7 @@ trait ContextTranslateMacro[+Dialect <: Idiom, +Naming <: NamingStrategy]
     val ca = make.batch[I, T, A, TranslateResult[List[String]]] { arg =>
       val returningExt = arg.extractor.requireReturning()
       // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-      val groups = arg.groups.map((sql, prepare) => BatchGroupReturning(sql, returningExt.returningBehavior, prepare))
+      val groups = arg.groups.map((sql, prepare) => BatchGroupReturning(sql, returningExt.returningBehavior, prepare, List()))
       self.translateBatchQueryReturningEndpoint(groups.toList, prettyPrint)(arg.executionInfo, _summonTranslateRunner())
     }
     QueryExecutionBatch.apply(ca, 1)(quoted)

@@ -30,7 +30,7 @@ trait SqliteExecuteOverride[+D <: SqliteDialect, +N <: NamingStrategy] extends J
         "Sqlite does not support Batch-Actions with returning-keys. Quill will attempt to emulate this function with single-row inserts inside a transaction but using this API is not recommended."
       )
       groups.flatMap {
-        case BatchGroupReturning(sql, returningBehavior, prepare) =>
+        case BatchGroupReturning(sql, returningBehavior, prepare, _) =>
           val ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
           logger.underlying.debug("Batch: {}", sql)
           runInTransaction(conn) {
@@ -59,7 +59,7 @@ trait SqlServerExecuteOverride[+N <: NamingStrategy] extends JdbcContextVerbExec
   override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner): Result[List[T]] =
     withConnectionWrapped { conn =>
       groups.flatMap {
-        case BatchGroupReturning(sql, returningBehavior, prepare) =>
+        case BatchGroupReturning(sql, returningBehavior, prepare, _) =>
           val ps = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
           logger.underlying.debug("Batch: {}", sql)
           val outputs =

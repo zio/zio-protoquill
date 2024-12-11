@@ -30,7 +30,7 @@ class PeopleJdbcAggregationSpec extends PeopleAggregationSpec with PostgresJdbcC
 
   "Ex 2 map(agg(c),agg(c)).filter(col)" in {
     import `Ex 2 map(agg(c),agg(c)).filter(col)`._
-    context.run(get) mustEqual expect
+    context.run(get.filter(f => f._2 == 12)) mustEqual expect
   }
 
   "Ex 3 groupByMap(col)(col,agg(c))" in {

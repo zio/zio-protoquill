@@ -45,7 +45,7 @@ trait JdbcContextVerbPrepare[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
       (session: Connection) =>
         seq {
           val batches = groups.flatMap {
-            case BatchGroup(sql, prepares) =>
+            case BatchGroup(sql, prepares, _) =>
               prepares.map(sql -> _)
           }
           batches.map {

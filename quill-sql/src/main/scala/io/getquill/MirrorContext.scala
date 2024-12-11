@@ -117,7 +117,7 @@ trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
   override def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): Result[RunBatchActionResult] =
     BatchActionMirror(
       groups.map {
-        case BatchGroup(string, prepare) =>
+        case BatchGroup(string, prepare, _) =>
           (string, prepare.map(_(Row(), session)._2))
       },
       info
@@ -126,7 +126,7 @@ trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
   override def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner): Result[RunBatchActionReturningResult[T]] =
     BatchActionReturningMirror[T](
       groups.map {
-        case BatchGroupReturning(string, returningBehavior, prepare) =>
+        case BatchGroupReturning(string, returningBehavior, prepare, _) =>
           (string, returningBehavior, prepare.map(_(Row(), session)._2))
       },
       extractor,
@@ -152,7 +152,7 @@ trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
   def prepareBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner) =
     PrepareBatchMirror(
       groups.map {
-        case BatchGroup(string, prepare) =>
+        case BatchGroup(string, prepare, _) =>
           (string, prepare.map(_(Row(), session)._2))
       },
       info
