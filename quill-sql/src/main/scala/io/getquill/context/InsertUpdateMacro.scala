@@ -185,7 +185,7 @@ object InsertUpdateMacro {
           //   quote { query[Person].filter(...lift(runtimeValue)...).update/insertValue(...) }
           // so these lifts need to be extracted.
           case scheme @ '{ ($q: EntityQuery[t]) } =>
-            val ast = parser(q)
+            val (ast, _) = parser(q)
             val (rawLifts, runtimeLifts) = ExtractLifts(q)
             if (!runtimeLifts.isEmpty) {
               // In this particular case:
@@ -319,7 +319,7 @@ object InsertUpdateMacro {
      * Parse the input to of query[Person]insertValue(Person("Joe", "Bloggs")) into CaseClass(firstName="Joe",lastName="Bloggs")
      */
     def parseStaticInsertee(insertee: Expr[_]): CaseClass | AIdent = {
-      val rawAst = parser(insertee)
+      val (rawAst, _) = parser(insertee)
       val ast = BetaReduction(rawAst)
       ast match {
         case cc: CaseClass => cc
