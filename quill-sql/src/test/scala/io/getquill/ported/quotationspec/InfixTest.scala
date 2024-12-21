@@ -148,14 +148,14 @@ class InfixTest extends Spec with Inside {
         q must matchPattern {
           case Quoted(
             QuotationTag(idA),
-            List(),
+            List(EagerPlanter("foo", _, idB1)),
             List(
               QuotationVase(
-                Quoted(Infix(List("dyn1 || ", ""), List(ScalarTag(idB1, _)), false, false, QV), List(EagerPlanter("foo", _, idB)), Nil),
+                Quoted(Infix(List("dyn1 || ", ""), List(ScalarTag(idB, _)), false, false, QV), List(EagerPlanter("foo", _, idB2)), Nil),
                 idA1
               )
             )
-          ) if (idA == idA1 && idB == idB1) =>
+          ) if (idA == idA1 && idB == idB1 && idB == idB2) =>
         }
       }
       "sequential - pure" in {
