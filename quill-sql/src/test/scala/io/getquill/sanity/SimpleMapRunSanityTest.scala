@@ -30,10 +30,14 @@ class SimpleMapRunSanityTest extends MirrorSpec {
     }
     val quat = quatOf[SanePerson]
     qq.ast mustEqual Map(Entity("SanePerson", List(), quat.probit), Ident("p", quat), Property(Ident("p", quat), "name"))
+
     val ctx = new MirrorContext(MirrorIdiom, Literal)
     import ctx._
+
     val output = ctx.run(qq).string
     output mustEqual """querySchema("SanePerson").map(p => p.name)"""
+
+    println(ctx.run(qq).extractor)
   }
 
 }

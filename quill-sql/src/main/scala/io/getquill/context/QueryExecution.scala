@@ -1,6 +1,9 @@
 package io.getquill.context
 
+import io.getquill.auto.AutoDerive
 import io.getquill.norm.BetaReduction
+import io.getquill.util.ErrorMessages
+
 import scala.language.higherKinds
 import scala.language.experimental.macros
 //import io.getquill.generic.Dsl
@@ -117,15 +120,13 @@ object Execution {
     Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Leaf]] match {
       case Some(decoder) => decoder
       case None =>
-        lazy val failMsg =
-          s"""Decoder lookup failure for: ${Type.show[DecoderT]} (row-type: ${Format.TypeOf[ResultRow]}, session-type: ${Format.TypeOf[Session]}).
-             |Have you imported a Decoder[${Format.TypeOf[DecoderT]}]? You an do this by either importing .* from your context? E.g:
-             |val ctx = new MirrorContext[PostgresDialect, Literal]
-             |import ctx.*
-             |Or you can import the decoder from the context's companion object for example:
-             |import MirrorContext.*
-             |""".stripMargin
-        Summon.OrFail.exprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Composite]](failMsg)
+        Summon.OrLeft.exprOf[AutoDerive[DecoderT]] match {
+          case Left(_) =>
+            Summon.OrFail.exprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Composite]](ErrorMessages.failMsg[DecoderT, ResultRow, Session])
+          // if there is an AutoDerive instance, use the macros to do an auto derivation
+          case Right(_) =>
+            GenericDecoder.summon[DecoderT, ResultRow, Session]
+        }
 
         //val implicitlyTerm =
         //  quotes.reflect.Apply(

@@ -8,7 +8,7 @@ import scala.quoted.*
 import scala.deriving.*
 import scala.compiletime.{constValue, erasedValue, summonFrom, summonInline}
 import io.getquill.metaprog.TypeExtensions.*
-import io.getquill.util.Format
+import io.getquill.util.{ErrorMessages, Format}
 
 import scala.annotation.tailrec
 import io.getquill.generic.GenericDecoder.FlattenData
@@ -282,16 +282,7 @@ object GenericDecoder {
           FlattenData(Type.of[T], decoder, '{ !${ nullChecker } }, index)
 
         case Left(leafFailMsg) =>
-          lazy val msg =
-            s"""No Decoder found for ${Format.TypeOf[T]} and it is not a class representing a group of columns.
-               |Have you imported a Decoder[${Format.TypeOf[T]}]? You an do this by either importing .* from your context? E.g.
-               |val ctx = new MirrorContext[PostgresDialect, Literal]
-               |import ctx.*
-               |Or you can import the decoder from the context's companion object for example:
-               |import MirrorContext.*
-               |=============== Cannot Summon Decoder[${Format.TypeOf[T]}] because: ===============
-               |$leafFailMsg
-               |""".stripMargin
+          lazy val msg = ErrorMessages.failMsg[T, ResultRow, Session](leafFailMsg)
           val ev = Summon.OrFail.exprOf[Mirror.Of[T]](msg)
           // Otherwise, recursively summon fields
           ev match {

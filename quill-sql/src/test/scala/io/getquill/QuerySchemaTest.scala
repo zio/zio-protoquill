@@ -71,6 +71,7 @@ class QuerySchemaTest extends MirrorSpec with Inside {
     "custom with optional embedded" in {
       case class Entity(emb: Option[EmbValue])
       given CompositeDecoder[Entity] = deriveComposite
+
       implicit inline def meta: SchemaMeta[Entity] = schemaMeta[Entity]("test_entity", _.emb.map(_.i) -> "ii")
       inline def q = quote(query[Entity])
       q.ast.toString mustEqual """`querySchema`("test_entity", _.emb.i -> "ii")"""
