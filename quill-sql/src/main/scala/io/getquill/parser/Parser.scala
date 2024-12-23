@@ -105,8 +105,11 @@ trait ParserLibrary extends ParserFactory {
 
 object ParserLibrary extends ParserLibrary {
   class ReadyParser private[parser] (parser: Parser) {
-    def apply(expr: Expr[_])(using Quotes, TranspileConfig) =
-      parser(expr)(using History.Root)
+    def apply(expr: Expr[_])(using Quotes, TranspileConfig) = {
+      val lifts = Lifts.Empty
+      val ast = parser(expr)(using History.Root, lifts)
+      ast -> lifts
+    }
   }
 }
 
@@ -321,7 +324,7 @@ class TraversableOperationParser(val rootParse: Parser)(using Quotes, TranspileC
 class OrderingParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with PatternMatchingValues {
   import quotes.reflect._
 
-  def attempt: History ?=> PartialFunction[Expr[_], Ordering] = {
+  def attempt: (History, Lifts) ?=> PartialFunction[Expr[_], Ordering] = {
     case '{ implicitOrd } => AscNullsFirst
 
     // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
@@ -347,12 +350,17 @@ class QuotationParser(rootParse: Parser)(using Quotes, TranspileConfig) extends 
 
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
-        case Uprootable(uid, astTree, _) => Unlifter(astTree)
-        case Pluckable(uid, astTree, _)  => QuotationTag(uid)
+        case Uprootable(uid, astTree, lifts) =>
+          summon[Lifts].addLifts(lifts.map(_.plant))
+          Unlifter(astTree)
+        case pluckable @ Pluckable(uid, astTree, _)  =>
+          summon[Lifts].addPluckableUnquote(pluckable.pluck)
+          QuotationTag(uid)
         case Pointable(quote)            => report.throwError(s"Quotation is invalid for compile-time or processing: ${quote.show}", quote)
       }
 
     case PlanterExpr.UprootableUnquote(expr) =>
+      summon[Lifts].addLift(expr.plant)
       ScalarTag(expr.uid, Source.Parser)
 
     // A inline quotation can be parsed if it is directly inline. If it is not inline, a error
@@ -362,7 +370,8 @@ class QuotationParser(rootParse: Parser)(using Quotes, TranspileConfig) extends 
     // NOTE: Technically we only need to uproot the AST here, not the lifts, but using UprootableWithLifts
     // since that's the only construct in QuotedExpr that checks if there is an Inline block at the front.
     // If needed for performance reasons, a Inlined checking extractor can be made in QuotedExpr that ignores lifts
-    case QuotedExpr.UprootableWithLifts(quotedExpr, _) =>
+    case QuotedExpr.UprootableWithLifts(quotedExpr, lifts) =>
+      summon[Lifts].addLifts(lifts.map(_.plant))
       Unlifter(quotedExpr.ast)
   }
 }
@@ -802,7 +811,7 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
     case '{ ($i: InfixValue) }                        => genericInfix(i)(false, false, Quat.Value)
   }
 
-  def genericInfix(i: Expr[_])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History) = {
+  def genericInfix(i: Expr[_])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History, Lifts) = {
     val (parts, paramsExprs) = InfixComponentsOrFail.unapply(i).getOrElse { failParse(i, classOf[Infix]) }
     if (parts.exists(_.endsWith("#"))) {
       PrepareDynamicInfix(parts.toList, paramsExprs.toList)(isPure, isTransparent, quat)
@@ -813,7 +822,7 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
   }
 
   private object PrepareDynamicInfix {
-    def apply(parts: List[String], params: List[Expr[Any]])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History): Dynamic = {
+    def apply(parts: List[String], params: List[Expr[Any]])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History, Lifts): Dynamic = {
       // Basically the way it works is like this
       //
       // sql"foo#${bar}baz" becomes:
@@ -1056,7 +1065,7 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
   //     report.throwError(s"Can only perform the operation `${opName}` on primitive types but found the type: ${Format.TypeRepr(tpe.widen)} (primitive types are: Int,Long,Short,Float,Double,Boolean,Char)")
 
   object NumericOperation {
-    def unapply(expr: Expr[_])(using History): Option[BinaryOperation] =
+    def unapply(expr: Expr[_])(using History, Lifts): Option[BinaryOperation] =
       UntypeExpr(expr) match {
         case NamedOp1(left, NumericOpLabel(binaryOp), right) if (isNumeric(left.asTerm.tpe) && isNumeric(right.asTerm.tpe)) =>
           Some(BinaryOperation(rootParse(left), binaryOp, rootParse(right)))
