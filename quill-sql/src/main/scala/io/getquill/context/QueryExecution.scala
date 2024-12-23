@@ -2,7 +2,7 @@ package io.getquill.context
 
 import io.getquill.auto.AutoDerive
 import io.getquill.norm.BetaReduction
-import io.getquill.util.ErrorMessages
+import io.getquill.util.{AutoMode, ErrorMessages, ProtoMessages}
 
 import scala.language.higherKinds
 import scala.language.experimental.macros
@@ -120,13 +120,16 @@ object Execution {
     Expr.summon[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Leaf]] match {
       case Some(decoder) => decoder
       case None =>
-        Summon.OrLeft.exprOf[AutoDerive[DecoderT]] match {
-          case Left(_) =>
-            Summon.OrFail.exprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Composite]](ErrorMessages.failMsg[DecoderT, ResultRow, Session])
-          // if there is an AutoDerive instance, use the macros to do an auto derivation
-          case Right(_) =>
-            GenericDecoder.summon[DecoderT, ResultRow, Session]
-        }
+        val doAuto =
+          ProtoMessages.autoMode match {
+            case AutoMode.Full => true
+            case AutoMode.Import => Summon.OrLeft.exprOf[AutoDerive[DecoderT]].isRight
+            case AutoMode.None => false
+          }
+        if (doAuto)
+          GenericDecoder.summon[DecoderT, ResultRow, Session]
+        else
+          Summon.OrFail.exprOf[GenericDecoder[ResultRow, Session, DecoderT, DecodingType.Composite]](ErrorMessages.failMsg[DecoderT, ResultRow, Session])
 
         //val implicitlyTerm =
         //  quotes.reflect.Apply(

@@ -119,7 +119,7 @@ lazy val `quill-sql` =
         "com.lihaoyi" %% "pprint" % "0.9.0",
         "ch.qos.logback" % "logback-classic" % "1.5.6" % Test,
         // Local cache with phase disabling
-        "io.getquill" %% "quill-engine" % "4.8.5+21-898b96c9+20241211-1746-SNAPSHOT",
+        "io.getquill" %% "quill-engine" % "4.8.5+23-05eeb175-SNAPSHOT",
         // global cache
         //"io.getquill" %% "quill-engine" % "4.8.5+21-898b96c9+20241211-0224-SNAPSHOT",
         // using local cache

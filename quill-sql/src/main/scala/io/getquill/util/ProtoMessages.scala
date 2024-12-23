@@ -15,7 +15,9 @@ object ProtoMessages {
   private def cache[T](name: String, value: => T): T =
     cacheMap.getOrElseUpdate(name, value).asInstanceOf[T]
 
-  private[getquill] def cacheParser = cache("quill.cache.parser", variable("quill.cache.parser", "quill_cache_parser", "300000").toInt)
+  private[getquill] def autoMode = cache("quill.cache.auto", AutoMode.parse(variable("quill.derive.auto", "quill_derive_auto", "import")))
+  private[getquill] def cacheParser = cache("quill.cache.parser", variable("quill.cache.parser", "quill_cache_parser", "false").toBoolean)
+  private[getquill] def cacheParserMax = cache("quill.cache.parser.max", variable("quill.cache.parser.max", "quill_cache_parser_max", "300000").toInt)
   private[getquill] def cacheIds = cache("quill.cache.ids", variable("quill.cache.ids", "quill_cache_ids", "300000").toInt)
   private[getquill] def useStdOut = cache("quill.macro.stdout", variable("quill.macro.stdout", "quill_macro_stdout", "false").toBoolean)
   private[getquill] def serializeAst = cache("quill.ast.serialize", variable("quill.ast.serialize", "quill_ast_serialize", "true").toBoolean)
@@ -24,3 +26,12 @@ object ProtoMessages {
   private[getquill] def aggressiveQuatChecking = cache("quill.quat.aggresive", variable("quill.quat.aggresive", "quill_quat_aggresive", "false").toBoolean)
 
 } // end ProtoMessages
+
+enum AutoMode {
+  case Full
+  case Import
+  case None
+}
+object AutoMode {
+  def parse(str: String) = AutoMode.valueOf(str.toLowerCase.capitalize)
+}

@@ -49,7 +49,7 @@ import scala.reflect.ClassTag
 object IdCache {
   private val cache: LRUCache[(String, Expr[_]), String] = new LRUCache(ProtoMessages.cacheIds + 1) // add one since capacity 0 will crash creation
   def get(liftType: String, expr: Expr[_]): String = {
-    if (ProtoMessages.cacheParser > 0)
+    if (ProtoMessages.cacheParserMax > 0)
       cache.getOrDefault((liftType, expr), java.util.UUID.randomUUID.toString)
     else
       java.util.UUID.randomUUID.toString
