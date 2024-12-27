@@ -895,7 +895,7 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
           case Param(v) => Lifter(rootParse(v))
         }
 
-      val (lifts, pluckedUnquotes) = params.map(param => ExtractLifts(param)).unzip match { case (l, pu) => (l.flatten, pu.flatten) }
+      val (lifts, pluckedUnquotes) = (summon[Lifts].lifts, summon[Lifts].pluckableUnquotes)
 
       // If there is a lift that one of the static parts has, the lift should be extracted anyway
       // from the outer quote. Have a look at the "with lift" test in InfixText.scala for more detail
