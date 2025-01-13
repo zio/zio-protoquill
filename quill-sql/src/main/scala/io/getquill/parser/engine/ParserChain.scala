@@ -38,7 +38,7 @@ object ParserChain {
               val leftParser = left.build(rootParse)
               val rightParser = right.build(rootParse)
               val history = summon[History]
-              val lifts = summon[Lifts]
+              val lifts = summon[LiftsAccum]
               val leftHistory = History.Matched(left, history)(Format.Expr(expr))
               // if the left side parser did not match, that means that it was ignored so add that info to the history
               val rightHistory = History.Matched(right, History.Ignored(left, history)(Format.Expr(expr)))(Format.Expr(expr))

@@ -4,7 +4,7 @@ import scala.collection.mutable.ListBuffer
 import scala.quoted.Expr
 import io.getquill.{ Planter, QuotationVase }
 
-class Lifts private (
+class LiftsAccum private (
   private val underlyingLifts: ListBuffer[Expr[Planter[?, ?, ?]]],
   private val underlyingPluckableUnquotes: ListBuffer[Expr[QuotationVase]],
 ) {
@@ -19,6 +19,6 @@ class Lifts private (
   def pluckableUnquotes = underlyingPluckableUnquotes.toList
 }
 
-object Lifts {
-  def Empty = new Lifts(ListBuffer.empty, ListBuffer.empty)
+object LiftsAccum {
+  def Empty = new LiftsAccum(ListBuffer.empty, ListBuffer.empty)
 }

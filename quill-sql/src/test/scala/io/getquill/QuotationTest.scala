@@ -370,7 +370,7 @@ class QuotationTest extends Spec with Inside {
       qqq must matchPattern {
         case Quoted(
               Map(QuotationTag(qid2), Id("s"), Id("s") `(+)` scalarTag(tid2)),
-              List(EagerPlanter("are you", enc2, pid2)),
+              List(EagerPlanter("how", enc, pid), EagerPlanter("are you", enc2, pid2)),
               List(QuotationVase(
                 Quoted(
                   Map(QuotationTag(qid), IdentP, Property(IdentP, "name") `(+)` scalarTag(tid)),
@@ -379,7 +379,7 @@ class QuotationTest extends Spec with Inside {
                 ),
                 vid2
               ))
-            ) if (tid == pid1 && qid == vid && pid1 == pid1 && tid2 == pid2 && qid2 == vid2) =>
+            ) if (tid == pid && qid == vid && pid1 == pid && tid2 == pid2 && qid2 == vid2) =>
       }
       ctx.pull(qqq) mustEqual (List("how", "are you"), ExecutionType.Dynamic)
     }
@@ -454,3 +454,4 @@ class QuotationTest extends Spec with Inside {
     }
   }
 }
+

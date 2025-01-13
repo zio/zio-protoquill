@@ -34,6 +34,7 @@ import io.getquill.context.{ExtractLifts, VerifyFreeVariables}
 import io.getquill.norm.TranspileConfig
 import io.getquill.ast.External.Source
 import io.getquill.quat.VerifyNoBranches
+import io.getquill.metaprog.SummonParser
 
 trait ParserFactory {
   def assemble(using Quotes): ParserLibrary.ReadyParser
@@ -106,7 +107,7 @@ trait ParserLibrary extends ParserFactory {
 object ParserLibrary extends ParserLibrary {
   class ReadyParser private[parser] (parser: Parser) {
     def apply(expr: Expr[_])(using Quotes, TranspileConfig) = {
-      val lifts = Lifts.Empty
+      val lifts = LiftsAccum.Empty
       val ast = parser(expr)(using History.Root, lifts)
       ast -> lifts
     }
@@ -324,7 +325,7 @@ class TraversableOperationParser(val rootParse: Parser)(using Quotes, TranspileC
 class OrderingParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends Parser(rootParse) with PatternMatchingValues {
   import quotes.reflect._
 
-  def attempt: (History, Lifts) ?=> PartialFunction[Expr[_], Ordering] = {
+  def attempt: (History, LiftsAccum) ?=> PartialFunction[Expr[_], Ordering] = {
     case '{ implicitOrd } => AscNullsFirst
 
     // Doing this on a lower level since there are multiple cases of Order.apply with multiple arguemnts
@@ -351,16 +352,16 @@ class QuotationParser(rootParse: Parser)(using Quotes, TranspileConfig) extends 
     case QuotationLotExpr.Unquoted(quotationLot) =>
       quotationLot match {
         case Uprootable(uid, astTree, lifts) =>
-          summon[Lifts].addLifts(lifts.map(_.plant))
+          summon[LiftsAccum].addLifts(lifts.map(_.plant))
           Unlifter(astTree)
         case pluckable @ Pluckable(uid, astTree, _)  =>
-          summon[Lifts].addPluckableUnquote(pluckable.pluck)
+          summon[LiftsAccum].addPluckableUnquote(pluckable.pluck)
           QuotationTag(uid)
         case Pointable(quote)            => report.throwError(s"Quotation is invalid for compile-time or processing: ${quote.show}", quote)
       }
 
     case PlanterExpr.UprootableUnquote(expr) =>
-      summon[Lifts].addLift(expr.plant)
+      summon[LiftsAccum].addLift(expr.plant)
       ScalarTag(expr.uid, Source.Parser)
 
     // A inline quotation can be parsed if it is directly inline. If it is not inline, a error
@@ -371,7 +372,7 @@ class QuotationParser(rootParse: Parser)(using Quotes, TranspileConfig) extends 
     // since that's the only construct in QuotedExpr that checks if there is an Inline block at the front.
     // If needed for performance reasons, a Inlined checking extractor can be made in QuotedExpr that ignores lifts
     case QuotedExpr.UprootableWithLifts(quotedExpr, lifts) =>
-      summon[Lifts].addLifts(lifts.map(_.plant))
+      summon[LiftsAccum].addLifts(lifts.map(_.plant))
       Unlifter(quotedExpr.ast)
   }
 }
@@ -811,7 +812,7 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
     case '{ ($i: InfixValue) }                        => genericInfix(i)(false, false, Quat.Value)
   }
 
-  def genericInfix(i: Expr[_])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History, Lifts) = {
+  def genericInfix(i: Expr[_])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History, LiftsAccum) = {
     val (parts, paramsExprs) = InfixComponentsOrFail.unapply(i).getOrElse { failParse(i, classOf[Infix]) }
     if (parts.exists(_.endsWith("#"))) {
       PrepareDynamicInfix(parts.toList, paramsExprs.toList)(isPure, isTransparent, quat)
@@ -822,7 +823,7 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
   }
 
   private object PrepareDynamicInfix {
-    def apply(parts: List[String], params: List[Expr[Any]])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History, Lifts): Dynamic = {
+    def apply(parts: List[String], params: List[Expr[Any]])(isPure: Boolean, isTransparent: Boolean, quat: Quat)(using History, LiftsAccum): Dynamic = {
       // Basically the way it works is like this
       //
       // sql"foo#${bar}baz" becomes:
@@ -890,12 +891,23 @@ class InfixParser(val rootParse: Parser)(using Quotes, TranspileConfig) extends 
           case Part(v) => v
         }
 
-      val newParams =
-        fused.collect {
-          case Param(v) => Lifter(rootParse(v))
-        }
+      val parser = SummonParser().assemble
 
-      val (lifts, pluckedUnquotes) = (summon[Lifts].lifts, summon[Lifts].pluckableUnquotes)
+      val (newParams, parserLiftsAccum) =
+        fused.collect {
+          case Param(v) =>
+            val (rawAst, parserLifts) = parser(v)
+            Lifter(rawAst) -> parserLifts
+        }.unzip
+
+      val (lifts, pluckedUnquotes) = {
+        parserLiftsAccum.map { liftAccum =>
+          liftAccum.lifts -> liftAccum.pluckableUnquotes
+        }
+        .unzip match {
+          case (lifts, pluckable) => lifts.flatten -> pluckable.flatten
+        }
+      }
 
       // If there is a lift that one of the static parts has, the lift should be extracted anyway
       // from the outer quote. Have a look at the "with lift" test in InfixText.scala for more detail
@@ -1065,7 +1077,7 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
   //     report.throwError(s"Can only perform the operation `${opName}` on primitive types but found the type: ${Format.TypeRepr(tpe.widen)} (primitive types are: Int,Long,Short,Float,Double,Boolean,Char)")
 
   object NumericOperation {
-    def unapply(expr: Expr[_])(using History, Lifts): Option[BinaryOperation] =
+    def unapply(expr: Expr[_])(using History, LiftsAccum): Option[BinaryOperation] =
       UntypeExpr(expr) match {
         case NamedOp1(left, NumericOpLabel(binaryOp), right) if (isNumeric(left.asTerm.tpe) && isNumeric(right.asTerm.tpe)) =>
           Some(BinaryOperation(rootParse(left), binaryOp, rootParse(right)))
