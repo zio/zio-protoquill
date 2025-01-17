@@ -1,21 +1,21 @@
 # Introduction
 
-ProtoQuill is the Scala 3 version of [Quill: Free/Libre Compile-time Language Integrated Queries for Scala](https://getquill.io/). For those migrating, or exploring migration from Scala2-Quill, most Queries written in Scala2-Quill should work readily in ProtoQuill but they will become Dynamic. Change them to `inline def` expressions and they should once-again be compile-time (see the [Rationale](#rationale-for-inline) section for some info on why I chose to do this). Also see the [Migration Notes](#migration-notes) section.
+ProtoQuill is the Scala 3 version of [Quill: Free/Libre Compile-time Language Integrated Queries for Scala](https://zio.dev/zio-quill//). For those migrating, or exploring migration from Scala2-Quill, most Queries written in Scala2-Quill should work readily in ProtoQuill but they will become Dynamic. Change them to `inline def` expressions and they should once-again be compile-time (see the [Rationale](#rationale-for-inline) section for some info on why I chose to do this). Also see the [Migration Notes](#migration-notes) section.
 
 Not all Contexts and not all Functionality is Supported yet. Here is a rough list of both:
 
 Currently Supported:
  - Basic Quotation, Querying, Lifting, and Types (Compile-Time and Dynamic)
  - Inner/Outer, Left/Right joins
- - Query.map/flatMap/concatMap/filter other [query constructs](https://getquill.io/#quotation-queries).
- - Insert, Update, Delete [Actions](https://getquill.io/#quotation-actions) (Compile-Time and Dynamic)
+ - Query.map/flatMap/concatMap/filter other [query constructs](https://zio.dev/zio-quill//#quotation-queries).
+ - Insert, Update, Delete [Actions](https://zio.dev/zio-quill//#quotation-actions) (Compile-Time and Dynamic)
  - Batch Insert, Batch Update, and Batch Delete Actions, both Compile-Time and Runtime! (Scala2-Quill only supports Compile-Time batch queries)
  - ZIO and Synchronous JDBC contexts.
  - SQL OnConflict Clauses
  - Prepare Query (i.e. `context.prepare(query)`)
  - Translate Query (i.e. `context.translate(query)`)
  - Cassandra Contexts (using V4 drivers!)
- - Dynamic Query API (i.e. [this](https://getquill.io/#quotation-dynamic-queries-dynamic-query-api))
+ - Dynamic Query API (i.e. [this](https://zio.dev/zio-quill//#quotation-dynamic-queries-dynamic-query-api))
 
 Not Supported:
  - Implicit class based extensions. Please see the [Extensions](https://github.com/zio/zio-protoquill#extensions) section below on how to do this.
@@ -31,7 +31,7 @@ There are also quite a few new features that ProtoQuill has:
  - [Caliban-Integration](#caliban-integration) (Experimental deep integration with Caliban. Trivially filter/exclude any columns you want!)
  - [Dependent Contexts](https://github.com/zio/zio-quill#dependent-contexts) - In Scala2-Quill Dependent Contexts were demonstrated as a typical example of the limitations of working with Quoted blocks. In ProtoQuill these work as expected since there are no path dependant types in the ProtoQuill output. Have a look at this [scastie example](https://scastie.scala-lang.org/TO5dF87jQQegUGqmIQtbew) for more information.
 
-One other note that this documentation is not yet a fully-fledged reference for ProtoQuill features. Have a look at the original [Quill documentation](https://getquill.io/) for basic information about how Quill constructs (e.g. Queries, Joins, Actions, Batch Actions, etc...) are written in lieu of any documentation missing here.
+One other note that this documentation is not yet a fully-fledged reference for ProtoQuill features. Have a look at the original [Quill documentation](https://zio.dev/zio-quill//) for basic information about how Quill constructs (e.g. Queries, Joins, Actions, Batch Actions, etc...) are written in lieu of any documentation missing here.
 
 For further information, watch:
  - [ProtoQuill Release Party](https://www.youtube.com/watch?v=El9fkkHewp0) - Overview of new Quill features in Scala 3 and discussion about the future of Metaprogramming.
@@ -68,7 +68,7 @@ testPostgresDB.dataSourceClassName=org.postgresql.ds.PGSimpleDataSource
 testPostgresDB.dataSource.databaseName=<my-database>
 testPostgresDB.dataSource.url=<my-jdbc-url>
 ```
-Have a look at [this list](https://getquill.io/#contexts-quill-jdbc) to see how to configure other databases.
+Have a look at [this list](https://zio.dev/zio-quill//#contexts-quill-jdbc) to see how to configure other databases.
 
 Create a context and a case class representing your table.
 ```scala
@@ -149,13 +149,13 @@ ProtoQuill supports Quill `query[T]` constructs including:
  - Distinct, Nested
  - querySchema
 
-Please refer to [quotation-queries](https://getquill.io/#quotation-queries) in the Scala2-Quill documentation for more information.
+Please refer to [quotation-queries](https://zio.dev/zio-quill//#quotation-queries) in the Scala2-Quill documentation for more information.
 Keep in mind that in ProtoQuill for these to generate compile-time queries, they need to be `inline def`.
 
 ### Batch Queries
 
 ProtoQuill supports Insert/Update/Delete actions as well as their batch variations.
-Please refer to [quotation-actions](https://getquill.io/#quotation-actions) in the Scala2-Quill documentation for more information.
+Please refer to [quotation-actions](https://zio.dev/zio-quill//#quotation-actions) in the Scala2-Quill documentation for more information.
 Keep in mind that in ProtoQuill for these to generate compile-time queries, they need to be `inline def`.
 The `onConflict` instructions are not yet supported in ProtoQuill.
 
@@ -179,7 +179,7 @@ liftQuery(vips).foreach(v => query[Person].insertValue(Person(v.first + v.last, 
 ### Metas
 
 QueryMeta, SchemaMeta, InsertMeta, and UpdateMeta are supported in ProtoQuill.
-Please refer to [meta-dsl](https://getquill.io/#extending-quill-meta-dsl) in the Scala2-Quill documentation for more information.
+Please refer to [meta-dsl](https://zio.dev/zio-quill//#extending-quill-meta-dsl) in the Scala2-Quill documentation for more information.
 Keep in mind that in ProtoQuill for these to generate compile-time queries, they need to be `inline def`.
 
 Additionally, they can be defined using Scala 3 `given` syntax:
@@ -378,6 +378,34 @@ The way that this works is that in each `?` slot, the corresponding column is lo
 //   (p.lastName = { values("lastName") } OR { values("lastName") } IS NULL) AND
 //   (p.age = { values("age") } OR { values("age") } IS NULL) AND
 //   true
+```
+
+## Getting SQL of the Last Executed Query (ZIO Only)
+
+In ZIO contexts, you can get the SQL of the last executed query by using the `getLastExecutedQuery()` method.
+
+```scala
+val people =
+   for {
+     people <- ctx.run(quote { query[Person] })
+     sql <- ctx.getLastExecutedQuery()
+     _ <- ZIO.log(s"Last Executed Query: ${sql}")
+   } yield people
+```
+
+For advanced debugging use-cases, you can even get the syntax tree of the last executed query by using the `getLastExecutedQueryTree()` method.
+Since this may incur additional performance overhead, make sure that your context extends `AstSplicing` in order to enable this behavior.
+
+```scala
+val people =
+   for {
+     // First create a quill-zio context. Be sure that it extends AstSplicing
+     ctx <- Quill.Postgres(Literal, connectionPool) with AstSplicing
+     // Then run a query and invoke getLastExecutionInfo 
+     people <- ctx.run(quote { query[Person] })
+     info <- ctx.getLastExecutionInfo()
+     _ <- ZIO.log(s"Last Executed Ast: ${info.ast}")
+   } yield people
 ```
 
 ## Co-Product Rows
