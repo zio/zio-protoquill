@@ -33,6 +33,8 @@ jobs:
           distribution: temurin
           java-version: '17'
           check-latest: true
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
 
       - name: Scala ${{ matrix.scala }} Building ${{ matrix.module }}
         env:
@@ -53,6 +55,8 @@ jobs:
           distribution: temurin
           java-version: '17'
           check-latest: true
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
       - run: sbt ci-release
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
