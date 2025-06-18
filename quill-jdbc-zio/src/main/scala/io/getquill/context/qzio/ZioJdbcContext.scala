@@ -16,6 +16,7 @@ import io.getquill.*
 import io.getquill.jdbczio.Quill
 import zio.ZIO.attemptBlocking
 import zio.ZIO.blocking
+import java.sql.SQLException
 
 /**
  * Quill context that executes JDBC queries inside of ZIO. Unlike most other contexts
@@ -179,7 +180,8 @@ abstract class ZioJdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] e
    *   release-conn
    * </pre>
    */
-  def transaction[R <: DataSource, A](op: ZIO[R, Throwable, A]): ZIO[R, Throwable, A] = {
+  def transaction[R <: DataSource, E, A](op: ZIO[R, E, A]): ZIO[R, E | SQLException, A] = {
+
     blocking(currentConnection.get.flatMap {
       // We can just return the op in the case that there is already a connection set on the fiber ref
       // because the op is execute___ which will lookup the connection from the fiber ref via onConnection/onConnectionStream
@@ -188,13 +190,13 @@ abstract class ZioJdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] e
       case None =>
         val connection = for {
           env <- ZIO.service[DataSource]
-          connection <- scopedBestEffort(attemptBlocking(env.getConnection))
+          connection <- scopedBestEffort(sqlEffect(env.getConnection))
           // Get the current value of auto-commit
-          prevAutoCommit <- attemptBlocking(connection.getAutoCommit)
+          prevAutoCommit <- sqlEffect(connection.getAutoCommit)
           // Disable auto-commit since we need to be able to roll back. Once everything is done, set it
           // to whatever the previous value was.
-          _ <- ZIO.acquireRelease(attemptBlocking(connection.setAutoCommit(false))) { _ =>
-            attemptBlocking(connection.setAutoCommit(prevAutoCommit)).orDie
+          _ <- ZIO.acquireRelease(sqlEffect(connection.setAutoCommit(false))) { _ =>
+            sqlEffect(connection.setAutoCommit(prevAutoCommit)).orDie
           }
           _ <- ZIO.acquireRelease(currentConnection.set(Some(connection))) { _ =>
             // Note. We are failing the fiber if auto-commit reset fails. For some circumstances this may be too aggresive.
