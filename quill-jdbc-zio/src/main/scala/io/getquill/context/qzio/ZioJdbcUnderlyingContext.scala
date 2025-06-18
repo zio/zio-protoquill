@@ -129,17 +129,16 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
     } yield r
   }
 
-  def transaction[R <: Connection, E <: Throwable, A](f: ZIO[R, E, A]): ZIO[R, E | SQLException, A] = {
+  def transaction[R <: Connection, E, A](f: ZIO[R, E, A]): ZIO[R, E | SQLException, A] = {
     ZIO.environment[R].flatMap(env =>
       blocking(withoutAutoCommit(
-        f.onExit {
-          case Success(_) =>
-            ZIO.succeed(env.get[Connection].commit())
+        f.exit.flatMap {
+          case Success(value) =>
+            ZIO.succeed(env.get[Connection].commit()).as(value)
           case Failure(cause) =>
             ZIO.succeed(env.get[Connection].rollback()).foldCauseZIO(
-              // NOTE: cause.flatMap(Cause.die) means wrap up the throwable failures into die failures, can only do if E param is Throwable (can also do .orDie at the end)
-              rollbackFailCause => ZIO.failCause(cause.flatMap(Cause.die(_, StackTrace.none)) ++ rollbackFailCause),
-              _ => ZIO.failCause(cause.flatMap(Cause.die(_, StackTrace.none))) // or ZIO.halt(cause).orDie
+              rollbackFailCause => ZIO.failCause(cause ++ rollbackFailCause),
+              _ => ZIO.failCause(cause)
             )
         }.provideEnvironment(env)
       )))
