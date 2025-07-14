@@ -86,7 +86,7 @@ val filteredModules = {
 }
 
 val zioQuillVersion = "4.8.5"
-val zioVersion = "2.1.16"
+val zioVersion = "2.1.19"
 
 lazy val `quill` =
   (project in file("."))
@@ -171,14 +171,14 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban-quick" % "2.10.0",
+        "com.github.ghostdogpr" %% "caliban-quick" % "2.11.1",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.5.18" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql" % "postgresql" % "42.7.5" % Test,
+        "org.postgresql" % "postgresql" % "42.7.7" % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -202,8 +202,8 @@ lazy val `quill-jdbc-zio` =
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
-        "org.postgresql" % "postgresql" % "42.7.5" % "provided",
-        "dev.zio" %% "zio-json" % "0.7.8"
+        "org.postgresql" % "postgresql" % "42.7.7" % "provided",
+        "dev.zio" %% "zio-json" % "0.7.44"
       ),
       Test / runMain / fork := true,
       Test / fork := true,
@@ -266,11 +266,11 @@ lazy val jdbcTestingLibraries = Seq(
   libraryDependencies ++= Seq(
     "com.zaxxer" % "HikariCP" % "6.3.0" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
-    "com.mysql" % "mysql-connector-j" % "9.2.0" % Test,
+    "com.mysql" % "mysql-connector-j" % "9.3.0" % Test,
     "com.h2database" % "h2" % "2.3.232" % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
-    "org.postgresql" % "postgresql" % "42.7.5" % Test,
-    "org.xerial" % "sqlite-jdbc" % "3.49.1.0" % Test,
+    "org.postgresql" % "postgresql" % "42.7.7" % Test,
+    "org.xerial" % "sqlite-jdbc" % "3.50.2.0" % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" % "mssql-jdbc" % "7.4.1.jre11" % Test,
     "com.oracle.ojdbc" % "ojdbc8" % "19.3.0.0" % Test,
@@ -290,7 +290,7 @@ lazy val basicSettings = Seq(
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
-  scalaVersion := "3.3.5",
+  scalaVersion := "3.3.6",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.
   // Test / testOptions ++= Seq(
