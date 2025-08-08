@@ -105,19 +105,17 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
       } yield result
     }
 
-  private def sqlEffect[T](t: => T): QCIO[T] = ZIO.attempt(t).refineToOrDie[SQLException]
-
   /**
    * Note that for ZIO 2.0 since the env is covariant, R can be a subtype of connection because if there are other with-clauses
    * they can be generalized to Something <: Connection. E.g. `Connection with OtherStuff` generalizes to `Something <: Connection`.
    */
-  private[getquill] def withoutAutoCommit[R <: Connection, A, E <: Throwable: ClassTag](f: ZIO[R, E, A]): ZIO[R, E, A] = {
+  private[getquill] def withoutAutoCommit[R <: Connection, A, E](f: ZIO[R, E, A]): ZIO[R, E | SQLException, A] = {
     for {
       conn <- ZIO.service[Connection]
       autoCommitPrev = conn.getAutoCommit
       r <- ZIO.acquireReleaseWith(sqlEffect(conn))(conn => ZIO.succeed(conn.setAutoCommit(autoCommitPrev))) { conn =>
-        sqlEffect(conn.setAutoCommit(false)).flatMap(_ => f)
-      }.refineToOrDie[E]
+        sqlEffect(conn.setAutoCommit(false)) *> f
+      }
     } yield r
   }
 
@@ -131,17 +129,16 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
     } yield r
   }
 
-  def transaction[R <: Connection, A](f: ZIO[R, Throwable, A]): ZIO[R, Throwable, A] = {
+  def transaction[R <: Connection, E, A](f: ZIO[R, E, A]): ZIO[R, E | SQLException, A] = {
     ZIO.environment[R].flatMap(env =>
       blocking(withoutAutoCommit(
-        f.onExit {
-          case Success(_) =>
-            ZIO.succeed(env.get[Connection].commit())
+        f.exit.flatMap {
+          case Success(value) =>
+            ZIO.succeed(env.get[Connection].commit()).as(value)
           case Failure(cause) =>
             ZIO.succeed(env.get[Connection].rollback()).foldCauseZIO(
-              // NOTE: cause.flatMap(Cause.die) means wrap up the throwable failures into die failures, can only do if E param is Throwable (can also do .orDie at the end)
-              rollbackFailCause => ZIO.failCause(cause.flatMap(Cause.die(_, StackTrace.none)) ++ rollbackFailCause),
-              _ => ZIO.failCause(cause.flatMap(Cause.die(_, StackTrace.none))) // or ZIO.halt(cause).orDie
+              rollbackFailCause => ZIO.failCause(cause ++ rollbackFailCause),
+              _ => ZIO.failCause(cause)
             )
         }.provideEnvironment(env)
       )))

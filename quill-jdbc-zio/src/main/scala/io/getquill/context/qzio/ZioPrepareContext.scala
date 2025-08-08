@@ -51,4 +51,8 @@ trait ZioPrepareContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends
           prepareSingle(sql, prepare)(info, dc)
       }
     }.refineToOrDie[SQLException]
+
+  final protected def sqlEffect[A](a: => A): ZIO[Any, SQLException, A] =
+    ZIO.attempt(a).refineToOrDie[SQLException]
+
 }
