@@ -264,7 +264,7 @@ lazy val commonSettings =
 lazy val jdbcTestingLibraries = Seq(
   // JDBC Libraries for testing of quill-jdbc___ contexts
   libraryDependencies ++= Seq(
-    "com.zaxxer" % "HikariCP" % "6.3.2" exclude("org.slf4j", "*"),
+    "com.zaxxer" % "HikariCP" % "7.0.1" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
     "com.mysql" % "mysql-connector-j" % "9.4.0" % Test,
     "com.h2database" % "h2" % "2.3.232" % Test,
