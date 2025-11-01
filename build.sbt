@@ -203,7 +203,7 @@ lazy val `quill-jdbc-zio` =
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
         "org.postgresql" % "postgresql" % "42.7.7" % "provided",
-        "dev.zio" %% "zio-json" % "0.7.44"
+        "dev.zio" %% "zio-json" % "0.7.45"
       ),
       Test / runMain / fork := true,
       Test / fork := true,
