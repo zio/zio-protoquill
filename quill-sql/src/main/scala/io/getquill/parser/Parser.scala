@@ -1018,6 +1018,16 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
     case Unseal(Apply(Select(encodeable, "toString"), List())) if isValue(encodeable.tpe) =>
       val inner = rootParse(encodeable.asExpr)
       Infix(List("cast(", " as VARCHAR)"), List(inner), false, false, inner.quat)
+    
+    // Handle augmentString wrapper with Inlined blocks (Scala 3.8.0+)
+    // Pattern: augmentString(Inlined(...)).toXxx
+    // This handles the case where Scala 3.8.0+ creates Inlined blocks with context capture
+    case Unseal(Select(Apply(Ident("augmentString"), List(innerRaw)), ("toInt" | "toLong" | "toShort" | "toFloat" | "toDouble" | "toByte" | "toChar"))) if isValue(innerRaw.tpe) => 
+      def unwrapInlined(term: Term): Term = term match {
+        case Inlined(_, _, body) => unwrapInlined(body)
+        case other => other
+      }
+      rootParse(unwrapInlined(innerRaw).asExpr)
     case Unseal(Select(num, "toInt")) if isValue(num.tpe)    => rootParse(num.asExpr)
     case Unseal(Select(num, "toLong")) if isValue(num.tpe)   => rootParse(num.asExpr)
     case Unseal(Select(num, "toShort")) if isValue(num.tpe)  => rootParse(num.asExpr)
