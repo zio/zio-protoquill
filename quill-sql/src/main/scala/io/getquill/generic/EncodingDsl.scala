@@ -4,6 +4,7 @@ import scala.reflect.ClassTag
 import scala.quoted._
 import scala.deriving._
 import scala.compiletime.{erasedValue, summonFrom}
+import scala.annotation.implicitNotFound
 import io.getquill.MappedEncoding
 import io.getquill.generic.DecodingType
 
@@ -81,10 +82,12 @@ trait EncodingDsl extends LowPriorityImplicits { self => // extends LowPriorityI
 
   // For: Mapped := Foo(value: String), Base := String
   // Encoding follows: (MappedEncoding(Foo) => String) <=(contramap)= Encoder(Foo)
+  @implicitNotFound("Cannot find a mapped encoder for type ${Mapped}. Ensure a MappedEncoding[${Mapped}, ${Base}] and an Encoder[${Base}] are in scope.")
   implicit def mappedEncoder[Mapped, Base](implicit mapped: MappedEncoding[Mapped, Base], encoder: Encoder[Base]): Encoder[Mapped]
 
   // For: Base := String, Mapped := Foo(value: String)
   // Decoding follows: (MappedEncoding(String) => Foo) =(map)=> Decoder(Foo)
+  @implicitNotFound("Cannot find a mapped decoder for type ${Mapped}. Ensure a MappedEncoding[${Base}, ${Mapped}] and a Decoder[${Base}] are in scope.")
   implicit def mappedDecoder[Base, Mapped](implicit mapped: MappedEncoding[Base, Mapped], decoder: Decoder[Base]): Decoder[Mapped]
 
   protected def mappedBaseEncoder[Mapped, Base](mapped: MappedEncoding[Mapped, Base], encoder: EncoderMethod[Base]): EncoderMethod[Mapped] =

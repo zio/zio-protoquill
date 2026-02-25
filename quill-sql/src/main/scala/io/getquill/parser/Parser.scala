@@ -1018,6 +1018,12 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
     case Unseal(Apply(Select(encodeable, "toString"), List())) if isValue(encodeable.tpe) =>
       val inner = rootParse(encodeable.asExpr)
       Infix(List("cast(", " as VARCHAR)"), List(inner), false, false, inner.quat)
+    // Scala 3.8+ desugars String.toInt/toLong through augmentString — must match before the
+    // generic numeric passthrough patterns below, which would incorrectly strip the .toInt/.toLong
+    case Unseal(Select(Apply(Ident("augmentString"), List(inner)), "toInt")) =>
+      UnaryOperation(StringOperator.toInt, rootParse(inner.asExpr))
+    case Unseal(Select(Apply(Ident("augmentString"), List(inner)), "toLong")) =>
+      UnaryOperation(StringOperator.toLong, rootParse(inner.asExpr))
     case Unseal(Select(num, "toInt")) if isValue(num.tpe)    => rootParse(num.asExpr)
     case Unseal(Select(num, "toLong")) if isValue(num.tpe)   => rootParse(num.asExpr)
     case Unseal(Select(num, "toShort")) if isValue(num.tpe)  => rootParse(num.asExpr)
@@ -1037,8 +1043,10 @@ class OperationsParser(val rootParse: Parser)(using Quotes, TranspileConfig) ext
     case '{ ($i: String).toString }                 => rootParse(i)
     case '{ ($str: String).toUpperCase }            => UnaryOperation(StringOperator.toUpperCase, rootParse(str))
     case '{ ($str: String).toLowerCase }            => UnaryOperation(StringOperator.toLowerCase, rootParse(str))
-    case '{ ($str: String).toLong }                 => UnaryOperation(StringOperator.toLong, rootParse(str))
-    case '{ ($str: String).toInt }                  => UnaryOperation(StringOperator.toInt, rootParse(str))
+    case '{ scala.Predef.augmentString($str: String).toLong }  => UnaryOperation(StringOperator.toLong, rootParse(str))
+    case '{ scala.Predef.augmentString($str: String).toInt }   => UnaryOperation(StringOperator.toInt, rootParse(str))
+    case '{ ($str: String).toLong }                            => UnaryOperation(StringOperator.toLong, rootParse(str))
+    case '{ ($str: String).toInt }                             => UnaryOperation(StringOperator.toInt, rootParse(str))
     case '{ ($left: String).startsWith($right) }    => BinaryOperation(rootParse(left), StringOperator.startsWith, rootParse(right))
     case '{ ($left: String).split($right: String) } => BinaryOperation(rootParse(left), StringOperator.split, rootParse(right))
 

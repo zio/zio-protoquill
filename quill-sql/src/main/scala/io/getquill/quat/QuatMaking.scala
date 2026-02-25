@@ -53,13 +53,15 @@ object QuatMaking {
 
   type QuotesTypeRepr = Quotes#reflectModule#TypeRepr
 
+  // Object-level caches using getOrElseUpdate. Keys are QuotesTypeRepr which may not hash consistently
+  // across macro invocations, but provide best-effort deduplication within a single compilation unit.
   private val encodeableCache: mutable.Map[QuotesTypeRepr, Boolean] = mutable.Map()
   def lookupIsEncodeable(tpe: QuotesTypeRepr)(computeEncodeable: () => Boolean) =
-    computeEncodeable()
+    encodeableCache.getOrElseUpdate(tpe, computeEncodeable())
 
   private val quatCache: mutable.Map[QuotesTypeRepr, Quat] = mutable.Map()
   def lookupCache(tpe: QuotesTypeRepr)(computeQuat: () => Quat) =
-    computeQuat()
+    quatCache.getOrElseUpdate(tpe, computeQuat())
 
   enum AnyValBehavior {
     case TreatAsValue
@@ -71,7 +73,22 @@ trait QuatMaking extends QuatMakingBase {
 
   override def existsEncoderFor(using Quotes)(tpe: quotes.reflect.TypeRepr): Boolean = {
     import quotes.reflect._
-    // TODO Try summoning 'value' to know it's a value for sure if a encoder doesn't exist?
+    import io.getquill.metaprog.TypeExtensions._
+    // Fast-path: known leaf types are guaranteed to have encoders/decoders
+    def isKnownLeafRepr(repr: TypeRepr): Boolean =
+      repr =:= TypeRepr.of[String] ||
+      repr =:= TypeRepr.of[Int] ||
+      repr =:= TypeRepr.of[Long] ||
+      repr =:= TypeRepr.of[Short] ||
+      repr =:= TypeRepr.of[Byte] ||
+      repr =:= TypeRepr.of[Float] ||
+      repr =:= TypeRepr.of[Double] ||
+      repr =:= TypeRepr.of[Boolean] ||
+      repr =:= TypeRepr.of[BigDecimal] ||
+      repr =:= TypeRepr.of[Array[Byte]]
+
+    if (isKnownLeafRepr(tpe.widen)) return true
+
     def encoderComputation() = {
       tpe.widen.asType match {
         // If an identifier in the Quill query is has a Encoder/Decoder pair, we treat it as a value i.e. Quat.Value is assigned as it's Quat.

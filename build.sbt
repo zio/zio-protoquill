@@ -27,7 +27,7 @@ val isCommunityRemoteBuild =
   sys.props.getOrElse("communityRemote", "false").toBoolean
 
 lazy val scalatestVersion =
-  if (isCommunityRemoteBuild) "3.2.7" else "3.2.18"
+  if (isCommunityRemoteBuild) "3.2.7" else "3.2.19"
 
 lazy val baseModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-sql`
@@ -86,7 +86,7 @@ val filteredModules = {
 }
 
 val zioQuillVersion = "4.8.5"
-val zioVersion = "2.1.20"
+val zioVersion = "2.1.24"
 
 lazy val `quill` =
   (project in file("."))
@@ -116,8 +116,8 @@ lazy val `quill-sql` =
         // Needs to be in-sync with both quill-engine and scalafmt-core or ClassNotFound
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.5.0",
-        "com.lihaoyi" %% "pprint" % "0.9.3",
-        "ch.qos.logback" % "logback-classic" % "1.5.18" % Test,
+        "com.lihaoyi" %% "pprint" % "0.9.6",
+        "ch.qos.logback" % "logback-classic" % "1.5.32" % Test,
         "io.getquill" %% "quill-engine" % zioQuillVersion,
         "dev.zio" %% "zio" % zioVersion,
         ("io.getquill" %% "quill-util" % zioQuillVersion)
@@ -127,11 +127,12 @@ lazy val `quill-sql` =
             else
               Seq.empty
           }: _*),
-        "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
+        "com.typesafe.scala-logging" %% "scala-logging" % "3.9.6",
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
         "com.vladsch.flexmark" % "flexmark-all" % "0.64.8" % Test
-      )
+      ),
+      packageDoc / publishArtifact := false,
     )
 
 // Moving heavy tests to separate module so it can be compiled in parallel with others
@@ -153,14 +154,15 @@ lazy val `quill-jdbc` =
     .dependsOn(`quill-sql` % "compile->compile;test->test")
 
 ThisBuild / libraryDependencySchemes += "org.typelevel" %% "cats-effect" % "always"
+ThisBuild / libraryDependencySchemes += "dev.zio" %% "zio-json" % "always"
 lazy val `quill-doobie` =
   (project in file("quill-doobie"))
     .settings(commonSettings: _*)
     .settings(jdbcTestingSettings: _*)
     .settings(
       libraryDependencies ++= Seq(
-        "org.tpolecat" %% "doobie-core" % "1.0.0-RC5",
-        "org.tpolecat" %% "doobie-postgres" % "1.0.0-RC5" % Test
+        "org.tpolecat" %% "doobie-core" % "1.0.0-RC12",
+        "org.tpolecat" %% "doobie-postgres" % "1.0.0-RC12" % Test
       )
     )
     .dependsOn(`quill-jdbc` % "compile->compile;test->test")
@@ -171,14 +173,14 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban-quick" % "2.11.1",
+        "com.github.ghostdogpr" %% "caliban-quick" % "2.11.2",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
-        "ch.qos.logback" % "logback-classic" % "1.5.18" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.5.32" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql" % "postgresql" % "42.7.7" % Test,
+        "org.postgresql" % "postgresql" % "42.7.10" % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -202,8 +204,8 @@ lazy val `quill-jdbc-zio` =
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
-        "org.postgresql" % "postgresql" % "42.7.7" % "provided",
-        "dev.zio" %% "zio-json" % "0.7.44"
+        "org.postgresql" % "postgresql" % "42.7.10" % "provided",
+        "dev.zio" %% "zio-json" % "0.8.0"
       ),
       Test / runMain / fork := true,
       Test / fork := true,
@@ -264,12 +266,12 @@ lazy val commonSettings =
 lazy val jdbcTestingLibraries = Seq(
   // JDBC Libraries for testing of quill-jdbc___ contexts
   libraryDependencies ++= Seq(
-    "com.zaxxer" % "HikariCP" % "6.3.2" exclude("org.slf4j", "*"),
+    "com.zaxxer" % "HikariCP" % "6.3.3" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
-    "com.mysql" % "mysql-connector-j" % "9.4.0" % Test,
-    "com.h2database" % "h2" % "2.3.232" % Test,
+    "com.mysql" % "mysql-connector-j" % "9.6.0" % Test,
+    "com.h2database" % "h2" % "2.4.240" % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
-    "org.postgresql" % "postgresql" % "42.7.7" % Test,
+    "org.postgresql" % "postgresql" % "42.7.10" % Test,
     "org.xerial" % "sqlite-jdbc" % "3.51.2.0" % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" % "mssql-jdbc" % "7.4.1.jre11" % Test,
@@ -290,7 +292,7 @@ lazy val basicSettings = Seq(
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
-  scalaVersion := "3.3.6",
+  scalaVersion := "3.8.1",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.
   // Test / testOptions ++= Seq(
@@ -299,13 +301,16 @@ lazy val basicSettings = Seq(
   //   //Tests.Argument(TestFrameworks.ScalaTest, "-u", "junits")
   //   //Tests.Argument(TestFrameworks.ScalaTest, "-h", "testresults")
   // ),
+  usePipelining := true,
   scalacOptions ++= Seq(
     "-language:implicitConversions", "-explain",
     // See https://docs.scala-lang.org/scala3/guides/migration/tooling-syntax-rewriting.html
     "-no-indent",
-    "-release:11",
+    "-release:17",
+    "-source:3.3", // Suppress `implicit` keyword deprecation warnings for gradual migration
   ),
-  javacOptions := Seq("-source", "11", "-target", "11"),
+  javacOptions := Seq("-source", "17", "-target", "17"),
+  scalacOptions ++= (if (sys.props.getOrElse("profile", "false").toBoolean) Seq("-Vprofile") else Seq.empty),
 )
 
 // force redraft

@@ -45,4 +45,19 @@ trait MirrorEncoders extends EncodingDsl {
   implicit val localDateEncoder: Encoder[LocalDate] = encoder[LocalDate]
   implicit val uuidEncoder: Encoder[UUID] = encoder[UUID]
   implicit def nullEncoder: Encoder[Null] = encoder[Null]
+
+  // Pre-materialized Option encoders to short-circuit implicit search
+  implicit val optionStringEncoder: Encoder[Option[String]] = optionEncoder[String]
+  implicit val optionBigDecimalEncoder: Encoder[Option[BigDecimal]] = optionEncoder[BigDecimal]
+  implicit val optionBooleanEncoder: Encoder[Option[Boolean]] = optionEncoder[Boolean]
+  implicit val optionByteEncoder: Encoder[Option[Byte]] = optionEncoder[Byte]
+  implicit val optionShortEncoder: Encoder[Option[Short]] = optionEncoder[Short]
+  implicit val optionIntEncoder: Encoder[Option[Int]] = optionEncoder[Int]
+  implicit val optionLongEncoder: Encoder[Option[Long]] = optionEncoder[Long]
+  implicit val optionFloatEncoder: Encoder[Option[Float]] = optionEncoder[Float]
+  implicit val optionDoubleEncoder: Encoder[Option[Double]] = optionEncoder[Double]
+  implicit val optionByteArrayEncoder: Encoder[Option[Array[Byte]]] = optionEncoder[Array[Byte]]
+  implicit val optionDateEncoder: Encoder[Option[Date]] = optionEncoder[Date]
+  implicit val optionLocalDateEncoder: Encoder[Option[LocalDate]] = optionEncoder[LocalDate]
+  implicit val optionUuidEncoder: Encoder[Option[UUID]] = optionEncoder[UUID]
 }
