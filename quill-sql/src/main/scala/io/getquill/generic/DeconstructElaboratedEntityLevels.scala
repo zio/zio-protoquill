@@ -28,8 +28,8 @@ object DeconstructElaboratedEntityLevels {
 
 // TODO Unify this with DeconstructElaboratedEntities. This will generate the fields
 // and the labels can be generated separately and zipped in the case oc DeconstructElaboratedEntity
-private[getquill] class DeconstructElaboratedEntityLevels(using val qctx: Quotes) {
-  import qctx.reflect._
+private[getquill] class DeconstructElaboratedEntityLevels(using val quotes: Quotes) {
+  import quotes.reflect._
   import io.getquill.metaprog.Extractors._
   import io.getquill.generic.ElaborateStructure.Term
 
