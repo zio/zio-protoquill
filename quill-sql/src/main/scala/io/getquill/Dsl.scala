@@ -45,6 +45,17 @@ extension (str: String) {
 inline def query[T]: EntityQuery[T] = ${ QueryMacro[T] }
 inline def select[T]: Query[T] = ${ QueryMacro[T] }
 
+// NamedTuple-based query API (Scala 3.7+) — uses Selectable + NamedTuple.From[T]
+// for type-level schema derivation instead of macro AST inspection.
+// Produces identical SQL to query[T] but with faster compilation.
+inline def typedQuery[T]: io.getquill.record.TypedEntityQuery[T] =
+  ${ io.getquill.record.TypedQueryMacro[T] }
+
+// Implicit conversion: TypedEntityQuery[T] -> Quoted[EntityQuery[T]] so it can be
+// passed directly to ctx.run() without explicit .toQuoted call
+implicit inline def typedQueryToQuoted[T](inline teq: io.getquill.record.TypedEntityQuery[T]): Quoted[EntityQuery[T]] =
+  teq.toQuoted
+
 def max[A](a: A): A = NonQuotedException()
 def min[A](a: A): A = NonQuotedException()
 def count[A](a: A): A = NonQuotedException()

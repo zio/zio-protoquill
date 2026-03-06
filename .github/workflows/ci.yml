@@ -12,8 +12,8 @@ env:
   # See:
   #  - https://stackoverflow.com/a/73708006
   #  - https://stackoverflow.com/questions/73465937/apache-spark-3-3-0-breaks-on-java-17-with-cannot-access-class-sun-nio-ch-direct
-  JAVA_OPTS: -Xms6G -Xmx6G -XX:+UseG1GC -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -Dcommunity=false -Dquill.macro.log=false --add-exports java.base/sun.nio.ch=ALL-UNNAMED
-  JDK_JAVA_OPTIONS: -Xms6G -Xmx6G -XX:+UseG1GC -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -Dcommunity=false -Dquill.macro.log=false --add-exports java.base/sun.nio.ch=ALL-UNNAMED
+  JAVA_OPTS: -Xms8G -Xmx8G -XX:+UseParallelGC -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -Dcommunity=false -Dquill.macro.log=false --add-exports java.base/sun.nio.ch=ALL-UNNAMED
+  JDK_JAVA_OPTIONS: -Xms8G -Xmx8G -XX:+UseParallelGC -XX:ReservedCodeCacheSize=256m -XX:+TieredCompilation -Dcommunity=false -Dquill.macro.log=false --add-exports java.base/sun.nio.ch=ALL-UNNAMED
 
 jobs:
   build:
@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scala: [ 3.3.6 ]
+        scala: [ 3.8.1 ]
         module: [ sqltest, db, bigdata ]
 
     steps:

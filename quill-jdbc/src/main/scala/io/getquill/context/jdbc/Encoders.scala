@@ -82,6 +82,21 @@ trait Encoders extends EncodingDsl {
   implicit val dateEncoder: Encoder[util.Date] =
     encoder(Types.TIMESTAMP, (index, value, row) =>
       row.setTimestamp(index, new sql.Timestamp(value.getTime), Calendar.getInstance(dateTimeZone)))
+
+  // Pre-materialized Option encoders to short-circuit implicit search
+  implicit val optionStringEncoder: Encoder[Option[String]] = optionEncoder[String]
+  implicit val optionBigDecimalEncoder: Encoder[Option[BigDecimal]] = optionEncoder[BigDecimal]
+  implicit val optionByteEncoder: Encoder[Option[Byte]] = optionEncoder[Byte]
+  implicit val optionShortEncoder: Encoder[Option[Short]] = optionEncoder[Short]
+  implicit val optionIntEncoder: Encoder[Option[Int]] = optionEncoder[Int]
+  implicit val optionLongEncoder: Encoder[Option[Long]] = optionEncoder[Long]
+  implicit val optionFloatEncoder: Encoder[Option[Float]] = optionEncoder[Float]
+  implicit val optionDoubleEncoder: Encoder[Option[Double]] = optionEncoder[Double]
+  implicit val optionByteArrayEncoder: Encoder[Option[Array[Byte]]] = optionEncoder[Array[Byte]]
+  implicit val optionDateEncoder: Encoder[Option[util.Date]] = optionEncoder[util.Date]
+  implicit val optionSqlDateEncoder: Encoder[Option[java.sql.Date]] = optionEncoder[java.sql.Date]
+  implicit val optionSqlTimeEncoder: Encoder[Option[java.sql.Time]] = optionEncoder[java.sql.Time]
+  implicit val optionSqlTimestampEncoder: Encoder[Option[java.sql.Timestamp]] = optionEncoder[java.sql.Timestamp]
 }
 
 trait BasicTimeEncoders extends Encoders {

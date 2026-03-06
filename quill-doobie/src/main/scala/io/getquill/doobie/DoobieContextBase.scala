@@ -91,9 +91,10 @@ trait DoobieContextBase[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   ): ConnectionIO[List[A]] =
     HC.prepareStatement(sql) {
       useConnection { implicit connection =>
+        implicit val read: Read[A] = extractorToRead(extractor)
         prepareAndLog(sql, prepare) *>
           HPS.executeQuery {
-            HRS.list(extractor)
+            HRS.list[A]
           }
       }
     }
@@ -108,9 +109,10 @@ trait DoobieContextBase[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   ): ConnectionIO[A] =
     HC.prepareStatement(sql) {
       useConnection { implicit connection =>
+        implicit val read: Read[A] = extractorToRead(extractor)
         prepareAndLog(sql, prepare) *>
           HPS.executeQuery {
-            HRS.getUnique(extractor)
+            HRS.getUnique[A]
           }
       }
     }
@@ -126,12 +128,14 @@ trait DoobieContextBase[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   ): Stream[ConnectionIO, A] =
     for {
       connection <- Stream.eval(FC.raw(identity))
-      result <-
-        HC.stream(
+      result <- {
+        implicit val read: Read[A] = extractorToRead(extractor)(connection)
+        HC.stream[A](
           sql,
           prepareAndLog(sql, prepare)(connection),
           fetchSize.getOrElse(DefaultChunkSize),
-        )(extractorToRead(extractor)(connection))
+        )
+      }
     } yield result
 
   override def executeAction(
@@ -175,9 +179,10 @@ trait DoobieContextBase[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   ): ConnectionIO[List[A]] =
     prepareConnections[List[A]](returningBehavior)(sql) {
       useConnection { implicit connection =>
+        implicit val read: Read[A] = extractorToRead(extractor)
         prepareAndLog(sql, prepare) *>
           FPS.executeUpdate *>
-          HPS.getGeneratedKeys[List[A]](HRS.list(extractor))
+          HPS.getGeneratedKeys[List[A]](HRS.list[A])
       }
     }
 
@@ -219,11 +224,12 @@ trait DoobieContextBase[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
       prepareConnections(returningBehavior)(sql) {
 
         useConnection { implicit connection =>
+          implicit val read: Read[A] = extractorToRead(extractor)
           for {
             _ <- FPS.delay(log.underlying.debug("Batch: {}", sql))
             _ <- preps.traverse(prepareBatchAndLog(sql, _) *> FPS.addBatch)
             _ <- HPS.executeBatch
-            r <- HPS.getGeneratedKeys(HRS.list(extractor))
+            r <- HPS.getGeneratedKeys(HRS.list[A])
           } yield r
         }
       }
@@ -234,7 +240,12 @@ trait DoobieContextBase[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
     ex: Extractor[A]
   )(
     implicit connection: Connection
-  ): Read[A] = new Read[A](Nil, (rs, _) => ex(rs, connection))
+  ): Read[A] = new Read[A] {
+    override def unsafeGet(rs: java.sql.ResultSet, startIdx: Int): A = ex(rs, connection)
+    override def gets = Nil
+    override def toOpt: Read[Option[A]] = this.map(a => Option(a))
+    override def length: Int = 0
+  }
 
   // Nothing to do here.
   override def close(): Unit = ()

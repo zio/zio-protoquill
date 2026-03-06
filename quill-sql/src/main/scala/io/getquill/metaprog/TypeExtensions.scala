@@ -31,6 +31,23 @@ object TypeExtensions {
       !(TypeRepr.of(using tpe) <:< TypeRepr.of[Option[Any]])
     }
 
+    /** Cheap O(1) check for types that are guaranteed to have encoders/decoders in every context.
+      * Uses TypeRepr.=:= instead of expensive Expr.summon implicit search. */
+    def isKnownLeaf: Boolean = {
+      import quotes.reflect._
+      val repr = TypeRepr.of(using tpe)
+      repr =:= TypeRepr.of[String] ||
+      repr =:= TypeRepr.of[Int] ||
+      repr =:= TypeRepr.of[Long] ||
+      repr =:= TypeRepr.of[Short] ||
+      repr =:= TypeRepr.of[Byte] ||
+      repr =:= TypeRepr.of[Float] ||
+      repr =:= TypeRepr.of[Double] ||
+      repr =:= TypeRepr.of[Boolean] ||
+      repr =:= TypeRepr.of[BigDecimal] ||
+      repr =:= TypeRepr.of[Array[Byte]]
+    }
+
   } // end extension
 
 }

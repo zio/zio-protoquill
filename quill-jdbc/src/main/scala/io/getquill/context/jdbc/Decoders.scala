@@ -74,6 +74,21 @@ trait Decoders {
   implicit val dateDecoder: Decoder[util.Date] =
     decoder((index, row, session) =>
       new util.Date(row.getTimestamp(index, Calendar.getInstance(dateTimeZone)).getTime))
+
+  // Pre-materialized Option decoders to short-circuit implicit search
+  implicit val optionStringDecoder: Decoder[Option[String]] = optionDecoder[String]
+  implicit val optionBigDecimalDecoder: Decoder[Option[BigDecimal]] = optionDecoder[BigDecimal]
+  implicit val optionByteDecoder: Decoder[Option[Byte]] = optionDecoder[Byte]
+  implicit val optionShortDecoder: Decoder[Option[Short]] = optionDecoder[Short]
+  implicit val optionIntDecoder: Decoder[Option[Int]] = optionDecoder[Int]
+  implicit val optionLongDecoder: Decoder[Option[Long]] = optionDecoder[Long]
+  implicit val optionFloatDecoder: Decoder[Option[Float]] = optionDecoder[Float]
+  implicit val optionDoubleDecoder: Decoder[Option[Double]] = optionDecoder[Double]
+  implicit val optionByteArrayDecoder: Decoder[Option[Array[Byte]]] = optionDecoder[Array[Byte]]
+  implicit val optionDateDecoder: Decoder[Option[util.Date]] = optionDecoder[util.Date]
+  implicit val optionSqlDateDecoder: Decoder[Option[java.sql.Date]] = optionDecoder[java.sql.Date]
+  implicit val optionSqlTimeDecoder: Decoder[Option[java.sql.Time]] = optionDecoder[java.sql.Time]
+  implicit val optionSqlTimestampDecoder: Decoder[Option[java.sql.Timestamp]] = optionDecoder[java.sql.Timestamp]
 }
 
 trait BasicTimeDecoders extends Decoders {
