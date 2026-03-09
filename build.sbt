@@ -173,7 +173,7 @@ lazy val `quill-caliban` =
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
-        "com.github.ghostdogpr" %% "caliban-quick" % "2.11.2",
+        "com.github.ghostdogpr" %% "caliban-quick" % "3.0.0",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
         "ch.qos.logback" % "logback-classic" % "1.5.32" % Test,
@@ -205,7 +205,7 @@ lazy val `quill-jdbc-zio` =
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
         "org.postgresql" % "postgresql" % "42.7.10" % "provided",
-        "dev.zio" %% "zio-json" % "0.8.0"
+        "dev.zio" %% "zio-json" % "0.9.0"
       ),
       Test / runMain / fork := true,
       Test / fork := true,
@@ -266,7 +266,7 @@ lazy val commonSettings =
 lazy val jdbcTestingLibraries = Seq(
   // JDBC Libraries for testing of quill-jdbc___ contexts
   libraryDependencies ++= Seq(
-    "com.zaxxer" % "HikariCP" % "6.3.3" exclude("org.slf4j", "*"),
+    "com.zaxxer" % "HikariCP" % "7.0.2" exclude("org.slf4j", "*"),
     // In 8.0.22 error happens: Conversion from java.time.OffsetDateTime to TIMESTAMP is not supported
     "com.mysql" % "mysql-connector-j" % "9.6.0" % Test,
     "com.h2database" % "h2" % "2.4.240" % Test,
@@ -274,7 +274,7 @@ lazy val jdbcTestingLibraries = Seq(
     "org.postgresql" % "postgresql" % "42.7.10" % Test,
     "org.xerial" % "sqlite-jdbc" % "3.51.2.0" % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
-    "com.microsoft.sqlserver" % "mssql-jdbc" % "7.4.1.jre11" % Test,
+    "com.microsoft.sqlserver" % "mssql-jdbc" % "13.3.2.jre11-preview" % Test,
     "com.oracle.ojdbc" % "ojdbc8" % "19.3.0.0" % Test,
     //"org.mockito"             %% "mockito-scala-scalatest" % "1.16.2"              % Test
   )
@@ -292,7 +292,7 @@ lazy val basicSettings = Seq(
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
-  scalaVersion := "3.8.1",
+  scalaVersion := "3.8.2",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.
   // Test / testOptions ++= Seq(
