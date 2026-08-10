@@ -395,7 +395,8 @@ object Extractors {
       import quotes.reflect._
       expr match {
         case '{ type v; ($prop: Any).->[`v`](($value: `v`)) } => Some((prop, value))
-        case _                                                => None
+        case '{ type v; ($prop: Any, ($value: `v`)) } => Some((prop, value))
+        case _                                        => None
       }
     }
   }
