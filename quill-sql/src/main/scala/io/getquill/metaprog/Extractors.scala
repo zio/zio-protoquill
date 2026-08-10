@@ -401,6 +401,30 @@ object Extractors {
     }
   }
 
+  /**
+   * Matches `someOption.orNull`. Since Scala 3.10 the standard library defines
+   * `orNull[A1 >: A | Null]: A1` and the overload taking the `Null <:< A1` evidence
+   * is private to `Option`, so the call is `opt.orNull[A1]` there and
+   * `opt.orNull[A1](ev)` on earlier versions. Matching the tree instead of using a
+   * quoted pattern keeps this working with both standard libraries.
+   */
+  object OrNullMethod {
+    def unapply(expr: Expr[_])(using Quotes): Option[Expr[_]] = {
+      import quotes.reflect._
+      def peelApplies(term: Term): Term =
+        term match {
+          case Apply(inner, _)     => peelApplies(inner)
+          case TypeApply(inner, _) => peelApplies(inner)
+          case other               => other
+        }
+      peelApplies(Untype(expr.asTerm)) match {
+        case Select(receiver, "orNull") if receiver.tpe.widen <:< TypeRepr.of[Option[Any]] =>
+          Some(receiver.asExpr)
+        case _ => None
+      }
+    }
+  }
+
   object TupleName {
     def unapply(str: String): Boolean = str.matches("Tuple[0-9]+")
   }
