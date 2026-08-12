@@ -4,7 +4,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 
 inThisBuild(
   List(
-    organization := "io.getquill",
+    organization := "dev.zio",
     homepage := Some(url("https://zio.dev/zio-protoquill")),
     licenses := List(("Apache License 2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))),
     developers := List(
