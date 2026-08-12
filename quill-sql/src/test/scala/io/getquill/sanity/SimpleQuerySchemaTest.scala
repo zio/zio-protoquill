@@ -28,6 +28,12 @@ class SimpleQuerySchemaTest extends Spec {
       }
       ctx.run(q).string mustEqual "SELECT x.colName, x.age FROM tblPerson x"
     }
+    "produce an sql query with a directly constructed column alias tuple" in {
+      inline def q = quote {
+        querySchema[Person]("tblPerson", person => (person.name, "colName"))
+      }
+      ctx.run(q).string mustEqual "SELECT x.colName, x.age FROM tblPerson x"
+    }
     "produce an sql query with a filter and a renamed table and renamed columns" in {
       inline def q = quote {
         querySchema[Person]("tblPerson", _.name -> "colName").filter(p => p.name == "Joe")

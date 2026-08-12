@@ -58,11 +58,25 @@ private[getquill] object ReflectivePathChainLookup {
     object Submodule {
       def unapply(lookup: LookupPath): Option[LookupElement.ModuleClass] = {
         val submod = lookup.cls.getDeclaredClasses.find(c => c.getName.endsWith(lookup.path + "$"))
-        submod.orElse {
-          // Odd pattern for top level object: object Foo { object Bar }
-          // there won't be a Bar in getDeclaredClasses but instead a Bar field on Foo whose value is null
-          lookup.cls.getFields.find(_.getName == lookup.path).map(_.getType)
-        }.map(LookupElement.ModuleClass(_))
+        submod
+          .orElse {
+            // Pre-Scala 3.10 nested objects were also exposed as an (uninitialized) static field
+            // on the parent MODULE$, e.g. Mod$.Foo: Mod$Foo$. Scala 3.10 stopped emitting those
+            // fields (scala/scala3#25538), so this path is only useful on older compilers.
+            lookup.cls.getFields.find(_.getName == lookup.path).map(_.getType)
+          }
+          .orElse {
+            // Scala 3.10+: load the nested MODULE$ class by binary name. Parent `Mod$` +
+            // nested `Foo` => `...Mod$Foo$` (and similarly `...Mod$Foo$` + `Bar` => `...Mod$Foo$Bar$`).
+            Try(
+              Class.forName(
+                lookup.cls.getName + lookup.path + "$",
+                false,
+                lookup.cls.getClassLoader
+              )
+            ).toOption
+          }
+          .map(LookupElement.ModuleClass(_))
       }
     }
 
