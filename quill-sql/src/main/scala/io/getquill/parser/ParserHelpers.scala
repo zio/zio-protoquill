@@ -127,7 +127,7 @@ object ParserHelpers {
     } // end AssignmentTerm
   } // end Assignments
 
-  trait PropertyParser(implicit val qctx: Quotes) {
+  trait PropertyParser(using quotes: Quotes) {
     import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
     import io.getquill.Embedded
 
@@ -368,7 +368,7 @@ object ParserHelpers {
 
     def rootParse: Parser
 
-    // don't change to ValDef or might override the real valdef in qctx.reflect
+    // don't change to ValDef or might override the real valdef in quotes.reflect
     object ValDefTerm {
       def unapply(using Quotes, History, TranspileConfig)(tree: quotes.reflect.Tree): Option[Ast] = {
         import quotes.reflect.{Ident => TIdent, ValDef => TValDef, _}
