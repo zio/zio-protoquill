@@ -188,7 +188,7 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
     inline def runBatchAction[I, A <: Action[I] & QAC[I, Nothing]](inline quoted: Quoted[BatchAction[A]], rowsPerBatch: Int): Result[RunBatchActionResult] = {
       val ca = make.batch[I, Nothing, A, Result[RunBatchActionResult]] { arg =>
         // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-        val groups = arg.groups.map((sql, prepare) => BatchGroup(sql, prepare))
+        val groups = arg.groups.map((sql, prepare) => BatchGroup(sql, prepare, Nil))
         self.executeBatchAction(groups.toList)(arg.executionInfo, _summonRunner())
       }
       QueryExecutionBatch.apply(ca, rowsPerBatch)(quoted)
@@ -198,7 +198,7 @@ trait Context[+Dialect <: Idiom, +Naming <: NamingStrategy]
       val ca = make.batch[I, T, A, Result[RunBatchActionReturningResult[T]]] { arg =>
         val returningExt = arg.extractor.requireReturning()
         // Supporting only one top-level query batch group. Don't know if there are use-cases for multiple queries.
-        val groups = arg.groups.map((sql, prepare) => BatchGroupReturning(sql, returningExt.returningBehavior, prepare))
+        val groups = arg.groups.map((sql, prepare) => BatchGroupReturning(sql, returningExt.returningBehavior, prepare, Nil))
         self.executeBatchActionReturning[T](groups.toList, returningExt.extract)(arg.executionInfo, _summonRunner())
       }
       QueryExecutionBatch.apply(ca, rowsPerBatch)(quoted)
