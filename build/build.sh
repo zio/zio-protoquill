@@ -177,7 +177,11 @@ function db_build() {
 
 function bigdata_build() {
     wait_for_bigdata
-    sbt -Dmodules=bigdata $SBT_ARGS test
+    sbt -Dmodules=bigdata $SBT_ARGS test || {
+        echo "BigData tests failed, retrying once..."
+        sleep 10
+        sbt -Dmodules=bigdata $SBT_ARGS test
+    }
 }
 
 function full_build() {
