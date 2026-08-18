@@ -84,7 +84,7 @@ class CassandraAsyncContext[+N <: NamingStrategy](
     implicit val ec = dc
     Future.sequence {
       groups.flatMap {
-        case BatchGroup(cql, prepare) =>
+        case BatchGroup(cql, prepare, _) =>
           prepare.map(executeAction(cql, _)(info, dc))
       }
     }.map(_ => ())

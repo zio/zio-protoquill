@@ -67,7 +67,7 @@ class CassandraSyncContext[+N <: NamingStrategy](
 
   def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): Unit =
     groups.foreach {
-      case BatchGroup(cql, prepare) =>
+      case BatchGroup(cql, prepare, _) =>
         prepare.foreach(executeAction(cql, _)(info, dc))
     }
 }

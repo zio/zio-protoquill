@@ -76,7 +76,7 @@ trait JdbcContextVerbExecute[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] ex
   def executeBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): Result[List[Long]] =
     withConnectionWrapped { conn =>
       groups.flatMap {
-        case BatchGroup(sql, prepare) =>
+        case BatchGroup(sql, prepare, _) =>
           val ps = conn.prepareStatement(sql)
           //logger.underlying.debug("Batch: {}", sql.take(200) + (if (sql.length > 200) "..." else ""))
           prepare.foreach { f =>
@@ -91,7 +91,7 @@ trait JdbcContextVerbExecute[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] ex
   def executeBatchActionReturning[T](groups: List[BatchGroupReturning], extractor: Extractor[T])(info: ExecutionInfo, dc: Runner): Result[List[T]] =
     withConnectionWrapped { conn =>
       groups.flatMap {
-        case BatchGroupReturning(sql, returningBehavior, prepare) =>
+        case BatchGroupReturning(sql, returningBehavior, prepare, _) =>
           val ps = prepareWithReturning(sql, conn, returningBehavior)
           logger.underlying.debug("Batch: {}", sql)
           prepare.foreach { f =>
