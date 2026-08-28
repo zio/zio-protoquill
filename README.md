@@ -43,13 +43,13 @@ For further information, watch:
 # Getting Started
 
 The simplest way to get started with ProtoQuill is with the standard JDBC contexts.
-These are sychronous so for a high-throughput system you will ultimately need to switch
+These are synchronous so for a high-throughput system you will ultimately need to switch
 to either the ZIO-based contexts 
 
 Add the following to your SBT file:
 ```scala
 libraryDependencies ++= Seq(
-  // Syncronous JDBC Modules
+  // Synchronous JDBC Modules
   "io.getquill" %% "quill-jdbc" % "4.7.3",
   // Or ZIO Modules
   "io.getquill" %% "quill-jdbc-zio" % "4.7.3",
