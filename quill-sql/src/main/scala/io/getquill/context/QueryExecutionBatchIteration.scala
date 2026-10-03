@@ -109,7 +109,8 @@ object QueryExecutionBatchIteration {
       traceConfig: TraceConfig
   ) {
     def apply(): List[(String, List[(PrepareRow, Session) => (List[Any], PrepareRow)])] =
-      batchingBehavior match {
+      if (perRowLifts.isEmpty) Nil // #431 — empty liftQuery should produce no batch groups
+      else batchingBehavior match {
         // If we have MultiRowsPerBatch behavior and we are instructed to concatenate multiple rows together (i.e. entitiesPerQuery > 1)
         case BatchingBehavior.MultiRowsPerBatch(entitiesPerQuery) if (entitiesPerQuery > 1) =>
           val validations =
