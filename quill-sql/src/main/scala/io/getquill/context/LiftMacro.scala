@@ -71,6 +71,26 @@ object LiftMacro {
   def apply[T: Type, PrepareRow: Type, Session: Type](entity: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect._
 
+    // Detect nested lift: lift(lift(x)) — the inner lift expands to Planter(...).unquote
+    // which fails at runtime. Catch it at compile time instead. See protoquill #412.
+    // Note: underlyingArgument doesn't strip Inlined nodes with non-empty bindings,
+    // so we need a custom unwrapper to reach the core expression.
+    def stripInlinedAndTyped(term: Term): Term = term match {
+      case Inlined(_, _, body) => stripInlinedAndTyped(body)
+      case Typed(expr, _)     => stripInlinedAndTyped(expr)
+      case Block(Nil, expr)   => stripInlinedAndTyped(expr)
+      case _                  => term
+    }
+    stripInlinedAndTyped(entity.asTerm) match {
+      case Select(_, "unquote") | Apply(Select(_, "unquote"), _) =>
+        report.throwError(
+          "Nested lift detected: lift(lift(x)) is not supported. " +
+          "The inner lift already creates a query binding — wrapping it in another lift is an error.",
+          entity
+        )
+      case _ => // proceed
+    }
+
     // check if T is a case-class (e.g. mirrored entity) or a leaf, probably best way to do that
     val quat = QuatMaking.ofType[T]
     quat match {
