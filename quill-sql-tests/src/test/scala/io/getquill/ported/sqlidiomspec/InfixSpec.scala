@@ -41,7 +41,7 @@ class InfixSpec extends Spec {
     "full infix query" in {
       val result = testContext.run(sql"SELECT * FROM TestEntity".as[Query[TestEntity]])
       result.string mustEqual
-        "SELECT x.s, x.i, x.l, x.o, x.b FROM (SELECT * FROM TestEntity) AS x"
+        "SELECT * FROM TestEntity"
     }
     // Not supported yet by regular quill either
     // "full infix action returning" in {
