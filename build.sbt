@@ -229,7 +229,7 @@ lazy val `quill-caliban` =
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql" % "postgresql" % "42.7.13" % Test,
+        "org.postgresql" % "postgresql" % "42.7.14" % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -253,7 +253,7 @@ lazy val `quill-jdbc-zio` =
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
-        "org.postgresql" % "postgresql" % "42.7.13" % "provided",
+        "org.postgresql" % "postgresql" % "42.7.14" % "provided",
         "dev.zio" %% "zio-json" % "0.10.0"
       ),
       Test / runMain / fork := true,
@@ -320,7 +320,7 @@ lazy val jdbcTestingLibraries = Seq(
     "com.mysql" % "mysql-connector-j" % "26.7.0" % Test,
     "com.h2database" % "h2" % "2.5.252" % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
-    "org.postgresql" % "postgresql" % "42.7.13" % Test,
+    "org.postgresql" % "postgresql" % "42.7.14" % Test,
     "org.xerial" % "sqlite-jdbc" % "3.53.4.0" % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" % "mssql-jdbc" % "7.4.1.jre11" % Test,
