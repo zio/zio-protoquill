@@ -135,7 +135,7 @@ val filteredModules = {
 }
 
 val zioQuillVersion = "4.8.5"
-val zioVersion = "2.1.26"
+val zioVersion = "2.1.27"
 
 lazy val `quill` =
   (project in file("."))
