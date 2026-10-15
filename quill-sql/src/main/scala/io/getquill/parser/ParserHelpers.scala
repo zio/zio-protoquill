@@ -209,7 +209,7 @@ object ParserHelpers {
 
       def unapply[T: Type](expr: Expr[Any]): Option[PropertyAlias] =
         expr match {
-          case Lambda1(_, _, '{ ($prop: Any).->[v](${ ConstExpr(alias: String) }) }) =>
+          case Lambda1(_, _, ArrowFunction(prop, ConstExpr(alias: String))) =>
             def path(tree: Expr[_]): List[String] =
               tree match {
                 case a `.` b =>

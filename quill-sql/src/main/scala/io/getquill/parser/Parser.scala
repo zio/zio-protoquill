@@ -612,7 +612,7 @@ class OptionParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Par
     case "contains" -@> '{ type t; ($o: Option[`t`]).contains($body: `t`) } =>
       OptionContains(rootParse(o), rootParse(body))
 
-    case '{ ($o: Option[t]).orNull($refl) } =>
+    case OrNullMethod(o) =>
       OptionOrNull(rootParse(o))
 
     case '{ ($o: Option[t]).getOrNull } =>
