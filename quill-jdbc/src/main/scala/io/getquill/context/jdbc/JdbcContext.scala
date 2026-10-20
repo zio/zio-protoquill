@@ -31,9 +31,9 @@ abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   override type RunBatchActionResult = List[Long]
   override type RunBatchActionReturningResult[T] = List[T]
   override type Runner = Unit
-  override type TranslateRunner = Unit
+  override type TranslateRunner = scala.runtime.BoxedUnit
   override protected def context: Runner = ()
-  def translateContext: TranslateRunner = ()
+  def translateContext: TranslateRunner = scala.runtime.BoxedUnit.UNIT
 
   val dataSource: DataSource
 

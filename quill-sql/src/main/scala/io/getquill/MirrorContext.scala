@@ -29,9 +29,9 @@ trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
   override type Extractor[T] = (ResultRow, MirrorSession) => T
 
   override type Runner = Unit
-  override type TranslateRunner = Unit
+  override type TranslateRunner = scala.runtime.BoxedUnit
   override def context: Runner = ()
-  override def translateContext: Runner = ()
+  override def translateContext: TranslateRunner = scala.runtime.BoxedUnit.UNIT
   def session: MirrorSession
 
   override type NullChecker = MirrorNullChecker
