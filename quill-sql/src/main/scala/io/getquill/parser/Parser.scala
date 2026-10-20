@@ -1165,5 +1165,10 @@ class GenericExpressionsParser(val rootParse: Parser)(using Quotes, TranspileCon
 
     case Unseal(Inlined(_, _, v)) =>
       rootParse(v.asExpr)
+
+    // Since Scala 3.9 the inliner wraps the expansion of an inline method whose result type depends on
+    // an argument (e.g. `path.Out`) in a synthetic `$asInstanceOf$` cast. It has no meaning for the query.
+    case Unseal(TypeApply(Select(innerTree, "$asInstanceOf$"), _)) =>
+      rootParse(innerTree.asExpr)
   }
 }
