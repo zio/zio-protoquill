@@ -57,7 +57,8 @@ private[getquill] object ReflectivePathChainLookup {
     // it will be represented in java as: path.to.Foo$Bar.
     object Submodule {
       def unapply(lookup: LookupPath): Option[LookupElement.ModuleClass] = {
-        val submod = lookup.cls.getDeclaredClasses.find(c => c.getName.endsWith(lookup.path + "$"))
+        // Require the `$` separator so that e.g. `Users` does not match a sibling `ActiveUsers`.
+        val submod = lookup.cls.getDeclaredClasses.find(c => c.getName.endsWith("$" + lookup.path + "$"))
         submod
           .orElse {
             // Pre-Scala 3.10 nested objects were also exposed as an (uninitialized) static field
@@ -68,13 +69,13 @@ private[getquill] object ReflectivePathChainLookup {
           .orElse {
             // Scala 3.10+: load the nested MODULE$ class by binary name. Parent `Mod$` +
             // nested `Foo` => `...Mod$Foo$` (and similarly `...Mod$Foo$` + `Bar` => `...Mod$Foo$Bar$`).
-            Try(
-              Class.forName(
-                lookup.cls.getName + lookup.path + "$",
-                false,
-                lookup.cls.getClassLoader
-              )
-            ).toOption
+            // Only a module class (name ending in `$`) can have nested objects named like this.
+            // On case-insensitive file systems, loading e.g. `Mod$db$` can find `Mod$Db$.class` and
+            // fail with a NoClassDefFoundError (a LinkageError, which `Try` would not catch).
+            Option.when(lookup.cls.getName.endsWith("$")) {
+              try Some(Class.forName(lookup.cls.getName + lookup.path + "$", false, lookup.cls.getClassLoader))
+              catch { case _: ClassNotFoundException | _: LinkageError => None }
+            }.flatten
           }
           .map(LookupElement.ModuleClass(_))
       }
