@@ -196,8 +196,8 @@ object QueryExecution {
       contextOperation: Expr[ContextOperation.Single[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
       fetchSize: Expr[Option[Int]],
       wrap: Expr[OuterSelectWrap]
-  )(using val qctx: Quotes, QAC: Type[QAC[_, _]]) {
-    import qctx.reflect.{Try => _, _}
+  )(using quotes: Quotes, QAC: Type[QAC[_, _]]) {
+    import quotes.reflect.{Try => _, _}
     import Execution._
 
     val transpileConfig = SummonTranspileConfig()
@@ -419,7 +419,7 @@ object QueryExecution {
       ctx: Expr[ContextOperation.Single[I, T, Nothing, D, N, PrepareRow, ResultRow, Session, Ctx, Res]],
       fetchSize: Expr[Option[Int]],
       wrap: Expr[OuterSelectWrap]
-  )(using qctx: Quotes): Expr[Res] = new RunQuery[I, T, ResultRow, PrepareRow, Session, D, N, Ctx, Res](quotedOp, ctx, fetchSize, wrap).apply()
+  )(using Quotes): Expr[Res] = new RunQuery[I, T, ResultRow, PrepareRow, Session, D, N, Ctx, Res](quotedOp, ctx, fetchSize, wrap).apply()
 
 } // end QueryExecution
 
