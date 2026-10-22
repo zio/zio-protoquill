@@ -34,9 +34,9 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
   override type RunBatchActionResult = List[Long]
   override type RunBatchActionReturningResult[T] = List[T]
   override type Runner = Unit
-  override type TranslateRunner = Unit
+  override type TranslateRunner = scala.runtime.BoxedUnit
   override protected def context: Runner = ()
-  def translateContext: TranslateRunner = ()
+  def translateContext: TranslateRunner = scala.runtime.BoxedUnit.UNIT
 
   @targetName("runQueryDefault")
   inline def run[T](inline quoted: Quoted[Query[T]]): ZIO[Connection, SQLException, List[T]] = InternalApi.runQueryDefault(quoted)
@@ -83,9 +83,9 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
     annotate(super.prepareAction(sql, prepare)(info, dc), sql, info)
   override def prepareBatchAction(groups: List[BatchGroup])(info: ExecutionInfo, dc: Runner): QCIO[List[PreparedStatement]] =
     annotate(super.prepareBatchAction(groups)(info, dc), concatQueries(groups), info)
-  override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(info: ExecutionInfo, dc: Runner): QCIO[String] =
+  override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(info: ExecutionInfo, dc: TranslateRunner): QCIO[String] =
     annotate(super.translateQueryEndpoint(statement, prepare, extractor, prettyPrint)(info, dc), statement, info)
-  override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(info: ExecutionInfo, dc: Runner): QCIO[List[String]] =
+  override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(info: ExecutionInfo, dc: TranslateRunner): QCIO[List[String]] =
     annotate(super.translateBatchQueryEndpoint(groups, prettyPrint)(info, dc), concatQueries(groups), info)
 
   protected def concatQueries(groups: List[BatchGroup]): String = groups.map(_.string).distinct.mkString(",")

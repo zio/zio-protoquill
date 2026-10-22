@@ -71,6 +71,9 @@ trait ContextTranslateMacro[+Dialect <: Idiom, +Naming <: NamingStrategy]
    */
   type TranslateRunner
   type RunnerBehavior <: RunnerSummoningBehavior
+  // `translateContext` is called from code inlined into user code. Implementations must not alias `TranslateRunner`
+  // to `Unit`: since Scala 3.9 such a result type erases to `void` at the call site (scala/scala3#24653), while
+  // this library, compiled with an older Scala, provides `BoxedUnit translateContext()`. Use `scala.runtime.BoxedUnit`.
   def translateContext: TranslateRunner
 
   /** Internal API that cannot be made private due to how inline functions */

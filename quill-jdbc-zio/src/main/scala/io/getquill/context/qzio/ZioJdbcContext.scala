@@ -63,9 +63,9 @@ abstract class ZioJdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] e
 
   // Needed for TranslateContext in ProtoQuill
   override type Runner = Unit
-  override type TranslateRunner = Unit
+  override type TranslateRunner = scala.runtime.BoxedUnit
   override protected def context: Runner = ()
-  def translateContext: TranslateRunner = ()
+  def translateContext: TranslateRunner = scala.runtime.BoxedUnit.UNIT
 
   override type Error = SQLException
   override type Environment = DataSource
@@ -125,10 +125,10 @@ abstract class ZioJdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] e
   override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QIO[T] =
     onConnection(connDelegate.executeQuerySingle[T](sql, prepare, extractor)(info, dc))
 
-  override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: Runner): TranslateResult[String] =
+  override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: TranslateRunner): TranslateResult[String] =
     onConnection(connDelegate.translateQueryEndpoint[T](statement, prepare, extractor, prettyPrint)(executionInfo, dc))
 
-  override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: Runner): TranslateResult[List[String]] =
+  override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: TranslateRunner): TranslateResult[List[String]] =
     onConnection(connDelegate.translateBatchQueryEndpoint(groups.asInstanceOf[List[ZioJdbcContext.this.connDelegate.BatchGroup]], prettyPrint)(executionInfo, dc))
 
   def streamQuery[T](fetchSize: Option[Int], sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): QStream[T] =

@@ -612,7 +612,7 @@ class OptionParser(rootParse: Parser)(using Quotes, TranspileConfig) extends Par
     case "contains" -@> '{ type t; ($o: Option[`t`]).contains($body: `t`) } =>
       OptionContains(rootParse(o), rootParse(body))
 
-    case '{ ($o: Option[t]).orNull($refl) } =>
+    case OrNullMethod(o) =>
       OptionOrNull(rootParse(o))
 
     case '{ ($o: Option[t]).getOrNull } =>
@@ -1165,5 +1165,10 @@ class GenericExpressionsParser(val rootParse: Parser)(using Quotes, TranspileCon
 
     case Unseal(Inlined(_, _, v)) =>
       rootParse(v.asExpr)
+
+    // Since Scala 3.9 the inliner wraps the expansion of an inline method whose result type depends on
+    // an argument (e.g. `path.Out`) in a synthetic `$asInstanceOf$` cast. It has no meaning for the query.
+    case Unseal(TypeApply(Select(innerTree, "$asInstanceOf$"), _)) =>
+      rootParse(innerTree.asExpr)
   }
 }

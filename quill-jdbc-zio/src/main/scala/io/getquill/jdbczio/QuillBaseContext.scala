@@ -32,9 +32,9 @@ trait QuillBaseContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends 
 
   // Needed for TranslateContext in ProtoQuill
   override type Runner = Unit
-  override type TranslateRunner = Unit
+  override type TranslateRunner = scala.runtime.BoxedUnit
   override protected def context: Runner = ()
-  def translateContext: TranslateRunner = ()
+  def translateContext: TranslateRunner = scala.runtime.BoxedUnit.UNIT
 
   override type Error = SQLException
   override type Environment = Any
@@ -82,10 +82,10 @@ trait QuillBaseContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends 
   override def executeQuerySingle[T](sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): ZIO[Any, SQLException, T] =
     onDS(dsDelegate.executeQuerySingle[T](sql, prepare, extractor)(info, dc))
 
-  override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: Runner): TranslateResult[String] =
+  override def translateQueryEndpoint[T](statement: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor, prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: TranslateRunner): TranslateResult[String] =
     onDS(dsDelegate.translateQueryEndpoint[T](statement, prepare, extractor, prettyPrint)(executionInfo, dc))
 
-  override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: Runner): TranslateResult[List[String]] =
+  override def translateBatchQueryEndpoint(groups: List[BatchGroup], prettyPrint: Boolean = false)(executionInfo: ExecutionInfo, dc: TranslateRunner): TranslateResult[List[String]] =
     onDS(dsDelegate.translateBatchQueryEndpoint(groups.asInstanceOf[List[QuillBaseContext.this.dsDelegate.BatchGroup]], prettyPrint)(executionInfo, dc))
 
   def streamQuery[T](fetchSize: Option[Int], sql: String, prepare: Prepare = identityPrepare, extractor: Extractor[T] = identityExtractor)(info: ExecutionInfo, dc: Runner): ZStream[Any, SQLException, T] =

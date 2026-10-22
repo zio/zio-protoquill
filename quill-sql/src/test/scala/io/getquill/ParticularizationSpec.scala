@@ -78,6 +78,11 @@ class ParticularizationSpec extends Spec {
         "INSERT INTO Ent (foo,bar) VALUES ($1, $2)", List("foo", "bar"), Static
       )
     }
+    "works with explicit insert - directly constructed assignment tuples" in {
+      ctx.run(query[Ent].insert(e => (e.foo, lift("foo")), e => (e.bar, lift("bar")))).triple mustBe (
+        "INSERT INTO Ent (foo,bar) VALUES ($1, $2)", List("foo", "bar"), Static
+      )
+    }
     "works with explicit insert - dynamic" in {
       val q = quote(query[Ent].insert(_.foo -> lift("foo"), _.bar -> lift("bar")))
       ctx.run(q).triple mustBe (
