@@ -21,7 +21,8 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
   with JdbcContextVerbExecute[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]
-  with ZioTranslateContext[Dialect, Naming] {
+  with ZioTranslateContext[Dialect, Naming]
+  with BinaryCompatHack[Unit] {
 
   override private[getquill] val logger = ContextLogger(classOf[ZioJdbcUnderlyingContext[_, _]])
 
@@ -34,9 +35,9 @@ abstract class ZioJdbcUnderlyingContext[+Dialect <: SqlIdiom, +Naming <: NamingS
   override type RunBatchActionResult = List[Long]
   override type RunBatchActionReturningResult[T] = List[T]
   override type Runner = Unit
-  override type TranslateRunner = scala.runtime.BoxedUnit
+  override type TranslateRunner = Unit
   override protected def context: Runner = ()
-  def translateContext: TranslateRunner = scala.runtime.BoxedUnit.UNIT
+  def translateContext: TranslateRunner = ()
 
   @targetName("runQueryDefault")
   inline def run[T](inline quoted: Quoted[Query[T]]): ZIO[Connection, SQLException, List[T]] = InternalApi.runQueryDefault(quoted)
