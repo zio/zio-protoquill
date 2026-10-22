@@ -17,7 +17,8 @@ trait QuillBaseContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends 
   with JdbcContextTypes[Dialect, Naming]
   with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
-  with ZioTranslateContext[Dialect, Naming] {
+  with ZioTranslateContext[Dialect, Naming] 
+  with BinaryCompatHack[Unit] {
 
   def ds: DataSource
 
@@ -32,9 +33,9 @@ trait QuillBaseContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends 
 
   // Needed for TranslateContext in ProtoQuill
   override type Runner = Unit
-  override type TranslateRunner = scala.runtime.BoxedUnit
+  override type TranslateRunner = Unit
   override protected def context: Runner = ()
-  def translateContext: TranslateRunner = scala.runtime.BoxedUnit.UNIT
+  def translateContext: TranslateRunner = ()
 
   override type Error = SQLException
   override type Environment = Any

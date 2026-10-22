@@ -10,12 +10,19 @@ import scala.annotation.targetName
 class MirrorContext[+Dialect <: Idiom, +Naming <: NamingStrategy](val idiom: Dialect, val naming: Naming, val session: MirrorSession = MirrorSession("DefaultMirrorContextSession"))
     extends MirrorContextBase[Dialect, Naming] with AstSplicing
 
+// Workaround for a binary compat issue starting with Scala 3.9
+// https://github.com/scala/scala3/issues/24653#issuecomment-4334034784
+private trait BinaryCompatHack[TranslateRunner <: Unit] {
+  def translateContext: TranslateRunner
+}
+
 trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
     extends Context[Dialect, Naming]
     with ContextVerbPrepare[Dialect, Naming]
     with ContextVerbTranslate[Dialect, Naming]
     with MirrorDecoders
-    with MirrorEncoders { self =>
+    with MirrorEncoders
+    with BinaryCompatHack[Unit] { self =>
   override type Result[T] = T
   override type RunQueryResult[T] = QueryMirror[T]
   override type RunQuerySingleResult[T] = QueryMirror[T]
@@ -29,9 +36,9 @@ trait MirrorContextBase[+Dialect <: Idiom, +Naming <: NamingStrategy]
   override type Extractor[T] = (ResultRow, MirrorSession) => T
 
   override type Runner = Unit
-  override type TranslateRunner = scala.runtime.BoxedUnit
+  override type TranslateRunner = Unit
   override def context: Runner = ()
-  override def translateContext: TranslateRunner = scala.runtime.BoxedUnit.UNIT
+  override def translateContext: TranslateRunner = ()
   def session: MirrorSession
 
   override type NullChecker = MirrorNullChecker

@@ -50,7 +50,8 @@ abstract class ZioJdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] e
   with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbStream[Dialect, Naming]
   with ZioPrepareContext[Dialect, Naming]
-  with ZioTranslateContext[Dialect, Naming] {
+  with ZioTranslateContext[Dialect, Naming]
+  with BinaryCompatHack[Unit] {
 
   override type StreamResult[T] = ZStream[Environment, Error, T]
   override type Result[T] = ZIO[Environment, Error, T]
@@ -63,9 +64,9 @@ abstract class ZioJdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] e
 
   // Needed for TranslateContext in ProtoQuill
   override type Runner = Unit
-  override type TranslateRunner = scala.runtime.BoxedUnit
+  override type TranslateRunner = Unit
   override protected def context: Runner = ()
-  def translateContext: TranslateRunner = scala.runtime.BoxedUnit.UNIT
+  def translateContext: TranslateRunner = ()
 
   override type Error = SQLException
   override type Environment = DataSource

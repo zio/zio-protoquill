@@ -18,6 +18,7 @@ abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   extends JdbcContextBase[Dialect, Naming]
   with ProtoContextSecundus[Dialect, Naming]
   with ContextVerbTranslate[Dialect, Naming]
+  with BinaryCompatHack[Unit]
   {
 
   private val logger = ContextLogger(classOf[JdbcContext[_, _]])
@@ -31,9 +32,9 @@ abstract class JdbcContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy]
   override type RunBatchActionResult = List[Long]
   override type RunBatchActionReturningResult[T] = List[T]
   override type Runner = Unit
-  override type TranslateRunner = scala.runtime.BoxedUnit
+  override type TranslateRunner = Unit
   override protected def context: Runner = ()
-  def translateContext: TranslateRunner = scala.runtime.BoxedUnit.UNIT
+  def translateContext: TranslateRunner = ()
 
   val dataSource: DataSource
 

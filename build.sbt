@@ -44,7 +44,7 @@ inThisBuild(
         name = "Build",
         strategy = Some(
           Strategy(
-            matrix = Map("scala" -> List("3.8.4"), "module" -> List("sqltest", "db", "bigdata")),
+            matrix = Map("scala" -> List("3.9.0"), "module" -> List("sqltest", "db", "bigdata")),
             failFast = false
           )
         ),
@@ -341,7 +341,7 @@ lazy val basicSettings = Seq(
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
-  scalaVersion := "3.8.4",
+  scalaVersion := "3.9.0",
   // The -e option is the 'error' report of ScalaTest. We want it to only make a log
   // of the failed tests once all tests are done, the regular -o log shows everything else.
   // Test / testOptions ++= Seq(
