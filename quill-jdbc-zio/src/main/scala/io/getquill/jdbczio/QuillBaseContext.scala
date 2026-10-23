@@ -116,7 +116,7 @@ trait QuillBaseContext[+Dialect <: SqlIdiom, +Naming <: NamingStrategy] extends 
    *   transaction(a *> b): ZIO[Has[DataSource], SQLException, Person]
    * }}}
    */
-  def transaction[R, A](op: ZIO[R, Throwable, A]): ZIO[R, Throwable, A] =
+  def transaction[R, E, A](op: ZIO[R, E, A]): ZIO[R, E | SQLException, A] =
     dsDelegate.transaction(op).provideSomeEnvironment[R]((env: ZEnvironment[R]) => env.add[DataSource](ds: DataSource))
 
   private def onDS[T](qio: ZIO[DataSource, SQLException, T]): ZIO[Any, SQLException, T] =
