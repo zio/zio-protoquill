@@ -31,7 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         scala:
-        - 3.8.4
+        - 3.10.0
         module:
         - sqltest
         - db
