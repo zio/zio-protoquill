@@ -50,7 +50,7 @@ jobs:
     - name: Setup SBT
       uses: sbt/setup-sbt@v1.5.7
     - name: Cache Dependencies
-      uses: coursier/cache-action@v8.2.0
+      uses: coursier/cache-action@v8.1.1
     - name: Scala ${{ matrix.scala }} Building ${{ matrix.module }}
       run: |
         echo "SCALA_VERSION='$SCALA_VERSION'"
@@ -93,7 +93,7 @@ jobs:
     - name: Setup SBT
       uses: sbt/setup-sbt@v1.5.7
     - name: Cache Dependencies
-      uses: coursier/cache-action@v8.2.0
+      uses: coursier/cache-action@v8.1.1
     - name: Release
       run: sbt --no-colors ci-release
       env:
