@@ -1,0 +1,53 @@
+package zio.quill.sanity
+
+import zio.quill._
+import zio.quill.generic._
+import zio.quill.context.SplicingBehaviorHint
+import zio.quill.context.SplicingBehavior
+
+class SimpleQuerySchemaTest extends Spec {
+
+  given SplicingBehaviorHint with {
+    override type BehaviorType = SplicingBehavior.FailOnDynamic
+  }
+
+  val ctx = new MirrorContext(MirrorSqlDialect, Literal)
+  import ctx._
+  case class Person(name: String, age: Int)
+
+  "query schema shuold" - {
+    "produce an sql query with a renamed table" in {
+      inline def q = quote {
+        querySchema[Person]("tblPerson")
+      }
+      ctx.run(q).string mustEqual "SELECT x.name, x.age FROM tblPerson x"
+    }
+    "produce an sql query with a renamed table and renamed columns" in {
+      inline def q = quote {
+        querySchema[Person]("tblPerson", _.name -> "colName")
+      }
+      ctx.run(q).string mustEqual "SELECT x.colName, x.age FROM tblPerson x"
+    }
+    "produce an sql query with a directly constructed column alias tuple" in {
+      inline def q = quote {
+        querySchema[Person]("tblPerson", person => (person.name, "colName"))
+      }
+      ctx.run(q).string mustEqual "SELECT x.colName, x.age FROM tblPerson x"
+    }
+    "produce an sql query with a filter and a renamed table and renamed columns" in {
+      inline def q = quote {
+        querySchema[Person]("tblPerson", _.name -> "colName").filter(p => p.name == "Joe")
+      }
+      ctx.run(q).string mustEqual "SELECT p.colName, p.age FROM tblPerson p WHERE p.colName = 'Joe'"
+    }
+  }
+  "schemaMeta shuold" - {
+    "produce an sql query with a filter and a renamed table and renamed columns" in {
+      inline given SchemaMeta[Person] = schemaMeta("tblPerson", _.name -> "colName")
+      inline def q = quote {
+        query[Person].filter(p => p.name == "Joe")
+      }
+      ctx.run(q).string mustEqual "SELECT p.colName, p.age FROM tblPerson p WHERE p.colName = 'Joe'"
+    }
+  }
+}

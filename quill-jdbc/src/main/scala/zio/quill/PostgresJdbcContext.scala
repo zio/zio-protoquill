@@ -1,0 +1,17 @@
+package zio.quill
+
+import java.io.Closeable
+
+import javax.sql.DataSource
+import com.typesafe.config.Config
+import zio.quill.context.jdbc.{ JdbcContext, PostgresJdbcContextBase }
+import zio.quill.util.LoadConfig
+
+class PostgresJdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: DataSource)
+  extends JdbcContext[PostgresDialect, N]
+  with PostgresJdbcContextBase[PostgresDialect, N] {
+  override val idiom: PostgresDialect = PostgresDialect
+  def this(naming: N, config: JdbcContextConfig) = this(naming, config.dataSource)
+  def this(naming: N, config: Config) = this(naming, JdbcContextConfig(config))
+  def this(naming: N, configPrefix: String) = this(naming, LoadConfig(configPrefix))
+}

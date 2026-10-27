@@ -72,7 +72,7 @@ Have a look at [this list](https://zio.dev/zio-quill//#contexts-quill-jdbc) to s
 
 Create a context and a case class representing your table.
 ```scala
-import io.getquill._
+import zio.quill._
 
 object MyApp {
   case class Person(firstName: String, lastName: String, age: Int)
@@ -100,7 +100,7 @@ object MyApp {
 ProtoQuill queries are built using inline quoted expressions.
 ```scala
 // With just this import you can use quote, query, insert/update/delete and lazyLift
-import io.getquill._
+import zio.quill._
 
 inline def people = quote {
   query[Person]
@@ -109,7 +109,7 @@ inline def joes = quote {
   people.filter(p => p.name == "Joe")
 }
 
-> You *do not* need to import a context in ProtoQuill to make a quoation, just `io.getquill._`. Contexts are only needed for lifting. See the `Lifting and Lazy Lifting` section for more detail.
+> You *do not* need to import a context in ProtoQuill to make a quoation, just `zio.quill._`. Contexts are only needed for lifting. See the `Lifting and Lazy Lifting` section for more detail.
 
 run(joes)
 // TODO Get SQL
@@ -251,7 +251,7 @@ val people: List[Person] = ...
 val joes = people.onlyJoes
 ```
 Using this technique, a standard functor-hierarchy can be constructed that can be used for compile-time
-generation of Quill Queries. Have a look at the [Typeclass-series examples](https://github.com/getquill/protoquill/tree/master/quill-sql-tests/src/test/scala/io/getquill/examples) for more inspiration.
+generation of Quill Queries. Have a look at the [Typeclass-series examples](https://github.com/getquill/protoquill/tree/master/quill-sql-tests/src/test/scala/zio/quill/examples) for more inspiration.
 
 
 ## Lifting and Lazy Lifting
@@ -272,7 +272,7 @@ val results: List[Person] = run(somePeople)
 However, since Quotation in ProtoQuill is static, you can use `lazyLift` to lift a value without importing a context. The advantage of this is that you can lift things before what context to use.
 
 ```scala
-import io.getquill._
+import zio.quill._
 val name = ...
 inline def q = quote { query[Person].filter(p => p.name == lift(name)) }
 
@@ -448,7 +448,7 @@ The Parser API has been refined considerably in ProtoQuill Beta2 and it is now i
 
 In Quill you can define methods (including extension methods) that return quoted sections. This is typically used for user-defined logic:
 ```scala
-import io.getquill._
+import zio.quill._
 
 object MyBusinessLogic:
   extension (inline i: Int)
@@ -479,9 +479,9 @@ For this reason, ProtoQuill supports an easy extension syntax for custom parsing
    ```
 2. Then define a parser to handle this construct:
    ```scala
-   import io.getquill.parser._
-   import io.getquill.ast.{ Ast, Infix }
-   import io.getquill.quat.Quat
+   import zio.quill.parser._
+   import zio.quill.ast.{ Ast, Infix }
+   import zio.quill.quat.Quat
 
    case class CustomOperationsParser(root: Parser[Ast] = Parser.empty)(override implicit val qctx: Quotes) extends Parser.Clause[Ast] {
      import quotes.reflect._
@@ -527,7 +527,7 @@ For this reason, ProtoQuill supports an easy extension syntax for custom parsing
    inline def joes = quote { people.filter(p => p.name == "Joe") }
    run(joes) // SELECT p.name, p.age FROM Person p WHERE p.name = 'Joe'
    ```
- - If you have not implemented `io.getquill._` or are importing components one by one, you will need to add this import. Unlike in Scala2-Quill where methods such as `query`, `quote`, etc... come from your context (e.g. in `val ctx = new PostgresJdbcContext(...); import ctx._`), in ProtoQuill these methods come from the [Dsl object](https://github.com/getquill/protoquill/blob/master/quill-sql/src/main/scala/io/getquill/Dsl.scala) which is exported to `io.getquill`. If you want to import the minimal amount of components, you will at least need `io.getquill.quote` and `io.getquill.query`.
+ - If you have not implemented `zio.quill._` or are importing components one by one, you will need to add this import. Unlike in Scala2-Quill where methods such as `query`, `quote`, etc... come from your context (e.g. in `val ctx = new PostgresJdbcContext(...); import ctx._`), in ProtoQuill these methods come from the [Dsl object](https://github.com/getquill/protoquill/blob/master/quill-sql/src/main/scala/zio/quill/Dsl.scala) which is exported to `zio.quill`. If you want to import the minimal amount of components, you will at least need `zio.quill.quote` and `zio.quill.query`.
  - TBD: Warnings will occur when there are encoders for some type T but not decoders for it. This is due to possible Quat issues.
  - TBD: The `Embedded` construct is not strictly required in some cases (review cases, Embedded[T] summon is also supported).
 
@@ -565,10 +565,10 @@ Experimental Caliban integration is provided by the `quill-caliban` module. This
 
 ```scala
 // Import Quill
-import io.getquill._
+import zio.quill._
 
 // Import the Caliban integration
-import io.getquill.CalibanIntegration._
+import zio.quill.CalibanIntegration._
 
 // Given some simple schema
 case class PersonT(id: Int, first: String, last: String, age: Int)
@@ -661,7 +661,7 @@ object CalibanExample extends zio.App:
 
 end CalibanExample
 ```
-Have a look at the Quill-Caliban Examples [here](https://github.com/zio/zio-protoquill/tree/master/quill-caliban/src/test/scala/io/getquill/example) and the Quill-Caliban tests [here](https://github.com/zio/zio-protoquill/tree/master/quill-caliban/src/test/scala/io/getquill).
+Have a look at the Quill-Caliban Examples [here](https://github.com/zio/zio-protoquill/tree/master/quill-caliban/src/test/scala/zio/quill/example) and the Quill-Caliban tests [here](https://github.com/zio/zio-protoquill/tree/master/quill-caliban/src/test/scala/zio/quill).
 
 ### How it works
 
@@ -712,7 +712,7 @@ WHERE
 ```
 The important thing to understand is that the SQL optimizer can see into these `CASE WHEN (condition)` clauses when `condition` is a static variable and then know whether the actual column on the right-hand side of the Query actually needs to be used. In Database-Speak, we would call this SARGable.
 
-Don't take my word for it though, have a look at the examples under quill-caliban [here](https://github.com/zio/zio-protoquill/tree/master/quill-caliban/src/test/scala/io/getquill/example). For example run the CalibanExample.scala and execute the following GraphQL query:
+Don't take my word for it though, have a look at the examples under quill-caliban [here](https://github.com/zio/zio-protoquill/tree/master/quill-caliban/src/test/scala/zio/quill/example). For example run the CalibanExample.scala and execute the following GraphQL query:
 ```
 query{
   personAddressPlan(first: "One") {
