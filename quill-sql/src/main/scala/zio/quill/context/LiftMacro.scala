@@ -82,7 +82,7 @@ object LiftMacro {
       case _                  => term
     }
     stripInlinedAndTyped(entity.asTerm) match {
-      case Select(_, "unquote") | Apply(Select(_, "unquote"), _) =>
+      case Select(planter, "unquote") if planter.tpe <:< TypeRepr.of[Planter[?, ?, ?]] =>
         report.throwError(
           "Nested lift detected: lift(lift(x)) is not supported. " +
           "The inner lift already creates a query binding — wrapping it in another lift is an error.",
