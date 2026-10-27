@@ -181,7 +181,6 @@ lazy val `quill-sql` =
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
         "com.vladsch.flexmark" % "flexmark-all" % "0.64.8" % Test
       ),
-      packageDoc / publishArtifact := false,
     )
 
 // Moving heavy tests to separate module so it can be compiled in parallel with others
