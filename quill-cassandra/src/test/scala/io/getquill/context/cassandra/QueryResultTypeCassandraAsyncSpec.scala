@@ -11,6 +11,8 @@ class QueryResultTypeCassandraAsyncSpec extends QueryResultTypeCassandraSpec {
 
   import context._
 
+  inline def orders = quote(querySchema[OrderTestEntity]("OrderTestEntityAsync"))
+
   override def beforeAll() = {
     await(context.run(deleteAll))
     await(context.run(liftQuery(entries).foreach(e => insert(e))))

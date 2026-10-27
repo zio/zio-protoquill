@@ -9,6 +9,8 @@ class QueryResultTypeCassandraZioSpec extends ZioCassandraSpec with QueryResultT
 
   import context._
 
+  inline def orders = quote(querySchema[OrderTestEntity]("OrderTestEntityZio"))
+
   override def beforeAll() = {
     super.beforeAll()
     result(context.run(deleteAll))

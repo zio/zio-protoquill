@@ -66,7 +66,25 @@ CREATE TABLE EncodingTestEntity(
     PRIMARY KEY(id, v1)
 );
 
-CREATE TABLE OrderTestEntity(
+CREATE TABLE OrderTestEntitySync(
+    id INT,
+    i Int,
+    PRIMARY KEY(id, i)
+) WITH CLUSTERING ORDER BY (i ASC);
+
+CREATE TABLE OrderTestEntityAsync(
+    id INT,
+    i Int,
+    PRIMARY KEY(id, i)
+) WITH CLUSTERING ORDER BY (i ASC);
+
+CREATE TABLE OrderTestEntityZio(
+    id INT,
+    i Int,
+    PRIMARY KEY(id, i)
+) WITH CLUSTERING ORDER BY (i ASC);
+
+CREATE TABLE OrderTestEntityStreaming(
     id INT,
     i Int,
     PRIMARY KEY(id, i)

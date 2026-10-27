@@ -10,6 +10,8 @@ class QueryResultTypeCassandraSyncSpec extends QueryResultTypeCassandraSpec {
 
   import context._
 
+  inline def orders = quote(querySchema[OrderTestEntity]("OrderTestEntitySync"))
+
   override def beforeAll() = {
     context.run(deleteAll)
     context.run(liftQuery(entries).foreach(e => insert(e)))
