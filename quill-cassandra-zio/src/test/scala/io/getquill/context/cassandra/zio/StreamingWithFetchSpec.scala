@@ -10,6 +10,8 @@ class StreamingWithFetchSpec extends ZioCassandraSpec with QueryResultTypeCassan
 
   import context._
 
+  inline def orders = quote(querySchema[OrderTestEntity]("OrderTestEntityStreaming"))
+
   before {
     result(context.run(deleteAll))
     ()

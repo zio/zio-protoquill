@@ -19,17 +19,19 @@ trait QueryResultTypeCassandraSpec extends Spec {
     OrderTestEntity(3, 3)
   )
 
-  inline def insert = quote((e: OrderTestEntity) => query[OrderTestEntity].insertValue(e))
-  inline def deleteAll = quote(query[OrderTestEntity].delete)
-  inline def selectAll = quote(query[OrderTestEntity])
-  inline def map = quote(query[OrderTestEntity].map(_.id))
-  inline def filter = quote(query[OrderTestEntity].filter(_.id == 1))
-  inline def withFilter = quote(query[OrderTestEntity].withFilter(_.id == 1))
-  inline def sortBy = quote(query[OrderTestEntity].filter(_.id == 1).sortBy(_.i)(Ord.asc))
-  inline def take = quote(query[OrderTestEntity].take(10))
-  inline def entitySize = quote(query[OrderTestEntity].size)
+  inline def orders: Quoted[EntityQuery[OrderTestEntity]]
+
+  inline def insert = quote((e: OrderTestEntity) => orders.insertValue(e))
+  inline def deleteAll = quote(orders.delete)
+  inline def selectAll = quote(orders)
+  inline def map = quote(orders.map(_.id))
+  inline def filter = quote(orders.filter(_.id == 1))
+  inline def withFilter = quote(orders.withFilter(_.id == 1))
+  inline def sortBy = quote(orders.filter(_.id == 1).sortBy(_.i)(Ord.asc))
+  inline def take = quote(orders.take(10))
+  inline def entitySize = quote(orders.size)
   inline def parametrizedSize = quote { (id: Int) =>
-    query[OrderTestEntity].filter(_.id == id).size
+    orders.filter(_.id == id).size
   }
-  inline def distinct = quote(query[OrderTestEntity].map(_.id).distinct)
+  inline def distinct = quote(orders.map(_.id).distinct)
 }
