@@ -134,7 +134,7 @@ val filteredModules = {
   selectedModules
 }
 
-val zioQuillVersion = "4.8.5"
+val zioQuillVersion = "4.8.6+27-e94aed08-SNAPSHOT"
 val zioVersion = "2.1.26"
 
 lazy val `quill` =
@@ -155,6 +155,7 @@ lazy val `quill-sql` =
     .settings(
       resolvers ++= Seq(
         Resolver.mavenLocal,
+        "Sonatype Central Snapshots" at "https://central.sonatype.com/repository/maven-snapshots/",
         "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
         "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases"
       ),
@@ -167,9 +168,9 @@ lazy val `quill-sql` =
         "io.suzaku" %% "boopickle" % "1.5.0",
         "com.lihaoyi" %% "pprint" % "0.9.6",
         "ch.qos.logback" % "logback-classic" % "1.6.6" % Test,
-        "io.getquill" %% "quill-engine" % zioQuillVersion,
+        "dev.zio" %% "quill-engine" % zioQuillVersion,
         "dev.zio" %% "zio" % zioVersion,
-        ("io.getquill" %% "quill-util" % zioQuillVersion)
+        ("dev.zio" %% "quill-util" % zioQuillVersion)
           .excludeAll({
             if (isCommunityBuild)
               Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))
