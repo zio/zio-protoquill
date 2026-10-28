@@ -1,0 +1,34 @@
+package zio.quill.context.jdbc.h2
+
+import java.sql.ResultSet
+
+import zio.quill.context.jdbc.PrepareJdbcSpecBase
+import org.scalatest.BeforeAndAfter
+import zio.quill._
+
+class PrepareJdbcSpec extends PrepareJdbcSpecBase with BeforeAndAfter {
+
+  val context: testContext.type = testContext
+  import testContext._
+
+  before {
+    testContext.run(query[Product].delete)
+  }
+
+  val prepareQuery = prepare(query[Product])
+
+  "single" in {
+    val prepareInsert = prepare(query[Product].insertValue(lift(productEntries.head)))
+    singleInsert(dataSource.getConnection)(prepareInsert) mustEqual false
+    extractProducts(dataSource.getConnection)(prepareQuery) === List(productEntries.head)
+  }
+
+  "batch" in {
+    val prepareBatchInsert = prepare(
+      liftQuery(withOrderedIds(productEntries)).foreach(p => query[Product].insertValue(p))
+    )
+
+    batchInsert(dataSource.getConnection)(prepareBatchInsert).distinct mustEqual List(false)
+    extractProducts(dataSource.getConnection)(prepareQuery) === withOrderedIds(productEntries)
+  }
+}

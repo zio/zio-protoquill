@@ -1,0 +1,69 @@
+package zio.quill.ported.quotationspec
+
+import scala.language.implicitConversions
+import zio.quill.ReturnAction.ReturnColumns
+import zio.quill.context.mirror.Row
+import zio.quill.context.sql.testContext
+import zio.quill.context.sql.testContext._
+import zio.quill._
+
+class InfixSpec extends Spec {
+  "sql" - {
+    "part of the query - pure" in {
+      inline def q = quote {
+        qr1.map(t => sql"CONCAT(${t.s}, ${t.s})".pure.as[String])
+      }
+      testContext.run(q).string mustEqual
+        "SELECT CONCAT(t.s, t.s) FROM TestEntity t"
+    }
+    "part of the query - dynamic" in {
+      val q = quote {
+        qr1.map(t => sql"CONCAT(${t.s}, ${t.s})".as[String])
+      }
+      testContext.run(q).string mustEqual
+        "SELECT CONCAT(t.s, t.s) FROM TestEntity t"
+    }
+    "part of the query" in {
+      inline def q = quote {
+        qr1.map(t => sql"CONCAT(${t.s}, ${t.s})".as[String])
+      }
+      testContext.run(q).string mustEqual
+        "SELECT CONCAT(t.s, t.s) FROM TestEntity t"
+    }
+    "source query" in {
+      case class Entity(i: Int)
+      inline def q = quote {
+        sql"SELECT 1 i FROM DUAL".as[Query[Entity]].map(a => a.i)
+      }
+      testContext.run(q).string mustEqual
+        "SELECT a.i FROM (SELECT 1 i FROM DUAL) AS a"
+    }
+    "full infix query" in {
+      val result = testContext.run(sql"SELECT * FROM TestEntity".as[Query[TestEntity]])
+      result.string mustEqual
+        "SELECT * FROM TestEntity"
+    }
+    // Not supported yet by regular quill either
+    // "full infix action returning" in {
+    //   testContext.run(sql"INSERT INTO TestEntity (foo) VALUES (bar) RETURNING baz".as[ActionReturning[String, TestEntity]]).string mustEqual
+    //     "INSERT INTO TestEntity (foo) VALUES (bar) RETURNING baz"
+    // }
+    "full infix action" in {
+      testContext.run(sql"DELETE FROM TestEntity".as[Action[TestEntity]]).string mustEqual
+        "DELETE FROM TestEntity"
+    }
+    "full infix action - delete" in {
+      testContext.run(sql"DELETE FROM TestEntity".as[Delete[TestEntity]]).string mustEqual
+        "DELETE FROM TestEntity"
+    }
+    "do not nest query if infix starts with input query" in {
+      case class Entity(i: Int)
+      val forUpdate = quote {
+        (q: Query[Entity]) => sql"$q FOR UPDATE".as[Query[Entity]].map(a => a.i)
+      }
+      testContext.run(forUpdate(query[Entity])).string mustEqual
+        "SELECT a.i FROM Entity a FOR UPDATE"
+    }
+
+  }
+}
