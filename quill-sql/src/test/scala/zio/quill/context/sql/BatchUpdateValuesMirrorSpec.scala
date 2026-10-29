@@ -183,12 +183,12 @@ class BatchUpdateValuesMirrorSpec extends BatchUpdateValuesSpec {
       """UPDATE Contact AS p SET firstName = ps.firstName1, lastName = ps.lastName, age = ps.age
         |FROM (VALUES (?, ?, ?, ?), (?, ?, ?, ?)) AS ps(firstName, firstName1, lastName, age)
         |WHERE p.firstName = ps.firstName
-        |RETURNING ps.age
+        |RETURNING p.age
         |""".collapseSpace,
       """UPDATE Contact AS p SET firstName = ps.firstName1, lastName = ps.lastName, age = ps.age
         |FROM (VALUES (?, ?, ?, ?)) AS ps(firstName, firstName1, lastName, age)
         |WHERE p.firstName = ps.firstName
-        |RETURNING ps.age
+        |RETURNING p.age
         |""".collapseSpace
     )
   }
