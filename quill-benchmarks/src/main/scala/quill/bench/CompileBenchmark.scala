@@ -18,7 +18,8 @@ import scala.util.Using
 @Fork(value = 3, jvmArgsAppend = Array("-Xms1g", "-Xmx4g", "-Dquill.macro.log=false"))
 @Threads(1)
 class CompileBenchmark {
-  @Param(Array("Lookup"))
+  @Param(Array("Lookup", "Search", "OrderDetails", "Revenue", "Exists", "Union",
+    "Insert", "BatchInsert", "Update", "BatchUpdate", "Delete", "Upsert"))
   var query: String = uninitialized
 
   // Reuse compiler state; Compiler.newRun resets per-compilation caches.
