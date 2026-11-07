@@ -3,6 +3,7 @@ import zio.sbt.ZioSbtCiPlugin.{Checkout, SetupJava, SetupSBT, CacheDependencies}
 import zio.sbt.githubactions.{Job, Step, Strategy}
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
+Global / commands ++= CompileBenchmarks.commands
 
 // Only read by `ciGenerateGithubWorkflow`, which sbt's unused-key lint cannot see through
 Global / excludeLintKeys ++= Set(ciEnableScalaSteward, ciEnableReleaseDrafter)
@@ -87,7 +88,7 @@ lazy val sqlTestModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
 )
 
 lazy val dbModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
-  `quill-jdbc`, `quill-doobie`, `quill-zio`, `quill-jdbc-zio`, `quill-caliban`
+  `quill-jdbc`, `quill-doobie`, `quill-zio`, `quill-jdbc-zio`, `quill-caliban`, `quill-benchmarks`
 )
 
 lazy val bigdataModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
@@ -201,6 +202,23 @@ lazy val `quill-jdbc` =
     .settings(commonSettings: _*)
     .settings(jdbcTestingSettings: _*)
     .dependsOn(`quill-sql` % "compile->compile;test->test")
+
+lazy val `quill-benchmarks` =
+  (project in file("quill-benchmarks"))
+    .enablePlugins(JmhPlugin)
+    .settings(commonSettings: _*)
+    .settings(
+      publish / skip := true,
+      Test / unmanagedSourceDirectories += (Compile / resourceDirectory).value / "queries",
+      Test / scalacOptions += "-Werror",
+      // Compile fixtures during tests, but keep those classes out of measured compiler runs.
+      Jmh / fullClasspath := {
+        val fixtureClasses = (Test / classDirectory).value
+        (Jmh / fullClasspath).value.filterNot(_.data == fixtureClasses)
+      },
+      libraryDependencies += "org.scala-lang" %% "scala3-compiler" % scalaVersion.value
+    )
+    .dependsOn(`quill-jdbc`)
 
 ThisBuild / libraryDependencySchemes += "org.typelevel" %% "cats-effect" % "always"
 ThisBuild / libraryDependencySchemes += "dev.zio" %% "zio-json" % "always"
