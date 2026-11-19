@@ -42,7 +42,7 @@ jobs:
       with:
         fetch-depth: '0'
     - name: Setup Scala
-      uses: actions/setup-java@v6.2.0
+      uses: actions/setup-java@v6.3.0
       with:
         distribution: corretto
         java-version: '17'
@@ -83,7 +83,7 @@ jobs:
       with:
         fetch-depth: '0'
     - name: Setup Scala
-      uses: actions/setup-java@v6.2.0
+      uses: actions/setup-java@v6.3.0
       with:
         distribution: corretto
         java-version: '17'
