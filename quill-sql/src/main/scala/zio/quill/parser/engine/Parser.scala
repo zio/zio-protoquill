@@ -24,7 +24,7 @@ object Parser {
     }
 
   /** Optimizes 'Clause' by checking if it is some given type first. Otherwise can early-exit */
-  trait PrefilterType[Criteria: Type](using Quotes) extends Parser {
+  trait PrefilterType[Criteria: Type](using Quotes) extends Prefilter {
     import quotes.reflect._
     def prefilter(expr: Expr[_]): Boolean =
       expr.asTerm.tpe <:< TypeRepr.of[Criteria]
@@ -37,6 +37,10 @@ object Parser {
       new PartialFunction[Expr[_], Ast] {
         def apply(expr: Expr[_]): Ast = attempt.apply(expr)
         def isDefinedAt(expr: Expr[_]): Boolean = prefilter(expr) && attempt.isDefinedAt(expr)
+        // lift/orElse use applyOrElse. Delegate directly so successful quoted
+        // patterns are matched once, instead of isDefinedAt followed by apply.
+        override def applyOrElse[A1 <: Expr[_], B1 >: Ast](expr: A1, default: A1 => B1): B1 =
+          if (prefilter(expr)) attempt.applyOrElse(expr, default) else default(expr)
       }
   }
 

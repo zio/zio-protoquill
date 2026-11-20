@@ -367,11 +367,11 @@ class QuotationParser(rootParse: Parser)(using Quotes, TranspileConfig) extends 
   }
 }
 
-// As a performance optimization, ONLY Matches things returning Action[_] UP FRONT.
-// All other kinds of things rejected
+// Reject unrelated types before quoted matching. Also admit functions returning an action
+// so bare .returning methods reach the missing-argument diagnostics below.
 class ActionParser(val rootParse: Parser)(using Quotes, TranspileConfig)
     extends Parser(rootParse)
-    with Parser.PrefilterType[Action[_]]
+    with Parser.PrefilterType[Action[?] | Function1[?, Action[?]]]
     with Assignments
     with PropertyParser {
   import quotes.reflect.{Constant => TConstant, _}
