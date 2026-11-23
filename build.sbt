@@ -134,7 +134,7 @@ val filteredModules = {
   selectedModules
 }
 
-val zioQuillVersion = "4.8.6+37-fc0800f4-SNAPSHOT"
+val zioQuillVersion = "4.8.6+40-5a71c958-SNAPSHOT"
 val zioVersion = "2.1.27"
 
 lazy val `quill` =
