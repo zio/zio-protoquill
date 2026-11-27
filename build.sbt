@@ -75,8 +75,7 @@ val isCommunityBuild =
 val isCommunityRemoteBuild =
   sys.props.getOrElse("communityRemote", "false").toBoolean
 
-lazy val scalatestVersion =
-  if (isCommunityRemoteBuild) "3.2.7" else "3.2.19"
+lazy val scalatestVersion = "3.2.20"
 
 lazy val baseModules = Seq[sbt.ClasspathDep[sbt.ProjectReference]](
   `quill-sql`
@@ -134,7 +133,7 @@ val filteredModules = {
   selectedModules
 }
 
-val zioQuillVersion = "4.8.6+37-fc0800f4-SNAPSHOT"
+val zioQuillVersion = "4.8.6+40-5a71c958-SNAPSHOT"
 val zioVersion = "2.1.27"
 
 lazy val `quill` =
@@ -167,7 +166,7 @@ lazy val `quill-sql` =
         // errors will happen. Even if the pprint classes are actually there
         "io.suzaku" %% "boopickle" % "1.5.0",
         "com.lihaoyi" %% "pprint" % "0.9.6",
-        "ch.qos.logback" % "logback-classic" % "1.6.7" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.6.8" % Test,
         "dev.zio" %% "quill-engine" % zioQuillVersion,
         "dev.zio" %% "zio" % zioVersion,
         ("dev.zio" %% "quill-util" % zioQuillVersion)
@@ -225,11 +224,11 @@ lazy val `quill-caliban` =
         "com.github.ghostdogpr" %% "caliban-quick" % "3.2.1",
         // Adding this to main dependencies would force users to use logback-classic for SLF4j unless the specifically remove it
         // seems to be safer to just exclude & add a commented about need for a SLF4j implementation in Docs.
-        "ch.qos.logback" % "logback-classic" % "1.6.7" % Test,
+        "ch.qos.logback" % "logback-classic" % "1.6.8" % Test,
         // Don't want to make this dependant on zio-test for the testing code so importing this here separately
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
-        "org.postgresql" % "postgresql" % "42.7.14" % Test,
+        "org.postgresql" % "postgresql" % "42.7.15" % Test,
       )
     )
     .dependsOn(`quill-jdbc-zio` % "compile->compile")
@@ -253,8 +252,8 @@ lazy val `quill-jdbc-zio` =
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
-        "org.postgresql" % "postgresql" % "42.7.14" % "provided",
-        "dev.zio" %% "zio-json" % "1.1.2"
+        "org.postgresql" % "postgresql" % "42.7.15" % "provided",
+        "dev.zio" %% "zio-json" % "1.1.3"
       ),
       Test / runMain / fork := true,
       Test / fork := true,
@@ -320,7 +319,7 @@ lazy val jdbcTestingLibraries = Seq(
     "com.mysql" % "mysql-connector-j" % "26.10.0" % Test,
     "com.h2database" % "h2" % "2.5.252" % Test,
     // In 42.2.18 error happens: PSQLException: conversion to class java.time.OffsetTime from timetz not supported
-    "org.postgresql" % "postgresql" % "42.7.14" % Test,
+    "org.postgresql" % "postgresql" % "42.7.15" % Test,
     "org.xerial" % "sqlite-jdbc" % "3.54.1.0" % Test,
     // In 7.1.1-jre8-preview error happens: The conversion to class java.time.OffsetDateTime is unsupported.
     "com.microsoft.sqlserver" % "mssql-jdbc" % "7.4.1.jre11" % Test,
