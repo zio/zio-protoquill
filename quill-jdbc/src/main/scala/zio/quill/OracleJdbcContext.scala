@@ -1,0 +1,17 @@
+package zio.quill
+
+import java.io.Closeable
+
+import com.typesafe.config.Config
+import zio.quill.context.jdbc.{ JdbcContext, OracleJdbcContextBase }
+import zio.quill.util.LoadConfig
+import javax.sql.DataSource
+
+class OracleJdbcContext[+N <: NamingStrategy](val naming: N, val dataSource: DataSource)
+  extends JdbcContext[OracleDialect, N]
+  with OracleJdbcContextBase[OracleDialect, N] {
+  override val idiom: OracleDialect = OracleDialect
+  def this(naming: N, config: JdbcContextConfig) = this(naming, config.dataSource)
+  def this(naming: N, config: Config) = this(naming, JdbcContextConfig(config))
+  def this(naming: N, configPrefix: String) = this(naming, LoadConfig(configPrefix))
+}
