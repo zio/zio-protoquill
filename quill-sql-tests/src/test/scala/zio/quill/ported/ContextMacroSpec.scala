@@ -57,14 +57,14 @@ class ContextMacroSpec extends Spec {
         testContext.run(q).triple mustEqual
           ("""sql"STRING"""", List(), ExecutionType.Static)
       }
-      // Dynamic not supported in protoquill yet
-      // "dynamic" in {
-      //   inline def q = quote {
-      //     qr1.delete
-      //   }
-      //   testContext.run(q.dynamic).string mustEqual
-      //     """querySchema("TestEntity").delete"""
-      // }
+      "dynamic" in {
+        inline def q = quote {
+          qr1.delete
+        }
+        testContext.run(q.dynamic).string mustEqual
+          """querySchema("TestEntity").delete"""
+      }
+      // Dynamic type params are not supported in protoquill yet
       // "dynamic type param" in {
       //   def test[T: SchemaMeta] = quote(query[T].delete)
       //   val r = testContext.run(test[TestEntity])
@@ -90,15 +90,15 @@ class ContextMacroSpec extends Spec {
         r.prepareRow mustEqual Row("_1" -> "a")
         r.info.executionType mustEqual ExecutionType.Static
       }
-      // Dynamic not supported in protoquill yet
-      // "dynamic" in {
-      //   inline def q = quote {
-      //     sql"t = ${lift("a")}".as[Action[TestEntity]]
-      //   }
-      //   val r = testContext.run(q.dynamic)
-      //   r.string mustEqual s"""sql"t = $${?}""""
-      //   r.prepareRow mustEqual Row("_1" -> "a")
-      // }
+      "dynamic" in {
+        inline def q = quote {
+          sql"t = ${lift("a")}".as[Action[TestEntity]]
+        }
+        val r = testContext.run(q.dynamic)
+        r.string mustEqual s"""sql"t = $${?}""""
+        r.prepareRow mustEqual Row("_1" -> "a")
+      }
+      // Dynamic type params are not supported in protoquill yet
       // "dynamic type param" in {
       //   import language.reflectiveCalls
       //   def test[T <: { def i: Int }: SchemaMeta] = quote {
@@ -127,14 +127,14 @@ class ContextMacroSpec extends Spec {
         testContext.translate(q) mustEqual
           """sql"STRING""""
       }
-      // Dynamic not supported in protoquill yet
-      // "dynamic" in {
-      //   inline def q = quote {
-      //     qr1.delete
-      //   }
-      //   testContext.translate(q.dynamic) mustEqual
-      //     """querySchema("TestEntity").delete"""
-      // }
+      "dynamic" in {
+        inline def q = quote {
+          qr1.delete
+        }
+        testContext.translate(q.dynamic) mustEqual
+          """querySchema("TestEntity").delete"""
+      }
+      // Dynamic type params are not supported in protoquill yet
       // "dynamic type param" in {
       //   def test[T: SchemaMeta] = quote(query[T].delete)
       //   testContext.translate(test[TestEntity]) mustEqual
@@ -155,13 +155,13 @@ class ContextMacroSpec extends Spec {
         }
         testContext.translate(q) mustEqual s"""sql"t = $${'a'}""""
       }
-      // Dynamic not supported in protoquill yet
-      // "dynamic" in {
-      //   inline def q = quote {
-      //     sql"t = ${lift("a")}".as[Action[TestEntity]]
-      //   }
-      //   testContext.translate(q.dynamic) mustEqual s"""sql"t = $${'a'}""""
-      // }
+      "dynamic" in {
+        inline def q = quote {
+          sql"t = ${lift("a")}".as[Action[TestEntity]]
+        }
+        testContext.translate(q.dynamic) mustEqual s"""sql"t = $${'a'}""""
+      }
+      // Dynamic type params are not supported in protoquill yet
       // "dynamic type param" in {
       //   import language.reflectiveCalls
       //   def test[T <: { def i: Int }: SchemaMeta] = quote {
@@ -189,14 +189,14 @@ class ContextMacroSpec extends Spec {
         testContext.run(q).string mustEqual
           """sql"STRING".map(t => t.s)"""
       }
-      // Dynamic not supported in protoquill yet
-      // "dynamic" in {
-      //   inline def q = quote {
-      //     qr1.map(t => t.s)
-      //   }
-      //   testContext.run(q.dynamic).string mustEqual
-      //     """querySchema("TestEntity").map(t => t.s)"""
-      // }
+      "dynamic" in {
+        inline def q = quote {
+          qr1.map(t => t.s)
+        }
+        testContext.run(q.dynamic).string mustEqual
+          """querySchema("TestEntity").map(t => t.s)"""
+      }
+      // Dynamic type params are not supported in protoquill yet
       // "dynamic type param" in {
       //   def test[T: SchemaMeta] = quote(query[T])
       //   val r = testContext.run(test[TestEntity])
@@ -243,15 +243,15 @@ class ContextMacroSpec extends Spec {
         r.prepareRow mustEqual Row("_1" -> "a")
         r.info.executionType mustEqual ExecutionType.Static
       }
-      // Dynamic not supported in protoquill yet
-      // "dynamic" in {
-      //   inline def q = quote {
-      //     qr1.filter(t => t.s == lift("a"))
-      //   }
-      //   val r = testContext.run(q.dynamic)
-      //   r.string mustEqual """querySchema("TestEntity").filter(t => t.s == ?)"""
-      //   r.prepareRow mustEqual Row("_1" -> "a")
-      // }
+      "dynamic" in {
+        inline def q = quote {
+          qr1.filter(t => t.s == lift("a"))
+        }
+        val r = testContext.run(q.dynamic)
+        r.string mustEqual """querySchema("TestEntity").filter(t => t.s == ?)"""
+        r.prepareRow mustEqual Row("_1" -> "a")
+      }
+      // Dynamic type params are not supported in protoquill yet
       // "dynamic type param" in {
       //   def test[T: SchemaMeta: QueryMeta] = quote {
       //     query[T].map(t => lift(1))
@@ -287,14 +287,14 @@ class ContextMacroSpec extends Spec {
         testContext.translate(q) mustEqual
           """sql"STRING".map(t => t.s)"""
       }
-      // Dynamic not supported in protoquill yet
-      // "dynamic" in {
-      //   inline def q = quote {
-      //     qr1.map(t => t.s)
-      //   }
-      //   testContext.translate(q.dynamic) mustEqual
-      //     """querySchema("TestEntity").map(t => t.s)"""
-      // }
+      "dynamic" in {
+        inline def q = quote {
+          qr1.map(t => t.s)
+        }
+        testContext.translate(q.dynamic) mustEqual
+          """querySchema("TestEntity").map(t => t.s)"""
+      }
+      // Dynamic type params are not supported in protoquill yet
       // "dynamic type param" in {
       //   def test[T: SchemaMeta] = quote(query[T])
       //   testContext.translate(test[TestEntity]) mustEqual
@@ -333,14 +333,14 @@ class ContextMacroSpec extends Spec {
         }
         testContext.translate(q) mustEqual s"""sql"SELECT $${'a'}".map(x => x)"""
       }
-      // Dynamic not supported in protoquill yet
-      // "dynamic" in {
-      //   inline def q = quote {
-      //     qr1.filter(t => t.s == lift("a"))
-      //   }
-      //   testContext.translate(q.dynamic) mustEqual
-      //     """querySchema("TestEntity").filter(t => t.s == 'a')"""
-      // }
+      "dynamic" in {
+        inline def q = quote {
+          qr1.filter(t => t.s == lift("a"))
+        }
+        testContext.translate(q.dynamic) mustEqual
+          """querySchema("TestEntity").filter(t => t.s == 'a')"""
+      }
+      // Dynamic type params are not supported in protoquill yet
       // "dynamic type param" in {
       //   def test[T: SchemaMeta: QueryMeta] = quote {
       //     query[T].map(t => lift(1))
