@@ -417,61 +417,60 @@ class OperationTest extends Spec with TestEntities with Inside {
         }
       }
 
-      // do we have extras dsl yet?
-      // "extras" - {
-      //   import extras._
-      //   val ia = Ident("a")
-      //   val ib = Ident("b")
+      "extras" - {
+        import extras._
+        val ia = Ident("a")
+        val ib = Ident("b")
 
-      //   "normal" in {
-      //     inline def q = quote {
-      //       (a: Int, b: Int) => a =!= b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
-      //   }
-      //   "succeeds when different numerics are used Int/Long" in {
-      //     inline def q = quote {
-      //       (a: Int, b: Long) => a =!= b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
-      //   }
-      //   "succeeds when Option/Option" in {
-      //     inline def q = quote {
-      //       (a: Option[Int], b: Option[Int]) => a =!= b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +!=+ ib)
-      //   }
-      //   "succeeds when Option/T" in {
-      //     inline def q = quote {
-      //       (a: Option[Int], b: Int) => a =!= b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +!=+ ib)
-      //   }
-      //   "succeeds when T/Option" in {
-      //     inline def q = quote {
-      //       (a: Int, b: Option[Int]) => a =!= b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +!=+ ib)
-      //   }
-      //   "succeeds when Option/Option - String" in {
-      //     inline def q = quote {
-      //       (a: Option[String], b: Option[String]) => a =!= b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +!=+ ib)
-      //   }
-      //   "succeeds when Option/T - String" in {
-      //     inline def q = quote {
-      //       (a: Option[String], b: String) => a =!= b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +!=+ ib)
-      //   }
-      //   "succeeds when T/Option - String" in {
-      //     inline def q = quote {
-      //       (a: String, b: Option[String]) => a =!= b
-      //     }
-      //     quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +!=+ ib)
-      //   }
-      // }
+        "normal" in {
+          inline def q = quote {
+            (a: Int, b: Int) => a =!= b
+          }
+          quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
+        }
+        "succeeds when different numerics are used Int/Long" in {
+          inline def q = quote {
+            (a: Int, b: Long) => a =!= b
+          }
+          quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("a"), EqualityOperator.`_!=`, Ident("b"))
+        }
+        "succeeds when Option/Option" in {
+          inline def q = quote {
+            (a: Option[Int], b: Option[Int]) => a =!= b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +!=+ ib)
+        }
+        "succeeds when Option/T" in {
+          inline def q = quote {
+            (a: Option[Int], b: Int) => a =!= b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +!=+ ib)
+        }
+        "succeeds when T/Option" in {
+          inline def q = quote {
+            (a: Int, b: Option[Int]) => a =!= b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +!=+ ib)
+        }
+        "succeeds when Option/Option - String" in {
+          inline def q = quote {
+            (a: Option[String], b: Option[String]) => a =!= b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ OptionIsDefined(ib) +&&+ (ia +!=+ ib)
+        }
+        "succeeds when Option/T - String" in {
+          inline def q = quote {
+            (a: Option[String], b: String) => a =!= b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ia) +&&+ (ia +!=+ ib)
+        }
+        "succeeds when T/Option - String" in {
+          inline def q = quote {
+            (a: String, b: Option[String]) => a =!= b
+          }
+          quote(unquote(q)).ast.body mustEqual OptionIsDefined(ib) +&&+ (ia +!=+ ib)
+        }
+      }
     }
     "&&" in {
       inline def q = quote {
@@ -631,18 +630,18 @@ class OperationTest extends Spec with TestEntities with Inside {
           repickle(q.ast) mustEqual q.ast
         }
       }
-      // "split" in {
-      //   inline def q = quote {
-      //     (s: String) => s.split(" ")
-      //   }
-      //   quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("s"), StringOperator.`split`, Constant.auto(" "))
-      // }
-      // "startsWith" in {
-      //   inline def q = quote {
-      //     (s: String) => s.startsWith(" ")
-      //   }
-      //   quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("s"), StringOperator.`startsWith`, Constant.auto(" "))
-      // }
+      "split" in {
+        inline def q = quote {
+          (s: String) => s.split(" ")
+        }
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("s"), StringOperator.`split`, Constant.auto(" "))
+      }
+      "startsWith" in {
+        inline def q = quote {
+          (s: String) => s.startsWith(" ")
+        }
+        quote(unquote(q)).ast.body mustEqual BinaryOperation(Ident("s"), StringOperator.`startsWith`, Constant.auto(" "))
+      }
     }
   }
 

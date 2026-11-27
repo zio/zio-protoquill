@@ -44,20 +44,20 @@ class MirrorEncodingSpec extends Spec {
   // This should technically work but does not compile because in the ExpandNestedQueries.scala phase it causes a:
   // zio.quill.quotation.QuatException: The post-rename field 'value' does not exist in an SQL-level type V
   // Should look into that transformation phase and see if it can be changed to be tolerant of non existing fields in quats
-  // "simple encoder/decoder - case clas - do not need decoder" in {
-  //   case class Name(value: String)
-  //   case class Person(name: Name, age:Int)
-  //   implicit val encodeName: MappedEncoding[Name, String] = MappedEncoding[Name, String](_.value)
-  //   //implicit val decodeName: MappedEncoding[String, Name] = MappedEncoding[String, Name](str => Name(str))
+  "simple encoder/decoder - case clas - do not need decoder" in {
+    case class Name(value: String)
+    case class Person(name: Name, age:Int)
+    implicit val encodeName: MappedEncoding[Name, String] = MappedEncoding[Name, String](_.value)
+    //implicit val decodeName: MappedEncoding[String, Name] = MappedEncoding[String, Name](str => Name(str))
 
-  //   val name = Name("Joe")
-  //   val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
-  //   mirror.triple mustEqual ((
-  //     "SELECT p.name, p.age FROM Person p WHERE p.name = ?",
-  //     List("Joe"),
-  //     ExecutionType.Static
-  //   ))
-  // }
+    val name = Name("Joe")
+    val mirror = ctx.run(query[Person].filter(p => p.name == lift(name)))
+    mirror.triple mustEqual ((
+      "SELECT p.name, p.age FROM Person p WHERE p.name = ?",
+      List("Joe"),
+      ExecutionType.Static
+    ))
+  }
 
   // If we don't specify a mapped-encoding for `Name` it is treated as am embedded class.
   // i.e. it's parameter `value` is used for the decoding instead of the `name` parameter of Person

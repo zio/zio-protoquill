@@ -71,9 +71,9 @@ class SqlActionMacroSpec extends Spec {
         mirror.string mustEqual "INSERT INTO TestEntity (s,i) VALUES ('s', 0)"
         mirror.returningBehavior mustEqual ReturnColumns(List("l"))
       }
-      // "single should fail on record type with multiple fields" in {
-      //   """testContext.run(qr1.insert(lift(TestEntity("s", 0, 1L, None, true))).returningGenerated(r => r))""" mustNot compile
-      // }
+      "single should fail on record type with multiple fields" in {
+        """testContext.run(qr1.insert(lift(TestEntity("s", 0, 1L, None, true))).returningGenerated(r => r))""" mustNot compile
+      }
       "multi" in testContext.withDialect(MirrorSqlDialectWithReturnMulti) { ctx =>
         import ctx._
         inline def q = quote {

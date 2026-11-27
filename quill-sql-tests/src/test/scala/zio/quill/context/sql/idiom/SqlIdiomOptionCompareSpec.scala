@@ -153,9 +153,9 @@ class SqlIdiomOptionCompareSpec extends Spec {
       // "forall" in {
       //   "quote(query[TestEntity].filter(t => t.optionalEmbedded.forall(_.value == 1)))" mustNot compile
       // }
-      // "filterIfDefined" in {
-      //   "quote(query[TestEntity].filter(t => t.optionalEmbedded.filterIfDefined(_.value == 1)))" mustNot compile
-      // }
+      "filterIfDefined" in {
+        "quote(query[TestEntity].filter(t => t.optionalEmbedded.filterIfDefined(_.value == 1)))" mustNot compile
+      }
     }
     "nested" - {
       case class TestEntity(optionalEmbedded: Option[EmbeddedEntity])
@@ -364,9 +364,9 @@ class SqlIdiomOptionCompareSpec extends Spec {
       // "forall" in {
       //   "quote(query[TestEntity].filter(t => t.optionalEmbedded.forall(_.value == 1)))" mustNot compile
       // }
-      // "filterIfDefined" in {
-      //   "quote(query[TestEntity].filter(t => t.optionalEmbedded.filterIfDefined(_.value == 1)))" mustNot compile
-      // }
+      "filterIfDefined" in {
+        "quote(query[TestEntity].filter(t => t.optionalEmbedded.filterIfDefined(_.value == 1)))" mustNot compile
+      }
     }
     "nested" - {
       case class TestEntity(optionalEmbedded: Option[EmbeddedEntity])
