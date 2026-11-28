@@ -212,6 +212,20 @@ class DynamicQuerySpec extends Spec { // //
           query[TestEntity]
         )
       }
+      "defined, compared to the quoted value directly" in {
+        val o = Some(1)
+        test(
+          dynamicQuery[TestEntity].filterOpt(o)((v0, i) => quote(v0.i === i)),
+          query[TestEntity].filter(v0 => v0.i == lift(1))
+        )
+      }
+      "defined, =!=" in {
+        val o = Some(1)
+        test(
+          dynamicQuery[TestEntity].filterOpt(o)((v0, i) => quote(v0.i =!= i)),
+          query[TestEntity].filter(v0 => v0.i != lift(1))
+        )
+      }
     }
 
     "filterIf" - {
@@ -518,6 +532,13 @@ class DynamicQuerySpec extends Spec { // //
         test(
           dynamicQuery[TestEntity].filterOpt(o)((v0, i) => v0.i === unquote(i)),
           query[TestEntity]
+        )
+      }
+      "defined, compared to the quoted value directly" in {
+        val o = Some(1)
+        test(
+          dynamicQuery[TestEntity].filterOpt(o)((v0, i) => v0.i === i),
+          query[TestEntity].filter(v0 => v0.i == lift(1))
         )
       }
     }
