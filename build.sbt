@@ -101,6 +101,9 @@ lazy val communityBuildModules =
     `quill-sql`, `quill-sql-tests`, `quill-cassandra`
   )
 
+// sbt 2 runs two forked test groups at once, but tests of different modules share database tables
+Global / concurrentRestrictions += Tags.limit(Tags.ForkedTestGroup, 1)
+
 val filteredModules = {
   val modulesStr = sys.props.get("modules")
   println(s"SBT =:> Modules Argument Value: ${modulesStr}. community=${isCommunityBuild}, communityRemote=${isCommunityRemoteBuild}")
