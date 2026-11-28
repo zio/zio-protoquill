@@ -138,7 +138,7 @@ function wait_for_bigdata() {
 
     # sbt clean scalariformFormat test:scalariformFormat
     # sbt checkUnformattedFiles
-    sbt clean $SBT_ARGS quill-sql/test:compile & COMPILE=$!
+    sbt $SBT_ARGS "clean; quill-sql/Test/compile" & COMPILE=$!
     ./build/setup_bigdata.sh & SETUP=$!
 
     wait $SETUP

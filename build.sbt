@@ -101,6 +101,9 @@ lazy val communityBuildModules =
     `quill-sql`, `quill-sql-tests`, `quill-cassandra`
   )
 
+// sbt 2 runs two forked test groups at once, but tests of different modules share database tables
+Global / concurrentRestrictions += Tags.limit(Tags.ForkedTestGroup, 1)
+
 val filteredModules = {
   val modulesStr = sys.props.get("modules")
   println(s"SBT =:> Modules Argument Value: ${modulesStr}. community=${isCommunityBuild}, communityRemote=${isCommunityRemoteBuild}")
@@ -138,7 +141,7 @@ val zioVersion = "2.1.27"
 
 lazy val `quill` =
   (project in file("."))
-    .settings(commonSettings: _*)
+    .settings(commonSettings *)
     .settings(
       publishArtifact := false,
       publish / skip := true,
@@ -146,11 +149,11 @@ lazy val `quill` =
       publishSigned / skip := true,
       crossScalaVersions := Nil, // https://www.scala-sbt.org/1.x/docs/Cross-Build.html#Cross+building+a+project+statefully
     )
-    .aggregate(filteredModules.map(_.project): _*)
+    .aggregate(filteredModules.map(_.project) *)
 
 lazy val `quill-sql` =
   (project in file("quill-sql"))
-    .settings(commonSettings: _*)
+    .settings(commonSettings *)
     .settings(
       resolvers ++= Seq(
         Resolver.mavenLocal,
@@ -175,7 +178,7 @@ lazy val `quill-sql` =
               Seq(ExclusionRule(organization = "org.scalameta", name = "scalafmt-core_2.13"))
             else
               Seq.empty
-          }: _*),
+          } *),
         "com.typesafe.scala-logging" %% "scala-logging" % "3.9.6",
         "org.scalatest" %% "scalatest" % scalatestVersion % Test,
         "org.scalatest" %% "scalatest-mustmatchers" % scalatestVersion % Test,
@@ -187,7 +190,7 @@ lazy val `quill-sql` =
 lazy val `quill-sql-tests` =
   (project in file("quill-sql-tests"))
     .settings(publish / skip := true)
-    .settings(commonSettings: _*)
+    .settings(commonSettings *)
     .settings(
       Test / testOptions += Tests.Argument("-oF")
     )
@@ -197,16 +200,16 @@ lazy val `quill-sql-tests` =
 
 lazy val `quill-jdbc` =
   (project in file("quill-jdbc"))
-    .settings(commonSettings: _*)
-    .settings(jdbcTestingSettings: _*)
+    .settings(commonSettings *)
+    .settings(jdbcTestingSettings *)
     .dependsOn(`quill-sql` % "compile->compile;test->test")
 
 ThisBuild / libraryDependencySchemes += "org.typelevel" %% "cats-effect" % "always"
 ThisBuild / libraryDependencySchemes += "dev.zio" %% "zio-json" % "always"
 lazy val `quill-doobie` =
   (project in file("quill-doobie"))
-    .settings(commonSettings: _*)
-    .settings(jdbcTestingSettings: _*)
+    .settings(commonSettings *)
+    .settings(jdbcTestingSettings *)
     .settings(
       libraryDependencies ++= Seq(
         "org.typelevel" %% "doobie-core" % "1.0.0-RC14",
@@ -217,7 +220,7 @@ lazy val `quill-doobie` =
 
 lazy val `quill-caliban` =
   (project in file("quill-caliban"))
-    .settings(commonSettings: _*)
+    .settings(commonSettings *)
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
@@ -235,7 +238,7 @@ lazy val `quill-caliban` =
 
 lazy val `quill-zio` =
   (project in file("quill-zio"))
-    .settings(commonSettings: _*)
+    .settings(commonSettings *)
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
@@ -247,8 +250,8 @@ lazy val `quill-zio` =
 
 lazy val `quill-jdbc-zio` =
   (project in file("quill-jdbc-zio"))
-    .settings(commonSettings: _*)
-    .settings(jdbcTestingLibraries: _*)
+    .settings(commonSettings *)
+    .settings(jdbcTestingLibraries *)
     .settings(
       libraryDependencies ++= Seq(
         // Needed for PGObject in JsonExtensions but not necessary if user is not using postgres
@@ -257,7 +260,7 @@ lazy val `quill-jdbc-zio` =
       ),
       Test / runMain / fork := true,
       Test / fork := true,
-      Test / testGrouping := {
+      Test / testGrouping := Def.uncached {
         (Test / definedTests).value map { test =>
           if (test.name endsWith "IntegrationSpec")
             Tests.Group(name = test.name, tests = Seq(test), runPolicy = Tests.SubProcess(
@@ -274,7 +277,7 @@ lazy val `quill-jdbc-zio` =
 
 lazy val `quill-cassandra` =
   (project in file("quill-cassandra"))
-    .settings(commonSettings: _*)
+    .settings(commonSettings *)
     .settings(
       Test / fork := false,
       libraryDependencies ++= Seq(
@@ -285,7 +288,7 @@ lazy val `quill-cassandra` =
 
 lazy val `quill-cassandra-zio` =
   (project in file("quill-cassandra-zio"))
-    .settings(commonSettings: _*)
+    .settings(commonSettings *)
     .settings(
       Test / fork := true,
       libraryDependencies ++= Seq(
@@ -334,6 +337,7 @@ lazy val jdbcTestingSettings = jdbcTestingLibraries ++ Seq(
 
 lazy val basicSettings = Seq(
   Test / testOptions += Tests.Argument("-oI"),
+  Test / testForkedParallel := false,
   libraryDependencies ++= Seq(
     ("org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2")
   ),
