@@ -92,6 +92,11 @@ object extras extends DateOps {
         case (a, b)                       => a != b
       }
   }
+
+  extension [T](inline a: T) {
+    inline def ===(inline b: Quoted[T]): Boolean = a === unquote(b)
+    inline def =!=(inline b: Quoted[T]): Boolean = a =!= unquote(b)
+  }
 }
 
 inline def static[T](inline value: T): T = ${ StaticSpliceMacro('value) }
