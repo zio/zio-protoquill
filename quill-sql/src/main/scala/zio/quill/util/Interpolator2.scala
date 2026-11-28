@@ -10,11 +10,6 @@ import zio.quill.util.IndentUtil._
 import scala.collection.mutable
 import scala.util.matching.Regex
 
-case class TraceConfig(enabledTraces: List[TraceType])
-object TraceConfig {
-  val Empty = new TraceConfig(List())
-}
-
 class Interpolator2(
     traceType: TraceType,
     traceConfig: TraceConfig,
