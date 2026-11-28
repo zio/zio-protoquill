@@ -7,3 +7,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    exclude-paths:
+      - ".github/workflows/auto-approve.yml"
+      - ".github/workflows/auto-merge.yml"
+      - ".github/workflows/ci.yml"
+      - ".github/workflows/regenerate-workflows.yml"
